@@ -44,6 +44,7 @@ import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.core.thread.ThreadingSupportImpl.PauseRecurringCallback;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
@@ -92,6 +93,7 @@ public class MonitorSupport {
      * This is a static method so that it can be called directly via a foreign call from snippets.
      */
     @SubstrateForeignCallTarget
+    @SuppressWarnings("try")
     public static void monitorEnter(Object obj) {
         assert obj != null;
         if (!SubstrateOptions.MultiThreaded.getValue()) {
@@ -100,22 +102,24 @@ public class MonitorSupport {
         }
 
         ReentrantLock lockObject = null;
-        try {
-            lockObject = ImageSingletons.lookup(MonitorSupport.class).getOrCreateMonitor(obj, true);
-            lockObject.lock();
-        } catch (Throwable ex) {
-            /*
-             * The foreign call from snippets to this method does not have an exception edge. So we
-             * could miss an exception handler if we unwind an exception from this method.
-             *
-             * The only exception that the monitorenter bytecode is specified to throw is a
-             * NullPointerException, and the null check already happens beforehand in the snippet.
-             * So any exception would be surprising to users anyway.
-             *
-             * Finally, it would not be clear whether the monitor is locked or unlocked in case of
-             * an exception.
-             */
-            throw shouldNotReachHere("monitorEnter", obj, lockObject, ex);
+        try (PauseRecurringCallback prc = new PauseRecurringCallback()) {
+            try {
+                lockObject = ImageSingletons.lookup(MonitorSupport.class).getOrCreateMonitor(obj, true);
+                lockObject.lock();
+            } catch (Throwable ex) {
+                /*
+                 * The foreign call from snippets to this method does not have an exception edge. So
+                 * we could miss an exception handler if we unwind an exception from this method.
+                 *
+                 * The only exception that the monitorenter bytecode is specified to throw is a
+                 * NullPointerException, and the null check already happens beforehand in the
+                 * snippet. So any exception would be surprising to users anyway.
+                 *
+                 * Finally, it would not be clear whether the monitor is locked or unlocked in case
+                 * of an exception.
+                 */
+                throw shouldNotReachHere("monitorEnter", obj, lockObject, ex);
+            }
         }
     }
 
@@ -126,6 +130,7 @@ public class MonitorSupport {
      * This is a static method so that it can be called directly via a foreign call from snippets.
      */
     @SubstrateForeignCallTarget
+    @SuppressWarnings("try")
     public static void monitorExit(Object obj) {
         assert obj != null;
         if (!SubstrateOptions.MultiThreaded.getValue()) {
@@ -134,19 +139,21 @@ public class MonitorSupport {
         }
 
         ReentrantLock lockObject = null;
-        try {
-            lockObject = ImageSingletons.lookup(MonitorSupport.class).getOrCreateMonitor(obj, true);
-            lockObject.unlock();
-        } catch (Throwable ex) {
-            /*
-             * The foreign call from snippets to this method does not have an exception edge. So we
-             * could miss an exception handler if we unwind an exception from this method.
-             *
-             * Graal enforces structured locking and unlocking. This is a restriction compared to
-             * the Java Virtual Machine Specification, but it ensures that we never need to throw an
-             * IllegalMonitorStateException.
-             */
-            throw shouldNotReachHere("monitorExit", obj, lockObject, ex);
+        try (PauseRecurringCallback prc = new PauseRecurringCallback()) {
+            try {
+                lockObject = ImageSingletons.lookup(MonitorSupport.class).getOrCreateMonitor(obj, true);
+                lockObject.unlock();
+            } catch (Throwable ex) {
+                /*
+                 * The foreign call from snippets to this method does not have an exception edge. So
+                 * we could miss an exception handler if we unwind an exception from this method.
+                 *
+                 * Graal enforces structured locking and unlocking. This is a restriction compared
+                 * to the Java Virtual Machine Specification, but it ensures that we never need to
+                 * throw an IllegalMonitorStateException.
+                 */
+                throw shouldNotReachHere("monitorExit", obj, lockObject, ex);
+            }
         }
     }
 

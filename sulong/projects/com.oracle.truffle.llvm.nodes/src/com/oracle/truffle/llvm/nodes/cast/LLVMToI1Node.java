@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.nodes.cast;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -84,7 +83,6 @@ public abstract class LLVMToI1Node extends LLVMExpressionNode {
         return (from.asNative() & 1L) != 0;
     }
 
-    @TruffleBoundary
     protected ForeignToLLVM createForeignToLLVM() {
         return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I1);
     }

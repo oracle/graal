@@ -107,7 +107,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 
 final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
-    private static final FrameSlot[] NO_SLOTS = new FrameSlot[0];
+    static final FrameSlot[] NO_SLOTS = new FrameSlot[0];
 
     private final FrameDescriptor frame;
     private final List<Phi> blockPhis;

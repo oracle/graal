@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.literals;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
@@ -160,8 +161,8 @@ public class LLVMVectorLiteralNode {
             return LLVMTypesGen.asLLVMPointerVector(pointerLiteral.executeGeneric(frame));
         }
 
-        @TruffleBoundary
         protected LLVMPointerVectorLiteralNode createPointerLiteral() {
+            CompilerAsserts.neverPartOfCompilation();
             return LLVMPointerVectorLiteralNodeGen.create(values);
         }
     }

@@ -29,8 +29,8 @@
  */
 package com.oracle.truffle.llvm.runtime.interop.nfi;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -229,8 +229,8 @@ public abstract class LLVMNativeConvertNode extends LLVMNode {
             return getContextReference().get().getFunctionDescriptor(pointer);
         }
 
-        @TruffleBoundary
         protected NullPointerNode createNullPointerNode() {
+            CompilerAsserts.neverPartOfCompilation();
             LLVMContext context = getContextReference().get();
             return context.getContextExtension(NFIContextExtension.class).getNativeSulongFunctions().createNullPointerNode(context);
         }

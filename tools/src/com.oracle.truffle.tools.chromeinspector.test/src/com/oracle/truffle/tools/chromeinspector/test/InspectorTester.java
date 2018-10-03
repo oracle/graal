@@ -24,17 +24,21 @@
  */
 package com.oracle.truffle.tools.chromeinspector.test;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.MessageEndpoint;
 
 import com.oracle.truffle.tools.chromeinspector.TruffleExecutionContext;
 import com.oracle.truffle.tools.chromeinspector.server.ConnectionWatcher;
@@ -98,7 +102,7 @@ public final class InspectorTester {
     }
 
     public void sendMessage(String message) {
-        exec.inspect.onMessage(message);
+        exec.inspect.sendText(message);
     }
 
     public String getMessages(boolean waitForSome) throws InterruptedException {
@@ -193,7 +197,7 @@ public final class InspectorTester {
         return allMessages.toString();
     }
 
-    private static class InspectExecThread extends Thread implements InspectServerSession.MessageListener {
+    private static class InspectExecThread extends Thread implements MessageEndpoint {
 
         private final boolean suspend;
         private boolean inspectInternal = false;
@@ -265,7 +269,7 @@ public final class InspectorTester {
                     throw t;
                 }
             } finally {
-                inspect.dispose();
+                inspect.sendClose();
             }
         }
 
@@ -280,12 +284,29 @@ public final class InspectorTester {
         }
 
         @Override
-        public void sendMessage(String message) {
+        public void sendText(String message) {
             synchronized (receivedMessages) {
                 receivedMessages.append(message);
                 receivedMessages.append('\n');
                 receivedMessages.notifyAll();
             }
+        }
+
+        @Override
+        public void sendBinary(ByteBuffer data) throws IOException {
+            fail("Unexpected binary message");
+        }
+
+        @Override
+        public void sendPing(ByteBuffer data) throws IOException {
+        }
+
+        @Override
+        public void sendPong(ByteBuffer data) throws IOException {
+        }
+
+        @Override
+        public void sendClose() throws IOException {
         }
 
     }

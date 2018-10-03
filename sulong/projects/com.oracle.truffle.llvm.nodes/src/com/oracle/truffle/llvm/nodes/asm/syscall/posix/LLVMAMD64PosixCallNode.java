@@ -49,7 +49,7 @@ public abstract class LLVMAMD64PosixCallNode extends LLVMNode {
     public LLVMAMD64PosixCallNode(String name, String signature) {
         this.name = name;
         this.signature = signature;
-        nativeExecute = Message.EXECUTE.createNode();
+        this.nativeExecute = Message.EXECUTE.createNode();
     }
 
     protected TruffleObject createFunction() {

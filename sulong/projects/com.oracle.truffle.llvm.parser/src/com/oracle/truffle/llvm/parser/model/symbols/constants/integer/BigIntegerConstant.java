@@ -61,7 +61,7 @@ public final class BigIntegerConstant extends AbstractConstant {
     @Override
     public String toString() {
         if (getType().getBitSize() == 1) {
-            return value.equals(BigInteger.ZERO) ? "false" : "true";
+            return BigInteger.ZERO.equals(value) ? "false" : "true";
         }
         return value.toString();
     }

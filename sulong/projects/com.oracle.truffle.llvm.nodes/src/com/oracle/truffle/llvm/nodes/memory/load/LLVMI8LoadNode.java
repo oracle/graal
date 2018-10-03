@@ -60,14 +60,9 @@ public abstract class LLVMI8LoadNode extends LLVMAbstractLoadNode {
         return address.getI8(memory);
     }
 
-    @Override
-    LLVMForeignReadNode createForeignRead() {
-        return new LLVMForeignReadNode(ForeignToLLVMType.I8);
-    }
-
     @Specialization
     protected byte doI8Managed(LLVMManagedPointer addr) {
-        return (byte) getForeignReadNode().execute(addr);
+        return (byte) getForeignReadNode().executeRead(addr.getObject(), addr.getOffset(), ForeignToLLVMType.I8);
     }
 
     @Specialization

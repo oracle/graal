@@ -28,7 +28,7 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-BREAK 42 CONTINUE "start"
+BREAK 85 CONTINUE "start"
     OPEN_SCOPE
         MEMBER exact "long double" "a" "0xK3fff9d70a3d70a3d70a4"
         MEMBER exact "long double" "b" "0xKc00191eb851eb851eb85"
@@ -38,5 +38,24 @@ BREAK 42 CONTINUE "start"
         MEMBER exact "long double" "f" "QNaN"
         MEMBER exact "long double" "g" "SNaN"
         MEMBER exact "long double" "h" "INF"
-
+        MEMBER structured "UnpackedStruct" "us"
+            MEMBER exact "long double" "a" "0xK3fff9d70a3d70a3d70a4"
+            MEMBER exact "long double" "b" "0xKc00191eb851eb851eb85"
+            MEMBER exact "long double" "c" "0xK4001b947ae147ae147ae"
+            MEMBER exact "long double" "d" "0xK400bad8d3cd35a858800"
+            MEMBER exact "long double" "e" "0xK00000000000000000000"
+            MEMBER exact "long double" "f" "QNaN"
+            MEMBER exact "long double" "g" "SNaN"
+            MEMBER exact "long double" "h" "INF"
+        END_MEMBERS
+        MEMBER structured "PackedStruct" "ps"
+            MEMBER exact "long double" "a" "0xK3fff9d70a3d70a3d70a4"
+            MEMBER exact "long double" "b" "0xKc00191eb851eb851eb85"
+            MEMBER exact "long double" "c" "0xK4001b947ae147ae147ae"
+            MEMBER exact "long double" "d" "0xK400bad8d3cd35a858800"
+            MEMBER exact "long double" "e" "0xK00000000000000000000"
+            MEMBER exact "long double" "f" "QNaN"
+            MEMBER exact "long double" "g" "SNaN"
+            MEMBER exact "long double" "h" "INF"
+        END_MEMBERS
 

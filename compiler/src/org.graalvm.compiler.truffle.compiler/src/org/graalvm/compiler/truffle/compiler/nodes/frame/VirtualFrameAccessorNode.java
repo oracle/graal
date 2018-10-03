@@ -84,7 +84,7 @@ public abstract class VirtualFrameAccessorNode extends FixedWithNextNode impleme
              * Even though all usages will be eventually dead, we need to provide a valid
              * replacement value for now.
              */
-            ConstantNode unusedValue = ConstantNode.forConstant(JavaConstant.defaultForKind(getStackKind()), tool.getMetaAccessProvider());
+            ConstantNode unusedValue = ConstantNode.forConstant(JavaConstant.defaultForKind(getStackKind()), tool.getMetaAccess());
             tool.addNode(unusedValue);
             tool.replaceWith(unusedValue);
         }

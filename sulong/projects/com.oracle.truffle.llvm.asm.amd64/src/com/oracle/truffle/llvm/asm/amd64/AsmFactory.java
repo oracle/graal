@@ -336,7 +336,7 @@ class AsmFactory {
             int end = source.lastIndexOf('}');
             if (start != -1 && end != -1) {
                 registerName = source.substring(start + 1, end);
-            } else if (source.equals(CONSTRAINT_REG) || source.equals(CONSTRAINT_REG_L)) {
+            } else if (CONSTRAINT_REG.equals(source) || CONSTRAINT_REG_L.equals(source)) {
                 registerName = TEMP_REGISTER_PREFIX + argInfo.size();
                 isAnonymous = true;
             } else if (source.length() == 1 && Character.isDigit(source.charAt(0))) {
@@ -455,9 +455,7 @@ class AsmFactory {
                 statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceLocation, "Unsupported operation: " + operation));
                 break;
             case "nop":
-                if ("rep".equals(currentPrefix)) {
-                    // TODO: pause
-                }
+            case "pause":
                 break;
             case "hlt":
                 // TODO: implement properly
@@ -1879,7 +1877,7 @@ class AsmFactory {
             AsmOperand offset = op.getOffset();
             int shift = op.getShift();
             LLVMExpressionNode baseAddress;
-            assert op.getSegment() == null || op.getSegment().equals("%fs");
+            assert op.getSegment() == null || "%fs".equals(op.getSegment());
             LLVMExpressionNode segment = null;
             if (op.getSegment() != null) {
                 segment = new LLVMAMD64GetTlsNode();

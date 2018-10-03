@@ -80,7 +80,7 @@ public abstract class LLVMI64StoreNode extends LLVMStoreNodeCommon {
 
     @Specialization
     protected void doOpManaged(LLVMManagedPointer address, Object value) {
-        getForeignWriteNode(ForeignToLLVMType.I64).execute(address, value);
+        getForeignWriteNode().executeWrite(address.getObject(), address.getOffset(), value, ForeignToLLVMType.I64);
     }
 
     @Specialization

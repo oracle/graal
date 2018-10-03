@@ -57,14 +57,9 @@ public abstract class LLVMI1LoadNode extends LLVMAbstractLoadNode {
         return doI1Managed(getDerefHandleGetReceiverNode().execute(addr));
     }
 
-    @Override
-    LLVMForeignReadNode createForeignRead() {
-        return new LLVMForeignReadNode(ForeignToLLVMType.I1);
-    }
-
     @Specialization
     protected boolean doI1Managed(LLVMManagedPointer addr) {
-        return (boolean) getForeignReadNode().execute(addr);
+        return (boolean) getForeignReadNode().executeRead(addr.getObject(), addr.getOffset(), ForeignToLLVMType.I1);
     }
 
     @Specialization

@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.posix.headers;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -33,6 +34,7 @@ import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.word.ComparableWord;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
@@ -52,7 +54,7 @@ public class Pthread {
      * Thread identifiers. The structure of the attribute type is not exposed on purpose.
      */
 
-    public interface pthread_t extends WordBase {
+    public interface pthread_t extends ComparableWord {
     }
 
     @CPointerTo(nameOfCType = "pthread_t")
@@ -291,7 +293,8 @@ public class Pthread {
     public static native int pthread_detach(pthread_t th);
 
     /** Obtain the identifier of the current thread. */
-    @CFunction
+    @CFunction(transition = Transition.NO_TRANSITION)
+    @Uninterruptible(reason = "Called from uninterruptible code.")
     public static native pthread_t pthread_self();
 
     /** Compare two thread identifiers. */

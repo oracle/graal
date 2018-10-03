@@ -134,7 +134,7 @@ public class AssumptionPartialEvaluationTest extends PartialEvaluationTest {
 
         WeakReference<TestOptimizedAssumptionDependency> dep = new WeakReference<>(new TestOptimizedAssumptionDependency());
         if (dep.get() != null) {
-            Assert.assertTrue(dep.get().reachabilityDeterminesValidity());
+            Assert.assertTrue(dep.get().soleExecutionEntryPoint());
             assumption.registerDependency().accept(dep.get());
             Assert.assertEquals(1, assumption.countDependencies());
             int attempts = 10;

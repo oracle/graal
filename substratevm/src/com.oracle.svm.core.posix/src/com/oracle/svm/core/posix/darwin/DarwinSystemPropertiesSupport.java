@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.posix.darwin;
 
+import static com.oracle.svm.core.posix.headers.darwin.CoreFoundation.CFRetain;
+
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -40,6 +42,7 @@ import com.oracle.svm.core.posix.PosixSystemPropertiesSupport;
 import com.oracle.svm.core.posix.headers.Limits;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posix.headers.darwin.CoreFoundation;
+import com.oracle.svm.core.posix.headers.darwin.CoreFoundation.CFStringRef;
 
 @Platforms({Platform.DARWIN.class})
 public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport {
@@ -85,11 +88,13 @@ public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport 
             dictValue = CoreFoundation.CFDictionaryGetValue(dict, dictKeyRef);
             CoreFoundation.CFRelease(dictKeyRef);
         }
-        if (dictValue.isNull()) {
-            return osVersionValue = "Unknown";
+        if (dictValue.isNonNull()) {
+            dictValue = (CFStringRef) CFRetain(dictValue);
+            osVersionValue = DarwinCoreFoundationUtils.fromCFStringRef(dictValue);
+            CoreFoundation.CFRelease(dictValue);
+        } else {
+            osVersionValue = "Unknown";
         }
-        osVersionValue = DarwinCoreFoundationUtils.fromCFStringRef(dictValue);
-        CoreFoundation.CFRelease(dictValue);
         return osVersionValue;
     }
 }

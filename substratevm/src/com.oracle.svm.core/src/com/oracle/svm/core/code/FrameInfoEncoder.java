@@ -50,6 +50,7 @@ import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.ByteArrayReader;
+import com.oracle.svm.core.util.HostedStringDeduplication;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.DebugInfo;
@@ -100,14 +101,26 @@ public class FrameInfoEncoder {
     }
 
     public static class NamesFromMethod extends Customization {
+        private final HostedStringDeduplication stringTable = HostedStringDeduplication.singleton();
+
         @Override
         protected void fillDebugNames(BytecodeFrame bytecodeFrame, FrameInfoQueryResult resultFrameInfo, boolean fillValueNames) {
             final ResolvedJavaMethod method = bytecodeFrame.getMethod();
 
             final StackTraceElement source = method.asStackTraceElement(bytecodeFrame.getBCI());
-            resultFrameInfo.sourceClassName = source.getClassName();
-            resultFrameInfo.sourceMethodName = source.getMethodName();
-            resultFrameInfo.sourceFileName = source.getFileName();
+            /*
+             * Class names must be interned strings according to the Java specification, i.e., some
+             * DynamicHub.name already contains the class name as an interned string. Interning here
+             * avoids duplication.
+             */
+            resultFrameInfo.sourceClassName = source.getClassName().intern();
+            /*
+             * There is no need to have method names and file names as interned strings. But at
+             * least sometimes the StackTraceElement contains interned strings, so we un-intern
+             * these strings and perform our own de-duplication.
+             */
+            resultFrameInfo.sourceMethodName = stringTable.deduplicate(source.getMethodName(), true);
+            resultFrameInfo.sourceFileName = stringTable.deduplicate(source.getFileName(), true);
             resultFrameInfo.sourceLineNumber = source.getLineNumber();
 
             if (fillValueNames) {

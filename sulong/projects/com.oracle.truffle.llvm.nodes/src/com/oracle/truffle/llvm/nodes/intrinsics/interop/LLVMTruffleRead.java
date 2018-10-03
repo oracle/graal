@@ -88,16 +88,7 @@ public abstract class LLVMTruffleRead extends LLVMIntrinsic {
             this.toLLVM = toLLVM;
         }
 
-        @SuppressWarnings("unused")
-        @Specialization(limit = "2", guards = "cachedId.equals(readStr.executeWithTarget(id))")
-        protected Object cached(LLVMManagedPointer value, Object id,
-                        @Cached("createReadString()") LLVMReadStringNode readStr,
-                        @Cached("readStr.executeWithTarget(id)") String cachedId) {
-            TruffleObject foreign = asForeign.execute(value);
-            return doRead(foreign, cachedId, foreignRead, toLLVM);
-        }
-
-        @Specialization(replaces = "cached")
+        @Specialization
         protected Object uncached(LLVMManagedPointer value, Object id,
                         @Cached("createReadString()") LLVMReadStringNode readStr) {
             TruffleObject foreign = asForeign.execute(value);

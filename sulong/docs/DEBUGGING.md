@@ -113,3 +113,19 @@ Chrome inspector from within your Java code. Please refer to the
 [documentation of the GraalVM Tools](http://www.graalvm.org/docs/reference-manual/tools/)
 for details on how to do that. This enables you to debug your Java code using your Java
 debugger of choice while debugging the code executed by Sulong in the Chrome inspector.
+
+### How can I generate a trace of how Sulong executes my program?
+
+Sulong can produce an LLVM IR-level trace of its program execution. You can enable
+this feature by passing the `--TraceLLVM=<...>` option to `lli`. This option takes a
+single argument denoting the target for the trace output.
+
+* `stdout` or `out`: prints the trace to `stdout`
+
+* `stderr` or `err`: prints the trace to `stderr`
+
+* `file://<path>`: prints the trace to the file denoted by `path`
+
+Please note that in order to use this feature you also need to enable IR-level
+debugging as described above by setting `-Dpolyglot.llvm.llDebug=true` and
+ensuring that sulong can find `.ll` files for the bitcode files it executes.

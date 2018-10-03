@@ -188,7 +188,7 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
                 JavaKind accessKind = load.accessKind();
                 JavaKind componentKind = type.getComponentType().getJavaKind();
                 long offset = load.offset().asJavaConstant().asLong();
-                int index = VirtualArrayNode.entryIndexForOffset(tool.getArrayOffsetProvider(), offset, accessKind, type.getComponentType(), Integer.MAX_VALUE);
+                int index = VirtualArrayNode.entryIndexForOffset(tool.getMetaAccess(), offset, accessKind, type.getComponentType(), Integer.MAX_VALUE);
                 ValueNode object = GraphUtil.unproxify(load.object());
                 LocationIdentity location = NamedLocationIdentity.getArrayLocation(componentKind);
                 ValueNode cachedValue = state.getReadCache(object, location, index, accessKind, this);
@@ -214,7 +214,7 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
             if (store.offset().isConstant()) {
                 long offset = store.offset().asJavaConstant().asLong();
                 boolean overflowAccess = isOverflowAccess(accessKind, componentKind);
-                int index = overflowAccess ? -1 : VirtualArrayNode.entryIndexForOffset(tool.getArrayOffsetProvider(), offset, accessKind, type.getComponentType(), Integer.MAX_VALUE);
+                int index = overflowAccess ? -1 : VirtualArrayNode.entryIndexForOffset(tool.getMetaAccess(), offset, accessKind, type.getComponentType(), Integer.MAX_VALUE);
                 return processStore(store, store.object(), location, index, accessKind, overflowAccess, store.value(), state, effects);
             } else {
                 processIdentity(state, location);

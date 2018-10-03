@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.180.0",
+  "mxversion" : "5.183.0",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
@@ -196,7 +196,10 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : ["org.graalvm.compiler.serviceprovider"],
-      "uses" : ["org.graalvm.compiler.serviceprovider.JMXService"],
+      "uses" : [
+        "org.graalvm.compiler.serviceprovider.JMXService",
+        "org.graalvm.compiler.phases.common.jmx.HotSpotMBeanOperationProvider",
+      ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "9+",
       "checkPackagePrefix" : "false",
@@ -444,7 +447,6 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.hotspot",
       ],
-
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
         "GRAAL_SERVICEPROVIDER_PROCESSOR",
@@ -897,7 +899,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.core.test",
-        "org.graalvm.compiler.replacements",
+        "org.graalvm.compiler.replacements.amd64",
       ],
       "annotationProcessors" : [
         "GRAAL_NODEINFO_PROCESSOR",
@@ -1278,6 +1280,19 @@ suite = {
       "javaCompliance" : "8+",
       "workingSets" : "Graal,Test",
       "jacoco" : "exclude",
+    },
+
+    "org.graalvm.compiler.core.test.jdk9" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.core.test",
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "9+",
+      "workingSets" : "Graal,Test",
+      "jacoco" : "exclude",
+      "testProject" : True,
     },
 
     "org.graalvm.compiler.jtt" : {
@@ -1663,6 +1678,7 @@ suite = {
         "org.graalvm.util.test",
         "org.graalvm.compiler.loop.test",
         "org.graalvm.compiler.replacements.jdk9.test",
+        "org.graalvm.compiler.core.test.jdk9",
       ],
       "distDependencies" : [
         "JVMCI_HOTSPOT",

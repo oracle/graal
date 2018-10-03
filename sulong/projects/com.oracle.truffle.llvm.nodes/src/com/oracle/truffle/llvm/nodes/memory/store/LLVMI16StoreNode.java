@@ -63,7 +63,7 @@ public abstract class LLVMI16StoreNode extends LLVMStoreNodeCommon {
 
     @Specialization
     protected void doOpManaged(LLVMManagedPointer address, short value) {
-        getForeignWriteNode(ForeignToLLVMType.I16).execute(address, value);
+        getForeignWriteNode().executeWrite(address.getObject(), address.getOffset(), value, ForeignToLLVMType.I16);
     }
 
     @Specialization(guards = "isAutoDerefHandle(addr)")

@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.interop.convert;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
@@ -124,42 +123,34 @@ public abstract class ToLLVM extends LLVMNode {
         return targetType == ForeignToLLVMType.POINTER;
     }
 
-    @TruffleBoundary
     protected ForeignToLLVM createToI1() {
         return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I1);
     }
 
-    @TruffleBoundary
     protected ForeignToLLVM createToI8() {
         return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I8);
     }
 
-    @TruffleBoundary
     protected ForeignToLLVM createToI16() {
         return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I16);
     }
 
-    @TruffleBoundary
     protected ForeignToLLVM createToI32() {
         return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I32);
     }
 
-    @TruffleBoundary
     protected ForeignToLLVM createToI64() {
         return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I64);
     }
 
-    @TruffleBoundary
     protected ForeignToLLVM createToFloat() {
         return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.FLOAT);
     }
 
-    @TruffleBoundary
     protected ForeignToLLVM createToDouble() {
         return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.DOUBLE);
     }
 
-    @TruffleBoundary
     protected ForeignToLLVM createToPointer() {
         return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.POINTER);
     }

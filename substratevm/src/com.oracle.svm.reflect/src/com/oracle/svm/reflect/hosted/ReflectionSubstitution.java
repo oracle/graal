@@ -87,7 +87,6 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
 
     private static String getProxyTypeName(String typeName) {
         return typeName.replaceAll("[$.\\[;]", PROXY_NAME_SEPARATOR);
-
     }
 
     static String getStableProxyName(Member member) {
@@ -105,6 +104,8 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
                 uniqueMemberName = "constructor";
             } else if (member instanceof Method) {
                 uniqueMemberName = member.getName();
+                uniqueMemberName += PROXY_NAME_SEPARATOR;
+                uniqueMemberName += getProxyTypeName(((Method) member).getReturnType().getName());
             } else {
                 throw VMError.shouldNotReachHere();
             }
@@ -115,7 +116,6 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
                             .map(Class::getName)
                             .map(ReflectionSubstitution::getProxyTypeName)
                             .collect(Collectors.joining(PROXY_NAME_SEPARATOR));
-            uniqueMemberName += PROXY_NAME_SEPARATOR;
         } else {
             throw VMError.shouldNotReachHere("Proxies are defined only for Fields, Methods, and Constructors.");
         }

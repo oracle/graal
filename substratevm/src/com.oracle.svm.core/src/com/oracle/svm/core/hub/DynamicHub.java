@@ -59,7 +59,6 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.svm.core.HostedIdentityHashCodeProvider;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Hybrid;
 import com.oracle.svm.core.annotate.KeepOriginal;
 import com.oracle.svm.core.annotate.Substitute;
@@ -260,13 +259,12 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private GenericInfo genericInfo;
     private AnnotatedSuperInfo annotatedSuperInfo;
 
-    @Alias private static java.security.ProtectionDomain allPermDomain;
+    private static java.security.ProtectionDomain allPermDomain;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHub(String name, boolean isLocalClass, DynamicHub superType, DynamicHub componentHub, String sourceFileName, boolean isStatic, boolean isSynthetic,
                     Target_java_lang_ClassLoader classLoader) {
-        /* Class names must be interned strings according to the Java spec. */
-        this.name = name.intern();
+        this.name = name;
         this.isLocalClass = isLocalClass;
         this.superHub = superType;
         this.componentHub = componentHub;
@@ -451,9 +449,13 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         return KnownIntrinsics.unsafeCast(clazz, DynamicHub.class);
     }
 
+    /*
+     * Note that this method must be a static method and not an instance method, otherwise null
+     * values cannot be converted.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public Class<?> asClass() {
-        return KnownIntrinsics.unsafeCast(this, Class.class);
+    public static Class<?> toClass(DynamicHub hub) {
+        return KnownIntrinsics.unsafeCast(hub, Class.class);
     }
 
     @Substitute
@@ -535,7 +537,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
          * We do not do the check "this.getModifiers() & ANNOTATION) != 0" because we do not have
          * the full modifier bits.
          */
-        return isInterface() && getInterfaces().length == 1 && getInterfaces()[0].asClass() == Annotation.class;
+        return isInterface() && getInterfaces().length == 1 && DynamicHub.toClass(getInterfaces()[0]) == Annotation.class;
     }
 
     @Substitute

@@ -1,26 +1,42 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * The Universal Permissive License (UPL), Version 1.0
  *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
  *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ * (a) the Software, and
  *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 package com.oracle.truffle.api.impl;
 
@@ -69,85 +85,85 @@ final class DefaultVirtualFrame implements VirtualFrame {
     @Override
     public Object getObject(FrameSlot slot) throws FrameSlotTypeException {
         verifyGet(slot, FrameSlotKind.Object);
-        return locals[slot.getIndex()];
+        return locals[getFrameSlotIndex(slot)];
     }
 
     @Override
     public void setObject(FrameSlot slot, Object value) {
         verifySet(slot, FrameSlotKind.Object);
-        locals[slot.getIndex()] = value;
+        locals[getFrameSlotIndex(slot)] = value;
     }
 
     @Override
     public byte getByte(FrameSlot slot) throws FrameSlotTypeException {
         verifyGet(slot, FrameSlotKind.Byte);
-        return (byte) locals[slot.getIndex()];
+        return (byte) locals[getFrameSlotIndex(slot)];
     }
 
     @Override
     public void setByte(FrameSlot slot, byte value) {
         verifySet(slot, FrameSlotKind.Byte);
-        locals[slot.getIndex()] = value;
+        locals[getFrameSlotIndex(slot)] = value;
     }
 
     @Override
     public boolean getBoolean(FrameSlot slot) throws FrameSlotTypeException {
         verifyGet(slot, FrameSlotKind.Boolean);
-        return (boolean) locals[slot.getIndex()];
+        return (boolean) locals[getFrameSlotIndex(slot)];
     }
 
     @Override
     public void setBoolean(FrameSlot slot, boolean value) {
         verifySet(slot, FrameSlotKind.Boolean);
-        locals[slot.getIndex()] = value;
+        locals[getFrameSlotIndex(slot)] = value;
     }
 
     @Override
     public int getInt(FrameSlot slot) throws FrameSlotTypeException {
         verifyGet(slot, FrameSlotKind.Int);
-        return (int) locals[slot.getIndex()];
+        return (int) locals[getFrameSlotIndex(slot)];
     }
 
     @Override
     public void setInt(FrameSlot slot, int value) {
         verifySet(slot, FrameSlotKind.Int);
-        locals[slot.getIndex()] = value;
+        locals[getFrameSlotIndex(slot)] = value;
     }
 
     @Override
     public long getLong(FrameSlot slot) throws FrameSlotTypeException {
         verifyGet(slot, FrameSlotKind.Long);
-        return (long) locals[slot.getIndex()];
+        return (long) locals[getFrameSlotIndex(slot)];
     }
 
     @Override
     public void setLong(FrameSlot slot, long value) {
         verifySet(slot, FrameSlotKind.Long);
-        locals[slot.getIndex()] = value;
+        locals[getFrameSlotIndex(slot)] = value;
     }
 
     @Override
     public float getFloat(FrameSlot slot) throws FrameSlotTypeException {
         verifyGet(slot, FrameSlotKind.Float);
-        return (float) locals[slot.getIndex()];
+        return (float) locals[getFrameSlotIndex(slot)];
     }
 
     @Override
     public void setFloat(FrameSlot slot, float value) {
         verifySet(slot, FrameSlotKind.Float);
-        locals[slot.getIndex()] = value;
+        locals[getFrameSlotIndex(slot)] = value;
     }
 
     @Override
     public double getDouble(FrameSlot slot) throws FrameSlotTypeException {
         verifyGet(slot, FrameSlotKind.Double);
-        return (double) locals[slot.getIndex()];
+        return (double) locals[getFrameSlotIndex(slot)];
     }
 
     @Override
     public void setDouble(FrameSlot slot, double value) {
         verifySet(slot, FrameSlotKind.Double);
-        locals[slot.getIndex()] = value;
+        locals[getFrameSlotIndex(slot)] = value;
     }
 
     @Override
@@ -162,7 +178,7 @@ final class DefaultVirtualFrame implements VirtualFrame {
     }
 
     private int getSlotIndexChecked(FrameSlot slot) {
-        int slotIndex = slot.getIndex();
+        int slotIndex = getFrameSlotIndex(slot);
         if (slotIndex >= tags.length) {
             if (!resize()) {
                 throw new IllegalArgumentException(String.format("The frame slot '%s' is not known by the frame descriptor.", slot));
@@ -199,6 +215,11 @@ final class DefaultVirtualFrame implements VirtualFrame {
     private byte getTag(FrameSlot slot) {
         int slotIndex = getSlotIndexChecked(slot);
         return tags[slotIndex];
+    }
+
+    @SuppressWarnings("deprecation")
+    private static int getFrameSlotIndex(FrameSlot slot) {
+        return slot.getIndex();
     }
 
     @Override

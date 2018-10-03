@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.rust;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
@@ -55,8 +56,8 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 
 public abstract class LLVMStart extends LLVMIntrinsic {
 
-    @TruffleBoundary
     protected LLVMClosureDispatchNode createClosureDispatchNode() {
+        CompilerAsserts.neverPartOfCompilation();
         return LLVMClosureDispatchNodeGen.create();
     }
 

@@ -122,7 +122,6 @@ public abstract class ToComparableValue extends LLVMNode {
             return ManagedToComparableValueNodeGen.create(true);
         }
 
-        @TruffleBoundary
         protected ForeignToLLVM createForeignToI64() {
             return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I64);
         }

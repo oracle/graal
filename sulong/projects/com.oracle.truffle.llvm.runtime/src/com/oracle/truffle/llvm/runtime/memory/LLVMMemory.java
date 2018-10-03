@@ -174,14 +174,11 @@ public abstract class LLVMMemory {
 
     public abstract void fullFence();
 
-    /**
-     * Allocates {@code #OBJECT_SIZE} bytes in the Kernel space.
-     */
-    public abstract LLVMNativePointer allocateDerefMemory();
+    public abstract long allocateHandle(boolean autoDeref);
 
-    public abstract boolean isDerefMemory(LLVMNativePointer addr);
+    public abstract boolean isHandleMemory(long addr);
 
-    public abstract boolean isDerefMemory(long addr);
+    public abstract boolean isDerefHandleMemory(long addr);
 
     @ValueType
     public static final class CMPXCHGI8 {
@@ -258,4 +255,5 @@ public abstract class LLVMMemory {
             return swap;
         }
     }
+
 }

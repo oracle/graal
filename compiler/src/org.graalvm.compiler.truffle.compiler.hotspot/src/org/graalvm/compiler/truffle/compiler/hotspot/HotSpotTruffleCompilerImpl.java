@@ -70,7 +70,6 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
-import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleInstalledCode;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -244,26 +243,17 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
 
     @Override
     protected InstalledCode createInstalledCode(CompilableTruffleAST compilable) {
-        return new HotSpotTruffleInstalledCode(compilable);
-    }
-
-    @Override
-    protected void afterCodeInstallation(InstalledCode installedCode) {
-        if (installedCode instanceof HotSpotTruffleInstalledCode) {
-            HotSpotTruffleCompilerRuntime runtime = (HotSpotTruffleCompilerRuntime) TruffleCompilerRuntime.getRuntime();
-            HotSpotTruffleInstalledCode hotspotTruffleInstalledCode = (HotSpotTruffleInstalledCode) installedCode;
-            runtime.onCodeInstallation(hotspotTruffleInstalledCode);
-        }
+        return null;
     }
 
     /**
-     * {@link HotSpotNmethod#isDefault() Default} nmethods installed by Graal remain valid and can
-     * still be executed once the associated {@link HotSpotNmethod} object becomes unreachable. As
-     * such, these objects must remain strongly reachable from {@code OptimizedAssumption}s they
-     * depend on.
+     * {@link HotSpotNmethod#isDefault() Default} nmethods installed by Graal are executed through a
+     * {@code Method::_code} field pointing to them. That is, they can be executed even when the
+     * {@link HotSpotNmethod} created during code installation dies. As such, these objects must
+     * remain strongly reachable from {@code OptimizedAssumption}s they depend on.
      */
     @Override
-    protected boolean reachabilityDeterminesValidity(InstalledCode installedCode) {
+    protected boolean soleExecutionEntryPoint(InstalledCode installedCode) {
         if (installedCode instanceof HotSpotNmethod) {
             HotSpotNmethod nmethod = (HotSpotNmethod) installedCode;
             if (nmethod.isDefault()) {
@@ -271,5 +261,36 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
             }
         }
         return true;
+    }
+
+    @Override
+    protected CompilationResult createCompilationResult(String name, CompilationIdentifier compilationIdentifier, CompilableTruffleAST compilable) {
+        return new HotSpotTruffleCompilationResult(compilationIdentifier, name, compilable);
+    }
+
+    @Override
+    protected void afterCodeInstallation(CompilationResult result, InstalledCode installedCode) {
+        if (result instanceof HotSpotTruffleCompilationResult) {
+            HotSpotTruffleCompilerRuntime runtime = (HotSpotTruffleCompilerRuntime) TruffleCompilerRuntime.getRuntime();
+            runtime.onCodeInstallation(((HotSpotTruffleCompilationResult) result).compilable, installedCode);
+        }
+    }
+
+    @Override
+    protected CompilableTruffleAST getCompilable(CompilationResult result) {
+        if (result instanceof HotSpotTruffleCompilationResult) {
+            return ((HotSpotTruffleCompilationResult) result).compilable;
+        }
+        return null;
+    }
+
+    private static final class HotSpotTruffleCompilationResult extends CompilationResult {
+
+        final CompilableTruffleAST compilable;
+
+        HotSpotTruffleCompilationResult(CompilationIdentifier compilationId, String name, CompilableTruffleAST compilable) {
+            super(compilationId, name);
+            this.compilable = compilable;
+        }
     }
 }

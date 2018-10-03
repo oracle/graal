@@ -271,8 +271,6 @@ nwcc_0.8.3/tests/another_struct_bug.c
 nwcc_0.8.3/tests/happy_fun_bugs.c
 nwcc_0.8.3/tests/fbuf_bug.c
 nwcc_0.8.3/tests/hm.c
-nwcc_0.8.3/tests/attribute_alias0.c
-nwcc_0.8.3/tests/attribute_alias1.c
 nwcc_0.8.3/tests/aaa_BUGvarinit.c
 nwcc_0.8.3/tests/vla0.c
 nwcc_0.8.3/tests/vla_2d_1.c

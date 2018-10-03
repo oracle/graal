@@ -44,9 +44,9 @@ import com.oracle.truffle.llvm.test.options.TestOptions;
 @RunWith(Parameterized.class)
 public final class LLVMSuite extends BaseSuiteHarness {
 
-    private static final Path LLVM_SUITE_DIR = new File(TestOptions.PROJECT_ROOT + "/../cache/tests/llvm").toPath();
-    private static final Path LLVM_SOURCE_DIR = new File(TestOptions.PROJECT_ROOT + "/../tests/llvm/test-suite-3.2.src/").toPath();
-    private static final Path LLVM_CONFIG_DIR = new File(TestOptions.PROJECT_ROOT + "/../tests/llvm/configs").toPath();
+    private static final Path LLVM_SUITE_DIR = new File(TestOptions.EXTERNAL_TEST_SUITE_PATH).toPath();
+    private static final Path LLVM_SOURCE_DIR = new File(TestOptions.TEST_SOURCE_PATH).toPath();
+    private static final Path LLVM_CONFIG_DIR = new File(TestOptions.TEST_CONFIG_PATH).toPath();
 
     @Parameter(value = 0) public Path path;
     @Parameter(value = 1) public String testName;

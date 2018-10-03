@@ -525,7 +525,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         if (original == null) {
             /* Optional target that is not present, so nothing to do. */
         } else {
-            register(fieldSubstitutions, annotated, original, annotated);
+            register(fieldSubstitutions, annotated, original, new SubstitutionField(original, annotated));
         }
     }
 

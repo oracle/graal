@@ -114,7 +114,7 @@ public final class LLVMLivenessAnalysis {
             if (i == 0) {
                 // in the first block, the arguments are also always alive
                 for (FunctionParameter param : functionDefinition.getParameters()) {
-                    processRead(blockInfo, frame.findFrameSlot(param.getName()).getIndex());
+                    processRead(blockInfo, getFrameSlotIndex(frame.findFrameSlot(param.getName())));
                 }
             }
 
@@ -198,7 +198,7 @@ public final class LLVMLivenessAnalysis {
                 // as an approximation, we claim that the arguments are used by the first
                 // instruction
                 for (FunctionParameter param : functionDefinition.getParameters()) {
-                    int frameSlotIndex = frame.findFrameSlot(param.getName()).getIndex();
+                    int frameSlotIndex = getFrameSlotIndex(frame.findFrameSlot(param.getName()));
                     lastInstructionIndexTouchingLocal[frameSlotIndex] = 0;
                 }
             }
@@ -382,9 +382,14 @@ public final class LLVMLivenessAnalysis {
             assert name != null;
             FrameSlot frameSlot = frame.findFrameSlot(name);
             assert frameSlot != null : "No Frameslot for ValueSymbol: " + symbol;
-            return frameSlot.getIndex();
+            return getFrameSlotIndex(frameSlot);
         }
         return -1;
+    }
+
+    @SuppressWarnings("deprecation")
+    private static int getFrameSlotIndex(FrameSlot frameSlot) {
+        return frameSlot.getIndex();
     }
 
     private static void printIntermediateResult(LLVMContext context, FrameDescriptor frame, FunctionDefinition functionDefinition, List<InstructionBlock> blocks, BlockInfo[] blockInfos,

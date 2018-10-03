@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.nodes.base;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
@@ -37,6 +38,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.nodes.func.LLVMFunctionStartNode;
+import com.oracle.truffle.llvm.nodes.others.LLVMUnreachableNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
@@ -50,6 +52,11 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 public class LLVMBasicBlockNode extends LLVMStatementNode {
 
     public static final int RETURN_FROM_FUNCTION = -1;
+
+    public static LLVMBasicBlockNode createLazyBasicBlock(LLVMStatementNode[] statements, LLVMControlFlowNode termInstruction, int blockId, String blockName) {
+        final LLVMBasicBlockNode block = new LLVMBasicBlockNode(statements, termInstruction, blockId, blockName);
+        return new LazyBlock(block);
+    }
 
     @Children private final LLVMStatementNode[] statements;
     @Child public LLVMControlFlowNode termInstruction;
@@ -68,6 +75,11 @@ public class LLVMBasicBlockNode extends LLVMStatementNode {
         this.blockId = blockId;
         this.blockName = blockName;
         successorExecutionCount = termInstruction.needsBranchProfiling() ? new long[termInstruction.getSuccessorCount()] : null;
+    }
+
+    public LLVMBasicBlockNode initialize() {
+        // this block is already initialized
+        return this;
     }
 
     @Override
@@ -157,5 +169,25 @@ public class LLVMBasicBlockNode extends LLVMStatementNode {
     private void incrementCountAtIndex(int successorIndex) {
         assert termInstruction.needsBranchProfiling();
         successorExecutionCount[successorIndex]++;
+    }
+
+    private static final class LazyBlock extends LLVMBasicBlockNode {
+
+        // explicitly not an @Child to prevent Truffle from inlining the node and thereby causing an
+        // unnecessarily large AST
+        private final LLVMBasicBlockNode materializedBlock;
+
+        private LazyBlock(LLVMBasicBlockNode materializedBlock) {
+            super(LLVMStatementNode.NO_STATEMENTS, new LLVMUnreachableNode(), materializedBlock.getBlockId(), materializedBlock.getBlockName());
+            this.materializedBlock = materializedBlock;
+        }
+
+        @Override
+        public LLVMBasicBlockNode initialize() {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            replace(materializedBlock, "Lazily Inserting LLVM Basic Block");
+            notifyInserted(materializedBlock);
+            return materializedBlock;
+        }
     }
 }

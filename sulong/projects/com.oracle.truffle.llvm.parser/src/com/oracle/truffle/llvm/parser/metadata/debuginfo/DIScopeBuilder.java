@@ -85,6 +85,8 @@ final class DIScopeBuilder {
 
         switch (path.substring(extStartIndex)) {
             case "c":
+            case "C":
+            case "cpp":
                 return "text/x-c";
             case "h":
                 return "text/x-h";
@@ -94,6 +96,8 @@ final class DIScopeBuilder {
                 return "text/x-fortran";
             case "rs":
                 return "text/x-rust";
+            case "ll":
+                return "text/x-llvmir";
             default:
                 return MIMETYPE_PLAINTEXT;
         }

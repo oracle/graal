@@ -40,8 +40,10 @@ import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -448,7 +450,7 @@ public class AlignedHeapChunk extends HeapChunk {
 
     /** Walk the dirty Objects in this chunk, passing each to a Visitor. */
     static boolean walkDirtyObjectsOfAlignedHeapChunk(AlignedHeader that, ObjectVisitor visitor, boolean clean) {
-        final Log trace = Log.noopLog().string("[AlignedHeapChunk.walkDirtyObjects:");
+        final Log trace = Log.noopLog().string("[AlignedHeapChunk.walkDirtyObjectsOfAlignedHeapChunk:");
         trace.string("  that: ").hex(that).string("  clean: ").bool(clean);
         /* Iterate through the cards looking for dirty cards. */
         final Pointer cardTableStart = getCardTableStart(that);
@@ -465,6 +467,8 @@ public class AlignedHeapChunk extends HeapChunk {
                 final Pointer cardLimit = CardTable.indexToMemoryPointer(objectsStart, index.add(1));
                 final Pointer crossingOntoPointer = FirstObjectTable.getPreciseFirstObjectPointer(fotStart, objectsStart, objectsLimit, index);
                 final Object crossingOntoObject = crossingOntoPointer.toObject();
+                assert walkDirtyObjectsOfAlignedHeapChunkAssert(crossingOntoObject, that, cardTableStart, fotStart, objectsStart, objectsLimit, cardLimit) //
+                : "AlignedHeapChunk.walkDirtyObjectsOfAlignedHeapChunk: crossingOntoObject hub fails to verify.";
                 if (trace.isEnabled()) {
                     final Pointer cardStart = CardTable.indexToMemoryPointer(objectsStart, index);
                     trace.string("    ").string("  cardStart: ").hex(cardStart);
@@ -494,6 +498,8 @@ public class AlignedHeapChunk extends HeapChunk {
                     trace.newline().string("      ");
                     trace.string("  ptr: ").hex(ptr);
                     final Object obj = ptr.toObject();
+                    assert walkDirtyObjectsOfAlignedHeapChunkAssert(obj, that, cardTableStart, fotStart, objectsStart, objectsLimit, cardLimit) //
+                    : "AlignedHeapChunk.walkDirtyObjectsOfAlignedHeapChunk: obj hub fails to verify.";
                     final Pointer objEnd = LayoutEncoding.getObjectEnd(obj);
                     trace.string("  obj: ").object(obj);
                     trace.string("  objEnd: ").hex(objEnd);
@@ -511,6 +517,34 @@ public class AlignedHeapChunk extends HeapChunk {
             }
         }
         trace.string("]").newline();
+        return true;
+    }
+
+    /** Assert that the hub of obj is well-formed. For GR-9912. */
+    private static boolean walkDirtyObjectsOfAlignedHeapChunkAssert(Object obj,
+                    AlignedHeader that,
+                    Pointer cardTableStart,
+                    Pointer fotStart,
+                    Pointer objectsStart,
+                    Pointer objectsLimit,
+                    Pointer cardLimit) {
+        if (GCImpl.runtimeAssertions() && !HeapImpl.getHeapImpl().assertHubOfObject(obj)) {
+            final Log failureLog = Log.log().string("[AlignedHeapChunk.walkDirtyObjectsOfAlignedHeapChunkAssert:").indent(true);
+            failureLog.string("  that: ").hex(that)
+                            .string("  cardTableStart: ").hex(cardTableStart)
+                            .string("  fotStart: ").hex(fotStart)
+                            .string("  objectsStart: ").hex(objectsStart)
+                            .string("  objectsLimit: ").hex(objectsLimit)
+                            .string("  cardLimit: ").hex(cardLimit).newline();
+            failureLog.string("  obj: ").hex(Word.objectToUntrackedPointer(obj)).indent(true);
+            final UnsignedWord header = ObjectHeader.readHeaderFromObject(obj);
+            final DynamicHub hub = ObjectHeader.dynamicHubFromObjectHeader(header);
+            failureLog.string("  header: ").hex(header)
+                            .string("  hub: ").hex(Word.objectToUntrackedPointer(hub))
+                            .string("  headerBits: ").string(Heap.getHeap().getObjectHeader().toStringFromHeader(header)).indent(false);
+            failureLog.string("  hub fails to verify.]").indent(false);
+            return false;
+        }
         return true;
     }
 

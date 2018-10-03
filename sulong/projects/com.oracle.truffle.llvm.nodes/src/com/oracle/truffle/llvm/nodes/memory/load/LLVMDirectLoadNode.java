@@ -66,15 +66,10 @@ public abstract class LLVMDirectLoadNode {
             byte[] result = new byte[getByteSize()];
             LLVMManagedPointer currentPtr = addr;
             for (int i = result.length - 1; i >= 0; i--) {
-                result[i] = (Byte) getForeignReadNode().execute(currentPtr);
+                result[i] = (Byte) getForeignReadNode().executeRead(currentPtr.getObject(), currentPtr.getOffset(), ForeignToLLVMType.I8);
                 currentPtr = currentPtr.increment(I8_SIZE_IN_BYTES);
             }
             return LLVMIVarBit.create(getBitWidth(), result, getBitWidth(), false);
-        }
-
-        @Override
-        protected LLVMForeignReadNode createForeignRead() {
-            return new LLVMForeignReadNode(ForeignToLLVMType.I8);
         }
 
         private int getByteSize() {
@@ -101,15 +96,10 @@ public abstract class LLVMDirectLoadNode {
             byte[] result = new byte[LLVM80BitFloat.BYTE_WIDTH];
             LLVMManagedPointer currentPtr = addr;
             for (int i = 0; i < result.length; i++) {
-                result[i] = (byte) getForeignReadNode().execute(currentPtr);
+                result[i] = (byte) getForeignReadNode().executeRead(currentPtr.getObject(), currentPtr.getOffset(), ForeignToLLVMType.I8);
                 currentPtr = currentPtr.increment(I8_SIZE_IN_BYTES);
             }
             return LLVM80BitFloat.fromBytes(result);
-        }
-
-        @Override
-        protected LLVMForeignReadNode createForeignRead() {
-            return new LLVMForeignReadNode(ForeignToLLVMType.I8);
         }
     }
 
@@ -143,12 +133,7 @@ public abstract class LLVMDirectLoadNode {
 
         @Specialization
         protected Object doIndirectedForeign(LLVMManagedPointer addr) {
-            return getForeignReadNode().execute(addr);
-        }
-
-        @Override
-        protected LLVMForeignReadNode createForeignRead() {
-            return new LLVMForeignReadNode(ForeignToLLVMType.POINTER);
+            return getForeignReadNode().executeRead(addr.getObject(), addr.getOffset(), ForeignToLLVMType.POINTER);
         }
     }
 
@@ -157,11 +142,6 @@ public abstract class LLVMDirectLoadNode {
         @Specialization
         protected LLVMPointer doPointer(LLVMPointer addr) {
             return addr; // we do not actually load the struct into a virtual register
-        }
-
-        @Override
-        LLVMForeignReadNode createForeignRead() {
-            throw new AssertionError("should not reach here");
         }
     }
 }

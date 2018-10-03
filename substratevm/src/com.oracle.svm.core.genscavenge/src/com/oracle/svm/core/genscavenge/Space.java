@@ -35,8 +35,10 @@ import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMOperation;
@@ -190,25 +192,29 @@ public class Space {
 
     /** Report some statistics about this Space. */
     public Log report(Log log, boolean traceHeapChunks) {
-        log.string("[").string(getName()).string(":");
+        log.string("[").string(getName()).string(":").indent(true);
         getAccounting().report(log);
         if (traceHeapChunks) {
             if (getFirstAlignedHeapChunk().isNonNull()) {
-                log.newline().string("  ").string("  aligned chunks:");
+                log.newline().string("aligned chunks:").redent(true);
                 for (AlignedHeapChunk.AlignedHeader aChunk = getFirstAlignedHeapChunk(); aChunk.isNonNull(); aChunk = aChunk.getNext()) {
                     /* TODO: Print out the HeapChunk identifier. */
-                    log.string("  ").hex(aChunk).string(" (").hex(AlignedHeapChunk.getAlignedHeapChunkStart(aChunk)).string("-").hex(aChunk.getTop()).string(")");
+                    log.newline().hex(aChunk)
+                                    .string(" (").hex(AlignedHeapChunk.getAlignedHeapChunkStart(aChunk)).string("-").hex(aChunk.getTop()).string(")");
                 }
+                log.redent(false);
             }
             if (getFirstUnalignedHeapChunk().isNonNull()) {
-                log.newline().string("  ").string("  unaligned chunks:");
+                log.newline().string("unaligned chunks:").redent(true);
                 for (UnalignedHeapChunk.UnalignedHeader uChunk = getFirstUnalignedHeapChunk(); uChunk.isNonNull(); uChunk = uChunk.getNext()) {
                     /* TODO: Print out the HeapChunk identifier. */
-                    log.string("  ").hex(uChunk);
+                    log.newline().hex(uChunk)
+                                    .string(" (").hex(UnalignedHeapChunk.getUnalignedHeapChunkStart(uChunk)).string("-").hex(uChunk.getTop()).string(")");
                 }
+                log.redent(false);
             }
         }
-        log.string("]");
+        log.redent(false).string("]");
         return log;
     }
 
@@ -610,6 +616,7 @@ public class Space {
     /** Copy an Object into the given memory. */
     private Object copyAlignedObject(Object originalObj) {
         VMOperation.guaranteeInProgress("Should only be called from the collector.");
+        assert copyAlignedObjectAssert(originalObj) : "Space.copyAlignedObject: originalObj hub fails to verify.";
         assert ObjectHeaderImpl.getObjectHeaderImpl().isAlignedObject(originalObj);
         final Log trace = Log.noopLog().string("[SpaceImpl.copyAlignedObject:");
         trace.string("  originalObj: ").object(originalObj);
@@ -643,6 +650,22 @@ public class Space {
         setAlignedRememberedSet(copyObj);
         trace.string("  copyObj: ").object(copyObj).string("]").newline();
         return copyObj;
+    }
+
+    /** Assert that the hub of obj is well-formed. For GR-9912. */
+    private static boolean copyAlignedObjectAssert(Object obj) {
+        if (GCImpl.runtimeAssertions() && !HeapImpl.getHeapImpl().assertHubOfObject(obj)) {
+            final Log failureLog = Log.log().string("[Space.copyAlignedObjectAssert:").indent(true);
+            failureLog.string("  obj: ").hex(Word.objectToUntrackedPointer(obj)).indent(true);
+            final UnsignedWord header = ObjectHeader.readHeaderFromObject(obj);
+            final DynamicHub hub = ObjectHeader.dynamicHubFromObjectHeader(header);
+            failureLog.string("  header: ").hex(header)
+                            .string("  hub: ").hex(Word.objectToUntrackedPointer(hub))
+                            .string("  headerBits: ").string(Heap.getHeap().getObjectHeader().toStringFromHeader(header)).indent(false);
+            failureLog.string("  hub fails to verify.]").indent(false);
+            return false;
+        }
+        return true;
     }
 
     /** Promote an AlignedHeapChunk by moving it to this space, if necessary. */
@@ -829,8 +852,9 @@ public class Space {
         }
 
         public void report(Log reportLog) {
-            reportLog.string(" aligned: ").unsigned(alignedChunkBytes).string("/").unsigned(alignedCount);
-            reportLog.string(" unaligned: ").unsigned(unalignedChunkBytes).string("/").unsigned(unalignedCount);
+            reportLog.string("aligned: ").unsigned(alignedChunkBytes).string("/").unsigned(alignedCount);
+            reportLog.string(" ");
+            reportLog.string("unaligned: ").unsigned(unalignedChunkBytes).string("/").unsigned(unalignedCount);
         }
 
         void noteAlignedHeapChunk(UnsignedWord size) {

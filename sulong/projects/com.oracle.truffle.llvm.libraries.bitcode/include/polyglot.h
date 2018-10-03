@@ -354,6 +354,15 @@ void *polyglot_new_instance(const void *object, ...);
 bool polyglot_has_members(const void *value);
 
 /**
+ * Check whether a polyglot value contains a given named member.
+ *
+ * @param object the polyglot value to test
+ * @param name the name of the member to be checked for existance
+ * @return true if the member exists, false otherwise
+ */
+bool polyglot_has_member(const void *value, const char *name);
+
+/**
  * Read a named member from a polyglot object.
  *
  * The result is also a polyglot value. Use the {@link unbox primitive conversion

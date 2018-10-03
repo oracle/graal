@@ -44,9 +44,9 @@ import com.oracle.truffle.llvm.test.options.TestOptions;
 @RunWith(Parameterized.class)
 public final class NWCCSuite extends BaseSuiteHarness {
 
-    private static final Path NWCC_SUITE_DIR = new File(TestOptions.PROJECT_ROOT + "/../cache/tests/nwcc").toPath();
-    private static final Path NWCC_SOURCE_DIR = new File(TestOptions.PROJECT_ROOT + "/../tests/nwcc/nwcc_0.8.3").toPath();
-    private static final Path NWCC_CONFIG_DIR = new File(TestOptions.PROJECT_ROOT + "/../tests/nwcc/configs").toPath();
+    private static final Path NWCC_SUITE_DIR = new File(TestOptions.EXTERNAL_TEST_SUITE_PATH).toPath();
+    private static final Path NWCC_SOURCE_DIR = new File(TestOptions.TEST_SOURCE_PATH).toPath();
+    private static final Path NWCC_CONFIG_DIR = new File(TestOptions.TEST_CONFIG_PATH).toPath();
 
     @Parameter(value = 0) public Path path;
     @Parameter(value = 1) public String testName;

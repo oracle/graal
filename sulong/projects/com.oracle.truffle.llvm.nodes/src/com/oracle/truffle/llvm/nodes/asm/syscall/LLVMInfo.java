@@ -54,7 +54,7 @@ public class LLVMInfo {
         sysname = System.getProperty("os.name");
         release = System.getProperty("os.version");
         String arch = System.getProperty("os.arch");
-        if (arch.equals("amd64")) {
+        if ("amd64".equals(arch)) {
             arch = "x86_64";
         }
         machine = arch;

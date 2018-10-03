@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.graal.meta;
 
+import static com.oracle.svm.core.config.ConfigurationValues.getObjectLayout;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.convertUnknownValue;
 import static com.oracle.svm.core.util.VMError.unimplemented;
 
@@ -40,7 +41,6 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.Replaced;
 
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
@@ -53,7 +53,6 @@ import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.SpeculationLog.Speculation;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
-import sun.misc.Unsafe;
 
 public class SubstrateMetaAccess implements MetaAccessProvider, Replaced {
 
@@ -134,28 +133,7 @@ public class SubstrateMetaAccess implements MetaAccessProvider, Replaced {
      */
     @Override
     public int getArrayBaseOffset(JavaKind kind) {
-        switch (kind) {
-            case Boolean:
-                return Unsafe.ARRAY_BOOLEAN_BASE_OFFSET;
-            case Byte:
-                return Unsafe.ARRAY_BYTE_BASE_OFFSET;
-            case Char:
-                return Unsafe.ARRAY_CHAR_BASE_OFFSET;
-            case Short:
-                return Unsafe.ARRAY_SHORT_BASE_OFFSET;
-            case Int:
-                return Unsafe.ARRAY_INT_BASE_OFFSET;
-            case Long:
-                return Unsafe.ARRAY_LONG_BASE_OFFSET;
-            case Float:
-                return Unsafe.ARRAY_FLOAT_BASE_OFFSET;
-            case Double:
-                return Unsafe.ARRAY_DOUBLE_BASE_OFFSET;
-            case Object:
-                return Unsafe.ARRAY_OBJECT_BASE_OFFSET;
-            default:
-                throw new JVMCIError("%s", kind);
-        }
+        return getObjectLayout().getArrayBaseOffset(kind);
     }
 
     /**
@@ -164,29 +142,8 @@ public class SubstrateMetaAccess implements MetaAccessProvider, Replaced {
      * @return the scale in order to convert the index into a byte offset
      */
     @Override
-    public int getArrayIndexScale(JavaKind kind) {
-        switch (kind) {
-            case Boolean:
-                return Unsafe.ARRAY_BOOLEAN_INDEX_SCALE;
-            case Byte:
-                return Unsafe.ARRAY_BYTE_INDEX_SCALE;
-            case Char:
-                return Unsafe.ARRAY_CHAR_INDEX_SCALE;
-            case Short:
-                return Unsafe.ARRAY_SHORT_INDEX_SCALE;
-            case Int:
-                return Unsafe.ARRAY_INT_INDEX_SCALE;
-            case Long:
-                return Unsafe.ARRAY_LONG_INDEX_SCALE;
-            case Float:
-                return Unsafe.ARRAY_FLOAT_INDEX_SCALE;
-            case Double:
-                return Unsafe.ARRAY_DOUBLE_INDEX_SCALE;
-            case Object:
-                return Unsafe.ARRAY_OBJECT_INDEX_SCALE;
-            default:
-                throw new JVMCIError("%s", kind);
-        }
+    public int getArrayIndexScale(JavaKind elementKind) {
+        return getObjectLayout().getArrayIndexScale(elementKind);
     }
 
     @Override

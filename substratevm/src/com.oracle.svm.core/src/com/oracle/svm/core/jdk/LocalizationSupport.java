@@ -33,7 +33,6 @@ import java.util.ResourceBundle;
 
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -41,7 +40,7 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 
-public final class LocalizationSupport {
+public class LocalizationSupport {
     protected final Map<String, Charset> charsets;
     protected final Map<String, ResourceBundle> cache;
 
@@ -54,32 +53,39 @@ public final class LocalizationSupport {
     public LocalizationSupport() {
         charsets = new HashMap<>();
         cache = new HashMap<>();
-        if (GraalServices.Java8OrEarlier) {
-            /* For JDK-8, add these resource bundles to the cache. */
-            addToCache("sun.util.resources.CalendarData");
-            addToCache("sun.util.resources.CurrencyNames");
-            addToCache("sun.util.resources.LocaleNames");
-            addToCache("sun.util.resources.TimeZoneNames");
-            addToCache("sun.text.resources.CollationData");
-            addToCache("sun.text.resources.FormatData");
-            addToCache("sun.util.logging.resources.logging");
-        }
-
-        String[] bundles = Options.IncludeResourceBundles.getValue().split(",");
-        for (String bundle : bundles) {
-            addToCache(bundle);
-        }
+        /* Multi-version jar loading will the the bundles appropriate for the platform version. */
+        LocalizationResourceBundles.initialize(this);
+        includeResourceBundles();
     }
 
-    public void addToCache(String bundleName) {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    void addBundleToCache(String bundleName) {
         if (bundleName.isEmpty()) {
             return;
         }
-        ResourceBundle bundle = ResourceBundle.getBundle(bundleName, Locale.getDefault(), Thread.currentThread().getContextClassLoader());
-        // Ensure the bundle contents is loaded.
-        bundle.getKeys();
+        final ResourceBundle bundle = getBundleInDefaultLocale(bundleName);
+        addBundleToCache(bundleName, bundle);
+    }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
+    ResourceBundle getBundleInDefaultLocale(String bundleName) {
+        final ResourceBundle result = ResourceBundle.getBundle(bundleName, Locale.getDefault(), Thread.currentThread().getContextClassLoader());
+        return result;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    void addBundleToCache(String bundleName, ResourceBundle bundle) {
+        /* Ensure that the bundle contents are loaded. */
+        bundle.keySet();
         cache.put(bundleName, bundle);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    void includeResourceBundles() {
+        String[] bundles = Options.IncludeResourceBundles.getValue().split(",");
+        for (String bundle : bundles) {
+            addBundleToCache(bundle);
+        }
     }
 
     private final String includeResourceBundlesOption = SubstrateOptionsParser.commandArgument(Options.IncludeResourceBundles, "");

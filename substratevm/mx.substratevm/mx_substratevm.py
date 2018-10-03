@@ -58,37 +58,72 @@ from mx_gate import Task
 from mx_substratevm_benchmark import run_js, host_vm_tuple, output_processors, rule_snippets # pylint: disable=unused-import
 from mx_unittest import _run_tests, _VMLauncher
 
-GRAAL_COMPILER_FLAGS = ['-Dtruffle.TrustAllTruffleRuntimeProviders=true', # GR-7046
-                        ]
+GRAAL_COMPILER_FLAGS = [
+    '-XX:-UseJVMCICompiler', # GR-8656: Do not run with Graal as JIT compiler until libgraal is available.
+    '-Dtruffle.TrustAllTruffleRuntimeProviders=true', # GR-7046
+]
+
 if mx.get_jdk(tag='default').javaCompliance <= mx.JavaCompliance('1.8'):
     GRAAL_COMPILER_FLAGS += ['-XX:-UseJVMCIClassLoader']
 else:
-    # JVMCI access
-    GRAAL_COMPILER_FLAGS += ['--add-exports', 'jdk.internal.vm.ci/jdk.vm.ci.runtime=ALL-UNNAMED']
-    GRAAL_COMPILER_FLAGS += ['--add-exports', 'jdk.internal.vm.ci/jdk.vm.ci.code=ALL-UNNAMED']
-    GRAAL_COMPILER_FLAGS += ['--add-exports', 'jdk.internal.vm.ci/jdk.vm.ci.amd64=ALL-UNNAMED']
-    # Reflective access
-    GRAAL_COMPILER_FLAGS += ['--add-exports', 'jdk.unsupported/sun.reflect=ALL-UNNAMED']
-    # Reflective access to private fields of java.lang.Class.
-    GRAAL_COMPILER_FLAGS += ['--add-opens', 'java.base/java.lang=ALL-UNNAMED']
-    # Reflective access to resource bundle getContents() methods.
-    GRAAL_COMPILER_FLAGS += ['--add-opens', 'java.base/sun.text.resources=ALL-UNNAMED']
-    GRAAL_COMPILER_FLAGS += ['--add-opens', 'java.base/sun.util.resources=ALL-UNNAMED']
-    # Reflective access to java.util.Bits.words.
-    GRAAL_COMPILER_FLAGS += ['--add-opens', 'java.base/java.util=ALL-UNNAMED']
-    # Reflective access to java.lang.invoke.VarHandle*.
-    GRAAL_COMPILER_FLAGS += ['--add-opens', 'java.base/java.lang.invoke=ALL-UNNAMED']
-    # Reflective access to java.lang.Reference.referent.
-    GRAAL_COMPILER_FLAGS += ['--add-opens', 'java.base/java.lang.ref=ALL-UNNAMED']
-    # Reflective access to org.graalvm.nativeimage.impl.ImageSingletonsSupport.
-    GRAAL_COMPILER_FLAGS += ['--add-exports', 'org.graalvm.graal_sdk/org.graalvm.nativeimage.impl=ALL-UNNAMED']
-    # Reflective access to jdk.internal.ref.CleanerImpl$PhantomCleanableRef.
-    GRAAL_COMPILER_FLAGS += ['--add-opens', 'java.base/jdk.internal.ref=ALL-UNNAMED']
     # Disable the check for JDK-8 graal version.
     GRAAL_COMPILER_FLAGS += ['-Dsubstratevm.IgnoreGraalVersionCheck=true']
-    # Reflective access to java.net.URL.getURLStreamHandler.
-    GRAAL_COMPILER_FLAGS += ['--add-opens', 'java.base/java.net=ALL-UNNAMED']
 
+    # Turn a list of package names into a list of `--add-exports` command line arguments.
+    def add_exports_from_packages(packageNameList):
+        # Return one command line argument (pair) for one package name.
+        def add_exports_to_all_unnamed(packageName):
+            return ['--add-exports', packageName + '=ALL-UNNAMED']
+        return itertools.chain.from_iterable(add_exports_to_all_unnamed(package) for package in packageNameList)
+
+    # Turn a list of package names into a list of `--add-opens` command line arguments.
+    def add_opens_from_packages(packageNameList):
+        # Return one command line argument (pair) for one package name.
+        def add_opens_to_all_unnamed(packageName):
+            return ['--add-opens', packageName + '=ALL-UNNAMED']
+        return itertools.chain.from_iterable(add_opens_to_all_unnamed(package) for package in packageNameList)
+
+    # JVMCI access
+    graal_compiler_export_packages = [
+        'jdk.internal.vm.ci/jdk.vm.ci.runtime',
+        'jdk.internal.vm.ci/jdk.vm.ci.code',
+        'jdk.internal.vm.ci/jdk.vm.ci.amd64',
+        'jdk.internal.vm.ci/jdk.vm.ci.meta',
+        'jdk.internal.vm.ci/jdk.vm.ci.hotspot',
+        'jdk.internal.vm.ci/jdk.vm.ci.common']
+    GRAAL_COMPILER_FLAGS.extend(add_exports_from_packages(graal_compiler_export_packages))
+
+    # Packages to open to allow reflective access at runtime.
+    jdk_opens_packages = [
+        # Reflective access
+        'jdk.unsupported/sun.reflect',
+        # Reflective access to jdk.internal.module.Modules, using which I can export and open other modules.
+        'java.base/jdk.internal.module'
+        ]
+    GRAAL_COMPILER_FLAGS.extend(add_opens_from_packages(jdk_opens_packages))
+
+    # These packages should be opened at runtime calls to Modules.addOpens, if they are still needed.
+    java_base_opens_packages = [
+        # Reflective access to jdk.internal.ref.CleanerImpl$PhantomCleanableRef.
+        'java.base/jdk.internal.ref',
+        # Reflective access to private fields of java.lang.Class.
+        'java.base/java.lang',
+        # Reflective access to java.lang.invoke.VarHandle*.
+        'java.base/java.lang.invoke',
+        # Reflective access to java.lang.Reference.referent.
+        'java.base/java.lang.ref',
+        # Reflective access to java.net.URL.getURLStreamHandler.
+        'java.base/java.net',
+        # Reflective access to java.nio.MappedByteBuffer.fd.
+        'java.base/java.nio',
+        # Reflective access to java.util.Bits.words.
+        'java.base/java.util']
+    GRAAL_COMPILER_FLAGS.extend(add_opens_from_packages(java_base_opens_packages))
+
+    # Reflective access to org.graalvm.nativeimage.impl.ImageSingletonsSupport.
+    graal_sdk_opens_packages = [
+        'org.graalvm.graal_sdk/org.graalvm.nativeimage.impl']
+    GRAAL_COMPILER_FLAGS.extend(add_opens_from_packages(graal_sdk_opens_packages))
 
 IMAGE_ASSERTION_FLAGS = ['-H:+VerifyGraalGraphs', '-H:+VerifyGraalGraphEdges', '-H:+VerifyPhases']
 suite = mx.suite('substratevm')
@@ -205,7 +240,11 @@ def symlink_or_copy(target_path, dest_path, debug_gr_8964=False):
         sym_target = os.path.relpath(real_target_path, dirname(dest_path))
         if debug_gr_8964:
             mx.log('      symlink target: ' + sym_target)
-        os.symlink(sym_target, dest_path)
+        try:
+            os.symlink(sym_target, dest_path)
+        except AttributeError:
+            # no `symlink` on Windows
+            copy2(real_target_path, dest_path)
     else:
         # Else copy the file to so it can not change out from under me.
         if debug_gr_8964:
@@ -346,7 +385,7 @@ def native_image_on_jvm(args, **kwargs):
     driver_cp = [join(suite_native_image_root(), 'lib', subdir, '*.jar') for subdir in ['boot', 'jvmci', 'graalvm']]
     driver_cp += [join(suite_native_image_root(), 'lib', 'svm', tail) for tail in ['*.jar', join('builder', '*.jar')]]
     driver_cp = list(itertools.chain.from_iterable(glob.glob(cp) for cp in driver_cp))
-    run_java(['-Dnative-image.root=' + suite_native_image_root(), '-cp', ":".join(driver_cp),
+    run_java(['-Dnative-image.root=' + suite_native_image_root(), '-cp', os.pathsep.join(driver_cp),
         mx.dependency('substratevm:SVM_DRIVER').mainClass] + save_args, **kwargs)
 
 def build_native_image_image():
@@ -399,7 +438,13 @@ def layout_native_image_root(native_image_root):
     native_image_layout_dists(svm_subdir, librarySupportDistribution)
     native_image_layout_dists(join(svm_subdir, 'builder'), svmDistribution + ['substratevm:POINTSTO', 'substratevm:OBJECTFILE'])
     for clibrary_path in clibrary_paths():
-        copy_tree(clibrary_path, join(native_image_root, join(svm_subdir, 'clibraries')))
+        from distutils.errors import DistutilsFileError  # pylint: disable=no-name-in-module
+        try:
+            copy_tree(clibrary_path, join(native_image_root, join(svm_subdir, 'clibraries')))
+        except DistutilsFileError:
+            # ignore until GR-7932 is resolved
+            pass
+
 
 def truffle_language_ensure(language_flag, version=None, native_image_root=None, early_exit=False, extract=True, debug_gr_8964=False):
     """

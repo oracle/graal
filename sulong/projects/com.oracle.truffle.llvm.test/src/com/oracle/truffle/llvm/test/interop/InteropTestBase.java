@@ -31,6 +31,9 @@ package com.oracle.truffle.llvm.test.interop;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 import org.junit.ClassRule;
 
 import com.oracle.truffle.api.CallTarget;
@@ -51,11 +54,10 @@ public class InteropTestBase {
 
     @ClassRule public static TruffleRunner.RunWithPolyglotRule runWithPolyglot = new TruffleRunner.RunWithPolyglotRule();
 
-    private static final File testBase = new File(TestOptions.TEST_SUITE_PATH, "interop");
+    private static final Path testBase = Paths.get(TestOptions.TEST_SUITE_PATH, "interop");
 
     protected static TruffleObject loadTestBitcodeInternal(String name) {
-        File dir = new File(testBase, name);
-        File file = new File(dir, "O0_MEM2REG.bc");
+        File file = Paths.get(testBase.toString(), name, "O0_MEM2REG.bc").toFile();
         TruffleFile tf = runWithPolyglot.getTruffleTestEnv().getTruffleFile(file.toURI());
         Source source;
         try {
@@ -68,8 +70,7 @@ public class InteropTestBase {
     }
 
     protected static Value loadTestBitcodeValue(String name) {
-        File dir = new File(testBase, name);
-        File file = new File(dir, "O0_MEM2REG.bc");
+        File file = Paths.get(testBase.toString(), name, "O0_MEM2REG.bc").toFile();
         org.graalvm.polyglot.Source source;
         try {
             source = org.graalvm.polyglot.Source.newBuilder("llvm", file).build();
@@ -91,7 +92,7 @@ public class InteropTestBase {
             } catch (InteropException ex) {
                 throw new AssertionError(ex);
             }
-            execute = Message.EXECUTE.createNode();
+            this.execute = Message.EXECUTE.createNode();
         }
 
         @Override

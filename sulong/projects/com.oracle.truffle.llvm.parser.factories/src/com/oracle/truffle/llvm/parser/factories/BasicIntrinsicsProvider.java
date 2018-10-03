@@ -29,10 +29,20 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
+import static com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType.DOUBLE;
+import static com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType.FLOAT;
+import static com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType.I1;
+import static com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType.I16;
+import static com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType.I32;
+import static com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType.I64;
+import static com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType.I8;
+import static com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType.POINTER;
+
+import java.util.AbstractList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.UnaryOperator;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -97,6 +107,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotEval;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotExportNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotFromString;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotGetStringSizeNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotHasMemberNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotImportNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotIsValueNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotJavaTypeNodeGen;
@@ -111,6 +122,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleBinaryFactory
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleBinaryFactory.LLVMTruffleIsBoxedNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleBinaryFactory.LLVMTruffleIsExecutableNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleBinaryFactory.LLVMTruffleIsNullNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleCannotBeHandleNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleDerefHandleToManagedNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleExecuteNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleFreeCStringNodeGen;
@@ -158,9 +170,8 @@ import com.oracle.truffle.llvm.runtime.ContextExtension;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
+import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
 /**
  * If an intrinsic is defined for a function, then the intrinsic is used instead of doing a call to
@@ -183,55 +194,88 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
     @Override
     @TruffleBoundary
     public final boolean isIntrinsified(String name) {
-        return factoriesContainKey(name);
+        return getFactory(name) != null;
     }
 
     @Override
-    public final RootCallTarget generateIntrinsic(String name, FunctionType type) {
+    public final RootCallTarget generateIntrinsicTarget(String name, int argCount) {
         CompilerAsserts.neverPartOfCompilation();
-        if (factoriesContainKey(name)) {
-            return wrap(name, factories.get(name).generate(type));
+        LLVMIntrinsicFactory factory = getFactory(name);
+        if (factory == null) {
+            return null;
         }
-        return null;
+        return wrap(name, factory.generate(new AbstractList<LLVMExpressionNode>() {
+            @Override
+            public LLVMExpressionNode get(int index) {
+                return LLVMArgNodeGen.create(index);
+            }
+
+            @Override
+            public int size() {
+                return argCount;
+            }
+        }, context.getNodeFactory()));
     }
 
     @Override
-    public final boolean forceInline(String name) {
+    public final LLVMExpressionNode generateIntrinsicNode(String name, LLVMExpressionNode[] arguments) {
         CompilerAsserts.neverPartOfCompilation();
-        if (factoriesContainKey(name)) {
-            return factories.get(name).forceInline;
+        LLVMIntrinsicFactory factory = getFactory(name);
+        if (factory == null) {
+            return null;
         }
-        return false;
+        return factory.generate(new AbstractList<LLVMExpressionNode>() {
+            @Override
+            public LLVMExpressionNode get(int index) {
+                return arguments[index];
+            }
+
+            @Override
+            public int size() {
+                return arguments.length;
+            }
+        }, context.getNodeFactory());
     }
 
-    @Override
-    public final boolean forceSplit(String name) {
-        CompilerAsserts.neverPartOfCompilation();
-        if (factoriesContainKey(name)) {
-            return factories.get(name).forceSplit;
+    private LLVMIntrinsicFactory getFactory(String name) {
+        LLVMIntrinsicFactory factory = getFactories().get(name);
+        if (factory != null) {
+            return factory;
         }
-        return false;
+        String demangledName = DEMANGLER.demangle(name);
+        if (demangledName == null || (factory = getFactories().get(demangledName)) == null) {
+            return null;
+        }
+        // add the demangled name to make subsequent lookups faster
+        add(name, factory);
+        return factory;
     }
 
-    protected final Map<String, LLVMIntrinsicFactory> factories = new HashMap<>();
-    protected final Demangler demangler = new Demangler();
+    private RootCallTarget wrap(String functionName, LLVMExpressionNode node) {
+        return Truffle.getRuntime().createCallTarget(LLVMIntrinsicExpressionNodeGen.create(context.getLanguage(), functionName, node));
+    }
+
     protected final LLVMContext context;
 
     public BasicIntrinsicsProvider(LLVMContext context) {
         this.context = context;
     }
 
-    public abstract static class LLVMIntrinsicFactory {
-        private final boolean forceInline;
-        private final boolean forceSplit;
-
-        public LLVMIntrinsicFactory(boolean forceInline, boolean forceSplit) {
-            this.forceInline = forceInline;
-            this.forceSplit = forceSplit;
-        }
-
-        protected abstract LLVMExpressionNode generate(FunctionType type);
+    protected Map<String, LLVMIntrinsicFactory> getFactories() {
+        return FACTORIES;
     }
+
+    public abstract static class LLVMIntrinsicArgFactory {
+        public abstract int size();
+
+        public abstract LLVMExpressionNode get(int index);
+    }
+
+    public interface LLVMIntrinsicFactory {
+        LLVMExpressionNode generate(List<LLVMExpressionNode> args, NodeFactory nodeFactory);
+    }
+
+    protected static final Demangler DEMANGLER = new Demangler();
 
     protected static class Demangler {
         protected final List<UnaryOperator<String>> demanglerFunctions = Arrays.asList(new RustDemangleFunction());
@@ -323,7 +367,10 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
         }
     }
 
-    public BasicIntrinsicsProvider collectIntrinsics() {
+    protected static final ConcurrentHashMap<String, LLVMIntrinsicFactory> FACTORIES = new ConcurrentHashMap<>();
+
+    static {
+        // Initialize the list of intrinsics:
         registerTruffleIntrinsics();
         registerSulongIntrinsics();
         registerAbortIntrinsics();
@@ -334,1356 +381,280 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
         registerComplexNumberIntrinsics();
         registerCTypeIntrinsics();
         registerManagedAllocationIntrinsics();
-        return this;
     }
 
-    protected boolean factoriesContainKey(String name) {
-        if (factories.containsKey(name)) {
-            return true;
-        }
-        String demangledName = demangler.demangle(name);
-        if (demangledName == null || !factories.containsKey(demangledName)) {
-            return false;
-        }
-        add(name, factories.get(demangledName));
-        return true;
-    }
-
-    protected RootCallTarget wrap(String functionName, LLVMExpressionNode node) {
-        return Truffle.getRuntime().createCallTarget(LLVMIntrinsicExpressionNodeGen.create(context.getLanguage(), functionName, node));
-    }
-
-    protected LLVMExpressionNode[] argumentsArray(int startIndex, int arity) {
+    protected static LLVMExpressionNode[] argumentsArray(List<LLVMExpressionNode> arguments, int startIndex, int arity) {
         LLVMExpressionNode[] args = new LLVMExpressionNode[arity];
         for (int i = 0; i < arity; i++) {
-            args[i] = LLVMArgNodeGen.create(i + startIndex);
+            args[i] = arguments.get(i + startIndex);
         }
         return args;
     }
 
-    protected void registerSulongIntrinsics() {
-        add("@__sulong_destructor_functions", new LLVMIntrinsicFactory(true, true) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMRunDestructorFunctionsNodeGen.create();
-            }
-        });
-
-        add("@__sulong_print_stacktrace", new LLVMIntrinsicFactory(true, true) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMPrintStackTraceNodeGen.create();
-            }
-        });
-
-        add("@__sulong_should_print_stacktrace_on_abort", new LLVMIntrinsicFactory(true, true) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMShouldPrintStackTraceOnAbortNodeGen.create();
-            }
-        });
+    private static void registerSulongIntrinsics() {
+        add("@__sulong_destructor_functions", (args, factory) -> LLVMRunDestructorFunctionsNodeGen.create());
+        add("@__sulong_print_stacktrace", (args, factory) -> LLVMPrintStackTraceNodeGen.create());
+        add("@__sulong_should_print_stacktrace_on_abort", (args, factory) -> LLVMShouldPrintStackTraceOnAbortNodeGen.create());
     }
 
-    protected void registerTruffleIntrinsics() {
-        LLVMIntrinsicFactory polyglotImport = new LLVMIntrinsicFactory(true, true) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMPolyglotImportNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        };
+    private static void registerTruffleIntrinsics() {
+        LLVMIntrinsicFactory polyglotImport = (args, factory) -> LLVMPolyglotImportNodeGen.create(args.get(1));
         add("@polyglot_import", polyglotImport);
         add("@truffle_import", polyglotImport);
         add("@truffle_import_cached", polyglotImport);
-
-        add("@polyglot_export", new LLVMIntrinsicFactory(true, true) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMPolyglotExportNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
-
-        add("@polyglot_eval", new LLVMIntrinsicFactory(true, true) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMPolyglotEval.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
-
-        add("@polyglot_eval_file", new LLVMIntrinsicFactory(true, true) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMPolyglotEval.createFile(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
-
-        add("@polyglot_java_type", new LLVMIntrinsicFactory(true, true) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMPolyglotJavaTypeNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-
-        //
-
-        add("@polyglot_is_value", new LLVMIntrinsicFactory(true, true) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMPolyglotIsValueNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-
-        add("@polyglot_is_number", new LLVMIntrinsicFactory(true, true) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMPolyglotBoxedPredicateNodeGen.create(new IsNumber(), LLVMArgNodeGen.create(1));
-            }
-        });
-
-        add("@polyglot_is_boolean", new LLVMIntrinsicFactory(true, true) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMPolyglotBoxedPredicateNodeGen.create(new IsBoolean(), LLVMArgNodeGen.create(1));
-            }
-        });
-
-        add("@polyglot_is_string", new LLVMIntrinsicFactory(true, true) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMPolyglotBoxedPredicateNodeGen.create(new IsString(), LLVMArgNodeGen.create(1));
-            }
-        });
-
-        add("@polyglot_fits_in_i8", new LLVMIntrinsicFactory(true, true) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMPolyglotBoxedPredicateNodeGen.create(FitsInI8NodeGen.create(), LLVMArgNodeGen.create(1));
-            }
-        });
-
-        add("@polyglot_fits_in_i16", new LLVMIntrinsicFactory(true, true) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMPolyglotBoxedPredicateNodeGen.create(FitsInI16NodeGen.create(), LLVMArgNodeGen.create(1));
-            }
-        });
-
-        add("@polyglot_fits_in_i32", new LLVMIntrinsicFactory(true, true) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMPolyglotBoxedPredicateNodeGen.create(FitsInI32NodeGen.create(), LLVMArgNodeGen.create(1));
-            }
-        });
-
-        add("@polyglot_fits_in_i64", new LLVMIntrinsicFactory(true, true) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMPolyglotBoxedPredicateNodeGen.create(FitsInI64NodeGen.create(), LLVMArgNodeGen.create(1));
-            }
-        });
-
-        add("@polyglot_fits_in_float", new LLVMIntrinsicFactory(true, true) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMPolyglotBoxedPredicateNodeGen.create(FitsInFloatNodeGen.create(), LLVMArgNodeGen.create(1));
-            }
-        });
-
-        add("@polyglot_fits_in_double", new LLVMIntrinsicFactory(true, true) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMPolyglotBoxedPredicateNodeGen.create(FitsInDoubleNodeGen.create(), LLVMArgNodeGen.create(1));
-            }
-        });
-
-        LLVMIntrinsicFactory polyglotPutMember = new LLVMIntrinsicFactory(true, true) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleWriteToNameNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3));
-            }
-        };
-        add("@polyglot_put_member", polyglotPutMember);
-        add("@truffle_write", polyglotPutMember);
-
-        add("@truffle_write_i", new LLVMIntrinsicFactory(true, true) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleWriteToNameNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3));
-            }
-        });
-        add("@truffle_write_l", new LLVMIntrinsicFactory(true, true) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleWriteToNameNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3));
-            }
-        });
-        add("@truffle_write_c", new LLVMIntrinsicFactory(true, true) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleWriteToNameNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3));
-            }
-        });
-        add("@truffle_write_f", new LLVMIntrinsicFactory(true, true) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleWriteToNameNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3));
-            }
-        });
-        add("@truffle_write_d", new LLVMIntrinsicFactory(true, true) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleWriteToNameNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3));
-            }
-        });
-        add("@truffle_write_b", new LLVMIntrinsicFactory(true, true) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleWriteToNameNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3));
-            }
-        });
-
-        LLVMIntrinsicFactory polyglotSetArrayElement = new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleWriteToIndexNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3));
-            }
-        };
-        add("@polyglot_set_array_element", polyglotSetArrayElement);
-        add("@truffle_write_idx", polyglotSetArrayElement);
-
-        add("@truffle_write_idx_i", new LLVMIntrinsicFactory(true, true) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleWriteToIndexNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3));
-            }
-        });
-        add("@truffle_write_idx_l", new LLVMIntrinsicFactory(true, true) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleWriteToIndexNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3));
-            }
-        });
-        add("@truffle_write_idx_c", new LLVMIntrinsicFactory(true, true) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleWriteToIndexNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3));
-            }
-        });
-        add("@truffle_write_idx_f", new LLVMIntrinsicFactory(true, true) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleWriteToIndexNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3));
-            }
-        });
-        add("@truffle_write_idx_d", new LLVMIntrinsicFactory(true, true) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleWriteToIndexNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3));
-            }
-        });
-        add("@truffle_write_idx_b", new LLVMIntrinsicFactory(true, true) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleWriteToIndexNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3));
-            }
-        });
-
-        LLVMIntrinsicFactory polyglotGetMember = new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleReadFromNameNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.POINTER), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        };
-        add("@polyglot_get_member", polyglotGetMember);
-        add("@truffle_read", polyglotGetMember);
-
-        add("@truffle_read_i", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleReadFromNameNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I32), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
-        add("@truffle_read_l", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleReadFromNameNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I64), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
-        add("@truffle_read_c", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleReadFromNameNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I8), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
-        add("@truffle_read_f", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleReadFromNameNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.FLOAT), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
-        add("@truffle_read_d", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleReadFromNameNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.DOUBLE), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
-        add("@truffle_read_b", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleReadFromNameNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I1), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
-
-        LLVMIntrinsicFactory polyglotGetArrayElement = new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleReadFromIndexNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.POINTER), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        };
-        add("@polyglot_get_array_element", polyglotGetArrayElement);
-        add("@truffle_read_idx", polyglotGetArrayElement);
-
-        add("@truffle_read_idx_i", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleReadFromIndexNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I32), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
-        add("@truffle_read_idx_l", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleReadFromIndexNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I64), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
-        add("@truffle_read_idx_c", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleReadFromIndexNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I8), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
-        add("@truffle_read_idx_f", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleReadFromIndexNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.FLOAT), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
-        add("@truffle_read_idx_d", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleReadFromIndexNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.DOUBLE), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
-        add("@truffle_read_idx_b", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleReadFromIndexNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I1), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
-
-        add("@polyglot_remove_member", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMPolyglotRemoveMemberNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
-
-        add("@polyglot_remove_array_element", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMPolyglotRemoveArrayElementNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
-
-        LLVMIntrinsicFactory polyglotAsI8 = new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleUnboxNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I8), LLVMArgNodeGen.create(1));
-            }
-        };
-        add("@polyglot_as_i8", polyglotAsI8);
-        add("@truffle_unbox_c", polyglotAsI8);
-
-        LLVMIntrinsicFactory polyglotAsI16 = new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleUnboxNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I16), LLVMArgNodeGen.create(1));
-            }
-        };
-        add("@polyglot_as_i16", polyglotAsI16);
-
-        LLVMIntrinsicFactory polyglotAsI32 = new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleUnboxNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I32), LLVMArgNodeGen.create(1));
-            }
-        };
-        add("@polyglot_as_i32", polyglotAsI32);
-        add("@truffle_unbox_i", polyglotAsI32);
-
-        LLVMIntrinsicFactory polyglotAsI64 = new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleUnboxNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I64), LLVMArgNodeGen.create(1));
-            }
-        };
-        add("@polyglot_as_i64", polyglotAsI64);
-        add("@truffle_unbox_l", polyglotAsI64);
-
-        LLVMIntrinsicFactory polyglotAsFloat = new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleUnboxNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.FLOAT), LLVMArgNodeGen.create(1));
-            }
-        };
-        add("@polyglot_as_float", polyglotAsFloat);
-        add("@truffle_unbox_f", polyglotAsFloat);
-
-        LLVMIntrinsicFactory polyglotAsDouble = new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleUnboxNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.DOUBLE), LLVMArgNodeGen.create(1));
-            }
-        };
-        add("@polyglot_as_double", polyglotAsDouble);
-        add("@truffle_unbox_d", polyglotAsDouble);
-
-        LLVMIntrinsicFactory polyglotAsBoolean = new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleUnboxNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I1), LLVMArgNodeGen.create(1));
-            }
-        };
-        add("@polyglot_as_boolean", polyglotAsBoolean);
-        add("@truffle_unbox_b", polyglotAsBoolean);
-
-        //
-
-        add("@polyglot_new_instance", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMPolyglotNewInstanceNodeGen.create(argumentsArray(2, type.getArgumentTypes().length - 2), LLVMArgNodeGen.create(1));
-            }
-        });
-
-        LLVMIntrinsicFactory polyglotInvoke = new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleInvokeNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.POINTER), argumentsArray(3, type.getArgumentTypes().length - 3),
-                                LLVMArgNodeGen.create(1),
-                                LLVMArgNodeGen.create(2));
-            }
-        };
-        add("@polyglot_invoke", polyglotInvoke);
-        add("@truffle_invoke", polyglotInvoke);
-
-        add("@truffle_invoke_i", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleInvokeNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I32), argumentsArray(3, type.getArgumentTypes().length - 3),
-                                LLVMArgNodeGen.create(1),
-                                LLVMArgNodeGen.create(2));
-            }
-        });
-
-        add("@truffle_invoke_l", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleInvokeNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I64), argumentsArray(3, type.getArgumentTypes().length - 3),
-                                LLVMArgNodeGen.create(1),
-                                LLVMArgNodeGen.create(2));
-            }
-        });
-
-        add("@truffle_invoke_c", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleInvokeNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I8), argumentsArray(3, type.getArgumentTypes().length - 3),
-                                LLVMArgNodeGen.create(1),
-                                LLVMArgNodeGen.create(2));
-            }
-        });
-
-        add("@truffle_invoke_f", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleInvokeNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.FLOAT), argumentsArray(3, type.getArgumentTypes().length - 3),
-                                LLVMArgNodeGen.create(1),
-                                LLVMArgNodeGen.create(2));
-            }
-        });
-
-        add("@truffle_invoke_d", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleInvokeNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.DOUBLE), argumentsArray(3, type.getArgumentTypes().length - 3),
-                                LLVMArgNodeGen.create(1),
-                                LLVMArgNodeGen.create(2));
-            }
-        });
-
-        add("@truffle_invoke_b", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleInvokeNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I1), argumentsArray(3, type.getArgumentTypes().length - 3),
-                                LLVMArgNodeGen.create(1),
-                                LLVMArgNodeGen.create(2));
-            }
-        });
-
-        //
-
-        add("@truffle_execute", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleExecuteNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.POINTER), argumentsArray(2, type.getArgumentTypes().length - 2),
-                                LLVMArgNodeGen.create(1));
-            }
-        });
-
-        add("@truffle_execute_i", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleExecuteNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I32), argumentsArray(2, type.getArgumentTypes().length - 2),
-                                LLVMArgNodeGen.create(1));
-            }
-        });
-
-        add("@truffle_execute_l", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleExecuteNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I64), argumentsArray(2, type.getArgumentTypes().length - 2),
-                                LLVMArgNodeGen.create(1));
-            }
-        });
-
-        add("@truffle_execute_c", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleExecuteNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I8), argumentsArray(2, type.getArgumentTypes().length - 2),
-                                LLVMArgNodeGen.create(1));
-            }
-        });
-
-        add("@truffle_execute_f", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleExecuteNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.FLOAT), argumentsArray(2, type.getArgumentTypes().length - 2),
-                                LLVMArgNodeGen.create(1));
-            }
-        });
-
-        add("@truffle_execute_d", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleExecuteNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.DOUBLE), argumentsArray(2, type.getArgumentTypes().length - 2),
-                                LLVMArgNodeGen.create(1));
-            }
-        });
-
-        add("@truffle_execute_b", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleExecuteNodeGen.create(context.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I1), argumentsArray(2, type.getArgumentTypes().length - 2),
-                                LLVMArgNodeGen.create(1));
-            }
-        });
-
-        //
-
-        add("@truffle_address_to_function", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleAddressToFunctionNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-
-        LLVMIntrinsicFactory polyglotCanExecute = new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleIsExecutableNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        };
-        add("@polyglot_can_execute", polyglotCanExecute);
-        add("@truffle_is_executable", polyglotCanExecute);
-
-        add("@polyglot_can_instantiate", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMPolyglotCanInstantiateNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-
-        LLVMIntrinsicFactory polyglotIsNull = new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleIsNullNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        };
-        add("@polyglot_is_null", polyglotIsNull);
-        add("@truffle_is_null", polyglotIsNull);
-
-        LLVMIntrinsicFactory polyglotHasArrayElements = new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleHasSizeNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        };
-        add("@polyglot_has_array_elements", polyglotHasArrayElements);
-        add("@truffle_has_size", polyglotHasArrayElements);
-
-        add("@polyglot_has_members", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleHasKeysNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-
-        add("@truffle_is_boxed", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleIsBoxedNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-
-        add("@polyglot_get_array_size", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleGetSizeNodeGen.create(ForeignToLLVMType.I64, LLVMArgNodeGen.create(1));
-            }
-        });
-
-        add("@truffle_get_size", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleGetSizeNodeGen.create(ForeignToLLVMType.I32, LLVMArgNodeGen.create(1));
-            }
-        });
-
-        //
-
-        add("@polyglot_get_string_size", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMPolyglotGetStringSizeNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-
-        add("@polyglot_as_string", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMPolyglotAsString.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3), LLVMArgNodeGen.create(4));
-            }
-        });
-
-        add("@polyglot_from_string", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMPolyglotFromString.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
-
-        add("@polyglot_from_string_n", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMPolyglotFromString.createN(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3));
-            }
-        });
-
-        //
-
-        add("@truffle_read_string", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleReadStringNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-
-        add("@truffle_read_n_string", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleReadNStringNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
-
-        add("@truffle_read_bytes", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleReadBytesNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-
-        add("@truffle_read_n_bytes", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleReadNBytesNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
-
-        add("@truffle_string_to_cstr", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleStringAsCStringNodeGen.create(context.getNodeFactory().createAllocateString(), LLVMArgNodeGen.create(1));
-            }
-        });
-
-        add("@truffle_free_cstr", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleFreeCStringNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-
-        add("@truffle_is_truffle_object", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleIsTruffleObjectNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-
-        add("@truffle_sulong_function_to_native_pointer", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMSulongFunctionToNativePointerNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
-
-        add("@truffle_load_library", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMLoadLibraryNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-
-        add("@truffle_polyglot_eval", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMPolyglotEval.createLegacy(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
-
-        //
-
-        add("@__polyglot_as_typeid", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTypeIDNode.create(LLVMArgNodeGen.create(1));
-            }
-        });
-
-        add("@polyglot_as_typed", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMPolyglotAsTyped.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
-
-        add("@polyglot_from_typed", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMPolyglotFromTyped.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
-
-        add("@polyglot_array_typeid", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMArrayTypeIDNode.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
-
+        add("@polyglot_export", (args, factory) -> LLVMPolyglotExportNodeGen.create(args.get(1), args.get(2)));
+        add("@polyglot_eval", (args, factory) -> LLVMPolyglotEval.create(args.get(1), args.get(2)));
+        add("@polyglot_eval_file", (args, factory) -> LLVMPolyglotEval.createFile(args.get(1), args.get(2)));
+        add("@polyglot_java_type", (args, factory) -> LLVMPolyglotJavaTypeNodeGen.create(args.get(1)));
+
+        add("@polyglot_is_value", (args, factory) -> LLVMPolyglotIsValueNodeGen.create(args.get(1)));
+        add("@polyglot_is_number", (args, factory) -> LLVMPolyglotBoxedPredicateNodeGen.create(new IsNumber(), args.get(1)));
+        add("@polyglot_is_boolean", (args, factory) -> LLVMPolyglotBoxedPredicateNodeGen.create(new IsBoolean(), args.get(1)));
+        add("@polyglot_is_string", (args, factory) -> LLVMPolyglotBoxedPredicateNodeGen.create(new IsString(), args.get(1)));
+        add("@polyglot_fits_in_i8", (args, factory) -> LLVMPolyglotBoxedPredicateNodeGen.create(FitsInI8NodeGen.create(), args.get(1)));
+        add("@polyglot_fits_in_i16", (args, factory) -> LLVMPolyglotBoxedPredicateNodeGen.create(FitsInI16NodeGen.create(), args.get(1)));
+        add("@polyglot_fits_in_i32", (args, factory) -> LLVMPolyglotBoxedPredicateNodeGen.create(FitsInI32NodeGen.create(), args.get(1)));
+        add("@polyglot_fits_in_i64", (args, factory) -> LLVMPolyglotBoxedPredicateNodeGen.create(FitsInI64NodeGen.create(), args.get(1)));
+        add("@polyglot_fits_in_float", (args, factory) -> LLVMPolyglotBoxedPredicateNodeGen.create(FitsInFloatNodeGen.create(), args.get(1)));
+        add("@polyglot_fits_in_double", (args, factory) -> LLVMPolyglotBoxedPredicateNodeGen.create(FitsInDoubleNodeGen.create(), args.get(1)));
+
+        add("@polyglot_put_member", "@truffle_write", (args, factory) -> LLVMTruffleWriteToNameNodeGen.create(args.get(1), args.get(2), args.get(3)));
+
+        add("@truffle_write_i", (args, factory) -> LLVMTruffleWriteToNameNodeGen.create(args.get(1), args.get(2), args.get(3)));
+        add("@truffle_write_l", (args, factory) -> LLVMTruffleWriteToNameNodeGen.create(args.get(1), args.get(2), args.get(3)));
+        add("@truffle_write_c", (args, factory) -> LLVMTruffleWriteToNameNodeGen.create(args.get(1), args.get(2), args.get(3)));
+        add("@truffle_write_f", (args, factory) -> LLVMTruffleWriteToNameNodeGen.create(args.get(1), args.get(2), args.get(3)));
+        add("@truffle_write_d", (args, factory) -> LLVMTruffleWriteToNameNodeGen.create(args.get(1), args.get(2), args.get(3)));
+        add("@truffle_write_b", (args, factory) -> LLVMTruffleWriteToNameNodeGen.create(args.get(1), args.get(2), args.get(3)));
+
+        add("@polyglot_set_array_element", "@truffle_write_idx", (args, factory) -> LLVMTruffleWriteToIndexNodeGen.create(args.get(1), args.get(2), args.get(3)));
+
+        add("@truffle_write_idx_i", (args, factory) -> LLVMTruffleWriteToIndexNodeGen.create(args.get(1), args.get(2), args.get(3)));
+        add("@truffle_write_idx_l", (args, factory) -> LLVMTruffleWriteToIndexNodeGen.create(args.get(1), args.get(2), args.get(3)));
+        add("@truffle_write_idx_c", (args, factory) -> LLVMTruffleWriteToIndexNodeGen.create(args.get(1), args.get(2), args.get(3)));
+        add("@truffle_write_idx_f", (args, factory) -> LLVMTruffleWriteToIndexNodeGen.create(args.get(1), args.get(2), args.get(3)));
+        add("@truffle_write_idx_d", (args, factory) -> LLVMTruffleWriteToIndexNodeGen.create(args.get(1), args.get(2), args.get(3)));
+        add("@truffle_write_idx_b", (args, factory) -> LLVMTruffleWriteToIndexNodeGen.create(args.get(1), args.get(2), args.get(3)));
+
+        add("@polyglot_get_member", "@truffle_read", (args, factory) -> LLVMTruffleReadFromNameNodeGen.create(factory.createForeignToLLVM(POINTER), args.get(1), args.get(2)));
+
+        add("@truffle_read_i", (args, factory) -> LLVMTruffleReadFromNameNodeGen.create(factory.createForeignToLLVM(I32), args.get(1), args.get(2)));
+        add("@truffle_read_l", (args, factory) -> LLVMTruffleReadFromNameNodeGen.create(factory.createForeignToLLVM(I64), args.get(1), args.get(2)));
+        add("@truffle_read_c", (args, factory) -> LLVMTruffleReadFromNameNodeGen.create(factory.createForeignToLLVM(I8), args.get(1), args.get(2)));
+        add("@truffle_read_f", (args, factory) -> LLVMTruffleReadFromNameNodeGen.create(factory.createForeignToLLVM(FLOAT), args.get(1), args.get(2)));
+        add("@truffle_read_d", (args, factory) -> LLVMTruffleReadFromNameNodeGen.create(factory.createForeignToLLVM(DOUBLE), args.get(1), args.get(2)));
+        add("@truffle_read_b", (args, factory) -> LLVMTruffleReadFromNameNodeGen.create(factory.createForeignToLLVM(I1), args.get(1), args.get(2)));
+
+        add("@polyglot_get_array_element", "@truffle_read_idx",
+                        (args, factory) -> LLVMTruffleReadFromIndexNodeGen.create(factory.createForeignToLLVM(POINTER), args.get(1), args.get(2)));
+
+        add("@truffle_read_idx_i", (args, factory) -> LLVMTruffleReadFromIndexNodeGen.create(factory.createForeignToLLVM(I32), args.get(1), args.get(2)));
+        add("@truffle_read_idx_l", (args, factory) -> LLVMTruffleReadFromIndexNodeGen.create(factory.createForeignToLLVM(I64), args.get(1), args.get(2)));
+        add("@truffle_read_idx_c", (args, factory) -> LLVMTruffleReadFromIndexNodeGen.create(factory.createForeignToLLVM(I8), args.get(1), args.get(2)));
+        add("@truffle_read_idx_f", (args, factory) -> LLVMTruffleReadFromIndexNodeGen.create(factory.createForeignToLLVM(FLOAT), args.get(1), args.get(2)));
+        add("@truffle_read_idx_d", (args, factory) -> LLVMTruffleReadFromIndexNodeGen.create(factory.createForeignToLLVM(DOUBLE), args.get(1), args.get(2)));
+        add("@truffle_read_idx_b", (args, factory) -> LLVMTruffleReadFromIndexNodeGen.create(factory.createForeignToLLVM(I1), args.get(1), args.get(2)));
+
+        add("@polyglot_remove_member", (args, factory) -> LLVMPolyglotRemoveMemberNodeGen.create(args.get(1), args.get(2)));
+
+        add("@polyglot_remove_array_element", (args, factory) -> LLVMPolyglotRemoveArrayElementNodeGen.create(args.get(1), args.get(2)));
+
+        add("@polyglot_as_i8", "@truffle_unbox_c", (args, factory) -> LLVMTruffleUnboxNodeGen.create(factory.createForeignToLLVM(I8), args.get(1)));
+        add("@polyglot_as_i16", (args, factory) -> LLVMTruffleUnboxNodeGen.create(factory.createForeignToLLVM(I16), args.get(1)));
+        add("@polyglot_as_i32", "@truffle_unbox_i", (args, factory) -> LLVMTruffleUnboxNodeGen.create(factory.createForeignToLLVM(I32), args.get(1)));
+        add("@polyglot_as_i64", "@truffle_unbox_l", (args, factory) -> LLVMTruffleUnboxNodeGen.create(factory.createForeignToLLVM(I64), args.get(1)));
+        add("@polyglot_as_float", "@truffle_unbox_f", (args, factory) -> LLVMTruffleUnboxNodeGen.create(factory.createForeignToLLVM(FLOAT), args.get(1)));
+        add("@polyglot_as_double", "@truffle_unbox_d", (args, factory) -> LLVMTruffleUnboxNodeGen.create(factory.createForeignToLLVM(DOUBLE), args.get(1)));
+        add("@polyglot_as_boolean", "@truffle_unbox_b", (args, factory) -> LLVMTruffleUnboxNodeGen.create(factory.createForeignToLLVM(I1), args.get(1)));
+
+        add("@polyglot_new_instance", (args, factory) -> LLVMPolyglotNewInstanceNodeGen.create(argumentsArray(args, 2, args.size() - 2), args.get(1)));
+
+        add("@polyglot_invoke", "@truffle_invoke",
+                        (args, factory) -> LLVMTruffleInvokeNodeGen.create(factory.createForeignToLLVM(POINTER), argumentsArray(args, 3, args.size() - 3), args.get(1), args.get(2)));
+        add("@truffle_invoke_i",
+                        (args, factory) -> LLVMTruffleInvokeNodeGen.create(factory.createForeignToLLVM(I32), argumentsArray(args, 3, args.size() - 3), args.get(1), args.get(2)));
+        add("@truffle_invoke_l",
+                        (args, factory) -> LLVMTruffleInvokeNodeGen.create(factory.createForeignToLLVM(I64), argumentsArray(args, 3, args.size() - 3), args.get(1), args.get(2)));
+        add("@truffle_invoke_c",
+                        (args, factory) -> LLVMTruffleInvokeNodeGen.create(factory.createForeignToLLVM(I8), argumentsArray(args, 3, args.size() - 3), args.get(1), args.get(2)));
+        add("@truffle_invoke_f",
+                        (args, factory) -> LLVMTruffleInvokeNodeGen.create(factory.createForeignToLLVM(FLOAT), argumentsArray(args, 3, args.size() - 3), args.get(1), args.get(2)));
+        add("@truffle_invoke_d",
+                        (args, factory) -> LLVMTruffleInvokeNodeGen.create(factory.createForeignToLLVM(DOUBLE), argumentsArray(args, 3, args.size() - 3), args.get(1), args.get(2)));
+        add("@truffle_invoke_b",
+                        (args, factory) -> LLVMTruffleInvokeNodeGen.create(factory.createForeignToLLVM(I1), argumentsArray(args, 3, args.size() - 3), args.get(1), args.get(2)));
+
+        add("@truffle_execute", (args, factory) -> LLVMTruffleExecuteNodeGen.create(factory.createForeignToLLVM(POINTER), argumentsArray(args, 2, args.size() - 2), args.get(1)));
+        add("@truffle_execute_i", (args, factory) -> LLVMTruffleExecuteNodeGen.create(factory.createForeignToLLVM(I32), argumentsArray(args, 2, args.size() - 2), args.get(1)));
+        add("@truffle_execute_l", (args, factory) -> LLVMTruffleExecuteNodeGen.create(factory.createForeignToLLVM(I64), argumentsArray(args, 2, args.size() - 2), args.get(1)));
+        add("@truffle_execute_c", (args, factory) -> LLVMTruffleExecuteNodeGen.create(factory.createForeignToLLVM(I8), argumentsArray(args, 2, args.size() - 2), args.get(1)));
+        add("@truffle_execute_f", (args, factory) -> LLVMTruffleExecuteNodeGen.create(factory.createForeignToLLVM(FLOAT), argumentsArray(args, 2, args.size() - 2), args.get(1)));
+        add("@truffle_execute_d",
+                        (args, factory) -> LLVMTruffleExecuteNodeGen.create(factory.createForeignToLLVM(DOUBLE), argumentsArray(args, 2, args.size() - 2), args.get(1)));
+        add("@truffle_execute_b", (args, factory) -> LLVMTruffleExecuteNodeGen.create(factory.createForeignToLLVM(I1), argumentsArray(args, 2, args.size() - 2), args.get(1)));
+
+        add("@truffle_address_to_function", (args, factory) -> LLVMTruffleAddressToFunctionNodeGen.create(args.get(1)));
+        add("@polyglot_can_execute", "@truffle_is_executable", (args, factory) -> LLVMTruffleIsExecutableNodeGen.create(args.get(1)));
+        add("@polyglot_can_instantiate", (args, factory) -> LLVMPolyglotCanInstantiateNodeGen.create(args.get(1)));
+        add("@polyglot_is_null", "@truffle_is_null", (args, factory) -> LLVMTruffleIsNullNodeGen.create(args.get(1)));
+        add("@polyglot_has_array_elements", "@truffle_has_size", (args, factory) -> LLVMTruffleHasSizeNodeGen.create(args.get(1)));
+        add("@polyglot_has_members", (args, factory) -> LLVMTruffleHasKeysNodeGen.create(args.get(1)));
+        add("@polyglot_has_member", (args, factory) -> LLVMPolyglotHasMemberNodeGen.create(args.get(1), args.get(2)));
+        add("@truffle_is_boxed", (args, factory) -> LLVMTruffleIsBoxedNodeGen.create(args.get(1)));
+        add("@polyglot_get_array_size", (args, factory) -> LLVMTruffleGetSizeNodeGen.create(I64, args.get(1)));
+        add("@truffle_get_size", (args, factory) -> LLVMTruffleGetSizeNodeGen.create(I32, args.get(1)));
+
+        add("@polyglot_get_string_size", (args, factory) -> LLVMPolyglotGetStringSizeNodeGen.create(args.get(1)));
+        add("@polyglot_as_string", (args, factory) -> LLVMPolyglotAsString.create(args.get(1), args.get(2), args.get(3), args.get(4)));
+        add("@polyglot_from_string", (args, factory) -> LLVMPolyglotFromString.create(args.get(1), args.get(2)));
+        add("@polyglot_from_string_n", (args, factory) -> LLVMPolyglotFromString.createN(args.get(1), args.get(2), args.get(3)));
+
+        add("@truffle_read_string", (args, factory) -> LLVMTruffleReadStringNodeGen.create(args.get(1)));
+        add("@truffle_read_n_string", (args, factory) -> LLVMTruffleReadNStringNodeGen.create(args.get(1), args.get(2)));
+        add("@truffle_read_bytes", (args, factory) -> LLVMTruffleReadBytesNodeGen.create(args.get(1)));
+        add("@truffle_read_n_bytes", (args, factory) -> LLVMTruffleReadNBytesNodeGen.create(args.get(1), args.get(2)));
+        add("@truffle_string_to_cstr", (args, factory) -> LLVMTruffleStringAsCStringNodeGen.create(factory.createAllocateString(), args.get(1)));
+        add("@truffle_free_cstr", (args, factory) -> LLVMTruffleFreeCStringNodeGen.create(args.get(1)));
+        add("@truffle_is_truffle_object", (args, factory) -> LLVMTruffleIsTruffleObjectNodeGen.create(args.get(1)));
+        add("@truffle_sulong_function_to_native_pointer", (args, factory) -> LLVMSulongFunctionToNativePointerNodeGen.create(args.get(1), args.get(2)));
+        add("@truffle_load_library", (args, factory) -> LLVMLoadLibraryNodeGen.create(args.get(1)));
+        add("@truffle_polyglot_eval", (args, factory) -> LLVMPolyglotEval.createLegacy(args.get(1), args.get(2)));
+
+        add("@__polyglot_as_typeid", (args, factory) -> LLVMTypeIDNode.create(args.get(1)));
+        add("@polyglot_as_typed", (args, factory) -> LLVMPolyglotAsTyped.create(args.get(1), args.get(2)));
+        add("@polyglot_from_typed", (args, factory) -> LLVMPolyglotFromTyped.create(args.get(1), args.get(2)));
+        add("@polyglot_array_typeid", (args, factory) -> LLVMArrayTypeIDNode.create(args.get(1), args.get(2)));
+
+        registerObsoleteTruffleIntrinsics();
+    }
+
+    @SuppressWarnings("deprecation")
+    private static void registerObsoleteTruffleIntrinsics() {
         /*
          * For binary compatibility with bitcode files compiled with polyglot.h from 1.0-RC2 or
          * earlier.
          */
-
-        add("@__polyglot_as_typed", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            @SuppressWarnings("deprecation")
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMPolyglotAsTyped.createStruct(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
-
-        add("@__polyglot_as_typed_array", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            @SuppressWarnings("deprecation")
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMPolyglotAsTyped.createArray(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
-
-        add("@__polyglot_from_typed", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            @SuppressWarnings("deprecation")
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMPolyglotFromTyped.createStruct(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
-
-        add("@__polyglot_from_typed_array", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            @SuppressWarnings("deprecation")
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMPolyglotFromTyped.createArray(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3));
-            }
-        });
+        add("@__polyglot_as_typed", (args, factory) -> LLVMPolyglotAsTyped.createStruct(args.get(1), args.get(2)));
+        add("@__polyglot_as_typed_array", (args, factory) -> LLVMPolyglotAsTyped.createArray(args.get(1), args.get(2)));
+        add("@__polyglot_from_typed", (args, factory) -> LLVMPolyglotFromTyped.createStruct(args.get(1), args.get(2)));
+        add("@__polyglot_from_typed_array", (args, factory) -> LLVMPolyglotFromTyped.createArray(args.get(1), args.get(2), args.get(3)));
     }
 
-    protected void registerManagedAllocationIntrinsics() {
-        add("@truffle_managed_malloc", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleManagedMallocNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-
-        add("@truffle_handle_for_managed", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleManagedToHandleNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-
-        add("@truffle_deref_handle_for_managed", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleDerefHandleToManagedNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-
-        add("@truffle_release_handle", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleReleaseHandleNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-
-        add("@truffle_managed_from_handle", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleHandleToManagedNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-
-        add("@truffle_is_handle_to_managed", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleIsHandleToManagedNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-
-        add("@truffle_assign_managed", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTruffleWriteManagedToGlobalNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
-
-        add("@truffle_virtual_malloc", new LLVMIntrinsicFactory(true, true) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMVirtualMallocNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
+    private static void registerManagedAllocationIntrinsics() {
+        add("@truffle_managed_malloc", (args, factory) -> LLVMTruffleManagedMallocNodeGen.create(args.get(1)));
+        add("@truffle_handle_for_managed", (args, factory) -> LLVMTruffleManagedToHandleNodeGen.create(args.get(1)));
+        add("@truffle_deref_handle_for_managed", (args, factory) -> LLVMTruffleDerefHandleToManagedNodeGen.create(args.get(1)));
+        add("@truffle_release_handle", (args, factory) -> LLVMTruffleReleaseHandleNodeGen.create(args.get(1)));
+        add("@truffle_managed_from_handle", (args, factory) -> LLVMTruffleHandleToManagedNodeGen.create(args.get(1)));
+        add("@truffle_is_handle_to_managed", (args, factory) -> LLVMTruffleIsHandleToManagedNodeGen.create(args.get(1)));
+        add("@truffle_cannot_be_handle", (args, factory) -> LLVMTruffleCannotBeHandleNodeGen.create(args.get(1)));
+        add("@truffle_assign_managed", (args, factory) -> LLVMTruffleWriteManagedToGlobalNodeGen.create(args.get(1), args.get(2)));
+        add("@truffle_virtual_malloc", (args, factory) -> LLVMVirtualMallocNodeGen.create(args.get(1)));
     }
 
-    protected void registerAbortIntrinsics() {
-        add("@_gfortran_abort", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMAbortNodeGen.create();
-            }
-        });
-        add("@signal", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMSignalNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
-
-        LLVMIntrinsicFactory syscall = new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return new LLVMSyscall();
-            }
-        };
-
-        add("@syscall", syscall);
-        add("@__syscall", syscall);
+    private static void registerAbortIntrinsics() {
+        add("@_gfortran_abort", (args, factory) -> LLVMAbortNodeGen.create());
+        add("@signal", (args, factory) -> LLVMSignalNodeGen.create(args.get(1), args.get(2)));
+        add("@syscall", "@__syscall", (args, factory) -> LLVMSyscall.create(argumentsArray(args, 1, args.size() - 1)));
     }
 
-    protected void registerRustIntrinsics() {
-        add("@std::rt::lang_start", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMLangStartNodeGen.create(LLVMArgNodeGen.create(0), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3));
-            }
-        });
-        add("@std::rt::lang_start_internal", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMLangStartInternalNodeGen.create(LLVMArgNodeGen.create(0), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3), LLVMArgNodeGen.create(4));
-            }
-        });
-        add("@std::process::exit", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMExitNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-        add("@core::panicking::panic", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMPanicNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
+    private static void registerRustIntrinsics() {
+        add("@std::rt::lang_start", (args, factory) -> LLVMLangStartNodeGen.create(args.get(0), args.get(1), args.get(2), args.get(3)));
+        add("@std::rt::lang_start_internal", (args, factory) -> LLVMLangStartInternalNodeGen.create(args.get(0), args.get(1), args.get(2), args.get(3), args.get(4)));
+        add("@std::process::exit", (args, factory) -> LLVMExitNodeGen.create(args.get(1)));
+        add("@core::panicking::panic", (args, factory) -> LLVMPanicNodeGen.create(args.get(1)));
     }
 
-    protected void registerMathFunctionIntrinsics() {
+    private static void registerMathFunctionIntrinsics() {
         // TODO (chaeubl): There is no doubt that not all of these intrinsics are valid as they use
         // double arithmetics to simulate floating arithmetics, which can change the precision.
         // Furthermore, it is possible that there are mismatches between Java and C semantics.
-        addFloatingPointMathFunction("@sqrt", new LLVMIntrinsicFactory(true, false) {
+        addFloatingPointMathFunction("@sqrt", (args, factory) -> LLVMSqrtNodeGen.create(args.get(1), null));
+        addFloatingPointMathFunction("@log", (args, factory) -> LLVMLogNodeGen.create(args.get(1), null));
+        addFloatingPointMathFunction("@log2", (args, factory) -> LLVMLog2NodeGen.create(args.get(1), null));
+        addFloatingPointMathFunction("@log10", (args, factory) -> LLVMLog10NodeGen.create(args.get(1), null));
+        addFloatingPointMathFunction("@log1p", (args, factory) -> LLVMLog1pNodeGen.create(args.get(1), null));
+        addFloatingPointMathFunction("@rint", (args, factory) -> LLVMRintNodeGen.create(args.get(1), null));
+        addFloatingPointMathFunction("@ceil", (args, factory) -> LLVMCeilNodeGen.create(args.get(1), null));
+        addFloatingPointMathFunction("@floor", (args, factory) -> LLVMFloorNodeGen.create(args.get(1), null));
+        addFloatingPointMathFunction("@fabs", (args, factory) -> LLVMFAbsNodeGen.create(args.get(1), null));
+        addFloatingPointMathFunction("@pow", (args, factory) -> LLVMPowNodeGen.create(args.get(1), args.get(2), null));
+        addFloatingPointMathFunction("@exp", (args, factory) -> LLVMExpNodeGen.create(args.get(1), null));
+        addFloatingPointMathFunction("@exp2", (args, factory) -> LLVMExp2NodeGen.create(args.get(1), null));
+        addFloatingPointMathFunction("@expm1", (args, factory) -> LLVMExpm1NodeGen.create(args.get(1), null));
+        addFloatingPointMathFunction("@sin", (args, factory) -> LLVMSinNodeGen.create(args.get(1), null));
+        addFloatingPointMathFunction("@cos", (args, factory) -> LLVMCosNodeGen.create(args.get(1), null));
+        addFloatingPointMathFunction("@tan", (args, factory) -> LLVMTanNodeGen.create(args.get(1)));
+        addFloatingPointMathFunction("@atan2", (args, factory) -> LLVMATan2NodeGen.create(args.get(1), args.get(2)));
+        addFloatingPointMathFunction("@asin", (args, factory) -> LLVMASinNodeGen.create(args.get(1)));
+        addFloatingPointMathFunction("@acos", (args, factory) -> LLVMACosNodeGen.create(args.get(1)));
+        addFloatingPointMathFunction("@atan", (args, factory) -> LLVMATanNodeGen.create(args.get(1)));
+        addFloatingPointMathFunction("@sinh", (args, factory) -> LLVMSinhNodeGen.create(args.get(1)));
+        addFloatingPointMathFunction("@cosh", (args, factory) -> LLVMCoshNodeGen.create(args.get(1)));
+        addFloatingPointMathFunction("@tanh", (args, factory) -> LLVMTanhNodeGen.create(args.get(1)));
+        addFloatingPointMathFunction("@ldexp", (args, factory) -> LLVMLdexpNodeGen.create(args.get(1), args.get(2)));
+        addFloatingPointMathFunction("@modf", (args, factory) -> LLVMModfNodeGen.create(args.get(1), args.get(2)));
+        addFloatingPointMathFunction("@fmod", (args, factory) -> LLVMFmodNodeGen.create(args.get(1), args.get(2)));
+        addFloatingPointMathFunction("@copysign", (args, factory) -> LLVMCMathsIntrinsicsFactory.LLVMCopySignNodeGen.create(args.get(1), args.get(2), null));
 
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMSqrtNodeGen.create(LLVMArgNodeGen.create(1), null);
-            }
-        });
-        addFloatingPointMathFunction("@log", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMLogNodeGen.create(LLVMArgNodeGen.create(1), null);
-            }
-        });
-        addFloatingPointMathFunction("@log2", new LLVMIntrinsicFactory(true, false) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMLog2NodeGen.create(LLVMArgNodeGen.create(1), null);
-            }
-        });
-        addFloatingPointMathFunction("@log10", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMLog10NodeGen.create(LLVMArgNodeGen.create(1), null);
-            }
-        });
-        addFloatingPointMathFunction("@log1p", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMLog1pNodeGen.create(LLVMArgNodeGen.create(1), null);
-            }
-        });
-        addFloatingPointMathFunction("@rint", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMRintNodeGen.create(LLVMArgNodeGen.create(1), null);
-            }
-        });
-        addFloatingPointMathFunction("@ceil", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMCeilNodeGen.create(LLVMArgNodeGen.create(1), null);
-            }
-        });
-        addFloatingPointMathFunction("@floor", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMFloorNodeGen.create(LLVMArgNodeGen.create(1), null);
-            }
-        });
-        addFloatingPointMathFunction("@fabs", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMFAbsNodeGen.create(LLVMArgNodeGen.create(1), null);
-            }
-        });
-        addFloatingPointMathFunction("@pow", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMPowNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), null);
-            }
-        });
-        addFloatingPointMathFunction("@exp", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMExpNodeGen.create(LLVMArgNodeGen.create(1), null);
-            }
-        });
-        addFloatingPointMathFunction("@exp2", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMExp2NodeGen.create(LLVMArgNodeGen.create(1), null);
-            }
-        });
-        addFloatingPointMathFunction("@expm1", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMExpm1NodeGen.create(LLVMArgNodeGen.create(1), null);
-            }
-        });
-        addFloatingPointMathFunction("@sin", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMSinNodeGen.create(LLVMArgNodeGen.create(1), null);
-            }
-        });
-        addFloatingPointMathFunction("@cos", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMCosNodeGen.create(LLVMArgNodeGen.create(1), null);
-            }
-        });
-        addFloatingPointMathFunction("@tan", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTanNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-        addFloatingPointMathFunction("@atan2", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMATan2NodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
-        addFloatingPointMathFunction("@asin", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMASinNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-        addFloatingPointMathFunction("@acos", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMACosNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-        addFloatingPointMathFunction("@atan", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMATanNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-        addFloatingPointMathFunction("@sinh", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMSinhNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-        addFloatingPointMathFunction("@cosh", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMCoshNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-        addFloatingPointMathFunction("@tanh", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTanhNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-        addFloatingPointMathFunction("@ldexp", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMLdexpNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
-        addFloatingPointMathFunction("@modf", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMModfNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
-        addFloatingPointMathFunction("@fmod", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMFmodNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
-        addFloatingPointMathFunction("@copysign", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMCMathsIntrinsicsFactory.LLVMCopySignNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), null);
-            }
-        });
-
-        addIntegerMathFunction("@abs", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMAbsNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
+        addIntegerMathFunction("@abs", (args, factory) -> LLVMAbsNodeGen.create(args.get(1)));
     }
 
-    protected void registerCTypeIntrinsics() {
-        add("@isalpha", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMIsalphaNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-        add("@tolower", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMTolowerNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-        add("@toupper", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMToUpperNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-        add("@isspace", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMIsspaceNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-        add("@isupper", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMIsupperNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
+    private static void registerCTypeIntrinsics() {
+        add("@isalpha", (args, factory) -> LLVMIsalphaNodeGen.create(args.get(1)));
+        add("@tolower", (args, factory) -> LLVMTolowerNodeGen.create(args.get(1)));
+        add("@toupper", (args, factory) -> LLVMToUpperNodeGen.create(args.get(1)));
+        add("@isspace", (args, factory) -> LLVMIsspaceNodeGen.create(args.get(1)));
+        add("@isupper", (args, factory) -> LLVMIsupperNodeGen.create(args.get(1)));
     }
 
-    protected void registerMemoryFunctionIntrinsics() {
-        add("@malloc", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMMallocNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-        add("@calloc", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMCallocNodeGen.create(context.getNodeFactory().createMemSet(), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
-        add("@realloc", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMReallocNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
-        add("@free", new LLVMIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMFreeNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-        LLVMIntrinsicFactory memset = new LLVMIntrinsicFactory(true, false) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMLibcMemsetNodeGen.create(context.getNodeFactory().createMemSet(), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3));
-            }
-        };
-        add("@memset", memset);
-        add("@__memset_chk", memset);
-        LLVMIntrinsicFactory memcpy = new LLVMIntrinsicFactory(true, false) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMLibcMemcpyNodeGen.create(context.getNodeFactory().createMemMove(), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3));
-            }
-        };
-        add("@memcpy", memcpy);
-        add("@__memcpy_chk", memcpy);
+    private static void registerMemoryFunctionIntrinsics() {
+        add("@malloc", (args, factory) -> LLVMMallocNodeGen.create(args.get(1)));
+        add("@calloc", (args, factory) -> LLVMCallocNodeGen.create(factory.createMemSet(), args.get(1), args.get(2)));
+        add("@realloc", (args, factory) -> LLVMReallocNodeGen.create(args.get(1), args.get(2)));
+        add("@free", (args, factory) -> LLVMFreeNodeGen.create(args.get(1)));
+        add("@memset", "@__memset_chk", (args, factory) -> LLVMLibcMemsetNodeGen.create(factory.createMemSet(), args.get(1), args.get(2), args.get(3)));
+        add("@memcpy", "@__memcpy_chk", (args, factory) -> LLVMLibcMemcpyNodeGen.create(factory.createMemMove(), args.get(1), args.get(2), args.get(3)));
     }
 
-    protected void registerExceptionIntrinsics() {
-        add("@_Unwind_RaiseException", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return new LLVMRaiseExceptionNode(LLVMArgNodeGen.create(1));
-            }
-        });
-        add("@__cxa_call_unexpected", new LLVMIntrinsicFactory(true, true) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMAbortNodeGen.create();
-            }
-        });
+    private static void registerExceptionIntrinsics() {
+        add("@_Unwind_RaiseException", (args, factory) -> new LLVMRaiseExceptionNode(args.get(1)));
+        add("@__cxa_call_unexpected", (args, factory) -> LLVMAbortNodeGen.create());
     }
 
-    public void registerComplexNumberIntrinsics() {
+    private static void registerComplexNumberIntrinsics() {
         // float functions return a vector of <2x float>
-        add("@__divsc3", new LLVMIntrinsicFactory(true, false) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return new LLVMComplexFloatDiv(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3), LLVMArgNodeGen.create(4));
-            }
-        });
-        add("@__mulsc3", new LLVMIntrinsicFactory(true, false) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return new LLVMComplexFloatMul(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3), LLVMArgNodeGen.create(4));
-            }
-        });
+        add("@__divsc3", (args, factory) -> new LLVMComplexFloatDiv(args.get(1), args.get(2), args.get(3), args.get(4)));
+        add("@__mulsc3", (args, factory) -> new LLVMComplexFloatMul(args.get(1), args.get(2), args.get(3), args.get(4)));
 
         // double functions store their double results in the structure that is passed as arg1
-        add("@__divdc3", new LLVMIntrinsicFactory(true, false) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return new LLVMComplexDoubleDiv(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3), LLVMArgNodeGen.create(4), LLVMArgNodeGen.create(5));
-            }
-        });
-        add("@__muldc3", new LLVMIntrinsicFactory(true, false) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return new LLVMComplexDoubleMul(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3), LLVMArgNodeGen.create(4), LLVMArgNodeGen.create(5));
-            }
-        });
+        add("@__divdc3", (args, factory) -> new LLVMComplexDoubleDiv(args.get(1), args.get(2), args.get(3), args.get(4), args.get(5)));
+        add("@__muldc3", (args, factory) -> new LLVMComplexDoubleMul(args.get(1), args.get(2), args.get(3), args.get(4), args.get(5)));
 
         // 80-bit FP functions store their results in the structure that is passed as arg1
-        add("@__divxc3", new LLVMIntrinsicFactory(true, false) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return new LLVMComplex80BitFloatDiv(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3), LLVMArgNodeGen.create(4), LLVMArgNodeGen.create(5));
-            }
-        });
-        add("@__mulxc3", new LLVMIntrinsicFactory(true, false) {
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return new LLVMComplex80BitFloatMul(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3), LLVMArgNodeGen.create(4), LLVMArgNodeGen.create(5));
-            }
-        });
+        add("@__divxc3", (args, factory) -> new LLVMComplex80BitFloatDiv(args.get(1), args.get(2), args.get(3), args.get(4), args.get(5)));
+        add("@__mulxc3", (args, factory) -> new LLVMComplex80BitFloatMul(args.get(1), args.get(2), args.get(3), args.get(4), args.get(5)));
     }
 
-    protected void addFloatingPointMathFunction(String functionName, LLVMIntrinsicFactory factory) {
+    private static void add(String name, LLVMIntrinsicFactory factory) {
+        LLVMIntrinsicFactory existing = FACTORIES.put(name, factory);
+        assert existing == null : "same intrinsic was added more than once";
+        assert name.length() > 0 && name.charAt(0) == '@';
+    }
+
+    private static void add(String name1, String name2, LLVMIntrinsicFactory factory) {
+        add(name1, factory);
+        add(name2, factory);
+    }
+
+    private static void addFloatingPointMathFunction(String functionName, LLVMIntrinsicFactory factory) {
         add(functionName, factory);
         add(functionName + "f", factory);
         add(functionName + "l", factory);
     }
 
-    protected void addIntegerMathFunction(String functionName, LLVMIntrinsicFactory factory) {
+    private static void addIntegerMathFunction(String functionName, LLVMIntrinsicFactory factory) {
         add(functionName, factory);
         add(functionName.replaceFirst("@", "@l") + functionName, factory);
-    }
-
-    protected void add(String name, LLVMIntrinsicFactory factory) {
-        LLVMIntrinsicFactory existing = factories.put(name, factory);
-        assert existing == null : "same intrinsic was added more than once";
-        assert name.length() > 0 && name.charAt(0) == '@';
     }
 }

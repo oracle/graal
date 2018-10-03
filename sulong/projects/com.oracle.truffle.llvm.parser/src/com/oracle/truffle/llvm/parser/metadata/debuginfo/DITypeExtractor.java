@@ -57,6 +57,7 @@ import com.oracle.truffle.llvm.parser.metadata.MDVoidNode;
 import com.oracle.truffle.llvm.parser.metadata.MetadataValueList;
 import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
+import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceArrayLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceBasicType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceDecoratorType;
@@ -68,6 +69,7 @@ import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStaticMemberType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStructLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+
 import static com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType.UNKNOWN;
 
 final class DITypeExtractor implements MetadataVisitor {
@@ -177,7 +179,7 @@ final class DITypeExtractor implements MetadataVisitor {
                 for (int i = members.size() - 1; i > 0; i--) {
                     final long length = extractLength(members.get(i));
                     final long tmpSize = length * baseType.getSize();
-                    final LLVMSourceArrayLikeType tmp = new LLVMSourceArrayLikeType(tmpSize, align, 0L, location);
+                    final LLVMSourceArrayLikeType tmp = new LLVMSourceArrayLikeType(tmpSize >= 0 ? tmpSize : 0, align, 0L, location);
                     setAggregateProperties(isVector, tmp, length, baseType);
                     baseType = tmp;
                 }
@@ -233,7 +235,7 @@ final class DITypeExtractor implements MetadataVisitor {
     }
 
     private static long extractLength(LLVMSourceType count) {
-        return COUNT_NAME.equals(count.getName()) ? count.getSize() : 0L;
+        return COUNT_NAME.equals(count.getName()) ? count.getSize() : -1L;
     }
 
     private static void setAggregateProperties(boolean isVector, LLVMSourceArrayLikeType aggregate, long length, LLVMSourceType baseType) {
@@ -381,7 +383,16 @@ final class DITypeExtractor implements MetadataVisitor {
     @Override
     public void visit(MDSubrange mdRange) {
         // for array types the member descriptors contain this as the only element
-        parsedTypes.put(mdRange, new IntermediaryType(() -> COUNT_NAME, mdRange.getSize(), 0L, 0L));
+        Long countValue = LLVMSymbolReadResolver.evaluateLongIntegerConstant(MDValue.getIfInstance(mdRange.getCount()));
+        if (countValue == null) {
+            // in llvm 7, the count can point to an MDLocal. the first release of llvm 7 contains a
+            // bug in which this MDLocal is anonymous and does not point to an actual value.
+            // starting with llvm 7, the count can also be a run-time value if it is not known at
+            // compile-time, we do not support that feature and instead indicate to the user that we
+            // do not know the actual value and therefore cannot display the members of the array
+            countValue = -1L;
+        }
+        parsedTypes.put(mdRange, new IntermediaryType(() -> COUNT_NAME, countValue, 0L, 0L));
     }
 
     @Override

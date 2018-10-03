@@ -1,26 +1,42 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * The Universal Permissive License (UPL), Version 1.0
  *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
  *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ * (a) the Software, and
  *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 package com.oracle.truffle.api.instrumentation;
 
@@ -31,14 +47,19 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.net.URI;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.io.MessageEndpoint;
+import org.graalvm.polyglot.io.MessageTransport;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -176,15 +197,17 @@ public abstract class TruffleInstrument {
         private final InputStream in;
         private final OutputStream err;
         private final OutputStream out;
+        private final MessageTransport messageTransport;
         OptionValues options;
         InstrumentClientInstrumenter instrumenter;
         private List<Object> services;
 
-        Env(Object vm, OutputStream out, OutputStream err, InputStream in) {
+        Env(Object vm, OutputStream out, OutputStream err, InputStream in, MessageTransport messageInterceptor) {
             this.vmObject = vm;
             this.in = in;
             this.err = err;
             this.out = out;
+            this.messageTransport = new MessageTransportProxy(messageInterceptor);
         }
 
         Object getVMObject() {
@@ -232,6 +255,34 @@ public abstract class TruffleInstrument {
          */
         public OutputStream err() {
             return err;
+        }
+
+        /**
+         * Start a server at the provided URI via the {@link MessageTransport} service. Before an
+         * instrument creates a server endpoint for a message protocol, it needs to check the result
+         * of this method. When a virtual message transport is available, it blocks until a client
+         * connects and {@link MessageEndpoint} representing the peer endpoint is returned. Those
+         * endpoints need to be used instead of a direct creation of a server socket. If no virtual
+         * message transport is available at that URI, <code>null</code> is returned and the
+         * instrument needs to set up the server itself.
+         * <p>
+         * When {@link org.graalvm.polyglot.io.MessageTransport.VetoException} is thrown, the server
+         * creation needs to be abandoned.
+         * <p>
+         * This method can be called concurrently from multiple threads. However, the
+         * {@link MessageEndpoint} ought to be called on one thread at a time, unless you're sure
+         * that the particular implementation can handle concurrent calls. The same holds true for
+         * the returned endpoint, it's called synchronously.
+         *
+         * @param uri the URI of the server endpoint
+         * @param server the handler of messages at the server side
+         * @return an implementation of {@link MessageEndpoint} call back representing the client
+         *         side, or <code>null</code> when no virtual transport is available
+         * @throws MessageTransport.VetoException if creation of a server at that URI is not allowed
+         * @since 1.0
+         */
+        public MessageEndpoint startServer(URI uri, MessageEndpoint server) throws IOException, MessageTransport.VetoException {
+            return messageTransport.open(uri, server);
         }
 
         /**
@@ -657,6 +708,58 @@ public abstract class TruffleInstrument {
             return langScopes;
         }
 
+        private static class MessageTransportProxy implements MessageTransport {
+
+            private final MessageTransport transport;
+
+            MessageTransportProxy(MessageTransport transport) {
+                this.transport = transport;
+            }
+
+            @Override
+            public MessageEndpoint open(URI uri, MessageEndpoint peerEndpoint) throws IOException, VetoException {
+                Objects.requireNonNull(peerEndpoint, "The peer endpoint must be non null.");
+                MessageEndpoint openedEndpoint = transport.open(uri, new MessageEndpointProxy(peerEndpoint));
+                if (openedEndpoint == null) {
+                    return null;
+                }
+                return new MessageEndpointProxy(openedEndpoint);
+            }
+
+            private static class MessageEndpointProxy implements MessageEndpoint {
+
+                private final MessageEndpoint endpoint;
+
+                MessageEndpointProxy(MessageEndpoint endpoint) {
+                    this.endpoint = endpoint;
+                }
+
+                @Override
+                public void sendText(String text) throws IOException {
+                    endpoint.sendText(text);
+                }
+
+                @Override
+                public void sendBinary(ByteBuffer data) throws IOException {
+                    endpoint.sendBinary(data);
+                }
+
+                @Override
+                public void sendPing(ByteBuffer data) throws IOException {
+                    endpoint.sendPing(data);
+                }
+
+                @Override
+                public void sendPong(ByteBuffer data) throws IOException {
+                    endpoint.sendPong(data);
+                }
+
+                @Override
+                public void sendClose() throws IOException {
+                    endpoint.sendClose();
+                }
+            }
+        }
     }
 
     /**

@@ -280,7 +280,7 @@ public final class LLVMContext {
 
         // free the space allocated for non-pointer globals
         LLVMIntrinsicProvider provider = getContextExtension(LLVMIntrinsicProvider.class);
-        RootCallTarget free = provider.generateIntrinsic("@free", null);
+        RootCallTarget free = provider.generateIntrinsicTarget("@free", 2);
 
         for (LLVMPointer store : globalsNonPointerStore) {
             if (store != null) {
@@ -508,29 +508,20 @@ public final class LLVMContext {
         }
     }
 
-    @TruffleBoundary
     public LLVMNativePointer getHandleForManagedObject(LLVMMemory memory, TruffleObject object) {
-        synchronized (handlesLock) {
-            Handle handle = handleFromManaged.get(object);
-            if (handle == null) {
-                LLVMNativePointer allocatedMemory = memory.allocateMemory(Long.BYTES);
-                memory.putI64(allocatedMemory, 0xdeadbeef);
-                handle = new Handle(allocatedMemory, object);
-                handleFromManaged.put(object, handle);
-                handleFromPointer.put(allocatedMemory, handle);
-            }
+        return getHandle(memory, object, false).copy();
+    }
 
-            handle.refcnt++;
-            return handle.pointer;
-        }
+    public LLVMNativePointer getDerefHandleForManagedObject(LLVMMemory memory, TruffleObject object) {
+        return getHandle(memory, object, true).copy();
     }
 
     @TruffleBoundary
-    public LLVMNativePointer getDerefHandleForManagedObject(LLVMMemory memory, TruffleObject object) {
+    private LLVMNativePointer getHandle(LLVMMemory memory, TruffleObject object, boolean autoDeref) {
         synchronized (handlesLock) {
             Handle handle = handleFromManaged.get(object);
             if (handle == null) {
-                LLVMNativePointer allocatedMemory = memory.allocateDerefMemory();
+                LLVMNativePointer allocatedMemory = LLVMNativePointer.create(memory.allocateHandle(autoDeref));
                 handle = new Handle(allocatedMemory, object);
                 handleFromManaged.put(object, handle);
                 handleFromPointer.put(allocatedMemory, handle);
@@ -619,11 +610,7 @@ public final class LLVMContext {
 
     @TruffleBoundary
     public LLVMGlobal findGlobal(LLVMPointer pointer) {
-        LLVMGlobal result = globalsReverseMap.get(pointer);
-        if (result == null) {
-            throw new IllegalStateException("Could not find pointer " + pointer);
-        }
-        return result;
+        return globalsReverseMap.get(pointer);
     }
 
     public void registerGlobals(LLVMPointer nonPointerStore, HashMap<LLVMPointer, LLVMGlobal> reverseMap) {

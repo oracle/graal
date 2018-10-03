@@ -44,7 +44,6 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
-import com.oracle.svm.core.graal.posix.PosixCEntryPointSnippets;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode.StackSlotIdentity;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
@@ -56,7 +55,7 @@ import com.oracle.svm.core.thread.Safepoint;
 import com.oracle.svm.core.thread.VMThreads;
 
 /**
- * Snippets for calling from Java to C. This is the inverse of {@link PosixCEntryPointSnippets}.
+ * Snippets for calling from Java to C. This is the inverse of {@link CEntryPointSnippets}.
  *
  * The Java frame anchor has to be set up because the top of the stack will no longer be a Java
  * frame.

@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
@@ -54,6 +55,12 @@ public final class LLVMBoxedPrimitive implements LLVMObjectNativeLibrary.Provide
     }
 
     @Override
+    @TruffleBoundary
+    public String toString() {
+        return "<boxed value: " + getValue() + ">";
+    }
+
+    @Override
     public LLVMObjectNativeLibrary createLLVMObjectNativeLibrary() {
         return new LLVMBoxedPrimitiveNativeLibrary();
     }
@@ -70,6 +77,11 @@ public final class LLVMBoxedPrimitive implements LLVMObjectNativeLibrary.Provide
         @Override
         public boolean isPointer(Object obj) {
             return true;
+        }
+
+        @Override
+        public boolean isNull(Object obj) {
+            return false;
         }
 
         @Override

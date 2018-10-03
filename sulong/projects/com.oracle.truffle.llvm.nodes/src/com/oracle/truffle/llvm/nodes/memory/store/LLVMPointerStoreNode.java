@@ -93,6 +93,6 @@ public abstract class LLVMPointerStoreNode extends LLVMStoreNodeCommon {
 
     @Specialization
     protected void doTruffleObject(LLVMManagedPointer address, Object value) {
-        getForeignWriteNode(ForeignToLLVMType.POINTER).execute(address, value);
+        getForeignWriteNode().executeWrite(address.getObject(), address.getOffset(), value, ForeignToLLVMType.POINTER);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -387,8 +387,9 @@ public final class SLLexicalScope {
                         throw UnknownIdentifierException.raise(name);
                     } else {
                         Object value;
-                        if (varMap.args != null && varMap.args.length > slot.getIndex()) {
-                            value = varMap.args[slot.getIndex()];
+                        Object info = slot.getInfo();
+                        if (varMap.args != null && info != null) {
+                            value = varMap.args[(Integer) info];
                         } else {
                             value = varMap.frame.getValue(slot);
                         }
@@ -409,8 +410,9 @@ public final class SLLexicalScope {
                     if (slot == null) {
                         throw UnknownIdentifierException.raise(name);
                     } else {
-                        if (varMap.args != null && varMap.args.length > slot.getIndex()) {
-                            varMap.args[slot.getIndex()] = value;
+                        Object info = slot.getInfo();
+                        if (varMap.args != null && info != null) {
+                            varMap.args[(Integer) info] = value;
                         } else {
                             varMap.frame.setObject(slot, value);
                         }

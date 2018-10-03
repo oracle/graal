@@ -156,7 +156,7 @@ public class OptionProcessor extends AbstractProcessor {
         originatingElementsList.add(field);
         PackageElement enclosingPackage = null;
         while (enclosing != null) {
-            if (enclosing.getKind() == ElementKind.CLASS || enclosing.getKind() == ElementKind.INTERFACE) {
+            if (enclosing.getKind() == ElementKind.CLASS || enclosing.getKind() == ElementKind.INTERFACE || enclosing.getKind() == ElementKind.ENUM) {
                 if (enclosing.getModifiers().contains(Modifier.PRIVATE)) {
                     String msg = String.format("Option field cannot be declared in a private %s %s", enclosing.getKind().name().toLowerCase(), enclosing);
                     processingEnv.getMessager().printMessage(Kind.ERROR, msg, element);
@@ -167,6 +167,10 @@ public class OptionProcessor extends AbstractProcessor {
                 separator = ".";
             } else if (enclosing.getKind() == ElementKind.PACKAGE) {
                 enclosingPackage = (PackageElement) enclosing;
+                break;
+            } else {
+                processingEnv.getMessager().printMessage(Kind.ERROR, "Unexpected enclosing element kind: " + enclosing.getKind(), element);
+                return;
             }
             enclosing = enclosing.getEnclosingElement();
         }
@@ -260,12 +264,7 @@ public class OptionProcessor extends AbstractProcessor {
             out.println("        // CheckStyle: stop line length check");
             for (OptionInfo option : info.options) {
                 String name = option.name;
-                String optionField;
-                if (option.field.getModifiers().contains(Modifier.PRIVATE)) {
-                    throw new InternalError();
-                } else {
-                    optionField = option.declaringClass + "." + option.field.getSimpleName();
-                }
+                String optionField = option.declaringClass + "." + option.field.getSimpleName();
                 out.println("        case \"" + name + "\": {");
                 String optionType = option.optionType;
                 String type = option.type;

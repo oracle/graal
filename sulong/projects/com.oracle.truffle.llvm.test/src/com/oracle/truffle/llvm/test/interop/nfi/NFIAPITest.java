@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.test.interop.nfi;
 
 import java.io.File;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -56,7 +57,7 @@ public class NFIAPITest {
 
     @ClassRule public static TruffleRunner.RunWithPolyglotRule runWithPolyglot = new TruffleRunner.RunWithPolyglotRule();
 
-    private static final Path TEST_DIR = new File(TestOptions.TEST_SUITE_PATH, "nfi").toPath();
+    private static final Path TEST_DIR = Paths.get(TestOptions.TEST_SUITE_PATH, "nfi");
     private static final String SULONG_FILENAME = "O0_MEM2REG.bc";
 
     public static TruffleObject sulongObject;
@@ -141,7 +142,7 @@ public class NFIAPITest {
 
         protected SendExecuteNode(TruffleObject receiver) {
             this.receiver = receiver;
-            execute = Message.EXECUTE.createNode();
+            this.execute = Message.EXECUTE.createNode();
         }
 
         @Override

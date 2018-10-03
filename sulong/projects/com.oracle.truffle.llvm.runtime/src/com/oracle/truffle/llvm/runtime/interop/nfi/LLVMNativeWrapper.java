@@ -126,7 +126,7 @@ public final class LLVMNativeWrapper implements TruffleObject {
             if (function.isLLVMIRFunction()) {
                 callTarget = function.getLLVMIRFunction();
             } else if (function.isIntrinsicFunction()) {
-                callTarget = function.getNativeIntrinsic().cachedCallTarget(function.getType());
+                callTarget = function.getIntrinsic().cachedCallTarget(function.getType());
             } else {
                 throw new IllegalStateException("unexpected function: " + function.toString());
             }

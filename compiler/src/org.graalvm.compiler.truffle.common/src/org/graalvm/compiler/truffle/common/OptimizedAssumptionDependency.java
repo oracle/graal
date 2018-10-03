@@ -50,14 +50,16 @@ public interface OptimizedAssumptionDependency {
     }
 
     /**
-     * Determines if the reachability of this object corresponds with the validity of the referenced
-     * machine code.
+     * Determines if a reference to this object is the only way the machine code can be executed. If
+     * {@code true}, it means the assumption will use a weak reference to this object. Once the weak
+     * reference is cleared, assumption invalidation can ignore this object without posing the risk
+     * of invalid code remaining live.
      *
-     * @return {@code true} if the referenced machine code is guaranteed to be invalid when this
-     *         object becomes unreachable, {@code false} if the reachability of this object says
-     *         nothing about the validity of the referenced machine code
+     * @return {@code true} if the referenced machine code is guaranteed never to be executed when
+     *         this object dies, {@code false} the referenced machine code can be still be executed
+     *         even when this object is dead
      */
-    default boolean reachabilityDeterminesValidity() {
+    default boolean soleExecutionEntryPoint() {
         return true;
     }
 

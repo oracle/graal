@@ -61,7 +61,7 @@ public abstract class LLVMIVarBitStoreNode extends LLVMStoreNodeCommon {
         byte[] bytes = value.getBytes();
         LLVMManagedPointer currentPtr = address;
         for (int i = bytes.length - 1; i >= 0; i--) {
-            getForeignWriteNode(ForeignToLLVMType.I8).execute(currentPtr, bytes[i]);
+            getForeignWriteNode().executeWrite(currentPtr.getObject(), currentPtr.getOffset(), bytes[i], ForeignToLLVMType.I8);
             currentPtr = currentPtr.increment(I8_SIZE_IN_BYTES);
         }
     }
