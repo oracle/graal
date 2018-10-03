@@ -28,6 +28,7 @@ import java.util.Locale;
 import java.util.ResourceBundle;
 import java.util.logging.Filter;
 import java.util.logging.Formatter;
+import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 
@@ -130,14 +131,26 @@ final class Target_java_util_logging_LogManager {
 
 }
 
-@TargetClass(java.util.logging.LogRecord.class)
+@TargetClass(LogRecord.class)
 final class Target_java_util_logging_LogRecord {
     @Substitute
     private void inferCaller() {
-        /*
-         * The original implementation performs a stack walk here. We cannot do that. But luckily
-         * this is a best-effort operation anyway, so doing nothing is a suitable substitution.
-         */
+        final StackTraceElement[] stackTrace = new Throwable().getStackTrace();
+        boolean found = false;
+        for (int i = 1; i < stackTrace.length; i ++) {
+            final StackTraceElement frame = stackTrace[i];
+            final String className = frame.getClassName();
+            if (className.equals("java.util.logging.Logger") || className.startsWith("sun.util.logging.PlatformLogger")) {
+                found = true;
+            } else {
+                if (found) {
+                    final LogRecord this_ = (LogRecord) (Object) this;
+                    this_.setSourceClassName(className);
+                    this_.setSourceMethodName(frame.getMethodName());
+                    return;
+                }
+            }
+        }
     }
 }
 
