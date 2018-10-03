@@ -22,20 +22,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix;
+package com.oracle.svm.core.posix.linux;
 
-import com.oracle.svm.core.CompilerCommandPlugin;
+import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.ProcessPropertiesSupport;
 
-public abstract class PosixExecutableName implements CompilerCommandPlugin {
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.posix.PosixProcessPropertiesSupport;
 
-    /** The platform-independent key for getting the executable name. */
-    public static String getKey() {
-        return "com.oracle.svm.core.posix.GetExecutableName";
-    }
+@Platforms(Platform.LINUX.class)
+public class LinuxProcessPropertiesSupport extends PosixProcessPropertiesSupport {
 
     @Override
-    public String name() {
-        return PosixExecutableName.getKey();
+    public String getExecutableName() {
+        final String exefileString = "/proc/self/exe";
+        return realpath(exefileString);
+    }
+
+    @AutomaticFeature
+    public static class ImagePropertiesFeature implements Feature {
+
+        @Override
+        public void afterRegistration(AfterRegistrationAccess access) {
+            ImageSingletons.add(ProcessPropertiesSupport.class, new LinuxProcessPropertiesSupport());
+        }
     }
 
 }
