@@ -123,6 +123,7 @@ suite = {
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
+      "jacoco" : "include",
     },
 
     "com.oracle.truffle.llvm.runtime" : {
@@ -139,6 +140,7 @@ suite = {
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
+      "jacoco" : "include",
     },
 
     "com.oracle.truffle.llvm.instruments" : {
@@ -153,6 +155,7 @@ suite = {
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
+      "jacoco" : "include",
     },
 
     "com.oracle.truffle.llvm.nodes" : {
@@ -166,6 +169,7 @@ suite = {
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
+      "jacoco" : "include",
     },
 
     "com.oracle.truffle.llvm.parser" : {
@@ -179,6 +183,7 @@ suite = {
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
+      "jacoco" : "include",
     },
 
     "com.oracle.truffle.llvm" : {
@@ -192,6 +197,7 @@ suite = {
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
+      "jacoco" : "include",
     },
 
     "com.oracle.truffle.llvm.launcher" : {
@@ -204,6 +210,7 @@ suite = {
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
+      "jacoco" : "include",
     },
 
     "com.oracle.truffle.llvm.asm.amd64" : {
@@ -218,6 +225,7 @@ suite = {
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
+      "jacoco" : "include",
     },
 
     "com.oracle.truffle.llvm.parser.factories" : {
@@ -232,6 +240,7 @@ suite = {
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
+      "jacoco" : "include",
     },
 
     "com.oracle.truffle.llvm.pipe" : {
