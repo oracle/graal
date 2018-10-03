@@ -44,13 +44,10 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerOptions;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 
 public class OptimizedCompilationProfile {
-    private static final long NS_PER_MS = 1_000_000L;
-
     /**
      * Number of times an installed code for this tree was seen invalidated.
      */
@@ -59,11 +56,11 @@ public class OptimizedCompilationProfile {
     private int interpreterCallCount;
     private int interpreterCallAndLoopCount;
 
+    private long timestamp;
+
     // the values below must only be written under lock
-    private int deferredCount;
     private int compilationCallThreshold;
     private int compilationCallAndLoopThreshold;
-    private long timestamp;
 
     /*
      * Updating profiling information and its Assumption objects is done without synchronization and
@@ -302,68 +299,11 @@ public class OptimizedCompilationProfile {
             // check if call target is hot enough to get compiled, but took not too long to get hot
             int callThreshold = compilationCallThreshold; // 0 if TruffleCompileImmediately
             int callAndLoopThreshold = compilationCallAndLoopThreshold;
-            if ((intCallCount >= callThreshold && intAndLoopCallCount >= callAndLoopThreshold && !isDeferredCompile(callTarget, intCallCount, intAndLoopCallCount)) || callThreshold == 0) {
+            if ((intCallCount >= callThreshold && intAndLoopCallCount >= callAndLoopThreshold) || callThreshold == 0) {
                 return callTarget.compile();
             }
         }
         return false;
-    }
-
-    private boolean isDeferredCompile(OptimizedCallTarget target, int intCallCount, int intAndLoopCallCount) {
-        // Workaround for https://bugs.eclipse.org/bugs/show_bug.cgi?id=440019
-        long threshold = target.getOptionValue(PolyglotCompilerOptions.QueueTimeThreshold) * NS_PER_MS;
-
-        CompilerOptions compilerOptions = target.getCompilerOptions();
-        if (compilerOptions instanceof GraalCompilerOptions) {
-            threshold = Math.max(threshold, ((GraalCompilerOptions) compilerOptions).getMinTimeThreshold() * NS_PER_MS);
-        }
-        if (threshold <= 0) {
-            return false;
-        }
-
-        long timeElapsed = getTimeElapsed();
-        if (timeElapsed > threshold) {
-            return deferCompilation(intCallCount, intAndLoopCallCount, threshold);
-        }
-        return false;
-    }
-
-    private synchronized boolean deferCompilation(int intCallCount, int intAndLoopCallCount, long threshold) {
-        // recheck under lock if another thread already deferred the compilation in the meantime
-        long timeElapsed = getTimeElapsed();
-        if (timeElapsed > threshold) {
-            int callThresholdPerTimeslot = normalizeByDeferrals(compilationCallThreshold);
-            int callAndLoopThresholdPerTimeslot = normalizeByDeferrals(compilationCallAndLoopThreshold);
-
-            double timeSlotCorrection = ((double) threshold) / timeElapsed;
-            assert timeSlotCorrection <= 1.0d;
-            double countsPerTimeslot = normalizeByDeferrals(intCallCount) * timeSlotCorrection + normalizeByDeferrals(intAndLoopCallCount) * timeSlotCorrection;
-            double thresholdsPerTimeslot = (double) callThresholdPerTimeslot + (double) callAndLoopThresholdPerTimeslot;
-            if (countsPerTimeslot >= thresholdsPerTimeslot) {
-                // The call and loop counts (normalized to a single QueueTimeThreshold time slot)
-                // are high enough that compilation is still worth it, even though a lot of time has
-                // passed between the first execution and the one that overflowed the execution
-                // counters.
-                return false;
-            }
-
-            timestamp = System.nanoTime();
-            ensureProfiling(callThresholdPerTimeslot, callAndLoopThresholdPerTimeslot);
-            deferredCount++;
-        }
-        return true;
-    }
-
-    private int normalizeByDeferrals(int value) {
-        return value / (deferredCount + 1);
-    }
-
-    private long getTimeElapsed() {
-        long time = timestamp;
-        if (time == 0) {
-            return 0L;
-        }
-        return System.nanoTime() - time;
     }
 
     private void initializeProfiledArgumentTypes(Object[] args) {
@@ -456,10 +396,6 @@ public class OptimizedCompilationProfile {
 
     public int getInterpreterCallCount() {
         return interpreterCallCount;
-    }
-
-    public int getDeferredCount() {
-        return deferredCount;
     }
 
     public int getCompilationCallAndLoopThreshold() {

@@ -70,7 +70,6 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
     private int dequeues;
     private int splits;
 
-    private final IntSummaryStatistics deferCompilations = new IntSummaryStatistics();
     private final LongSummaryStatistics timeToQueue = new LongSummaryStatistics();
     private final LongSummaryStatistics timeToCompilation = new LongSummaryStatistics();
 
@@ -158,7 +157,6 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
         compilationTimes.set(times);
         OptimizedCompilationProfile profile = target.getCompilationProfile();
         if (profile != null) {
-            deferCompilations.accept(profile.getDeferredCount());
             timeToCompilation.accept(times.compilationStarted - profile.getTimestamp());
         }
     }
@@ -261,7 +259,6 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
         printStatistic(rt, "Queue Accuracy", 1.0 - dequeues / (double) queues);
         printStatistic(rt, "Compilation Utilization", compilationTime.getSum() / (double) (endTime - firstCompilation));
         printStatistic(rt, "Remaining Compilation Queue", rt.getCompilationQueueSize());
-        printStatistic(rt, "Times defered until compilation", deferCompilations);
 
         printStatisticTime(rt, "Time to queue", timeToQueue);
         printStatisticTime(rt, "Time to compilation", timeToCompilation);
