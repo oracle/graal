@@ -68,8 +68,8 @@ public class DynamicCounterNode extends FixedWithNextNode implements LIRLowerabl
         this(TYPE, group, name, increment, withContext);
     }
 
-    public static final int MIN_INCREMENT = 0;
-    public static final int MAX_INCREMENT = 10_000;
+    public static final long MIN_INCREMENT = 0;
+    public static final long MAX_INCREMENT = 10_000;
 
     /**
      * Clamps {@code value} to a value between {@link #MIN_INCREMENT} and {@link #MAX_INCREMENT}.
@@ -81,7 +81,7 @@ public class DynamicCounterNode extends FixedWithNextNode implements LIRLowerabl
 
     private boolean checkIncrement() {
         if (increment.isJavaConstant()) {
-            int incValue = increment.asJavaConstant().asInt();
+            long incValue = increment.asJavaConstant().asLong();
             if (incValue < MIN_INCREMENT || incValue > MAX_INCREMENT) {
                 String message = String.format("Benchmark counter %s:%s has increment out of range [%d .. %d]: %d", group, getNameWithContext(), MIN_INCREMENT, MAX_INCREMENT, incValue);
                 assert false : message;
