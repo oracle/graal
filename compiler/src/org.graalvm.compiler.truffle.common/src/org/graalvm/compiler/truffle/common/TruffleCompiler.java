@@ -54,7 +54,7 @@ public interface TruffleCompiler {
 
     /**
      * Compiles {@code compilable} to machine code.
-     * 
+     *
      * @param debug a debug context to use or {@code null} if a {@link DebugContext} cannot cross
      *            the Truffle runtime/compiler boundary represented by this object
      * @param compilationId an identifier to be used for the compilation or {@code null} if a

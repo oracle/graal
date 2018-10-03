@@ -34,7 +34,6 @@ import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.Truffle
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleProfilingEnabled;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleUseFrameWithoutBoxing;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getValue;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.overrideOptions;
 import static org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime.LazyFrameBoxingQuery.FrameBoxingClass;
 import static org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime.LazyFrameBoxingQuery.FrameBoxingClassName;
 
@@ -718,7 +717,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     protected void doCompile(DebugContext debug, CompilationIdentifier compilationId, OptionValues options, OptimizedCallTarget callTarget, TruffleCompilationTask task) {
         listeners.onCompilationStarted(callTarget);
         TruffleCompiler compiler = getTruffleCompiler();
-        TruffleInlining inlining = new TruffleInlining(callTarget, task != null && task.isLastTier() ? TruffleInliningPolicy.getInliningPolicy(options) : TruffleInliningPolicy.getNoInliningPolicy(options));
+        TruffleInlining inlining = new TruffleInlining(callTarget,
+                        task != null && task.isLastTier() ? TruffleInliningPolicy.getInliningPolicy(options) : TruffleInliningPolicy.getNoInliningPolicy(options));
         try (Scope s = debug != null ? debug.scope("Truffle", new TruffleDebugJavaMethod(callTarget)) : null) {
             // Open the "Truffle::methodName" dump group if dumping is enabled.
             try (OutputGroup o = new OutputGroup(debug, callTarget)) {

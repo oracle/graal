@@ -33,10 +33,12 @@ public interface TruffleInliningPolicy {
 
     double calculateScore(TruffleInliningProfile profile);
 
+    @SuppressWarnings("unused")
     static TruffleInliningPolicy getInliningPolicy(OptionValues options) {
         return new DefaultInliningPolicy();
     }
 
+    @SuppressWarnings("unused")
     static TruffleInliningPolicy getNoInliningPolicy(OptionValues options) {
         return new NoInliningPolicy();
     }

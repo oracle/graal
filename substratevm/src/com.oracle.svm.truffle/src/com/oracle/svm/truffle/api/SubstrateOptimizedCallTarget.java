@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.truffle.api;
 
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;

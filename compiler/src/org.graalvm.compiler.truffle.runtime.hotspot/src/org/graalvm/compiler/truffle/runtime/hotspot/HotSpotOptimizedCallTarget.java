@@ -26,7 +26,6 @@ package org.graalvm.compiler.truffle.runtime.hotspot;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleCallBoundary;
@@ -74,7 +73,8 @@ public class HotSpotOptimizedCallTarget extends OptimizedCallTarget implements O
         }
         invalidateCode();
         // A default nmethod can be called from entry points in the VM (e.g., Method::_code)
-        // and so allowing it to be installed here would invalidate the truth of `soleExecutionEntryPoint`
+        // and so allowing it to be installed here would invalidate the truth of
+        // `soleExecutionEntryPoint`
         if (code instanceof HotSpotNmethod) {
             HotSpotNmethod nmethod = (HotSpotNmethod) code;
             if (nmethod.isDefault()) {

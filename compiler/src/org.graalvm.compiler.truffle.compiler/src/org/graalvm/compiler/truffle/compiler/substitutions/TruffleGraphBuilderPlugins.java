@@ -119,7 +119,7 @@ public class TruffleGraphBuilderPlugins {
                     KnownTruffleTypes types) {
         registerOptimizedAssumptionPlugins(plugins, metaAccess, types);
         registerExactMathPlugins(plugins, metaAccess);
-        registerGraalCompilerDirectivesPlugins(plugins, metaAccess, canDelayIntrinsification);
+        registerGraalCompilerDirectivesPlugins(plugins, metaAccess);
         registerCompilerDirectivesPlugins(plugins, metaAccess, canDelayIntrinsification);
         registerCompilerAssertsPlugins(plugins, metaAccess, canDelayIntrinsification);
         registerOptimizedCallTargetPlugins(plugins, metaAccess, canDelayIntrinsification, types);
@@ -187,7 +187,7 @@ public class TruffleGraphBuilderPlugins {
         }
     }
 
-    public static void registerGraalCompilerDirectivesPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, boolean canDelayIntrinsification) {
+    public static void registerGraalCompilerDirectivesPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess) {
         final ResolvedJavaType graalCompilerDirectivesType = getRuntime().resolveType(metaAccess, "org.graalvm.compiler.truffle.runtime.GraalCompilerDirectives");
         Registration r = new Registration(plugins, new ResolvedJavaSymbol(graalCompilerDirectivesType));
         r.register0("inFirstTier", new InvocationPlugin() {

@@ -306,7 +306,7 @@ public class OptimizedCompilationProfile {
     }
 
     @CompilerDirectives.TruffleBoundary
-    private boolean firstTierCompile(OptimizedCallTarget callTarget) {
+    private static boolean firstTierCompile(OptimizedCallTarget callTarget) {
         return callTarget.compile(true);
     }
 

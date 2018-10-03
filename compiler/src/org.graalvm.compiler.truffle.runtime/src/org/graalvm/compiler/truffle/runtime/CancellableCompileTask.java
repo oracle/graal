@@ -74,6 +74,7 @@ public final class CancellableCompileTask implements TruffleCompilationTask {
         return false;
     }
 
+    @Override
     public boolean isLastTier() {
         return lastTierCompilation;
     }

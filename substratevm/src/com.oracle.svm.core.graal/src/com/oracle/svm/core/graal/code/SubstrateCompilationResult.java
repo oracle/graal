@@ -29,7 +29,6 @@ import java.util.List;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.graph.NodeSourcePosition;
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 
 public final class SubstrateCompilationResult extends CompilationResult {
 

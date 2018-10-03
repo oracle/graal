@@ -25,7 +25,6 @@
 package org.graalvm.compiler.truffle.runtime;
 
 import org.graalvm.compiler.core.CompilerThreadFactory;
-import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
@@ -46,13 +45,12 @@ import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.overrid
 /**
  * The compilation queue accepts compilation requests, and schedules compilations.
  *
- * The current queuing policy is to first schedule all the first tier compilation requests,
- * and only handle second tier compilation requests when there are no first tier compilations left.
- * Between the compilation requests of the same optimization tier, the queuing policy
- * is FIFO (first-in-first-out).
+ * The current queuing policy is to first schedule all the first tier compilation requests, and only
+ * handle second tier compilation requests when there are no first tier compilations left. Between
+ * the compilation requests of the same optimization tier, the queuing policy is FIFO
+ * (first-in-first-out).
  *
- * Note that all the compilation requests are second tier when the multi-tier option
- * is turned off.
+ * Note that all the compilation requests are second tier when the multi-tier option is turned off.
  */
 public class BackgroundCompileQueue {
     private final AtomicLong idCounter;

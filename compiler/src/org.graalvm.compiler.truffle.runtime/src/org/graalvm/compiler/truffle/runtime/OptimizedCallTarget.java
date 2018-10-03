@@ -377,7 +377,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return false;
     }
 
-    private final boolean needsCompile(boolean isLastTierCompilation) {
+    private boolean needsCompile(boolean isLastTierCompilation) {
         return !isValid() || (isLastTierCompilation && !isValidLastTier());
     }
 
