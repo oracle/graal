@@ -24,19 +24,24 @@
  */
 package com.oracle.svm.hosted.snippets;
 
+import java.io.InputStream;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.ServiceLoader;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.jdk.Resources;
+import com.oracle.svm.hosted.ImageClassLoader;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.core.common.CompressEncoding;
@@ -142,17 +147,22 @@ import sun.misc.Unsafe;
 class Options {
     @Option(help = "Enable trace logging for dynamic proxy.")//
     static final HostedOptionKey<Boolean> DynamicProxyTracing = new HostedOptionKey<>(false);
+
+    @Option(help = "Enable trace logging for service loader.")//
+    static final HostedOptionKey<Boolean> ServiceLoaderTracing = new HostedOptionKey<>(false);
 }
 
 public class SubstrateGraphBuilderPlugins {
     public static void registerInvocationPlugins(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection,
-                    SnippetReflectionProvider snippetReflection, InvocationPlugins plugins, BytecodeProvider bytecodeProvider, boolean analysis) {
+                                                 SnippetReflectionProvider snippetReflection, InvocationPlugins plugins, BytecodeProvider bytecodeProvider,
+                                                 ImageClassLoader loader, boolean analysis) {
 
         // register the substratevm plugins
         registerSystemPlugins(metaAccess, plugins);
         registerImageInfoPlugins(metaAccess, plugins);
         registerProxyPlugins(snippetReflection, plugins, analysis);
         registerAtomicUpdaterPlugins(metaAccess, snippetReflection, plugins, analysis);
+        registerServiceLoaderPlugins(snippetReflection, plugins, loader, analysis);
         registerObjectPlugins(plugins);
         registerUnsafePlugins(plugins);
         registerKnownIntrinsicsPlugins(plugins, analysis);
@@ -394,6 +404,83 @@ public class SubstrateGraphBuilderPlugins {
                      * case, if we threw the exception during image building, we would wrongly
                      * prohibit image generation.
                      */
+                }
+            }
+        }
+    }
+
+    private static void registerServiceLoaderPlugins(SnippetReflectionProvider snippetReflection, InvocationPlugins plugins, ImageClassLoader loader, boolean analysis) {
+        Registration r = new Registration(plugins, ServiceLoader.class);
+
+        r.register1("load", Class.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode serviceClassNode) {
+                interceptServiceLoaderInvoke(snippetReflection, loader, analysis, serviceClassNode);
+                /* Always return false; the call is not replaced. */
+                return false;
+            }
+        });
+
+        r.register2("load", Class.class, ClassLoader.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode serviceClassNode, ValueNode serviceClassLoaderNode) {
+                interceptServiceLoaderInvoke(snippetReflection, loader, analysis, serviceClassNode);
+                /* Always return false; the call is not replaced. */
+                return false;
+            }
+        });
+    }
+
+    /**
+     * Intercept the invoke to ServiceLoader.load(). If the service is constant try to find the associated configuration
+     * in resources and register implementations.
+     */
+    private static void interceptServiceLoaderInvoke(SnippetReflectionProvider snippetReflection, ImageClassLoader loader, boolean analysis, ValueNode serviceClassNode) {
+        if (analysis) {
+            if (serviceClassNode.isConstant()) {
+                Class<?> serviceClass = snippetReflection.asObject(Class.class, serviceClassNode.asJavaConstant());
+
+                String serviceClassName = serviceClass.getCanonicalName();
+
+                String resourceName = "META-INF/services/" + serviceClassName;
+
+                List<byte[]> resources = Resources.get(resourceName);
+
+                if (resources == null) {
+                    InputStream is = loader.getClassLoader().getResourceAsStream(resourceName);
+
+                    if (is != null) {
+                        Resources.registerResource(resourceName, is);
+                        resources = Resources.get(resourceName);
+                    }
+                }
+
+                if (resources != null) {
+                    if (Options.ServiceLoaderTracing.getValue()) {
+                        System.out.println("Service config found for service: " + serviceClassName);
+                    }
+
+                    byte[] resource = resources.get(0);
+
+                    String[] lines = new String(resource, StandardCharsets.UTF_8).split("\\r?\\n");
+
+                    for (String line : lines) {
+                        String concreteClassName = line.replaceAll("[ \t]|#.*$", "");
+
+                        if (!concreteClassName.isEmpty()) {
+                            Class<?> concreteClazz = loader.findClassByName(concreteClassName, false);
+
+                            if (concreteClazz != null) {
+                                RuntimeReflection.register(concreteClazz);
+                                RuntimeReflection.register(concreteClazz.getDeclaredConstructors());
+                            }
+                        }
+                    }
+                }
+                else {
+                    if (Options.ServiceLoaderTracing.getValue()) {
+                        System.out.println("Unable to locate service config for service: " + serviceClassName);
+                    }
                 }
             }
         }
