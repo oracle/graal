@@ -168,13 +168,18 @@ public final class NodeUtil {
             } else if (nodeClass.isChildrenField(field)) {
                 Object[] children = (Object[]) nodeClass.getFieldObject(field, orig);
                 if (children != null) {
-                    Object[] clonedChildren = (Object[]) Array.newInstance(children.getClass().getComponentType(), children.length);
-                    for (int i = 0; i < children.length; i++) {
-                        if (children[i] != null) {
-                            Node clonedChild = ((Node) children[i]).deepCopy();
-                            clonedChild.setParent(clone);
-                            clonedChildren[i] = clonedChild;
+                    Object[] clonedChildren;
+                    if (children.length > 0) {
+                        clonedChildren = (Object[]) Array.newInstance(children.getClass().getComponentType(), children.length);
+                        for (int i = 0; i < children.length; i++) {
+                            if (children[i] != null) {
+                                Node clonedChild = ((Node) children[i]).deepCopy();
+                                clonedChild.setParent(clone);
+                                clonedChildren[i] = clonedChild;
+                            }
                         }
+                    } else {
+                        clonedChildren = children;
                     }
                     nodeClass.putFieldObject(field, clone, clonedChildren);
                 }
