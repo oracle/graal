@@ -172,10 +172,7 @@ def _sulong_gate_unittest(title, test_suite, tasks, args, tags=None, testClasses
 
 def _sulong_gate_sulongsuite_unittest(title, tasks, args, tags=None, testClasses=None):
     test_suite = 'SULONG_TEST_SUITES'
-    unittestArgs = [
-        mx_subst.path_substitutions.substitute("-Dsulongtest.testSuitePath=<path:SULONG_TEST_SUITES>"),
-        ]
-    _sulong_gate_unittest(title, test_suite, tasks, args, tags=tags, testClasses=testClasses, unittestArgs=unittestArgs)
+    _sulong_gate_unittest(title, test_suite, tasks, args, tags=tags, testClasses=testClasses)
 
 def _sulong_gate_runner(args, tasks):
     with TemporaryEnv():
@@ -224,9 +221,6 @@ def testLLVMImage(image, imageArgs=None, testFilter=None, libPath=True, test=Non
     if unittestArgs is None:
         unittestArgs = []
     test_suite = 'SULONG_TEST_SUITES'
-    unittestArgs += [
-        mx_subst.path_substitutions.substitute("-Dsulongtest.testSuitePath=<path:SULONG_TEST_SUITES>"),
-        ]
     mx_testsuites.compileTestSuite(test_suite, extra_build_args=[])
     mx_testsuites.run(args + unittestArgs, testName)
 
