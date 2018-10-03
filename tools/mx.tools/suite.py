@@ -1,7 +1,18 @@
 suite = {
-    "mxversion": "5.175.2",
+    "mxversion": "5.176.0",
     "name": "tools",
     "defaultLicense" : "GPLv2-CPE",
+
+    "groupId" : "org.graalvm.tools",
+    "version": "1.0.0-rc8",
+    "release" : False,
+    "url" : "http://openjdk.java.net/projects/graal",
+    "developer" : {
+      "name" : "Truffle and Graal developers",
+      "email" : "graal-dev@openjdk.java.net",
+      "organization" : "Graal",
+      "organizationUrl" : "http://openjdk.java.net/projects/graal",
+    },
 
     "imports": {
         "suites": [
@@ -146,6 +157,10 @@ suite = {
                 "truffle:TRUFFLE_API",
                 "TRUFFLE_PROFILER",
             ],
+            "maven" : {
+              "artifactId" : "chromeinspector",
+            },
+            "description" : "The bridge between truffle tools and the chrome inspector.",
         },
         "CHROMEINSPECTOR_TEST": {
             "dependencies": ["com.oracle.truffle.tools.chromeinspector.test"],
@@ -177,6 +192,9 @@ suite = {
             "distDependencies" : [
                 "truffle:TRUFFLE_API",
             ],
+            "maven" : {
+              "artifactId" : "profiler",
+            },
             "javadocType" : "api",
             "description" : "The truffle profiler, supporting CPU sampling and tracing. Memory tracing support is experimental"
         },

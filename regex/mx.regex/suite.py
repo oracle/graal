@@ -1,10 +1,11 @@
 suite = {
-  "mxversion" : "5.149.0",
+  "mxversion" : "5.176.0",
 
   "name" : "regex",
 
   "version" : "1.0.0-rc8",
-  "groupId" : "com.oracle.truffle",
+  "release" : False,
+  "groupId" : "org.graalvm.regex",
   "url" : "http://www.graalvm.org/",
   "developer" : {
     "name" : "Truffle and Graal developers",
@@ -69,8 +70,10 @@ suite = {
         "truffle:TRUFFLE_API",
       ],
       "maven" : {
-        "artifactId" : "truffle-regex",
+        "artifactId" : "regex",
       },
+      "description" : "Truffle regular expressions language.",
+      "allowsJavadocWarnings": True,
     },
 
     "TREGEX_UNIT_TESTS" : {

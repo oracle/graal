@@ -24,7 +24,22 @@ deploy-sdk-truffle-compiler-tools-sulong : ${compilerCommon} {
   targets : [post-merge, deploy]
 }
 
+maven-deploy-all-suites : ${compilerCommon} {
+  mx_cmd_args : ["maven-deploy", "--validate", "full", "--licenses", "GPLv2-CPE,UPL", "--dry-run", "ossrh", "https://this-is-only-a-test"]
+  run: [
+    ["mx", "--dynamicimports", "/tools,/regex", "build"]
+    ["mx"] ${maven-deploy-all-suites.mx_cmd_args}
+    ["mx", "-p", "../truffle"] ${maven-deploy-all-suites.mx_cmd_args}
+    ["mx", "-p", "../sdk"] ${maven-deploy-all-suites.mx_cmd_args}
+    ["mx", "-p", "../tools"] ${maven-deploy-all-suites.mx_cmd_args}
+    ["mx", "-p", "../regex"] ${maven-deploy-all-suites.mx_cmd_args}
+  ]
+  targets : [gate]
+}
+
 builds += [
   ${deploy-sdk-truffle-compiler-tools-sulong} ${linux-amd64} ${linux-deploy} ${labsjdk8} {name: "postmerge-deploy-binaries-linux-amd64"}
   ${deploy-sdk-truffle-compiler-tools-sulong} ${darwin-amd64} ${darwin-deploy} ${labsjdk8} {name: "postmerge-deploy-binaries-darwin-amd64"}
+  ${maven-deploy-all-suites} ${linux-amd64} ${linux-deploy} ${labsjdk8} {name: "gate-maven-dry-run-all-jdk8-linux-amd64"}
+  ${maven-deploy-all-suites} ${linux-amd64} ${linux-deploy} ${oraclejdk11} {name: "gate-maven-dry-run-all-jdk11-linux-amd64"}
 ]
