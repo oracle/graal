@@ -22,67 +22,26 @@
  */
 package com.oracle.truffle.espresso;
 
-import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Map;
 
-import com.oracle.truffle.api.object.DynamicObject;
+import org.graalvm.options.OptionCategory;
+import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionKey;
 
-import sun.misc.Unsafe;
+import com.oracle.truffle.api.Option;
 
 public final class EspressoOptions {
-    /** Will use reflection to get and set fields in all the objects. */
-    public static final boolean OBJECT_ACCESS_VIA_REFLECTION = false;
+    @Option(help = "User-defined system properties.", category = OptionCategory.USER, namePredicate = OptionDescriptor.NamePredicate.PREFIX) //
+    public static final OptionKey<Map<String, String>> Properties = OptionKey.mapOf(String.class);
 
-    /**
-     * Will return null on uninitialized array read accesses, even if the array got specialized to
-     * some primitive type internally. Introduces additional checking overhead which may decrease
-     * performance. This options is only relevant if {@link #USE_DYNAMIC_OBJECT} is enabled.
-     */
-    public static final boolean COMPLIANT_ARRAY_READ_BEHAVIOUR;
+    // Injecting java.io.File.pathSeparator is a hack for OptionProcessor.
+    @Option(help = "Specifies \" + java.io.File.pathSeparator + \" a list of directories, JAR files, and ZIP archives to search for boot class files. These are used in place of the boot class files included in the JDK.", category = OptionCategory.USER) //
+    public static final OptionKey<String> BootClasspath = new OptionKey<>("");
 
-    /**
-     * Will replace every java object with an {@link DynamicObject} (expect for some critical
-     * classes like {@link Class}, {@link Throwable}, {@link System}, {@link Unsafe} and others).
-     */
-    public static final boolean USE_DYNAMIC_OBJECT;
+    // Injecting java.io.File.pathSeparator is a hack for OptionProcessor.
+    @Option(help = "A \" + java.io.File.pathSeparator + \" separated list of directories, JAR archives, and ZIP archives to search for class files.", category = OptionCategory.USER) //
+    public static final OptionKey<String> Classpath = new OptionKey<>("");
 
-    /**
-     * prints debug information to {@link System#err} while parsing and executing code. This flag
-     * should obviously never be enabled in production code.
-     */
-    public static final boolean ENABLE_DEBUG_OUTPUT;
-
-    /**
-     * The values of static fields which are mentioned in this list will not be converted to dynamic
-     * objects ever.
-     */
-    public static final List<Field> NATIVE_STATICS = new ArrayList<>();
-
-    /** Methods of classes which are mentioned in this list will be inlined. */
-    public static final List<String> FORCE_INLINE = new ArrayList<>();
-
-    public static final boolean INTRINSICS_VIA_REFLECTION;
-
-    static {
-        USE_DYNAMIC_OBJECT = Boolean.getBoolean("truffle.espresso.dynamic");
-        ENABLE_DEBUG_OUTPUT = Boolean.getBoolean("truffle.espresso.debug");
-
-        INTRINSICS_VIA_REFLECTION = Boolean.getBoolean("truffle.espresso.reflection");
-
-        COMPLIANT_ARRAY_READ_BEHAVIOUR = Boolean.getBoolean("truffle.espresso.compliant");
-
-        try {
-            NATIVE_STATICS.add(System.class.getField("out"));
-        } catch (NoSuchFieldException | SecurityException e) {
-            throw new IllegalStateException(e);
-        }
-
-        // will increase performance of ArrayList
-        FORCE_INLINE.add("java.util.ArrayList");
-        // we must create a new ANewArrayNode for each Array.newInstance callsite
-        FORCE_INLINE.add("java.lang.reflect.Array");
-        // increases unsafe field access performance because we hardly need caches then anymore
-        FORCE_INLINE.add("sun.misc.Unsafe");
-    }
+    @Option(help = "Use reflection to call method substitutions, otherwise use MethodHandles.", category = OptionCategory.USER) //
+    public static final OptionKey<Boolean> IntrinsicsViaReflection = new OptionKey<>(false);
 }

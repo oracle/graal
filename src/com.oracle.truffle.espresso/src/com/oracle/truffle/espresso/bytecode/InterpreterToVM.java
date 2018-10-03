@@ -322,7 +322,7 @@ public class InterpreterToVM {
     }
 
     private static RootNode createRootNodeForMethod(EspressoLanguage language, Method method) {
-        if (EspressoOptions.INTRINSICS_VIA_REFLECTION) {
+        if (language.getContextReference().get().getEnv().getOptions().get(EspressoOptions.IntrinsicsViaReflection)) {
             return new IntrinsicReflectionRootNode(language, method);
         } else {
             MethodHandle handle;
