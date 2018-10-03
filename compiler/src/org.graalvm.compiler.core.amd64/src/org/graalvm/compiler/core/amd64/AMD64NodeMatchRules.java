@@ -78,6 +78,8 @@ import org.graalvm.compiler.nodes.memory.LIRLowerableAccess;
 import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
@@ -273,21 +275,35 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
         return getArithmeticLIRGenerator().emitLoad(to, address, state);
     }
 
+    private boolean supports(CPUFeature feature) {
+        return ((AMD64) getLIRGeneratorTool().target().arch).getFeatures().contains(feature);
+    }
+
     @MatchRule("(And (Not a) b)")
     @MatchRule("(And b (Not a))")
     public ComplexMatchResult logicalAndNot(ValueNode a, ValueNode b) {
+        if (!supports(CPUFeature.BMI1)) {
+            return null;
+        }
         return builder -> getArithmeticLIRGenerator().emitLogicalAndNot(operand(a), operand(b));
     }
 
     @MatchRule("(And a (Negate a))")
     @MatchRule("(And (Negate a) a)")
     public ComplexMatchResult lowestSetIsolatedBit(ValueNode a) {
+        if (!supports(CPUFeature.BMI1)) {
+            return null;
+        }
         return builder -> getArithmeticLIRGenerator().emitLowestSetIsolatedBit(operand(a));
     }
 
     @MatchRule("(Xor a (Add a b))")
     @MatchRule("(Xor (Add a b) a)")
     public ComplexMatchResult getMaskUpToLowestSetBit(ValueNode a, ValueNode b) {
+        if (!supports(CPUFeature.BMI1)) {
+            return null;
+        }
+
         // Make sure that the pattern matches a subtraction by one.
         if (!b.isJavaConstant()) {
             return null;
@@ -313,6 +329,9 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
     @MatchRule("(And a (Add a b))")
     @MatchRule("(And (Add a b) a)")
     public ComplexMatchResult resetLowestSetBit(ValueNode a, ValueNode b) {
+        if (!supports(CPUFeature.BMI1)) {
+            return null;
+        }
         // Make sure that the pattern matches a subtraction by one.
         if (!b.isJavaConstant()) {
             return null;
