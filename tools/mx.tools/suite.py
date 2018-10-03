@@ -3,7 +3,7 @@ suite = {
     "name": "tools",
     "defaultLicense" : "GPLv2-CPE",
 
-    "groupId" : "org.graalvm",
+    "groupId" : "org.graalvm.tools",
     "version": "1.0.0-rc8",
     "release" : False,
     "url" : "http://openjdk.java.net/projects/graal",
@@ -157,6 +157,9 @@ suite = {
                 "truffle:TRUFFLE_API",
                 "TRUFFLE_PROFILER",
             ],
+            "maven" : {
+              "artifactId" : "chromeinspector",
+            },
             "description" : "The bridge between truffle tools and the chrome inspector.",
         },
         "CHROMEINSPECTOR_TEST": {
@@ -189,6 +192,9 @@ suite = {
             "distDependencies" : [
                 "truffle:TRUFFLE_API",
             ],
+            "maven" : {
+              "artifactId" : "profiler",
+            },
             "javadocType" : "api",
             "description" : "The truffle profiler, supporting CPU sampling and tracing. Memory tracing support is experimental"
         },
