@@ -44,24 +44,23 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerOptions;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 
 public class OptimizedCompilationProfile {
-
     /**
      * Number of times an installed code for this tree was seen invalidated.
      */
     private int invalidationCount;
-    private int deferredCount;
 
     private int interpreterCallCount;
     private int interpreterCallAndLoopCount;
-    private int compilationCallThreshold;
-    private int compilationCallAndLoopThreshold;
 
     private long timestamp;
+
+    // the values below must only be written under lock
+    private int compilationCallThreshold;
+    private int compilationCallAndLoopThreshold;
 
     /*
      * Updating profiling information and its Assumption objects is done without synchronization and
@@ -299,41 +298,10 @@ public class OptimizedCompilationProfile {
         if (!callTarget.isCompiling() && !compilationFailed) {
             // check if call target is hot enough to get compiled, but took not too long to get hot
             int callThreshold = compilationCallThreshold; // 0 if TruffleCompileImmediately
-            if ((intCallCount >= callThreshold && intAndLoopCallCount >= compilationCallAndLoopThreshold && !isDeferredCompile(callTarget)) || callThreshold == 0) {
+            int callAndLoopThreshold = compilationCallAndLoopThreshold;
+            if ((intCallCount >= callThreshold && intAndLoopCallCount >= callAndLoopThreshold) || callThreshold == 0) {
                 return callTarget.compile();
             }
-        }
-        return false;
-    }
-
-    private boolean isDeferredCompile(OptimizedCallTarget target) {
-        // Workaround for https://bugs.eclipse.org/bugs/show_bug.cgi?id=440019
-        int threshold = target.getOptionValue(PolyglotCompilerOptions.QueueTimeThreshold);
-
-        CompilerOptions compilerOptions = target.getCompilerOptions();
-        if (compilerOptions instanceof GraalCompilerOptions) {
-            threshold = Math.max(threshold, ((GraalCompilerOptions) compilerOptions).getMinTimeThreshold());
-        }
-        if (threshold <= 0) {
-            return false;
-        }
-
-        long time = timestamp;
-        if (time == 0) {
-            return false;
-        }
-
-        long timeElapsed = System.nanoTime() - time;
-        if (timeElapsed > (threshold * 1_000_000L)) {
-
-            int callThreshold = TruffleCompilerOptions.getValue(TruffleMinInvokeThreshold);
-            int callAndLoopThreshold = PolyglotCompilerOptions.getValue(target.getRootNode(), PolyglotCompilerOptions.CompilationThreshold);
-
-            // defer compilation
-            ensureProfiling(0, Math.min(callThreshold, callAndLoopThreshold));
-            timestamp = System.nanoTime();
-            deferredCount++;
-            return true;
         }
         return false;
     }
@@ -391,16 +359,17 @@ public class OptimizedCompilationProfile {
         }
     }
 
-    private void ensureProfiling(int calls, int callsAndLoop) {
+    private synchronized void ensureProfiling(int calls, int callsAndLoop) {
         if (this.compilationCallThreshold == 0) { // TruffleCompileImmediately
             return;
         }
-        int increaseCallAndLoopThreshold = callsAndLoop - (this.compilationCallAndLoopThreshold - this.interpreterCallAndLoopCount);
+
+        int increaseCallAndLoopThreshold = callsAndLoop - Math.max(0, this.compilationCallAndLoopThreshold - this.interpreterCallAndLoopCount);
         if (increaseCallAndLoopThreshold > 0) {
             this.compilationCallAndLoopThreshold += increaseCallAndLoopThreshold;
         }
 
-        int increaseCallsThreshold = calls - (this.compilationCallThreshold - this.interpreterCallCount);
+        int increaseCallsThreshold = calls - Math.max(0, this.compilationCallThreshold - this.interpreterCallCount);
         if (increaseCallsThreshold > 0) {
             this.compilationCallThreshold += increaseCallsThreshold;
         }
@@ -427,10 +396,6 @@ public class OptimizedCompilationProfile {
 
     public int getInterpreterCallCount() {
         return interpreterCallCount;
-    }
-
-    public int getDeferredCount() {
-        return deferredCount;
     }
 
     public int getCompilationCallAndLoopThreshold() {

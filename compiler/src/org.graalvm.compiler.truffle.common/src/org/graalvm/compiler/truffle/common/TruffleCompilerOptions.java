@@ -143,12 +143,6 @@ public class TruffleCompilerOptions {
     @Option(help = "Compile call target when call count exceeds this threshold", type = OptionType.User)
     public static final OptionKey<Integer> TruffleCompilationThreshold = new OptionKey<>(1000);
 
-    /**
-     * deprecated use {@code PolyglotCompilerOptions.QueueTimeThreshold} instead.
-     */
-    @Option(help = "Defines the maximum timespan in milliseconds that is required for a call target to be queued for compilation.", type = OptionType.User)
-    public static final OptionKey<Integer> TruffleTimeThreshold = new OptionKey<>(50000);
-
     @Option(help = "Minimum number of calls before a call target is compiled", type = OptionType.Expert)
     public static final OptionKey<Integer> TruffleMinInvokeThreshold = new OptionKey<>(3);
 

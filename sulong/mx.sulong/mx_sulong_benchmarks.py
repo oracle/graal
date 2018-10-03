@@ -212,7 +212,6 @@ class SulongVm(GuestVm):
 
         suTruffleOptions = [
             '-Dgraal.TruffleBackgroundCompilation=false',
-            '-Dgraal.TruffleTimeThreshold=1000000',
             '-Dgraal.TruffleInliningMaxCallerSize=10000',
             '-Dgraal.TruffleCompilationExceptionsAreFatal=true',
             mx_subst.path_substitutions.substitute('-Dpolyglot.llvm.libraryPath=<path:SULONG_LIBS>'),
