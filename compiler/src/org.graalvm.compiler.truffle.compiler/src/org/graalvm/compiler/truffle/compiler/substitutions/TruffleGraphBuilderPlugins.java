@@ -25,6 +25,7 @@
 package org.graalvm.compiler.truffle.compiler.substitutions;
 
 import static java.lang.Character.toUpperCase;
+import static org.graalvm.compiler.debug.DebugOptions.DumpOnError;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleUseFrameWithoutBoxing;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.getRuntime;
 
@@ -39,6 +40,7 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
@@ -604,7 +606,12 @@ public class TruffleGraphBuilderPlugins {
                 } else if (canDelayIntrinsification) {
                     return false;
                 } else {
-                    throw b.bailout("unsafeCast arguments could not reduce to a constant: " + clazz + ", " + nonNull + ", " + isExactType);
+                    String message = "unsafeCast arguments could not reduce to a constant: " + clazz + ", " + nonNull + ", " + isExactType;
+                    if (DumpOnError.getValue(b.getOptions())) {
+                        // Produce a graph dump to diagnose GR-8831
+                        throw new GraalError(message);
+                    }
+                    throw b.bailout(message);
                 }
             }
         });
