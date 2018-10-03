@@ -41,10 +41,11 @@
 package com.oracle.truffle.api.impl;
 
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+
+import static com.oracle.truffle.api.impl.DefaultTruffleRuntime.getRuntime;
 
 /**
  * This is an implementation-specific class. Do not use or instantiate it. Instead, use
@@ -103,14 +104,10 @@ public final class DefaultCallTarget implements RootCallTarget {
         }
     }
 
-    private static DefaultTruffleRuntime getRuntime() {
-        return (DefaultTruffleRuntime) Truffle.getRuntime();
-    }
-
     private void initialize() {
         synchronized (this) {
             if (!this.initialized) {
-                ((DefaultTruffleRuntime) Truffle.getRuntime()).getTvmci().onFirstExecution(this);
+                getRuntime().getTvmci().onFirstExecution(this);
                 this.initialized = true;
             }
         }

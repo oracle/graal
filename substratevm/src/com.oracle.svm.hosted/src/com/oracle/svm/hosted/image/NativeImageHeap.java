@@ -28,10 +28,8 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Modifier;
-import java.lang.reflect.Proxy;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collections;
@@ -39,7 +37,6 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -64,11 +61,11 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.NativeImageInfo;
-import com.oracle.svm.core.hub.ClassInitializationInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.StringInternSupport;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.NativeImageOptions;
@@ -100,22 +97,17 @@ public final class NativeImageHeap {
     }
 
     @SuppressWarnings("try")
-    public void addInitialObjects(DebugContext debug) {
-        try (Indent indent = debug.logAndIndent("add initial objects to heap")) {
-            addObjectsPhase.allow();
-            internStringsPhase.allow();
+    public void addInitialObjects() {
+        addObjectsPhase.allow();
+        internStringsPhase.allow();
 
-            debug.log("initial add primitive static fields");
-            addObject(debug, StaticFieldsSupport.getStaticPrimitiveFields(), false, false, "primitive static fields");
-
-            debug.log("initial add static fields");
-            addStaticFields(debug);
-        }
+        addObject(StaticFieldsSupport.getStaticPrimitiveFields(), false, "primitive static fields");
+        addStaticFields();
     }
 
-    public void addTrailingObjects(DebugContext debug) {
+    public void addTrailingObjects() {
         // Process any remaining objects on the worklist, especially that might intern strings.
-        processAddObjectWorklist(debug);
+        processAddObjectWorklist();
 
         HostedField internedStringsField = (HostedField) StringInternFeature.getInternedStringsField(metaAccess);
         boolean usesInternedStrings = internedStringsField.isAccessed();
@@ -124,7 +116,7 @@ public final class NativeImageHeap {
             /*
              * Ensure that the hub of the String[] array (used for the interned objects) is written.
              */
-            addObject(debug, getMetaAccess().lookupJavaType(String[].class).getHub(), false, false, "internedStrings table");
+            addObject(getMetaAccess().lookupJavaType(String[].class).getHub(), false, "internedStrings table");
             /*
              * We are no longer allowed to add new interned strings, because that would modify the
              * table we are about to write.
@@ -138,10 +130,10 @@ public final class NativeImageHeap {
             Arrays.sort(imageInternedStrings);
             ImageSingletons.lookup(StringInternSupport.class).setImageInternedStrings(imageInternedStrings);
 
-            addObject(debug, imageInternedStrings, true, true, "internedStrings table");
+            addObject(imageInternedStrings, true, "internedStrings table");
 
             // Process any objects that were transitively added to the heap.
-            processAddObjectWorklist(debug);
+            processAddObjectWorklist();
         } else {
             internStringsPhase.disallow();
         }
@@ -162,9 +154,9 @@ public final class NativeImageHeap {
         return SubstrateObjectConstant.asObject(field.readStorageValue(receiver));
     }
 
-    private void addStaticFields(DebugContext debug) {
-        addObject(debug, StaticFieldsSupport.getStaticObjectFields(), false, false, "staticObjectFields");
-        addObject(debug, StaticFieldsSupport.getStaticPrimitiveFields(), false, false, "staticPrimitiveFields");
+    private void addStaticFields() {
+        addObject(StaticFieldsSupport.getStaticObjectFields(), false, "staticObjectFields");
+        addObject(StaticFieldsSupport.getStaticPrimitiveFields(), false, "staticPrimitiveFields");
 
         /*
          * We only have empty holder arrays for the static fields, so we need to add static object
@@ -172,7 +164,7 @@ public final class NativeImageHeap {
          */
         for (HostedField field : getUniverse().getFields()) {
             if (Modifier.isStatic(field.getModifiers()) && field.isWritten() && field.isAccessed() && field.getType().getStorageKind() == JavaKind.Object) {
-                addObject(debug, readObjectField(field, null), false, false, field);
+                addObject(readObjectField(field, null), false, field);
             }
         }
     }
@@ -226,7 +218,7 @@ public final class NativeImageHeap {
      * Various transformations are done from objects in the hosted heap to the native image heap.
      * Not every object is added to the heap, for various reasons.
      */
-    public void addObject(DebugContext debug, final Object original, final boolean parentCanonicalizable, boolean immutableFromParent, final Object reason) {
+    public void addObject(final Object original, boolean immutableFromParent, final Object reason) {
         assert addObjectsPhase.isAllowed() : "Objects cannot be added at phase: " + addObjectsPhase.toString() + " with reason: " + reason;
 
         if (original == null || original instanceof WordBase) {
@@ -256,25 +248,13 @@ public final class NativeImageHeap {
             identityHashCode = System.identityHashCode(original);
         }
 
-        // Determine if the object is canonicalizable and if so canonicalize it.
-        // Canonicalization is used to construct singleton objects in the native image heap
-        // from possibly-distinct objects in the host heap.
-        // TODO: What I would like here is a method that takes an instance and whether its
-        // ... container is canonicalizable and returns a boolean about whether the instance is
-        // ... canonicalizable and the canonicalized instance. But I can not do that in Java.
-        final boolean canonicalizable = isCanonicalizable(original, parentCanonicalizable);
-        debug.log("canonicalizable: %b", canonicalizable);
-        final Object canonical = canonicalizable ? canonicalize(original) : original;
+        if (original instanceof String) {
+            handleImageString((String) original);
+        }
 
-        final ObjectInfo existing = objects.get(canonical);
-        if (existing != null) {
-            if (canonical != original) {
-                existing.update(original, identityHashCode);
-                objects.putIfAbsent(original, existing);
-            }
-            debug.log("already existing object");
-        } else {
-            addObjectToBootImageHeap(original, canonical, canonicalizable, immutableFromParent, identityHashCode, reason);
+        final ObjectInfo existing = objects.get(original);
+        if (existing == null) {
+            addObjectToBootImageHeap(original, immutableFromParent, identityHashCode, reason);
         }
     }
 
@@ -318,49 +298,13 @@ public final class NativeImageHeap {
         return objects.get(obj);
     }
 
-    /** Did the host intern this String? */
-    private static boolean hostInternedString(final String str) {
-        /*
-         * Check if we have a string that is interned in the host VM.
-         *
-         * I cannot just check that "str.intern() == str": if the string was not interned before,
-         * then intern() returns the original object and the comparison will succeed. Instead I
-         * first make a copy of the string and intern that. If the result of interning the copy
-         * returns the original String, then the original String was interned before this.
-         *
-         * It seems like there is a corner case where this pollutes the host interned String table
-         * enough to confuse later queries about whether a String was interned on the host. But
-         * there is no other way to query the host interned String table.
-         */
-        final String internedStr = new String(str).intern();
-        return (internedStr == str);
-    }
-
-    /**
-     * Is an object canonicalizable? That is, can one instance be replaced by another instance? That
-     * depends on the type of the object, and whether it is part of a larger data structure (the
-     * "parent") that is canonicalizable.
-     */
-    private boolean isCanonicalizable(Object object, boolean parentCanonicalizable) {
-        if (object instanceof String) {
-            final String str = (String) object;
-            forceHashCodeComputation(str);
-            if (hostInternedString(str)) {
-                /*
-                 * The string is interned by the host VM, so it must also be interned in our image.
-                 */
-                assert (internedStrings.containsKey(str) || internStringsPhase.isAllowed()) : String.format("Should not intern string during phase: %s  str: %s.", internStringsPhase.toString(), str);
-                internedStrings.put(str, str);
-                return true;
-            }
+    private void handleImageString(final String str) {
+        forceHashCodeComputation(str);
+        if (HostedStringDeduplication.isInternedString(str)) {
+            /* The string is interned by the host VM, so it must also be interned in our image. */
+            assert internedStrings.containsKey(str) || internStringsPhase.isAllowed() : "Should not intern string during phase " + internStringsPhase.toString();
+            internedStrings.put(str, str);
         }
-
-        if (isInstance(knownNonCanonicalizableClasses, object)) {
-            return false;
-        } else if (isInstance(knownCanonicalizableClasses, object)) {
-            return true;
-        }
-        return parentCanonicalizable;
     }
 
     /**
@@ -371,42 +315,20 @@ public final class NativeImageHeap {
         str.hashCode();
     }
 
-    private static boolean isInstance(List<Class<?>> classList, Object object) {
-        boolean result = false;
-        for (Class<?> clazz : classList) {
-            if (clazz.isInstance(object)) {
-                result = true;
-                break;
-            }
-        }
-        return result;
-    }
-
-    private Object canonicalize(final Object object) {
-        final CanonicalizedObjectHolder holder = new CanonicalizedObjectHolder(object);
-        final Object existing = canonicalizationMap.putIfAbsent(holder, object);
-        if (existing != null) {
-            return existing;
-        } else {
-            return object;
-        }
-    }
-
     /**
      * It has been determined that an object should be added to the model of the native image heap.
      * This is the mechanics of recursively adding the object and all its fields and array elements
      * to the model of the native image heap.
      */
-    private void addObjectToBootImageHeap(final Object original, final Object canonicalObj, final boolean canonicalizable,
-                    boolean immutableFromParent, final int identityHashCode, final Object reason) {
+    private void addObjectToBootImageHeap(final Object object, boolean immutableFromParent, final int identityHashCode, final Object reason) {
 
-        final Optional<HostedType> optionalType = getMetaAccess().optionalLookupJavaType(canonicalObj.getClass());
+        final Optional<HostedType> optionalType = getMetaAccess().optionalLookupJavaType(object.getClass());
         if (!optionalType.isPresent() || !optionalType.get().isInstantiated()) {
             throw UserError.abort("Image heap writing found an object whose class was not seen as instantiated during static analysis. " +
                             "Did a static field or an object referenced from a static field changed during native image generation? " +
                             "For example, a lazily initialized cache could have been initialized during image generation, " +
                             "in which case you need to force eager initialization of the cache before static analysis or reset the cache using a field value recomputation.\n" +
-                            "  object: " + original + "  of class: " + original.getClass().getTypeName() + "\n" +
+                            "  object: " + object + "  of class: " + object.getClass().getTypeName() + "\n" +
                             "  reachable through:\n" +
                             fillReasonStack(new StringBuilder(), reason));
         }
@@ -414,7 +336,7 @@ public final class NativeImageHeap {
         final DynamicHub hub = type.getHub();
         final ObjectInfo info;
 
-        boolean immutable = immutableFromParent || isImmutable(canonicalObj, canonicalizable);
+        boolean immutable = immutableFromParent || isImmutable(object);
         boolean written = false;
         boolean references = false;
         boolean relocatable = false; /* always false when !spawnIsolates() */
@@ -428,7 +350,7 @@ public final class NativeImageHeap {
                 references = true;
             }
 
-            final JavaConstant con = SubstrateObjectConstant.forObject(canonicalObj);
+            final JavaConstant con = SubstrateObjectConstant.forObject(object);
             HostedField hybridBitsetField = null;
             HostedField hybridArrayField = null;
             Object hybridArray = null;
@@ -465,22 +387,22 @@ public final class NativeImageHeap {
                 size = LayoutEncoding.getInstanceSize(hub.getLayoutEncoding()).rawValue();
             }
 
-            info = addToImageHeap(original, canonicalObj, clazz, size, identityHashCode, reason);
-            recursiveAddObject(hub, canonicalizable, false, info);
+            info = addToImageHeap(object, clazz, size, identityHashCode, reason);
+            recursiveAddObject(hub, false, info);
             // Recursively add all the fields of the object.
-            final boolean fieldsAreImmutable = canonicalObj instanceof String;
+            final boolean fieldsAreImmutable = object instanceof String;
             for (HostedField field : clazz.getInstanceFields(true)) {
                 if (field.isAccessed() && !field.equals(hybridArrayField) && !field.equals(hybridBitsetField)) {
                     boolean fieldRelocatable = false;
                     if (field.getJavaKind() == JavaKind.Object) {
                         assert field.hasLocation();
-                        JavaConstant value = field.readValue(con);
-                        if (value.getJavaKind() == JavaKind.Object) {
-                            Object obj = SubstrateObjectConstant.asObject(value);
+                        JavaConstant fieldValueConstant = field.readValue(con);
+                        if (fieldValueConstant.getJavaKind() == JavaKind.Object) {
+                            Object fieldValue = SubstrateObjectConstant.asObject(fieldValueConstant);
                             if (spawnIsolates()) {
-                                fieldRelocatable = obj instanceof RelocatedPointer;
+                                fieldRelocatable = fieldValue instanceof RelocatedPointer;
                             }
-                            recursiveAddObject(obj, canonicalizable, fieldsAreImmutable, info);
+                            recursiveAddObject(fieldValue, fieldsAreImmutable, info);
                             references = true;
                         }
                     }
@@ -495,16 +417,16 @@ public final class NativeImageHeap {
 
             }
             if (hybridArray instanceof Object[]) {
-                relocatable = addArrayElements((Object[]) hybridArray, relocatable, canonicalizable, info);
+                relocatable = addArrayElements((Object[]) hybridArray, relocatable, info);
                 references = true;
             }
         } else if (type.isArray()) {
             HostedArrayClass clazz = (HostedArrayClass) type;
-            final long size = layout.getArraySize(type.getComponentType().getStorageKind(), Array.getLength(canonicalObj));
-            info = addToImageHeap(original, canonicalObj, clazz, size, identityHashCode, reason);
-            recursiveAddObject(hub, canonicalizable, false, info);
-            if (canonicalObj instanceof Object[]) {
-                relocatable = addArrayElements((Object[]) canonicalObj, false, canonicalizable, info);
+            final long size = layout.getArraySize(type.getComponentType().getStorageKind(), Array.getLength(object));
+            info = addToImageHeap(object, clazz, size, identityHashCode, reason);
+            recursiveAddObject(hub, false, info);
+            if (object instanceof Object[]) {
+                relocatable = addArrayElements((Object[]) object, false, info);
                 references = true;
             }
             written = true; /* How to know if any of the array elements are written? */
@@ -517,27 +439,26 @@ public final class NativeImageHeap {
     }
 
     /** Determine if an object in the host heap will be immutable in the native image heap. */
-    private boolean isImmutable(final Object obj, final boolean canonicalizable) {
+    private boolean isImmutable(final Object obj) {
         if (obj instanceof String) {
             // Strings need to have their hash code set or they are not immutable.
             // If the hash is 0, then it will be recomputed again (and again)
             // so the String is not immutable.
             return obj.hashCode() != 0;
+        } else if (obj instanceof DynamicHub) {
+            return true;
         } else if (knownImmutableObjects.contains(obj)) {
             return true;
         } else {
-            return canonicalizable;
+            return false;
         }
     }
 
     /** Add an object to the model of the native image heap. */
-    private ObjectInfo addToImageHeap(Object original, Object canonical, HostedClass clazz, long size, int identityHashCode, Object reason) {
-        ObjectInfo info = new ObjectInfo(canonical, size, clazz, identityHashCode, reason);
-        assert !objects.containsKey(canonical);
-        objects.put(canonical, info);
-        if (canonical != original && !objects.containsKey(original)) {
-            objects.put(original, objects.get(canonical));
-        }
+    private ObjectInfo addToImageHeap(Object object, HostedClass clazz, long size, int identityHashCode, Object reason) {
+        ObjectInfo info = new ObjectInfo(object, size, clazz, identityHashCode, reason);
+        assert !objects.containsKey(object);
+        objects.put(object, info);
         return info;
     }
 
@@ -560,14 +481,14 @@ public final class NativeImageHeap {
     }
 
     // Deep-copy an array from the host heap to the model of the native image heap.
-    private boolean addArrayElements(Object[] array, boolean otherFieldsRelocatable, boolean canonicalizable, Object reason) {
+    private boolean addArrayElements(Object[] array, boolean otherFieldsRelocatable, Object reason) {
         boolean relocatable = otherFieldsRelocatable;
         for (Object element : array) {
             Object value = aUniverse.replaceObject(element);
             if (spawnIsolates()) {
                 relocatable = relocatable || value instanceof RelocatedPointer;
             }
-            recursiveAddObject(value, canonicalizable, false, reason);
+            recursiveAddObject(value, false, reason);
         }
         return relocatable;
     }
@@ -576,16 +497,16 @@ public final class NativeImageHeap {
      * Break recursion using a worklist, to support large object graphs that would lead to a stack
      * overflow.
      */
-    private void recursiveAddObject(Object original, boolean parentCanonicalizable, boolean immutableFromParent, Object reason) {
+    private void recursiveAddObject(Object original, boolean immutableFromParent, Object reason) {
         if (original != null) {
-            addObjectWorklist.push(new AddObjectData(original, parentCanonicalizable, immutableFromParent, reason));
+            addObjectWorklist.push(new AddObjectData(original, immutableFromParent, reason));
         }
     }
 
-    private void processAddObjectWorklist(DebugContext debug) {
+    private void processAddObjectWorklist() {
         while (!addObjectWorklist.isEmpty()) {
             AddObjectData data = addObjectWorklist.pop();
-            addObject(debug, data.original, data.parentCanonicalizable, data.immutableFromParent, data.reason);
+            addObject(data.original, data.immutableFromParent, data.reason);
         }
     }
 
@@ -971,18 +892,6 @@ public final class NativeImageHeap {
              */
             readOnlyPrimitive.incrementSize(layout.getAlignment());
         }
-
-        // Initialize the canonicalizable and immutable class lists.
-        // Some hosted classes I know are not canonicalizable.
-        knownNonCanonicalizableClasses.add(Enum.class);
-        knownNonCanonicalizableClasses.add(Proxy.class);
-        // The classes implementing Map have lazily initialized caches, so must not be immutable.
-        knownNonCanonicalizableClasses.add(Map.class);
-        // ClassInitializationInfo is mutable, but referenced from the immutable DynamicHub
-        knownNonCanonicalizableClasses.add(ClassInitializationInfo.class);
-
-        // Some hosted classes I know to be canonicalizable.
-        knownCanonicalizableClasses.add(DynamicHub.class);
     }
 
     private final HostedUniverse universe;
@@ -1013,13 +922,6 @@ public final class NativeImageHeap {
     /** A queue of objects that need to be added to the native image heap, to avoid recursion. */
     private final Deque<AddObjectData> addObjectWorklist = new ArrayDeque<>();
 
-    /** The canonicalization map. */
-    private final Map<CanonicalizedObjectHolder, Object> canonicalizationMap = new HashMap<>();
-    /** A list of classes that are known to be canonicalizable. */
-    private final List<Class<?>> knownCanonicalizableClasses = new ArrayList<>();
-    /** A list classes that are known not to be canonicalizable. */
-    private final List<Class<?>> knownNonCanonicalizableClasses = new ArrayList<>();
-
     /** Objects that are known to be immutable in the native image heap. */
     private final Set<Object> knownImmutableObjects = Collections.newSetFromMap(new IdentityHashMap<>());
 
@@ -1032,16 +934,14 @@ public final class NativeImageHeap {
 
     static class AddObjectData {
 
-        AddObjectData(Object original, boolean parentCanonicalizable, boolean immutableFromParent, Object reason) {
+        AddObjectData(Object original, boolean immutableFromParent, Object reason) {
             super();
             this.original = original;
-            this.parentCanonicalizable = parentCanonicalizable;
             this.immutableFromParent = immutableFromParent;
             this.reason = reason;
         }
 
         final Object original;
-        final boolean parentCanonicalizable;
         final boolean immutableFromParent;
         final Object reason;
     }
@@ -1095,35 +995,6 @@ public final class NativeImageHeap {
 
         private void setIdentityHashCode(int identityHashCode) {
             this.identityHashCode = identityHashCode;
-        }
-
-        /**
-         * Maintains some consistency between different instances of objects.
-         *
-         * Notes on the identity hash code for classes: We map two different hosted objects (the
-         * java.lang.Class and the DynamicHub) to one object at run time (the DynamicHub). This
-         * means we have two hosted identity hash codes to choose from to use. It is more reasonable
-         * to use the one from java.lang.Class: if, for example, a hash map that is built by a
-         * static initializer has a java.lang.Class as the key, then this hash map works just fine
-         * at run time since the hash codes are the same. In contrast, it is unlikely that we rely
-         * on the hash code from our own DynamicHub instances. We can only access the hash code from
-         * java.lang.Class when we encounter it in this method (which does the substitution to
-         * DynamicHub in the above code). However, if we never encounter a reference to a certain
-         * java.lang.Class, this means that this class is never referenced explicitly from a data
-         * structure. Therefore, it also not possible that we care about its hash code, i.e., it is
-         * fine if we use the hash code from the DynamicHub in this case.
-         */
-        void update(Object original, int hashCode) {
-            if (getIdentityHashCode() != hashCode) {
-                assert getIdentityHashCode() == System.identityHashCode(original) || getIdentityHashCode() == System.identityHashCode(object);
-                if (original instanceof Class) {
-                    /*
-                     * The existing ObjectInfo might have had the hash code from the DynamicHub, but
-                     * now we change it to the hash code from the java.lang.Class.
-                     */
-                    setIdentityHashCode(hashCode);
-                }
-            }
         }
 
         @Override
@@ -1317,55 +1188,6 @@ public final class NativeImageHeap {
         private long sectionOffset;
 
         private static final long INVALID_SECTION_OFFSET = -1L;
-    }
-
-    static final class CanonicalizedObjectHolder {
-        @Override
-        public boolean equals(Object o) {
-            if (object == null) {
-                return false;
-            }
-            if (object == ((CanonicalizedObjectHolder) o).object) {
-                return true;
-            } else if (object.getClass() != ((CanonicalizedObjectHolder) o).object.getClass()) {
-                return false;
-            } else if (object instanceof byte[]) {
-                return Arrays.equals((byte[]) object, (byte[]) ((CanonicalizedObjectHolder) o).object);
-            } else if (object instanceof char[]) {
-                return Arrays.equals((char[]) object, (char[]) ((CanonicalizedObjectHolder) o).object);
-            } else if (object instanceof int[]) {
-                return Arrays.equals((int[]) object, (int[]) ((CanonicalizedObjectHolder) o).object);
-            } else if (object instanceof long[]) {
-                return Arrays.equals((long[]) object, (long[]) ((CanonicalizedObjectHolder) o).object);
-            } else if (object instanceof Object[]) {
-                return Arrays.deepEquals((Object[]) object, (Object[]) ((CanonicalizedObjectHolder) o).object);
-            } else {
-                return object.equals(((CanonicalizedObjectHolder) o).object);
-            }
-        }
-
-        @Override
-        public int hashCode() {
-            if (object instanceof byte[]) {
-                return Arrays.hashCode((byte[]) object);
-            } else if (object instanceof char[]) {
-                return Arrays.hashCode((char[]) object);
-            } else if (object instanceof int[]) {
-                return Arrays.hashCode((int[]) object);
-            } else if (object instanceof long[]) {
-                return Arrays.hashCode((long[]) object);
-            } else if (object instanceof Object[]) {
-                return Arrays.deepHashCode((Object[]) object);
-            } else {
-                return object.hashCode();
-            }
-        }
-
-        CanonicalizedObjectHolder(Object object) {
-            this.object = object;
-        }
-
-        final Object object;
     }
 
     protected static final class Phase {

@@ -167,8 +167,10 @@ public class OptionProcessor extends AbstractProcessor {
                 separator = ".";
             } else if (enclosing.getKind() == ElementKind.PACKAGE) {
                 enclosingPackage = (PackageElement) enclosing;
+                break;
             } else {
-                throw new InternalError("Unexpected enclosing element kind: " + enclosing.getKind());
+                processingEnv.getMessager().printMessage(Kind.ERROR, "Unexpected enclosing element kind: " + enclosing.getKind(), element);
+                return;
             }
             enclosing = enclosing.getEnclosingElement();
         }
@@ -262,12 +264,7 @@ public class OptionProcessor extends AbstractProcessor {
             out.println("        // CheckStyle: stop line length check");
             for (OptionInfo option : info.options) {
                 String name = option.name;
-                String optionField;
-                if (option.field.getModifiers().contains(Modifier.PRIVATE)) {
-                    throw new InternalError();
-                } else {
-                    optionField = option.declaringClass + "." + option.field.getSimpleName();
-                }
+                String optionField = option.declaringClass + "." + option.field.getSimpleName();
                 out.println("        case \"" + name + "\": {");
                 String optionType = option.optionType;
                 String type = option.type;

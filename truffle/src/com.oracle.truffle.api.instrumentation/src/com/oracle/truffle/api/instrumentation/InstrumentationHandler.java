@@ -66,6 +66,7 @@ import java.util.concurrent.locks.Lock;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.io.MessageTransport;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Scope;
@@ -142,15 +143,17 @@ final class InstrumentationHandler {
     private DispatchOutputStream out;   // effectively final
     private DispatchOutputStream err;   // effectively final
     private InputStream in;             // effectively final
+    private MessageTransport messageInterceptor; // effectively final
     private final Map<Class<?>, Set<Class<?>>> cachedProvidedTags = new ConcurrentHashMap<>();
 
     private final EngineInstrumenter engineInstrumenter;
 
-    private InstrumentationHandler(Object sourceVM, DispatchOutputStream out, DispatchOutputStream err, InputStream in) {
+    private InstrumentationHandler(Object sourceVM, DispatchOutputStream out, DispatchOutputStream err, InputStream in, MessageTransport messageInterceptor) {
         this.sourceVM = sourceVM;
         this.out = out;
         this.err = err;
         this.in = in;
+        this.messageInterceptor = messageInterceptor;
         this.engineInstrumenter = new EngineInstrumenter();
     }
 
@@ -299,7 +302,7 @@ final class InstrumentationHandler {
     }
 
     void initializeInstrument(Object vmObject, Class<?> instrumentClass) {
-        Env env = new Env(vmObject, out, err, in);
+        Env env = new Env(vmObject, out, err, in, messageInterceptor);
         env.instrumenter = new InstrumentClientInstrumenter(env, instrumentClass);
 
         if (TRACE) {
@@ -2073,8 +2076,8 @@ final class InstrumentationHandler {
         static final class InstrumentImpl extends InstrumentSupport {
 
             @Override
-            public Object createInstrumentationHandler(Object vm, DispatchOutputStream out, DispatchOutputStream err, InputStream in) {
-                return new InstrumentationHandler(vm, out, err, in);
+            public Object createInstrumentationHandler(Object vm, DispatchOutputStream out, DispatchOutputStream err, InputStream in, MessageTransport messageInterceptor) {
+                return new InstrumentationHandler(vm, out, err, in, messageInterceptor);
             }
 
             @Override

@@ -54,6 +54,7 @@ import java.util.logging.Level;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
 import org.graalvm.polyglot.proxy.Proxy;
 import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.MessageTransport;
 
 /**
  * A polyglot context for Graal guest languages that allows to {@link #eval(Source) evaluate} code.
@@ -699,6 +700,7 @@ public final class Context implements AutoCloseable {
         private Boolean allowIO;
         private Boolean allowHostClassLoading;
         private FileSystem customFileSystem;
+        private MessageTransport messageTransport;
         private Handler customLogHandler;
 
         Builder(String... onlyLanguages) {
@@ -956,6 +958,23 @@ public final class Context implements AutoCloseable {
         }
 
         /**
+         * Take over transport of message communication with a server peer. Provide an
+         * implementation of {@link MessageTransport} to virtualize a transport of messages to a
+         * server endpoint.
+         * {@link MessageTransport#open(java.net.URI, org.graalvm.polyglot.io.MessageEndpoint)}
+         * corresponds to accept of a server socket.
+         *
+         * @param serverTransport an implementation of message transport interceptor
+         * @see MessageTransport
+         * @since 1.0
+         */
+        public Builder serverTransport(final MessageTransport serverTransport) {
+            Objects.requireNonNull(serverTransport, "MessageTransport must be non null.");
+            this.messageTransport = serverTransport;
+            return this;
+        }
+
+        /**
          * Installs a new logging {@link Handler}. The logger's {@link Level} configuration is done
          * using the {@link #options(java.util.Map) Context's options}. The level option key has the
          * following format: {@code log.languageId.loggerName.level} or
@@ -1025,12 +1044,18 @@ public final class Context implements AutoCloseable {
                 if (customLogHandler != null) {
                     engineBuilder.logHandler(customLogHandler);
                 }
+                if (messageTransport != null) {
+                    engineBuilder.serverTransport(messageTransport);
+                }
                 engineBuilder.setBoundEngine(true);
                 engine = engineBuilder.build();
                 return engine.impl.createContext(null, null, null, allowHostAccess, allowNativeAccess, allowCreateThread, allowIO,
                                 allowHostClassLoading,
                                 hostClassFilter, Collections.emptyMap(), arguments == null ? Collections.emptyMap() : arguments, onlyLanguages, customFileSystem, customLogHandler);
             } else {
+                if (messageTransport != null) {
+                    throw new IllegalStateException("Cannot use MessageTransport in a context that shares an Engine.");
+                }
                 return engine.impl.createContext(out, err, in, allowHostAccess, allowNativeAccess, allowCreateThread, allowIO,
                                 allowHostClassLoading,
                                 hostClassFilter, options == null ? Collections.emptyMap() : options, arguments == null ? Collections.emptyMap() : arguments, onlyLanguages, customFileSystem,

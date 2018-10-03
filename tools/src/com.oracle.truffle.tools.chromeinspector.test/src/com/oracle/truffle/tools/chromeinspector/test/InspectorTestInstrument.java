@@ -25,14 +25,12 @@
 package com.oracle.truffle.tools.chromeinspector.test;
 
 import java.io.PrintWriter;
+import java.io.IOException;
 
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.test.ReflectionUtils;
 
-import com.oracle.truffle.tools.chromeinspector.TruffleDebugger;
 import com.oracle.truffle.tools.chromeinspector.TruffleExecutionContext;
-import com.oracle.truffle.tools.chromeinspector.TruffleProfiler;
-import com.oracle.truffle.tools.chromeinspector.TruffleRuntime;
 import com.oracle.truffle.tools.chromeinspector.server.ConnectionWatcher;
 import com.oracle.truffle.tools.chromeinspector.server.InspectServerSession;
 
@@ -53,12 +51,14 @@ public final class InspectorTestInstrument extends TruffleInstrument {
                     private long id;
 
                     InspectSessionInfo init() {
-                        TruffleExecutionContext context = new TruffleExecutionContext("test", inspectInternal, inspectInitialization, env, new PrintWriter(env.err()));
+                        TruffleExecutionContext context;
+                        try {
+                            context = new TruffleExecutionContext("test", inspectInternal, inspectInitialization, env, new PrintWriter(env.err()));
+                        } catch (IOException ex) {
+                            throw new AssertionError(ex);
+                        }
                         this.connectionWatcher = new ConnectionWatcher();
-                        TruffleRuntime runtime = new TruffleRuntime(context);
-                        TruffleDebugger debugger = new TruffleDebugger(context, suspend);
-                        TruffleProfiler profiler = new TruffleProfiler(context, connectionWatcher);
-                        this.iss = new InspectServerSession(runtime, debugger, profiler, context);
+                        this.iss = InspectServerSession.create(context, suspend, connectionWatcher);
                         this.id = context.getId();
                         // Fake connection open
                         ReflectionUtils.invoke(connectionWatcher, "notifyOpen");

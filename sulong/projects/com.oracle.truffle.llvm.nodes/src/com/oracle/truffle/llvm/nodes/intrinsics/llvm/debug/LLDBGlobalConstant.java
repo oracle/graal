@@ -35,19 +35,14 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugTypeConstants;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
-final class LLVMConstantGlobalValueProvider implements LLVMDebugValue {
+final class LLDBGlobalConstant implements LLVMDebugValue {
 
     private final LLVMGlobal global;
-    private final LLVMMemory memory;
-    private final LLVMDebugValue.Builder valueBuilder;
 
-    LLVMConstantGlobalValueProvider(LLVMMemory memory, LLVMGlobal global, Builder valueBuilder) {
-        this.memory = memory;
+    LLDBGlobalConstant(LLVMGlobal global) {
         this.global = global;
-        this.valueBuilder = valueBuilder;
     }
 
     @Override
@@ -75,7 +70,7 @@ final class LLVMConstantGlobalValueProvider implements LLVMDebugValue {
     @Override
     @TruffleBoundary
     public String describeValue(long bitOffset, int bitSize) {
-        return String.format("%s (%d bits at offset %d bits)", global.getSourceName(), bitSize, bitOffset);
+        return String.format("%s (%s at offset %s)", global.getSourceName(), LLDBSupport.toSizeString(bitSize), LLDBSupport.toSizeString(bitOffset));
     }
 
     @Override
@@ -130,6 +125,12 @@ final class LLVMConstantGlobalValueProvider implements LLVMDebugValue {
     }
 
     @Override
+    public boolean isAlwaysSafeToDereference(long bitOffset) {
+        final LLVMDebugValue value = getCurrentValue();
+        return value != null && value.isAlwaysSafeToDereference(bitOffset);
+    }
+
+    @Override
     public LLVMDebugValue dereferencePointer(long bitOffset) {
         final LLVMDebugValue value = getCurrentValue();
         if (value != null) {
@@ -159,13 +160,13 @@ final class LLVMConstantGlobalValueProvider implements LLVMDebugValue {
 
     private LLVMDebugValue getCurrentValue() {
         if (isInNative(global)) {
-            return new LLVMAllocationValueProvider(memory, LLVMNativePointer.cast(global.getTarget()));
+            return new LLDBMemoryValue(LLVMNativePointer.cast(global.getTarget()));
         } else {
-            return valueBuilder.build(global.getTarget());
+            return LLDBSupport.getNodeFactory().createDebugValueBuilder().build(global.getTarget());
         }
     }
 
-    public static boolean isInNative(LLVMGlobal global) {
+    private static boolean isInNative(LLVMGlobal global) {
         return LLVMNativePointer.isInstance(global.getTarget());
     }
 }

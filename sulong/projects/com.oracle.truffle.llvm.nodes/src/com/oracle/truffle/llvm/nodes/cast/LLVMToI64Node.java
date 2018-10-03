@@ -58,6 +58,8 @@ public abstract class LLVMToI64Node extends LLVMExpressionNode {
 
     @Child private LLVMToNativeNode toNative;
 
+    public abstract Object executeWithTarget(Object o);
+
     @Specialization
     protected Object doManaged(LLVMManagedPointer from) {
         return getToNative().executeWithTarget(from).asNative();

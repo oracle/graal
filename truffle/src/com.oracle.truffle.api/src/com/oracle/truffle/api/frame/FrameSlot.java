@@ -53,7 +53,7 @@ public final class FrameSlot implements Cloneable {
     final FrameDescriptor descriptor;
     private final Object identifier;
     private final Object info;
-    private final int index;
+    final int index;
     /*
      * The FrameSlot cannot be made immutable by moving the kind field to FrameDescriptor, because
      * it would force getFrameSlotKind and setFrameSlotKind to check frameSlot removal which would
@@ -99,7 +99,9 @@ public final class FrameSlot implements Cloneable {
      *         {@link FrameDescriptor#addFrameSlot(java.lang.Object, java.lang.Object, com.oracle.truffle.api.frame.FrameSlotKind)
      *         adding} it.
      * @since 0.8 or earlier
+     * @deprecated in 1.0 without replacement
      */
+    @Deprecated
     public int getIndex() {
         return index;
     }

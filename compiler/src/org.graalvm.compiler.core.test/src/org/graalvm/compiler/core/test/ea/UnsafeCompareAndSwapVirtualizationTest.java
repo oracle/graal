@@ -25,6 +25,7 @@
 package org.graalvm.compiler.core.test.ea;
 
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import org.graalvm.compiler.nodes.java.LogicCompareAndSwapNode;
 import org.junit.Test;
@@ -35,6 +36,7 @@ public class UnsafeCompareAndSwapVirtualizationTest extends EATestBase {
 
     private static Object obj1 = new Object();
     private static Object obj2 = new Object();
+    private static final Object OBJ1 = new Object();
 
     public static boolean bothVirtualNoMatch() {
         AtomicReference<Object> a = new AtomicReference<>();
@@ -67,7 +69,7 @@ public class UnsafeCompareAndSwapVirtualizationTest extends EATestBase {
 
     @Test
     public void expectedVirtualMatchTest() {
-        testEscapeAnalysis("expectedVirtualMatch", null, true);
+        testEscapeAnalysis("expectedVirtualMatch", JavaConstant.INT_1, true);
         assertTrue(graph.getNodes(LogicCompareAndSwapNode.TYPE).isEmpty());
     }
 
@@ -79,34 +81,63 @@ public class UnsafeCompareAndSwapVirtualizationTest extends EATestBase {
 
     @Test
     public void expectedVirtualNoMatchTest() {
-        testEscapeAnalysis("expectedVirtualNoMatch", null, true);
+        testEscapeAnalysis("expectedVirtualNoMatch", JavaConstant.INT_0, true);
         assertTrue(graph.getNodes(LogicCompareAndSwapNode.TYPE).isEmpty());
     }
 
     public static boolean bothNonVirtualNoMatch() {
         AtomicReference<Object> a = new AtomicReference<>();
-        return a.compareAndSet(obj1, obj2);
+        return a.compareAndSet(OBJ1, obj2);
     }
 
     @Test
     public void bothNonVirtualNoMatchTest() {
-        testEscapeAnalysis("bothNonVirtualNoMatch", null, true);
+        testEscapeAnalysis("bothNonVirtualNoMatch", JavaConstant.INT_0, true);
         assertTrue(graph.getNodes(LogicCompareAndSwapNode.TYPE).isEmpty());
     }
 
     public static boolean bothNonVirtualMatch() {
-        AtomicReference<Object> a = new AtomicReference<>(obj1);
-        return a.compareAndSet(obj1, obj2);
+        AtomicReference<Object> a = new AtomicReference<>(OBJ1);
+        return a.compareAndSet(OBJ1, obj2);
     }
 
     @Test
     public void bothNonVirtualMatchTest() {
-        testEscapeAnalysis("bothNonVirtualMatch", null, true);
+        testEscapeAnalysis("bothNonVirtualMatch", JavaConstant.INT_1, true);
+        assertTrue(graph.getNodes(LogicCompareAndSwapNode.TYPE).isEmpty());
+    }
+
+    public static boolean onlyInitialValueVirtualNoMatch() {
+        AtomicReference<Object> a = new AtomicReference<>(new Object());
+        return a.compareAndSet(obj1, obj2);
+    }
+
+    @Test
+    public void onlyInitialValueVirtualNoMatchTest() {
+        testEscapeAnalysis("onlyInitialValueVirtualNoMatch", JavaConstant.INT_0, true);
         assertTrue(graph.getNodes(LogicCompareAndSwapNode.TYPE).isEmpty());
     }
 
     public static boolean onlyInitialValueVirtualMatch() {
-        AtomicReference<Object> a = new AtomicReference<>(new Object());
-        return a.compareAndSet(obj1, obj2);
+        Object o = new Object();
+        AtomicReference<Object> a = new AtomicReference<>(o);
+        return a.compareAndSet(o, obj2);
+    }
+
+    @Test
+    public void onlyInitialValueVirtualMatchTest() {
+        testEscapeAnalysis("onlyInitialValueVirtualMatch", JavaConstant.INT_1, true);
+        assertTrue(graph.getNodes(LogicCompareAndSwapNode.TYPE).isEmpty());
+    }
+
+    public static boolean bothVirtualNoMatchArray() {
+        AtomicReferenceArray<Object> array = new AtomicReferenceArray<>(1);
+        return array.compareAndSet(0, new Object(), new Object());
+    }
+
+    @Test
+    public void bothVirtualNoMatchArrayTest() {
+        testEscapeAnalysis("bothVirtualNoMatchArray", JavaConstant.INT_0, true);
+        assertTrue(graph.getNodes(LogicCompareAndSwapNode.TYPE).isEmpty());
     }
 }

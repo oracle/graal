@@ -27,51 +27,20 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.debug.value;
+#include <stdlib.h>
+#include <stdint.h>
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
+struct foo {
+  int *ptr;
+};
 
-public final class LLVMDebugGenericValue extends LLVMDebuggerValue {
+int a = 2;
+struct foo b = { &a };
+struct foo *c = &b;
+long d = 99;
 
-    private static final String VALUE_KEY = "<value>";
-    private static final String[] INTEROP_KEYS = new String[]{VALUE_KEY};
-
-    private static final String NO_TYPE = "";
-
-    private final Object value;
-    private final Object type;
-
-    public LLVMDebugGenericValue(Object value, Object type) {
-        this.value = value;
-        this.type = type;
-    }
-
-    @Override
-    @TruffleBoundary
-    public String toString() {
-        return String.valueOf(value);
-    }
-
-    @TruffleBoundary
-    @Override
-    public Object getMetaObject() {
-        return type == null ? NO_TYPE : String.valueOf(type);
-    }
-
-    @Override
-    protected int getElementCountForDebugger() {
-        return value instanceof TruffleObject ? 1 : 0;
-    }
-
-    @Override
-    protected String[] getKeysForDebugger() {
-        return value instanceof TruffleObject ? INTEROP_KEYS : NO_KEYS;
-    }
-
-    @Override
-    protected Object getElementForDebugger(String key) {
-        return VALUE_KEY.equals(key) ? value : null;
-    }
+int main() {
+  intptr_t z = (intptr_t)c;
+  intptr_t z2 = (z + d);
+  return z2 > 1;
 }

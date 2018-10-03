@@ -490,6 +490,7 @@ suite = {
       "class" : "ExternalTestSuite",
       "testDir" : "gcc-5.2.0/gcc/testsuite",
       "fileExts" : [".f90", ".f", ".f03"],
+      "requireDragonegg" : True,
       "native" : True,
       "vpath" : True,
       "variants" : ["O0"],
@@ -677,6 +678,9 @@ suite = {
         "sulong:SULONG",
         "SULONG_TEST_NATIVE",
       ],
+      "javaProperties" : {
+        "sulongtest.testSuitePath" : "<path:SULONG_TEST_SUITES>"
+      },
       "license" : "BSD-new",
       "testDistribution" : True,
       "defaultBuild" : False,

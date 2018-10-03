@@ -66,7 +66,7 @@ public final class FrameWithBoxing implements VirtualFrame, MaterializedFrame {
 
     @Override
     public Object getObject(FrameSlot slot) {
-        int index = slot.getIndex();
+        int index = getFrameSlotIndex(slot);
         Object[] curLocals = this.getLocals();
         if (CompilerDirectives.inInterpreter() && index >= curLocals.length) {
             curLocals = resizeAndCheck(slot);
@@ -80,7 +80,7 @@ public final class FrameWithBoxing implements VirtualFrame, MaterializedFrame {
 
     @Override
     public void setObject(FrameSlot slot, Object value) {
-        int index = slot.getIndex();
+        int index = getFrameSlotIndex(slot);
         Object[] curLocals = this.getLocals();
         if (CompilerDirectives.inInterpreter() && index >= curLocals.length) {
             curLocals = resizeAndCheck(slot);
@@ -239,4 +239,10 @@ public final class FrameWithBoxing implements VirtualFrame, MaterializedFrame {
     private static <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull, boolean exact) {
         return (T) value;
     }
+
+    @SuppressWarnings("deprecation")
+    private static int getFrameSlotIndex(FrameSlot slot) {
+        return slot.getIndex();
+    }
+
 }

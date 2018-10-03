@@ -202,12 +202,11 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             if (!VMThreads.isInitialized()) {
                 return CEntryPointErrors.UNINITIALIZED_ISOLATE;
             }
-            IsolateThread thread = VMThreads.singleton().readIsolateThreadFromOSThreadLocal();
+            IsolateThread thread = VMThreads.singleton().findIsolateThreadforCurrentOSThread();
             if (VMThreads.isNullThread(thread)) { // not attached
                 thread = VMThreads.singleton().allocateIsolateThread(vmThreadSize);
-                VMThreads.attachThread(thread);
+                VMThreads.singleton().attachThread(thread);
                 // Store thread and isolate in thread-local variables.
-                VMThreads.singleton().writeIsolateThreadToOSThreadLocal(thread);
                 VMThreads.IsolateTL.set(thread, isolate);
             }
             writeCurrentVMThread(thread);
@@ -249,7 +248,6 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
             // clear references to thread to avoid unintended use
             writeCurrentVMThread(VMThreads.nullThread());
-            VMThreads.singleton().writeIsolateThreadToOSThreadLocal(VMThreads.nullThread());
 
             VMThreads.detachThread(thread);
         } catch (Throwable t) {
@@ -278,7 +276,6 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         if (!success) {
             return CEntryPointErrors.UNSPECIFIED;
         }
-        VMThreads.singleton().tearDown();
         return Isolates.tearDownCurrent();
     }
 
@@ -313,7 +310,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         if (!VMThreads.isInitialized()) {
             return CEntryPointErrors.UNINITIALIZED_ISOLATE;
         }
-        IsolateThread thread = VMThreads.singleton().readIsolateThreadFromOSThreadLocal();
+        IsolateThread thread = VMThreads.singleton().findIsolateThreadforCurrentOSThread();
         if (VMThreads.isNullThread(thread)) {
             return CEntryPointErrors.UNATTACHED_THREAD;
         }
@@ -389,7 +386,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         if (UseHeapBaseRegister.getValue()) {
             setHeapBase(Isolates.getHeapBase(isolate));
         }
-        return VMThreads.isInitialized() && VMThreads.singleton().readIsolateThreadFromOSThreadLocal().isNonNull();
+        return VMThreads.isInitialized() && VMThreads.singleton().findIsolateThreadforCurrentOSThread().isNonNull();
     }
 
     @Snippet

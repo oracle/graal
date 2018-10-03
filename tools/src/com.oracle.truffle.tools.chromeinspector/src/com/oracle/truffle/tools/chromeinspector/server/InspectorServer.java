@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,22 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.graal.meta;
+package com.oracle.truffle.tools.chromeinspector.server;
 
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.io.IOException;
 
-/** De-duplication of String without using {@link String#intern}. */
-public class UniqueStringTable {
+/**
+ * An abstraction of an inspector server.
+ */
+public interface InspectorServer {
 
-    private final ConcurrentMap<String, String> map = new ConcurrentHashMap<>();
+    int getListeningPort();
 
-    public String unique(String s) {
-        if (s == null) {
-            return null;
-        }
-
-        String previous = map.putIfAbsent(s, s);
-        return previous != null ? previous : s;
-    }
+    void close(String path) throws IOException;
 }

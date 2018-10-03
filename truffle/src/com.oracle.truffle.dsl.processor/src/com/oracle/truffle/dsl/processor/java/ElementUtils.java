@@ -73,7 +73,7 @@ import javax.lang.model.type.PrimitiveType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.WildcardType;
-import javax.lang.model.util.AbstractAnnotationValueVisitor7;
+import javax.lang.model.util.AbstractAnnotationValueVisitor8;
 import javax.lang.model.util.ElementFilter;
 
 import com.oracle.truffle.dsl.processor.CompileErrorException;
@@ -878,7 +878,7 @@ public class ElementUtils {
 
     }
 
-    private static class AnnotationValueVisitorImpl extends AbstractAnnotationValueVisitor7<Object, Void> {
+    private static class AnnotationValueVisitorImpl extends AbstractAnnotationValueVisitor8<Object, Void> {
 
         @Override
         public Object visitBoolean(boolean b, Void p) {

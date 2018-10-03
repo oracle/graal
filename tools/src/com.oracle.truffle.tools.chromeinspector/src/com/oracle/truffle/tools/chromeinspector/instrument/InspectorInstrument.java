@@ -29,12 +29,18 @@ import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionType;
 import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.io.MessageEndpoint;
+import org.graalvm.polyglot.io.MessageTransport;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleContext;
@@ -45,9 +51,10 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 
 import com.oracle.truffle.tools.chromeinspector.TruffleExecutionContext;
 import com.oracle.truffle.tools.chromeinspector.server.ConnectionWatcher;
+import com.oracle.truffle.tools.chromeinspector.server.InspectServerSession;
+import com.oracle.truffle.tools.chromeinspector.server.InspectorServer;
+import com.oracle.truffle.tools.chromeinspector.server.WSInterceptorServer;
 import com.oracle.truffle.tools.chromeinspector.server.WebSocketServer;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Chrome inspector as an instrument.
@@ -143,7 +150,10 @@ public final class InspectorInstrument extends TruffleInstrument {
             info.println("Waiting for the debugger to disconnect...");
             info.flush();
             connectionWatcher.waitForClose();
-            server.close();
+            try {
+                server.close();
+            } catch (IOException ioex) {
+            }
         }
     }
 
@@ -222,7 +232,7 @@ public final class InspectorInstrument extends TruffleInstrument {
 
     private static final class Server {
 
-        private WebSocketServer wss;
+        private InspectorServer wss;
         private final String wsspath;
 
         Server(final Env env, final String contextName, final InetSocketAddress socketAdress, final boolean debugBreak, final boolean waitAttached, final boolean hideErrors,
@@ -238,12 +248,32 @@ public final class InspectorInstrument extends TruffleInstrument {
 
             PrintWriter err = (hideErrors) ? null : info;
             final TruffleExecutionContext executionContext = new TruffleExecutionContext(contextName, inspectInternal, inspectInitialization, env, err);
-            wss = WebSocketServer.get(socketAdress, wsspath, executionContext, debugBreak, secure, keyStoreOptions, connectionWatcher);
-            String address = buildAddress(socketAdress.getAddress().getHostAddress(), wss.getListeningPort(), wsspath, secure);
-            info.println("Debugger listening on port " + wss.getListeningPort() + ".");
-            info.println("To start debugging, open the following URL in Chrome:");
-            info.println("    " + address);
-            info.flush();
+            URI wsuri;
+            try {
+                wsuri = new URI(secure ? "wss" : "ws", null, socketAdress.getAddress().getHostAddress(), socketAdress.getPort(), path, null, null);
+            } catch (URISyntaxException ex) {
+                throw new IOException(ex);
+            }
+            InspectServerSession iss = InspectServerSession.create(executionContext, debugBreak, connectionWatcher);
+            WSInterceptorServer interceptor = new WSInterceptorServer(wsuri, iss);
+            MessageEndpoint serverEndpoint;
+            try {
+                serverEndpoint = env.startServer(wsuri, iss);
+            } catch (MessageTransport.VetoException vex) {
+                throw new IOException(vex.getLocalizedMessage());
+            }
+            if (serverEndpoint == null) {
+                interceptor.close(path);
+                wss = WebSocketServer.get(socketAdress, wsspath, executionContext, debugBreak, secure, keyStoreOptions, connectionWatcher, iss);
+                String address = buildAddress(socketAdress.getAddress().getHostAddress(), wss.getListeningPort(), wsspath, secure);
+                info.println("Debugger listening on port " + wss.getListeningPort() + ".");
+                info.println("To start debugging, open the following URL in Chrome:");
+                info.println("    " + address);
+                info.flush();
+            } else {
+                interceptor.opened(serverEndpoint, connectionWatcher);
+                wss = interceptor;
+            }
             if (debugBreak || waitAttached) {
                 final AtomicReference<EventBinding<?>> execEnter = new AtomicReference<>();
                 final AtomicBoolean disposeBinding = new AtomicBoolean(false);
@@ -306,7 +336,7 @@ public final class InspectorInstrument extends TruffleInstrument {
             return prefix + hostAddress + ":" + port + path;
         }
 
-        public void close() {
+        public void close() throws IOException {
             if (wss != null) {
                 wss.close(wsspath);
                 wss = null;

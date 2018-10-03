@@ -47,7 +47,7 @@ import com.oracle.truffle.llvm.test.options.TestOptions;
 @RunWith(Parameterized.class)
 public final class GCCSuite extends BaseSuiteHarness {
 
-    private static final Path GCC_SUITE_DIR = new File(TestOptions.TEST_SUITE_PATH).toPath();
+    private static final Path GCC_SUITE_DIR = new File(TestOptions.EXTERNAL_TEST_SUITE_PATH).toPath();
     private static final Path GCC_SOURCE_DIR = new File(TestOptions.TEST_SOURCE_PATH).toPath();
     private static final Path GCC_CONFIG_DIR = new File(TestOptions.TEST_CONFIG_PATH).toPath();
 
