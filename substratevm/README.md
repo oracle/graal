@@ -23,6 +23,8 @@ mx native-image HelloWorld
 ./helloworld
 ```
 
+To build truffle-based images please refer to the documentation in the [VM suite](../vm/README.md).
+
 ## Build Script
 
 Using Substrate VM requires the mx tool to be installed first, so that it is on your path.
