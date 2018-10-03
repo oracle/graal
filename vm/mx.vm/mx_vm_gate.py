@@ -143,4 +143,4 @@ def gate_python(tasks):
         if t:
             python_svm_image_path = join(mx_vm.graalvm_output(), 'bin', 'graalpython')
             python_suite = mx.suite("graalpython")
-            python_suite.extensions._python_svm_unittest(python_svm_image_path)
+            python_suite.extensions.run_python_unittests(python_svm_image_path)
