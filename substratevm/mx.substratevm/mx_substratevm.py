@@ -129,26 +129,6 @@ IMAGE_ASSERTION_FLAGS = ['-H:+VerifyGraalGraphs', '-H:+VerifyGraalGraphEdges', '
 suite = mx.suite('substratevm')
 svmSuites = [suite]
 
-orig_command_gate = mx.command_function('gate')
-orig_command_build = mx.command_function('build')
-
-gate_run = False
-
-def gate(args):
-    global gate_run
-    gate_run = True
-    orig_command_gate(args)
-
-def build(args, vm=None):
-    if any([opt in args for opt in ['-h', '--help']]):
-        orig_command_build(args, vm)
-
-    mx.log('build: Checking SubstrateVM requirements for building ...')
-
-    if not _host_os_supported():
-        mx.abort('build: SubstrateVM can be built only on Darwin, Linux and Windows platforms')
-
-    orig_command_build(args, vm)
 
 def _host_os_supported():
     return mx.get_os() == 'linux' or mx.get_os() == 'darwin' or mx.get_os() == 'windows'
@@ -341,22 +321,6 @@ def extract_target_name(arg, kind):
     if is_kind:
         target_name, _, target_value = option_tail.partition('=')
     return target_name, target_value
-
-def native_image_on_jvm(args, **kwargs):
-    save_args = []
-    for arg in args:
-        if arg == '--no-server' or arg.startswith('--server'):
-            mx.warn('Ignoring server-mode native-image argument ' + arg)
-        else:
-            save_args.append(arg)
-
-    driver_cp = [join(suite_native_image_root(), 'lib', subdir, '*.jar') for subdir in ['boot', 'jvmci', 'graalvm']]
-    driver_cp += [join(suite_native_image_root(), 'lib', 'svm', tail) for tail in ['*.jar', join('builder', '*.jar')]]
-    driver_cp = list(itertools.chain.from_iterable(glob.glob(cp) for cp in driver_cp))
-
-    svmVersion = suite.release_version(snapshotSuffix='SNAPSHOT')
-    run_java(['-Dorg.graalvm.version=' + svmVersion, '-Dnative-image.root=' + suite_native_image_root(), '-cp', os.pathsep.join(driver_cp),
-        mx.dependency('substratevm:SVM_DRIVER').mainClass] + save_args, **kwargs)
 
 def build_native_image_image():
     image_path = native_image_path(suite_native_image_root())
@@ -567,14 +531,14 @@ def svm_gate_body(args, tasks):
     with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
         with Task('image demos', tasks, tags=[GraalTags.helloworld]) as t:
             if t:
-                hello_path = svmbuild_dir()
-                javac_image(native_image, hello_path)
-                helloworld_internal(native_image, hello_path, javac_image_command(hello_path))
-                cinterfacetutorial(native_image)
+                javac_image(['--output-path', svmbuild_dir()])
+                javac_command = ' '.join(javac_image_command(svmbuild_dir()))
+                helloworld(['--output-path', svmbuild_dir(), '--javac-command', javac_command])
+                cinterfacetutorial([])
 
         with Task('native unittests', tasks, tags=[GraalTags.test]) as t:
             if t:
-                native_junit(native_image)
+                native_unittest([])
 
         with Task('JavaScript', tasks, tags=[GraalTags.js]) as t:
             if t:
@@ -593,8 +557,8 @@ def javac_image_command(javac_path):
             join(mx_compiler.jdk.home, "jre", "lib", "rt.jar")]
 
 
-def native_junit(native_image, unittest_args=None, build_args=None, run_args=None, blacklist=None, whitelist=None):
-    unittest_args = unittest_args or ['com.oracle.svm.test']
+def _native_junit(native_image, unittest_args, build_args=None, run_args=None, blacklist=None, whitelist=None):
+    unittest_args = unittest_args
     build_args = build_args or []
     run_args = run_args or ['--verbose']
     junit_native_dir = join(svmbuild_dir(), platform_name(), 'junit')
@@ -616,23 +580,31 @@ def native_junit(native_image, unittest_args=None, build_args=None, run_args=Non
     finally:
         remove_tree(junit_tmp_dir)
 
-def native_unittest(native_image, cmdline_args):
-    parser = ArgumentParser(prog='mx native-unittest', description='Run unittests as native image')
-    mask_str = '#'
-    def mask(arg):
-        if arg in ['--', '--build-args', '--run-args', '--blacklist', '--whitelist', '-h', '--help']:
-            return arg
-        else:
-            return arg.replace('-', mask_str)
-    cmdline_args = [mask(arg) for arg in cmdline_args]
+_mask_str = '#'
+
+
+def _mask(arg, arg_list):
+    if arg in (arg_list + ['-h', '--help', '--']):
+        return arg
+    else:
+        return arg.replace('-', _mask_str)
+
+
+def unmask(args):
+    return [arg.replace(_mask_str, '-') for arg in args]
+
+
+def _native_unittest(native_image, cmdline_args):
+    parser = ArgumentParser(prog='mx native-unittest', description='Run unittests as native image.')
+    all_args = ['--build-args', '--run-args', '--blacklist', '--whitelist']
+    cmdline_args = [_mask(arg, all_args) for arg in cmdline_args]
+    parser.add_argument(all_args[0], metavar='ARG', nargs='*', default=[])
+    parser.add_argument(all_args[1], metavar='ARG', nargs='*', default=[])
     parser.add_argument('--blacklist', help='run all testcases not specified in <file>', metavar='<file>')
     parser.add_argument('--whitelist', help='run testcases specified in <file> only', metavar='<file>')
-    parser.add_argument('--build-args', metavar='ARG', nargs='*', default=[])
-    parser.add_argument('--run-args', metavar='ARG', nargs='*', default=[])
     parser.add_argument('unittest_args', metavar='TEST_ARG', nargs='*')
     pargs = parser.parse_args(cmdline_args)
-    def unmask(args):
-        return [arg.replace(mask_str, '-') for arg in args]
+
     blacklist = unmask([pargs.blacklist])[0] if pargs.blacklist else None
     whitelist = unmask([pargs.whitelist])[0] if pargs.whitelist else None
     if whitelist:
@@ -647,7 +619,10 @@ def native_unittest(native_image, cmdline_args):
                 blacklist = [re.compile(fnmatch.translate(l.rstrip())) for l in fp.readlines() if not l.startswith('#')]
         except IOError:
             mx.log('warning: could not read blacklist: ' + blacklist)
-    native_junit(native_image, unmask(pargs.unittest_args), unmask(pargs.build_args), unmask(pargs.run_args), blacklist, whitelist)
+
+    unittest_args = unmask(pargs.unittest_args) if unmask(pargs.unittest_args) else ['com.oracle.svm.test']
+    _native_junit(native_image, unittest_args, unmask(pargs.build_args), unmask(pargs.run_args), blacklist, whitelist)
+
 
 def js_image_test(binary, bench_location, name, warmup_iterations, iterations, timeout=None, bin_args=None):
     bin_args = bin_args if bin_args is not None else []
@@ -707,7 +682,7 @@ def test_run(cmds, expected_stdout, timeout=10):
 
 mx_gate.add_gate_runner(suite, svm_gate_body)
 
-def cinterfacetutorial(native_image, args=None):
+def _cinterfacetutorial(native_image, args=None):
     """Build and run the tutorial for the C interface"""
 
     args = [] if args is None else args
@@ -734,39 +709,30 @@ def cinterfacetutorial(native_image, args=None):
     # Start the C executable
     mx.run([buildDir + '/cinterfacetutorial'])
 
-def helloworld(native_image, args=None):
-    args = [] if args is None else args
-    helloworld_internal(native_image, svmbuild_dir(), ['javac'], args)
 
-def helloworld_internal(native_image, path=svmbuild_dir(), javac_command=None, args=None):
-    if javac_command is None:
-        javac_command = ['javac']
-    args = [] if args is None else args
+def _helloworld(native_image, javac_command, path, args):
     mkpath(path)
-    hello_file = join(path, 'HelloWorld.java')
-    output = 'Hello from Substrate VM'
+    hello_file = os.path.join(path, 'HelloWorld.java')
+    output = 'Hello from native-image!'
     with open(hello_file, 'w') as fp:
         fp.write('public class HelloWorld { public static void main(String[] args) { System.out.println("' + output + '"); } }')
-
-    # Run javac. We sometimes run with an image so annotation processing must be disabled because it requires dynamic
-    #  class loading, and we need to set the bootclasspath manually because our build directory does not contain any
-    # .jar files.
+        fp.flush()
     mx.run(javac_command + [hello_file])
 
     native_image(["-H:Path=" + path, '-cp', path, 'HelloWorld'] + args)
 
-    expectedOutput = [output + '\n']
-    actualOutput = []
+    expected_output = [output + '\n']
+    actual_output = []
     def _collector(x):
-        actualOutput.append(x)
+        actual_output.append(x)
         mx.log(x)
 
     mx.run([join(path, 'helloworld')], out=_collector)
 
-    if actualOutput != expectedOutput:
-        raise Exception('Wrong output: ' + str(actualOutput) + "  !=  " + str(expectedOutput))
+    if actual_output != expected_output:
+        raise Exception('Unexpected output: ' + str(actual_output) + "  !=  " + str(expected_output))
 
-def javac_image(native_image, path, args=None):
+def _javac_image(native_image, path, args=None):
     args = [] if args is None else args
     mkpath(path)
 
@@ -776,7 +742,11 @@ def javac_image(native_image, path, args=None):
                   "-H:+ReportUnsupportedElementsAtRuntime", "-H:+AllowIncompleteClasspath",
                   "-H:IncludeResourceBundles=com.sun.tools.javac.resources.compiler,com.sun.tools.javac.resources.javac,com.sun.tools.javac.resources.version"] + args)
 
+
 orig_command_benchmark = mx.command_function('benchmark')
+
+
+@mx.command(suite.name, 'benchmark')
 def benchmark(args):
     if '--jsvm=substratevm' in args:
         truffle_language_ensure('js')
@@ -818,86 +788,6 @@ def deploy_native_image_maven_plugin(svmVersion, repo, gpg, keyid):
             'deploy'
         ]
     mx.run_maven(maven_args, cwd=proj_dir)
-
-
-def maven_plugin_test(args):
-    # Create native-image-maven-plugin-test pom with correct version info from template
-    proj_dir = join(suite.dir, 'src', 'native-image-maven-plugin-test')
-    svmVersion = suite.release_version(snapshotSuffix='SNAPSHOT')
-    pom_from_template(proj_dir, svmVersion)
-    # Build native image with native-image-maven-plugin
-    mx.run_maven(['package'], cwd=proj_dir)
-    mx.run([join(proj_dir, 'target', 'com.oracle.substratevm.nativeimagemojotest')])
-
-def maven_plugin_install(args):
-    parser = ArgumentParser(prog='mx maven-plugin-install')
-    parser.add_argument("--deploy-dependencies", action='store_true', help="This will deploy all the artifacts from all suites before building and deploying the plugin")
-    parser.add_argument('--licenses', help='Comma-separated list of licenses that are cleared for upload. Only used if no url is given. Otherwise licenses are looked up in suite.py')
-    parser.add_argument('--gpg', action='store_true', help='Sign files with gpg before deploying')
-    parser.add_argument('--gpg-keyid', help='GPG keyid to use when signing files (implies --gpg)', default=None)
-    parser.add_argument('repository_id', metavar='repository-id', nargs='?', action='store', help='Repository ID used for binary deploy. If none is given, mavens local repository is used instead.')
-    parser.add_argument('url', metavar='repository-url', nargs='?', action='store', help='Repository URL used for binary deploy. If no url is given, the repository-id is looked up in suite.py')
-    parsed = parser.parse_args(args)
-
-    if not suite.isSourceSuite():
-        raise mx.abort("maven-plugin-install requires {} to be a source suite, no a binary suite".format(suite.name))
-
-    if parsed.url:
-        if parsed.licenses:
-            licenses = mx.get_license(parsed.licenses.split(','))
-        elif parsed.repository_id:
-            licenses = mx.repository(parsed.repository_id).licenses
-        else:
-            licenses = []
-        repo = mx.Repository(suite, parsed.repository_id, parsed.url, parsed.url, licenses)
-    elif parsed.repository_id:
-        repo = mx.repository(parsed.repository_id)
-    else:
-        repo = mx.maven_local_repository()
-
-    svmVersion = suite.release_version(snapshotSuffix='SNAPSHOT')
-
-    if parsed.deploy_dependencies:
-        deploy_args = [
-            '--suppress-javadoc',
-            '--all-distribution-types',
-            '--validate=full',
-            '--all-suites',
-        ]
-        if parsed.licenses:
-            deploy_args += ["--licenses", parsed.licenses]
-        if parsed.gpg:
-            deploy_args += ["--gpg"]
-        if parsed.gpg_keyid:
-            deploy_args += ["--gpg-keyid", parsed.gpg_keyid]
-        if parsed.repository_id:
-            deploy_args += [parsed.repository_id]
-            if parsed.url:
-                deploy_args += [parsed.url]
-        mx.maven_deploy(deploy_args)
-
-    deploy_native_image_maven_plugin(svmVersion, repo, parsed.gpg, parsed.gpg_keyid)
-
-    success_message = [
-        '',
-        'Use the following plugin snippet to enable native-image building for your maven project:',
-        '',
-        '<plugin>',
-        '    <groupId>com.oracle.substratevm</groupId>',
-        '    <artifactId>native-image-maven-plugin</artifactId>',
-        '    <version>' + svmVersion + '</version>',
-        '    <executions>',
-        '        <execution>',
-        '            <goals>',
-        '                <goal>native-image</goal>',
-        '            </goals>',
-        '            <phase>package</phase>',
-        '        </execution>',
-        '    </executions>',
-        '</plugin>',
-        '',
-    ]
-    mx.log('\n'.join(success_message))
 
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
@@ -969,14 +859,168 @@ if os.environ.has_key('NATIVE_IMAGE_TESTING'):
         include_in_polyglot=False,
     ))
 
-mx.update_commands(suite, {
-    'gate': [gate, '[options]'],
-    'build': [build, ''],
-    'helloworld' : [lambda args: native_image_context_run(helloworld, args), ''],
-    'cinterfacetutorial' : [lambda args: native_image_context_run(cinterfacetutorial, args), ''],
-    'benchmark': [benchmark, '--vmargs [vmargs] --runargs [runargs] suite:benchname'],
-    'native-image': [native_image_on_jvm, ''],
-    'maven-plugin-install': [maven_plugin_install, ''],
-    'maven-plugin-test': [maven_plugin_test, ''],
-    'native-unittest' : [lambda args: native_image_context_run(native_unittest, args), ''],
-})
+
+@mx.command(suite_name=suite.name, command_name='helloworld', usage_msg='[options]')
+def helloworld(args):
+    """
+    builds a Hello, World! native image.
+    """
+    parser = ArgumentParser(prog='mx helloworld')
+    all_args = ['--output-path', '--javac-command']
+    masked_args = [_mask(arg, all_args) for arg in args]
+    parser.add_argument(all_args[0], metavar='<output-path>', nargs=1, help='Path of the generated image', default=[svmbuild_dir(suite)])
+    parser.add_argument(all_args[1], metavar='<javac-command>', help='A javac command to be used', default='javac')
+    parser.add_argument('image_args', nargs='*', default=[])
+    parsed = parser.parse_args(masked_args)
+    javac_command = unmask(parsed.javac_command.split())
+    output_path = unmask(parsed.output_path)[0]
+    native_image_context_run(
+        lambda native_image, a:
+            _helloworld(native_image, javac_command, output_path, a), unmask(parsed.image_args)
+    )
+
+
+@mx.command(suite.name, 'cinterfacetutorial', 'Runs the ')
+def cinterfacetutorial(args):
+    """
+    runs all tutorials for the C interface.
+    """
+    native_image_context_run(_cinterfacetutorial, args)
+
+
+orig_command_build = mx.command_function('build')
+
+
+@mx.command(suite.name, 'build')
+def build(args, vm=None):
+    if any([opt in args for opt in ['-h', '--help']]):
+        orig_command_build(args, vm)
+
+    mx.log('build: Checking SubstrateVM requirements for building ...')
+
+    if not _host_os_supported():
+        mx.abort('build: SubstrateVM can be built only on Darwin, Linux and Windows platforms')
+
+    orig_command_build(args, vm)
+
+
+@mx.command(suite.name, 'native-image')
+def native_image_on_jvm(args, **kwargs):
+    save_args = []
+    for arg in args:
+        if arg == '--no-server' or arg.startswith('--server'):
+            mx.warn('Ignoring server-mode native-image argument ' + arg)
+        else:
+            save_args.append(arg)
+
+    driver_cp = [join(suite_native_image_root(), 'lib', subdir, '*.jar') for subdir in ['boot', 'jvmci', 'graalvm']]
+    driver_cp += [join(suite_native_image_root(), 'lib', 'svm', tail) for tail in ['*.jar', join('builder', '*.jar')]]
+    driver_cp = list(itertools.chain.from_iterable(glob.glob(cp) for cp in driver_cp))
+
+    svm_version = suite.release_version(snapshotSuffix='SNAPSHOT')
+    run_java(['-Dorg.graalvm.version=' + svm_version, '-Dnative-image.root=' + suite_native_image_root(), '-cp', os.pathsep.join(driver_cp),
+              mx.dependency('substratevm:SVM_DRIVER').mainClass] + save_args, **kwargs)
+
+
+@mx.command(suite.name, 'native-unittest')
+def native_unittest(args):
+    """builds a native image of JUnit tests and runs them."""
+    native_image_context_run(_native_unittest, args)
+
+
+@mx.command(suite.name, 'maven-plugin-install')
+def maven_plugin_install(args):
+    parser = ArgumentParser(prog='mx maven-plugin-install')
+    parser.add_argument("--deploy-dependencies", action='store_true', help="This will deploy all the artifacts from all suites before building and deploying the plugin")
+    parser.add_argument('--licenses', help='Comma-separated list of licenses that are cleared for upload. Only used if no url is given. Otherwise licenses are looked up in suite.py')
+    parser.add_argument('--gpg', action='store_true', help='Sign files with gpg before deploying')
+    parser.add_argument('--gpg-keyid', help='GPG keyid to use when signing files (implies --gpg)', default=None)
+    parser.add_argument('repository_id', metavar='repository-id', nargs='?', action='store', help='Repository ID used for binary deploy. If none is given, mavens local repository is used instead.')
+    parser.add_argument('url', metavar='repository-url', nargs='?', action='store', help='Repository URL used for binary deploy. If no url is given, the repository-id is looked up in suite.py')
+    parsed = parser.parse_args(args)
+
+    if not suite.isSourceSuite():
+        raise mx.abort("maven-plugin-install requires {} to be a source suite, no a binary suite".format(suite.name))
+
+    if parsed.url:
+        if parsed.licenses:
+            licenses = mx.get_license(parsed.licenses.split(','))
+        elif parsed.repository_id:
+            licenses = mx.repository(parsed.repository_id).licenses
+        else:
+            licenses = []
+        repo = mx.Repository(suite, parsed.repository_id, parsed.url, parsed.url, licenses)
+    elif parsed.repository_id:
+        repo = mx.repository(parsed.repository_id)
+    else:
+        repo = mx.maven_local_repository()
+
+    svm_version = suite.release_version(snapshotSuffix='SNAPSHOT')
+
+    if parsed.deploy_dependencies:
+        deploy_args = [
+            '--suppress-javadoc',
+            '--all-distribution-types',
+            '--validate=full',
+            '--all-suites',
+        ]
+        if parsed.licenses:
+            deploy_args += ["--licenses", parsed.licenses]
+        if parsed.gpg:
+            deploy_args += ["--gpg"]
+        if parsed.gpg_keyid:
+            deploy_args += ["--gpg-keyid", parsed.gpg_keyid]
+        if parsed.repository_id:
+            deploy_args += [parsed.repository_id]
+            if parsed.url:
+                deploy_args += [parsed.url]
+        mx.maven_deploy(deploy_args)
+
+    deploy_native_image_maven_plugin(svm_version, repo, parsed.gpg, parsed.gpg_keyid)
+
+    success_message = [
+        '',
+        'Use the following plugin snippet to enable native-image building for your maven project:',
+        '',
+        '<plugin>',
+        '    <groupId>com.oracle.substratevm</groupId>',
+        '    <artifactId>native-image-maven-plugin</artifactId>',
+        '    <version>' + svm_version + '</version>',
+        '    <executions>',
+        '        <execution>',
+        '            <goals>',
+        '                <goal>native-image</goal>',
+        '            </goals>',
+        '            <phase>package</phase>',
+        '        </execution>',
+        '    </executions>',
+        '</plugin>',
+        '',
+        ]
+    mx.log('\n'.join(success_message))
+
+
+def maven_plugin_test(args):
+    # Create native-image-maven-plugin-test pom with correct version info from template
+    proj_dir = join(suite.dir, 'src', 'native-image-maven-plugin-test')
+    svm_version = suite.release_version(snapshotSuffix='SNAPSHOT')
+    pom_from_template(proj_dir, svm_version)
+    # Build native image with native-image-maven-plugin
+    mx.run_maven(['package'], cwd=proj_dir)
+    mx.run([join(proj_dir, 'target', 'com.oracle.substratevm.nativeimagemojotest')])
+
+
+@mx.command(suite, 'javac-image', '[image-options]')
+def javac_image(args):
+    """builds a javac image"""
+    parser = ArgumentParser(prog='mx helloworld')
+    all_args = ['--output-path']
+    masked_args = [_mask(arg, all_args) for arg in args]
+    parser.add_argument(all_args[0], metavar='<output-path>', nargs=1, help='Path of the generated image', default=[svmbuild_dir(suite)])
+    parser.add_argument('image_args', nargs='*', default=[])
+    parsed = parser.parse_args(masked_args)
+    output_path = unmask(parsed.output_path)[0]
+    native_image_context_run(
+        lambda native_image, command_args:
+            _javac_image(native_image, output_path, command_args), unmask(parsed.image_args)
+    )
