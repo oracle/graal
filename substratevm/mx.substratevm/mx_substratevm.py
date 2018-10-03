@@ -317,7 +317,6 @@ def native_image_option_properties(option_kind, option_flag, native_image_root):
 
 flag_suitename_map = collections.OrderedDict([
     ('js', ('graal-js', ['GRAALJS', 'GRAALJS_LAUNCHER', 'ICU4J'], ['ICU4J-DIST'], 'js')),
-    ('R', ('fastr', ['FASTR', 'XZ-1.6', 'GNU_ICONV', 'GNUR', 'ANTLR-3.5'], ['FASTR_RELEASE']))  # JLINE?
 ])
 
 class ToolDescriptor:
