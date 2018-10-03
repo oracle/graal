@@ -49,7 +49,9 @@ public class EspressoContext {
     private final EspressoLanguage language;
 
     private final TruffleLanguage.Env env;
-    private final InterpreterToVM vm;
+
+    // Must be initialized after the context instance creation.
+    private InterpreterToVM vm;
     private final StringTable strings;
     private final ClassRegistries registries;
     private boolean initialized = false;
@@ -75,7 +77,6 @@ public class EspressoContext {
     public EspressoContext(TruffleLanguage.Env env, EspressoLanguage language) {
         this.env = env;
         this.language = language;
-        this.vm = new InterpreterToVM(language);
         this.registries = new ClassRegistries(this);
         this.strings = new StringTable(this);
     }
@@ -158,6 +159,7 @@ public class EspressoContext {
     }
 
     private void createVm() {
+        this.vm = new InterpreterToVM(language);
 
         initializeClass(Object.class);
 
