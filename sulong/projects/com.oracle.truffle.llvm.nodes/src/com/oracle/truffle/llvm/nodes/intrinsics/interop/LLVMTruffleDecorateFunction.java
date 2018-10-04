@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
@@ -194,6 +195,7 @@ public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
         throw new LLVMPolyglotException(this, "invalid arguments for function composition");
     }
 
+    @TruffleBoundary
     private Object decorate(LLVMFunctionDescriptor function, LLVMFunctionDescriptor wrapperFunction) {
         assert function != null && wrapperFunction != null;
         FunctionType newFunctionType = new FunctionType(wrapperFunction.getType().getReturnType(), function.getType().getArgumentTypes(), function.getType().isVarargs());
@@ -201,6 +203,7 @@ public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
         return registerRoot(function.getLibrary(), newFunctionType, decoratedRoot);
     }
 
+    @TruffleBoundary
     private Object decorateForeign(TruffleObject function, LLVMFunctionDescriptor wrapperFunction) {
         assert function != null && wrapperFunction != null;
         FunctionType newFunctionType = new FunctionType(wrapperFunction.getType().getReturnType(), Type.EMPTY_ARRAY, true);
