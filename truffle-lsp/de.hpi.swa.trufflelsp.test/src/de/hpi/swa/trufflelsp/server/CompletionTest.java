@@ -48,8 +48,6 @@ public class CompletionTest extends TruffleLSPTest {
         Future<?> future = truffleAdapter.parse(text, "sl", uri);
         future.get();
 
-        assertTrue(diagnostics.isEmpty());
-
         int numberOfGlobalsItems = -1;
 
         {

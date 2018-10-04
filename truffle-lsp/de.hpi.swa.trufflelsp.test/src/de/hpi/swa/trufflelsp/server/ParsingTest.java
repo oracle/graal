@@ -5,14 +5,17 @@ import static org.junit.Assert.assertTrue;
 
 import java.net.URI;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 import org.eclipse.lsp4j.Position;
+import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.junit.Test;
 
+import de.hpi.swa.trufflelsp.exceptions.DiagnosticsNotification;
 import de.hpi.swa.trufflelsp.exceptions.UnknownLanguageException;
 import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogate;
 
@@ -49,8 +52,6 @@ public class ParsingTest extends TruffleLSPTest {
             String text = "function main() {return 3+3;}";
             Future<?> future = truffleAdapter.parse(text, "sl", uri);
             future.get();
-
-            assertTrue(diagnostics.isEmpty());
         }
 
         // TODO(ds) failing, see https://github.com/graalvm/simplelanguage/issues/40
@@ -65,10 +66,7 @@ public class ParsingTest extends TruffleLSPTest {
 // assertEquals(1, diagnostics.size());
 // assertTrue(diagnostics.get(uri).get(0).getMessage().contains("EOF"));
 // }
-
         {
-            diagnostics.clear();
-
             TextDocumentSurrogate surrogate;
             URI uri = createDummyFileUriForSL();
 
@@ -84,7 +82,6 @@ public class ParsingTest extends TruffleLSPTest {
                 Future<TextDocumentSurrogate> future = truffleAdapter.processChangesAndParse(Arrays.asList(event), uri);
                 surrogate = future.get();
 
-                assertTrue(diagnostics.isEmpty());
                 assertEquals("function main() {return 3+3+4;}", surrogate.getEditorText());
                 assertEquals(surrogate.getEditorText(), surrogate.getEditorText());
             }
@@ -95,7 +92,6 @@ public class ParsingTest extends TruffleLSPTest {
                 Future<?> future = truffleAdapter.processChangesAndParse(Arrays.asList(deletionEvent), uri);
                 future.get();
 
-                assertTrue(diagnostics.isEmpty());
                 assertEquals("function main() {return 3+4;}", surrogate.getEditorText());
                 assertEquals(surrogate.getEditorText(), surrogate.getEditorText());
             }
@@ -107,7 +103,6 @@ public class ParsingTest extends TruffleLSPTest {
                 Future<?> future = truffleAdapter.processChangesAndParse(Arrays.asList(replaceEvent), uri);
                 future.get();
 
-                assertTrue(diagnostics.isEmpty());
                 assertEquals("function main() {\n  return 42;\n}", surrogate.getEditorText());
                 assertEquals(surrogate.getEditorText(), surrogate.getEditorText());
             }
@@ -118,7 +113,6 @@ public class ParsingTest extends TruffleLSPTest {
                 Future<?> future = truffleAdapter.processChangesAndParse(Arrays.asList(replaceEvent), uri);
                 future.get();
 
-                assertTrue(diagnostics.isEmpty());
                 assertEquals("function main() {\n  return 42;\n}\n", surrogate.getEditorText());
                 assertEquals(surrogate.getEditorText(), surrogate.getEditorText());
             }
@@ -130,7 +124,6 @@ public class ParsingTest extends TruffleLSPTest {
                 Future<?> future = truffleAdapter.processChangesAndParse(Arrays.asList(replaceEvent), uri);
                 future.get();
 
-                assertTrue(diagnostics.isEmpty());
                 assertEquals("function main() {\n  return 42;\n}\n ", surrogate.getEditorText());
                 assertEquals(surrogate.getEditorText(), surrogate.getEditorText());
             }
@@ -142,7 +135,6 @@ public class ParsingTest extends TruffleLSPTest {
                 Future<?> future = truffleAdapter.processChangesAndParse(Arrays.asList(replaceEvent), uri);
                 future.get();
 
-                assertTrue(diagnostics.isEmpty());
                 assertEquals("function main() {return 1;}", surrogate.getEditorText());
                 assertEquals(surrogate.getEditorText(), surrogate.getEditorText());
             }
@@ -158,6 +150,27 @@ public class ParsingTest extends TruffleLSPTest {
              * assertTrue(diagnostics.isEmpty()); assertEquals("", surrogate.getEditorText());
              * assertEquals(surrogate.getEditorText(), surrogate.getEditorText()); }
              */
+        }
+    }
+
+    @Test
+    public void parseingWithSyntaxErrors() throws InterruptedException, ExecutionException {
+        {
+            URI uri = createDummyFileUriForSL();
+            String text = "function main() {return 3+;}";
+
+            try {
+                Future<?> future = truffleAdapter.parse(text, "sl", uri);
+                future.get();
+                assertTrue(false);
+            } catch (RuntimeException e) {
+                DiagnosticsNotification diagnosticsNotification = getDiagnosticsNotification(e);
+                Collection<PublishDiagnosticsParams> diagnosticParamsCollection = diagnosticsNotification.getDiagnosticParamsCollection();
+                assertEquals(1, diagnosticParamsCollection.size());
+                PublishDiagnosticsParams diagnosticsParams = diagnosticParamsCollection.iterator().next();
+                assertEquals(1, diagnosticsParams.getDiagnostics().size());
+                assertEquals(new Range(new Position(0, 26), new Position(0, 27)), diagnosticsParams.getDiagnostics().get(0).getRange());
+            }
         }
     }
 }

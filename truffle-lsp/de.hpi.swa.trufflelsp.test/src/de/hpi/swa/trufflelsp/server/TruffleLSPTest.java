@@ -2,15 +2,13 @@ package de.hpi.swa.trufflelsp.server;
 
 import java.net.URI;
 import java.nio.file.Paths;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.eclipse.lsp4j.Diagnostic;
+import org.eclipse.lsp4j.Position;
+import org.eclipse.lsp4j.Range;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Context.Builder;
 import org.graalvm.polyglot.Engine;
@@ -22,14 +20,13 @@ import org.junit.BeforeClass;
 import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapper;
 import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapperRegistry;
 import de.hpi.swa.trufflelsp.api.VirtualLanguageServerFileProvider;
+import de.hpi.swa.trufflelsp.exceptions.DiagnosticsNotification;
 import de.hpi.swa.trufflelsp.filesystem.LSPFileSystem;
 import de.hpi.swa.trufflelsp.instrument.TruffleAdapterProvider;
-import de.hpi.swa.trufflelsp.server.TruffleAdapter;
 
 public abstract class TruffleLSPTest {
 
     private static AtomicInteger globalCounter;
-    protected Map<URI, List<Diagnostic>> diagnostics = new LinkedHashMap<>();
     protected Engine engine;
     protected TruffleAdapter truffleAdapter;
     protected Context context;
@@ -99,5 +96,17 @@ public abstract class TruffleLSPTest {
 
     public URI createDummyFileUriForSL() {
         return URI.create("file:///tmp/truffle-lsp-test-file-" + globalCounter.incrementAndGet() + ".sl");
+    }
+
+    protected DiagnosticsNotification getDiagnosticsNotification(RuntimeException e) {
+        if (e.getCause() instanceof DiagnosticsNotification) {
+            return (DiagnosticsNotification) e.getCause();
+        } else {
+            throw e;
+        }
+    }
+
+    protected Range range(int startLine, int startColumn, int endLine, int endColumn) {
+        return new Range(new Position(startLine, startColumn), new Position(endLine, endColumn));
     }
 }

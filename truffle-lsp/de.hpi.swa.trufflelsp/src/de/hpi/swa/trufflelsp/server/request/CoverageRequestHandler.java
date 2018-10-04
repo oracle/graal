@@ -127,7 +127,8 @@ public class CoverageRequestHandler extends AbstractRequestHandler {
 
     public void showCoverageWithEnteredContext(URI uri) throws DiagnosticsNotification {
         final TextDocumentSurrogate surrogate = surrogateMap.get(uri);
-        if (surrogate.getSourceWrapper() != null) {
+        assert surrogate != null;
+        if (surrogate.getSourceWrapper() != null && surrogate.getSourceWrapper().isParsingSuccessful()) {
             // @formatter:off
             SourceSectionFilter filter = SourceSectionFilter.newBuilder()
                             .sourceIs(surrogate.getSourceWrapper().getSource())
