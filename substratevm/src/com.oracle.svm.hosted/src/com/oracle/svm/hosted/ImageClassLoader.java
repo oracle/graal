@@ -78,7 +78,8 @@ public final class ImageClassLoader {
     }
     /* } GR-8964: Add an option to control tracing. */
 
-    private static final int CLASS_LENGTH = ".class".length();
+    private static final String CLASS_EXTENSION = ".class";
+    private static final int CLASS_EXTENSION_LENGTH = CLASS_EXTENSION.length();
     private static final int CLASS_LOADING_TIMEOUT_IN_MINUTES = 10;
 
     static {
@@ -266,9 +267,10 @@ public final class ImageClassLoader {
                     return FileVisitResult.SKIP_SIBLINGS;
                 }
                 executor.execute(() -> {
-                    String fileName = root.relativize(file).toString().replace('/', '.');
-                    if (fileName.endsWith(".class")) {
-                        String className = fileName.substring(0, fileName.length() - CLASS_LENGTH);
+                    String fileName = root.relativize(file).toString();
+                    if (fileName.endsWith(CLASS_EXTENSION)) {
+                        String unversionedClassName = unversionedFileName(fileName);
+                        String className = curtail(unversionedClassName, CLASS_EXTENSION_LENGTH).replace('/', '.');
                         try {
                             Class<?> systemClass = Class.forName(className, false, classLoader);
                             if (includedInPlatform(systemClass)) {
@@ -289,6 +291,35 @@ public final class ImageClassLoader {
             public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
                 /* Silently ignore inaccessible files or directories. */
                 return FileVisitResult.CONTINUE;
+            }
+
+            /**
+             * Take a file name from a possibly-multi-versioned jar file and remove the versioning
+             * information. See https://docs.oracle.com/javase/9/docs/api/java/util/jar/JarFile.html
+             * for the specification of the versioning strings.
+             *
+             * Then, depend on the JDK class loading mechanism to prefer the appropriately-versioned
+             * class when the class is loaded. The same class name be loaded multiple times, but
+             * each request will return the same appropriately-versioned class. If a
+             * higher-versioned class is not available in a lower-versioned JDK, a
+             * ClassNotFoundException will be thrown, which will be handled appropriately.
+             */
+            private String unversionedFileName(String fileName) {
+                final String versionedPrefix = "META-INF/versions/";
+                final String versionedSuffix = "/";
+                String result = fileName;
+                if (fileName.startsWith(versionedPrefix)) {
+                    final int versionedSuffixIndex = fileName.indexOf(versionedSuffix, versionedPrefix.length());
+                    if (versionedSuffixIndex >= 0) {
+                        result = fileName.substring(versionedSuffixIndex + versionedSuffix.length());
+                    }
+                }
+                return result;
+            }
+
+            /** Remove the requested number of characters from the tail of the given string. */
+            private String curtail(String str, int tailLength) {
+                return str.substring(0, str.length() - tailLength);
             }
         };
 
