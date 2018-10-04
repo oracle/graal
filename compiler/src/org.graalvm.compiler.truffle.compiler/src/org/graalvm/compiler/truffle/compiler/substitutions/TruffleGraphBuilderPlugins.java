@@ -107,15 +107,6 @@ import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameIsNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameSetNode;
 import org.graalvm.word.LocationIdentity;
 
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.concurrent.Callable;
-
-import static java.lang.Character.toUpperCase;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleUseFrameWithoutBoxing;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.getRuntime;
-
 /**
  * Provides {@link InvocationPlugin}s for Truffle classes.
  */
