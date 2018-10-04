@@ -47,9 +47,17 @@ public interface ProcessPropertiesSupport {
 
     long getProcessID();
 
+    long getProcessID(Process process);
+
     String getObjectFile(String symbol);
 
     String getObjectFile(CEntryPointLiteral<?> symbol);
 
     String setLocale(String category, String locale);
+
+    void destroy(long processID);
+
+    void destroyForcibly(long processID);
+
+    boolean isAlive(long processID);
 }
