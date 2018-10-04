@@ -52,7 +52,6 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractStackFrameImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
 import org.graalvm.polyglot.io.ByteSequence;
-import org.graalvm.polyglot.io.MessageEndpoint;
 import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.management.ExecutionEvent;
 
@@ -455,20 +454,8 @@ public final class Engine implements AutoCloseable {
             if (loadedImpl == null) {
                 throw new IllegalStateException("The Polyglot API implementation failed to load.");
             }
-            if (messageTransport == null) {
-                messageTransport = new EmptyInterceptor();
-            }
             return loadedImpl.buildEngine(out, err, in, options, 0, null,
                             false, 0, useSystemProperties, boundEngine, messageTransport, customLogHandler);
-        }
-
-    }
-
-    private static final class EmptyInterceptor implements MessageTransport {
-
-        @Override
-        public MessageEndpoint open(URI uri, MessageEndpoint peerEndpoint) throws IOException, VetoException {
-            return null;
         }
 
     }
