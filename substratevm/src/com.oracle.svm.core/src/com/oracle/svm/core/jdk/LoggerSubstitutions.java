@@ -26,15 +26,11 @@ package com.oracle.svm.core.jdk;
 
 import java.util.Locale;
 import java.util.ResourceBundle;
-import java.util.logging.Filter;
-import java.util.logging.Formatter;
 import java.util.logging.Logger;
-import java.util.logging.SimpleFormatter;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.util.VMError;
 
 @TargetClass(java.util.logging.Logger.class)
 @SuppressWarnings({"unused"})
@@ -98,46 +94,6 @@ final class Target_java_util_logging_LogManager {
     @Substitute
     private void readPrimordialConfiguration() {
         assert readPrimordialConfiguration : "logging infrastructure must be correctly initialized during native image generation";
-    }
-
-    @Substitute
-    private void loadLoggerHandlers(final Logger logger, final String name, final String handlersPropertyName) {
-        /* Do nothing. Logger handlers are instantiated via reflection, which we don't support. */
-    }
-
-    @Substitute
-    private Filter getFilterProperty(String name, Filter defaultValue) {
-        String val = getProperty(name);
-        if (val != null) {
-            throw VMError.unsupportedFeature("Cannot instantiate logging filter class " + val);
-        }
-        return defaultValue;
-    }
-
-    @Substitute
-    private Formatter getFormatterProperty(String name, Formatter defaultValue) {
-        String val = getProperty(name);
-        if (SimpleFormatter.class.getName().equals(val)) {
-            return new SimpleFormatter();
-        } else if (val != null) {
-            throw VMError.unsupportedFeature("Cannot instantiate logging formatter class " + val);
-        }
-        return defaultValue;
-    }
-
-    @Alias
-    private native String getProperty(String name);
-
-}
-
-@TargetClass(java.util.logging.LogRecord.class)
-final class Target_java_util_logging_LogRecord {
-    @Substitute
-    private void inferCaller() {
-        /*
-         * The original implementation performs a stack walk here. We cannot do that. But luckily
-         * this is a best-effort operation anyway, so doing nothing is a suitable substitution.
-         */
     }
 }
 
