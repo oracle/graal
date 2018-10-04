@@ -52,6 +52,10 @@ public final class PolyglotCompilerOptions {
                     category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> CompilationThreshold = new OptionKey<>(1000);
 
+    @Option(help = "Minimum number of invocations or loop iterations needed to compile a guest language root in low tier mode.",
+            category = OptionCategory.EXPERT)
+    public static final OptionKey<Integer> FirstTierCompilationThreshold = new OptionKey<>(100);
+
     /*
      * TODO planned options:
      *

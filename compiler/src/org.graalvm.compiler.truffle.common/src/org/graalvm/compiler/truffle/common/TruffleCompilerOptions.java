@@ -146,6 +146,9 @@ public class TruffleCompilerOptions {
     @Option(help = "Minimum number of calls before a call target is compiled", type = OptionType.Expert)
     public static final OptionKey<Integer> TruffleMinInvokeThreshold = new OptionKey<>(3);
 
+    @Option(help = "Minimum number of calls before a call target is compiled in the first tier.", type = OptionType.Expert)
+    public static final OptionKey<Integer> TruffleFirstTierMinInvokeThreshold = new OptionKey<>(1);
+
     @Option(help = "Delay compilation after an invalidation to allow for reprofiling", type = OptionType.Expert)
     public static final OptionKey<Integer> TruffleInvalidationReprofileCount = new OptionKey<>(3);
 
@@ -306,5 +309,7 @@ public class TruffleCompilerOptions {
     @Option(help = "Maximum number of instrumentation counters available.")
     public static final OptionKey<Integer> TruffleInstrumentationTableSize = new OptionKey<>(10000);
 
+    @Option(help = "Whether to use multiple compilation tiers by default.")
+    public static final OptionKey<Boolean> TruffleMultiTier = new OptionKey<>(false);
     // @formatter:on
 }

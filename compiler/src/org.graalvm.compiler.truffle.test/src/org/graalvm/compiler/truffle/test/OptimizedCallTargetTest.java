@@ -222,7 +222,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
                 assertNull("assumption stays null in the interpreter", getRewriteAssumption(innermostCallTarget));
             });
 
-            outermostCallTarget.compile();
+            outermostCallTarget.compile(true);
             assertCompiled(outermostCallTarget);
             Assumption firstRewriteAssumption = getRewriteAssumption(innermostCallTarget);
             assertNotNull("assumption must not be null after compilation", firstRewriteAssumption);

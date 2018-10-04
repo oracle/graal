@@ -32,8 +32,6 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.Collections;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -41,6 +39,7 @@ import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue;
 import org.graalvm.compiler.truffle.runtime.CancellableCompileTask;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.LoopNodeFactory;
@@ -151,18 +150,12 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     private void tearDown() {
-        ExecutorService executor = getCompileQueue().getCompilationExecutor();
-        executor.shutdownNow();
-        try {
-            /*
-             * Runaway compilations should fail during testing, but should not cause crashes in
-             * production.
-             */
-            long timeout = SubstrateUtil.assertionsEnabled() ? DEBUG_TEAR_DOWN_TIMEOUT : PRODUCTION_TEAR_DOWN_TIMEOUT;
-            executor.awaitTermination(timeout, TimeUnit.MILLISECONDS);
-        } catch (InterruptedException e) {
-            throw new RuntimeException("Could not terminate compiler threads. Check if there are runaway compilations that don't handle Thread#interrupt.", e);
-        }
+        /*
+         * Runaway compilations should fail during testing, but should not cause crashes in
+         * production.
+         */
+        long timeout = SubstrateUtil.assertionsEnabled() ? DEBUG_TEAR_DOWN_TIMEOUT : PRODUCTION_TEAR_DOWN_TIMEOUT;
+        getCompileQueue().shutdownAndAwaitTermination(timeout);
     }
 
     @Override
@@ -228,7 +221,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
-    public CancellableCompileTask submitForCompilation(OptimizedCallTarget optimizedCallTarget) {
+    public CancellableCompileTask submitForCompilation(OptimizedCallTarget optimizedCallTarget, boolean lastTierCompilation) {
         if (SubstrateUtil.HOSTED) {
             /*
              * Truffle code can run during image generation. But for now it is the easiest to not
@@ -241,7 +234,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         }
 
         if (SubstrateOptions.MultiThreaded.getValue()) {
-            return super.submitForCompilation(optimizedCallTarget);
+            return super.submitForCompilation(optimizedCallTarget, lastTierCompilation);
         }
 
         try {
