@@ -171,6 +171,9 @@ final class Target_sun_util_locale_provider_LocaleServiceProviderPool {
                     String key,
                     Object... params);
 
+    @KeepOriginal //
+    @TargetElement(onlyWith = JDK9OrLater.class) //
+    static native void config(Class<? extends Object> caller, String message);
 }
 
 @Delete
