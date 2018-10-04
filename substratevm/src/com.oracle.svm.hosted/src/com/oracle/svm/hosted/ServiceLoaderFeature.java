@@ -1,30 +1,48 @@
 /*
- * Copyright (c) 2018 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
  */
 package com.oracle.svm.hosted;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.Set;
-import java.util.jar.JarEntry;
-import java.util.jar.JarFile;
+import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
+
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionType;
+import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.RuntimeReflection;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -32,264 +50,179 @@ import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.nativeimage.Feature;
-import org.graalvm.nativeimage.RuntimeReflection;
 
 /**
- * Adds all service loader files and classes except for system ones.
+ * Support for {@link ServiceLoader} on Substrate VM.
  *
- * <p>
+ * Services are registered in the folder {@link #LOCATION_PREFIX "META-INF/services/"} using files
+ * whose name is the fully qualified service interface name. We do not know which services are going
+ * to be used by a native image: The parameter of {@link ServiceLoader#load} is often but not always
+ * a compile-time constant that we can track. But we also cannot put all registered services into
+ * the native image.
+ *
+ * We therefore use the following heuristic: we add all service loader files and service
+ * implementation classes when the service interfaces that are seen as reachable by the static
+ * analysis.
+ *
  * Each used service implementation class is added for reflection (using
- * {@link org.graalvm.nativeimage.RuntimeReflection#register(Class[])})
- * and for reflective instantiation (using
+ * {@link org.graalvm.nativeimage.RuntimeReflection#register(Class[])}) and for reflective
+ * instantiation (using
  * {@link org.graalvm.nativeimage.RuntimeReflection#registerForReflectiveInstantiation(Class[])}).
- * <p>
- * Each service loader file (resources/META-INF/services/*) is added as a resource to the image.
  *
+ * For each service interface, a single service loader file is added as a resource to the image. The
+ * single file combines all the individual files that can come from different .jar files.
  */
 @AutomaticFeature
 public class ServiceLoaderFeature implements Feature {
-    /**
-     * Command line options for this feature.
-     */
+
     public static class Options {
-        @Option(help = "When enabled, service loader files will be included in image as resources, and implementation "
-                + "classes will be enabled for reflection")
-        public static final HostedOptionKey<Boolean> EnableServiceLoader = new HostedOptionKey<>(false);
-        @Option(help = "When enabled, each service loader resource and class will be printed out to standard output")
-        public static final HostedOptionKey<Boolean> ServiceLoaderDebug = new HostedOptionKey<>(false);
+        @Option(help = "When enabled, each service loader resource and class will be printed out to standard output", type = OptionType.Debug) //
+        public static final HostedOptionKey<Boolean> TraceServiceLoaderFeature = new HostedOptionKey<>(false);
     }
 
-    // key is service interface class name
-    private final Map<String, ServiceLoaderManifest> serviceLoaderManifests = new HashMap<>();
-    private boolean debug;
+    /** Copy of private field {@code ServiceLoader.PREFIX}. */
+    private static final String LOCATION_PREFIX = "META-INF/services/";
 
-    public ServiceLoaderFeature() {
-        this.debug = Options.ServiceLoaderDebug.getValue();
-    }
+    /**
+     * Set of types that are already processed (if they are a service interface) or are already
+     * known to be not a service interface.
+     */
+    private final Map<AnalysisType, Boolean> processedTypes = new ConcurrentHashMap<>();
+
+    private final boolean trace = Options.TraceServiceLoaderFeature.getValue();
 
     @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (!Options.EnableServiceLoader.getValue()) {
+    public void duringAnalysis(DuringAnalysisAccess a) {
+        DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
+
+        for (AnalysisType type : access.getUniverse().getTypes()) {
+            handleType(type, access);
+        }
+    }
+
+    private void handleType(AnalysisType type, DuringAnalysisAccessImpl access) {
+        if (!type.isInTypeCheck() || type.isArray()) {
+            /*
+             * Type is not seen as used yet by the static analysis. Note that a constant class
+             * literal is enough to register a type as "in type check". Arrays are also never
+             * services.
+             */
+            return;
+        }
+        if (processedTypes.putIfAbsent(type, Boolean.TRUE) != null) {
+            /* Type already processed. */
             return;
         }
 
-        // process all service loader manifests and store them for future reference
-        final ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
-        if (contextClassLoader instanceof URLClassLoader) {
-            URLClassLoader classLoader = (URLClassLoader) contextClassLoader;
+        String serviceClassName = type.toClassName();
+        String serviceResourceLocation = LOCATION_PREFIX + serviceClassName;
 
+        /*
+         * We are using a TreeSet to remove duplicate entries and to have a stable order for the
+         * resource that is put into the image.
+         */
+        Set<String> implementationClassNames = new TreeSet<>();
+
+        /*
+         * We do not know if the type is actually a service interface. The easiest way to find that
+         * out is to look up the resources that ServiceLoader would access. If no resources exist,
+         * then it is not a service interface.
+         */
+        Enumeration<URL> resourceURLs;
+        try {
+            resourceURLs = access.getImageClassLoader().getClassLoader().getResources(serviceResourceLocation);
+        } catch (IOException ex) {
+            throw UserError.abort("Error loading service implementation resources for service `" + serviceClassName + "`", ex);
+        }
+        while (resourceURLs.hasMoreElements()) {
+            URL resourceURL = resourceURLs.nextElement();
             try {
-                processClassLoader(classLoader);
-            } catch (ServiceFinderException e) {
-                throw UserError.abort(e.getMessage(), e);
-            }
-        } else {
-            throw UserError.abort("Context classloader is not a URLClassLoader, service manifests cannot be located");
-        }
-
-        if (debug) {
-            serviceLoaderManifests.forEach((serviceClass, manifest) -> {
-                System.out.println("Discovered service loader: " + manifest.resourceLocation);
-                for (String impl : manifest.serviceImplementationClasses) {
-                    System.out.print('\t');
-                    System.out.println(impl);
-                }
-            });
-        }
-    }
-
-    @Override
-    public void duringAnalysis(DuringAnalysisAccess access) {
-        DuringAnalysisAccessImpl accessImpl = (DuringAnalysisAccessImpl) access;
-
-        boolean requiresUpdate = false;
-        List<AnalysisType> types = accessImpl.getUniverse().getTypes();
-
-        Set<String> serviceInterfaceClasses = serviceLoaderManifests.keySet();
-
-        for (AnalysisType type : types) {
-            String className = type.toClassName();
-
-            if (serviceInterfaceClasses.contains(className)) {
-                if (debug) {
-                    System.out.println("Discovered service use: " + className);
-                }
-
-                // this interface is loaded
-                // service interface found - it is used and I must add it
-                ServiceLoaderManifest manifest = serviceLoaderManifests.remove(className);
-                if (null == manifest) {
-                    System.out.println("Unexpected: service " + className + " is known, yet manifest is missing");
-                    continue;
-                }
-                StringBuilder resourceValue = new StringBuilder(1024);
-                for (String aClass : manifest.serviceImplementationClasses) {
-                    Class<?> serviceImplClass = access.findClassByName(aClass);
-                    registerReflection(serviceImplClass, access);
-                    resourceValue.append(aClass);
-                    resourceValue.append('\n');
-                }
-
-                registerResource(manifest.resourceLocation, resourceValue.toString());
-                requiresUpdate = true;
-            }
-        }
-
-        if (requiresUpdate) {
-            access.requireAnalysisIteration();
-        }
-    }
-
-    @Override
-    public void afterAnalysis(AfterAnalysisAccess access) {
-        if (debug && !serviceLoaderManifests.isEmpty()) {
-            System.out.println("The following services (and their implementations) were not added to the image:");
-            for (String serviceInterface : serviceLoaderManifests.keySet()) {
-                System.out.print('\t');
-                System.out.println(serviceInterface);
-            }
-        }
-    }
-
-    private void registerResource(String resourceLocation, String stringValue) {
-        Resources.registerResource(resourceLocation, new ByteArrayInputStream(stringValue.getBytes(StandardCharsets.UTF_8)));
-    }
-
-    private void registerReflection(Class<?> aClass, DuringAnalysisAccess access) {
-        access.registerAsUsed(aClass);
-        RuntimeReflection.register(aClass);
-        RuntimeReflection.registerForReflectiveInstantiation(aClass);
-    }
-
-    private void processClassLoader(URLClassLoader classLoader) {
-        Set<Path> todo = new HashSet<>();
-
-        for (URL url : classLoader.getURLs()) {
-            try {
-                todo.add(Paths.get(url.toURI()));
-            } catch (URISyntaxException | IllegalArgumentException e) {
-                throw new ServiceFinderException("Unable to handle classpath element '" + url
-                        .toExternalForm() + "'. Make sure that all classpath entries are either directories or valid jar "
-                                                         + "files.", e);
-            }
-        }
-
-        for (Path element : todo) {
-            try {
-                if (Files.isDirectory(element)) {
-                    scanExpanded(element, "");
-                } else {
-                    scanJar(element);
-                }
+                implementationClassNames.addAll(parseServiceResource(resourceURL));
             } catch (IOException ex) {
-                throw new ServiceFinderException("Unable to handle classpath element '" + element + "'. Make sure that all "
-                                                         + "classpath entries are "
-                                                         + "either directories or valid jar files.", ex);
+                throw UserError.abort("Error loading service implementations for service `" + serviceClassName + "` from URL `" + resourceURL + "`", ex);
             }
         }
-    }
 
-    private void scanExpanded(Path toProcess,
-                              String relativePath) throws IOException {
-        if (Files.isDirectory(toProcess)) {
-            Files.list(toProcess)
-                    .forEach(path -> {
-                        try {
-                            scanExpanded(path,
-                                         relativePath.isEmpty()
-                                                 ? path.getFileName().toString()
-                                                 : (relativePath + "/" + path.getFileName()));
-                        } catch (IOException e) {
-                            throw new ServiceFinderException("Failed to process classpath element: " + path, e);
-                        }
-                    });
-        } else {
-            if (matches(relativePath)) {
-                ServiceLoaderManifest manifest = serviceLoaderManifests
-                        .computeIfAbsent(toServiceInterfaceClassName(relativePath),
-                                         key -> new ServiceLoaderManifest(relativePath));
-
-                Files.readAllLines(toProcess).stream()
-                        .map(String::trim)
-                        .filter(line -> !line.startsWith("#"))
-                        .filter(line -> !line.isEmpty())
-                        .forEach(manifest::add);
-            }
-        }
-    }
-
-    private String toServiceInterfaceClassName(String resourcePath) {
-        // such as META-INF/services/a.b.c.ServiceInterface
-        int index = resourcePath.lastIndexOf('/');
-        if (index > 0) {
-            return resourcePath.substring(index + 1);
+        if (implementationClassNames.size() == 0) {
+            /*
+             * No service implementations registered in the resources. Since we check all classes
+             * that the static analysis finds, this case is very likely.
+             */
+            return;
         }
 
-        return resourcePath;
-    }
+        if (trace) {
+            System.out.println("ServiceLoaderFeature: processing service class " + serviceClassName);
+        }
 
-    private void scanJar(Path element) throws IOException {
-        try (JarFile jf = new JarFile(element.toFile())) {
-            Enumeration<JarEntry> en = jf.entries();
-            while (en.hasMoreElements()) {
-                JarEntry e = en.nextElement();
-                if (e.getName().endsWith("/")) {
-                    continue;
+        StringBuilder newResourceValue = new StringBuilder(1024);
+        for (String implementationClassName : implementationClassNames) {
+            if (implementationClassName.startsWith("org.graalvm.compiler") && implementationClassName.contains("hotspot")) {
+                /*
+                 * Workaround for Graal compiler services. The classpath always contains the
+                 * HotSpot-specific classes of Graal. This is caused by the current distribution
+                 * .jar files and class loader hierarchies of Graal. We filter out HotSpot-specific
+                 * service implementations using the naming convention: they have "hotspot" in the
+                 * package name.
+                 */
+                if (trace) {
+                    System.out.println("  IGNORING HotSpot-specific implementation class: " + implementationClassName);
                 }
-                String relativePath = e.getName();
+                continue;
+            }
 
-                if (matches(relativePath)) {
-                    try (InputStream is = jf.getInputStream(e)) {
-                        ServiceLoaderManifest manifest = serviceLoaderManifests
-                                .computeIfAbsent(toServiceInterfaceClassName(relativePath),
-                                                 key -> new ServiceLoaderManifest(relativePath));
+            if (trace) {
+                System.out.println("  adding implementation class: " + implementationClassName);
+            }
 
-                        ByteArrayOutputStream baos = new ByteArrayOutputStream(1024);
-                        byte[] buffer = new byte[1024];
-                        int read;
-                        while ((read = is.read(buffer)) > 0) {
-                            baos.write(buffer, 0, read);
-                        }
-                        try (BufferedReader br =
-                                new BufferedReader(new InputStreamReader(new java.io.ByteArrayInputStream(baos.toByteArray())))) {
-                            String line;
-                            while ((line = br.readLine()) != null) {
-                                line = line.trim();
-                                if (!line.startsWith("#") && !line.isEmpty()) {
-                                    manifest.add(line);
-                                }
-                            }
-                        }
-                    }
+            Class<?> implementationClass = access.findClassByName(implementationClassName);
+            if (implementationClass == null) {
+                throw UserError.abort("Could not find registered service implementation class `" + implementationClassName + "` for service `" + serviceClassName + "`");
+            }
+
+            /* Allow Class.forName at run time for the service implementation. */
+            RuntimeReflection.register(implementationClass);
+            /* Allow reflective instantiation at run time for the service implementation. */
+            RuntimeReflection.registerForReflectiveInstantiation(implementationClass);
+
+            /* Add line to the new resource that will be available at run time. */
+            newResourceValue.append(implementationClass.getName());
+            newResourceValue.append('\n');
+        }
+
+        Resources.registerResource(serviceResourceLocation, new ByteArrayInputStream(newResourceValue.toString().getBytes(StandardCharsets.UTF_8)));
+
+        /* Ensure that the static analysis runs again for the new implementation classes. */
+        access.requireAnalysisIteration();
+    }
+
+    /**
+     * Parse a service configuration file. This code is inspired by the private implementation
+     * methods of {@link ServiceLoader}.
+     */
+    private static Collection<String> parseServiceResource(URL resourceURL) throws IOException {
+        Collection<String> result = new ArrayList<>();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(resourceURL.openStream(), "utf-8"))) {
+            while (true) {
+                String line = reader.readLine();
+                if (line == null) {
+                    break;
+                }
+
+                int commentIndex = line.indexOf('#');
+                if (commentIndex >= 0) {
+                    line = line.substring(0, commentIndex);
+                }
+                line = line.trim();
+                if (line.length() != 0) {
+                    /*
+                     * We do not need to do further sanity checks on the class name. If the name is
+                     * illegal, then we will not be able to load the class and report an error.
+                     */
+                    result.add(line);
                 }
             }
         }
-    }
-
-    private boolean matches(String relativePath) {
-        return relativePath.startsWith("META-INF/services");
-    }
-
-    static final class ServiceFinderException extends RuntimeException {
-        private static final long serialVersionUID = 47;
-
-        private ServiceFinderException(String message, Throwable cause) {
-            super(message, cause);
-        }
-    }
-
-    private static final class ServiceLoaderManifest {
-        private final Set<String> serviceImplementationClasses = new LinkedHashSet<>();
-        private final String resourceLocation;
-
-        private ServiceLoaderManifest(String resourceLocation) {
-            this.resourceLocation = resourceLocation;
-        }
-
-        void add(String className) {
-            serviceImplementationClasses.add(className);
-        }
+        return result;
     }
 }

@@ -79,7 +79,7 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
 
     public ReflectionSubstitutionType(ResolvedJavaType original, Member member) {
         super(original);
-        stableName = "L" + getStableProxyName(member).replace(".", "\\") + ";";
+        stableName = "L" + getStableProxyName(member).replace(".", "/") + ";";
         for (ResolvedJavaMethod method : original.getDeclaredMethods()) {
             switch (method.getName()) {
                 case "invoke":

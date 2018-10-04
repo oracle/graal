@@ -95,20 +95,6 @@ final class Target_java_util_logging_LogManager {
     private void readPrimordialConfiguration() {
         assert readPrimordialConfiguration : "logging infrastructure must be correctly initialized during native image generation";
     }
-//
-//    @Alias
-//    private native String getProperty(String name);
-}
-
-@TargetClass(java.util.logging.LogRecord.class)
-final class Target_java_util_logging_LogRecord {
-    @Substitute
-    private void inferCaller() {
-        /*
-         * The original implementation performs a stack walk here. We cannot do that. But luckily
-         * this is a best-effort operation anyway, so doing nothing is a suitable substitution.
-         */
-    }
 }
 
 /** Dummy class to have a class with the file's name. */
