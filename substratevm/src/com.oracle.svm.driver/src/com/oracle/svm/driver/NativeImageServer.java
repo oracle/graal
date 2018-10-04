@@ -79,7 +79,7 @@ final class NativeImageServer extends NativeImage {
     private volatile Server building = null;
     private final List<FileChannel> openFileChannels = new ArrayList<>();
 
-    NativeImageServer(BuildConfiguration buildConfiguration) {
+    private NativeImageServer(BuildConfiguration buildConfiguration) {
         super(buildConfiguration);
         registerOptionHandler(new ServerOptionHandler(this));
     }
@@ -156,7 +156,7 @@ final class NativeImageServer extends NativeImage {
             showVerboseMessage(verboseServer, "Sending to server [");
             showVerboseMessage(verboseServer, serverCommand.toString());
             if (argList.size() > 0) {
-                showVerboseMessage(verboseServer, argList.stream().collect(Collectors.joining(" \\\n")));
+                showVerboseMessage(verboseServer, String.join(" \\\n", argList));
             }
             showVerboseMessage(verboseServer, "]");
             int exitCode = NativeImageBuildClient.sendRequest(serverCommand, String.join(" ", argList).getBytes(), port, out, err);
@@ -198,7 +198,7 @@ final class NativeImageServer extends NativeImage {
                         command.addAll(Arrays.asList("-imagecp", imagecp.stream().map(Path::toString).collect(Collectors.joining(":"))));
                         command.addAll(imageArgs);
                         showVerboseMessage(isVerbose(), "SendBuildRequest [");
-                        showVerboseMessage(isVerbose(), command.stream().collect(Collectors.joining("\n")));
+                        showVerboseMessage(isVerbose(), String.join("\n", command));
                         showVerboseMessage(isVerbose(), "]");
                         try {
                             /* logfile main purpose is to know when was the last build request */
@@ -284,7 +284,7 @@ final class NativeImageServer extends NativeImage {
             }
             sb.append("\nPID: ").append(pid);
             sb.append("\nPort: ").append(port);
-            sb.append("\nJavaArgs: ").append(serverJavaArgs.stream().collect(Collectors.joining(" ")));
+            sb.append("\nJavaArgs: ").append(String.join(" ", serverJavaArgs));
             sb.append("\nBootClasspath: ").append(serverBootClasspath.stream().map(Path::toString).collect(Collectors.joining(":")));
             sb.append("\nClasspath: ").append(serverClasspath.stream().map(Path::toString).collect(Collectors.joining(":")));
             return sb.append('\n').toString();
@@ -444,8 +444,8 @@ final class NativeImageServer extends NativeImage {
     private static Server findVictim(List<Server> aliveServers) {
         return aliveServers.stream()
                         .filter(Server::isAlive)
-                        .sorted(Comparator.comparing(s -> s.lastBuildRequest))
-                        .findFirst().orElse(null);
+                        .min(Comparator.comparing(s -> s.lastBuildRequest))
+                        .orElse(null);
     }
 
     private List<Path> getSessionDirs(boolean machineWide) {
@@ -551,7 +551,7 @@ final class NativeImageServer extends NativeImage {
         Path logFilePath = serverDir.resolve("server.log");
         command.add("-logFile=" + logFilePath);
         showVerboseMessage(isVerbose(), "StartServer [");
-        showVerboseMessage(isVerbose(), command.stream().collect(Collectors.joining(" \\\n")));
+        showVerboseMessage(isVerbose(), String.join(" \\\n", command));
         showVerboseMessage(isVerbose(), "]");
         int childPid = NativeImageServerHelper.daemonize(() -> {
             try {
@@ -625,7 +625,7 @@ final class NativeImageServer extends NativeImage {
         Properties sp = new Properties();
         sp.setProperty(Server.pKeyPort, String.valueOf(port));
         sp.setProperty(Server.pKeyPID, String.valueOf(pid));
-        sp.setProperty(Server.pKeyJavaArgs, javaArgs.stream().collect(Collectors.joining(" ")));
+        sp.setProperty(Server.pKeyJavaArgs, String.join(" ", javaArgs));
         sp.setProperty(Server.pKeyBCP, bootClasspath.stream().map(String::valueOf).collect(Collectors.joining(" ")));
         sp.setProperty(Server.pKeyCP, classpath.stream().map(String::valueOf).collect(Collectors.joining(" ")));
         Path serverPropertiesPath = serverDir.resolve(Server.serverProperties);
