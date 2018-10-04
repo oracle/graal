@@ -102,7 +102,14 @@ public class HoverRequestHandler extends AbstractRequestHandler {
 
         final LanguageInfo info = coverageData.getCoverageEventNode().getRootNode().getLanguageInfo();
         final Source inlineEvalSource = Source.newBuilder(textAtHoverPosition).name("inline eval").language(info.getId()).mimeType("content/unknown").cached(false).build();
-        ExecutableNode executableNode = env.parseInline(inlineEvalSource, coverageData.getCoverageEventNode(), coverageData.getFrame());
+        ExecutableNode executableNode = null;
+        try {
+            executableNode = env.parseInline(inlineEvalSource, coverageData.getCoverageEventNode(), coverageData.getFrame());
+        } catch (Exception e) {
+            if (!(e instanceof TruffleException)) {
+                e.printStackTrace(err);
+            }
+        }
         if (executableNode == null) {
             return new Hover(new ArrayList<>());
         }
@@ -114,7 +121,7 @@ public class HoverRequestHandler extends AbstractRequestHandler {
             System.out.println("Trying coverage-based eval...");
             evalResult = executableNode.execute(coverageData.getFrame());
         } catch (Exception e) {
-            if (!(e instanceof TruffleException) || !(e instanceof ControlFlowException)) {
+            if (!((e instanceof TruffleException) || (e instanceof ControlFlowException))) {
                 e.printStackTrace(err);
             }
             return new Hover(new ArrayList<>());
