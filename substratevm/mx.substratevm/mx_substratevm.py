@@ -68,6 +68,8 @@ if mx.get_jdk(tag='default').javaCompliance <= mx.JavaCompliance('1.8'):
 else:
     # Disable the check for JDK-8 graal version.
     GRAAL_COMPILER_FLAGS += ['-Dsubstratevm.IgnoreGraalVersionCheck=true']
+    # GR-11937: Use bytecodes instead of invoke-dynamic for string concatenation.
+    GRAAL_COMPILER_FLAGS += ['-Djava.lang.invoke.stringConcat=BC_SB']
 
     # Turn a list of package names into a list of `--add-exports` command line arguments.
     def add_exports_from_packages(packageNameList):
