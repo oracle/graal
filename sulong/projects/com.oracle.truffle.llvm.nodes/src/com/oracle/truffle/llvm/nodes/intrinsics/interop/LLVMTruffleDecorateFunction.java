@@ -44,13 +44,13 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.llvm.nodes.func.LLVMLookupDispatchNode;
-import com.oracle.truffle.llvm.nodes.func.LLVMLookupDispatchNodeGen;
+import com.oracle.truffle.llvm.nodes.func.LLVMDispatchNode;
+import com.oracle.truffle.llvm.nodes.func.LLVMDispatchNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMDerefHandleGetReceiverNode;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMIRFunction;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
@@ -97,6 +97,8 @@ public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
             this.wrapperCallNode = Truffle.getRuntime().createDirectCallNode(wrapper.getLLVMIRFunction());
             this.funcCallNode.cloneCallTarget();
             this.wrapperCallNode.cloneCallTarget();
+            this.funcCallNode.forceInlining();
+            this.wrapperCallNode.forceInlining();
         }
 
         @Override
@@ -115,14 +117,14 @@ public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
     }
 
     protected static class ForeignDecoratedRoot extends DecoratedRoot {
-        @Child private LLVMLookupDispatchNode funcCallNode;
+        @Child private LLVMDispatchNode funcCallNode;
         @Child private DirectCallNode wrapperCallNode;
 
         private final TruffleObject func;
 
         protected ForeignDecoratedRoot(TruffleLanguage<?> language, FunctionType type, TruffleObject func, LLVMFunctionDescriptor wrapper) {
             super(language);
-            this.funcCallNode = LLVMLookupDispatchNodeGen.create(type);
+            this.funcCallNode = LLVMDispatchNodeGen.create(type);
             this.func = func;
             this.wrapperCallNode = Truffle.getRuntime().createDirectCallNode(wrapper.getLLVMIRFunction());
             this.wrapperCallNode.cloneCallTarget();
