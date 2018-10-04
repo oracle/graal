@@ -1,5 +1,6 @@
 common_vm: ${common} ${vm_java} {
   setup: [
+    [set-export, SNAPSHOT_CATALOG, [mx, urlrewrite, "http://www.graalvm.org/catalog"]]
     [cd, ${vm_subdir}]
   ]
   logs: [
