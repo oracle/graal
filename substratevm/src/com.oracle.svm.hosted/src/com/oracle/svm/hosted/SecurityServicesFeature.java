@@ -184,6 +184,14 @@ public class SecurityServicesFeature implements Feature {
                 VMError.shouldNotReachHere(e);
             }
 
+            /*
+             * Register the default JavaKeyStore, JKS. It is not returned by the
+             * provider.getServices() enumeration.
+             */
+            Class<?> javaKeyStoreJks = access.findClassByName("sun.security.provider.JavaKeyStore$JKS");
+            registerForReflection(javaKeyStoreJks);
+            trace("Class registered for reflection: " + javaKeyStoreJks);
+
             try {
                 /* Register the x509 certificate extension classes for reflection. */
                 trace("Registering X.509 certificate extensions...");
