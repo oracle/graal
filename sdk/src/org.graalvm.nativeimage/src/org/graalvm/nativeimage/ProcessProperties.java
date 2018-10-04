@@ -50,7 +50,7 @@ import org.graalvm.nativeimage.impl.ProcessPropertiesSupport;
  */
 public final class ProcessProperties {
     /**
-     * Return the name of the executable.
+     * Return the canonicalized absolute pathname of the executable.
      *
      * @since 1.0
      */
