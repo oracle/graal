@@ -42,7 +42,6 @@ builds += [
     targets : [gate],
     name: "gate-truffle-javadoc"
   },
-  ${linux-amd64} ${linux-deploy} ${labsjdk8} ${maven-deploy-dry-run} ${truffleCommon} {name: "gate-truffle-maven-dry-run"}
   ${solaris-sparcv9} ${labsjdk8} ${gateLite} ${truffleWeekly} {
     name: "gate-truffle-solaris-lite-8"
   }

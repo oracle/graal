@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.util;
 
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -48,7 +50,11 @@ public class HostedStringDeduplication {
         return ImageSingletons.lookup(HostedStringDeduplication.class);
     }
 
-    private final ConcurrentMap<String, String> map = new ConcurrentHashMap<>();
+    /**
+     * This could really be a {@link Set} instead of a {@link Map}, but we rely on
+     * {@link ConcurrentMap#putIfAbsent}. The key and value are always the same.
+     */
+    private final ConcurrentMap<String, String> deduplicatedStrings = new ConcurrentHashMap<>();
 
     HostedStringDeduplication() {
     }
@@ -81,7 +87,7 @@ public class HostedStringDeduplication {
             lookup = s;
         }
 
-        String previous = map.putIfAbsent(lookup, lookup);
+        String previous = deduplicatedStrings.putIfAbsent(lookup, lookup);
         String result = previous != null ? previous : lookup;
 
         assert !isInternedString(result);
@@ -100,6 +106,13 @@ public class HostedStringDeduplication {
          * then intern() returns the original object and the comparison will succeed. Instead we
          * first make a copy of the string and intern that. If the result of interning the copy
          * returns the original String, then the original String was interned before this.
+         *
+         * Calling intern during image generation has a side effect on the hosting HotSpot VM: the
+         * string is put into the string intern table. But it does not have a side effect on the
+         * generated image: We do not put all strings that are interned by HotSpot into the image
+         * heap. We cannot even do that, because that would require access to HotSpot's internal
+         * string table. As long as the interned string is not reachable otherwise, there is no
+         * problem.
          */
         return new String(str).intern() == str;
     }

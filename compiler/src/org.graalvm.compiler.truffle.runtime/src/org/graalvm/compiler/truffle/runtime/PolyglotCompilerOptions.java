@@ -56,12 +56,6 @@ public final class PolyglotCompilerOptions {
             category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> FirstTierCompilationThreshold = new OptionKey<>(100);
 
-    @Option(help = "Maximum number of milliseconds between the first call and beeing queued for compilation of a guest language root. " +
-                    "If the maximum queue time is exceeded then the compilation is deferred, ie. the invocation counter is reset. " +
-                    "The queuing is retried after the compilation threshold is reached again.",
-                    category = OptionCategory.EXPERT)
-    public static final OptionKey<Integer> QueueTimeThreshold = new OptionKey<>(50000);
-
     /*
      * TODO planned options:
      *
@@ -113,7 +107,6 @@ public final class PolyglotCompilerOptions {
 
     private static void initializePolyglotToGraalMapping() {
         TRUFFLE_TO_GRAAL.put(CompilationThreshold, TruffleCompilerOptions.TruffleCompilationThreshold);
-        TRUFFLE_TO_GRAAL.put(QueueTimeThreshold, TruffleCompilerOptions.TruffleTimeThreshold);
     }
 
     @SuppressWarnings("unchecked")

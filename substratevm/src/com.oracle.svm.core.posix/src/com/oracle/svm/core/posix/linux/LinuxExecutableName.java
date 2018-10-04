@@ -30,6 +30,7 @@ import java.util.List;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.core.CompilerCommandPlugin;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -46,9 +47,7 @@ public class LinuxExecutableName extends PosixExecutableName {
      */
     @Override
     public Object apply(Object[] args) {
-        final String exefileString = "/proc/self/exe";
-        final String result = realpath(exefileString);
-        return result;
+        return ProcessProperties.getExecutableName();
     }
 
     @AutomaticFeature

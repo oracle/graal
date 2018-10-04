@@ -30,6 +30,7 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.io.Serializable;
 import java.lang.annotation.Annotation;
+import java.lang.annotation.Inherited;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.Constructor;
@@ -731,6 +732,31 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Override
     public Annotation[] getAnnotations() {
         return AnnotationsEncoding.getAnnotations(annotationsEncoding);
+    }
+
+    @Substitute
+    @Override
+    @SuppressWarnings("unchecked")
+    public <T extends Annotation> T[] getAnnotationsByType(Class<T> annotationClass) {
+
+        /*
+         * Custom rewrite of GenericDeclaration.super.getAnnotationsByType(annotationClass) to avoid
+         * the call to AnnotationType.getInstance(annotationClass).isInherited(). Calling
+         * AnnotationType.getInstance(annotationClass) requires registration of the corresponding
+         * AnnotationType objects in the image heap during image build time. This is currently done
+         * only for repeatable annotations for space economy reasons.
+         */
+        T[] result = getDeclaredAnnotationsByType(annotationClass);
+
+        if (result.length == 0 && annotationClass.getAnnotation(Inherited.class) != null) {
+            DynamicHub superClass = (DynamicHub) this.getSuperclass();
+            if (superClass != null) {
+                /* Determine if the annotation is associated with the superclass. */
+                result = superClass.getAnnotationsByType(annotationClass);
+            }
+        }
+
+        return result;
     }
 
     @Substitute

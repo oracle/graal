@@ -78,7 +78,7 @@ public abstract class HotSpotCounterOp extends LIRInstruction {
         for (int i = 0; i < increments.length; i++) {
             Value increment = increments[i];
             if (isJavaConstant(increment)) {
-                int incValue = asInt(asJavaConstant(increment));
+                long incValue = asLong(asJavaConstant(increment));
                 if (incValue < MIN_INCREMENT || incValue > MAX_INCREMENT) {
                     String message = String.format("Benchmark counter %s:%s has increment out of range [%d .. %d]: %d", groups[i], names[i], MIN_INCREMENT, MAX_INCREMENT, incValue);
                     assert false : message;

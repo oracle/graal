@@ -44,9 +44,7 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
     public void testVisibleOptions() {
         Engine engine = Engine.create();
         OptionDescriptor compilationThreshold = engine.getOptions().get(COMPILATION_THRESHOLD_OPTION);
-        OptionDescriptor queueTimeThreshold = engine.getOptions().get("compiler.QueueTimeThreshold");
         Assert.assertNotNull(compilationThreshold);
-        Assert.assertNotNull(queueTimeThreshold);
         engine.close();
     }
 
