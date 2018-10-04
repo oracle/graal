@@ -1033,6 +1033,7 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
         if self.subject.deps:
             build_args += ['-cp', mx.classpath(self.subject.native_image_jar_distributions)]
         build_args += self.subject.build_args()
+        build_args += ['-H:NumberOfThreads={}'.format(self.parallelism)]
 
         # rewrite --language:all & --tool:all
         final_build_args = []
