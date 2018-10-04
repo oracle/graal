@@ -196,7 +196,7 @@ public class SourceUtils {
     }
 
     public static SourcePredicate createLanguageFilterPredicate(final LanguageInfo languageInfo) {
-        return src -> languageInfo.getId().equals(src.getLanguage()) || languageInfo.getMimeTypes().contains(src.getMimeType());
+        return src -> languageInfo.getId().equals(src.getLanguage()) || (src.getMimeType() != null && languageInfo.getMimeTypes().contains(src.getMimeType()));
     }
 
     public static URI getOrFixFileUri(Source source) {
