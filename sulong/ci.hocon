@@ -94,7 +94,7 @@ sulong-gate-asm-parser: ${sulong-gateCommon} ${linux-amd64} {
 
 sulong-coverage-linux: ${sulong-gateTest38-linux} ${requireGCC} {
     run: [
-        [mx, gate, --tags, "build,args,assembly,callback,debug,gcc_c,gcc_cpp,gcc_fortran,interop,irdebug,llvm,nwcc,parser,pipe,sulong,sulongBasic,sulongMisc,type,vaargs", --jacoco-zip, report.zip]
+        [mx, gate, --tags, "build,sulongCoverage", --jacoco-zip, report.zip]
     ]
     logs: [*/report.zip]
     targets: [weekly]
