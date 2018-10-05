@@ -18,7 +18,7 @@ gateCoverage : {
     EXTRA_VM_ARGS : ""
   }
   run : [
-    ${gateCmd} ["build,test", --jacoco-zip, report.zip]
+    ${gateCmd} ["build,coverage", --jacoco-zip, report.zip]
   ]
 }
 
