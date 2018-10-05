@@ -11,6 +11,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.ThreadFactory;
 
 import org.graalvm.launcher.AbstractLanguageLauncher;
@@ -76,23 +77,38 @@ public class GraalLanguageServerLauncher extends AbstractLanguageLauncher {
 
         ContextAwareExecutorWrapperRegistry registry = instrument.lookup(ContextAwareExecutorWrapperRegistry.class);
         ContextAwareExecutorWrapper executorWrapper = new ContextAwareExecutorWrapper() {
+            String GRAAL_WORKER_THREAD_ID = "LSP server Graal worker thread";
 
             private ExecutorService executor = Executors.newSingleThreadExecutor(new ThreadFactory() {
                 private final ThreadFactory factory = Executors.defaultThreadFactory();
 
                 public Thread newThread(Runnable r) {
                     Thread thread = factory.newThread(r);
-                    thread.setName("LSP server Graal worker thread");
+                    thread.setName(GRAAL_WORKER_THREAD_ID);
                     return thread;
                 }
             });
 
             public <T> Future<T> executeWithDefaultContext(Callable<T> taskWithResult) {
-                return executor.submit(taskWithResult);
+                return execute(taskWithResult);
             }
 
             public <T> Future<T> executeWithNestedContext(Callable<T> taskWithResult) {
-                return executor.submit(new Callable<T>() {
+                return execute(wrapWithNewContext(taskWithResult));
+            }
+
+            private <T> Future<T> execute(Callable<T> taskWithResult) {
+                if (GRAAL_WORKER_THREAD_ID.equals(Thread.currentThread().getName())) {
+                    FutureTask<T> futureTask = new FutureTask<>(taskWithResult);
+                    futureTask.run();
+                    return futureTask;
+                }
+
+                return executor.submit(taskWithResult);
+            }
+
+            private <T> Callable<T> wrapWithNewContext(Callable<T> taskWithResult) {
+                return new Callable<T>() {
 
                     public T call() throws Exception {
                         try (Context newContext = contextBuilder.build()) {
@@ -104,7 +120,7 @@ public class GraalLanguageServerLauncher extends AbstractLanguageLauncher {
                             }
                         }
                     }
-                });
+                };
             }
 
             public void shutdown() {

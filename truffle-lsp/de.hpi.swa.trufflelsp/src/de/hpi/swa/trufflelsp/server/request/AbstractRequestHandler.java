@@ -1,7 +1,10 @@
 package de.hpi.swa.trufflelsp.server.request;
 
 import java.io.PrintWriter;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
+import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.source.Source;
@@ -52,6 +55,20 @@ public class AbstractRequestHandler {
                 }
                 return definitionSearchNode;
             }
+        }
+        return null;
+    }
+
+    protected <T> T getFutureResultOrHandleExceptions(Future<T> future) {
+        try {
+            return future.get();
+        } catch (ExecutionException e) {
+            if (e.getCause() instanceof RuntimeException && e instanceof TruffleException) {
+                throw (RuntimeException) e.getCause();
+            } else {
+                e.printStackTrace(err);
+            }
+        } catch (InterruptedException e) {
         }
         return null;
     }

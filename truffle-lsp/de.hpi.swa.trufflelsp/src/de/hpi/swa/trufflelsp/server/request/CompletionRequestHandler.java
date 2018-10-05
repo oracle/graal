@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 import org.eclipse.lsp4j.CompletionItem;
@@ -183,8 +184,9 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
 
         NodeLocationType locationType = nearestNodeHolder.getLocationType();
         if (locationType == NodeLocationType.CONTAINS_END) {
-            EvaluationResult evalResult = sourceCodeEvaluator.tryDifferentEvalStrategies(surrogate, nearestNode);
-            if (evalResult.isEvaluationDone()) {
+            Future<EvaluationResult> future = contextAwareExecutor.executeWithNestedContext(() -> sourceCodeEvaluator.tryDifferentEvalStrategies(surrogate, nearestNode));
+            EvaluationResult evalResult = getFutureResultOrHandleExceptions(future);
+            if (evalResult != null && evalResult.isEvaluationDone()) {
                 if (!evalResult.isError()) {
                     fillCompletionsFromTruffleObject(completions, surrogate.getLangId(), evalResult.getResult());
                 } else {
@@ -462,5 +464,4 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
         }
         return map;
     }
-
 }

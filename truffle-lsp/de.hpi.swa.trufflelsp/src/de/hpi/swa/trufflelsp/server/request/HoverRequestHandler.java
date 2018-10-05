@@ -3,6 +3,7 @@ package de.hpi.swa.trufflelsp.server.request;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Future;
 
 import org.eclipse.lsp4j.Hover;
 import org.eclipse.lsp4j.MarkedString;
@@ -100,43 +101,46 @@ public class HoverRequestHandler extends AbstractRequestHandler {
             return null;
         }
 
-        final LanguageInfo info = coverageData.getCoverageEventNode().getRootNode().getLanguageInfo();
-        final Source inlineEvalSource = Source.newBuilder(info.getId(), textAtHoverPosition, "in-line eval (hover request)").cached(false).build();
-        ExecutableNode executableNode = null;
-        try {
-            executableNode = env.parseInline(inlineEvalSource, coverageData.getCoverageEventNode(), coverageData.getFrame());
-        } catch (Exception e) {
-            if (!(e instanceof TruffleException)) {
-                e.printStackTrace(err);
+        Future<Hover> future = contextAwareExecutor.executeWithNestedContext(() -> {
+            final LanguageInfo info = coverageData.getCoverageEventNode().getRootNode().getLanguageInfo();
+            final Source inlineEvalSource = Source.newBuilder(info.getId(), textAtHoverPosition, "in-line eval (hover request)").cached(false).build();
+            ExecutableNode executableNode = null;
+            try {
+                executableNode = env.parseInline(inlineEvalSource, coverageData.getCoverageEventNode(), coverageData.getFrame());
+            } catch (Exception e) {
+                if (!(e instanceof TruffleException)) {
+                    e.printStackTrace(err);
+                }
             }
-        }
-        if (executableNode == null) {
-            return new Hover(new ArrayList<>());
-        }
-
-        CoverageEventNode coverageEventNode = coverageData.getCoverageEventNode();
-        coverageEventNode.insertOrReplaceChild(executableNode);
-        Object evalResult = null;
-        try {
-            System.out.println("Trying coverage-based eval...");
-            evalResult = executableNode.execute(coverageData.getFrame());
-        } catch (Exception e) {
-            if (!((e instanceof TruffleException) || (e instanceof ControlFlowException))) {
-                e.printStackTrace(err);
+            if (executableNode == null) {
+                return new Hover(new ArrayList<>());
             }
-            return new Hover(new ArrayList<>());
-        } finally {
-            coverageEventNode.clearChild();
-        }
 
-        if (evalResult instanceof TruffleObject) {
-            Hover signatureHover = trySignature(hoverSection, langId, (TruffleObject) evalResult);
-            if (signatureHover != null) {
-                return signatureHover;
+            CoverageEventNode coverageEventNode = coverageData.getCoverageEventNode();
+            coverageEventNode.insertOrReplaceChild(executableNode);
+            Object evalResult = null;
+            try {
+                System.out.println("Trying coverage-based eval...");
+                evalResult = executableNode.execute(coverageData.getFrame());
+            } catch (Exception e) {
+                if (!((e instanceof TruffleException) || (e instanceof ControlFlowException))) {
+                    e.printStackTrace(err);
+                }
+                return new Hover(new ArrayList<>());
+            } finally {
+                coverageEventNode.clearChild();
             }
-        }
 
-        return new Hover(createDefaultHoverInfos(textAtHoverPosition, evalResult, langId), SourceUtils.sourceSectionToRange(hoverSection));
+            if (evalResult instanceof TruffleObject) {
+                Hover signatureHover = trySignature(hoverSection, langId, (TruffleObject) evalResult);
+                if (signatureHover != null) {
+                    return signatureHover;
+                }
+            }
+            return new Hover(createDefaultHoverInfos(textAtHoverPosition, evalResult, langId), SourceUtils.sourceSectionToRange(hoverSection));
+        });
+
+        return getFutureResultOrHandleExceptions(future);
     }
 
     private Hover trySignature(SourceSection hoverSection, String langId, TruffleObject evalResult) {

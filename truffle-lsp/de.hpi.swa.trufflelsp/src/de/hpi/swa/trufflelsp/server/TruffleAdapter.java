@@ -39,11 +39,11 @@ import de.hpi.swa.trufflelsp.exceptions.UnknownLanguageException;
 import de.hpi.swa.trufflelsp.server.request.CompletionRequestHandler;
 import de.hpi.swa.trufflelsp.server.request.CoverageRequestHandler;
 import de.hpi.swa.trufflelsp.server.request.DefinitionRequestHandler;
-import de.hpi.swa.trufflelsp.server.request.SymbolRequestHandler;
 import de.hpi.swa.trufflelsp.server.request.HoverRequestHandler;
 import de.hpi.swa.trufflelsp.server.request.ReferencesRequestHandler;
 import de.hpi.swa.trufflelsp.server.request.SignatureHelpRequestHandler;
 import de.hpi.swa.trufflelsp.server.request.SourceCodeEvaluator;
+import de.hpi.swa.trufflelsp.server.request.SymbolRequestHandler;
 import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
 import de.hpi.swa.trufflelsp.server.utils.SurrogateMap;
 import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogate;
@@ -296,7 +296,7 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
      *         position
      */
     public Future<CompletionList> completion(final URI uri, int line, int column) {
-        return contextAwareExecutor.executeWithNestedContext(() -> completionHandler.completionWithEnteredContext(uri, line, column));
+        return contextAwareExecutor.executeWithDefaultContext(() -> completionHandler.completionWithEnteredContext(uri, line, column));
     }
 
     public Future<List<? extends Location>> definition(URI uri, int line, int character) {
@@ -304,17 +304,15 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
     }
 
     public Future<Hover> hover(URI uri, int line, int column) {
-        return contextAwareExecutor.executeWithNestedContext(() -> hoverHandler.hoverWithEnteredContext(uri, line, column));
+        return contextAwareExecutor.executeWithDefaultContext(() -> hoverHandler.hoverWithEnteredContext(uri, line, column));
     }
 
     public Future<SignatureHelp> signatureHelp(URI uri, int line, int character) {
-        return contextAwareExecutor.executeWithDefaultContext(() -> signatureHelpHandler.signatureHelpWithEnteredContext(uri, line, character));
+        return contextAwareExecutor.executeWithNestedContext(() -> signatureHelpHandler.signatureHelpWithEnteredContext(uri, line, character));
     }
 
     public Future<Boolean> runCoverageAnalysis(final URI uri) {
-        return contextAwareExecutor.executeWithNestedContext(() -> {
-            return coverageHandler.runCoverageAnalysisWithNestedEnteredContext(uri);
-        });
+        return contextAwareExecutor.executeWithNestedContext(() -> coverageHandler.runCoverageAnalysisWithNestedEnteredContext(uri));
     }
 
     public Future<?> showCoverage(URI uri) {
