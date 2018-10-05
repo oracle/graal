@@ -41,7 +41,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
 
-@TargetClass(value = TestClass.class, onlyWith = JUnitFeature.IsEnabled.class)
+@TargetClass(className = "org.junit.runners.model.TestClass", onlyWith = JUnitFeature.IsEnabled.class)
 public final class Target_org_junit_runners_model_TestClass {
 
     public static final class OnlyConstructorComputer implements CustomFieldValueComputer {

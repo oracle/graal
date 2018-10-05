@@ -24,17 +24,19 @@
  */
 package com.oracle.svm.junit;
 
+import org.junit.runner.Description;
+
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
-import org.junit.runner.Description;
 
-@TargetClass(value = Description.class, onlyWith = JUnitFeature.IsEnabled.class)
+@TargetClass(className = "org.junit.runner.Description", onlyWith = JUnitFeature.IsEnabled.class)
 public final class Target_org_junit_runner_Description {
 
     public static final class TestClassComputer implements CustomFieldValueComputer {
