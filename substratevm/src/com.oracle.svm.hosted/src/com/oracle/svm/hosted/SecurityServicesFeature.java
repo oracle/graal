@@ -106,14 +106,14 @@ public class SecurityServicesFeature implements Feature {
         RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.util.UUID$Holder"));
 
         /*
-         * This class has a static final SecureRandom field which can be accessed via a public API,
-         * thus leak in third party code.
+         * This class has a static final SecureRandom field which can be accessed via a public API
+         * and can leak in third party code.
          */
         RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.security.jca.JCAUtil$CachedSecureRandomHolder"));
 
         if (SubstrateOptions.EnableAllSecurityServices.getValue()) {
             /*
-             * These classes also have a static final SecureRandom field but can only be used when
+             * These classes also have a static final SecureRandom fields but can only be used when
              * all security services are enabled.
              */
             RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("com.sun.crypto.provider.SunJCE$SecureRandomHolder"));
