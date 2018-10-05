@@ -16,7 +16,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.EspressoLanguage;;
 import com.oracle.truffle.espresso.intrinsics.Target_java_lang_Object;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -149,6 +149,17 @@ public class JniEnv {
 
     public static JniEnv create() {
         return new JniEnv();
+    }
+
+    static {
+        String lib = System.getProperty("nespresso.library");
+        if (lib == null) {
+            load("nespresso");
+        } else {
+            load(lib);
+        }
+        // Load native library nespresso.dll (Windows) or libnespresso.so (Unixes)
+        // at runtime
     }
 
     private static TruffleObject loadLibrary(String lib) {
@@ -347,5 +358,15 @@ public class JniEnv {
     @JniMethod
     public Object CallStaticObjectMethodV(StaticObject clazz, Meta.Method methodID, Object[] args) {
         return StaticObject.NULL;
+    }
+
+    private static long load(String name) {
+        TruffleObject lib = null;        
+        try {
+            lib = loadLibrary(name);
+        } catch (UnsatisfiedLinkError e) {
+            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(UnsatisfiedLinkError.class);
+        }
+        return EspressoLanguage.getCurrentContext().addNativeLibrary(lib);
     }
 }

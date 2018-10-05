@@ -17,10 +17,10 @@ extern "C" {
   V(Long)    \
   V(Float)   \
   V(Double)
-
-    
-
-
+  
+#define TYPE_LIST(V) \
+  V(Object)          \
+  PRIMITIVE_LIST(V)  
 
 #define MAKE_GETTER(type) (Get##type##Field)
 #define MAKE_SETTER(type) (Set##type##Field)
@@ -29,7 +29,6 @@ extern "C" {
 
 #define FIELD_GETTER_LIST(V) MAP(TYPE_LIST, MAKE_GETTER, V)
 #define FIELD_SETTER_LIST(V) MAP(TYPE_LIST, MAKE_SETTER, V)
-
 
 #define CALL_STATIC_METHOD_LIST(V) MAP(TYPE_LIST, MAKE_STATIC_METHOD, V)
 

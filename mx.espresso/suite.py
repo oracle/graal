@@ -34,7 +34,7 @@ suite = {
         "com.oracle.truffle.espresso" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
-            # "jniHeaders" : True,
+            "jniHeaders" : True,
             "dependencies" : [
                 "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_NFI",
@@ -104,7 +104,7 @@ suite = {
             ],
             "buildEnv" : {
                 "TARGET" : "bin/<lib:nespresso>",
-                "CPPFLAGS" : "-I<path:TRUFFLE_NFI_NATIVE>/include",
+                "CPPFLAGS" : "-I<jnigen:com.oracle.truffle.espresso> -I<path:TRUFFLE_NFI_NATIVE>/include",
                 "OS" : "<os>",
             },
         },
