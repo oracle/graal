@@ -59,6 +59,6 @@ public class DecorateFunctionTest extends InteropTestBase {
     @Test
     public void testDecorateFunction(@Inject(TestDecorateFunctionNode.class) CallTarget decorateFunction) {
         Object actual = decorateFunction.call(12, 42);
-        Assert.assertEquals(12 + 42 * 2.0, actual);
+        Assert.assertEquals((12 + 42) / 2.0, actual);
     }
 }
