@@ -413,6 +413,7 @@ class GraalTags:
     bootstraplite = ['bootstraplite', 'bootstrap', 'fulltest']
     bootstrapfullverify = ['bootstrapfullverify', 'fulltest']
     test = ['test', 'fulltest']
+    coverage = ['coverage']
     benchmarktest = ['benchmarktest', 'fulltest']
     ctw = ['ctw', 'fulltest']
     doc = ['javadoc']
@@ -624,7 +625,7 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
         if t: mx.javadoc(['--exclude-packages', 'com.oracle.truffle.dsl.processor.java'], quietForNoPackages=True)
 
 graal_unit_test_runs = [
-    UnitTestRun('UnitTests', [], tags=GraalTags.test),
+    UnitTestRun('UnitTests', [], tags=GraalTags.test + GraalTags.coverage),
 ]
 
 _registers = {
