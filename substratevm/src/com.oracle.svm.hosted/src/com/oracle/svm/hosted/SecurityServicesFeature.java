@@ -26,6 +26,20 @@ package com.oracle.svm.hosted;
 
 // Checkstyle: allow reflection
 
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.jni.JNIRuntimeAccess;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.RuntimeClassInitialization;
+import org.graalvm.nativeimage.RuntimeReflection;
+import sun.security.jca.Providers;
+import sun.security.provider.NativePRNG;
+import sun.security.x509.OIDMap;
+
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -34,22 +48,6 @@ import java.security.Provider.Service;
 import java.security.cert.CertificateException;
 import java.util.Arrays;
 import java.util.Map;
-
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.serviceprovider.GraalServices;
-import org.graalvm.nativeimage.Feature;
-import org.graalvm.nativeimage.RuntimeClassInitialization;
-import org.graalvm.nativeimage.RuntimeReflection;
-
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.jni.JNIRuntimeAccess;
-
-import sun.security.jca.Providers;
-import sun.security.provider.NativePRNG;
-import sun.security.x509.OIDMap;
 
 @AutomaticFeature
 public class SecurityServicesFeature implements Feature {
@@ -105,12 +103,14 @@ public class SecurityServicesFeature implements Feature {
         /* java.util.UUID$Holder has a static final SecureRandom field. */
         RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.util.UUID$Holder"));
 
-        if (SubstrateOptions.EnableAllSecurityServices.getValue()) {
-            /* These classes have a static final SecureRandom field. */
-            RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("com.sun.crypto.provider.SunJCE$SecureRandomHolder"));
-            RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.security.jca.JCAUtil$CachedSecureRandomHolder"));
-            RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.security.krb5.Confounder"));
+        /* These classes have a static final SecureRandom field. */
+        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.security.jca.JCAUtil$CachedSecureRandomHolder"));
+        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("com.sun.crypto.provider.SunJCE$SecureRandomHolder"));
+        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.security.krb5.Confounder"));
 
+        if (SubstrateOptions.EnableAllSecurityServices.getValue()) {
+            /* SSLContext also has a static final SecureRandom field but can only be used when all security services are enabled. */
+            RuntimeClassInitialization.rerunClassInitialization(javax.net.ssl.SSLContext.class);
             /* Prepare SunEC native library access. */
             prepareSunEC();
         }
