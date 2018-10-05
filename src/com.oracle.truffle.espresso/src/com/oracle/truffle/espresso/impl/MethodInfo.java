@@ -212,22 +212,17 @@ public final class MethodInfo implements ModifiersProvider {
                 callTarget = redirectedMethod;
             } else {
                 if (this.isNative()) {
+                    // Bind native method.
                     System.err.println("Linking native method: " + meta(this).getDeclaringClass().getName() + "#" + getName() + " " + getSignature());
                     Meta meta = getContext().getMeta();
+
                     Meta.Method.WithInstance findNative = meta.knownKlass(ClassLoader.class)
                             .staticMethod("findNative", long.class, ClassLoader.class, String.class);
 
                     // Lookup the short name first, otherwise lookup the long name (with signature).
-                    for (boolean withSignature: new boolean[]{false, true}) {
-                        String mangledName = Mangle.mangleMethod(meta(this), withSignature);
-                        long handle = (long) findNative.invoke(getDeclaringClass().getClassLoader(), mangledName);
-                        if (handle == 0) { // not found
-                            continue ;
-                        }
-                        TruffleObject library = getContext().getNativeLibraries().get(handle);
-                        TruffleObject nativeMethod = bind(library, meta(this), mangledName);
-                        callTarget = Truffle.getRuntime().createCallTarget(new JniNativeNode(getContext().getLanguage(), nativeMethod));
-                        break;
+                    callTarget = lookupJniCallTarget(findNative, false);
+                    if (callTarget == null) {
+                        callTarget = lookupJniCallTarget(findNative,true);
                     }
 
                     if (callTarget == null) {
@@ -240,6 +235,17 @@ public final class MethodInfo implements ModifiersProvider {
         }
 
         return callTarget;
+    }
+
+    private CallTarget lookupJniCallTarget(Meta.Method.WithInstance findNative, boolean fullSignature) {
+        String mangledName = Mangle.mangleMethod(meta(this), fullSignature);
+        long handle = (long) findNative.invoke(getDeclaringClass().getClassLoader(), mangledName);
+        if (handle == 0) { // not found
+            return null;
+        }
+        TruffleObject library = getContext().getNativeLibraries().get(handle);
+        TruffleObject nativeMethod = bind(library, meta(this), mangledName);
+        return Truffle.getRuntime().createCallTarget(new JniNativeNode(getContext().getLanguage(), nativeMethod, meta(this)));
     }
 
     public int getModifiers() {

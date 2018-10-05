@@ -37,7 +37,7 @@ public class Target_java_lang_ClassLoader_NativeLibrary {
             throw meta(self).getMeta().throwEx(UnsatisfiedLinkError.class);
         }
         long handle = EspressoLanguage.getCurrentContext().addNativeLibrary(lib);
-        // System.err.println("Loading: " + hostName + " " + handle);
+        System.err.println("Loading: " + hostName + " " + handle);
         // TODO(peterssen): Should call JNI_OnLoad, if it exists and get the JNI version, check if
         // compatible. Setting the default version as a workaround.
         meta(self).field("jniVersion").set(0x00010001);

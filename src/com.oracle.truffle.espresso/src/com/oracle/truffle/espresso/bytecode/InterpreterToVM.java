@@ -73,7 +73,7 @@ import com.oracle.truffle.espresso.intrinsics.Target_java_security_AccessControl
 import com.oracle.truffle.espresso.intrinsics.Target_java_util_concurrent_atomic_AtomicLong;
 import com.oracle.truffle.espresso.intrinsics.Target_java_util_jar_JarFile;
 import com.oracle.truffle.espresso.intrinsics.Target_java_util_zip_Inflater;
-import com.oracle.truffle.espresso.intrinsics.Target_java_util_zip_ZipFile;
+// import com.oracle.truffle.espresso.intrinsics.Target_java_util_zip_ZipFile;
 import com.oracle.truffle.espresso.intrinsics.Target_sun_misc_Perf;
 import com.oracle.truffle.espresso.intrinsics.Target_sun_misc_Signal;
 import com.oracle.truffle.espresso.intrinsics.Target_sun_misc_URLClassPath;
@@ -136,7 +136,7 @@ public class InterpreterToVM {
                     Target_java_util_concurrent_atomic_AtomicLong.class,
                     Target_java_util_jar_JarFile.class,
                     Target_java_util_zip_Inflater.class,
-                    Target_java_util_zip_ZipFile.class,
+                    // Target_java_util_zip_ZipFile.class,
                     Target_sun_misc_Perf.class,
                     Target_sun_misc_Signal.class,
                     Target_sun_misc_Unsafe.class,

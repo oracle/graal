@@ -27,7 +27,6 @@ import java.io.OutputStream;
 import java.lang.reflect.Method;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Stream;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -62,7 +61,7 @@ public class EspressoContext {
     private Meta meta;
     private StaticObject mainThread;
 
-    private final ConcurrentHashMap<Long, TruffleObject> nativeLibraries =  new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Long, TruffleObject> nativeLibraries = new ConcurrentHashMap<>();
     private final AtomicLong nativeHandleCount = new AtomicLong();
     private JniEnv jniEnv;
 
@@ -169,13 +168,15 @@ public class EspressoContext {
             }
         }
 
-        Stream.of(
+        for (Class<?> clazz : new Class<?>[]{
                         String.class,
                         System.class,
                         ThreadGroup.class,
                         Thread.class,
                         Class.class,
-                        Method.class).forEachOrdered(this::initializeClass);
+                        Method.class}) {
+            initializeClass(clazz);
+        }
 
         // Finalizer is not public.
         initializeClass("Ljava/lang/ref/Finalizer;");
@@ -184,7 +185,7 @@ public class EspressoContext {
         meta.knownKlass(System.class).staticMethod("initializeSystemClass", void.class).invokeDirect();
 
         // System exceptions.
-        Stream.of(
+        for (Class<?> clazz : new Class<?>[]{
                         OutOfMemoryError.class,
                         NullPointerException.class,
                         ClassCastException.class,
@@ -192,7 +193,9 @@ public class EspressoContext {
                         ArithmeticException.class,
                         StackOverflowError.class,
                         IllegalMonitorStateException.class,
-                        IllegalArgumentException.class).forEachOrdered(this::initializeClass);
+                        IllegalArgumentException.class}) {
+            initializeClass(clazz);
+        }
 
         // Load system class loader.
         appClassLoader = meta.knownKlass(ClassLoader.class).staticMethod("getSystemClassLoader", ClassLoader.class).invokeDirect();

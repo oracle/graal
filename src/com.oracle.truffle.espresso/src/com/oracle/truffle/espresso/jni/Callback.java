@@ -17,12 +17,12 @@ class Callback implements TruffleObject {
 
     @CompilerDirectives.TruffleBoundary
     Object call(Object... args) {
-        if (args.length == arity) {
+        // if (args.length == arity) {
             Object ret = function.call(args);
             return ret;
-        } else {
-            throw ArityException.raise(arity, args.length);
-        }
+        // } else {
+            // throw ArityException.raise(arity, args.length);
+        // }
     }
 
     @Override

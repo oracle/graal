@@ -43,7 +43,7 @@ public class IntrinsicRootNode extends RootNode {
     public Object execute(VirtualFrame frame) {
         try {
             return callIntrinsic(frame.getArguments());
-        } catch (EspressoException | ArrayIndexOutOfBoundsException | StackOverflowError wrapped) {
+        } catch (EspressoException | StackOverflowError wrapped) {
             throw wrapped;
         } catch (Throwable throwable) {
             CompilerDirectives.transferToInterpreter();
