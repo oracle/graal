@@ -94,6 +94,7 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.nodes.RootNode;
 import java.nio.file.FileVisitOption;
 import java.nio.file.FileVisitResult;
@@ -141,20 +142,20 @@ public class VirtualizedFileSystemTest {
                         Files.createTempDirectory(VirtualizedFileSystemTest.class.getSimpleName()),
                         fullIO);
         Context ctx = Context.newBuilder(LANGAUGE_ID).allowIO(true).build();
-        result.add(new Configuration("Full IO", ctx, accessibleDir, cwd, fullIO, false, true, true, true));
+        result.add(new Configuration("Full IO", ctx, accessibleDir, cwd, fullIO, true, false, true, true, true));
         // No IO
         ctx = Context.newBuilder(LANGAUGE_ID).allowIO(false).build();
         Path privateDir = createContent(
                         Files.createTempDirectory(VirtualizedFileSystemTest.class.getSimpleName()),
                         fullIO);
-        result.add(new Configuration("No IO", ctx, privateDir, cwd, fullIO, false, false, false, true));
+        result.add(new Configuration("No IO", ctx, privateDir, cwd, fullIO, false, false, false, false, true));
         // No IO under language home
         ctx = Context.newBuilder(LANGAUGE_ID).allowIO(false).build();
         privateDir = createContent(
                         Files.createTempDirectory(VirtualizedFileSystemTest.class.getSimpleName()),
                         fullIO);
         final String langHome = privateDir.toString();
-        result.add(new Configuration("No IO under language home", ctx, privateDir, cwd, fullIO, false, true, false, true, () -> {
+        result.add(new Configuration("No IO under language home", ctx, privateDir, cwd, fullIO, false, false, true, false, true, () -> {
             System.setProperty(LANGAUGE_ID + ".home", langHome);
         }));
         // Checked IO
@@ -172,19 +173,19 @@ public class VirtualizedFileSystemTest {
                         new AccessPredicate(Arrays.asList(accessibleDir, readOnlyDir)),
                         new AccessPredicate(Collections.singleton(accessibleDir)));
         ctx = Context.newBuilder(LANGAUGE_ID).allowIO(true).fileSystem(fileSystem).build();
-        result.add(new Configuration("Conditional IO - read/write part", ctx, accessibleDir, fullIO, false, true, true, true));
+        result.add(new Configuration("Conditional IO - read/write part", ctx, accessibleDir, fullIO, false, false, true, true, true));
         fileSystem = new RestrictedFileSystem(
                         FileSystemProviderTest.newFullIOFileSystem(readOnlyDir),
                         new AccessPredicate(Arrays.asList(accessibleDir, readOnlyDir)),
                         new AccessPredicate(Collections.singleton(accessibleDir)));
         ctx = Context.newBuilder(LANGAUGE_ID).allowIO(true).fileSystem(fileSystem).build();
-        result.add(new Configuration("Conditional IO - read only part", ctx, readOnlyDir, fullIO, false, true, false, true));
+        result.add(new Configuration("Conditional IO - read only part", ctx, readOnlyDir, fullIO, false, false, true, false, true));
         fileSystem = new RestrictedFileSystem(
                         FileSystemProviderTest.newFullIOFileSystem(privateDir),
                         new AccessPredicate(Arrays.asList(accessibleDir, readOnlyDir)),
                         new AccessPredicate(Collections.singleton(accessibleDir)));
         ctx = Context.newBuilder(LANGAUGE_ID).allowIO(true).fileSystem(fileSystem).build();
-        result.add(new Configuration("Conditional IO - private part", ctx, privateDir, fullIO, false, false, false, true));
+        result.add(new Configuration("Conditional IO - private part", ctx, privateDir, fullIO, false, false, false, false, true));
 
         // Memory
         fileSystem = new MemoryFileSystem();
@@ -192,7 +193,7 @@ public class VirtualizedFileSystemTest {
         ((MemoryFileSystem) fileSystem).setUserDir(memDir);
         createContent(memDir, fileSystem);
         ctx = Context.newBuilder(LANGAUGE_ID).allowIO(true).fileSystem(fileSystem).build();
-        result.add(new Configuration("Memory FileSystem", ctx, memDir, fileSystem, false, true, true, true));
+        result.add(new Configuration("Memory FileSystem", ctx, memDir, fileSystem, false, false, true, true, true));
         return result;
     }
 
@@ -1151,12 +1152,33 @@ public class VirtualizedFileSystemTest {
         ctx.eval(LANGAUGE_ID, "");
     }
 
+    @Test
+    public void testExceptions() {
+        final Context ctx = cfg.getContext();
+        languageAction = (Env env) -> {
+            TruffleFile existing = env.getTruffleFile(FOLDER_EXISTING);
+            try {
+                existing.resolve(null);
+                Assert.fail("Should not reach here.");
+            } catch (Exception e) {
+                if (cfg.isDefaultFileSystem()) {
+                    Assert.assertTrue(e instanceof NullPointerException);
+                } else {
+                    Assert.assertTrue(TestAPIAccessor.engineAccess().isHostException(e));
+                    Assert.assertTrue(TestAPIAccessor.engineAccess().asHostException(e) instanceof NullPointerException);
+                }
+            }
+        };
+        ctx.eval(LANGAUGE_ID, "");
+    }
+
     public static final class Configuration implements Closeable {
         private final String name;
         private final Context ctx;
         private final Path path;
         private final Path userDir;
         private final FileSystem fileSystem;
+        private final boolean isDefaultFileSystem;
         private final boolean needsURI;
         private final boolean readable;
         private final boolean writable;
@@ -1168,11 +1190,12 @@ public class VirtualizedFileSystemTest {
                         final Context context,
                         final Path path,
                         final FileSystem fileSystem,
+                        final boolean isDefaultFileSystem,
                         final boolean needsURI,
                         final boolean readable,
                         final boolean writable,
                         final boolean allowsUserDir) {
-            this(name, context, path, path, fileSystem, needsURI, readable, writable, allowsUserDir, null);
+            this(name, context, path, path, fileSystem, isDefaultFileSystem, needsURI, readable, writable, allowsUserDir, null);
         }
 
         Configuration(
@@ -1181,11 +1204,12 @@ public class VirtualizedFileSystemTest {
                         final Path path,
                         final Path userDir,
                         final FileSystem fileSystem,
+                        final boolean isDefaultFileSystem,
                         final boolean needsURI,
                         final boolean readable,
                         final boolean writable,
                         final boolean allowsUserDir) {
-            this(name, context, path, userDir, fileSystem, needsURI, readable, writable, allowsUserDir, null);
+            this(name, context, path, userDir, fileSystem, isDefaultFileSystem, needsURI, readable, writable, allowsUserDir, null);
         }
 
         Configuration(
@@ -1194,6 +1218,7 @@ public class VirtualizedFileSystemTest {
                         final Path path,
                         final Path userDir,
                         final FileSystem fileSystem,
+                        final boolean isDefaultFileSystem,
                         final boolean needsURI,
                         final boolean readable,
                         final boolean writable,
@@ -1209,6 +1234,7 @@ public class VirtualizedFileSystemTest {
             this.path = path;
             this.userDir = userDir;
             this.fileSystem = fileSystem;
+            this.isDefaultFileSystem = isDefaultFileSystem;
             this.needsURI = needsURI;
             this.readable = readable;
             this.writable = writable;
@@ -1250,6 +1276,10 @@ public class VirtualizedFileSystemTest {
 
         boolean allowsUserDir() {
             return allowsUserDir;
+        }
+
+        boolean isDefaultFileSystem() {
+            return isDefaultFileSystem;
         }
 
         String formatErrorMessage(final String message) {
@@ -1801,6 +1831,14 @@ public class VirtualizedFileSystemTest {
             public String toString() {
                 return file.toString();
             }
+        }
+    }
+
+    private static final TestAPIAccessor API = new TestAPIAccessor();
+
+    private static final class TestAPIAccessor extends Accessor {
+        static EngineSupport engineAccess() {
+            return API.engineSupport();
         }
     }
 }

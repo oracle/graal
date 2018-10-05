@@ -628,6 +628,8 @@ public abstract class Accessor {
             // O.K.
         } else if (simpleName.endsWith("TestAccessor")) {
             // O.K.
+        } else if (simpleName.endsWith("TestAPIAccessor")) {
+            // O.K.
         } else {
             assert simpleName.endsWith("VMAccessor");
             SPI = this.engineSupport();
