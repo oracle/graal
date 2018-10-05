@@ -5,6 +5,9 @@ This changelog summarizes major changes between Graal SDK versions. The main foc
 ## Version 1.0 RC8
 * Added `MessageTransport` and `MessageEndpoint` to virtualize transport of messages to a peer URI.
 
+## Version 1.0 RC7
+* Graal SDK was relicensed from GPLv2 with CPE to Universal Permissive License (UPL).
+
 ## Version 1.0 RC6
 * Added new `ByteSequence` utility to the IO package that is intended to be used as immutable byte sequence representation.
 * Added support for byte based sources:

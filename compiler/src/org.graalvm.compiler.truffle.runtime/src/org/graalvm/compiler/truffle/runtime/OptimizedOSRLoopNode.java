@@ -244,7 +244,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
         osrTarget.setSpeculationLog(speculationLog);
         // let the old parent re-adopt the children
         parent.adoptChildren();
-        osrTarget.compile();
+        osrTarget.compile(true);
         return osrTarget;
     }
 

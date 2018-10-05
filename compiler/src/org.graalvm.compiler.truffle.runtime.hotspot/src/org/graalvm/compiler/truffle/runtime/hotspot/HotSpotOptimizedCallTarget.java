@@ -26,6 +26,7 @@ package org.graalvm.compiler.truffle.runtime.hotspot;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
+import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleCallBoundary;
 
@@ -63,7 +64,17 @@ public class HotSpotOptimizedCallTarget extends OptimizedCallTarget implements O
         return true;
     }
 
+    /**
+     * This method may only be called during compilation, and only by the compiling thread.
+     */
     public void setInstalledCode(InstalledCode code) {
+        if (installedCode == code) {
+            return;
+        }
+        invalidateCode();
+        // A default nmethod can be called from entry points in the VM (e.g., Method::_code)
+        // and so allowing it to be installed here would invalidate the truth of
+        // `soleExecutionEntryPoint`
         if (code instanceof HotSpotNmethod) {
             HotSpotNmethod nmethod = (HotSpotNmethod) code;
             if (nmethod.isDefault()) {
@@ -84,7 +95,13 @@ public class HotSpotOptimizedCallTarget extends OptimizedCallTarget implements O
     }
 
     @Override
-    protected void invalidateCode() {
+    public boolean isValidLastTier() {
+        InstalledCode code = installedCode;
+        return code.isValid() && code.getName().endsWith(TruffleCompiler.SECOND_TIER_COMPILATION_SUFFIX);
+    }
+
+    @Override
+    public void invalidateCode() {
         if (installedCode.isValid()) {
             installedCode.invalidate();
         }

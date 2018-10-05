@@ -207,7 +207,7 @@ public abstract class TruffleInstrument {
             this.in = in;
             this.err = err;
             this.out = out;
-            this.messageTransport = new MessageTransportProxy(messageInterceptor);
+            this.messageTransport = messageInterceptor != null ? new MessageTransportProxy(messageInterceptor) : null;
         }
 
         Object getVMObject() {
@@ -282,6 +282,9 @@ public abstract class TruffleInstrument {
          * @since 1.0
          */
         public MessageEndpoint startServer(URI uri, MessageEndpoint server) throws IOException, MessageTransport.VetoException {
+            if (messageTransport == null) {
+                return null;
+            }
             return messageTransport.open(uri, server);
         }
 

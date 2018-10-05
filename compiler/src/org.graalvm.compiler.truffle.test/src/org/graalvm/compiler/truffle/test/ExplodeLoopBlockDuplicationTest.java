@@ -51,7 +51,7 @@ public class ExplodeLoopBlockDuplicationTest extends TestWithSynchronousCompilin
         target.call(value1);
         target.call(value2);
 
-        target.compile();
+        target.compile(true);
         assertCompiled(target);
         target.call(value1);
         target.call(value2);

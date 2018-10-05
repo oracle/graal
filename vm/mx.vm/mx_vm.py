@@ -326,6 +326,12 @@ GRAALVM_VERSION={version}""".format(
             commit_info=json.dumps(_commit_info, sort_keys=True),
             version=_suite.release_version()
         )
+
+        if not _suite.is_release():
+            snapshot_catalog = _snapshot_catalog()
+            if snapshot_catalog:
+                _metadata += "\ncomponent_catalog={}/{}".format(snapshot_catalog, _suite.vc.parent(_suite.vc_dir))
+
         return _metadata
 
 
@@ -1033,6 +1039,7 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
         if self.subject.deps:
             build_args += ['-cp', mx.classpath(self.subject.native_image_jar_distributions)]
         build_args += self.subject.build_args()
+        build_args += ['-H:NumberOfThreads={}'.format(self.parallelism)]
 
         # rewrite --language:all & --tool:all
         final_build_args = []
@@ -1707,14 +1714,15 @@ def check_versions(jdk_dir, jdk_version_regex, graalvm_version_regex, expect_gra
 
 
 mx_gate.add_gate_runner(_suite, mx_vm_gate.gate_body)
-mx.add_argument('--disable-libpolyglot', action='store_true', help='Disable the \'polyglot\' library project')
-mx.add_argument('--disable-polyglot', action='store_true', help='Disable the \'polyglot\' launcher project')
+mx.add_argument('--disable-libpolyglot', action='store_true', help='Disable the \'polyglot\' library project.')
+mx.add_argument('--disable-polyglot', action='store_true', help='Disable the \'polyglot\' launcher project.')
 mx.add_argument('--disable-installables', action='store', help='Disable the \'installable\' distributions for gu.'
                                                                'This can be a comma-separated list of disabled components short names or `true` to disable all installables.', default=None)
-mx.add_argument('--debug-images', action='store_true', help='Build native images in debug mode: -H:-AOTInline and with -ea')
+mx.add_argument('--debug-images', action='store_true', help='Build native images in debug mode: \'-H:-AOTInline\' and with \'-ea\'.')
 mx.add_argument('--force-bash-launchers', action='store', help='Force the use of bash launchers instead of native images.'
                                                                'This can be a comma-separated list of disabled launchers or `true` to disable all native launchers.', default=None)
-mx.add_argument('--no-sources', action='store_true', help='Do not include the archives with the source files of open-source components')
+mx.add_argument('--no-sources', action='store_true', help='Do not include the archives with the source files of open-source components.')
+mx.add_argument('--snapshot-catalog', action='store', help='Change the default URL of the component catalog for snapshots.', default=None)
 
 register_vm_config('ce', ['cmp', 'gu', 'gvm', 'ins', 'js', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'tfl', 'libpoly', 'poly', 'vvm'])
 
@@ -1770,6 +1778,10 @@ def _has_forced_launchers(component, forced=None):
 
 def _include_sources():
     return not (mx.get_opts().no_sources or _env_var_to_bool('NO_SOURCES'))
+
+
+def _snapshot_catalog():
+    return mx.get_opts().snapshot_catalog or mx.get_env('SNAPSHOT_CATALOG')
 
 
 def mx_post_parse_cmd_line(args):

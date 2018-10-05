@@ -59,4 +59,11 @@ public interface CompilableTruffleAST {
      * Gets a descriptive name for this call target.
      */
     String getName();
+
+    /**
+     * Invalidates any machine code attached to this call target.
+     */
+    default void invalidateCode() {
+    }
+
 }

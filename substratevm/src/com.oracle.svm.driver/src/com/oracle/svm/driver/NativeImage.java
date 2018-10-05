@@ -61,6 +61,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.svm.core.OS;
@@ -68,8 +69,6 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.jdk.LocalizationSupport;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.core.posix.PosixExecutableName;
-import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.driver.MacroOption.EnabledOption;
 import com.oracle.svm.driver.MacroOption.MacroOptionKind;
@@ -274,7 +273,7 @@ public class NativeImage {
             this.args = args;
             workDir = Paths.get(".").toAbsolutePath().normalize();
             if (IS_AOT) {
-                Path executablePath = Paths.get((String) Compiler.command(new Object[]{PosixExecutableName.getKey()}));
+                Path executablePath = Paths.get(ProcessProperties.getExecutableName());
                 assert executablePath != null;
                 Path binDir = executablePath.getParent();
                 Path rootDirCandidate = binDir.getParent();
@@ -776,7 +775,7 @@ public class NativeImage {
              * GR-8254: Ensure image-building VM shuts down even if native-image dies unexpected
              * (e.g. using CTRL-C in Gradle daemon mode)
              */
-            command.addAll(Arrays.asList("-watchpid", "" + PosixUtils.getpid()));
+            command.addAll(Arrays.asList("-watchpid", "" + ProcessProperties.getProcessID()));
         }
         command.addAll(imageArgs);
 
@@ -816,7 +815,7 @@ public class NativeImage {
     }
 
     public static void build(BuildConfiguration config) {
-        NativeImage nativeImage = IS_AOT ? new NativeImageServer(config) : new NativeImage(config);
+        NativeImage nativeImage = IS_AOT ? NativeImageServer.create(config) : new NativeImage(config);
         if (config.getBuildArgs().isEmpty()) {
             nativeImage.showMessage(usageText);
         } else {
