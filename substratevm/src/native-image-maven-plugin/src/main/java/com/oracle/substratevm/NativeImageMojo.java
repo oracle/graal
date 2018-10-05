@@ -79,8 +79,6 @@ public class NativeImageMojo extends AbstractMojo {
     }
 
     public void execute() throws MojoExecutionException {
-        //getLog().warn("mx.platform: " + System.getProperty("mx.platform"));
-
         File untarDestDirectory = getUntarDestDirectory();
         if (!untarDestDirectory.exists()) {
             untarDestDirectory.mkdirs();
@@ -188,13 +186,20 @@ public class NativeImageMojo extends AbstractMojo {
 
         @Override
         public List<Path> getBuilderJVMCIClasspathAppend() {
-            String[] builderArtifacts = {"graal", "graal-enterprise"};
-            return plugin.getArtifacts().stream()
-                            .filter(artifact -> artifact.getGroupId().equals("com.oracle.compiler"))
-                            .filter(artifact -> Arrays.asList(builderArtifacts).contains(artifact.getArtifactId()))
-                            .map(Artifact::getFile)
-                            .map(File::toPath)
-                            .collect(Collectors.toList());
+            List<Path> paths = new ArrayList<>();
+            paths.addAll(plugin.getArtifacts().stream()
+                    .filter(artifact -> artifact.getGroupId().equals("org.graalvm"))
+                    .filter(artifact -> artifact.getArtifactId().equals("compiler"))
+                    .map(Artifact::getFile)
+                    .map(File::toPath)
+                    .collect(Collectors.toList()));
+            paths.addAll(plugin.getArtifacts().stream()
+                    .filter(artifact -> artifact.getGroupId().equals("com.oracle.compiler"))
+                    .filter(artifact -> artifact.getArtifactId().equals("graal-enterprise"))
+                    .map(Artifact::getFile)
+                    .map(File::toPath)
+                    .collect(Collectors.toList()));
+            return paths;
         }
 
         @Override
