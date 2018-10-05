@@ -34,7 +34,7 @@ import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogate;
 public class SignatureHelpRequestHandler extends AbstractRequestHandler {
 
     private static final Node GET_SIGNATURE = GetSignature.INSTANCE.createNode();
-    private static final Node INVOKE = Message.createInvoke(0).createNode();
+    private static final Node INVOKE = Message.INVOKE.createNode();
     private final SourceCodeEvaluator sourceCodeEvaluator;
 
     public SignatureHelpRequestHandler(Env env, SurrogateMap surrogateMap, ContextAwareExecutorWrapper contextAwareExecutor, SourceCodeEvaluator sourceCodeEvaluator) {

@@ -101,7 +101,7 @@ public class HoverRequestHandler extends AbstractRequestHandler {
         }
 
         final LanguageInfo info = coverageData.getCoverageEventNode().getRootNode().getLanguageInfo();
-        final Source inlineEvalSource = Source.newBuilder(textAtHoverPosition).name("inline eval").language(info.getId()).mimeType("content/unknown").cached(false).build();
+        final Source inlineEvalSource = Source.newBuilder(info.getId(), textAtHoverPosition, "in-line eval (hover request)").cached(false).build();
         ExecutableNode executableNode = null;
         try {
             executableNode = env.parseInline(inlineEvalSource, coverageData.getCoverageEventNode(), coverageData.getFrame());
@@ -161,8 +161,9 @@ public class HoverRequestHandler extends AbstractRequestHandler {
     private List<Either<String, MarkedString>> createDefaultHoverInfos(String textAtHoverPosition, Object evalResultObject, String langId) {
         List<Either<String, MarkedString>> contents = new ArrayList<>();
         contents.add(Either.forRight(new MarkedString(langId, textAtHoverPosition)));
-        if (!textAtHoverPosition.equals(evalResultObject.toString())) {
-            String resultObjectString = evalResultObject instanceof String ? "\"" + evalResultObject + "\"" : evalResultObject.toString();
+        String result = evalResultObject != null ? evalResultObject.toString() : "";
+        if (!textAtHoverPosition.equals(result)) {
+            String resultObjectString = evalResultObject instanceof String ? "\"" + result + "\"" : result;
             contents.add(Either.forRight(new MarkedString(langId, resultObjectString)));
         }
         String detailText = completionHandler.createCompletionDetail(textAtHoverPosition, evalResultObject, langId);

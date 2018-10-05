@@ -156,7 +156,7 @@ public class SourceCodeEvaluator extends AbstractRequestHandler {
 
                 final LanguageInfo info = nearestNode.getRootNode().getLanguageInfo();
                 final String code = nearestNode.getSourceSection().getCharacters().toString();
-                final Source inlineEvalSource = Source.newBuilder(code).name("inline eval").language(info.getId()).mimeType("content/unknown").cached(false).build();
+                final Source inlineEvalSource = Source.newBuilder(info.getId(), code, "in-line eval (hover request)").cached(false).build();
                 for (CoverageData coverageData : coverageDataObjects) {
                     final ExecutableNode executableNode = env.parseInline(inlineEvalSource, nearestNode, coverageData.getFrame());
                     final CoverageEventNode coverageEventNode = coverageData.getCoverageEventNode();
@@ -310,7 +310,7 @@ public class SourceCodeEvaluator extends AbstractRequestHandler {
     private EvaluationResult evalInGlobalScope(String langId, Node nearestNode) {
         try {
             CallTarget callTarget = env.parse(
-                            Source.newBuilder(nearestNode.getEncapsulatingSourceSection().getCharacters()).language(langId).name("eval in global scope").cached(false).build());
+                            Source.newBuilder(langId, nearestNode.getEncapsulatingSourceSection().getCharacters(), "eval in global scope").cached(false).build());
             Object result = callTarget.call();
             return EvaluationResult.createResult(result);
         } catch (Exception e) {

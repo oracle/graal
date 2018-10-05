@@ -67,7 +67,7 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
     private static final Node IS_INSTANTIABLE = Message.IS_INSTANTIABLE.createNode();
     private static final Node IS_EXECUTABLE = Message.IS_EXECUTABLE.createNode();
     private static final Node GET_SIGNATURE = GetSignature.INSTANCE.createNode();
-    private static final Node INVOKE = Message.createInvoke(0).createNode();
+    private static final Node INVOKE = Message.INVOKE.createNode();
 
     private static final int SORTING_PRIORITY_LOCALS = 1;
     private static final int SORTING_PRIORITY_GLOBALS = 2;
@@ -425,6 +425,10 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
     }
 
     protected Object getMetaObject(String langId, Object object) {
+        if (object == null) {
+            return null;
+        }
+
         LanguageInfo languageInfo = env.findLanguage(object);
         if (languageInfo == null) {
             languageInfo = env.getLanguages().get(langId);

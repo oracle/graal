@@ -257,12 +257,12 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
         }
 
         public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-            Source source = Source.newBuilder(file.toFile()).build();
-            String mimeType = source.getMimeType();
+            URI uri = file.toUri();
+            String mimeType = Source.findMimeType(uri.toURL());
             if (!mimeTypesAllLang.containsKey(mimeType)) {
                 return FileVisitResult.CONTINUE;
             }
-            TextDocumentSurrogate surrogate = getOrCreateSurrogate(file.toUri(), null, mimeTypesAllLang.get(mimeType));
+            TextDocumentSurrogate surrogate = getOrCreateSurrogate(uri, null, mimeTypesAllLang.get(mimeType));
             parsingTasks.add(contextAwareExecutor.executeWithDefaultContext(() -> parseWithEnteredContext(surrogate)));
             return FileVisitResult.CONTINUE;
         }

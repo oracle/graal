@@ -1,6 +1,6 @@
 package de.hpi.swa.trufflelsp.server.utils;
 
-import java.io.File;
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -168,7 +168,11 @@ public final class TextDocumentSurrogate {
     }
 
     public Source buildSource() {
-        return Source.newBuilder(new File(uri)).name(uri.toString()).language(languageInfo.getId()).cached(false).content(editorText).build();
+        try {
+            return Source.newBuilder(languageInfo.getId(), uri.toURL()).name(uri.toString()).cached(false).content(editorText).build();
+        } catch (MalformedURLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public SourceWrapper prepareParsing() {
