@@ -21,4 +21,15 @@ public class InteropUtils {
         }
         return symbol;
     }
+
+    public static Integer getNumberOfArguments(Object nodeObject) {
+        if (nodeObject instanceof TruffleObject) {
+            Map<Object, Object> map = ObjectStructures.asMap(new MessageNodes(), (TruffleObject) nodeObject);
+            if (map.containsKey("numberOfArguments")) {
+                Object object = map.get("numberOfArguments");
+                return object instanceof Integer ? (Integer) object : null;
+            }
+        }
+        return null;
+    }
 }

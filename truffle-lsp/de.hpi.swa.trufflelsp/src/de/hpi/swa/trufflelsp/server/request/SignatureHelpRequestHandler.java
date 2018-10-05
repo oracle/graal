@@ -27,6 +27,7 @@ import de.hpi.swa.trufflelsp.exceptions.DiagnosticsNotification;
 import de.hpi.swa.trufflelsp.interop.GetSignature;
 import de.hpi.swa.trufflelsp.interop.ObjectStructures;
 import de.hpi.swa.trufflelsp.server.utils.EvaluationResult;
+import de.hpi.swa.trufflelsp.server.utils.InteropUtils;
 import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
 import de.hpi.swa.trufflelsp.server.utils.SurrogateMap;
 import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogate;
@@ -67,8 +68,10 @@ public class SignatureHelpRequestHandler extends AbstractRequestHandler {
                             }
                         }
                         info.setParameters(paramInfos);
+                        Object nodeObject = nodeAtCaret.getNodeObject();
+                        Integer numberOfArguments = InteropUtils.getNumberOfArguments(nodeObject);
 
-                        return new SignatureHelp(Arrays.asList(info), 0, 0);
+                        return new SignatureHelp(Arrays.asList(info), 0, numberOfArguments != null ? numberOfArguments - 1 : 0);
                     } catch (UnsupportedMessageException | UnsupportedTypeException e) {
                     } catch (InteropException e) {
                         e.printStackTrace(err);
