@@ -171,7 +171,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 if (option.hasPathArguments) {
                     optionValue = Arrays.stream(optionValue.split(","))
                                     .filter(s -> !s.isEmpty())
-                                    .map(s -> nativeImage.canonicalize(Paths.get(s)).toString())
+                                    .map(this::tryCanonicalize)
                                     .collect(Collectors.joining(","));
                 }
                 builderOption += optionValue;
@@ -182,10 +182,17 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         return false;
     }
 
+    private String tryCanonicalize(String path) {
+        try {
+            return nativeImage.canonicalize(Paths.get(path)).toString();
+        } catch (NativeImage.NativeImageError e) {
+            /* Allow features to handle the path string. */
+            return path;
+        }
+    }
+
     void printOptions(Consumer<String> println) {
-        apiOptions.forEach((optionName, optionInfo) -> {
-            SubstrateOptionsParser.printOption(println, optionName, optionInfo.helpText, 4, 22, 66);
-        });
+        apiOptions.forEach((optionName, optionInfo) -> SubstrateOptionsParser.printOption(println, optionName, optionInfo.helpText, 4, 22, 66));
     }
 }
 
