@@ -79,8 +79,6 @@ public class NativeImageMojo extends AbstractMojo {
     }
 
     public void execute() throws MojoExecutionException {
-        //getLog().warn("mx.platform: " + System.getProperty("mx.platform"));
-
         File untarDestDirectory = getUntarDestDirectory();
         if (!untarDestDirectory.exists()) {
             untarDestDirectory.mkdirs();

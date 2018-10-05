@@ -49,33 +49,6 @@
         <maven.version>3.3.9</maven.version>
     </properties>
 
-    <profiles>
-        <profile>
-            <id>linux-amd64</id>
-            <activation>
-                <os>
-                    <name>linux</name>
-                    <arch>amd64</arch>
-                </os>
-            </activation>
-            <properties>
-                <mx.platform>linux-amd64</mx.platform>
-            </properties>
-        </profile>
-        <profile>
-            <id>darwin-amd64</id>
-            <activation>
-                <os>
-                    <name>mac os x</name>
-                    <arch>x86_64</arch>
-                </os>
-            </activation>
-            <properties>
-                <mx.platform>darwin-amd64</mx.platform>
-            </properties>
-        </profile>
-    </profiles>
-
     <dependencies>
 
         <dependency>
