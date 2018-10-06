@@ -227,11 +227,20 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         checkcastArraycopyDescriptors[uninit ? 1 : 0] = desc;
     }
 
-    private void registerArrayCopy(JavaKind kind, long routine, long alignedRoutine, long disjointRoutine, long alignedDisjointRoutine) {
+    private void registerArrayCopy(JavaKind kind,
+                    long routine,
+                    long alignedRoutine,
+                    long disjointRoutine,
+                    long alignedDisjointRoutine) {
         registerArrayCopy(kind, routine, alignedRoutine, disjointRoutine, alignedDisjointRoutine, false);
     }
 
-    private void registerArrayCopy(JavaKind kind, long routine, long alignedRoutine, long disjointRoutine, long alignedDisjointRoutine, boolean uninit) {
+    private void registerArrayCopy(JavaKind kind,
+                    long routine,
+                    long alignedRoutine,
+                    long disjointRoutine,
+                    long alignedDisjointRoutine,
+                    boolean uninit) {
         /*
          * Sometimes the same function is used for multiple cases so share them when that's the case
          * but only within the same Kind. For instance short and char are the same copy routines but
@@ -292,11 +301,13 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         linkForeignCall(options, providers, NEW_INSTANCE, c.newInstanceAddress, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, TLAB_TOP_LOCATION, TLAB_END_LOCATION);
         linkForeignCall(options, providers, NEW_ARRAY, c.newArrayAddress, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, TLAB_TOP_LOCATION, TLAB_END_LOCATION);
         linkForeignCall(options, providers, NEW_MULTI_ARRAY, c.newMultiArrayAddress, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, TLAB_TOP_LOCATION, TLAB_END_LOCATION);
+        linkForeignCall(options, providers, DYNAMIC_NEW_INSTANCE, c.dynamicNewInstanceAddress, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE);
 
         if (c.areNullAllocationStubsAvailable()) {
             linkForeignCall(options, providers, NEW_INSTANCE_OR_NULL, c.newInstanceOrNullAddress, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, TLAB_TOP_LOCATION, TLAB_END_LOCATION);
             linkForeignCall(options, providers, NEW_ARRAY_OR_NULL, c.newArrayOrNullAddress, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, TLAB_TOP_LOCATION, TLAB_END_LOCATION);
             linkForeignCall(options, providers, NEW_MULTI_ARRAY_OR_NULL, c.newMultiArrayOrNullAddress, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, TLAB_TOP_LOCATION, TLAB_END_LOCATION);
+            linkForeignCall(options, providers, DYNAMIC_NEW_INSTANCE_OR_NULL, c.dynamicNewInstanceOrNullAddress, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE);
         }
 
         link(new ExceptionHandlerStub(options, providers, foreignCalls.get(EXCEPTION_HANDLER)));
@@ -318,8 +329,6 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         linkForeignCall(options, providers, MONITOREXIT, c.monitorexitAddress, PREPEND_THREAD, STACK_INSPECTABLE_LEAF, REEXECUTABLE_ONLY_AFTER_EXCEPTION, any());
         linkForeignCall(options, providers, NOTIFY, c.notifyAddress, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE_ONLY_AFTER_EXCEPTION, any());
         linkForeignCall(options, providers, NOTIFY_ALL, c.notifyAllAddress, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE_ONLY_AFTER_EXCEPTION, any());
-        linkForeignCall(options, providers, DYNAMIC_NEW_INSTANCE, c.dynamicNewInstanceAddress, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE);
-        linkForeignCall(options, providers, DYNAMIC_NEW_INSTANCE_OR_NULL, c.dynamicNewInstanceOrNullAddress, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE);
         linkForeignCall(options, providers, LOG_PRINTF, c.logPrintfAddress, PREPEND_THREAD, LEAF, REEXECUTABLE, NO_LOCATIONS);
         linkForeignCall(options, providers, LOG_OBJECT, c.logObjectAddress, PREPEND_THREAD, LEAF, REEXECUTABLE, NO_LOCATIONS);
         linkForeignCall(options, providers, LOG_PRIMITIVE, c.logPrimitiveAddress, PREPEND_THREAD, LEAF, REEXECUTABLE, NO_LOCATIONS);
