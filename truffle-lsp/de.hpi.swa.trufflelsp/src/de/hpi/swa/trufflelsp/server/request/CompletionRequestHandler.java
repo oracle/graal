@@ -319,7 +319,7 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
             }
         }
 
-        if (map == null) {
+        if (map == null || map.isEmpty()) {
             System.out.println("No completions found for object: " + object);
             return false;
         }
