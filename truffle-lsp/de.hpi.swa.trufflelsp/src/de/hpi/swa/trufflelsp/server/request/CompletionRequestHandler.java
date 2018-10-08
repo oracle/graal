@@ -23,6 +23,7 @@ import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
@@ -175,7 +176,7 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
         }
 
         Source source = sourceWrapper.getSource();
-        NearestNodeHolder nearestNodeHolder = NearestSectionsFinder.findNearestNode(source, line, character, env);
+        NearestNodeHolder nearestNodeHolder = NearestSectionsFinder.findNearestNode(source, line, character, env, StandardTags.ExpressionTag.class);
         Node nearestNode = nearestNodeHolder.getNearestNode();
 
         if (!isInstrumentable(nearestNode)) {
