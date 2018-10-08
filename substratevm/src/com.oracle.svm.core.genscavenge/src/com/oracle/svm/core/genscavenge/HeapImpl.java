@@ -117,6 +117,7 @@ public class HeapImpl extends Heap {
         this.classList = null;
         SubstrateUtil.DiagnosticThunkRegister.getSingleton().register(() -> {
             bootImageHeapBoundariesToLog(Log.log()).newline();
+            zapValuesToLog(Log.log()).newline();
             report(Log.log(), true).newline();
             Log.log().newline();
         });
@@ -484,6 +485,39 @@ public class HeapImpl extends Heap {
         log.string("Writable References: ").hex(Word.objectToUntrackedPointer(NativeImageInfo.firstWritableReferenceObject)).string(" .. ").hex(
                         Word.objectToUntrackedPointer(NativeImageInfo.lastWritableReferenceObject));
         log.redent(false).string("]");
+        return log;
+    }
+
+    /** Log the zap values to make it easier to search for them. */
+    Log zapValuesToLog(Log log) {
+        if (HeapPolicy.getZapProducedHeapChunks() || HeapPolicy.getZapConsumedHeapChunks()) {
+            log.string("[Heap Chunk zap values: ").indent(true);
+            /* Padded with spaces so the columns line up between the int and word variants. */
+            if (HeapPolicy.getZapProducedHeapChunks()) {
+                log.string("  producedHeapChunkZapInt: ")
+                                .string("  hex: ").spaces(8).hex(HeapPolicy.getProducedHeapChunkZapInt())
+                                .string("  signed: ").spaces(9).signed(HeapPolicy.getProducedHeapChunkZapInt())
+                                .string("  unsigned: ").spaces(10).unsigned(HeapPolicy.getProducedHeapChunkZapInt()).newline();
+                log.string("  producedHeapChunkZapWord:")
+                                .string("  hex: ").hex(HeapPolicy.getProducedHeapChunkZapWord())
+                                .string("  signed: ").signed(HeapPolicy.getProducedHeapChunkZapWord())
+                                .string("  unsigned: ").unsigned(HeapPolicy.getProducedHeapChunkZapWord());
+                if (HeapPolicy.getZapConsumedHeapChunks()) {
+                    log.newline();
+                }
+            }
+            if (HeapPolicy.getZapConsumedHeapChunks()) {
+                log.string("  consumedHeapChunkZapInt: ")
+                                .string("  hex: ").spaces(8).hex(HeapPolicy.getConsumedHeapChunkZapInt())
+                                .string("  signed: ").spaces(10).signed(HeapPolicy.getConsumedHeapChunkZapInt())
+                                .string("  unsigned: ").spaces(10).unsigned(HeapPolicy.getConsumedHeapChunkZapInt()).newline();
+                log.string("  consumedHeapChunkZapWord:")
+                                .string("  hex: ").hex(HeapPolicy.getConsumedHeapChunkZapWord())
+                                .string("  signed: ").signed(HeapPolicy.getConsumedHeapChunkZapWord())
+                                .string("  unsigned: ").unsigned(HeapPolicy.getConsumedHeapChunkZapWord());
+            }
+            log.redent(false).string("]");
+        }
         return log;
     }
 
