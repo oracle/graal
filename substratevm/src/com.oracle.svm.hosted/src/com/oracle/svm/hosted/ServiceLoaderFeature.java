@@ -76,6 +76,9 @@ import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 public class ServiceLoaderFeature implements Feature {
 
     public static class Options {
+        @Option(help = "Automatically register services for run-time lookup using SerticeManager", type = OptionType.Expert) //
+        public static final HostedOptionKey<Boolean> UseServiceLoaderFeature = new HostedOptionKey<>(true);
+
         @Option(help = "When enabled, each service loader resource and class will be printed out to standard output", type = OptionType.Debug) //
         public static final HostedOptionKey<Boolean> TraceServiceLoaderFeature = new HostedOptionKey<>(false);
     }
@@ -90,6 +93,11 @@ public class ServiceLoaderFeature implements Feature {
     private final Map<AnalysisType, Boolean> processedTypes = new ConcurrentHashMap<>();
 
     private final boolean trace = Options.TraceServiceLoaderFeature.getValue();
+
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return Options.UseServiceLoaderFeature.getValue();
+    }
 
     @Override
     public void duringAnalysis(DuringAnalysisAccess a) {
