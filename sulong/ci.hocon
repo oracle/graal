@@ -94,7 +94,7 @@ sulong-gate-asm-parser: ${sulong-gateCommon} ${linux-amd64} {
 
 sulong-coverage-linux: ${sulong-gateTest38-linux} ${requireGCC} {
     run: [
-        [mx, --jacoco-whitelist-package, com.oracle.truffle.llvm, gate, --tags, "build,sulongCoverage", --jacoco-zip, report.zip]
+        [mx, --jacoco-whitelist-package, com.oracle.truffle.llvm, --jacoco-exclude-annotation, "@GeneratedBy", gate, --tags, "build,sulongCoverage", --jacoco-zip, report.zip, --jacoco-omit-excluded]
     ]
     logs: [*/report.zip]
     targets: [weekly]
