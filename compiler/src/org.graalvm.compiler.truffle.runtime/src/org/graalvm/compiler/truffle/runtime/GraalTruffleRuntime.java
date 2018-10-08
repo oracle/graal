@@ -223,7 +223,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     @Override
     public TruffleInliningPlan createInliningPlan(CompilableTruffleAST compilable) {
-        return new TruffleInlining((OptimizedCallTarget) compilable, TruffleInliningPolicy.getInliningPolicy(getInitialOptions()));
+        return new TruffleInlining((OptimizedCallTarget) compilable, TruffleInliningPolicy.getInliningPolicy());
     }
 
     @Override
@@ -718,7 +718,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         listeners.onCompilationStarted(callTarget);
         TruffleCompiler compiler = getTruffleCompiler();
         TruffleInlining inlining = new TruffleInlining(callTarget,
-                        task != null && task.isLastTier() ? TruffleInliningPolicy.getInliningPolicy(options) : TruffleInliningPolicy.getNoInliningPolicy(options));
+                        task != null && task.isLastTier() ? TruffleInliningPolicy.getInliningPolicy() : TruffleInliningPolicy.getNoInliningPolicy());
         try (Scope s = debug != null ? debug.scope("Truffle", new TruffleDebugJavaMethod(callTarget)) : null) {
             // Open the "Truffle::methodName" dump group if dumping is enabled.
             try (OutputGroup o = new OutputGroup(debug, callTarget)) {
