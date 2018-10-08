@@ -32,4 +32,17 @@ public class InteropUtils {
         }
         return null;
     }
+
+    public static boolean isPrimitive(Object object) {
+        Class<?> clazz = object.getClass();
+        return (clazz == Byte.class ||
+                        clazz == Short.class ||
+                        clazz == Integer.class ||
+                        clazz == Long.class ||
+                        clazz == Float.class ||
+                        clazz == Double.class ||
+                        clazz == Character.class ||
+                        clazz == Boolean.class ||
+                        clazz == String.class);
+    }
 }

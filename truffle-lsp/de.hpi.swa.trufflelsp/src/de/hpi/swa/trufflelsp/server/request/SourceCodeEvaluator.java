@@ -46,6 +46,7 @@ import de.hpi.swa.trufflelsp.exceptions.UnknownLanguageException;
 import de.hpi.swa.trufflelsp.server.utils.CoverageData;
 import de.hpi.swa.trufflelsp.server.utils.CoverageEventNode;
 import de.hpi.swa.trufflelsp.server.utils.EvaluationResult;
+import de.hpi.swa.trufflelsp.server.utils.InteropUtils;
 import de.hpi.swa.trufflelsp.server.utils.RunScriptUtils;
 import de.hpi.swa.trufflelsp.server.utils.SourceLocation;
 import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
@@ -116,10 +117,10 @@ public class SourceCodeEvaluator extends AbstractRequestHandler {
             try {
                 if (KeyInfo.isReadable(ForeignAccess.sendKeyInfo(Message.KEY_INFO.createNode(), (TruffleObject) nodeObject, "literal"))) {
                     Object result = ForeignAccess.sendRead(Message.READ.createNode(), (TruffleObject) nodeObject, "literal");
-                    if (result instanceof TruffleObject) {
+                    if (result instanceof TruffleObject || InteropUtils.isPrimitive(result)) {
                         return EvaluationResult.createResult(result);
                     } else {
-                        System.out.println("Literal is no TruffleObject: " + result.getClass());
+                        System.out.println("Literal is no TruffleObject or primitive: " + result.getClass());
                     }
                 }
             } catch (UnknownIdentifierException | UnsupportedMessageException e) {
