@@ -43,6 +43,7 @@ import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
@@ -587,5 +588,19 @@ public class ObjectHeaderImpl extends ObjectHeader {
         final DynamicHub hub = ObjectHeader.dynamicHubFromObjectHeader(header);
         final int hubClassification = HeapVerifierImpl.classifyObject(hub);
         return ((1000 * hubClassification) + headerBitsClassification);
+    }
+
+    /** Log an object header. */
+    public Log objectHeaderToLog(Object obj, Log log) {
+        log.string("  obj: ").hex(Word.objectToUntrackedPointer(obj));
+        final UnsignedWord header = ObjectHeaderImpl.readHeaderBitsFromObjectCarefully(obj);
+        final DynamicHub hub = ObjectHeader.dynamicHubFromObjectHeader(header);
+        log.string("  header: ").hex(header)
+                        .string("  hub:").hex(Word.objectToUntrackedPointer(hub))
+                        .string("  bits: ").string(ObjectHeaderImpl.getObjectHeaderImpl().toStringFromHeader(header));
+        if (!HeapImpl.getHeapImpl().assertHub(hub)) {
+            log.string("  hub fails to verify");
+        }
+        return log;
     }
 }
