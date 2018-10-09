@@ -50,6 +50,7 @@ import org.graalvm.compiler.truffle.pelang.expr.PELangGreaterThanNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangLeftShiftNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangLessThanNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangMinusNode;
+import org.graalvm.compiler.truffle.pelang.expr.PELangMultNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangNotNode;
 import org.graalvm.compiler.truffle.pelang.lit.PELangLiteralArrayNode;
 import org.graalvm.compiler.truffle.pelang.lit.PELangLiteralFunctionNode;
@@ -177,6 +178,10 @@ public class PELangBuilder {
 
     public PELangExpressionNode leftShift(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
         return PELangLeftShiftNode.createNode(leftNode, rightNode);
+    }
+
+    public PELangExpressionNode mult(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
+        return PELangMultNode.createNode(leftNode, rightNode);
     }
 
     public PELangExpressionNode div(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
