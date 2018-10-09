@@ -27,6 +27,17 @@ suite = {
             },
         ],
     },
+    "libraries" : {
+        # ------------- Libraries -------------
+
+        "LIBFFI" : {
+            "urls" : [
+                "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/libffi-3.2.1.tar.gz",
+                "ftp://sourceware.org/pub/libffi/libffi-3.2.1.tar.gz",
+            ],
+            "sha1" : "280c265b789e041c02e5c97815793dfc283fb1e6",
+        },
+    },
 
     # ------------- projects
 
@@ -104,6 +115,7 @@ suite = {
             ],
             "buildEnv" : {
                 "TARGET" : "bin/<lib:nespresso>",
+                "LIBFFI_SRC" : "<path:LIBFFI>",
                 "CPPFLAGS" : "-I<jnigen:com.oracle.truffle.espresso> -I<path:TRUFFLE_NFI_NATIVE>/include",
                 "OS" : "<os>",
             },

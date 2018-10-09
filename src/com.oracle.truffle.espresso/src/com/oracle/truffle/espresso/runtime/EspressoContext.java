@@ -199,6 +199,8 @@ public class EspressoContext {
 
         // Load system class loader.
         appClassLoader = meta.knownKlass(ClassLoader.class).staticMethod("getSystemClassLoader", ClassLoader.class).invokeDirect();
+
+        getJniEnv(); // initialize native context
     }
 
     private void initializeClass(Class<?> clazz) {

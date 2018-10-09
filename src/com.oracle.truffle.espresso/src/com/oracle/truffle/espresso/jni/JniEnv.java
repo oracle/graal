@@ -4,6 +4,8 @@ import static com.oracle.truffle.espresso.meta.Meta.meta;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -38,6 +40,8 @@ public class JniEnv {
     private final static TruffleObject disposeJniEnv = lookupAndBind(nespressoLibrary, "disposeJniEnv",
                     "(env): void");
 
+
+
     private static TruffleObject dupClosureRefAndCast(String signature) {
         return bind(dupClosureRef, "(env, " + signature + ")" + ": pointer");
     }
@@ -65,12 +69,39 @@ public class JniEnv {
         return classToNative.getOrDefault(clazz, NativeSimpleType.OBJECT);
     }
 
-    private static String nativeSignature(Method method) {
+    private static String nativeSignature(Method method, boolean varArgs) {
         StringBuilder sb = new StringBuilder("(").append(NativeSimpleType.POINTER); // Prepend
-                                                                                    // JNIEnv.
+        // JNIEnv.
+
+        Class<?>[] paramTypes = method.getParameterTypes();
+
+        if (varArgs) {
+            for (Class<?> param : Arrays.copyOf(paramTypes, paramTypes.length - 1)) {
+                sb.append(", ").append(kindToType(param));
+            }
+
+            assert paramTypes[paramTypes.length - 1] == long.class;
+            sb.append(", ").append(NativeSimpleType.POINTER);
+        } else {
+            for (Class<?> param : paramTypes) {
+                sb.append(", ").append(kindToType(param));
+            }
+        }
+
+        sb.append("): ").append(kindToType(method.getReturnType()));
+        return sb.toString();
+    }
+
+    private static String javaSignature(Method method) {
+        StringBuilder sb = new StringBuilder("(");
+
+        // Receiver or class (for static methods).
+        sb.append(NativeSimpleType.OBJECT);
+
         for (Class<?> param : method.getParameterTypes()) {
             sb.append(", ").append(kindToType(param));
         }
+
         sb.append("): ").append(kindToType(method.getReturnType()));
         return sb.toString();
     }
@@ -82,10 +113,12 @@ public class JniEnv {
                                 String name = (String) lookupArgs[0];
                                 try {
                                     for (Method m : methods) {
-                                        if (m.getAnnotation(JniMethod.class) != null) {
+                                        JniMethod jniMethod = m.getAnnotation(JniMethod.class);
+                                        if (jniMethod  != null) {
                                             if (m.getName().equals(name)) {
+                                                System.err.println("Fetching: " + name + " " + nativeSignature(m, jniMethod.varArgs()));
                                                 return ForeignAccess.sendExecute(Message.EXECUTE.createNode(),
-                                                                dupClosureRefAndCast(nativeSignature(m)),
+                                                                dupClosureRefAndCast(nativeSignature(m, jniMethod.varArgs())),
                                                                 new Callback(m.getParameterCount() + 1, args -> {
                                                                     Object[] shiftedArgs = new Object[m.getParameterCount()];
                                                                     assert args.length - 1 == shiftedArgs.length;
@@ -316,7 +349,7 @@ public class JniEnv {
     }
 
     @JniMethod
-    public double CallStaticDoubleMethodV(StaticObject clazz, Meta.Method methodID, Object[] args) {
+    public double CallStaticDoubleMethodV(StaticObject clazz, Meta.Method methodID, Object... args) {
         return 0.0;
     }
 
@@ -352,12 +385,21 @@ public class JniEnv {
 
     @JniMethod
     public boolean CallStaticBooleanMethodV(StaticObject clazz, Meta.Method methodID, Object[] args) {
-        return false;
+        return (boolean) methodID.asStatic().invokeDirect(args);
     }
 
     @JniMethod
-    public Object CallStaticObjectMethodV(StaticObject clazz, Meta.Method methodID, Object[] args) {
-        return StaticObject.NULL;
+    public Object CallObjectMethod__(Object receiver, Meta.Method methodID, long varargs) {
+        VarArgs args = VarArgs.init(varargs);
+        Object[] methodArgs = new Object[]{args.popObject()};
+        return methodID.invokeDirect(receiver, methodArgs);
+    }
+
+    @JniMethod
+    public void CallVoidMethod__(Object receiver, Meta.Method methodID, long varargs) {
+        VarArgs args = VarArgs.init(varargs);
+        // Object[] methodArgs = new Object[]{args.popObject()};
+        methodID.invokeDirect(receiver);
     }
 
     private static long load(String name) {
