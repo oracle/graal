@@ -26,7 +26,8 @@ package com.oracle.svm.driver;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -56,6 +57,8 @@ import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -179,6 +182,9 @@ public class NativeImage {
 
     final Registry optionRegistry;
     private LinkedHashSet<EnabledOption> enabledLanguages;
+
+    private static Path nativeImageMetaInfPrefix = Paths.get("META-INF", "native-image");
+    static Path nativeImageProperties = Paths.get("native-image.properties");
 
     public interface BuildConfiguration {
         /**
@@ -620,6 +626,75 @@ public class NativeImage {
         }
     }
 
+    private static Stream<Path> mavenArtifactPathComponent(JarEntry entry) {
+        /* Extract artifact path component from maven meta information */
+        Path entryPath = Paths.get(entry.getName());
+        Path mavenMetaInfPrefix = Paths.get("META-INF", "maven");
+        if (entryPath.startsWith(mavenMetaInfPrefix)) {
+            Path candidate = mavenMetaInfPrefix.relativize(entryPath);
+            if (candidate.getNameCount() == 2) {
+                return Stream.of(candidate);
+            }
+        }
+        return Stream.empty();
+    }
+
+    private void processJarImageBuildArgs(Collection<Path> imageClasspath) {
+        for (Path jarFilePath : imageClasspath) {
+            if (!jarFilePath.getFileName().toString().toLowerCase().endsWith(".jar")) {
+                continue;
+            }
+
+            try (JarFile jarFile = new JarFile(jarFilePath.toFile())) {
+                List<Path> artifactComponents = jarFile.stream()
+                                .flatMap(NativeImage::mavenArtifactPathComponent)
+                                .map(path -> nativeImageMetaInfPrefix.resolve(path).resolve(nativeImageProperties))
+                                .collect(Collectors.toList());
+
+                if (artifactComponents.isEmpty()) {
+                    /* Trigger fallback for jar-files that do not contain maven meta information */
+                    artifactComponents = Collections.singletonList(null);
+                }
+
+                for (Path entryName : artifactComponents) {
+                    processNativeImageJarEntry(jarFile, entryName);
+                }
+            } catch (NativeImageError substitionError) {
+                throw showError("Invalid native-image.properties in jarfile " + jarFilePath, substitionError);
+            } catch (IOException ex) {
+                throw showError("Invalid or corrupt jarfile " + jarFilePath);
+            }
+        }
+    }
+
+    private void processNativeImageJarEntry(JarFile jarFile, Path nativeImageJarEntry) throws IOException {
+        /* Fallback for jar-files that do not contain maven meta information */
+        Path jarEntryPathFallback = nativeImageMetaInfPrefix.resolve(nativeImageProperties);
+        Path jarEntryPath = nativeImageJarEntry != null ? nativeImageJarEntry : jarEntryPathFallback;
+
+        JarEntry nativeImagePropertiesEntry = jarFile.getJarEntry(jarEntryPath.toString());
+        if (nativeImagePropertiesEntry != null) {
+            showVerboseMessage(verbose, "Apply " + jarFile.getName() + ":" + jarEntryPath);
+
+            Function<String, String> resolver = str -> {
+                Path componentDirectory = jarEntryPath.getParent();
+                /*
+                 * Allow native-image substitutions-passing (see NativeImage.resolvePropertyValue)
+                 * via system properties that use key "groupID/artifactID" to specify an optionArg
+                 */
+                Path optionArgKey = nativeImageMetaInfPrefix.relativize(componentDirectory);
+                return resolvePropertyValue(str, System.getProperty(optionArgKey.toString()), componentDirectory.toString());
+            };
+            Map<String, String> properties = loadProperties(jarFile.getInputStream(nativeImagePropertiesEntry));
+            String imageName = properties.get("ImageName");
+            if (imageName != null) {
+                addImageBuilderArg(NativeImage.oHName + resolver.apply(imageName));
+            }
+            forEachPropertyValue(properties.get("JavaArgs"), this::addImageBuilderJavaArgs, resolver);
+            forEachPropertyValue(properties.get("Args"), this::addImageBuilderArg, resolver);
+        }
+    }
+
     private void completeImageBuildArgs() {
         List<String> leftoverArgs = processNativeImageArgs();
 
@@ -636,6 +711,10 @@ public class NativeImage {
         } else {
             imageClasspath.addAll(customImageClasspath);
         }
+
+        /* Process all META-INF/native-image.properties found in jar files on the imageClasspath */
+        processJarImageBuildArgs(imageProvidedClasspath);
+        processJarImageBuildArgs(imageClasspath);
 
         /* Perform JavaArgs consolidation - take the maximum of -Xmx, minimum of -Xms */
         Long xmxValue = consolidateArgs(imageBuilderJavaArgs, oXmx, SubstrateOptionsParser::parseLong, String::valueOf, () -> 0L, Math::max);
@@ -1035,20 +1114,73 @@ public class NativeImage {
     }
 
     static Map<String, String> loadProperties(Path propertiesPath) {
-        Properties properties = new Properties();
         File propertiesFile = propertiesPath.toFile();
+        String errorMessage = "Could not read properties-file: " + propertiesFile;
         if (propertiesFile.canRead()) {
-            try (FileReader reader = new FileReader(propertiesFile)) {
-                properties.load(reader);
-            } catch (Exception e) {
-                showError("Could not read properties-file: " + propertiesFile, e);
+            try {
+                InputStream propertiesInputStream = new FileInputStream(propertiesFile);
+                return loadProperties(propertiesInputStream);
+            } catch (FileNotFoundException e) {
+                throw showError(errorMessage, e);
             }
+        }
+        throw showError(errorMessage);
+    }
+
+    static Map<String, String> loadProperties(InputStream propertiesInputStream) {
+        Properties properties = new Properties();
+        try (InputStream input = propertiesInputStream) {
+            properties.load(input);
+        } catch (IOException e) {
+            showError("Could not read properties", e);
         }
         Map<String, String> map = new HashMap<>();
         for (String key : properties.stringPropertyNames()) {
             map.put(key, properties.getProperty(key));
         }
         return Collections.unmodifiableMap(map);
+    }
+
+    static boolean forEachPropertyValue(String propertyValue, Consumer<String> target, Function<String, String> resolver) {
+        if (propertyValue != null) {
+            for (String propertyValuePart : propertyValue.split(" ")) {
+                target.accept(resolver.apply(propertyValuePart));
+            }
+            return true;
+        }
+        return false;
+    }
+
+    static String resolvePropertyValue(String val, String optionArg, String componentDirectory) {
+        String resultVal = val;
+        if (optionArg != null) {
+            /* Substitute ${*} -> optionArg in resultVal (always possible) */
+            resultVal = safeSubstitution(resultVal, "${*}", optionArg);
+            /*
+             * If optionArg consists of "<argName>:<argValue>,..." additionally perform
+             * substitutions of kind ${<argName>} -> <argValue> on resultVal.
+             */
+            for (String argNameValue : optionArg.split(",")) {
+                String[] splitted = argNameValue.split(":");
+                if (splitted.length == 2) {
+                    String argName = splitted[0];
+                    String argValue = splitted[1];
+                    if (!argName.isEmpty()) {
+                        resultVal = safeSubstitution(resultVal, "${" + argName + "}", argValue);
+                    }
+                }
+            }
+        }
+        /* Substitute ${.} -> absolute path to optionDirectory */
+        resultVal = safeSubstitution(resultVal, "${.}", componentDirectory);
+        return resultVal;
+    }
+
+    private static String safeSubstitution(String source, CharSequence target, CharSequence replacement) {
+        if (replacement == null && source.contains(target)) {
+            throw showError("Unable to provide meaningful substitution for \"" + target + "\" in " + source);
+        }
+        return source.replace(target, replacement);
     }
 
     private static String deletedFileSuffix = ".deleted";
