@@ -39,7 +39,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.apache.maven.artifact.Artifact;
-import org.apache.maven.artifact.DependencyResolutionRequiredException;
 import org.apache.maven.model.Plugin;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
@@ -49,7 +48,8 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.archiver.tar.TarGZipUnArchiver;
-import org.codehaus.plexus.logging.console.ConsoleLogger;
+import org.codehaus.plexus.logging.AbstractLogger;
+import org.codehaus.plexus.logging.Logger;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
 
 import com.oracle.svm.driver.NativeImage;
@@ -71,7 +71,48 @@ public class NativeImageMojo extends AbstractMojo {
     @Parameter(property = "buildArgs")//
     private String buildArgs;
 
-    private ConsoleLogger tarGzLogger = new ConsoleLogger();
+    private Logger tarGzLogger = new AbstractLogger(Logger.LEVEL_WARN, "NativeImageMojo.tarGzLogger") {
+        @Override
+        public void debug(String message, Throwable throwable) {
+            if (isDebugEnabled()) {
+                getLog().debug(message, throwable);
+            }
+        }
+
+        @Override
+        public void info(String message, Throwable throwable) {
+            if (isInfoEnabled()) {
+                getLog().info(message, throwable);
+            }
+        }
+
+        @Override
+        public void warn(String message, Throwable throwable) {
+            if (isWarnEnabled()) {
+                getLog().warn(message, throwable);
+            }
+        }
+
+        @Override
+        public void error(String message, Throwable throwable) {
+            if (isErrorEnabled()) {
+                getLog().error(message, throwable);
+            }
+        }
+
+        @Override
+        public void fatalError(String message, Throwable throwable) {
+            if (isFatalErrorEnabled()) {
+                getLog().error(message, throwable);
+            }
+        }
+
+        @Override
+        public Logger getChildLogger(String name) {
+            return this;
+        }
+    };
+
     private TarGZipUnArchiver tarGzExtract = new TarGZipUnArchiver();
 
     NativeImageMojo() {
@@ -110,20 +151,20 @@ public class NativeImageMojo extends AbstractMojo {
     }
 
     private final class MojoBuildConfiguration implements NativeImage.BuildConfiguration {
-        private final List<String> classpath;
+        private final List<String> classpath = new ArrayList<>();
         private final List<Path> jvmciJars;
 
         MojoBuildConfiguration() throws MojoExecutionException {
-            try {
-                getLog().info("project.getArtifact: " + project.getArtifact().getFile());
-                for (Artifact artifact : project.getArtifacts()) {
-                    getLog().info("project.getArtifacts.artifact: " + artifact.getFile());
-                }
-                classpath = new ArrayList<>(project.getRuntimeClasspathElements());
-                classpath.add(project.getArtifact().getFile().toString());
-            } catch (DependencyResolutionRequiredException e) {
-                throw new MojoExecutionException("Error while determining ImageClasspath", e);
+            List<String> imageClasspathScopes = Arrays.asList(Artifact.SCOPE_COMPILE, Artifact.SCOPE_RUNTIME);
+            project.setArtifactFilter(artifact -> imageClasspathScopes.contains(artifact.getScope()));
+            for (Artifact dependency : project.getArtifacts()) {
+                getLog().info("Dependency: " + dependency.getGroupId() + ":" + dependency.getArtifactId() + " path: " + dependency.getFile());
+                classpath.add(dependency.getFile().toString());
             }
+            Artifact artifact = project.getArtifact();
+            getLog().info("Artifact: " + artifact.getGroupId() + ":" + artifact.getArtifactId() + " path: " + artifact.getFile());
+            classpath.add(artifact.getFile().toString());
+
             try {
                 Path jvmciSubdir = Paths.get("lib", "jvmci");
                 jvmciJars = Files.list(Paths.get(System.getProperty("java.home")).resolve(jvmciSubdir))
@@ -131,7 +172,6 @@ public class NativeImageMojo extends AbstractMojo {
             } catch (IOException e) {
                 throw new MojoExecutionException("JVM does not support JVMCI interface", e);
             }
-
         }
 
         @Override
