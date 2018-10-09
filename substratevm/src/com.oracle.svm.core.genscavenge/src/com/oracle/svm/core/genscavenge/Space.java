@@ -35,10 +35,8 @@ import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
-import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMOperation;
@@ -627,8 +625,11 @@ public class Space {
         final Pointer copyMemory = allocateMemory(copySize);
         trace.string("  copyMemory: ").hex(copyMemory);
         if (copyMemory.isNull()) {
-            final Log failureLog = Log.log().string("[!SpaceImpl.copyAlignedObject:");
-            failureLog.string("  failure to allocate ").unsigned(copySize).string(" bytes").string("!]").newline();
+            /* I am about to fail, but first log some things about the object. */
+            final Log failureLog = Log.log().string("[! SpaceImpl.copyAlignedObject:").indent(true);
+            failureLog.string("  failure to allocate ").unsigned(copySize).string(" bytes").newline();
+            ObjectHeaderImpl.getObjectHeaderImpl().objectHeaderToLog(originalObj, failureLog);
+            failureLog.string(" !]").indent(false);
             throw VMError.shouldNotReachHere("Promotion failure");
         }
         /* - Copy the Object. */
@@ -655,14 +656,10 @@ public class Space {
     /** Assert that the hub of obj is well-formed. For GR-9912. */
     private static boolean copyAlignedObjectAssert(Object obj) {
         if (GCImpl.runtimeAssertions() && !HeapImpl.getHeapImpl().assertHubOfObject(obj)) {
-            final Log failureLog = Log.log().string("[Space.copyAlignedObjectAssert:").indent(true);
-            failureLog.string("  obj: ").hex(Word.objectToUntrackedPointer(obj)).indent(true);
-            final UnsignedWord header = ObjectHeader.readHeaderFromObject(obj);
-            final DynamicHub hub = ObjectHeader.dynamicHubFromObjectHeader(header);
-            failureLog.string("  header: ").hex(header)
-                            .string("  hub: ").hex(Word.objectToUntrackedPointer(hub))
-                            .string("  headerBits: ").string(Heap.getHeap().getObjectHeader().toStringFromHeader(header)).indent(false);
-            failureLog.string("  hub fails to verify.]").indent(false);
+            /* I am about to fail an assert, but first log some things about the object. */
+            final Log failureLog = Log.log().string("[! Space.copyAlignedObjectAssert:").indent(true);
+            ObjectHeaderImpl.getObjectHeaderImpl().objectHeaderToLog(obj, failureLog);
+            failureLog.string(" !]").indent(false);
             return false;
         }
         return true;

@@ -34,6 +34,7 @@ import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * An OldGeneration has three Spaces,
@@ -146,6 +147,15 @@ public class OldGeneration extends Generation {
         assert ObjectHeaderImpl.getObjectHeaderImpl().isAlignedObject(original);
         final AlignedHeapChunk.AlignedHeader originalChunk = AlignedHeapChunk.getEnclosingAlignedHeapChunk(original);
         final Space originalSpace = originalChunk.getSpace();
+        /* { GR-9912: Check that `original` is in a well-formed Space (or at least non-null). */
+        if (originalSpace == null) {
+            /* I am about to fail a guarantee, but first log some things about the object. */
+            final Log failureLog = Log.log().string("[! OldGeneration.promoteAlignedObject:").string("  originalSpace == null").indent(true);
+            ObjectHeaderImpl.getObjectHeaderImpl().objectHeaderToLog(original, failureLog);
+            failureLog.string(" !])").indent(false);
+            throw VMError.shouldNotReachHere("OldGeneration.promoteAlignedObject:  originalSpace == null");
+        }
+        /* } GR-9912: Check that `original` is in a well-formed Space (or at least non-null). */
         trace.string("  originalSpace: ").string(originalSpace.getName());
         Object result = original;
         if (shouldPromoteFrom(originalSpace)) {
