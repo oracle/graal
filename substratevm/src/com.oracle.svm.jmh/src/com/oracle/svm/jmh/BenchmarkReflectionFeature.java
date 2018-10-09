@@ -4,12 +4,9 @@ import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.RuntimeReflection;
 import org.openjdk.jmh.runner.BenchmarkListEntry;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-
 /**
  * Registers the generated benchmark classes to be usable by JMH during runtime via reflection.
  */
-@AutomaticFeature
 public final class BenchmarkReflectionFeature implements Feature {
 
     @Override

@@ -327,6 +327,7 @@ tools_map = {
     'native-image' : ToolDescriptor(),
     'junit' : ToolDescriptor(builder_deps=['mx:JUNIT_TOOL', 'JUNIT', 'HAMCREST']),
     'regex' : ToolDescriptor(image_deps=['regex:TREGEX']),
+    'jmh' : ToolDescriptor(),
 }
 
 def native_image_path(native_image_root):

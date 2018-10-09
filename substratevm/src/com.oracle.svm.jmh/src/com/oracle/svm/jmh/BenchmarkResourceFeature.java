@@ -5,13 +5,11 @@ import java.io.InputStream;
 
 import org.graalvm.nativeimage.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.Resources;
 
 /**
  * Registers the generated benchmark resource file to be usable by JMH during runtime.
  */
-@AutomaticFeature
 public final class BenchmarkResourceFeature implements Feature {
 
     @Override

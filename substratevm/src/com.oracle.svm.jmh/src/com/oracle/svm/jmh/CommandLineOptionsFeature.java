@@ -4,12 +4,9 @@ import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.RuntimeReflection;
 import org.openjdk.jmh.runner.options.TimeValue;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-
 /**
  * Registers classes used in command line options to be usable by JMH during runtime via reflection.
  */
-@AutomaticFeature
 public final class CommandLineOptionsFeature implements Feature {
 
     @Override
