@@ -46,7 +46,7 @@ public class CoverageRequestHandler extends AbstractRequestHandler {
         this.sourceCodeEvaluator = sourceCodeEvaluator;
     }
 
-    public Boolean runCoverageAnalysisWithNestedEnteredContext(final URI uri) throws DiagnosticsNotification {
+    public Boolean runCoverageAnalysisWithEnteredContext(final URI uri) throws DiagnosticsNotification {
         final TextDocumentSurrogate surrogateOfOpenedFile = surrogateMap.get(uri);
         TextDocumentSurrogate surrogateOfTestFile = sourceCodeEvaluator.createSurrogateForTestFile(surrogateOfOpenedFile, null);
         final URI runScriptUri = surrogateOfTestFile.getUri();

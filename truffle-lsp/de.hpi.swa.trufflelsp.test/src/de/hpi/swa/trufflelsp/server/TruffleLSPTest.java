@@ -63,7 +63,7 @@ public abstract class TruffleLSPTest {
                 }
             }
 
-            public <T> Future<T> executeWithNestedContext(Callable<T> taskWithResult) {
+            public <T> Future<T> executeWithNestedContext(Callable<T> taskWithResult, boolean cached) {
                 try (Context newContext = contextBuilder.build()) {
                     newContext.enter();
                     try {
@@ -80,6 +80,9 @@ public abstract class TruffleLSPTest {
             }
 
             public void shutdown() {
+            }
+
+            public void resetCachedContext() {
             }
         };
         registry.register(executorWrapper);

@@ -300,7 +300,7 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
     }
 
     public Future<List<? extends Location>> definition(URI uri, int line, int character) {
-        return contextAwareExecutor.executeWithNestedContext(() -> definitionHandler.definitionWithEnteredContext(uri, line, character));
+        return contextAwareExecutor.executeWithNestedContext(() -> definitionHandler.definitionWithEnteredContext(uri, line, character), true);
     }
 
     public Future<Hover> hover(URI uri, int line, int column) {
@@ -308,11 +308,16 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
     }
 
     public Future<SignatureHelp> signatureHelp(URI uri, int line, int character) {
-        return contextAwareExecutor.executeWithNestedContext(() -> signatureHelpHandler.signatureHelpWithEnteredContext(uri, line, character));
+        return contextAwareExecutor.executeWithNestedContext(() -> signatureHelpHandler.signatureHelpWithEnteredContext(uri, line, character), true);
     }
 
     public Future<Boolean> runCoverageAnalysis(final URI uri) {
-        return contextAwareExecutor.executeWithNestedContext(() -> coverageHandler.runCoverageAnalysisWithNestedEnteredContext(uri));
+        contextAwareExecutor.resetCachedContext(); // We choose coverage runs as checkpoints to
+                                                   // clear the pooled context. A coverage run can
+                                                   // be triggered by the user via the editor, so
+                                                   // that the user can actively control the reset
+                                                   // of the current cached context.
+        return contextAwareExecutor.executeWithNestedContext(() -> coverageHandler.runCoverageAnalysisWithEnteredContext(uri), true);
     }
 
     public Future<?> showCoverage(URI uri) {

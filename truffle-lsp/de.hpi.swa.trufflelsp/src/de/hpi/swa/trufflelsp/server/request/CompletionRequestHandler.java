@@ -185,7 +185,7 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
 
         NodeLocationType locationType = nearestNodeHolder.getLocationType();
         if (locationType == NodeLocationType.CONTAINS_END) {
-            Future<EvaluationResult> future = contextAwareExecutor.executeWithNestedContext(() -> sourceCodeEvaluator.tryDifferentEvalStrategies(surrogate, nearestNode));
+            Future<EvaluationResult> future = contextAwareExecutor.executeWithNestedContext(() -> sourceCodeEvaluator.tryDifferentEvalStrategies(surrogate, nearestNode), true);
             EvaluationResult evalResult = getFutureResultOrHandleExceptions(future);
             if (evalResult != null && evalResult.isEvaluationDone()) {
                 if (!evalResult.isError()) {

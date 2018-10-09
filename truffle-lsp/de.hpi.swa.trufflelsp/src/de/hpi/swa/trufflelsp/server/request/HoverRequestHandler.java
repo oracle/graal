@@ -138,7 +138,7 @@ public class HoverRequestHandler extends AbstractRequestHandler {
                 }
             }
             return new Hover(createDefaultHoverInfos(textAtHoverPosition, evalResult, langId), SourceUtils.sourceSectionToRange(hoverSection));
-        });
+        }, true);
 
         return getFutureResultOrHandleExceptions(future);
     }

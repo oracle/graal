@@ -78,6 +78,7 @@ public class GraalLanguageServerLauncher extends AbstractLanguageLauncher {
         ContextAwareExecutorWrapperRegistry registry = instrument.lookup(ContextAwareExecutorWrapperRegistry.class);
         ContextAwareExecutorWrapper executorWrapper = new ContextAwareExecutorWrapper() {
             String GRAAL_WORKER_THREAD_ID = "LSP server Graal worker thread";
+            Context lastNestedContext = null;
 
             private ExecutorService executor = Executors.newSingleThreadExecutor(new ThreadFactory() {
                 private final ThreadFactory factory = Executors.defaultThreadFactory();
@@ -93,8 +94,8 @@ public class GraalLanguageServerLauncher extends AbstractLanguageLauncher {
                 return execute(taskWithResult);
             }
 
-            public <T> Future<T> executeWithNestedContext(Callable<T> taskWithResult) {
-                return execute(wrapWithNewContext(taskWithResult));
+            public <T> Future<T> executeWithNestedContext(Callable<T> taskWithResult, boolean cached) {
+                return execute(wrapWithNewContext(taskWithResult, cached));
             }
 
             private <T> Future<T> execute(Callable<T> taskWithResult) {
@@ -107,16 +108,30 @@ public class GraalLanguageServerLauncher extends AbstractLanguageLauncher {
                 return executor.submit(taskWithResult);
             }
 
-            private <T> Callable<T> wrapWithNewContext(Callable<T> taskWithResult) {
+            private <T> Callable<T> wrapWithNewContext(Callable<T> taskWithResult, boolean cached) {
                 return new Callable<T>() {
 
                     public T call() throws Exception {
-                        try (Context newContext = contextBuilder.build()) {
-                            newContext.enter();
+                        Context context;
+                        if (cached) {
+                            if (lastNestedContext == null) {
+                                lastNestedContext = contextBuilder.build();
+                            }
+                            context = lastNestedContext;
+                        } else {
+                            context = contextBuilder.build();
+                        }
+
+                        try {
+                            context.enter();
                             try {
                                 return taskWithResult.call();
                             } finally {
-                                newContext.leave();
+                                context.leave();
+                            }
+                        } finally {
+                            if (!cached) {
+                                context.close();
                             }
                         }
                     }
@@ -125,6 +140,13 @@ public class GraalLanguageServerLauncher extends AbstractLanguageLauncher {
 
             public void shutdown() {
                 executor.shutdownNow();
+            }
+
+            public void resetCachedContext() {
+                if (lastNestedContext != null) {
+                    lastNestedContext.close();
+                }
+                lastNestedContext = contextBuilder.build();
             }
         };
         registry.register(executorWrapper);
