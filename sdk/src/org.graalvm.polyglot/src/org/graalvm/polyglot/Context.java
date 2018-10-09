@@ -61,13 +61,13 @@ import org.graalvm.polyglot.io.MessageTransport;
  * A polyglot context represents the global runtime state of all {@link Engine#getLanguages()
  * installed} and {@link #newBuilder(String...) permitted} languages. Permitted languages are
  * {@link #initialize(String) initialized} lazily, when they are used for the first time. For many
- * operations of the context, a <i>language identifier</i> needs to be specified. A language
+ * context operations, a <i>language identifier</i> needs to be specified. A language
  * identifier is unique for each language.
  *
  * <h3>Evaluation</h3>
  *
- * A context allows to evaluate Guest language source code using {@link #eval(Source)}. This is
- * possible by evaluating {@link Source} objects or given a language identifier and code
+ * A context allows to evaluate a guest language source code using {@link #eval(Source)}. This is
+ * possible by evaluating {@link Source} objects or a  given language identifier and code
  * {@link String}. The {@link #eval(Source) evaluation} returns either the result value or throws a
  * {@link PolyglotException} if a guest language error occurs.
  * <p>
@@ -82,10 +82,10 @@ import org.graalvm.polyglot.io.MessageTransport;
  *
  * In this example:
  * <ul>
- * <li>We first first create a new context with all installed languages as permitted languages.
+ * <li>First we create a new context with all permitted languages.
  * <li>Next, we evaluate the expression "42" with language "js", which is the language identifier
  * for JavaScript. Since this is the first time we access JavaScript, it automatically gets
- * {@link #initialize(String) initialized} first.
+ * {@link #initialize(String) initialized}.
  * <li>Then, we assert the result value by converting the result value as primitive <code>int</code>
  * .
  * <li>Finally, if the context is no longer needed, it is necessary to close it to ensure that all
@@ -105,7 +105,7 @@ import org.graalvm.polyglot.io.MessageTransport;
  * <p>
  * Options may be specified for {@link Engine#getLanguages() languages},
  * {@link Engine#getInstruments() instruments}, the {@link Engine#getOptions() engine} and the
- * {@link Engine#getOptions() compiler}. For {@link Language#getOptions() language options} the
+ * {@link Engine#getOptions() compiler}. For {@link Language#getOptions() language options}, the
  * option key consists of the {@link Language#getId() language id} plus a dot followed by the option
  * name (e.g. "js.Strict"). For most languages the option names start with an upper-case letter by
  * convention. A list of available options may be received using {@link Language#getOptions()}.
@@ -115,7 +115,7 @@ import org.graalvm.polyglot.io.MessageTransport;
  * If system properties are {@link Engine.Builder#useSystemProperties(boolean) enabled}, which they
  * are by default, then all polyglot options maybe specified with the prefix "polyglot." (e.g.
  * "-Dpolyglot.js.Strict=true"). The system properties are read only once when the context or engine
- * instance is created. After that changes to the system properties have no affect.
+ * instance is created. After that, changes to the system properties have no affect.
  * <p>
  * Each Graal language performs an initialization step before it can be used to execute code, after
  * which it remains initialized for the lifetime of the context. Initialization is by default lazy
@@ -138,14 +138,16 @@ import org.graalvm.polyglot.io.MessageTransport;
  *
  * In this example:
  * <ul>
- * <li>We first first create a new context with all installed languages as permitted languages.
+ * <li>At first, we create a new context and specify permitted languages as parameters.
+ * <li>Then, we specify an option for JavaScript language only, by structuring the option key with
+ * the language id followed by the option name;
+ * <li>With {@link #allowAllAccess(boolean)} we grant a new context instance with the same access privileges as the host virtual machine.
  * <li>Next, we evaluate the expression "42" with language "js", which is the language identifier
  * for JavaScript. Since this is the first time we access JavaScript, it first gets
  * {@link #initialize(String) initialized} as well.
- * <li>Then, we assert the result value by converting the result value as primitive <code>int</code>
- * .
- * <li>Finally, if the context is no longer needed, it is necessary to close it to ensure that all
- * resources are freed. Contexts are also {@link AutoCloseable} for use with the Java
+ * <li>Similarly to the previous line, the R language expression gets evaluated.
+ * <li>Finally,  we close the context, since it is no longer needed, to free all allocated resources.
+ *  Contexts are also {@link AutoCloseable} for use with the Java
  * {@code try-with-resources} statement.
  * </ul>
  *
@@ -196,7 +198,7 @@ import org.graalvm.polyglot.io.MessageTransport;
  *
  * <h3>Host Interoperability</h3>
  *
- * It is often necessary to interact with values of the host runtime within Graal guest languages.
+ * It is often necessary to interact with values of the host runtime and Graal guest languages.
  * Such objects are referred to as <i>host objects</i>. Every Java value that is passed to a Graal
  * language is interpreted according to the specification described in {@link #asValue(Object)}.
  * Also see {@link Value#as(Class)} for further details.
@@ -225,29 +227,29 @@ import org.graalvm.polyglot.io.MessageTransport;
  *
  * <h3>Error Handling</h3>
  *
- * Guest languages code may fail when executing guest language code or when accessing guest language
- * object. So almost all methods in the {@link Context} and {@link Value} API throw a
+ * Program execution may fail when executing a guest language code or when accessing guest language
+ * object. Almost all methods in the {@link Context} and {@link Value} API throw a
  * {@link PolyglotException} in case an error occurs. See {@link PolyglotException} for further
  * details on error handling.
  *
  * <h3>Isolation</h3>
  *
  * Each context is by default isolated from all other instances with respect to both language
- * evaluation semantics and resource consumption. By default a new context instance has no access to
+ * evaluation semantics and resource consumption. By default, a new context instance has no access to
  * host resources, like threads, files or loading new host classes. To allow access to such
  * resources either the individual access right must be granted or
  * {@link Builder#allowAllAccess(boolean) all access} must be set to <code>true</code>.
  *
  * <p>
  * Contexts can be {@linkplain Builder#engine(Engine) configured} to share certain system resources
- * like ASTs, optimized code by specifying a single underlying engine; see {@link Engine} for more
+ * like ASTs or optimized code by specifying a single underlying engine. See {@link Engine} for more
  * details about code sharing.
  *
  * <h3>Proxies</h3>
  *
  * The {@link Proxy proxy interfaces} allow to mimic guest language objects, arrays, executables,
- * primitives and native objects in Graal languages. Every Graal language will treat instances of
- * proxies like an object of that particular language. Multiple proxy interfaces can be implemented
+ * primitives and native objects in Graal languages. Every Graal language will treat proxy instances
+ * like objects of that particular language. Multiple proxy interfaces can be implemented
  * at the same time. For example, it is useful to provide proxy values that are objects with members
  * and arrays at the same time.
  *
@@ -256,29 +258,28 @@ import org.graalvm.polyglot.io.MessageTransport;
  * It is safe to use a context instance from a single thread. It is also safe to use it with
  * multiple threads if they do not access the context at the same time. Whether a single context
  * instance may be used from multiple threads at the same time depends on if all initialized
- * languages support it. If only languages are initialized that support multi-threading then the
+ * languages support it. If initialized languages support multi-threading, then the
  * context instance may be used from multiple threads at the same time. If a context is used from
- * multiple threads and the language does not fit then an {@link IllegalStateException} is thrown by
+ * multiple threads and the language does not fit, then an {@link IllegalStateException} is thrown by
  * the accessing method.
  * <p>
  * Meta-data from the context's underlying {@link #getEngine() engine} can be retrieved safely by
  * any thread at any time.
  * <p>
  * A context may be {@linkplain #close() closed} from any thread, but only if the context is not
- * currently executing code. If a context is currently executing code, a different thread may kill
- * the currently runnign execution and close the context using {@link #close(boolean)}.
+ * currently executing code. If the context is currently executing some code,
+ * a different thread may kill the running execution and close the context using {@link #close(boolean)}.
  *
  * <h3>Pre-Initialization</h3>
  *
- * The Context pre-initialization can be used to perform expensive builtin creation in the time of
+ * The context pre-initialization can be used to perform expensive builtin creation in the time of
  * native compilation.
  * <p>
  * The context pre-initialization is enabled by setting the system property
  * {@code polyglot.engine.PreinitializeContexts} to a comma separated list of language ids which
  * should be pre-initialized, for example: {@code -Dpolyglot.engine.PreinitializeContexts=js,python}
  * <p>
- * See
- * {@code com.oracle.truffle.api.TruffleLanguage.patchContext(java.lang.Object, com.oracle.truffle.api.TruffleLanguage.Env)}
+ * See {@code com.oracle.truffle.api.TruffleLanguage.patchContext(java.lang.Object, com.oracle.truffle.api.TruffleLanguage.Env)}
  * for details about pre-initialization for language implementers.
  *
  * @since 1.0
@@ -294,7 +295,7 @@ public final class Context implements AutoCloseable {
     /**
      * Provides access to meta-data about the underlying Graal {@linkplain Engine engine}.
      *
-     * @return the Graal {@link Engine} being used by this context
+     * @return Graal {@link Engine} being used by this context
      * @since 1.0
      */
     public Engine getEngine() {
@@ -302,9 +303,9 @@ public final class Context implements AutoCloseable {
     }
 
     /**
-     * Evaluates a source by using the {@linkplain Source#getLanguage() language} specified in the
-     * source. The result is accessible as {@link Value value} and never <code>null</code>. The
-     * first time a source is evaluated it will be parsed, consecutive invocations of eval with the
+     * Evaluates a source object by using the {@linkplain Source#getLanguage() language} specified in the
+     * source. The result is accessible as {@link Value value} and never returns <code>null</code>. The
+     * first time a source is evaluated, it will be parsed. Consecutive invocations of eval with the
      * same source will only execute the already parsed code.
      * <p>
      * <b>Basic Example:</b>
@@ -318,12 +319,12 @@ public final class Context implements AutoCloseable {
      * </pre>
      *
      * @param source a source object to evaluate
-     * @throws PolyglotException in case parsing or evaluation of the guest language code failed.
-     * @throws IllegalStateException if the context is already closed, the current thread is not
-     *             allowed to access this context
+     * @throws PolyglotException in case the guest language code  parsing or evaluation failed.
+     * @throws IllegalStateException if the context is already closed and the current thread is not
+     *             allowed to access it.
      * @throws IllegalArgumentException if the language of the given source is not installed or the
      *             {@link Source#getMimeType() MIME type} is not supported with the language.
-     * @return result of the evaluation. The returned instance is is never <code>null</code>, but
+     * @return the evaluation result. The returned instance is never <code>null</code>, but
      *         the result might represent a {@link Value#isNull() null} value.
      * @since 1.0
      */
@@ -333,7 +334,7 @@ public final class Context implements AutoCloseable {
 
     /**
      * Evaluates a guest language code literal, using a provided {@link Language#getId() language
-     * id}. The result is accessible as {@link Value value} and never <code>null</code>. The
+     * id}. The result is accessible as {@link Value value} and never returns <code>null</code>. The
      * provided {@link CharSequence} must represent an immutable String.
      * <p>
      * <b>Basic Example:</b>
@@ -345,11 +346,11 @@ public final class Context implements AutoCloseable {
      * context.close();
      * </pre>
      *
-     * @throws PolyglotException in case parsing or evaluation of the guest language code failed.
+     * @throws PolyglotException in case the guest language code parsing or evaluation failed.
      * @throws IllegalArgumentException if the language does not exist or is not accessible.
-     * @throws IllegalStateException if the context is already closed, the current thread is not
-     *             allowed to access this context or if the given language is not installed.
-     * @return result of the evaluation. The returned instance is is never <code>null</code>, but
+     * @throws IllegalStateException if the context is already closed and the current thread is not
+     *             allowed to access it, or if the given language is not installed.
+     * @return the evaluation result. The returned instance is never <code>null</code>, but
      *         the result might represent a {@link Value#isNull() null} value.
      * @since 1.0
      */
