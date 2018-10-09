@@ -61,13 +61,13 @@ import org.graalvm.polyglot.io.MessageTransport;
  * A polyglot context represents the global runtime state of all {@link Engine#getLanguages()
  * installed} and {@link #newBuilder(String...) permitted} languages. Permitted languages are
  * {@link #initialize(String) initialized} lazily, when they are used for the first time. For many
- * context operations, a <i>language identifier</i> needs to be specified. A language
- * identifier is unique for each language.
+ * context operations, a <i>language identifier</i> needs to be specified. A language identifier is
+ * unique for each language.
  *
  * <h3>Evaluation</h3>
  *
  * A context allows to evaluate a guest language source code using {@link #eval(Source)}. This is
- * possible by evaluating {@link Source} objects or a  given language identifier and code
+ * possible by evaluating {@link Source} objects or a given language identifier and code
  * {@link String}. The {@link #eval(Source) evaluation} returns either the result value or throws a
  * {@link PolyglotException} if a guest language error occurs.
  * <p>
@@ -141,14 +141,15 @@ import org.graalvm.polyglot.io.MessageTransport;
  * <li>At first, we create a new context and specify permitted languages as parameters.
  * <li>Then, we specify an option for JavaScript language only, by structuring the option key with
  * the language id followed by the option name;
- * <li>With {@link #allowAllAccess(boolean)} we grant a new context instance with the same access privileges as the host virtual machine.
+ * <li>With {@link #allowAllAccess(boolean)} we grant a new context instance with the same access
+ * privileges as the host virtual machine.
  * <li>Next, we evaluate the expression "42" with language "js", which is the language identifier
  * for JavaScript. Since this is the first time we access JavaScript, it first gets
  * {@link #initialize(String) initialized} as well.
  * <li>Similarly to the previous line, the R language expression gets evaluated.
- * <li>Finally,  we close the context, since it is no longer needed, to free all allocated resources.
- *  Contexts are also {@link AutoCloseable} for use with the Java
- * {@code try-with-resources} statement.
+ * <li>Finally, we close the context, since it is no longer needed, to free all allocated resources.
+ * Contexts are also {@link AutoCloseable} for use with the Java {@code try-with-resources}
+ * statement.
  * </ul>
  *
  * <h3>Bindings</h3>
@@ -198,8 +199,8 @@ import org.graalvm.polyglot.io.MessageTransport;
  *
  * <h3>Host Interoperability</h3>
  *
- * It is often necessary to interact with values of the host runtime and Graal guest languages.
- * Such objects are referred to as <i>host objects</i>. Every Java value that is passed to a Graal
+ * It is often necessary to interact with values of the host runtime and Graal guest languages. Such
+ * objects are referred to as <i>host objects</i>. Every Java value that is passed to a Graal
  * language is interpreted according to the specification described in {@link #asValue(Object)}.
  * Also see {@link Value#as(Class)} for further details.
  *
@@ -235,8 +236,8 @@ import org.graalvm.polyglot.io.MessageTransport;
  * <h3>Isolation</h3>
  *
  * Each context is by default isolated from all other instances with respect to both language
- * evaluation semantics and resource consumption. By default, a new context instance has no access to
- * host resources, like threads, files or loading new host classes. To allow access to such
+ * evaluation semantics and resource consumption. By default, a new context instance has no access
+ * to host resources, like threads, files or loading new host classes. To allow access to such
  * resources either the individual access right must be granted or
  * {@link Builder#allowAllAccess(boolean) all access} must be set to <code>true</code>.
  *
@@ -249,26 +250,26 @@ import org.graalvm.polyglot.io.MessageTransport;
  *
  * The {@link Proxy proxy interfaces} allow to mimic guest language objects, arrays, executables,
  * primitives and native objects in Graal languages. Every Graal language will treat proxy instances
- * like objects of that particular language. Multiple proxy interfaces can be implemented
- * at the same time. For example, it is useful to provide proxy values that are objects with members
- * and arrays at the same time.
+ * like objects of that particular language. Multiple proxy interfaces can be implemented at the
+ * same time. For example, it is useful to provide proxy values that are objects with members and
+ * arrays at the same time.
  *
  * <h3>Thread-Safety</h3>
  *
  * It is safe to use a context instance from a single thread. It is also safe to use it with
  * multiple threads if they do not access the context at the same time. Whether a single context
  * instance may be used from multiple threads at the same time depends on if all initialized
- * languages support it. If initialized languages support multi-threading, then the
- * context instance may be used from multiple threads at the same time. If a context is used from
- * multiple threads and the language does not fit, then an {@link IllegalStateException} is thrown by
- * the accessing method.
+ * languages support it. If initialized languages support multi-threading, then the context instance
+ * may be used from multiple threads at the same time. If a context is used from multiple threads
+ * and the language does not fit, then an {@link IllegalStateException} is thrown by the accessing
+ * method.
  * <p>
  * Meta-data from the context's underlying {@link #getEngine() engine} can be retrieved safely by
  * any thread at any time.
  * <p>
  * A context may be {@linkplain #close() closed} from any thread, but only if the context is not
- * currently executing code. If the context is currently executing some code,
- * a different thread may kill the running execution and close the context using {@link #close(boolean)}.
+ * currently executing code. If the context is currently executing some code, a different thread may
+ * kill the running execution and close the context using {@link #close(boolean)}.
  *
  * <h3>Pre-Initialization</h3>
  *
@@ -279,7 +280,8 @@ import org.graalvm.polyglot.io.MessageTransport;
  * {@code polyglot.engine.PreinitializeContexts} to a comma separated list of language ids which
  * should be pre-initialized, for example: {@code -Dpolyglot.engine.PreinitializeContexts=js,python}
  * <p>
- * See {@code com.oracle.truffle.api.TruffleLanguage.patchContext(java.lang.Object, com.oracle.truffle.api.TruffleLanguage.Env)}
+ * See
+ * {@code com.oracle.truffle.api.TruffleLanguage.patchContext(java.lang.Object, com.oracle.truffle.api.TruffleLanguage.Env)}
  * for details about pre-initialization for language implementers.
  *
  * @since 1.0
@@ -303,10 +305,10 @@ public final class Context implements AutoCloseable {
     }
 
     /**
-     * Evaluates a source object by using the {@linkplain Source#getLanguage() language} specified in the
-     * source. The result is accessible as {@link Value value} and never returns <code>null</code>. The
-     * first time a source is evaluated, it will be parsed. Consecutive invocations of eval with the
-     * same source will only execute the already parsed code.
+     * Evaluates a source object by using the {@linkplain Source#getLanguage() language} specified
+     * in the source. The result is accessible as {@link Value value} and never returns
+     * <code>null</code>. The first time a source is evaluated, it will be parsed. Consecutive
+     * invocations of eval with the same source will only execute the already parsed code.
      * <p>
      * <b>Basic Example:</b>
      *
@@ -319,13 +321,13 @@ public final class Context implements AutoCloseable {
      * </pre>
      *
      * @param source a source object to evaluate
-     * @throws PolyglotException in case the guest language code  parsing or evaluation failed.
+     * @throws PolyglotException in case the guest language code parsing or evaluation failed.
      * @throws IllegalStateException if the context is already closed and the current thread is not
      *             allowed to access it.
      * @throws IllegalArgumentException if the language of the given source is not installed or the
      *             {@link Source#getMimeType() MIME type} is not supported with the language.
-     * @return the evaluation result. The returned instance is never <code>null</code>, but
-     *         the result might represent a {@link Value#isNull() null} value.
+     * @return the evaluation result. The returned instance is never <code>null</code>, but the
+     *         result might represent a {@link Value#isNull() null} value.
      * @since 1.0
      */
     public Value eval(Source source) {
@@ -350,8 +352,8 @@ public final class Context implements AutoCloseable {
      * @throws IllegalArgumentException if the language does not exist or is not accessible.
      * @throws IllegalStateException if the context is already closed and the current thread is not
      *             allowed to access it, or if the given language is not installed.
-     * @return the evaluation result. The returned instance is never <code>null</code>, but
-     *         the result might represent a {@link Value#isNull() null} value.
+     * @return the evaluation result. The returned instance is never <code>null</code>, but the
+     *         result might represent a {@link Value#isNull() null} value.
      * @since 1.0
      */
     public Value eval(String languageId, CharSequence source) {
@@ -366,7 +368,7 @@ public final class Context implements AutoCloseable {
      * and {@link Value#removeMember(String) removable}.
      * <p>
      * Guest languages may put and get members through language specific APIs. For example, in
-     * JavaScript symbols of the polyglot bindings can be accessed using
+     * JavaScript, symbols of the polyglot bindings can be accessed using
      * <code>Polyglot.import("name")</code> and set using
      * <code>Polyglot.export("name", value)</code>. Please see the individual language reference on
      * how to access these symbols.
@@ -380,10 +382,10 @@ public final class Context implements AutoCloseable {
 
     /**
      * Returns a value that represents the top-most bindings of a language. The top most bindings of
-     * the language returns a {@link Value#getMember(String) member} for symbol in the scope.
+     * the language returns a {@link Value#getMember(String) member} for a symbol in the scope.
      * Languages may allow modifications of members of the returned bindings object at the
-     * language's discretion. If the language was not yet {@link #initialize(String) initialized} it
-     * will be initialized when the bindings are requested.
+     * language's discretion. If the language has not been {@link #initialize(String) initialized}
+     * yet, it will be initialized when the bindings are requested.
      *
      * @throws IllegalArgumentException if the language does not exist or is not accessible.
      * @throws IllegalStateException if the context is already closed.
@@ -424,29 +426,29 @@ public final class Context implements AutoCloseable {
      * <p>
      * When a host value is converted to a polyglot value the following rules apply:
      * <ol>
-     * <li>If the <code>hostValue</code> is <code>null</code> then it will be interpreted as
+     * <li>If the <code>hostValue</code> is <code>null</code>, then it will be interpreted as
      * polyglot {@link Value#isNull() null}.
-     * <li>If the <code>hostValue</code> is already a {@link Value polyglot value} then it will be
+     * <li>If the <code>hostValue</code> is already a {@link Value polyglot value}, then it will be
      * cast to {@link Value}.
      * <li>If the <code>hostValue</code> is an instance of {@link Byte}, {@link Short},
-     * {@link Integer}, {@link Long}, {@link Float} or {@link Double} then it will be interpreted as
-     * polyglot {@link Value#isNumber() number}. Other subclasses of {@link Number} will be
+     * {@link Integer}, {@link Long}, {@link Float} or {@link Double}, then it will be interpreted
+     * as polyglot {@link Value#isNumber() number}. Other subclasses of {@link Number} will be
      * interpreted as {@link Value#isHostObject() host object} (see later).
-     * <li>If the <code>hostValue</code> is an instance of {@link Character} or {@link String} then
+     * <li>If the <code>hostValue</code> is an instance of {@link Character} or {@link String}, then
      * it will be interpreted as polyglot {@link Value#isString() string}.
-     * <li>If the <code>hostValue</code> is an instance of {@link Boolean} then it will be
+     * <li>If the <code>hostValue</code> is an instance of {@link Boolean}, then it will be
      * interpreted as polyglot {@link Value#isBoolean() boolean}.
-     * <li>If the <code>hostValue</code> is a {@link Proxy polyglot proxy} then it will be
+     * <li>If the <code>hostValue</code> is a {@link Proxy polyglot proxy}, then it will be
      * interpreted according to the behavior specified by the proxy. See the javadoc of the proxy
      * subclass for further details.
      * <li>If the <code>hostValue</code> is a non-primitive {@link Value#as(Class) mapped Java
-     * value} then the original value will be restored. For example if a guest language object was
-     * mapped to {@link Map} then the original object identity will be preserved when converting
+     * value}, then the original value will be restored. For example, if a guest language object was
+     * mapped to {@link Map}, then the original object identity will be preserved when converting
      * back to a polyglot value.
      * <li>Any other <code>hostValue</code> will be interpreted as {@link Value#isHostObject() host
      * object}. Host objects expose all their public java fields and methods as
      * {@link Value#getMember(String) members}. In addition, Java arrays and subtypes of
-     * {@link List} will be interpreted as value with {@link Value#hasArrayElements() array
+     * {@link List} will be interpreted as a value with {@link Value#hasArrayElements() array
      * elements} and single method interfaces annotated with {@link FunctionalInterface} are
      * {@link Value#execute(Object...) executable} directly. Java {@link Class} instances are
      * interpreted as {@link Value#canInstantiate() instantiable}, but they do not expose Class
@@ -475,19 +477,18 @@ public final class Context implements AutoCloseable {
      * provided as {@link Value#getMember(String) members}. Methods and fields are grouped by name,
      * so only one member is exposed for each name.
      * <p>
-     * When an argument value needs to be mapped to match a required Java method parameter type then
-     * the semantics of {@link Value#as(Class) host value mapping} is used. The result of the
-     * mapping is equivalent of calling {@link Value#as(Class)} with the parameter type. Therefore a
-     * {@link ClassCastException} or {@link NullPointerException} is thrown if a parameter value
+     * When an argument value needs to be mapped to match a required Java method parameter type,
+     * then the semantics of {@link Value#as(Class) host value mapping} is used. The result of the
+     * mapping is equivalent of calling {@link Value#as(Class)} with the parameter type. Therefore,
+     * a {@link ClassCastException} or {@link NullPointerException} is thrown if a parameter value
      * cannot be cast to the required parameter type.
      * <p>
-     * Overloaded java methods are selected based on the arguments that are provided. In case
-     * multiple mapped Java methods with the same name are applicable for
-     * {@link Value#execute(Object...) executions} or {@link Value#newInstance(Object...)
-     * instantiations} then the method with the most concrete method with applicable arguments will
-     * be used used.
+     * Overloaded java methods are selected based on the provided arguments. In case multiple mapped
+     * Java methods with the same name are applicable for {@link Value#execute(Object...)
+     * executions} or {@link Value#newInstance(Object...) instantiations}, then the method with the
+     * most concrete method with applicable arguments will be called.
      * <p>
-     * The following parameter type hierarchy is used for method resolution. Left-most parameter
+     * The following parameter type hierarchy is used for a method resolution. Left-most parameter
      * types are prioritized over types to their right.
      * <ul>
      * <li>{@link Value#isBoolean() Boolean} values: boolean, Boolean, Object
@@ -496,13 +497,14 @@ public final class Context implements AutoCloseable {
      * Double, Number, Object
      * <li>Other values are resolved based on their Java type hierarchy.
      * </ul>
-     * If there are multiple most concrete methods or too many arguments were provided then an
-     * illegal argument type error will be raised.
+     * If there are multiple concrete methods or too many arguments provided, then an illegal
+     * argument type error will be raised.
      * <p>
      * <b>Advanced Example:</b>
      *
      * This example first creates a new instance of the Java class <code>Record</code> and inspects
-     * it first using the polyglot value API and later using the JavaScript guest language.
+     * it using the polyglot value API. Later, a host value is converted to a polyglot value using
+     * JavaScript guest language.
      * <p>
      * In the following examples all assertions hold.
      *
@@ -539,9 +541,8 @@ public final class Context implements AutoCloseable {
     }
 
     /**
-     * Explicitly enters this context on the current thread. A context needs to be entered for any
-     * operation to be performed. The context implicitly enters and leaves the context for every
-     * operation. For example, before and after invoking the {@link Value#execute(Object...)
+     * Explicitly enters the context on the current thread. A context needs to be entered and left for any
+     * operation to be performed. For example, before and after invoking the {@link Value#execute(Object...)
      * execute} method. This can be inefficient if a very high number of simple operations needs to
      * be performed. By {@link #enter() entering} and {@link #leave() leaving} once explicitly, the
      * overhead for entering/leaving contexts for each operation can be eliminated. Contexts can be
