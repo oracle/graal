@@ -34,6 +34,7 @@ import java.lang.Thread.UncaughtExceptionHandler;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
+import java.security.AccessControlContext;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -698,7 +699,7 @@ final class Target_java_lang_Thread {
     public volatile int threadStatus;
 
     @Alias//
-    private /* final */ Object blockerLock;
+    /* private */ /* final */ Object blockerLock;
 
     @Alias
     native void setPriority(int newPriority);
@@ -758,12 +759,29 @@ final class Target_java_lang_Thread {
     @Substitute
     @TargetElement(onlyWith = JDK8OrEarlier.class)
     private void init(ThreadGroup groupArg, Runnable targetArg, String nameArg, long stackSizeArg) {
+        /* Injected Target_java_lang_Thread instance field initialization. */
+        this.unsafeParkEvent = new AtomicReference<>();
+        this.sleepParkEvent = new AtomicReference<>();
+        /* Initialize the rest of the Thread object. */
         Util_java_lang_Thread.initialize(this, groupArg, targetArg, nameArg, stackSizeArg);
     }
 
     @Substitute
+    @SuppressWarnings({"unused"})
     @TargetElement(onlyWith = JDK9OrLater.class)
-    private Target_java_lang_Thread(ThreadGroup g, Runnable target, String name, long stackSize) {
+    private Target_java_lang_Thread(
+                    ThreadGroup g,
+                    Runnable target,
+                    String name,
+                    long stackSize,
+                    AccessControlContext acc,
+                    boolean inheritThreadLocals) {
+        /* Non-0 instance field initialization. */
+        this.blockerLock = new Object();
+        /* Injected Target_java_lang_Thread instance field initialization. */
+        this.unsafeParkEvent = new AtomicReference<>();
+        this.sleepParkEvent = new AtomicReference<>();
+        /* Initialize the rest of the Thread object, ignoring `acc` and `inheritThreadLocals`. */
         Util_java_lang_Thread.initialize(this, g, target, name, stackSize);
     }
 
@@ -931,19 +949,31 @@ final class Target_java_lang_Thread {
 
 final class Util_java_lang_Thread {
 
-    static void initialize(Target_java_lang_Thread tjlt, ThreadGroup groupArg, Runnable target, String name, long stackSize) {
-        /*
-         * This method is a copy of the implementation of
-         *
-         * Thread.init(ThreadGroup g, Runnable target, String name, long stackSize)
-         *
-         * with unsupported features removed. It is used as the body of `init` in JDK8OrEarlier, and
-         * as the body of the `Thread` constructor in JDK9OrLater.
-         */
-
-        tjlt.unsafeParkEvent = new AtomicReference<>();
-        tjlt.sleepParkEvent = new AtomicReference<>();
-
+    /**
+     * Thread instance initialization.
+     *
+     * This method is a copy of the implementation of the JDK-8 method
+     *
+     * <code>Thread.init(ThreadGroup g, Runnable target, String name, long stackSize)</code>
+     *
+     * and the JDK-9 constructor
+     *
+     * <code>Thread(ThreadGroup g, Runnable target, String name, long stackSize,
+     * AccessControlContext acc, boolean inheritThreadLocals)</code>
+     *
+     * with these unsupported features removed:
+     * <ul>
+     * <li>No security manager: using the ContextClassLoader of the parent.</li>
+     * <li>Not implemented: inheritedAccessControlContext.</li>
+     * <li>Not implemented: inheritableThreadLocals.</li>
+     * </ul>
+     */
+    static void initialize(
+                    Target_java_lang_Thread tjlt,
+                    ThreadGroup groupArg,
+                    Runnable target,
+                    String name,
+                    long stackSize) {
         if (name == null) {
             throw new NullPointerException("name cannot be null");
         }
