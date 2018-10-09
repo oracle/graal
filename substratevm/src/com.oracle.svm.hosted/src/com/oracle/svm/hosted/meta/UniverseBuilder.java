@@ -39,6 +39,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ForkJoinTask;
 
+import org.graalvm.collections.Pair;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
@@ -858,22 +859,81 @@ public class UniverseBuilder {
     }
 
     private void buildVTables() {
+        /*
+         * We want to pack the vtables as tight as possible, i.e., we want to avoid filler slots as
+         * much as possible. Filler slots are unavoidable because we use the vtable also for
+         * interface calls, i.e., an interface method needs a vtable index that is filled for all
+         * classes that implement that interface.
+         *
+         * Note that because of interface methods the same implementation method can be registered
+         * multiple times in the same vtable, with a different index used by different interface
+         * methods.
+         *
+         * The optimization goal is to reduce the overall number of vtable slots. To achieve a good
+         * result, we process types in three steps: 1) java.lang.Object, 2) interfaces, 3) classes.
+         */
+
+        /*
+         * The mutable vtables while this algorithm is running. Contains an ArrayList for each type,
+         * which is in the end converted to the vtable array.
+         */
         Map<HostedType, ArrayList<HostedMethod>> vtablesMap = new HashMap<>();
+
+        /*
+         * A bit set of occupied vtable slots for each type.
+         */
+
         Map<HostedType, BitSet> usedSlotsMap = new HashMap<>();
+        /*
+         * The set of vtable slots used for this method. Because of interfaces, one method can have
+         * multiple vtable slots. The assignment algorithm uses this table to find out if a suitable
+         * vtable index already exists for a method.
+         */
+        Map<HostedMethod, Set<Integer>> vtablesSlots = new HashMap<>();
+
         for (HostedType type : hUniverse.orderedTypes) {
             vtablesMap.put(type, new ArrayList<>());
             BitSet initialBitSet = new BitSet();
             usedSlotsMap.put(type, initialBitSet);
         }
 
-        assignImplementations(hUniverse.getObjectClass(), vtablesMap, usedSlotsMap);
+        /*
+         * 1) Process java.lang.Object first because the methods defined there (equals, hashCode,
+         * toString, clone) are in every vtable. We must not have filler slots before these methods.
+         */
+        assignImplementations(hUniverse.getObjectClass(), vtablesMap, usedSlotsMap, vtablesSlots);
+
+        /*
+         * 2) Process interfaces. Interface methods have higher constraints on vtable slots because
+         * the same slots need to be used in all implementation classes, which can be spread out
+         * across the type hierarchy. We assign an importance level to each interface and then sort
+         * by that number, to further reduce the filler slots.
+         */
+        List<Pair<HostedType, Integer>> interfaces = new ArrayList<>();
         for (HostedType type : hUniverse.orderedTypes) {
             if (type.isInterface()) {
-                assignImplementations(type, vtablesMap, usedSlotsMap);
+                /*
+                 * We use the number of subtypes as the importance for an interface: If an interface
+                 * is implemented often, then it can produce more unused filler slots than an
+                 * interface implemented rarely. We do not multiply with the number of methods that
+                 * the interface implements: there are usually no filler slots in between methods of
+                 * an interface, i.e., an interface that declares many methods does not lead to more
+                 * filler slots than an interface that defines only one method.
+                 */
+                int importance = collectSubtypes(type, new HashSet<>()).size();
+                interfaces.add(Pair.create(type, importance));
             }
         }
+        interfaces.sort((pair1, pair2) -> pair2.getRight() - pair1.getRight());
+        for (Pair<HostedType, Integer> pair : interfaces) {
+            assignImplementations(pair.getLeft(), vtablesMap, usedSlotsMap, vtablesSlots);
+        }
 
-        buildVTable(hUniverse.getObjectClass(), vtablesMap, usedSlotsMap);
+        /*
+         * 3) Process all implementation classes, starting with java.lang.Object and going
+         * depth-first down the tree.
+         */
+        buildVTable(hUniverse.getObjectClass(), vtablesMap, usedSlotsMap, vtablesSlots);
 
         for (HostedType type : hUniverse.orderedTypes) {
             if (type.vtable == null) {
@@ -892,8 +952,18 @@ public class UniverseBuilder {
         }
     }
 
-    private void buildVTable(HostedClass clazz, Map<HostedType, ArrayList<HostedMethod>> vtablesMap, Map<HostedType, BitSet> usedSlotsMap) {
-        assignImplementations(clazz, vtablesMap, usedSlotsMap);
+    /** Collects all subtypes of the provided type in the provided set. */
+    private static Set<HostedType> collectSubtypes(HostedType type, Set<HostedType> allSubtypes) {
+        if (allSubtypes.add(type)) {
+            for (HostedType subtype : type.subTypes) {
+                collectSubtypes(subtype, allSubtypes);
+            }
+        }
+        return allSubtypes;
+    }
+
+    private void buildVTable(HostedClass clazz, Map<HostedType, ArrayList<HostedMethod>> vtablesMap, Map<HostedType, BitSet> usedSlotsMap, Map<HostedMethod, Set<Integer>> vtablesSlots) {
+        assignImplementations(clazz, vtablesMap, usedSlotsMap, vtablesSlots);
 
         ArrayList<HostedMethod> vtable = vtablesMap.get(clazz);
         HostedMethod[] vtableArray = vtable.toArray(new HostedMethod[vtable.size()]);
@@ -902,29 +972,38 @@ public class UniverseBuilder {
 
         for (HostedType subClass : clazz.subTypes) {
             if (!subClass.isInterface()) {
-                buildVTable((HostedClass) subClass, vtablesMap, usedSlotsMap);
+                buildVTable((HostedClass) subClass, vtablesMap, usedSlotsMap, vtablesSlots);
             }
         }
     }
 
-    private void assignImplementations(HostedType type, Map<HostedType, ArrayList<HostedMethod>> vtablesMap, Map<HostedType, BitSet> usedSlotsMap) {
+    private void assignImplementations(HostedType type, Map<HostedType, ArrayList<HostedMethod>> vtablesMap, Map<HostedType, BitSet> usedSlotsMap, Map<HostedMethod, Set<Integer>> vtablesSlots) {
         for (HostedMethod method : type.getAllDeclaredMethods()) {
+            /* We only need to look at methods that the static analysis registred as invoked. */
             if (method.wrapped.isInvoked() || method.wrapped.isImplementationInvoked()) {
-                assignImplementations(method, vtablesMap, usedSlotsMap);
+                /*
+                 * Methods with 1 implementations do not need a vtable because invokes can be done
+                 * as direct calls without the need for a vtable. Methods with 0 implementations are
+                 * unreachable.
+                 */
+                if (method.implementations.length > 1) {
+                    /*
+                     * Find a suitable vtable slot for the method, taking the existing vtable
+                     * assignments into account.
+                     */
+                    int slot = findSlot(method, vtablesMap, usedSlotsMap, vtablesSlots);
+                    method.vtableIndex = slot;
+
+                    /* Assign the vtable slot for the type and all subtypes. */
+                    assignImplementations(method.getDeclaringClass(), method, slot, vtablesMap);
+                }
             }
         }
     }
 
-    private void assignImplementations(HostedMethod method, Map<HostedType, ArrayList<HostedMethod>> vtablesMap, Map<HostedType, BitSet> usedSlotsMap) {
-        if (method.implementations.length <= 1) {
-            return;
-        }
-        int slot = findSlot(method, vtablesMap, usedSlotsMap);
-        method.vtableIndex = slot;
-
-        assignImplementations(method.getDeclaringClass(), method, slot, vtablesMap);
-    }
-
+    /**
+     * Assign the vtable slot to the correct resolved method for all subtypes.
+     */
     private void assignImplementations(HostedType type, HostedMethod method, int slot, Map<HostedType, ArrayList<HostedMethod>> vtablesMap) {
         if (type.wrapped.isInstantiated()) {
             assert (type.isInstanceClass() && !type.isAbstract()) || type.isArray();
@@ -965,32 +1044,55 @@ public class UniverseBuilder {
         }
     }
 
-    private int findSlot(HostedMethod method, Map<HostedType, ArrayList<HostedMethod>> vtablesMap, Map<HostedType, BitSet> usedSlotsMap) {
-        int resultSlot = method.implementations[0].vtableIndex;
+    private int findSlot(HostedMethod method, Map<HostedType, ArrayList<HostedMethod>> vtablesMap, Map<HostedType, BitSet> usedSlotsMap, Map<HostedMethod, Set<Integer>> vtablesSlots) {
+        /*
+         * Check if all implementation methods already have a common slot assigned. Each
+         * implementation method can have multiple slots because of interfaces. We compute the
+         * intersection of the slot sets for all implementation methods.
+         */
+        Set<Integer> resultSlots = vtablesSlots.get(method.implementations[0]);
         for (HostedMethod impl : method.implementations) {
-            if (impl.vtableIndex != resultSlot) {
-                resultSlot = -1;
+            Set<Integer> implSlots = vtablesSlots.get(impl);
+            if (implSlots == null) {
+                resultSlots = null;
                 break;
             }
+            resultSlots.retainAll(implSlots);
         }
-        if (resultSlot != -1) {
+        if (resultSlots != null && !resultSlots.isEmpty()) {
             /*
              * All implementations already have the same vtable slot assigned, so we can re-use
-             * that.
+             * that. If we have multiple candidates, we use the slot with the lowest number.
              */
+            int resultSlot = Integer.MAX_VALUE;
+            for (int slot : resultSlots) {
+                resultSlot = Math.min(resultSlot, slot);
+            }
             return resultSlot;
         }
 
+        /*
+         * No slot found, we need to compute a new one. Check the whole subtype hierarchy for
+         * constraints using bitset union, and then use the lowest slot number that is available in
+         * all subtypes.
+         */
         BitSet usedSlots = new BitSet();
         collectUsedSlots(method.getDeclaringClass(), usedSlots, usedSlotsMap);
         for (HostedMethod impl : method.implementations) {
             collectUsedSlots(impl.getDeclaringClass(), usedSlots, usedSlotsMap);
         }
 
-        resultSlot = usedSlots.nextClearBit(0);
+        /*
+         * The new slot number is the lowest slot number not occupied by any subtype, i.e., the
+         * lowest index not set in the union bitset.
+         */
+        int resultSlot = usedSlots.nextClearBit(0);
+
         markSlotAsUsed(resultSlot, method.getDeclaringClass(), vtablesMap, usedSlotsMap);
         for (HostedMethod impl : method.implementations) {
             markSlotAsUsed(resultSlot, impl.getDeclaringClass(), vtablesMap, usedSlotsMap);
+
+            vtablesSlots.computeIfAbsent(impl, k -> new HashSet<>()).add(resultSlot);
         }
 
         return resultSlot;
