@@ -28,6 +28,29 @@ import org.graalvm.compiler.truffle.pelang.bcf.PELangBasicBlockNode;
 
 public class PELangSample {
 
+    public static PELangRootNode pow() {
+        PELangBuilder b = new PELangBuilder();
+
+        // @formatter:off
+        return b.root("main", b.block(
+            b.writeGlobal("pow", b.function(
+                h -> h.header("pow", "x", "n"), f -> f.block(
+                f.if$(
+                    f.eq(f.readLocal("n"), f.long$(0)),
+                    f.return$(f.long$(1L)),
+                    f.return$(
+                        f.mult(
+                            f.readLocal("x"),
+                            f.invoke(
+                                f.readGlobal("pow"),
+                                f.readLocal("x"),
+                                f.minus(
+                                    f.readLocal("n"),
+                                    f.long$(1L))))))))),
+            b.return$(b.invoke(b.readGlobal("pow"), b.readArgument(0), b.readArgument(1)))));
+        // @formatter:on
+    }
+
     public static PELangRootNode simpleAdd() {
         PELangBuilder b = new PELangBuilder();
         return b.root("main", b.return$(b.add(b.long$(5L), b.long$(5L))));

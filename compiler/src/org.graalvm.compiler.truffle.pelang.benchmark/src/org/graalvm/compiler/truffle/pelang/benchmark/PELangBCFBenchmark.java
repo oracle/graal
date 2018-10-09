@@ -315,4 +315,19 @@ public class PELangBCFBenchmark {
 
     }
 
+    public static class Pow extends PartialEvaluationBenchmark {
+
+        @Override
+        protected RootNode rootNode() {
+            PELangBCFGenerator g = new PELangBCFGenerator();
+            return g.generate(PELangSample.pow());
+        }
+
+        @Override
+        protected Object[] callArguments() {
+            return new Object[]{3L, 2L};
+        }
+
+    }
+
 }

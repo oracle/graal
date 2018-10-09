@@ -350,6 +350,17 @@ public class PELangNCFTest extends PELangTest {
         // TODO: add partial evaluation asserts
     }
 
+    @Test
+    public void testPow() {
+        PELangRootNode rootNode = PELangSample.pow();
+        OptimizedCallTarget callTarget = createCallTarget(rootNode);
+        assertCallResultEquals(9L, callTarget, new Object[]{3L, 2L});
+
+        warmupCallTarget(callTarget, 3L, 2L);
+        partiallyEvaluateAndCompile(callTarget);
+        // TODO: add partial evaluation asserts
+    }
+
     protected Object constant10() {
         return 10L;
     }

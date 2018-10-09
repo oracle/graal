@@ -277,4 +277,18 @@ public class PELangNCFBenchmark {
 
     }
 
+    public static class Pow extends PartialEvaluationBenchmark {
+
+        @Override
+        protected RootNode rootNode() {
+            return PELangSample.pow();
+        }
+
+        @Override
+        protected Object[] callArguments() {
+            return new Object[]{3L, 2L};
+        }
+
+    }
+
 }
