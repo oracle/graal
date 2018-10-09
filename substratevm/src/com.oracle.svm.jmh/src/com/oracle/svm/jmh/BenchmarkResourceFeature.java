@@ -1,4 +1,4 @@
-package com.oracle.svm.jmh.feature;
+package com.oracle.svm.jmh;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -7,7 +7,6 @@ import org.graalvm.nativeimage.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.Resources;
-import com.oracle.svm.jmh.Benchmarks;
 
 /**
  * Registers the generated benchmark resource file to be usable by JMH during runtime.

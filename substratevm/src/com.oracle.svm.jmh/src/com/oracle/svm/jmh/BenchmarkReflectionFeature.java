@@ -1,11 +1,10 @@
-package com.oracle.svm.jmh.feature;
+package com.oracle.svm.jmh;
 
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.RuntimeReflection;
 import org.openjdk.jmh.runner.BenchmarkListEntry;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.jmh.Benchmarks;
 
 /**
  * Registers the generated benchmark classes to be usable by JMH during runtime via reflection.

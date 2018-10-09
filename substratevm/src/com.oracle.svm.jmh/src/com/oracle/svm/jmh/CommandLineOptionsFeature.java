@@ -1,4 +1,4 @@
-package com.oracle.svm.jmh.feature;
+package com.oracle.svm.jmh;
 
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.RuntimeReflection;
