@@ -347,7 +347,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
         // actually want to match on the individual code points of the Unicode string. In 'bytes'
         // patterns, all characters are in the range 0-255 and so the Unicode flag does not
         // interfere with the matching (no surrogates).
-        return new RegexSource(outPattern.toString(), "su");
+        return new RegexSource(outPattern.toString(), "su" + (getGlobalFlags().isSticky() ? "y" : ""));
     }
 
     private PythonFlags getLocalFlags() {
