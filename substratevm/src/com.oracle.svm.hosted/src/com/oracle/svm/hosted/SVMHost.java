@@ -58,6 +58,7 @@ import com.oracle.svm.core.jdk.JavaLangSubstitutions.ClassLoaderSupport;
 import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase;
 import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
@@ -160,7 +161,7 @@ public final class SVMHost implements HostVM {
     }
 
     @Override
-    public void registerType(AnalysisType analysisType, ResolvedJavaType hostType) {
+    public void registerType(AnalysisType analysisType) {
         classInitializationFeature.maybeInitializeHosted(analysisType);
 
         DynamicHub hub = createHub(analysisType);
@@ -171,7 +172,7 @@ public final class SVMHost implements HostVM {
 
         /* Compute the automatic substitutions. */
         UnsafeAutomaticSubstitutionProcessor automaticSubstitutions = ImageSingletons.lookup(UnsafeAutomaticSubstitutionProcessor.class);
-        automaticSubstitutions.computeSubstitutions(hostType, options);
+        automaticSubstitutions.computeSubstitutions(GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaType(analysisType.getJavaClass()), options);
     }
 
     @Override
