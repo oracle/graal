@@ -36,10 +36,7 @@ import tempfile
 from contextlib import contextmanager
 from distutils.dir_util import mkpath, copy_tree, remove_tree # pylint: disable=no-name-in-module
 from os.path import join, exists, basename, dirname, islink
-# { GR-8964
 from shutil import copy2
-import time
-# } GR-8964
 import collections
 import itertools
 import glob
@@ -228,20 +225,12 @@ def remove_existing_symlink(target_path):
         os.remove(target_path)
     return target_path
 
-def symlink_or_copy(target_path, dest_path, debug_gr_8964=False):
+def symlink_or_copy(target_path, dest_path):
     # Follow symbolic links in case they go outside my suite directories.
     real_target_path = os.path.realpath(target_path)
-    if debug_gr_8964:
-        mx.log('  [mx_substratevm.symlink_or_copy:')
-        mx.log('    suite.dir:' + suite.dir)
-        mx.log('    target_path: ' + target_path)
-        mx.log('    real_target_path: ' + real_target_path)
-        mx.log('    dest_path: ' + dest_path)
     if any(real_target_path.startswith(s.dir) for s in mx.suites(includeBinary=False)):
         # Symbolic link to files in my suites.
         sym_target = os.path.relpath(real_target_path, dirname(dest_path))
-        if debug_gr_8964:
-            mx.log('      symlink target: ' + sym_target)
         try:
             os.symlink(sym_target, dest_path)
         except AttributeError:
@@ -249,40 +238,19 @@ def symlink_or_copy(target_path, dest_path, debug_gr_8964=False):
             copy2(real_target_path, dest_path)
     else:
         # Else copy the file to so it can not change out from under me.
-        if debug_gr_8964:
-            mx.log('      copy2: ')
         copy2(real_target_path, dest_path)
-    if debug_gr_8964:
-        mx.log('  ]')
 
-def native_image_layout(dists, subdir, native_image_root, debug_gr_8964=False):
+def native_image_layout(dists, subdir, native_image_root):
     if not dists:
         return
     dest_path = join(native_image_root, subdir)
     # Cleanup leftovers from previous call
     if exists(dest_path):
-        if debug_gr_8964:
-            mx.log('[mx_substratevm.native_image_layout: remove_tree: ' + dest_path + ']')
         remove_tree(dest_path)
     mkpath(dest_path)
     # Create symlinks to conform with native-image directory layout scheme
     def symlink_jar(jar_path):
-        if debug_gr_8964:
-            def log_stat(prefix, file_name):
-                file_stat = os.stat(file_name)
-                mx.log('    ' + prefix + '.st_mode: ' + oct(file_stat.st_mode))
-                mx.log('    ' + prefix + '.st_mtime: ' + time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(file_stat.st_mtime)))
-
-            dest_jar = join(dest_path, basename(jar_path))
-            mx.log('[mx_substratevm.native_image_layout.symlink_jar: symlink_or_copy')
-            mx.log('  src: ' + jar_path)
-            log_stat('src', jar_path)
-            mx.log('  dst: ' + dest_jar)
-            symlink_or_copy(jar_path, dest_jar, debug_gr_8964)
-            log_stat('dst', dest_jar)
-            mx.log(']')
-        else:
-            symlink_or_copy(jar_path, join(dest_path, basename(jar_path)), debug_gr_8964)
+        symlink_or_copy(jar_path, join(dest_path, basename(jar_path)))
 
     for dist in dists:
         mx.logv('Add ' + type(dist).__name__ + ' ' + str(dist) + ' to ' + dest_path)
@@ -445,7 +413,7 @@ def layout_native_image_root(native_image_root):
             pass
 
 
-def truffle_language_ensure(language_flag, version=None, native_image_root=None, early_exit=False, extract=True, debug_gr_8964=False):
+def truffle_language_ensure(language_flag, version=None, native_image_root=None, early_exit=False, extract=True):
     """
     Ensures that we have a valid suite for the given language_flag, by downloading a binary if necessary
     and providing the suite distribution artifacts in the native-image directory hierachy (via symlinks).
@@ -510,7 +478,7 @@ def truffle_language_ensure(language_flag, version=None, native_image_root=None,
     language_suite_depnames = language_entry[1]
     language_deps = language_suite.dists + language_suite.libs
     language_deps = [dep for dep in language_deps if dep.name in language_suite_depnames]
-    native_image_layout(language_deps, language_dir, native_image_root, debug_gr_8964=debug_gr_8964)
+    native_image_layout(language_deps, language_dir, native_image_root)
 
     language_suite_nativedistnames = language_entry[2]
     language_nativedists = [dist for dist in language_suite.dists if dist.name in language_suite_nativedistnames]
@@ -521,7 +489,7 @@ def truffle_language_ensure(language_flag, version=None, native_image_root=None,
     if exists(option_properties):
         if not exists(target_path):
             mx.logv('Add symlink to ' + str(option_properties))
-            symlink_or_copy(option_properties, target_path, debug_gr_8964=debug_gr_8964)
+            symlink_or_copy(option_properties, target_path)
     else:
         native_image_option_properties('languages', language_flag, native_image_root)
     return language_suite
@@ -543,12 +511,10 @@ GraalTags = Tags([
 ])
 
 @contextmanager
-def native_image_context(common_args=None, hosted_assertions=True, debug_gr_8964=False, native_image_cmd=''):
+def native_image_context(common_args=None, hosted_assertions=True, native_image_cmd=''):
     common_args = [] if common_args is None else common_args
     base_args = ['-H:+EnforceMaxRuntimeCompileMethods']
     base_args += ['-H:Path=' + svmbuild_dir()]
-    if debug_gr_8964:
-        base_args += ['-Ddebug_gr_8964=true']
     if mx.get_opts().verbose:
         base_args += ['--verbose']
     if mx.get_opts().very_verbose:
@@ -576,7 +542,7 @@ def native_image_context(common_args=None, hosted_assertions=True, debug_gr_8964
             if sep:
                 return after.split(' ')[0].rstrip()
         return None
-    def native_image_func(args, debug_gr_8964=False, **kwargs):
+    def native_image_func(args, **kwargs):
         all_args = base_args + common_args + args
         path = query_native_image(all_args, '-H:Path=')
         name = query_native_image(all_args, '-H:Name=')
@@ -594,10 +560,8 @@ def native_image_context(common_args=None, hosted_assertions=True, debug_gr_8964
 native_image_context.hosted_assertions = ['-J-ea', '-J-esa']
 
 def svm_gate_body(args, tasks):
-    # Debug GR-8964 on Darwin gates
-    debug_gr_8964 = (mx.get_os() == 'darwin')
     build_native_image_image()
-    with native_image_context(IMAGE_ASSERTION_FLAGS, debug_gr_8964=debug_gr_8964) as native_image:
+    with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
         with Task('image demos', tasks, tags=[GraalTags.helloworld]) as t:
             if t:
                 hello_path = svmbuild_dir()
@@ -611,7 +575,7 @@ def svm_gate_body(args, tasks):
 
         with Task('JavaScript', tasks, tags=[GraalTags.js]) as t:
             if t:
-                js = build_js(native_image, debug_gr_8964=debug_gr_8964)
+                js = build_js(native_image)
                 test_run([js, '-e', 'print("hello:" + Array.from(new Array(10), (x,i) => i*i ).join("|"))'], 'hello:0|1|4|9|16|25|36|49|64|81\n')
                 test_js(js, [('octane-richards', 1000, 100, 300)])
 
@@ -698,9 +662,9 @@ def js_image_test(binary, bench_location, name, warmup_iterations, iterations, t
     if not passing:
         mx.abort('JS benchmark ' + name + ' failed')
 
-def build_js(native_image, debug_gr_8964=False):
-    truffle_language_ensure('js', debug_gr_8964=debug_gr_8964)
-    return native_image(['--language:js'], debug_gr_8964=debug_gr_8964)
+def build_js(native_image):
+    truffle_language_ensure('js')
+    return native_image(['--language:js'])
 
 def test_js(js, benchmarks, bin_args=None):
     bench_location = join(suite.dir, '..', '..', 'js-benchmarks')
