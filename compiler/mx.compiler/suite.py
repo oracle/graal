@@ -452,6 +452,16 @@ suite = {
       "workingSets" : "Graal,HotSpot",
     },
 
+    "org.graalvm.compiler.hotspot.jdk12" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies": ["org.graalvm.compiler.hotspot"],
+      "multiReleaseJarVersion" : "12",
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "12+",
+      "workingSets" : "Graal,HotSpot",
+    },
+
     "org.graalvm.compiler.hotspot.management" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -1875,6 +1885,7 @@ suite = {
         "org.graalvm.compiler.hotspot.jdk8",
         "org.graalvm.compiler.hotspot.jdk9",
         "org.graalvm.compiler.hotspot.jdk11",
+        "org.graalvm.compiler.hotspot.jdk12",
         "org.graalvm.compiler.lir.aarch64.jdk11",
         "org.graalvm.compiler.truffle.runtime.hotspot",
         "org.graalvm.compiler.truffle.compiler.hotspot.amd64",
