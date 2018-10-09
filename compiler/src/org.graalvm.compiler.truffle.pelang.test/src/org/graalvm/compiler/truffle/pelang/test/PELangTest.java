@@ -44,6 +44,8 @@ import jdk.vm.ci.meta.SpeculationLog;
 
 public abstract class PELangTest extends PartialEvaluationTest {
 
+    private static final int MAX_FAILS = 10;
+
     protected OptimizedCallTarget createCallTarget(RootNode rootNode) {
         return (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(rootNode);
     }
@@ -56,15 +58,22 @@ public abstract class PELangTest extends PartialEvaluationTest {
     }
 
     protected StructuredGraph partiallyEvaluateAndCompile(OptimizedCallTarget callTarget) {
-        try {
-            // do a first run and swallow code install exceptions
-            StructuredGraph graph = partiallyEvaluate(callTarget);
-            return compileGraph(graph, callTarget);
-        } catch (BailoutException e) {
-            // swallow exception and try again
-            StructuredGraph graph = partiallyEvaluate(callTarget);
-            return compileGraph(graph, callTarget);
+        BailoutException lastBailout = null;
+
+        for (int i = 0; i < MAX_FAILS; i++) {
+            try {
+                // do a run and swallow code install exceptions
+                StructuredGraph graph = partiallyEvaluate(callTarget);
+                compileGraph(graph, callTarget);
+                return graph;
+            } catch (BailoutException e) {
+                if (e.isPermanent()) {
+                    throw e;
+                }
+                lastBailout = e;
+            }
         }
+        throw lastBailout;
     }
 
     protected StructuredGraph partiallyEvaluate(OptimizedCallTarget callTarget) {
@@ -75,9 +84,8 @@ public abstract class PELangTest extends PartialEvaluationTest {
         return truffleCompiler.getPartialEvaluator().createGraph(getDebugContext(options), callTarget, inliningDecision, AllowAssumptions.YES, compilationId, speculationLog, null);
     }
 
-    protected StructuredGraph compileGraph(StructuredGraph graph, OptimizedCallTarget callTarget) {
+    protected void compileGraph(StructuredGraph graph, OptimizedCallTarget callTarget) {
         truffleCompiler.compilePEGraph(graph, callTarget.toString(), null, callTarget, asCompilationRequest(graph.compilationId()), null);
-        return graph;
     }
 
     protected void assertCallResultEquals(Object expected, CallTarget callTarget) {
