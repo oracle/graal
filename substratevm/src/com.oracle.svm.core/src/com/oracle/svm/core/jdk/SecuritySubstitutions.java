@@ -273,7 +273,11 @@ final class JceSecurityUtil {
     }
 }
 
-@TargetClass(className = "javax.crypto.JarVerifier")
+/**
+ * JDK-8 (and earlier) has the class `javax.crypto.JarVerifier`, but in JDK-9 (and later) that class
+ * is only available in Oracle builds, and not in OpenJDK builds.
+ */
+@TargetClass(className = "javax.crypto.JarVerifier", onlyWith = PlatformHasClass.class)
 @SuppressWarnings({"static-method", "unused"})
 final class Target_javax_crypto_JarVerifier {
 
@@ -287,6 +291,22 @@ final class Target_javax_crypto_JarVerifier {
     @TargetElement(onlyWith = ContainsVerifyJars.class)
     private void verifyJars(URL var1, List<String> var2) {
         throw VMError.unimplemented();
+    }
+}
+
+/** A predicate to tell whether this platform includes the argument class. */
+final class PlatformHasClass implements Predicate<String> {
+    @Override
+    public boolean test(String className) {
+        try {
+            @SuppressWarnings({"unused"})
+            /* { Allow use of `Class.forName`. Checkstyle: stop. */
+            final Class<?> classForName = Class.forName(className);
+            /* } Allow use of `Class.forName`. Checkstyle: resume. */
+            return true;
+        } catch (ClassNotFoundException cnfe) {
+            return false;
+        }
     }
 }
 
