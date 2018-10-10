@@ -125,6 +125,7 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.GraalEdgeUnsafePartition;
+import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -314,7 +315,13 @@ public class SubstrateGraphBuilderPlugins {
                 assert store.array().equals(newArray);
                 ValueNode valueNode = store.value();
                 if (valueNode.isConstant() && !valueNode.isNullConstant()) {
-                    classList.add(snippetReflection.asObject(Class.class, valueNode.asJavaConstant()));
+                    Class<?> clazz = snippetReflection.asObject(Class.class, valueNode.asJavaConstant());
+                    /*
+                     * It is possible that the returned class is a substitution class, e.g.,
+                     * DynamicHub returned for a Class.class constant. Get the target class of the
+                     * substitution class.
+                     */
+                    classList.add(ImageSingletons.lookup(AnnotationSubstitutionProcessor.class).getTargetClass(clazz));
                 } else {
                     /* If not all classes are non-null constants we bail out. */
                     classList = null;
