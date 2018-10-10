@@ -155,10 +155,19 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     @Override
     boolean consume(Queue<String> args) {
         String headArg = args.peek();
-        String[] optionParts = headArg.split("=", 2);
+        String translatedOption = translateOption(headArg);
+        if (translatedOption != null) {
+            args.poll();
+            nativeImage.addPlainImageBuilderArg(translatedOption);
+            return true;
+        }
+        return false;
+    }
+
+    String translateOption(String arg) {
+        String[] optionParts = arg.split("=", 2);
         OptionInfo option = apiOptions.get(optionParts[0]);
         if (option != null) {
-            args.poll();
             String builderOption = option.builderOption;
             String optionValue = option.defaultValue;
             if (optionParts.length == 2) {
@@ -176,10 +185,9 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 }
                 builderOption += optionValue;
             }
-            nativeImage.addImageBuilderArg(builderOption);
-            return true;
+            return builderOption;
         }
-        return false;
+        return null;
     }
 
     private String tryCanonicalize(String path) {
