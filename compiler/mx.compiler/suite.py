@@ -1556,7 +1556,6 @@ suite = {
         "org.graalvm.compiler.truffle.common.hotspot",
         "JVMCI_HOTSPOT",
       ],
-      "uses" : ["org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler.Factory"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "annotationProcessors" : [
@@ -1778,6 +1777,7 @@ suite = {
         "org.graalvm.compiler.truffle.common",
       ],
       "distDependencies" : [
+        "GRAAL_GRAPHIO",
       ],
       "maven": False,
     },
@@ -1789,6 +1789,7 @@ suite = {
       ],
       "distDependencies" : [
         "GRAAL_RUNTIME",
+        "GRAAL_TRUFFLE_COMMON",
         "truffle:TRUFFLE_API",
       ],
       "maven": False,
@@ -1843,6 +1844,7 @@ suite = {
         "GRAAL_HOTSPOT",
         "GRAAL_TRUFFLE_COMMON",
         "GRAAL_TRUFFLE_COMMON_HOTSPOT",
+        "GRAAL_TRUFFLE_COMPILER_HOTSPOT",
         "GRAAL_TRUFFLE_RUNTIME",
         "truffle:TRUFFLE_API",
       ],
@@ -1864,7 +1866,7 @@ suite = {
     "TRUFFLE_COMMON_PROCESSOR" : {
       "subDir": "src",
       "dependencies" : ["org.graalvm.compiler.truffle.common.processor"],
-      "distDependencies" : ["GRAAL_PROCESSOR_COMMON", "GRAAL_OPTIONS_PROCESSOR"],
+      "distDependencies" : ["GRAAL_PROCESSOR_COMMON", "GRAAL_OPTIONS_PROCESSOR", "GRAAL_TRUFFLE_COMMON"],
       "maven": False,
     },
 
