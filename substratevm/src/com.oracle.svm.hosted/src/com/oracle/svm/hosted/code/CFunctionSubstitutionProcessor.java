@@ -28,8 +28,10 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.function.CFunction.Transition;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
+import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -39,8 +41,12 @@ public class CFunctionSubstitutionProcessor extends SubstitutionProcessor {
     @Override
     public ResolvedJavaMethod lookup(ResolvedJavaMethod method) {
         ResolvedJavaMethod wrapper = method;
-        if (method.isNative() && method.getAnnotation(CFunction.class) != null) {
-            wrapper = callWrappers.computeIfAbsent(method, m -> new CFunctionCallStubMethod(m, CFunctionLinkages.singleton().addOrLookupMethod(m)));
+        if (method.isNative() && method.isAnnotationPresent(CFunction.class)) {
+            wrapper = callWrappers.computeIfAbsent(method, m -> {
+                CGlobalDataInfo linkage = CFunctionLinkages.singleton().addOrLookupMethod(m);
+                boolean needsTransition = (method.getAnnotation(CFunction.class).transition() != Transition.NO_TRANSITION);
+                return new CFunctionCallStubMethod(m, linkage, needsTransition);
+            });
         }
         return wrapper;
     }
