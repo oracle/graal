@@ -29,6 +29,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.MemoryWalker;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.VMError;
@@ -52,6 +53,13 @@ public class YoungGeneration extends Generation {
     private YoungGeneration(String name, Space space) {
         super(name);
         this.space = space;
+    }
+
+    /** Return all allocated virtual memory chunks to HeapChunkProvider. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public final void tearDown() {
+        ThreadLocalAllocation.tearDown();
+        space.tearDown();
     }
 
     @Override

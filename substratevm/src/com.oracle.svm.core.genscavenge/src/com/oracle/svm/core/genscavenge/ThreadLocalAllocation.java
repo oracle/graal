@@ -57,6 +57,7 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.FastThreadLocalBytes;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * Bump-pointer allocation from thread-local top and end Pointers.
@@ -333,6 +334,27 @@ public final class ThreadLocalAllocation {
             HeapChunkProvider.get().consumeAlignedChunk(alignedChunk);
         }
         retireToSpace(pinnedTLAB.getAddress(vmThread), HeapImpl.getHeapImpl().getOldGeneration().getPinnedFromSpace());
+    }
+
+    /** Return all allocated virtual memory chunks to HeapChunkProvider. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    static void tearDown() {
+        final IsolateThread thread;
+        if (SubstrateOptions.MultiThreaded.getValue()) {
+            thread = VMThreads.firstThread();
+            VMError.guarantee(VMThreads.nextThread(thread).isNull(), "Other isolate threads are still active");
+        } else {
+            thread = WordFactory.nullPointer();
+        }
+        freeHeapChunks(regularTLAB.getAddress(thread));
+        freeHeapChunks(pinnedTLAB.getAddress(thread));
+        HeapChunkProvider.freeAlignedChunkList(freeList.get());
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static void freeHeapChunks(Descriptor tlab) {
+        HeapChunkProvider.freeAlignedChunkList(tlab.getAlignedChunk());
+        HeapChunkProvider.freeUnalignedChunkList(tlab.getUnalignedChunk());
     }
 
     public static void suspendThreadLocalAllocation() {

@@ -126,6 +126,13 @@ public class Space {
         this.isYoungSpace = isYoungSpace;
     }
 
+    /** Return all allocated virtual memory chunks to HeapChunkProvider. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public final void tearDown() {
+        HeapChunkProvider.freeAlignedChunkList(getFirstAlignedHeapChunk());
+        HeapChunkProvider.freeUnalignedChunkList(getFirstUnalignedHeapChunk());
+    }
+
     final boolean isYoungSpace() {
         return isYoungSpace;
     }
