@@ -52,6 +52,9 @@ include "compiler/ci_includes/gate_tasks.hocon"
 include "substratevm/ci_includes/svm-gate.hocon"
 include "substratevm/ci_includes/svm-gate-tasks.hocon"
 
+# Maven deploy dry-run
+include "substratevm/ci_includes/deploy.hocon"
+
 # Publish Javadoc
 include "ci_includes/publish-javadoc.hocon"
 

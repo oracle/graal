@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "5.183.0",
+  "mxversion" : "5.189.0",
   "name" : "truffle",
   "version": "1.0.0-rc8",
   "release" : False,
@@ -705,7 +705,6 @@ suite = {
       },
       "description" : """Native function interface for the Truffle framework.""",
       "allowsJavadocWarnings": True,
-      "maven" : False,
     },
 
     "TRUFFLE_NFI_NATIVE" : {
@@ -720,7 +719,8 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.nfi.native",
       ],
-      "maven" : False,
+      "description" : """Contains the native library needed by truffle-nfi.""",
+      "maven": True,
     },
 
     "TRUFFLE_TCK" : {

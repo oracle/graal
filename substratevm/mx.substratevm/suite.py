@@ -1,6 +1,8 @@
 suite = {
-    "mxversion": "5.138.0",
+    "mxversion": "5.189.0",
     "name": "substratevm",
+    "version" : "1.0.0-rc8",
+    "release" : False,
     "url" : "https://github.com/oracle/graal/tree/master/substratevm",
 
     "developer" : {
@@ -510,7 +512,7 @@ suite = {
                 "mx:JUNIT_TOOL",
                 "truffle:TRUFFLE_NFI",
                 "compiler:GRAAL",
-            ]
+            ],
         },
 
         "SVM_CORE": {
@@ -525,7 +527,8 @@ suite = {
                 "compiler:GRAAL",
             ],
             "exclude": [
-            ]
+            ],
+            "maven": False
         },
 
         "SVM_HOSTED": {
@@ -543,7 +546,8 @@ suite = {
                 "SVM_CORE",
             ],
             "exclude": [
-            ]
+            ],
+            "maven": False
         },
 
         "LIBRARY_SUPPORT": {
@@ -564,7 +568,7 @@ suite = {
             ],
             "exclude": [
                 "truffle:JLINE",
-            ]
+            ],
         },
 
         "OBJECTFILE": {
@@ -572,7 +576,7 @@ suite = {
             "description" : "SubstrateVM object file writing library",
             "dependencies": [
                 "com.oracle.objectfile"
-            ]
+            ],
         },
 
         #
@@ -592,6 +596,7 @@ suite = {
             "description" : "SubstrateVM image builder native components",
             "relpath": True,
             "output": "clibraries",
+            "maven": True
         },
 
         #
@@ -619,7 +624,7 @@ suite = {
                 "compiler:GRAAL",
             ],
             "exclude": [
-            ]
+            ],
         },
 
         "SVM_TESTS" : {
@@ -642,6 +647,7 @@ suite = {
                 "sdk:GRAAL_SDK",
                 "SVM",
             ],
+            "maven": False
         },
 
         "POLYGLOT_NATIVE_API_HEADERS" : {

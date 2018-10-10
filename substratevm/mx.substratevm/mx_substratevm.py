@@ -821,20 +821,13 @@ def deploy_native_image_maven_plugin(svmVersion, action='install'):
 
 def maven_plugin_install(args):
     # First install native-image-maven-plugin dependencies into local maven repository
-    deps = []
-    def visit(dep, edge):
-        if isinstance(dep, mx.Distribution):
-            deps.append(dep)
-    mx.walk_deps([mx.dependency('substratevm:SVM_DRIVER')], visit=visit, ignoredEdges=[mx.DEP_ANNOTATION_PROCESSOR, mx.DEP_BUILD])
-    svmVersion = '{0}-SNAPSHOT'.format(suite.vc.parent(suite.vc_dir))
+    svmVersion = suite.release_version(snapshotSuffix='SNAPSHOT')
     mx.maven_deploy([
-        '--version-string', svmVersion,
         '--suppress-javadoc',
-        '--all-distributions',
-        '--validate=none',
+        '--all-distribution-types',
+        '--validate=full',
         '--all-suites',
         '--skip-existing',
-        '--only', ','.join(dep.qualifiedName() for dep in deps)
     ])
 
     deploy_native_image_maven_plugin(svmVersion)
