@@ -45,11 +45,15 @@ public final class CEntryPointNativeFunctions {
 
     @CPointerTo(Isolate.class)
     interface IsolatePointer extends PointerBase {
+        Isolate read();
+
         void write(Isolate isolate);
     }
 
     @CPointerTo(IsolateThread.class)
     interface IsolateThreadPointer extends PointerBase {
+        IsolateThread read();
+
         void write(IsolateThread isolate);
     }
 
@@ -119,7 +123,7 @@ public final class CEntryPointNativeFunctions {
                     "isolate it belongs and returns the address of its isolate structure.  If an",
                     "error occurs, returns NULL instead."})
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, nameTransformation = NameTransformation.class)
-    public static Isolate getCurrentIsolate(IsolateThread thread) {
+    public static Isolate getCurrentThreadIsolate(IsolateThread thread) {
         int result = CEntryPointActions.enter(thread);
         if (result != 0) {
             return WordFactory.nullPointer();

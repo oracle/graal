@@ -170,7 +170,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         }
         if (MultiThreaded.getValue()) {
             if (!VMThreads.ensureInitialized()) {
-                return CEntryPointErrors.THREAD_INITIALIZATION_FAILED;
+                return CEntryPointErrors.THREADING_INITIALIZATION_FAILED;
             }
         }
         return attachThread(isolate.read(), vmThreadSize);

@@ -34,9 +34,15 @@ import org.graalvm.word.UnsignedWord;
  */
 @CStruct("graal_create_isolate_params_t")
 public interface CEntryPointCreateIsolateParameters extends PointerBase {
-    @CField
+    @CField("version")
     int version();
+
+    @CField("version")
+    void setVersion(int version);
 
     @CField("reserved_address_space_size")
     UnsignedWord reservedSpaceSize();
+
+    @CField("reserved_address_space_size")
+    void setReservedSpaceSize(UnsignedWord reservedSpaceSize);
 }
