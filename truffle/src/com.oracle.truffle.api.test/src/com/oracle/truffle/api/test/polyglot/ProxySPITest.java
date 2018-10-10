@@ -430,92 +430,6 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertEquals(0, Message.KEY_INFO, proxyInner);
     }
 
-    @Test
-    public void testProxyInvocable() throws Throwable {
-
-        final String key = "A";
-        final boolean[] hasKeyMember = {false};
-        ProxyObject proxyOuter = new ProxyObject() {
-
-            @Override
-            public boolean canInvokeMember(String member) {
-                return key.equals(member);
-            }
-
-            @Override
-            public Object invokeMember(String member, Value... arguments) {
-                if (key.equals(member)) {
-                    if (arguments.length > 0) {
-                        return arguments[0];
-                    } else {
-                        return key;
-                    }
-                } else {
-                    throw new UnsupportedOperationException("Not supported invoke on " + member);
-                }
-            }
-
-            @Override
-            public Object getMember(String member) {
-                return null;
-            }
-
-            @Override
-            public Object getMemberKeys() {
-                if (hasKeyMember[0]) {
-                    return new String[]{key};
-                } else {
-                    return null;
-                }
-            }
-
-            @Override
-            public boolean hasMember(String member) {
-                if (hasKeyMember[0]) {
-                    return key.equals(member);
-                } else {
-                    return false;
-                }
-            }
-
-            @Override
-            public void putMember(String member, Value value) {
-                throw new UnsupportedOperationException("Not supported.");
-            }
-
-        };
-
-        TruffleObject proxyInner = toInnerProxy(proxyOuter);
-
-        assertEquals(false, Message.IS_INSTANTIABLE, proxyInner);
-        assertEquals(false, Message.IS_EXECUTABLE, proxyInner);
-
-        assertUnsupported(Message.EXECUTE, proxyInner, 42);
-        assertUnsupported(Message.AS_POINTER, proxyInner);
-        assertUnsupported(Message.GET_SIZE, proxyInner);
-        assertEmpty(Message.KEYS, proxyInner);
-        assertUnsupported(Message.READ, proxyInner);
-        assertUnsupported(Message.WRITE, proxyInner);
-        assertUnsupported(Message.TO_NATIVE, proxyInner);
-        assertUnsupported(Message.UNBOX, proxyInner);
-        assertUnsupported(Message.INVOKE, proxyInner);
-        assertEquals(false, Message.IS_BOXED, proxyInner);
-        assertEquals(false, Message.IS_NULL, proxyInner);
-        assertEquals(true, Message.HAS_KEYS, proxyInner);
-        assertEquals(false, Message.HAS_SIZE, proxyInner);
-        assertEquals(false, Message.IS_POINTER, proxyInner);
-        assertEquals(0, Message.KEY_INFO, proxyInner);
-        assertEquals(KeyInfo.INVOCABLE | KeyInfo.INSERTABLE, Message.KEY_INFO, proxyInner, key);
-        assertEquals(KeyInfo.INSERTABLE, Message.KEY_INFO, proxyInner, key + key);
-        assertEquals(key, Message.INVOKE, proxyInner, key);
-        assertEquals("result", Message.INVOKE, proxyInner, key, "result");
-        hasKeyMember[0] = true;
-        assertEquals(KeyInfo.INVOCABLE | KeyInfo.READABLE | KeyInfo.MODIFIABLE | KeyInfo.REMOVABLE, Message.KEY_INFO, proxyInner, key);
-        assertEquals(KeyInfo.INSERTABLE, Message.KEY_INFO, proxyInner, key + key);
-        assertEquals(key, Message.INVOKE, proxyInner, key);
-        assertEquals("result", Message.INVOKE, proxyInner, key, "result");
-    }
-
     @SuppressWarnings("serial")
     static class TestError extends RuntimeException {
 
@@ -568,16 +482,6 @@ public class ProxySPITest extends AbstractPolyglotTest {
 
         @Override
         public boolean removeMember(String key) {
-            throw new TestError();
-        }
-
-        @Override
-        public boolean canInvokeMember(String key) {
-            throw new TestError();
-        }
-
-        @Override
-        public Object invokeMember(String member, Value... arguments) {
             throw new TestError();
         }
 

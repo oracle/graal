@@ -93,6 +93,13 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.KeyInfo;
+import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
 public class ValueAPITest {
@@ -503,21 +510,20 @@ public class ValueAPITest {
         MembersAndInvocable invocable = new MembersAndInvocable();
         invocable.invokeMember = "foo";
         invocable.invocableResult = "foobarbaz";
-        Function<?, ?> fce = x -> invocable.invocableResult;
-        invocable.map.put("foo", fce);
 
         objectCoercionTest(invocable, Map.class, (v) -> {
             Value value = context.asValue(v);
             assertTrue(value.canInvokeMember("foo"));
             assertEquals("foobarbaz", value.invokeMember("foo").asString());
-            objectCoercionTest(value.getMember("foo"), Function.class, (mv) -> {
-                assertEquals("foobarbaz", ((Function<Object, Object>) mv).apply(new Object[0]));
-            });
-        });
+        }, false);
+    }
+
+    private <T> void objectCoercionTest(Object value, Class<T> expectedType, Consumer<T> validator) {
+        objectCoercionTest(value, expectedType, validator, true);
     }
 
     @SuppressWarnings({"unchecked"})
-    private <T> void objectCoercionTest(Object value, Class<T> expectedType, Consumer<T> validator) {
+    private <T> void objectCoercionTest(Object value, Class<T> expectedType, Consumer<T> validator, boolean valueTest) {
         Value coerce = context.asValue(new CoerceObject()).getMember("coerce");
         T result = (T) context.asValue(value).as(Object.class);
         if (result != null) {
@@ -533,8 +539,10 @@ public class ValueAPITest {
             coerce.execute(value, validator);
         }
 
-        assertValue(context, context.asValue(value));
-        assertValue(context, context.asValue(result));
+        if (valueTest) {
+            assertValue(context, context.asValue(value));
+            assertValue(context, context.asValue(result));
+        }
     }
 
     private static class DummyList extends DummyCollection implements List<Object> {
@@ -783,22 +791,113 @@ public class ValueAPITest {
 
     }
 
-    private static class MembersAndInvocable extends Members {
+    static class MembersAndInvocable implements TruffleObject {
 
         String invokeMember;
         Object invocableResult;
 
         @Override
-        public boolean canInvokeMember(String member) {
-            return invokeMember.equals(member);
+        public ForeignAccess getForeignAccess() {
+            return MembersAndInvocableMessageResolutionForeign.ACCESS;
         }
 
-        @Override
-        public Object invokeMember(String member, Value... arguments) {
-            if (invokeMember.equals(member)) {
-                return invocableResult;
-            } else {
-                throw new UnsupportedOperationException("Not supported invoke of " + member);
+        public static boolean isInstance(TruffleObject obj) {
+            return obj instanceof MembersAndInvocable;
+        }
+
+        @MessageResolution(receiverType = MembersAndInvocable.class)
+        static final class MembersAndInvocableMessageResolution {
+
+            @Resolve(message = "HAS_KEYS")
+            abstract static class MemberHasKeysNode extends Node {
+
+                @SuppressWarnings("unused")
+                public Object access(MembersAndInvocable mi) {
+                    return true;
+                }
+            }
+
+            @Resolve(message = "KEYS")
+            abstract static class MemberKeysNode extends Node {
+
+                @SuppressWarnings("unused")
+                public Object access(MembersAndInvocable mi, boolean internal) {
+                    return new MemberKeysTruffleObject(mi.invokeMember);
+                }
+            }
+
+            @Resolve(message = "INVOKE")
+            abstract static class MemberInvokeNode extends Node {
+
+                @SuppressWarnings("unused")
+                public Object access(MembersAndInvocable mi, String name, Object... arguments) {
+                    if (name.equals(mi.invokeMember)) {
+                        return mi.invocableResult;
+                    } else {
+                        throw UnknownIdentifierException.raise(name);
+                    }
+                }
+            }
+
+            @Resolve(message = "KEY_INFO")
+            abstract static class MemberKeyInfoNode extends Node {
+
+                public int access(MembersAndInvocable mi, String propName) {
+                    if (propName.equals(mi.invokeMember)) {
+                        return KeyInfo.READABLE | KeyInfo.INVOCABLE;
+                    } else {
+                        return KeyInfo.NONE;
+                    }
+                }
+            }
+        }
+
+        static final class MemberKeysTruffleObject implements TruffleObject {
+
+            private final String keyName;
+
+            MemberKeysTruffleObject(String keyName) {
+                this.keyName = keyName;
+            }
+
+            @Override
+            public ForeignAccess getForeignAccess() {
+                return MemberKeysMessageResolutionForeign.ACCESS;
+            }
+
+            public static boolean isInstance(TruffleObject obj) {
+                return obj instanceof MemberKeysTruffleObject;
+            }
+
+            @MessageResolution(receiverType = MemberKeysTruffleObject.class)
+            static final class MemberKeysMessageResolution {
+
+                @Resolve(message = "HAS_SIZE")
+                abstract static class MemberKeysHasSizeNode extends Node {
+
+                    @SuppressWarnings("unused")
+                    public boolean access(MemberKeysTruffleObject keys) {
+                        return true;
+                    }
+                }
+
+                @Resolve(message = "GET_SIZE")
+                abstract static class MemberKeysGetSizeNode extends Node {
+
+                    @SuppressWarnings("unused")
+                    public int access(MemberKeysTruffleObject keys) {
+                        return 1;
+                    }
+                }
+
+                @Resolve(message = "READ")
+                abstract static class MemberKeysReadNode extends Node {
+
+                    @SuppressWarnings("unused")
+                    public Object access(MemberKeysTruffleObject keys, int index) {
+                        return keys.keyName;
+                    }
+                }
             }
         }
 
