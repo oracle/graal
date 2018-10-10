@@ -1136,7 +1136,7 @@ public class NativeImage {
                 throw showError(errorMessage, e);
             }
         }
-        throw showError(errorMessage);
+        return Collections.emptyMap();
     }
 
     static Map<String, String> loadProperties(InputStream propertiesInputStream) {
