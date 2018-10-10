@@ -1400,6 +1400,7 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.truffle.common",
         "org.graalvm.compiler.processor",
+        "GRAAL_OPTIONS_PROCESSOR",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "1.8",
@@ -1862,7 +1863,7 @@ suite = {
     "TRUFFLE_COMMON_PROCESSOR" : {
         "subDir": "src",
         "dependencies" : ["org.graalvm.compiler.truffle.common.processor"],
-      "distDependencies" : ["GRAAL_PROCESSOR_COMMON"],
+      "distDependencies" : ["GRAAL_PROCESSOR_COMMON", "GRAAL_OPTIONS_PROCESSOR"],
     },
 
     "GRAAL_SERVICEPROVIDER_PROCESSOR" : {

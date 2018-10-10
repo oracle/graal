@@ -24,11 +24,10 @@
  */
 package org.graalvm.compiler.truffle.common.processor;
 
-import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -43,8 +42,10 @@ import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic.Kind;
-import javax.tools.JavaFileObject;
 
+import org.graalvm.compiler.options.processor.OptionProcessor;
+import org.graalvm.compiler.options.processor.OptionProcessor.OptionInfo;
+import org.graalvm.compiler.options.processor.OptionProcessor.OptionsInfo;
 import org.graalvm.compiler.processor.AbstractProcessor;
 
 /**
@@ -67,10 +68,10 @@ public class SharedTruffleOptionsProcessor extends AbstractProcessor {
             return true;
         }
 
-        TypeElement optionTypeElement = getTypeElement(SHARED_TRUFFLE_OPTIONS_CLASS_NAME);
-        TypeMirror optionTypeMirror = optionTypeElement.asType();
+        TypeElement sharedTruffleOptionsTypeElement = getTypeElement(SHARED_TRUFFLE_OPTIONS_CLASS_NAME);
+        TypeMirror sharedTruffleOptionsTypeMirror = sharedTruffleOptionsTypeElement.asType();
 
-        for (Element element : roundEnv.getElementsAnnotatedWith(getTypeElement(SHARED_TRUFFLE_OPTIONS_CLASS_NAME))) {
+        for (Element element : roundEnv.getElementsAnnotatedWith(sharedTruffleOptionsTypeElement)) {
             Element pkgElement = element.getEnclosingElement();
             if (pkgElement.getKind() != ElementKind.PACKAGE) {
                 processingEnv.getMessager().printMessage(Kind.ERROR, "Truffle options holder must be a top level class", element);
@@ -78,42 +79,26 @@ public class SharedTruffleOptionsProcessor extends AbstractProcessor {
             }
             TypeElement topDeclaringType = (TypeElement) element;
 
-            AnnotationMirror annotation = getAnnotation(topDeclaringType, optionTypeMirror);
+            AnnotationMirror annotation = getAnnotation(topDeclaringType, sharedTruffleOptionsTypeMirror);
             Boolean isRuntime = getAnnotationValue(annotation, "runtime", Boolean.class);
-            String name = getAnnotationValue(annotation, "name", String.class);
+            String className = getAnnotationValue(annotation, "name", String.class);
             String pkg = ((PackageElement) pkgElement).getQualifiedName().toString();
-            String optionKeyClassName;
-            String optionClassName;
-            String optionCategoryElementName;
-            String optionCategoryClassName;
-            Map<String, String> optionCategoryTranslation;
-            if (isRuntime) {
-                optionClassName = "com.oracle.truffle.api.Option";
-                optionKeyClassName = "org.graalvm.options.OptionKey";
-                optionCategoryElementName = "category";
-                optionCategoryClassName = "org.graalvm.options.OptionCategory";
-                optionCategoryTranslation = null;
-            } else {
-                optionClassName = "org.graalvm.compiler.options.Option";
-                optionKeyClassName = "org.graalvm.compiler.options.OptionKey";
-                optionCategoryElementName = "type";
-                optionCategoryClassName = "org.graalvm.compiler.options.OptionType";
-                optionCategoryTranslation = new HashMap<>();
-                optionCategoryTranslation.put("DEBUG", "Debug");
-                optionCategoryTranslation.put("USER", "User");
-                optionCategoryTranslation.put("EXPERT", "Expert");
-            }
+            String optionKeyClassName = isRuntime ? "org.graalvm.options.OptionKey" : "org.graalvm.compiler.options.OptionKey";
 
+            OptionsInfo info = new OptionsInfo(pkg, className);
+            info.originatingElements.add(topDeclaringType);
             Filer filer = processingEnv.getFiler();
-            try (PrintWriter out = createSourceFile(pkg, name, filer, topDeclaringType)) {
+            try (PrintWriter out = OptionProcessor.createSourceFile(pkg, className, filer, topDeclaringType)) {
 
                 out.println("// CheckStyle: stop header check");
                 out.println("// CheckStyle: stop line length check");
                 out.println("package " + pkg + ";");
                 out.println("");
-                out.println("import " + optionClassName + ";");
                 out.println("import " + optionKeyClassName + ";");
-                out.println("import " + optionCategoryClassName + ";");
+                if (isRuntime) {
+                    out.println("import com.oracle.truffle.api.Option;");
+                    out.println("import org.graalvm.options.OptionCategory;");
+                }
                 out.println("");
                 out.println("/**");
                 out.println(" * Options shared between the Truffle runtime and compiler.");
@@ -126,59 +111,71 @@ public class SharedTruffleOptionsProcessor extends AbstractProcessor {
                 out.println("// GENERATED CONTENT - DO NOT EDIT");
                 out.println("// GeneratedBy: " + getClass().getName());
                 out.println("// SpecifiedBy: " + Option.class.getName());
-                out.println("public abstract class " + name + " {");
+                out.println("public abstract class " + className + " {");
 
                 for (Option option : Option.options) {
-                    if (option.javadoc != null) {
+                    String defaultValue = option.defaultValue;
+                    if (isRuntime) {
+                        if (option.javadocExtra != null) {
+                            out.printf("    /**\n");
+                            for (String line : option.javadocExtra) {
+                                out.printf("     * %s\n", line);
+                            }
+                            out.printf("     */\n");
+                        }
+                        String help;
+                        if (option.help == null) {
+                            help = "";
+                        } else if (option.help.length > 1) {
+                            // @formatter:off
+                            help = option.help[0] + "%n" + Arrays.asList(option.help)
+                                            .subList(1, option.help.length)
+                                            .stream().map(s -> "%n\" +" + System.lineSeparator() + "                   \"" + s) //
+                                            .collect(Collectors.joining());
+                            // @formatter:on
+                        } else {
+                            help = option.help[0];
+                        }
+                        if ("null".equals(defaultValue)) {
+                            defaultValue = "null, org.graalvm.options.OptionType.defaultType(" + option.type + ".class)";
+                        }
+                        out.printf("    @Option(help = \"%s\", category = OptionCategory.%s)\n", help, option.category);
+                    } else {
+                        String optionType = option.category.charAt(0) + option.category.substring(1).toLowerCase();
                         out.printf("    /**\n");
-                        for (String line : option.javadoc) {
-                            out.printf("     * %s\n", line);
+                        for (int i = 0; i < option.help.length; i++) {
+                            String line = option.help[i];
+                            if (i == option.help.length - 1) {
+                                out.printf("     * %s%s\n", line, line.endsWith(".") ? "" : ".");
+                                out.printf("     *\n");
+                            } else {
+                                out.printf("     * %s\n", line);
+                            }
+                        }
+                        out.printf("     * OptionType: %s\n", optionType);
+
+                        if (option.javadocExtra != null) {
+                            out.printf("     *\n");
+                            for (String line : option.javadocExtra) {
+                                out.printf("     * %s\n", line);
+                            }
                         }
                         out.printf("     */\n");
-                    }
-                    String help;
-                    if (option.help == null) {
-                        help = "";
-                    } else if (option.help.length > 1) {
-                        // @formatter:off
-                        help = option.help[0] + Arrays.asList(option.help)
-                                        .subList(1, option.help.length)
-                                        .stream().map(s -> "\" +" + System.lineSeparator() + "                   \"" + s) //
-                                        .collect(Collectors.joining());
-                        // @formatter:on
-                    } else {
-                        help = option.help[0];
-                    }
 
-                    String category = optionCategoryTranslation == null ? option.category : optionCategoryTranslation.get(option.category);
-                    String defaultValue = option.defaultValue;
-                    if (isRuntime && "null".equals(defaultValue)) {
-                        defaultValue = "null, org.graalvm.options.OptionType.defaultType(" + option.type + ".class)";
+                        String help = option.help[0];
+                        List<String> extraHelp = option.help.length > 1 ? Arrays.asList(option.help).subList(1, option.help.length) : new ArrayList<>();
+                        info.options.add(new OptionInfo(option.name, optionType, help, extraHelp, option.type, pkg + '.' + className, option.name));
                     }
-                    out.printf("    @Option(help = \"%s\", %s = %s.%s)\n", help, optionCategoryElementName, getSimpleName(optionCategoryClassName), category);
                     out.printf("    public static final OptionKey<%s> %s = new OptionKey<>(%s);\n", option.type, option.name, defaultValue);
                     out.println();
                 }
                 out.println("}");
+
+                if (!info.options.isEmpty()) {
+                    OptionProcessor.createOptionsDescriptorsFile(processingEnv, info);
+                }
             }
         }
         return true;
-    }
-
-    protected PrintWriter createSourceFile(String pkg, String relativeName, Filer filer, Element... originatingElements) {
-        try {
-            // Ensure Unix line endings to comply with code style guide checked by Checkstyle
-            JavaFileObject sourceFile = filer.createSourceFile(pkg + "." + relativeName, originatingElements);
-            return new PrintWriter(sourceFile.openWriter()) {
-
-                @Override
-                public void println() {
-                    print("\n");
-                }
-            };
-
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
     }
 }

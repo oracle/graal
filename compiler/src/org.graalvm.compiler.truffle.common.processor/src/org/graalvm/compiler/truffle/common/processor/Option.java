@@ -38,15 +38,8 @@ public class Option {
             .type("String")
             .category("DEBUG")
             .def("null")
-            .help("Restrict compilation to comma-separated list of includes (or excludes prefixed with tilde)")
-            .javadoc("Instructs the Truffle Compiler to compile call targets only if their name contains at least one element of a comma-separated list of includes.",
-                     "Excludes are prefixed with a tilde (~).",
-                     "",
-                     "The format in EBNF:",
-                     "<pre>",
-                     "CompileOnly = Element, { ',', Element } ;",
-                     "</pre>"),
-
+            .help("Restrict compilation to comma-separated list of includes (or excludes prefixed with tilde).",
+                  "EBNF format of argument value:  CompileOnly = Element, { ',', Element } ;"),
         option("TruffleCompilation")
             .type("Boolean")
             .category("DEBUG")
@@ -64,7 +57,7 @@ public class Option {
             .category("USER")
             .def("1000")
             .help("Compile call target when call count exceeds this threshold.")
-            .javadoc("deprecated use {@code PolyglotCompilerOptions.CompilationThreshold} instead."),
+            .javadocExtra("Deprecated: Use {@code PolyglotCompilerOptions.CompilationThreshold} instead."),
 
         option("TruffleFirstTierMinInvokeThreshold")
             .type("Integer")
@@ -77,7 +70,7 @@ public class Option {
             .category("USER")
             .def("50000")
             .help("Defines the maximum timespan in milliseconds that is required for a call target to be queued for compilation.")
-            .javadoc("deprecated use {@code PolyglotCompilerOptions.QueueTimeThreshold} instead."),
+            .javadocExtra("Deprecated: Use {@code PolyglotCompilerOptions.QueueTimeThreshold} instead."),
 
         option("TruffleMinInvokeThreshold")
             .type("Integer")
@@ -328,8 +321,8 @@ public class Option {
     String category;
     String type;
     String defaultValue;
-    String[] help;
-    String[] javadoc;
+    String[] help = {""};
+    String[] javadocExtra;
 
     Option name(String value) {
         name = value;
@@ -356,8 +349,8 @@ public class Option {
         return this;
     }
 
-    Option javadoc(String... lines) {
-        javadoc = lines;
+    Option javadocExtra(String... lines) {
+        javadocExtra = lines;
         return this;
     }
 

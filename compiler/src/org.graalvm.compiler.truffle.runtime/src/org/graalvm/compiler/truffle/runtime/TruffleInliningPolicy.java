@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import org.graalvm.options.OptionValues;
-
 import com.oracle.truffle.api.CompilerOptions;
 
 public interface TruffleInliningPolicy {
