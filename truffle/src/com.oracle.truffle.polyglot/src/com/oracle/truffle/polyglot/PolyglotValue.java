@@ -1419,6 +1419,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
             return (Value) VMAccessor.SPI.callProfiled(invoke, receiver, identifier, arguments);
         }
 
+        @Override
         public Value invoke(Object receiver, String identifier) {
             return (Value) VMAccessor.SPI.callProfiled(invokeNoArgs, receiver, identifier);
         }
