@@ -30,6 +30,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.MemoryWalker;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -71,6 +72,15 @@ public class OldGeneration extends Generation {
         this.pinnedToSpace = new Space("pinnedToSpace", false);
         this.toGreyObjectsWalker = GreyObjectsWalker.factory();
         this.pinnedToGreyObjectsWalker = GreyObjectsWalker.factory();
+    }
+
+    /** Return all allocated virtual memory chunks to HeapChunkProvider. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public final void tearDown() {
+        fromSpace.tearDown();
+        toSpace.tearDown();
+        pinnedFromSpace.tearDown();
+        pinnedToSpace.tearDown();
     }
 
     /*

@@ -168,6 +168,7 @@ public abstract class VMThreads {
      * for (VMThread thread = VMThreads.firstThread(); VMThreads.isNonNullThread(thread); thread = VMThreads.nextThread(thread)) {
      * </pre>
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static IsolateThread firstThread() {
         return head;
     }
