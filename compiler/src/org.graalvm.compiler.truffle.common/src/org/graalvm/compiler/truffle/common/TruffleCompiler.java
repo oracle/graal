@@ -24,9 +24,7 @@
  */
 package org.graalvm.compiler.truffle.common;
 
-import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.options.OptionValues;
+import java.util.Map;
 
 /**
  * A compiler that partially evaluates and compiles a {@link CompilableTruffleAST} to machine code.
@@ -36,36 +34,36 @@ public interface TruffleCompiler {
     String SECOND_TIER_COMPILATION_SUFFIX = "#2";
 
     /**
-     * Gets a compilation identifier for a given compilable.
-     *
-     * @return {@code null} if a {@link CompilationIdentifier} cannot shared across the Truffle
-     *         runtime/compiler boundary represented by this object
+     * Gets a unique compilation identifier for a given compilable.
      */
-    CompilationIdentifier getCompilationIdentifier(CompilableTruffleAST compilable);
+    String getCompilationIdentifier(CompilableTruffleAST compilable);
 
     /**
-     * Opens a debug context for compiling {@code compilable}. The {@link DebugContext#close()}
-     * method should be called on the returned object once the compilation is finished.
+     * Opens a debug context for Truffle compilation. The {@code close()} method should be called on
+     * the returned object once the compilation is finished.
      *
-     * @return {@code null} if a {@link DebugContext} cannot be shared across the Truffle
-     *         runtime/compiler boundary represented by this object
+     * @param options the options for the debug context
+     * @param compilationId an unique identifier to be used for a single compilation. Ignored if
+     *            {@code compilable == null}.
+     * @param compilable the Truffle AST to be compiled or {@code null} if the returned context will
+     *            be used for multiple Truffle compilations
+     * @return {@code null} if a debug context cannot be shared across the Truffle runtime/compiler
+     *         boundary represented by this object
      */
-    DebugContext openDebugContext(OptionValues options, CompilationIdentifier compilationId, CompilableTruffleAST compilable);
+    TruffleDebugContext openDebugContext(Map<String, Object> options, String compilationId, CompilableTruffleAST compilable);
 
     /**
      * Compiles {@code compilable} to machine code.
      *
-     * @param debug a debug context to use or {@code null} if a {@link DebugContext} cannot cross
-     *            the Truffle runtime/compiler boundary represented by this object
-     * @param compilationId an identifier to be used for the compilation or {@code null} if a
-     *            {@link CompilationIdentifier} cannot cross the Truffle runtime/compiler boundary
-     *            represented by this object
+     * @param debug a debug context to use or {@code null} if it cannot cross the Truffle
+     *            runtime/compiler boundary represented by this object
+     * @param compilationId an unique identifier to be used for the compilation
      * @param options option values relevant to compilation
      * @param compilable the Truffle AST to be compiled
      * @param inlining a guide for Truffle level inlining to be performed during compilation
      * @param task an object that must be periodically queried during compilation to see if the
      */
-    void doCompile(DebugContext debug, CompilationIdentifier compilationId, OptionValues options, CompilableTruffleAST compilable, TruffleInliningPlan inlining, TruffleCompilationTask task,
+    void doCompile(TruffleDebugContext debug, String compilationId, Map<String, Object> options, CompilableTruffleAST compilable, TruffleInliningPlan inlining, TruffleCompilationTask task,
                     TruffleCompilerListener listener);
 
     /**

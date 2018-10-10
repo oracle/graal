@@ -27,7 +27,6 @@ package org.graalvm.compiler.truffle.runtime;
 import com.oracle.truffle.api.dsl.Introspection;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.graphio.GraphOutput;
 import org.graalvm.graphio.GraphStructure;
 
@@ -38,18 +37,15 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getOptions;
-
 class PolymorphicSpecializeDump {
 
     public static void dumpPolymorphicSpecialize(List<Node> toDump, List<OptimizedDirectCallNode> knownCallNodes) {
         assert toDump.size() > 0;
         assert knownCallNodes.size() > 0;
-        final DebugContext debugContext = DebugContext.create(getOptions(), Collections.emptyList());
-        try {
+        try (IgvSupport igv = IgvSupport.create()) {
             Collections.reverse(toDump);
             PolymorphicSpecializeDump.PolymorphicSpecializeGraph graph = new PolymorphicSpecializeDump.PolymorphicSpecializeGraph(knownCallNodes, toDump);
-            final GraphOutput<PolymorphicSpecializeGraph, ?> output = debugContext.buildOutput(
+            final GraphOutput<PolymorphicSpecializeGraph, ?> output = igv.buildOutput(
                             GraphOutput.newBuilder(new PolymorphicSpecializeDump.PolymorphicSpecializeGraphStructure()).protocolVersion(6, 0));
             output.beginGroup(graph, "Polymorphic Specialize [" + knownCallNodes.get(0).getCurrentCallTarget() + "]", "Polymorphic Specialize", null, 0, null);
             output.print(graph, null, 0, toDump.get(toDump.size() - 1).toString());

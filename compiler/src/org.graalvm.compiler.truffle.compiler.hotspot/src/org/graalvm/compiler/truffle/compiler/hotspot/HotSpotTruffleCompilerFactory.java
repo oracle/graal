@@ -24,9 +24,13 @@
  */
 package org.graalvm.compiler.truffle.compiler.hotspot;
 
+import org.graalvm.compiler.hotspot.CompilerConfigurationFactory;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl.Options;
 
 @ServiceProvider(HotSpotTruffleCompiler.Factory.class)
 public class HotSpotTruffleCompilerFactory extends HotSpotTruffleCompiler.Factory {
@@ -36,4 +40,10 @@ public class HotSpotTruffleCompilerFactory extends HotSpotTruffleCompiler.Factor
         return HotSpotTruffleCompilerImpl.create(runtime);
     }
 
+    @Override
+    public String getCompilerConfigurationName(TruffleCompilerRuntime runtime) {
+        final OptionValues options = TruffleCompilerOptions.getOptions();
+        CompilerConfigurationFactory compilerConfigurationFactory = CompilerConfigurationFactory.selectFactory(Options.TruffleCompilerConfiguration.getValue(options), options);
+        return compilerConfigurationFactory.getName();
+    }
 }

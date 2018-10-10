@@ -24,12 +24,12 @@
  */
 package org.graalvm.compiler.truffle.common;
 
-import org.graalvm.compiler.nodes.Cancellable;
-
 /**
  * Describes the state and the configuration of a Truffle compilation.
  */
-public interface TruffleCompilationTask extends Cancellable {
+public interface TruffleCompilationTask {
+    boolean isCancelled();
+
     /**
      * Returns {@code true} if this is a last tier compilation.
      */

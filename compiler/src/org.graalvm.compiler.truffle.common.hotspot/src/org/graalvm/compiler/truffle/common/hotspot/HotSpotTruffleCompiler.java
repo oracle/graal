@@ -35,7 +35,25 @@ public interface HotSpotTruffleCompiler extends TruffleCompiler {
      */
     void installTruffleCallBoundaryMethods();
 
+    int pendingTransferToInterpreterOffset();
+
     abstract class Factory {
+
+        public int getPriority() {
+            return 0;
+        }
+
+        public boolean isSupported() {
+            return true;
+        }
+
         public abstract HotSpotTruffleCompiler create(TruffleCompilerRuntime runtime);
+
+        /**
+         * Gets the compiler configuration name without requiring a compiler to be created. The
+         * result of this method will always match
+         * {@code create(runtime).getCompilerConfigurationName()}.
+         */
+        public abstract String getCompilerConfigurationName(TruffleCompilerRuntime runtime);
     }
 }

@@ -29,7 +29,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
@@ -73,7 +73,7 @@ public class TransferToInterpreterTest {
         DebugContext debug = DebugContext.create(options, DebugHandlersFactory.LOADER);
         final OptimizedCallTarget compilable = target;
         TruffleCompilerImpl compiler = (TruffleCompilerImpl) runtime.newTruffleCompiler();
-        CompilationIdentifier compilationId = compiler.getCompilationIdentifier(compilable);
+        CompilationIdentifier compilationId = compiler.createCompilationIdentifier(compilable);
         TruffleInliningPlan inliningPlan = new TruffleInlining(compilable, new DefaultInliningPolicy());
         compiler.compileAST(debug, compilable, inliningPlan, compilationId, null, null);
         Assert.assertTrue(target.isValid());

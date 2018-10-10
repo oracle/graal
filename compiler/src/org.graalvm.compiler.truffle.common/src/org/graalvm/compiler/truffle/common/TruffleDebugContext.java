@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,21 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.runtime;
+package org.graalvm.compiler.truffle.common;
 
-import java.util.Collections;
-import java.util.List;
+import java.io.IOException;
+import java.util.Map;
+import org.graalvm.graphio.GraphOutput;
 
-import org.graalvm.compiler.debug.DebugHandler;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.serviceprovider.ServiceProvider;
+public interface TruffleDebugContext extends AutoCloseable {
+    <G, N, M> GraphOutput<G, M> buildOutput(GraphOutput.Builder<G, N, M> builder) throws IOException;
 
-@ServiceProvider(DebugHandlersFactory.class)
-public class TruffleTreeDebugHandlersFactory implements DebugHandlersFactory {
+    boolean isBasicDumpEnabled();
+
+    Map<Object, Object> getVersionProperties();
+
+    AutoCloseable scope(String name);
+
+    AutoCloseable scope(String name, Object context);
 
     @Override
-    public List<DebugHandler> createHandlers(OptionValues options) {
-        return Collections.singletonList(new TruffleTreeDumpHandler(options));
-    }
+    void close();
+
+    void closeDumpHandlers();
 }

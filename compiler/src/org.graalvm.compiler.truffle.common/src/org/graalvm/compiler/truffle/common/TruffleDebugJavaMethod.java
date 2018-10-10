@@ -24,9 +24,6 @@
  */
 package org.graalvm.compiler.truffle.common;
 
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.JavaMethodContext;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.JavaType;
@@ -35,9 +32,9 @@ import jdk.vm.ci.meta.Signature;
 
 /**
  * Enables a Truffle compilable to masquerade as a {@link JavaMethod} for use as a context value in
- * {@linkplain DebugContext#scope(Object) debug scopes}.
+ * debug scopes.
  */
-public class TruffleDebugJavaMethod implements JavaMethod, JavaMethodContext {
+public class TruffleDebugJavaMethod implements JavaMethod {
     private final CompilableTruffleAST compilable;
 
     private static final JavaType declaringClass = new JavaType() {
@@ -132,10 +129,5 @@ public class TruffleDebugJavaMethod implements JavaMethod, JavaMethodContext {
     @Override
     public String toString() {
         return format("Truffle<%n(%p)>");
-    }
-
-    @Override
-    public JavaMethod asJavaMethod() {
-        return this;
     }
 }
