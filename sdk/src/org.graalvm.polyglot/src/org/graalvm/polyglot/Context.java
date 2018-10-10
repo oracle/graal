@@ -142,7 +142,7 @@ import org.graalvm.polyglot.io.MessageTransport;
  * <li>Secondly, we set the standard output stream to be used for the context.
  * <li>Then, we specify an option for JavaScript language only, by structuring the option key with
  * the language id followed by the option name;
- * <li>With {@link #allowAllAccess(boolean)} we grant a new context instance with the same access
+ * <li>With {@link Builder#allowAllAccess(boolean)} we grant a new context instance with the same access
  * privileges as the host virtual machine.
  * <li>Next, we evaluate the expression "42" with language "js", which is the language identifier
  * for JavaScript. Since this is the first time we access JavaScript, it first gets
