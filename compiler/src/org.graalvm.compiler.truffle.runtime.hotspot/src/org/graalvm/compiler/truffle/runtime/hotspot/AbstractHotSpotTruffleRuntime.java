@@ -40,14 +40,12 @@ import java.util.stream.Collectors;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
-import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler.Factory;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleCallBoundary;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
-import org.graalvm.compiler.truffle.runtime.serviceprovider.TruffleRuntimeServices;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -158,12 +156,6 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     }
 
     @Override
-    public HotSpotTruffleCompiler newTruffleCompiler() {
-        final Factory factory = findHotSpotCompilerFactory();
-        return factory.create(this);
-    }
-
-    @Override
     public OptimizedCallTarget createOptimizedCallTarget(OptimizedCallTarget source, RootNode rootNode) {
         return new HotSpotOptimizedCallTarget(source, rootNode);
     }
@@ -255,13 +247,17 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
             synchronized (this) {
                 compilerConfig = this.lazyConfigurationName;
                 if (compilerConfig == null) {
-                    final Factory factory = findHotSpotCompilerFactory();
-                    this.lazyConfigurationName = factory.getCompilerConfigurationName(this);
+                    this.lazyConfigurationName = initLazyCompilerConfigurationName();
                 }
             }
         }
         return compilerConfig;
     }
+
+    /**
+     * Gets the compiler configuration name without requiring a compiler to be created.
+     */
+    protected abstract String initLazyCompilerConfigurationName();
 
     @Override
     public boolean cancelInstalledTask(OptimizedCallTarget optimizedCallTarget, Object source, CharSequence reason) {
@@ -308,23 +304,6 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         }
         final HotSpotObjectConstant hsConstant = (HotSpotObjectConstant) constant;
         return hsConstant.asObject(type);
-    }
-
-    private static Factory findHotSpotCompilerFactory() {
-        Factory selected = null;
-        for (Factory factory : TruffleRuntimeServices.load(Factory.class)) {
-            if (factory.isSupported()) {
-                if (selected == null) {
-                    selected = factory;
-                } else if (selected.getPriority() < factory.getPriority()) {
-                    selected = factory;
-                }
-            }
-        }
-        if (selected == null) {
-            throw new InternalError("No HotSpotTruffleCompiler.Factory found.");
-        }
-        return selected;
     }
 
     private static class TraceTransferToInterpreterHelper {

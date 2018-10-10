@@ -32,8 +32,14 @@ import java.util.Map;
 import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.hotspot.CompilerConfigurationFactory;
 import org.graalvm.compiler.hotspot.HotSpotGraalOptionValues;
 import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.truffle.common.TruffleCompiler;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl;
+import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl.Options;
 import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntime;
 
 final class HotSpotTruffleRuntime extends AbstractHotSpotTruffleRuntime {
@@ -54,6 +60,18 @@ final class HotSpotTruffleRuntime extends AbstractHotSpotTruffleRuntime {
             res.put(key.getName(), value);
         }
         return res;
+    }
+
+    @Override
+    protected String initLazyCompilerConfigurationName() {
+        final OptionValues options = TruffleCompilerOptions.getOptions();
+        CompilerConfigurationFactory compilerConfigurationFactory = CompilerConfigurationFactory.selectFactory(Options.TruffleCompilerConfiguration.getValue(options), options);
+        return compilerConfigurationFactory.getName();
+    }
+
+    @Override
+    public TruffleCompiler newTruffleCompiler() {
+        return HotSpotTruffleCompilerImpl.create(this);
     }
 
     @Override

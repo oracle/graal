@@ -1537,6 +1537,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.hotspot",
+        "org.graalvm.compiler.truffle.compiler.hotspot",
         "org.graalvm.compiler.truffle.runtime.hotspot",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
