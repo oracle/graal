@@ -13,6 +13,11 @@ suite = {
     "organization" : "Graal",
     "organizationUrl" : "http://www.graalvm.org/",
   },
+  "scm" : {
+    "url" : "https://github.com/oracle/graal",
+    "read" : "https://github.com/oracle/graal.git",
+    "write" : "git@github.com:oracle/graal.git",
+  },
 
   "imports" : {
     "suites": [
