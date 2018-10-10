@@ -36,6 +36,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -47,7 +48,8 @@ import com.oracle.svm.hosted.FeatureImpl.IsInConfigurationAccessImpl;
 public class FeatureHandler {
 
     public static class Options {
-        @Option(help = "Comma-separate list of fully qualified Feature implementation classes")//
+        @APIOption(name = "features") //
+        @Option(help = "A comma-separated list of fully qualified Feature implementation classes")//
         public static final HostedOptionKey<String> Features = new HostedOptionKey<>("");
     }
 
