@@ -296,8 +296,14 @@ static void (JNICALL *CallVoidMethod__)(JNIEnv *env, jobject obj, jmethodID meth
 
 class VarArgs {
   public:
-    virtual jboolean popBoolean() = 0;
-    virtual jint popInt() = 0;
+    virtual jboolean popBoolean() = 0;        
+    virtual jbyte popByte() = 0;
+    virtual jchar popChar() = 0;
+    virtual jshort popShort() = 0;
+    virtual jint popInt() = 0;    
+    virtual jfloat popFloat() = 0;
+    virtual jdouble popDouble() = 0;
+    virtual jlong popLong() = 0;
     virtual jobject popObject() = 0;
 };
 
@@ -305,17 +311,36 @@ class VarArgsVaList : public VarArgs {
 private:  
   va_list args;
 public:
- VarArgsVaList(va_list in_args) {
-   va_copy(in_args, args);
- }
+  VarArgsVaList(va_list in_args) {
+    va_copy(args, in_args);
+  }    
   jboolean popBoolean() {
     return (va_arg(args, jint) == 0 ? JNI_FALSE : JNI_TRUE);
+  }  
+  jbyte popByte() {
+    return (jbyte) va_arg(args, jint);
+  }
+  jchar popChar() {
+    return (jchar) va_arg(args, jint);
+  }
+  jshort popShort() {
+    return (jshort) va_arg(args, jint);
   }
   jint popInt() {
-    return va_arg(args, jint);
+    return (jbyte) va_arg(args, jint);
+  }
+  jfloat popFloat() {
+    // float is promoted to double
+    return (jfloat) va_arg(args, jdouble);
+  }
+  jdouble popDouble() {
+    return (jdouble) va_arg(args, jdouble);
+  }
+  jlong popLong() {
+    return (jlong) va_arg(args, jlong);
   }
   jobject popObject() {
-    return va_arg(args, jobject);
+    return (jobject) va_arg(args, jobject);
   }
 };
 
@@ -323,21 +348,47 @@ class VarArgsJValues : public VarArgs {
 private:  
   jvalue* args;
 public:
-  VarArgsJValues(const jvalue *args) : args((jvalue*)args) {}
-  jboolean popBoolean() { return args++->z; }
-  jint popInt() { return args++->i; }  
-  jobject popObject() { return args++->l; }
+  VarArgsJValues(const jvalue *args) : args((jvalue*) args) {}
+  jboolean popBoolean() {
+    return args++->z;
+  }
+  jbyte popByte() {
+    return args++->b;
+  }
+  jchar popChar() {
+    return args++->c;
+  }
+  jshort popShort() {
+    return args++->s;
+  }
+  jint popInt() {
+    return args++->i;
+  }
+  jfloat popFloat() {    
+    return args++->f;
+  }
+  jdouble popDouble() {
+    return args++->d;
+  }
+  jlong popLong() {
+    return args++->j;
+  }
+  jobject popObject() {
+    return args++->l;
+  }
 };
 
 jobject JNICALL CallObjectMethodV(JNIEnv *env, jobject obj, jmethodID methodID, va_list args) {
   printf("native CallObjectMethodV");
   VarArgsVaList varargs(args);    
+  //VarArgsDefault varargs;
   return CallObjectMethod__(env, obj, methodID, (jlong) &varargs);
 }
 
 jobject JNICALL CallObjectMethodA(JNIEnv *env, jobject obj, jmethodID methodID, const jvalue * args) {
   printf("native CallObjectMethodA");
   VarArgsJValues varargs(args);
+  // VarArgsDefault varargs;
   return CallObjectMethod__(env, obj, methodID, (jlong) &varargs);
 }
 
@@ -458,80 +509,50 @@ void* dupClosureRef(TruffleEnv *truffle_env, void* closure) {
     return truffle_env->dupClosureRef(closure);
 }
 
-/*
- * Class:     com_oracle_truffle_espresso_jni_VarArgs
- * Method:    popBoolean
- * Signature: (J)Z
- */
-JNIEXPORT jboolean JNICALL Java_com_oracle_truffle_espresso_jni_VarArgs_popBoolean
-  (JNIEnv *, jclass, jlong);
-
-/*
- * Class:     com_oracle_truffle_espresso_jni_VarArgs
- * Method:    popByte
- * Signature: (J)B
- */
-JNIEXPORT jbyte JNICALL Java_com_oracle_truffle_espresso_jni_VarArgs_popByte
-  (JNIEnv *, jclass, jlong);
-
-/*
- * Class:     com_oracle_truffle_espresso_jni_VarArgs
- * Method:    popChar
- * Signature: (J)C
- */
-JNIEXPORT jchar JNICALL Java_com_oracle_truffle_espresso_jni_VarArgs_popChar
-  (JNIEnv *, jclass, jlong);
-
-/*
- * Class:     com_oracle_truffle_espresso_jni_VarArgs
- * Method:    popShort
- * Signature: (J)S
- */
-JNIEXPORT jshort JNICALL Java_com_oracle_truffle_espresso_jni_VarArgs_popShort
-  (JNIEnv *, jclass, jlong);
-
-/*
- * Class:     com_oracle_truffle_espresso_jni_VarArgs
- * Method:    popInt
- * Signature: (J)I
- */
-JNIEXPORT jint JNICALL Java_com_oracle_truffle_espresso_jni_VarArgs_popInt
-  (JNIEnv *, jclass, jlong);
-
-/*
- * Class:     com_oracle_truffle_espresso_jni_VarArgs
- * Method:    popFloat
- * Signature: (J)F
- */
-JNIEXPORT jfloat JNICALL Java_com_oracle_truffle_espresso_jni_VarArgs_popFloat
-  (JNIEnv *, jclass, jlong);
-
-/*
- * Class:     com_oracle_truffle_espresso_jni_VarArgs
- * Method:    popDouble
- * Signature: (J)D
- */
-JNIEXPORT jdouble JNICALL Java_com_oracle_truffle_espresso_jni_VarArgs_popDouble
-  (JNIEnv *, jclass, jlong);
-
-/*
- * Class:     com_oracle_truffle_espresso_jni_VarArgs
- * Method:    popLong
- * Signature: (J)J
- */
-JNIEXPORT jlong JNICALL Java_com_oracle_truffle_espresso_jni_VarArgs_popLong
-  (JNIEnv *, jclass, jlong);
-
-/*
- * Class:     com_oracle_truffle_espresso_jni_VarArgs
- * Method:    popObject
- * Signature: (J)Ljava/lang/Object;
- */
-JNIEXPORT jobject JNICALL Java_com_oracle_truffle_espresso_jni_VarArgs_popObject
-  (JNIEnv *env, jclass, jlong ptr) {
-      printf("----- popObject \n"); fflush(stdout);
-      VarArgs *varargs = (VarArgs*) ptr;
-      return varargs->popObject();      
+jboolean popBoolean(jlong ptr) {
+    VarArgs *varargs = (VarArgs*) ptr;
+    return varargs->popBoolean();
 }
+
+jbyte popByte(jlong ptr) {
+    VarArgs *varargs = (VarArgs*) ptr;    
+    return varargs->popByte();
+}
+
+jchar popChar(jlong ptr) {
+    VarArgs *varargs = (VarArgs*) ptr;    
+    return varargs->popChar();
+}
+
+jshort popShort(jlong ptr) {
+    VarArgs *varargs = (VarArgs*) ptr;    
+    return varargs->popShort();
+}
+
+jint popInt(jlong ptr) {
+    VarArgs *varargs = (VarArgs*) ptr;
+    return varargs->popInt();
+}
+
+jfloat popFloat(jlong ptr) {
+    VarArgs *varargs = (VarArgs*) ptr;    
+    return varargs->popFloat();
+}
+
+jdouble popDouble(jlong ptr) {
+    VarArgs *varargs = (VarArgs*) ptr;    
+    return varargs->popDouble();
+}
+
+jlong popLong(jlong ptr) {
+    VarArgs *varargs = (VarArgs*) ptr;    
+    return varargs->popLong();
+}
+
+jobject popObject(jlong ptr) {
+    VarArgs *varargs = (VarArgs*) ptr;
+    return varargs->popObject();
+}
+
 
 } // extern

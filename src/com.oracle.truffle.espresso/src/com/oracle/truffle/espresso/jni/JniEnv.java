@@ -17,6 +17,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoLanguage;;
 import com.oracle.truffle.espresso.intrinsics.Target_java_lang_Object;
@@ -27,6 +28,131 @@ import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
 
 public class JniEnv {
+
+    public static abstract class VarArgs {
+        @Node.Child static Node execute = Message.EXECUTE.createNode();
+        private final static TruffleObject popBoolean = lookupAndBind(nespressoLibrary, "popBoolean", "(sint64): uint8");
+        private final static TruffleObject popByte = lookupAndBind(nespressoLibrary, "popByte", "(sint64): uint8");
+        private final static TruffleObject popChar = lookupAndBind(nespressoLibrary, "popChar", "(sint64): uint16");
+        private final static TruffleObject popShort = lookupAndBind(nespressoLibrary, "popShort", "(sint64): sint16");
+        private final static TruffleObject popInt = lookupAndBind(nespressoLibrary, "popInt", "(sint64): sint32");
+        private final static TruffleObject popFloat = lookupAndBind(nespressoLibrary, "popFloat", "(sint64): float");
+        private final static TruffleObject popDouble = lookupAndBind(nespressoLibrary, "popDouble", "(sint64): double");
+        private final static TruffleObject popLong = lookupAndBind(nespressoLibrary, "popLong", "(sint64): sint64");
+        private final static TruffleObject popObject = lookupAndBind(nespressoLibrary, "popObject", "(sint64): object");
+
+        static boolean popBoolean(long nativePointer) {
+            try {
+                return (boolean) ForeignAccess.sendExecute(execute, popBoolean, nativePointer);
+            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        static byte popByte(long nativePointer) {
+            try {
+                return (byte) ForeignAccess.sendExecute(execute, popByte, nativePointer);
+            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        static char popChar(long nativePointer) {
+            try {
+                return (char) ForeignAccess.sendExecute(execute, popChar, nativePointer);
+            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        static short popShort(long nativePointer) {
+            try {
+                return (short) ForeignAccess.sendExecute(execute, popShort, nativePointer);
+            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        static int popInt(long nativePointer) {
+            try {
+                return (int) ForeignAccess.sendExecute(execute, popInt, nativePointer);
+            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        static float popFloat(long nativePointer) {
+            try {
+                return (float) ForeignAccess.sendExecute(execute, popFloat, nativePointer);
+            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        static double popDouble(long nativePointer) {
+            try {
+                return (Double) ForeignAccess.sendExecute(execute, popDouble, nativePointer);
+            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        static long popLong(long nativePointer) {
+            try {
+                return (long) ForeignAccess.sendExecute(execute, popLong, nativePointer);
+            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        static Object popObject(long nativePointer) {
+            try {
+                return ForeignAccess.sendExecute(execute, popObject, nativePointer);
+            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        public abstract boolean popBoolean();
+        public abstract byte popByte();
+        public abstract char popChar();
+        public abstract short popShort();
+        public abstract int popInt();
+        public abstract float popFloat();
+        public abstract double popDouble();
+        public abstract long popLong();
+        public abstract Object popObject();
+
+        private static class Instance extends VarArgs {
+            final long nativePointer;
+            public Instance(long nativePointer) {
+                this.nativePointer = nativePointer;
+            }
+            public boolean popBoolean() {
+                return VarArgs.popBoolean(nativePointer);
+            }
+            public byte popByte() {
+                return VarArgs.popByte(nativePointer);
+            }
+            public char popChar() {
+                return VarArgs.popChar(nativePointer);
+            }
+            public short popShort() {
+                return VarArgs.popShort(nativePointer);
+            }
+            public int popInt() {
+                return VarArgs.popInt(nativePointer);
+            }
+            public float popFloat() {
+                return VarArgs.popFloat(nativePointer);
+            }
+            public double popDouble() {
+                return VarArgs.popDouble(nativePointer);
+            }
+            public long popLong() {
+                return VarArgs.popLong(nativePointer);
+            }
+            public Object popObject() {
+                return VarArgs.popObject(nativePointer);
+            }
+        }
+        public static VarArgs init(long nativePointer) {
+            return new Instance(nativePointer);
+        }
+    }
+
 
     // Load native library nespresso.dll (Windows) or libnespresso.so (Unixes)
     // at runtime
@@ -391,15 +517,15 @@ public class JniEnv {
     @JniMethod
     public Object CallObjectMethod__(Object receiver, Meta.Method methodID, long varargs) {
         VarArgs args = VarArgs.init(varargs);
-        Object[] methodArgs = new Object[]{args.popObject()};
+        Object[] methodArgs = new Object[]{args.popInt()};
         return methodID.invokeDirect(receiver, methodArgs);
     }
 
     @JniMethod
     public void CallVoidMethod__(Object receiver, Meta.Method methodID, long varargs) {
         VarArgs args = VarArgs.init(varargs);
-        // Object[] methodArgs = new Object[]{args.popObject()};
-        methodID.invokeDirect(receiver);
+        Object[] methodArgs = new Object[]{args.popInt()};
+        methodID.invokeDirect(receiver, methodArgs);
     }
 
     private static long load(String name) {
