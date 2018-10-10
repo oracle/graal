@@ -375,7 +375,7 @@ public class TestMemberAccess extends ProxyLanguageEnvTest {
         TruffleObject clazz = asTruffleHostSymbol(TestConstructorException.class);
         Object testObj = ForeignAccess.sendNew(Message.NEW.createNode(), clazz, "test", 42);
         assertTrue(testObj instanceof TruffleObject && env.asHostObject(testObj) instanceof TestConstructorException);
-        HostInteropTest.assertThrowsExceptionWithCause(() -> ForeignAccess.sendNew(Message.NEW.createNode(), clazz, "test"), IOException.class);
+        assertThrowsExceptionWithCause(() -> ForeignAccess.sendNew(Message.NEW.createNode(), clazz, "test"), IOException.class);
     }
 
     @Test
@@ -400,7 +400,7 @@ public class TestMemberAccess extends ProxyLanguageEnvTest {
 
     @Test
     public void testMethodThrowsIOException() {
-        HostInteropTest.assertThrowsExceptionWithCause(() -> getValueFromMember(TestClass2.class, "methodThrowsIOException"), IOException.class);
+        assertThrowsExceptionWithCause(() -> getValueFromMember(TestClass2.class, "methodThrowsIOException"), IOException.class);
     }
 
     private void testForValue(String name, Object value) throws InteropException {

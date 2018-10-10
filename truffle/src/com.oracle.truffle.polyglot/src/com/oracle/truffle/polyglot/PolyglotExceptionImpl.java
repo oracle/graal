@@ -432,7 +432,11 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
 
             Throwable cause = impl.exception;
             while (cause.getCause() != null && cause.getStackTrace().length == 0) {
-                cause = cause.getCause();
+                if (cause instanceof HostException) {
+                    cause = ((HostException) cause).getOriginal();
+                } else {
+                    cause = cause.getCause();
+                }
             }
             StackTraceElement[] hostStack;
             if (VMAccessor.LANGUAGE.isTruffleStackTrace(cause)) {
