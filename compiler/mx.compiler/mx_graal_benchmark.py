@@ -1234,6 +1234,10 @@ class SpecJbb2005BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
     This suite has only a single benchmark, and does not allow setting a specific
     benchmark in the command line.
     """
+    def __init__(self, *args, **kwargs):
+        super(SpecJbb2005BenchmarkSuite, self).__init__(*args, **kwargs)
+        self.prop_tmp_file = None
+
     def name(self):
         return "specjbb2005"
 
@@ -1269,16 +1273,59 @@ class SpecJbb2005BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
     def workingDirectory(self, benchmarks, bmSuiteArgs):
         return mx.get_env("SPECJBB2005")
 
+    def extractSuiteArgs(self, bmSuiteArgs):
+        """Extracts accepted suite args and removes it from bmSuiteArgs"""
+        allowedSuiteArgs = [
+            "input.measurement_seconds",
+            "input.starting_number_warehouses",
+            "input.increment_number_warehouses",
+            "input.expected_peak_warehouse",
+            "input.ending_number_warehouses"
+        ]
+        jbbprops = {}
+        for suiteArg in bmSuiteArgs:
+            for allowedArg in allowedSuiteArgs:
+                if suiteArg.startswith("{}=".format(allowedArg)):
+                    bmSuiteArgs.remove(suiteArg)
+                    key, value = suiteArg.split("=", 1)
+                    jbbprops[key] = value
+        return jbbprops
+
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         if benchmarks is not None:
             mx.abort("No benchmark should be specified for the selected suite.")
+
+        if self.prop_tmp_file is None:
+            jbbprops = self.getDefaultProperties(benchmarks, bmSuiteArgs)
+            jbbprops.update(self.extractSuiteArgs(bmSuiteArgs))
+            fd, self.prop_tmp_file = mkstemp(prefix="specjbb2005", suffix=".props")
+            with os.fdopen(fd, "w") as f:
+                f.write("\n".join(["{}={}".format(key, value) for key, value in jbbprops.iteritems()]))
+
+        propArgs = ["-propfile", self.prop_tmp_file]
         vmArgs = self.vmArgs(bmSuiteArgs)
         runArgs = self.runArgs(bmSuiteArgs)
         mainClass = "spec.jbb.JBBmain"
-        propArgs = ["-propfile", "SPECjbb.props"]
         return (
             vmArgs + ["-cp"] + [self.specJbbClassPath()] + [mainClass] + propArgs +
             runArgs)
+
+    def after(self, bmSuiteArgs):
+        if self.prop_tmp_file != None and os.path.exists(self.prop_tmp_file):
+            os.unlink(self.prop_tmp_file)
+
+    def getDefaultProperties(self, benchmarks, bmSuiteArgs):
+        from ConfigParser import ConfigParser
+        import StringIO
+        configfile = join(self.workingDirectory(benchmarks, bmSuiteArgs), "SPECjbb.props")
+        config = StringIO.StringIO()
+        config.write("[root]\n")
+        with open(configfile, "r") as f:
+            config.write(f.read())
+        config.seek(0, os.SEEK_SET)
+        configp = ConfigParser()
+        configp.readfp(config)
+        return dict(configp.items("root"))
 
     def benchmarkList(self, bmSuiteArgs):
         return ["default"]
