@@ -42,7 +42,6 @@ import mx_benchmark
 import mx_sulong_benchmarks
 import mx_buildtools
 
-from mx_unittest import add_config_participant
 from mx_gate import Task, add_gate_runner
 
 import mx_testsuites
@@ -106,14 +105,6 @@ clangFormatVersions = [
     '3.9',
     '4.0',
 ]
-
-def _unittest_config_participant(config):
-    (vmArgs, mainClass, mainClassArgs) = config
-    libs = [mx_subst.path_substitutions.substitute('<path:SULONG_TEST_NATIVE>/<lib:sulongtest>')]
-    vmArgs = getCommonOptions(True, libs) + vmArgs
-    return (vmArgs, mainClass, mainClassArgs)
-
-add_config_participant(_unittest_config_participant)
 
 
 # Temporary set environment variables. By default LC_ALL, LANGUAGE, and LANG are set.
