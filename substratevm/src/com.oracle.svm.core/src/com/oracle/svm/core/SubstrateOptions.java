@@ -172,7 +172,7 @@ public class SubstrateOptions {
     };
 
     @Option(help = "Enable Java Native Interface (JNI) support.")//
-    public static final HostedOptionKey<Boolean> JNI = new HostedOptionKey<>(false);
+    public static final HostedOptionKey<Boolean> JNI = new HostedOptionKey<>(true);
 
     @Option(help = "Files describing program elements to be made accessible via JNI (for syntax, see ReflectionConfigurationFiles)", type = OptionType.User)//
     public static final HostedOptionKey<String> JNIConfigurationFiles = new HostedOptionKey<>("");
