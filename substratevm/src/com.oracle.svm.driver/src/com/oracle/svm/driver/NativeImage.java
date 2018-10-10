@@ -642,8 +642,8 @@ public class NativeImage {
         return Stream.empty();
     }
 
-    private void processJarImageBuildArgs(Collection<Path> imageClasspath) {
-        for (Path jarFilePath : imageClasspath) {
+    private void processJarImageBuildArgs(Collection<Path> paths) {
+        for (Path jarFilePath : paths) {
             if (!jarFilePath.getFileName().toString().toLowerCase().endsWith(".jar")) {
                 continue;
             }
