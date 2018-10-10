@@ -139,6 +139,7 @@ import org.graalvm.polyglot.io.MessageTransport;
  * In this example:
  * <ul>
  * <li>At first, we create a new context and specify permitted languages as parameters.
+ * <li>Secondly, we set the standard output stream to be used for the context.
  * <li>Then, we specify an option for JavaScript language only, by structuring the option key with
  * the language id followed by the option name;
  * <li>With {@link #allowAllAccess(boolean)} we grant a new context instance with the same access
@@ -541,16 +542,16 @@ public final class Context implements AutoCloseable {
     }
 
     /**
-     * Explicitly enters the context on the current thread. A context needs to be entered and left for any
-     * operation to be performed. For example, before and after invoking the {@link Value#execute(Object...)
-     * execute} method. This can be inefficient if a very high number of simple operations needs to
-     * be performed. By {@link #enter() entering} and {@link #leave() leaving} once explicitly, the
-     * overhead for entering/leaving contexts for each operation can be eliminated. Contexts can be
-     * entered multiple times on the same thread.
+     * Explicitly enters the context on the current thread. A context needs to be entered and left
+     * for any operation to be performed. For example, before and after invoking the
+     * {@link Value#execute(Object...) execute} method. This can be inefficient if a very high
+     * number of simple operations needs to be performed. By {@link #enter() entering} and
+     * {@link #leave() leaving} once explicitly, the overhead for entering/leaving the context for
+     * each operation can be eliminated. Contexts can be entered multiple times on the same thread.
      *
      * @throws IllegalStateException if the context is already {@link #close() closed}.
      * @throws PolyglotException if a language has denied execution on the current thread.
-     * @see #leave() to leave a context.
+     * @see #leave() leave a context.
      * @since 1.0
      */
     public void enter() {
@@ -558,12 +559,12 @@ public final class Context implements AutoCloseable {
     }
 
     /**
-     * Explicitly leaves this context on the current thread. The context must be {@link #enter()
+     * Explicitly leaves the context on the current thread. The context must be {@link #enter()
      * entered} before calling this method.
      *
      * @throws IllegalStateException if the context is already closed or if the context was not
      *             {@link #enter() entered} on the current thread.
-     * @see #enter() to enter a context.
+     * @see #enter() enter a context.
      * @since 1.0
      */
     public void leave() {
@@ -571,23 +572,23 @@ public final class Context implements AutoCloseable {
     }
 
     /**
-     * Closes this context and frees up potentially allocated native resources. A context cannot
-     * free all native resources allocated automatically. For this reason it is necessary to close
-     * contexts after use. If a context is cancelled then the currently executing thread will throw
-     * a {@link PolyglotException}. The exception indicates that it was
-     * {@link PolyglotException#isCancelled() cancelled}. Please note that canceling a single
-     * context can negatively affect the performance of other executing contexts constructed with
-     * the same engine.
+     * Closes the context and frees up potentially allocated native resources. A context cannot free
+     * all native resources allocated automatically. For this reason it is necessary to close
+     * contexts after use. If a context is cancelled, then the executing thread will throw a
+     * {@link PolyglotException}. The exception indicates that it was
+     * {@link PolyglotException#isCancelled() cancelled}. Please note, canceling a single context
+     * can negatively affect the performance of other executing contexts constructed with the same
+     * engine.
      * <p>
-     * If internal errors occur during closing of the language then they are printed to the
-     * configured {@link Builder#err(OutputStream) error output stream}. If a context was closed
-     * then all its methods will throw an {@link IllegalStateException} when invoked. If an attempt
-     * to close a context was successful then consecutive calls to close have no effect.
+     * If internal errors occur during context closing, then they are printed to the configured
+     * {@link Builder#err(OutputStream) error output stream}. If a context was closed, then its
+     * methods will throw an {@link IllegalStateException} when invoked. If an attempt to close a
+     * context was successful, then consecutive calls to close have no effect.
      *
      * @param cancelIfExecuting if <code>true</code> then currently executing contexts will be
      *            {@link PolyglotException#isCancelled() cancelled}, else an
      *            {@link IllegalStateException} is thrown.
-     * @see Engine#close() To close an engine.
+     * @see Engine#close() close an engine.
      * @throws PolyglotException in case the close failed due to a guest language error.
      * @throws IllegalStateException if the context is still running and cancelIfExecuting is
      *             <code>false</code>
@@ -598,20 +599,20 @@ public final class Context implements AutoCloseable {
     }
 
     /**
-     * Closes this context and frees up potentially allocated native resources. Languages might not
-     * be able to free all native resources allocated by a context automatically. For this reason it
-     * is recommended to close contexts after use. If the context is currently being executed on
-     * another thread then an {@link IllegalStateException} is thrown. To close concurrently
-     * executing contexts see {@link #close(boolean)}.
+     * Closes this context and frees up potentially allocated native resources. A context may not
+     * free all native resources allocated automatically. For this reason it is recommended to close
+     * contexts after use. If the context is currently being executed on another thread, then an
+     * {@link IllegalStateException} is thrown. To close concurrently executing contexts see
+     * {@link #close(boolean)}.
      * <p>
-     * If internal errors occur during closing of the language then they are printed to the
-     * configured {@link Builder#err(OutputStream) error output stream}. If a context was closed
-     * then all its methods will throw an {@link IllegalStateException} when invoked. If an attempt
-     * to close a context was successful then consecutive calls to close have no effect.
+     * If internal errors occur during the context closure, then they are printed to the configured
+     * {@link Builder#err(OutputStream) error output stream}. If a context was closed, then its
+     * methods will throw an {@link IllegalStateException}, when invoked. If an attempt to close a
+     * context was successful, then consecutive calls to close have no effect.
      *
      * @throws PolyglotException in case the close failed due to a guest language error.
      * @throws IllegalStateException if the context is currently executing on another thread.
-     * @see Engine#close() To close an engine.
+     * @see Engine#close() close an engine.
      * @since 1.0
      */
     public void close() {
@@ -619,8 +620,8 @@ public final class Context implements AutoCloseable {
     }
 
     /**
-     * Returns the currently entered polyglot context. A context is entered if the currently
-     * executing Java method was called by a Graal guest language or if a context was entered
+     * Returns the currently entered polyglot context. A context will be entered if the current
+     * executing Java method is called by a Graal guest language or if a context is entered
      * explicitly using {@link Context#enter()} on the current thread. The returned context may be
      * used to:
      * <ul>
@@ -639,9 +640,9 @@ public final class Context implements AutoCloseable {
      * {@link #create(String...) creator} of a context is allowed to enter, leave or close a
      * context.
      * <p>
-     * The currently entered context may change. It is therefore required to call
-     * {@link #getCurrent() getCurrent} every time a context is needed. The currently entered
-     * context should not be cached in static fields.
+     * The current entered context may change. It is therefore required to call {@link #getCurrent()
+     * getCurrent} every time a context is needed. The current entered context should not be cached
+     * in static fields.
      *
      * @throws IllegalStateException if no context is currently entered.
      * @since 1.0
@@ -653,8 +654,8 @@ public final class Context implements AutoCloseable {
     /**
      * Creates a context with default configuration.
      *
-     * @param permittedLanguages names of languages permitted in this context, if no languages are
-     *            provided then all the use of languages will be permitted.
+     * @param permittedLanguages names of languages permitted in this context. If no languages are
+     *            provided, then all installed languages will be permitted.
      * @return a new context
      * @since 1.0
      */
@@ -665,8 +666,8 @@ public final class Context implements AutoCloseable {
     /**
      * Creates a builder for constructing a context with custom configuration.
      *
-     * @param permittedLanguages names of languages permitted in this context, if no languages are
-     *            provided then the use of all languages will be permitted.
+     * @param permittedLanguages names of languages permitted in the context. If no languages are
+     *            provided, then all installed languages will be permitted.
      * @return a builder that can create a context
      * @since 1.0
      */
@@ -714,10 +715,10 @@ public final class Context implements AutoCloseable {
         }
 
         /**
-         * Explicitly sets the underlying engine to use. By default every context has its own
+         * Explicitly sets the underlying engine to use. By default, every context has its own
          * isolated engine. If multiple contexts are created from one engine, then they may
-         * share/cache certain system resources like ASTs, optimized code by specifying a single
-         * underlying engine; see {@link Engine} for more details about system resource sharing.
+         * share/cache certain system resources like ASTs or optimized code by specifying a single
+         * underlying engine. See {@link Engine} for more details about system resource sharing.
          *
          * @since 1.0
          */
@@ -728,9 +729,9 @@ public final class Context implements AutoCloseable {
         }
 
         /**
-         * Sets the standard output stream to be used for this context. If not set then the standard
-         * output stream configured for the {@link #engine(Engine) engine} is used or standard error
-         * stream.
+         * Sets the standard output stream to be used for the context. If not set, then the standard
+         * output stream configured for the {@link #engine(Engine) engine} or standard error stream
+         * is used.
          *
          * @since 1.0
          */
@@ -741,9 +742,9 @@ public final class Context implements AutoCloseable {
         }
 
         /**
-         * Sets the error output stream to be used for this context. If not set then either the
-         * error stream configured for the {@link #engine(Engine) engine} is used or standard error
-         * stream.
+         * Sets the error output stream to be used for the context. If not set, then either the
+         * error stream configured for the {@link #engine(Engine) engine} or standard error stream
+         * is used.
          *
          * @since 1.0
          */
@@ -754,8 +755,8 @@ public final class Context implements AutoCloseable {
         }
 
         /**
-         * Sets the input stream to be used for this context. If not set then either the input
-         * stream configured for the {@link #engine(Engine) engine} is used or standard in stream.
+         * Sets the input stream to be used for the context. If not set, then either the input
+         * stream configured for the {@link #engine(Engine) engine} or standard in stream is used.
          *
          * @since 1.0
          */
@@ -768,7 +769,7 @@ public final class Context implements AutoCloseable {
         /**
          * Allows guest languages to access the host language by loading new classes. Default is
          * <code>false</code>. If {@link #allowAllAccess(boolean) all access} is set to
-         * <code>true</code> then then host access is enabled if not allowed explicitly.
+         * <code>true</code>, then host access is enabled if not allowed explicitly.
          *
          * @since 1.0
          */
@@ -788,10 +789,10 @@ public final class Context implements AutoCloseable {
         }
 
         /**
-         * If <code>true</code> allows guest languages to create new threads. Default is
+         * If <code>true</code>, allows guest languages to create new threads. Default is
          * <code>false</code>. If {@link #allowAllAccess(boolean) all access} is set to
-         * <code>true</code> then the creation of threads is enabled if not allowed explicitly.
-         * Threads created by guest languages are closed when the context is {@link Context#close()
+         * <code>true</code>, then the creation of threads is enabled if not allowed explicitly.
+         * Threads created by guest languages are closed, when the context is {@link Context#close()
          * closed}.
          *
          * @since 1.0
@@ -802,15 +803,14 @@ public final class Context implements AutoCloseable {
         }
 
         /**
-         * If <code>true</code> grants the context the same access privileges as the host virtual
-         * machine. If not explicitly specified then all access is <code>false</code>. If the host
+         * If <code>true</code>, grants the context the same access privileges as the host virtual
+         * machine. If not explicitly specified, then all access is <code>false</code>. If the host
          * VM runs without a {@link SecurityManager security manager} enabled, then enabling all
-         * access gives the guest languages full control over the host process. Otherwise, the Java
+         * access gives the guest languages full control over the host process. Otherwise, Java
          * {@link SecurityManager security manager} is in control of restricting the privileges of
-         * the polyglot context. If new privilege restrictions are added to the polyglot API then
-         * they will default to full access if all access is set to <code>true</code>. If all access
-         * is enabled then certain privileges may still be disabled by configuring it explicitly
-         * using this builder.
+         * the polyglot context. If new privilege restrictions are added to the polyglot API, then
+         * they will default to full access. If all access is enabled then certain privileges may
+         * still be disabled by configuring it explicitly using the builder.
          * <p>
          * Grants full access to the following privileges by default:
          * <ul>
@@ -832,10 +832,10 @@ public final class Context implements AutoCloseable {
         }
 
         /**
-         * If host class loading is enabled then the guest language is allowed to load new host
+         * If host class loading is enabled, then the guest language is allowed to load new host
          * classes via jar or class files. If {@link #allowAllAccess(boolean) all access} is set to
-         * <code>true</code> then the host class loading is enabled if it is not disallowed
-         * explicitly. For host class loading to be useful {@link #allowIO(boolean) IO} operations
+         * <code>true</code>, then the host class loading is enabled if it is not disallowed
+         * explicitly. For host class loading to be useful, {@link #allowIO(boolean) IO} operations
          * and {@link #allowHostAccess(boolean) host access} need to be allowed as well.
          *
          * @since 1.0
@@ -847,9 +847,9 @@ public final class Context implements AutoCloseable {
 
         /**
          * Sets a class filter that allows to limit the classes that are allowed to be loaded by
-         * guest languages. If the filter returns <code>true</code> then the class is accessible,
-         * else it is not accessible and throws an guest language error when accessed. In order to
-         * have an effect {@link #allowHostAccess(boolean)} or {@link #allowAllAccess(boolean)}
+         * guest languages. If the filter returns <code>true</code>, then the class is accessible,
+         * otherwise it is not accessible and throws a guest language error when accessed. In order
+         * to have an effect, {@link #allowHostAccess(boolean)} or {@link #allowAllAccess(boolean)}
          * needs to be set to <code>true</code>.
          *
          * @param classFilter a predicate that returns <code>true</code> or <code>false</code> for a
@@ -863,15 +863,15 @@ public final class Context implements AutoCloseable {
         }
 
         /**
-         * Set an option for this {@link Context context}. By default any options for the
+         * Sets an option for this {@link Context context}. By default, any options for the
          * {@link Engine#getOptions() engine}, {@link Language#getOptions() language} or
          * {@link Instrument#getOptions() instrument} can be set for a context. If an
-         * {@link #engine(Engine) explicit engine} is set for this context then only language
+         * {@link #engine(Engine) explicit engine} is set for the context, then only language
          * options can be set. Instrument and engine options can be set exclusively on the explicit
-         * engine instance. If a language option was set for the context and the engine then the
+         * engine instance. If a language option is set for the context and the engine, then the
          * option of the context is going to take precedence.
          * <p>
-         * If one of the set option keys or values is invalid then an
+         * If one of the set option keys or values is invalid, then an
          * {@link IllegalArgumentException} is thrown when the context is {@link #build() built}.
          * The given key and value must not be <code>null</code>.
          *
@@ -933,9 +933,9 @@ public final class Context implements AutoCloseable {
         }
 
         /**
-         * If <code>true</code> allows guest language to perform unrestricted IO operations on host
+         * If <code>true</code>, allows guest language to perform unrestricted IO operations on host
          * system. Default is <code>false</code>. If {@link #allowAllAccess(boolean) all access} is
-         * set to <code>true</code> then IO is enabled if not allowed explicitly.
+         * set to <code>true</code>, then IO is enabled if not allowed explicitly.
          *
          * @param enabled {@code true} to enable Input/Output
          * @return the {@link Builder}
@@ -960,7 +960,7 @@ public final class Context implements AutoCloseable {
         }
 
         /**
-         * Take over transport of message communication with a server peer. Provide an
+         * Take over the transport of messages communication with a server peer. Provide an
          * implementation of {@link MessageTransport} to virtualize a transport of messages to a
          * server endpoint.
          * {@link MessageTransport#open(java.net.URI, org.graalvm.polyglot.io.MessageEndpoint)}
@@ -980,9 +980,9 @@ public final class Context implements AutoCloseable {
          * Installs a new logging {@link Handler}. The logger's {@link Level} configuration is done
          * using the {@link #options(java.util.Map) Context's options}. The level option key has the
          * following format: {@code log.languageId.loggerName.level} or
-         * {@code log.instrumentId.loggerName.level}. The value is either the name of pre-defined
-         * {@link Level} constant or a numeric {@link Level} value. If not explicitly set in options
-         * the level is inherited from the parent logger.
+         * {@code log.instrumentId.loggerName.level}. The value is either the name of a pre-defined
+         * {@link Level} constant or a numeric {@link Level} value. If not explicitly set in
+         * options, the level is inherited from the parent logger.
          * <p>
          * <b>Examples</b> of setting log level options:<br>
          * {@code builder.option("log.level","FINE");} sets the {@link Level#FINE FINE level} to all
@@ -993,7 +993,7 @@ public final class Context implements AutoCloseable {
          * sets the {@link Level#FINE FINE level} to {@code TruffleLogger} for the
          * {@code JavaScriptLanguage} class.<br>
          * <p>
-         * If the {@code logHandler} is not set on {@link Engine} nor on {@link Context} the log
+         * If the {@code logHandler} is not set on {@link Engine} nor on {@link Context}, the log
          * messages are printed to {@link #err(java.io.OutputStream) Context's error output stream}.
          *
          * @param logHandler the {@link Handler} to use for logging in built {@link Context}.
