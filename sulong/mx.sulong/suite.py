@@ -81,6 +81,9 @@ suite = {
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "javaCompliance" : "1.8",
+      "javaProperties" : {
+        "test.sulongtest.lib" : "<path:SULONG_TEST_NATIVE>/<lib:sulongtest>",
+      },
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
     },
