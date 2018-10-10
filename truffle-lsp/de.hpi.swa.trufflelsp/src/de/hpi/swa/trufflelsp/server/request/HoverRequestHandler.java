@@ -30,6 +30,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapper;
+import de.hpi.swa.trufflelsp.instrument.LSOptions;
 import de.hpi.swa.trufflelsp.server.utils.CoverageData;
 import de.hpi.swa.trufflelsp.server.utils.CoverageEventNode;
 import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
@@ -37,7 +38,6 @@ import de.hpi.swa.trufflelsp.server.utils.SurrogateMap;
 import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogate;
 
 public class HoverRequestHandler extends AbstractRequestHandler {
-
     private CompletionRequestHandler completionHandler;
 
     public HoverRequestHandler(Env env, SurrogateMap surrogateMap, ContextAwareExecutorWrapper contextAwareExecutor, CompletionRequestHandler completionHandler) {
@@ -56,7 +56,7 @@ public class HoverRequestHandler extends AbstractRequestHandler {
                 if (coverages != null) {
                     return evalHoverInfos(coverages, hoverSection, surrogate.getLangId());
                 }
-            } else {
+            } else if (env.getOptions().get(LSOptions.LanguageDeveloperMode)) {
                 String sourceText = hoverSection.getCharacters().toString();
                 List<Either<String, MarkedString>> contents = new ArrayList<>();
                 contents.add(Either.forRight(new MarkedString(surrogate.getLangId(), sourceText)));

@@ -19,6 +19,7 @@ import com.oracle.truffle.api.source.SourceSection;
 
 import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapper;
 import de.hpi.swa.trufflelsp.exceptions.DiagnosticsNotification;
+import de.hpi.swa.trufflelsp.instrument.LSOptions;
 import de.hpi.swa.trufflelsp.server.utils.EvaluationResult;
 import de.hpi.swa.trufflelsp.server.utils.InteropUtils;
 import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
@@ -53,7 +54,7 @@ public class DefinitionRequestHandler extends AbstractRequestHandler {
             if (evalResult.isEvaluationDone() && !evalResult.isError()) {
                 SourceSection sourceSection = SourceUtils.findSourceLocation(env, surrogate.getLangId(), evalResult.getResult());
                 List<Location> locations = new ArrayList<>();
-                if (sourceSection != null && sourceSection.isAvailable()) {
+                if (isValidSourceSection(sourceSection)) {
                     Range range = SourceUtils.sourceSectionToRange(sourceSection);
                     URI definitionUri = SourceUtils.getOrFixFileUri(sourceSection.getSource());
                     locations.add(new Location(definitionUri.toString(), range));
@@ -71,6 +72,11 @@ public class DefinitionRequestHandler extends AbstractRequestHandler {
             return findMatchingSymbols(surrogate, definitionSearchSymbol);
         }
         return Collections.emptyList();
+    }
+
+    private boolean isValidSourceSection(SourceSection sourceSection) {
+        boolean includeInternal = env.getOptions().get(LSOptions.IncludeInternlSourcesInDefinitionSearch);
+        return sourceSection != null && sourceSection.isAvailable() && (includeInternal || !sourceSection.getSource().isInternal());
     }
 
     private List<Location> findMatchingSymbols(TextDocumentSurrogate surrogate, String symbol) {
