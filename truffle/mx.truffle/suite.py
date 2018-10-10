@@ -43,7 +43,7 @@ suite = {
   "name" : "truffle",
   "version": "1.0.0-rc8",
   "release" : False,
-  "groupId" : "org.graalvm",
+  "groupId" : "org.graalvm.truffle",
   "sourceinprojectwhitelist" : [],
   "url" : "http://openjdk.java.net/projects/graal",
   "developer" : {
@@ -669,7 +669,7 @@ suite = {
 
     "TRUFFLE_API" : {
       # This distribution defines a module.
-      "moduleName" : "com.oracle.truffle.truffle_api",
+      "moduleName" : "org.graalvm.truffle",
       "subDir" : "src",
       "javaCompliance" : "8+",
       "dependencies" : [

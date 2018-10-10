@@ -121,7 +121,7 @@ else:
 
     # Reflective access to org.graalvm.nativeimage.impl.ImageSingletonsSupport.
     graal_sdk_opens_packages = [
-        'org.graalvm.graal_sdk/org.graalvm.nativeimage.impl']
+        'org.graalvm.sdk/org.graalvm.nativeimage.impl']
     GRAAL_COMPILER_FLAGS.extend(add_opens_from_packages(graal_sdk_opens_packages))
 
 IMAGE_ASSERTION_FLAGS = ['-H:+VerifyGraalGraphs', '-H:+VerifyGraalGraphEdges', '-H:+VerifyPhases']
