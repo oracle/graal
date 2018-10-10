@@ -24,18 +24,10 @@
  */
 package com.oracle.svm.truffle.nfi;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.nativeimage.c.function.CEntryPoint;
+import com.oracle.svm.core.c.CGlobalData;
+import com.oracle.svm.core.c.CGlobalDataFactory;
 import org.graalvm.nativeimage.c.function.CEntryPointContext;
-import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
-import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.c.type.CTypeConversion;
-
-import com.oracle.svm.core.c.function.CEntryPointOptions;
-import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.truffle.nfi.NativeAPI.NativeTruffleContext;
 import com.oracle.svm.truffle.nfi.NativeAPI.NativeTruffleEnv;
 import com.oracle.svm.truffle.nfi.libffi.LibFFI.ffi_type;
@@ -43,28 +35,52 @@ import com.oracle.truffle.nfi.types.NativeSimpleType;
 
 public final class NFIInitialization {
 
+    // Checkstyle: stop
+    // keep global names consistent with native naming
+    private static final CGlobalData<ffi_type> ffi_type_pointer = CGlobalDataFactory.forSymbol("ffi_type_pointer");
+    private static final CGlobalData<ffi_type> ffi_type_void = CGlobalDataFactory.forSymbol("ffi_type_void");
+    private static final CGlobalData<ffi_type> ffi_type_uint8 = CGlobalDataFactory.forSymbol("ffi_type_uint8");
+    private static final CGlobalData<ffi_type> ffi_type_sint8 = CGlobalDataFactory.forSymbol("ffi_type_sint8");
+    private static final CGlobalData<ffi_type> ffi_type_uint16 = CGlobalDataFactory.forSymbol("ffi_type_uint16");
+    private static final CGlobalData<ffi_type> ffi_type_sint16 = CGlobalDataFactory.forSymbol("ffi_type_sint16");
+    private static final CGlobalData<ffi_type> ffi_type_uint32 = CGlobalDataFactory.forSymbol("ffi_type_uint32");
+    private static final CGlobalData<ffi_type> ffi_type_sint32 = CGlobalDataFactory.forSymbol("ffi_type_sint32");
+    private static final CGlobalData<ffi_type> ffi_type_uint64 = CGlobalDataFactory.forSymbol("ffi_type_uint64");
+    private static final CGlobalData<ffi_type> ffi_type_sint64 = CGlobalDataFactory.forSymbol("ffi_type_sint64");
+    private static final CGlobalData<ffi_type> ffi_type_float = CGlobalDataFactory.forSymbol("ffi_type_float");
+    private static final CGlobalData<ffi_type> ffi_type_double = CGlobalDataFactory.forSymbol("ffi_type_double");
+    // Checkstyle: resume
+
     interface InitializeNativeSimpleTypeCallback extends CFunctionPointer {
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
-    static void initializeNativeSimpleType(@SuppressWarnings("unused") IsolateThread thread, NativeTruffleContext ctx, CCharPointer typeName, ffi_type ffiType) {
-        NativeSimpleType simpleType = NativeSimpleType.valueOf(CTypeConversion.toJavaString(typeName));
+    private static void initializeNativeSimpleType(Target_com_oracle_truffle_nfi_impl_NFIContext context, NativeSimpleType simpleType, ffi_type ffiType) {
         int size = (int) ffiType.size().rawValue();
         int alignment = ffiType.alignment();
-
-        TruffleNFISupport support = ImageSingletons.lookup(TruffleNFISupport.class);
-        Target_com_oracle_truffle_nfi_impl_NFIContext context = support.resolveContextHandle(ctx.contextHandle());
         context.initializeSimpleType(simpleType, size, alignment, ffiType.rawValue());
     }
 
-    static final CEntryPointLiteral<InitializeNativeSimpleTypeCallback> INITIALIZE_NATIVE_SIMPLE_TYPE = CEntryPointLiteral.create(NFIInitialization.class, "initializeNativeSimpleType",
-                    IsolateThread.class, NativeTruffleContext.class, CCharPointer.class, ffi_type.class);
+    static void initializeSimpleTypes(Target_com_oracle_truffle_nfi_impl_NFIContext context) {
+        // it's important to initialize POINTER first, since the primitive array types depend on it
+        initializeNativeSimpleType(context, NativeSimpleType.POINTER, ffi_type_pointer.get());
 
-    @CFunction("svm_libffi_initialize")
-    private static native void svmLibFFIInitialize(IsolateThread thread, NativeTruffleContext ctx, InitializeNativeSimpleTypeCallback callback);
+        initializeNativeSimpleType(context, NativeSimpleType.VOID, ffi_type_void.get());
+        initializeNativeSimpleType(context, NativeSimpleType.UINT8, ffi_type_uint8.get());
+        initializeNativeSimpleType(context, NativeSimpleType.SINT8, ffi_type_sint8.get());
+        initializeNativeSimpleType(context, NativeSimpleType.UINT16, ffi_type_uint16.get());
+        initializeNativeSimpleType(context, NativeSimpleType.SINT16, ffi_type_sint16.get());
+        initializeNativeSimpleType(context, NativeSimpleType.UINT32, ffi_type_uint32.get());
+        initializeNativeSimpleType(context, NativeSimpleType.SINT32, ffi_type_sint32.get());
+        initializeNativeSimpleType(context, NativeSimpleType.UINT64, ffi_type_uint64.get());
+        initializeNativeSimpleType(context, NativeSimpleType.SINT64, ffi_type_sint64.get());
+        initializeNativeSimpleType(context, NativeSimpleType.FLOAT, ffi_type_float.get());
+        initializeNativeSimpleType(context, NativeSimpleType.DOUBLE, ffi_type_double.get());
 
-    public static void initializeContext(NativeTruffleContext ctx) {
+        initializeNativeSimpleType(context, NativeSimpleType.STRING, ffi_type_pointer.get());
+        initializeNativeSimpleType(context, NativeSimpleType.OBJECT, ffi_type_pointer.get());
+    }
+
+    static void initializeContext(NativeTruffleContext ctx) {
         ctx.nativeAPI().setGetTruffleContextFunction(NativeAPIImpl.GET_TRUFFLE_CONTEXT.getFunctionPointer());
         ctx.nativeAPI().setNewObjectRefFunction(NativeAPIImpl.NEW_OBJECT_REF.getFunctionPointer());
         ctx.nativeAPI().setReleaseObjectRefFunction(NativeAPIImpl.RELEASE_OBJECT_REF.getFunctionPointer());
@@ -80,11 +96,9 @@ public final class NFIInitialization {
 
         ctx.setFunctions(ctx.threadAPI());
         ctx.setIsolate(CEntryPointContext.getCurrentIsolate());
-
-        svmLibFFIInitialize(CEntryPointContext.getCurrentIsolateThread(), ctx, INITIALIZE_NATIVE_SIMPLE_TYPE.getFunctionPointer());
     }
 
-    public static void initializeEnv(NativeTruffleEnv env, NativeTruffleContext ctx) {
+    static void initializeEnv(NativeTruffleEnv env, NativeTruffleContext ctx) {
         env.setFunctions(ctx.nativeAPI());
         env.setContext(ctx);
         env.setIsolateThread(CEntryPointContext.getCurrentIsolateThread());
