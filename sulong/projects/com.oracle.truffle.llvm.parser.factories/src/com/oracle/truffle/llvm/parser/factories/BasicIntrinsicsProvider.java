@@ -123,6 +123,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleBinaryFactory
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleBinaryFactory.LLVMTruffleIsExecutableNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleBinaryFactory.LLVMTruffleIsNullNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleCannotBeHandleNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleDecorateFunctionNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleDerefHandleToManagedNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleExecuteNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleFreeCStringNodeGen;
@@ -494,6 +495,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
         add("@truffle_execute_b", (args, factory) -> LLVMTruffleExecuteNodeGen.create(factory.createForeignToLLVM(I1), argumentsArray(args, 2, args.size() - 2), args.get(1)));
 
         add("@truffle_address_to_function", (args, factory) -> LLVMTruffleAddressToFunctionNodeGen.create(args.get(1)));
+        add("@truffle_decorate_function", (args, factory) -> LLVMTruffleDecorateFunctionNodeGen.create(args.get(1), args.get(2)));
         add("@polyglot_can_execute", "@truffle_is_executable", (args, factory) -> LLVMTruffleIsExecutableNodeGen.create(args.get(1)));
         add("@polyglot_can_instantiate", (args, factory) -> LLVMPolyglotCanInstantiateNodeGen.create(args.get(1)));
         add("@polyglot_is_null", "@truffle_is_null", (args, factory) -> LLVMTruffleIsNullNodeGen.create(args.get(1)));

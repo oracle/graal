@@ -54,6 +54,9 @@ void *truffle_assign_managed(void *dst, void *managed);
 void *truffle_deref_handle_for_managed(void *managed);
 bool truffle_cannot_be_handle(void *nativeHandle);
 
+// wrapping functions
+void *truffle_decorate_function(void *function, void *wrapper);
+
 /*
  * All function below here are deprecated and will be removed in a future release.
  * Use the equivalent functions from <polyglot.h> instead.
