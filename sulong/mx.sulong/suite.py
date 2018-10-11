@@ -286,6 +286,7 @@ suite = {
       "vpath" : True,
       "results" : [
         "bin/libsulong.bc",
+        "bin/libsulong++.bc",
         "bin/libsulong-src.tar.gz",
       ],
       "headers" : [
@@ -649,6 +650,7 @@ suite = {
       "layout" : {
         "./" : [
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong.bc",
+          "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong++.bc",
           "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/include/*"
           ]
