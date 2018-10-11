@@ -752,7 +752,9 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
                     }
                 }
             }
-
+            if (logHandler != null) {
+                logHandler.close();
+            }
             ENGINES.remove(this);
             closed = true;
         }

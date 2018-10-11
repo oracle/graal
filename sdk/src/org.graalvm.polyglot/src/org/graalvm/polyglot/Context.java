@@ -994,7 +994,9 @@ public final class Context implements AutoCloseable {
          * If the {@code logHandler} is not set on {@link Engine} nor on {@link Context} the log
          * messages are printed to {@link #err(java.io.OutputStream) Context's error output stream}.
          *
-         * @param logHandler the {@link Handler} to use for logging in built {@link Context}.
+         * @param logHandler the {@link Handler} to use for logging in built {@link Context}. The
+         *            passed {@code logHandler} is closed when the context is {@link Context#close()
+         *            closed}.
          * @return the {@link Builder}
          * @since 1.0
          */
@@ -1025,7 +1027,9 @@ public final class Context implements AutoCloseable {
          * messages are printed to {@link #out(java.io.OutputStream) Context's standard output
          * stream}.
          *
-         * @param logOut the {@link OutputStream} to use for logging in built {@link Context}.
+         * @param logOut the {@link OutputStream} to use for logging in built {@link Context}. The
+         *            passed {@code logOut} stream is closed when the context is
+         *            {@link Context#close() closed}.
          * @return the {@link Builder}
          * @since 1.0
          */

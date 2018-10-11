@@ -435,6 +435,8 @@ public final class Engine implements AutoCloseable {
          * {@code JavaScriptLanguage} class.<br>
          *
          * @param logHandler the {@link Handler} to use for logging in engine's {@link Context}s.
+         *            The passed {@code logHandler} is closed when the engine is
+         *            {@link Engine#close() closed}.
          * @return the {@link Builder}
          * @since 1.0
          */
@@ -462,6 +464,8 @@ public final class Engine implements AutoCloseable {
          * {@code JavaScriptLanguage} class.<br>
          *
          * @param logOut the {@link OutputStream} to use for logging in engine's {@link Context}s.
+         *            The passed {@code logOut} stream is closed when the engine is
+         *            {@link Engine#close() closed}.
          * @return the {@link Builder}
          * @since 1.0
          */

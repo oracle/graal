@@ -73,6 +73,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
+import org.graalvm.polyglot.Engine;
 
 public class LoggingTest {
 
@@ -432,29 +433,9 @@ public class LoggingTest {
     }
 
     @Test
-    public void testPolyglotLogHandler() throws IOException {
-        AbstractLoggingLanguage.action = new BiPredicate<LoggingContext, Collection<TruffleLogger>>() {
-            @Override
-            public boolean test(final LoggingContext context, final Collection<TruffleLogger> loggers) {
-                TruffleLogger.getLogger(LoggingLanguageFirst.ID).warning(LoggingLanguageFirst.ID);
-                TruffleLogger.getLogger(LoggingLanguageFirst.ID, "a").warning(LoggingLanguageFirst.ID + "::a");
-                return false;
-            }
-        };
-        final ByteArrayOutputStream err = new ByteArrayOutputStream();
-        try (Context ctx = Context.newBuilder().err(err).build()) {
-            ctx.eval(LoggingLanguageFirst.ID, "");
-        }
-        err.close();
-        final String output = new String(err.toByteArray());
-        final Pattern p = Pattern.compile("\\[(.*)\\]\\sWARNING:\\s(.*)");
-        for (String line : output.split("\n")) {
-            final Matcher m = p.matcher(line);
-            Assert.assertTrue(m.matches());
-            final String loggerName = m.group(1);
-            final String message = m.group(2);
-            Assert.assertEquals(message, loggerName);
-        }
+    public void testPolyglotLogHandler() {
+        CloseableByteArrayOutputStream err = new CloseableByteArrayOutputStream();
+        testLogToStream(Context.newBuilder().err(err), err, false);
     }
 
     @Test
@@ -498,6 +479,47 @@ public class LoggingTest {
         expected = new ArrayList<>();
         expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, Level.FINE, Collections.emptyMap()));
         Assert.assertEquals(expected, contextHandler.getLog());
+    }
+
+    @Test
+    public void testLogToStream() {
+        CloseableByteArrayOutputStream stream = new CloseableByteArrayOutputStream();
+        testLogToStream(Context.newBuilder().logHandler(stream), stream, true);
+        stream = new CloseableByteArrayOutputStream();
+        try (Engine engine = Engine.newBuilder().logHandler(stream).build()) {
+            testLogToStream(Context.newBuilder().engine(engine), stream, false);
+            stream.clear();
+            CloseableByteArrayOutputStream innerStream = new CloseableByteArrayOutputStream();
+            testLogToStream(Context.newBuilder().engine(engine).logHandler(innerStream), innerStream, true);
+            Assert.assertFalse(stream.isClosed());
+            Assert.assertEquals(0, stream.toByteArray().length);
+            testLogToStream(Context.newBuilder().engine(engine), stream, false);
+        }
+        Assert.assertTrue(stream.isClosed());
+    }
+
+    private static void testLogToStream(Context.Builder contextBuilder, CloseableByteArrayOutputStream stream, boolean expectStreamClosed) {
+        AbstractLoggingLanguage.action = new BiPredicate<LoggingContext, Collection<TruffleLogger>>() {
+            @Override
+            public boolean test(final LoggingContext context, final Collection<TruffleLogger> loggers) {
+                TruffleLogger.getLogger(LoggingLanguageFirst.ID).warning(LoggingLanguageFirst.ID);
+                TruffleLogger.getLogger(LoggingLanguageFirst.ID, "package.class").warning(LoggingLanguageFirst.ID + "::package.class");
+                return false;
+            }
+        };
+        try (Context ctx = contextBuilder.build()) {
+            ctx.eval(LoggingLanguageFirst.ID, "");
+        }
+        Assert.assertEquals(expectStreamClosed, stream.isClosed());
+        final String output = new String(stream.toByteArray());
+        final Pattern p = Pattern.compile("\\[(.*)\\]\\sWARNING:\\s(.*)");
+        for (String line : output.split("\n")) {
+            final Matcher m = p.matcher(line);
+            Assert.assertTrue(m.matches());
+            final String loggerName = m.group(1);
+            final String message = m.group(2);
+            Assert.assertEquals(message, loggerName);
+        }
     }
 
     private static void assertImmutable(final LogRecord r) {
@@ -853,6 +875,24 @@ public class LoggingTest {
 
         void clear() {
             logRecords.clear();
+        }
+    }
+
+    private static final class CloseableByteArrayOutputStream extends ByteArrayOutputStream {
+        private boolean closed;
+
+        @Override
+        public void close() throws IOException {
+            closed = true;
+            super.close();
+        }
+
+        boolean isClosed() {
+            return closed;
+        }
+
+        void clear() {
+            this.count = 0;
         }
     }
 }
