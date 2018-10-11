@@ -45,6 +45,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.LogHandler;
@@ -60,7 +61,7 @@ import org.graalvm.word.WordFactory;
  * <p>
  * An execution context must be passed as a parameter and can be either an {@link IsolateThread}
  * that is specific to the current thread, or an {@link Isolate} for an isolate in which the current
- * thread is attached. These pointers can be obtained via the methods of {@link CEntryPointContext}.
+ * thread is attached. These pointers can be obtained via the methods of {@link CurrentIsolate}.
  * When there is more than one parameter of these types, exactly one of the parameters must be
  * annotated with {@link IsolateThreadContext} for {@link IsolateThread}, or {@link IsolateContext}
  * for {@link Isolate}.

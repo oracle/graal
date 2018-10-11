@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,43 +38,24 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.nativeimage.c.function;
+package org.graalvm.nativeimage.impl;
 
-import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.Isolates.CreateIsolateParameters;
+import org.graalvm.nativeimage.Isolates.IsolateException;
 
-/**
- * Utility methods that provide access to the current isolate.
- *
- * @deprecated Replaced by {@link CurrentIsolate}.
- * @since 1.0
- */
-@Deprecated
-public final class CEntryPointContext {
+public interface IsolateSupport {
 
-    /**
-     * Returns the current isolate.
-     *
-     * @deprecated Replaced by {@link CurrentIsolate#getIsolate()}.
-     * @since 1.0
-     */
-    @Deprecated
-    public static Isolate getCurrentIsolate() {
-        return CurrentIsolate.getIsolate();
-    }
+    IsolateThread createIsolate(CreateIsolateParameters parameters) throws IsolateException;
 
-    /**
-     * Returns the current thread in the current isolate.
-     *
-     * @deprecated Replaced by {@link CurrentIsolate#getCurrentThread()}.
-     * @since 1.0
-     */
-    @Deprecated
-    public static IsolateThread getCurrentIsolateThread() {
-        return CurrentIsolate.getCurrentThread();
-    }
+    IsolateThread attachCurrentThread(Isolate isolate) throws IsolateException;
 
-    private CEntryPointContext() {
-    }
+    IsolateThread getCurrentThread(Isolate isolate) throws IsolateException;
+
+    Isolate getIsolate(IsolateThread thread) throws IsolateException;
+
+    void detachThread(IsolateThread thread) throws IsolateException;
+
+    void tearDownIsolate(IsolateThread thread) throws IsolateException;
 }

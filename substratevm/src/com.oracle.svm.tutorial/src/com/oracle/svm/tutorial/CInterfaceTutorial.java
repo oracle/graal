@@ -25,10 +25,10 @@
 package com.oracle.svm.tutorial;
 
 import java.util.Collections;
-
 import java.util.Date;
 import java.util.List;
 
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.ObjectHandles;
@@ -39,7 +39,6 @@ import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.nativeimage.c.constant.CEnumLookup;
 import org.graalvm.nativeimage.c.constant.CEnumValue;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
-import org.graalvm.nativeimage.c.function.CEntryPointContext;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
@@ -181,7 +180,7 @@ public class CInterfaceTutorial {
         }
         System.out.format("\n");
 
-        IsolateThread currentThread = CEntryPointContext.getCurrentIsolateThread();
+        IsolateThread currentThread = CurrentIsolate.getCurrentThread();
         /* Call a C function directly. */
         printingInC(currentThread, data.getCString());
         /* Call a C function indirectly via function pointer. */

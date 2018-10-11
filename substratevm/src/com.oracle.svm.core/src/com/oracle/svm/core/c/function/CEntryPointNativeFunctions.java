@@ -26,10 +26,10 @@ package com.oracle.svm.core.c.function;
 
 import java.util.function.Function;
 
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
-import org.graalvm.nativeimage.c.function.CEntryPointContext;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
@@ -45,11 +45,15 @@ public final class CEntryPointNativeFunctions {
 
     @CPointerTo(Isolate.class)
     interface IsolatePointer extends PointerBase {
+        Isolate read();
+
         void write(Isolate isolate);
     }
 
     @CPointerTo(IsolateThread.class)
     interface IsolateThreadPointer extends PointerBase {
+        IsolateThread read();
+
         void write(IsolateThread isolate);
     }
 
@@ -72,7 +76,7 @@ public final class CEntryPointNativeFunctions {
     public static int createIsolate(CEntryPointCreateIsolateParameters params, IsolatePointer isolate) {
         int result = CEntryPointActions.enterCreateIsolate(params);
         if (result == 0) {
-            isolate.write(CEntryPointContext.getCurrentIsolate());
+            isolate.write(CurrentIsolate.getIsolate());
             result = CEntryPointActions.leave();
         }
         return result;
@@ -89,7 +93,7 @@ public final class CEntryPointNativeFunctions {
     public static int attachThread(Isolate isolate, IsolateThreadPointer thread) {
         int result = CEntryPointActions.enterAttachThread(isolate);
         if (result == 0) {
-            thread.write(CEntryPointContext.getCurrentIsolateThread());
+            thread.write(CurrentIsolate.getCurrentThread());
             result = CEntryPointActions.leave();
         }
         return result;
@@ -106,7 +110,7 @@ public final class CEntryPointNativeFunctions {
         if (result != 0) {
             return WordFactory.nullPointer();
         }
-        IsolateThread thread = CEntryPointContext.getCurrentIsolateThread();
+        IsolateThread thread = CurrentIsolate.getCurrentThread();
         if (CEntryPointActions.leave() != 0) {
             thread = WordFactory.nullPointer();
         }
@@ -119,12 +123,12 @@ public final class CEntryPointNativeFunctions {
                     "isolate it belongs and returns the address of its isolate structure.  If an",
                     "error occurs, returns NULL instead."})
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, nameTransformation = NameTransformation.class)
-    public static Isolate getCurrentIsolate(IsolateThread thread) {
+    public static Isolate getCurrentThreadIsolate(IsolateThread thread) {
         int result = CEntryPointActions.enter(thread);
         if (result != 0) {
             return WordFactory.nullPointer();
         }
-        Isolate isolate = CEntryPointContext.getCurrentIsolate();
+        Isolate isolate = CurrentIsolate.getIsolate();
         if (CEntryPointActions.leave() != 0) {
             isolate = WordFactory.nullPointer();
         }

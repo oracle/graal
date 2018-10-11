@@ -28,11 +28,11 @@ import java.util.concurrent.TimeUnit;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Threading.RecurringCallback;
 import org.graalvm.nativeimage.Threading.RecurringCallbackAccess;
-import org.graalvm.nativeimage.c.function.CEntryPointContext;
 import org.graalvm.nativeimage.impl.ThreadingSupport;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -207,7 +207,7 @@ public class ThreadingSupportImpl implements ThreadingSupport {
             assert !isRecurringCallbackPaused();
             if (isPending) {
                 long callbackTime = System.nanoTime();
-                int callbackValue = Safepoint.getSafepointRequested(CEntryPointContext.getCurrentIsolateThread());
+                int callbackValue = Safepoint.getSafepointRequested(CurrentIsolate.getCurrentThread());
                 try {
                     evaluate(callbackTime, callbackValue);
                 } catch (SafepointException e) {

@@ -47,6 +47,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
@@ -54,7 +55,6 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.ObjectHandles;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
-import org.graalvm.nativeimage.c.function.CEntryPointContext;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.PointerBase;
@@ -256,7 +256,7 @@ public abstract class JavaThreads {
      */
     public boolean assignJavaThread(String name, ThreadGroup group, boolean asDaemon) {
         final Thread thread = JavaThreads.fromTarget(new Target_java_lang_Thread(name, group, asDaemon));
-        return assignJavaThread(CEntryPointContext.getCurrentIsolateThread(), thread, true);
+        return assignJavaThread(CurrentIsolate.getCurrentThread(), thread, true);
     }
 
     /**
@@ -270,7 +270,7 @@ public abstract class JavaThreads {
      * @return true if successful; false if a {@link Thread} object has already been assigned.
      */
     public boolean assignJavaThread(Thread thread, boolean manuallyStarted) {
-        return assignJavaThread(CEntryPointContext.getCurrentIsolateThread(), thread, manuallyStarted);
+        return assignJavaThread(CurrentIsolate.getCurrentThread(), thread, manuallyStarted);
     }
 
     private static boolean assignJavaThread(IsolateThread isolateThread, Thread thread, boolean manuallyStarted) {
@@ -281,7 +281,7 @@ public abstract class JavaThreads {
         toTarget(group).addUnstarted();
         toTarget(group).add(thread);
         if (!thread.isDaemon() && manuallyStarted) {
-            assert isolateThread.equal(CEntryPointContext.getCurrentIsolateThread()) : "Non-daemon threads must call this method themselves, or they can detach incompletely in a race";
+            assert isolateThread.equal(CurrentIsolate.getCurrentThread()) : "Non-daemon threads must call this method themselves, or they can detach incompletely in a race";
             singleton().nonDaemonThreads.incrementAndGet();
         }
         return true;
@@ -442,7 +442,7 @@ public abstract class JavaThreads {
     }
 
     protected static void prepareStartData(Thread thread, ThreadStartData startData) {
-        startData.setIsolate(CEntryPointContext.getCurrentIsolate());
+        startData.setIsolate(CurrentIsolate.getIsolate());
         startData.setThreadHandle(ObjectHandles.getGlobal().create(thread));
 
         if (!thread.isDaemon()) {
@@ -549,7 +549,7 @@ public abstract class JavaThreads {
     }
 
     private static StackTraceElement[] getStackTrace(IsolateThread thread) {
-        if (thread == CEntryPointContext.getCurrentIsolateThread()) {
+        if (thread == CurrentIsolate.getCurrentThread()) {
             /*
              * Internal frames from the VMOperation handling show up in the stack traces, but we are
              * OK with that.
@@ -752,7 +752,7 @@ final class Target_java_lang_Thread {
         if (!SubstrateOptions.MultiThreaded.getValue()) {
             return JavaThreads.singleton().singleThread;
         }
-        IsolateThread vmThread = CEntryPointContext.getCurrentIsolateThread();
+        IsolateThread vmThread = CurrentIsolate.getCurrentThread();
         return JavaThreads.singleton().createIfNotExisting(vmThread);
     }
 
@@ -1193,7 +1193,7 @@ class ThreadListOperation extends VMOperation {
     public void operate() {
         final Log trace = Log.noopLog().string("[ThreadListOperation.operate:")
                         .string("  queuingVMThread: ").hex(getQueuingVMThread())
-                        .string("  currentVMThread: ").hex(CEntryPointContext.getCurrentIsolateThread())
+                        .string("  currentVMThread: ").hex(CurrentIsolate.getCurrentThread())
                         .flush();
         list.clear();
         for (IsolateThread isolateThread = VMThreads.firstThread(); VMThreads.isNonNullThread(isolateThread); isolateThread = VMThreads.nextThread(isolateThread)) {

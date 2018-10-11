@@ -29,9 +29,9 @@ import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_END;
 import static org.graalvm.word.WordFactory.nullPointer;
 
 import org.graalvm.compiler.word.Word;
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.c.function.CEntryPointContext;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
@@ -117,7 +117,7 @@ public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
 
         tearDownVirtualMemoryConsumers();
 
-        PointerBase heapBase = Isolates.getHeapBase(CEntryPointContext.getCurrentIsolate());
+        PointerBase heapBase = Isolates.getHeapBase(CurrentIsolate.getIsolate());
         Word size = Isolates.IMAGE_HEAP_END.get().subtract(Isolates.IMAGE_HEAP_BEGIN.get());
         if (VirtualMemoryProvider.get().free(heapBase, size) != 0) {
             return CEntryPointErrors.MAP_HEAP_FAILED;
