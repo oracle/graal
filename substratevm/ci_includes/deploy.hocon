@@ -1,9 +1,8 @@
 
 maven-deploy-all-suites : ${svm-common-linux-gate} {
-  mx_cmd_args : ["maven-deploy", "--all-distribution-types", "--validate", "full", "--licenses", "GPLv2-CPE,UPL", "--dry-run", "ossrh", "https://this-is-only-a-test"]
   run: [
     ["mx", "--dynamicimports", "/tools,/regex", "build"]
-    ["mx", "--dynamicimports", "/tools,/regex"] ${maven-deploy-all-suites.mx_cmd_args}
+    ["mx", "--dynamicimports", "/tools,/regex", "maven-deploy", "--all-suites", "--all-distribution-types", "--validate", "full", "--licenses", "GPLv2-CPE,UPL", "--dry-run", "ossrh", "https://this-is-only-a-test"]
   ]
   targets : [gate]
 }
