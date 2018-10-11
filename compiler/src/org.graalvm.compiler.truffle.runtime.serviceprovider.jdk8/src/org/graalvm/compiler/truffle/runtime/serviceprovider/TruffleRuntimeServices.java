@@ -25,24 +25,20 @@
 package org.graalvm.compiler.truffle.runtime.serviceprovider;
 
 import jdk.vm.ci.services.JVMCIPermission;
+import jdk.vm.ci.services.Services;
 
 /**
- * A subset of the methods defined in {@code org.graalvm.compiler.serviceprovider.GraalServices}.
+ * JDK 8 version of {@link TruffleRuntimeServices}.
  */
 public final class TruffleRuntimeServices {
-
-    private static InternalError shouldNotReachHere() {
-        throw new InternalError("JDK specific overlay missing");
-    }
-
     /**
      * Gets an {@link Iterable} of the providers available for a given service.
      *
      * @param service the service whose provider is being requested
-     * @throws SecurityException if on JDK8 and a security manager is present and it denies
+     * @throws SecurityException if a security manager is present and it denies
      *             {@link JVMCIPermission}
      */
     public static <S> Iterable<S> load(Class<S> service) {
-        throw shouldNotReachHere();
+        return Services.load(service);
     }
 }

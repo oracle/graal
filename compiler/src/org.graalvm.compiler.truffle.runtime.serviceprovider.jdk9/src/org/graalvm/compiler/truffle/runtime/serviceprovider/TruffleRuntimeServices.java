@@ -24,45 +24,16 @@
  */
 package org.graalvm.compiler.truffle.runtime.serviceprovider;
 
-import java.util.Iterator;
-import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 
+/**
+ * JDK 9+ version of {@link TruffleRuntimeServices}.
+ */
 public final class TruffleRuntimeServices {
     /**
      * Gets an {@link Iterable} of the providers available for a given service.
      */
     public static <S> Iterable<S> load(Class<S> service) {
         return ServiceLoader.load(service);
-    }
-
-    /**
-     * Gets the provider for a given service for which at most one provider must be available.
-     *
-     * @param service the service whose provider is being requested
-     * @param required specifies if an {@link InternalError} should be thrown if no provider of
-     *            {@code service} is available
-     * @return the requested provider if available else {@code null}
-     */
-    public static <S> S loadSingle(Class<S> service, boolean required) {
-        Iterable<S> providers = load(service);
-        S singleProvider = null;
-        try {
-            for (Iterator<S> it = providers.iterator(); it.hasNext();) {
-                singleProvider = it.next();
-                if (it.hasNext()) {
-                    S other = it.next();
-                    throw new InternalError(String.format("Multiple %s providers found: %s, %s", service.getName(), singleProvider.getClass().getName(), other.getClass().getName()));
-                }
-            }
-        } catch (ServiceConfigurationError e) {
-            // If the service is required we will bail out below.
-        }
-        if (singleProvider == null) {
-            if (required) {
-                throw new InternalError(String.format("No provider for %s found", service.getName()));
-            }
-        }
-        return singleProvider;
     }
 }
