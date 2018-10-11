@@ -101,6 +101,11 @@ public class YoungGeneration extends Generation {
     }
 
     @Override
+    protected boolean isValidSpace(Space thatSpace) {
+        return isYoungSpace(thatSpace);
+    }
+
+    @Override
     protected boolean verify(final HeapVerifierImpl.Occasion occasion) {
         // The young "generation" consists of just one space.
         boolean result = true;
