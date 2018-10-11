@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
+import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.llvm.nodes.asm.syscall.LLVMAMD64Syscall;
 import com.oracle.truffle.llvm.nodes.asm.syscall.LLVMAMD64SyscallAcceptNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.syscall.LLVMAMD64SyscallAccessNodeGen;
@@ -98,14 +99,26 @@ import com.oracle.truffle.llvm.nodes.asm.syscall.LLVMAMD64SyscallWritevNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.syscall.LLVMAMD64UnknownSyscallNode;
 import com.oracle.truffle.llvm.runtime.SystemContextExtension;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
+import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 
 public class BasicSystemContextExtension extends SystemContextExtension {
 
     protected static final String LIBSULONG_FILENAME = "libsulong.bc";
+    protected static final String LIBSULONGXX_FILENAME = "libsulong++.bc";
+
+    private final boolean loadCxxLibraries;
+
+    public BasicSystemContextExtension(Env env) {
+        this.loadCxxLibraries = env.getOptions().get(SulongEngineOption.LOAD_CXX_LIBRARIES);
+    }
 
     @Override
     public String[] getSulongDefaultLibraries() {
-        return new String[]{LIBSULONG_FILENAME};
+        if (loadCxxLibraries) {
+            return new String[]{LIBSULONG_FILENAME, LIBSULONGXX_FILENAME};
+        } else {
+            return new String[]{LIBSULONG_FILENAME};
+        }
     }
 
     @Override
