@@ -90,4 +90,12 @@ public final class CallbackTest extends BaseSulongOnlyHarness {
     public RunConfiguration getConfiguration() {
         return configuration;
     }
+
+    @Override
+    protected Map<String, String> getContextOptions() {
+        Map<String, String> map = new HashMap<>();
+        String lib = System.getProperty("test.sulongtest.lib");
+        map.put("llvm.libraries", lib);
+        return map;
+    }
 }

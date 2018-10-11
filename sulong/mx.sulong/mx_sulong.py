@@ -42,7 +42,6 @@ import mx_benchmark
 import mx_sulong_benchmarks
 import mx_buildtools
 
-from mx_unittest import add_config_participant
 from mx_gate import Task, add_gate_runner
 
 import mx_testsuites
@@ -106,14 +105,6 @@ clangFormatVersions = [
     '3.9',
     '4.0',
 ]
-
-def _unittest_config_participant(config):
-    (vmArgs, mainClass, mainClassArgs) = config
-    libs = [mx_subst.path_substitutions.substitute('<path:SULONG_TEST_NATIVE>/<lib:sulongtest>')]
-    vmArgs = getCommonOptions(True, libs) + vmArgs
-    return (vmArgs, mainClass, mainClassArgs)
-
-add_config_participant(_unittest_config_participant)
 
 
 # Temporary set environment variables. By default LC_ALL, LANGUAGE, and LANG are set.
@@ -240,16 +231,18 @@ def _test_llvm_image(args):
 # routine for AOT downstream tests
 def runLLVMUnittests(unittest_runner):
     """runs the interop unit tests with a different unittest runner (e.g. AOT-based)"""
-    langhome = mx_subst.path_substitutions.substitute('-Dllvm.home=<path:SULONG_LIBS>')
     libpath = mx_subst.path_substitutions.substitute('-Dpolyglot.llvm.libraryPath=<path:SULONG_TEST_NATIVE>')
     libs = mx_subst.path_substitutions.substitute('-Dpolyglot.llvm.libraries=<lib:sulongtest>')
+
+    test_harness_dist = mx.distribution('SULONG_TEST')
+    java_run_props = [x for x in mx.get_runtime_jvm_args(test_harness_dist) if x.startswith('-D')]
+
     test_suite = 'SULONG_TEST_SUITES'
-    unittestArgs = [
-        mx_subst.path_substitutions.substitute("-Dsulongtest.testSuitePath=<path:SULONG_TEST_SUITES>"),
-        ]
     mx_testsuites.compileTestSuite(test_suite, extra_build_args=[])
-    unittest_runner(unittest_args=['com.oracle.truffle.llvm.test.interop'], run_args=[langhome, libpath, libs] + unittestArgs,
-                    build_args=unittestArgs + (unittest_runner.keywords['build_args'] if 'build_args' in unittest_runner.keywords else []))
+
+    run_args = [libpath, libs] + java_run_props
+    build_args = unittest_runner.keywords.get('build_args', []) + java_run_props
+    unittest_runner(unittest_args=['com.oracle.truffle.llvm.test.interop'], run_args=run_args, build_args=build_args)
 
 
 def clangformatcheck(args=None):

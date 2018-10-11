@@ -44,6 +44,7 @@ import com.oracle.truffle.llvm.test.interop.values.BoxedTestValue;
 import com.oracle.truffle.llvm.test.options.TestOptions;
 import java.io.File;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -983,7 +984,7 @@ public class LLVMInteropTest {
 
     @Test
     public void test076() {
-        try (Runner runner = new Runner("interop076")) {
+        try (Runner runner = new Runner("interop076", getSulongTestLibContextOptions())) {
             Assert.assertEquals(0, runner.run());
         }
     }
@@ -1145,7 +1146,7 @@ public class LLVMInteropTest {
 
     @Test
     public void testHandleFromNativeCallback() throws Exception {
-        try (Runner runner = new Runner("handleFromNativeCallback")) {
+        try (Runner runner = new Runner("handleFromNativeCallback", getSulongTestLibContextOptions())) {
             runner.run();
             Value testHandleFromNativeCallback = runner.findGlobalSymbol("testHandleFromNativeCallback");
             Value ret = testHandleFromNativeCallback.execute(ProxyObject.fromMap(makeObjectA()));
@@ -1173,7 +1174,7 @@ public class LLVMInteropTest {
 
     @Test
     public void testPointerThroughNativeCallback() throws Exception {
-        try (Runner runner = new Runner("pointerThroughNativeCallback")) {
+        try (Runner runner = new Runner("pointerThroughNativeCallback", getSulongTestLibContextOptions())) {
             int result = runner.run();
             Assert.assertEquals(42, result);
         }
@@ -1375,6 +1376,13 @@ public class LLVMInteropTest {
         return values;
     }
 
+    protected Map<String, String> getSulongTestLibContextOptions() {
+        Map<String, String> map = new HashMap<>();
+        String lib = System.getProperty("test.sulongtest.lib");
+        map.put("llvm.libraries", lib);
+        return map;
+    }
+
     public static final class ClassC {
         public boolean valueBool = true;
         public byte valueB = 1;
@@ -1440,8 +1448,12 @@ public class LLVMInteropTest {
         private Value library;
 
         Runner(String testName) {
+            this(testName, Collections.emptyMap());
+        }
+
+        Runner(String testName, Map<String, String> options) {
             this.testName = testName;
-            this.context = Context.newBuilder().allowAllAccess(true).build();
+            this.context = Context.newBuilder().options(options).allowAllAccess(true).build();
             this.library = null;
         }
 
