@@ -581,7 +581,7 @@ def svm_gate_body(args, tasks):
 
     with Task('maven plugin checks', tasks, tags=[GraalTags.maven]) as t:
         if t:
-            maven_plugin_install([])
+            maven_plugin_install(["--deploy-dependencies"])
 
 
 def javac_image_command(javac_path):
@@ -772,7 +772,7 @@ def native_image_context_run(func, func_args=None):
     with native_image_context() as native_image:
         func(native_image, func_args)
 
-def deploy_native_image_maven_plugin(svmVersion, action='install'):
+def deploy_native_image_maven_plugin(svmVersion, repo, gpg, keyid):
     # Create native-image-maven-plugin pom with correct version info from template
     proj_dir = join(suite.dir, 'src', 'native-image-maven-plugin')
     dom = parse(join(proj_dir, 'pom_template.xml'))
@@ -780,21 +780,71 @@ def deploy_native_image_maven_plugin(svmVersion, action='install'):
         svmVersionElement.parentNode.replaceChild(dom.createTextNode(svmVersion), svmVersionElement)
     with open(join(proj_dir, 'pom.xml'), 'wb') as pom_file:
         dom.writexml(pom_file)
-    # Build and install native-image-maven-plugin into local repository
-    mx.run_maven([action], cwd=proj_dir)
+
+    maven_args = []
+    if keyid:
+        maven_args += ['-Dgpg.keyname=' + keyid]
+    elif not gpg:
+        maven_args += ['-Dgpg.skip=true']
+    if repo == mx.maven_local_repository():
+        maven_args += ['install']
+    else:
+        maven_args += [
+            '-DaltDeploymentRepository={}::default::{}'.format(repo.name, repo.get_url(svmVersion)),
+            'deploy'
+        ]
+    mx.run_maven(maven_args, cwd=proj_dir)
+
 
 def maven_plugin_install(args):
-    # First install native-image-maven-plugin dependencies into local maven repository
-    svmVersion = suite.release_version(snapshotSuffix='SNAPSHOT')
-    mx.maven_deploy([
-        '--suppress-javadoc',
-        '--all-distribution-types',
-        '--validate=full',
-        '--all-suites',
-        '--skip-existing',
-    ])
+    parser = ArgumentParser(prog='mx maven-plugin-install')
+    parser.add_argument("--deploy-dependencies", action='store_true', help="This will deploy all the artifacts from all suites before building and deploying the plugin")
+    parser.add_argument('--licenses', help='Comma-separated list of licenses that are cleared for upload. Only used if no url is given. Otherwise licenses are looked up in suite.py')
+    parser.add_argument('--gpg', action='store_true', help='Sign files with gpg before deploying')
+    parser.add_argument('--gpg-keyid', help='GPG keyid to use when signing files (implies --gpg)', default=None)
+    parser.add_argument('repository_id', metavar='repository-id', nargs='?', action='store', help='Repository ID used for binary deploy. If none is given, mavens local repository is used instead.')
+    parser.add_argument('url', metavar='repository-url', nargs='?', action='store', help='Repository URL used for binary deploy. If no url is given, the repository-id is looked up in suite.py')
+    parsed = parser.parse_args(args)
 
-    deploy_native_image_maven_plugin(svmVersion)
+    if not suite.isSourceSuite():
+        raise mx.abort("maven-plugin-install requires {} to be a source suite, no a binary suite".format(suite.name))
+
+    if parsed.url:
+        if parsed.licenses:
+            licenses = mx.get_license(parsed.licenses.split(','))
+        elif parsed.repository_id:
+            licenses = mx.repository(parsed.repository_id).licenses
+        else:
+            licenses = []
+        repo = mx.Repository(suite, parsed.repository_id, parsed.url, parsed.url, licenses)
+    elif parsed.repository_id:
+        repo = mx.repository(parsed.repository_id)
+    else:
+        repo = mx.maven_local_repository()
+
+    svmVersion = suite.release_version(snapshotSuffix='SNAPSHOT')
+
+    if parsed.deploy_dependencies:
+        deploy_args = [
+            '--suppress-javadoc',
+            '--all-distribution-types',
+            '--validate=full',
+            '--all-suites',
+            '--skip-existing'
+        ]
+        if parsed.licenses:
+            deploy_args += ["--licenses", parsed.licenses]
+        if parsed.gpg:
+            deploy_args += ["--gpg"]
+        if parsed.gpg_keyid:
+            deploy_args += ["--gpg-keyid", parsed.gpg_keyid]
+        if parsed.repository_id:
+            deploy_args += [parsed.repository_id]
+            if parsed.url:
+                deploy_args += [parsed.url]
+        mx.maven_deploy(deploy_args)
+
+    deploy_native_image_maven_plugin(svmVersion, repo, parsed.gpg, parsed.gpg_keyid)
 
     success_message = [
         '',
