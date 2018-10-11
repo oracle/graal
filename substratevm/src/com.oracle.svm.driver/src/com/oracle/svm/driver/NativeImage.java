@@ -656,8 +656,13 @@ public class NativeImage {
                 Function<String, String> resolver = str -> {
                     Path resourceRoot = nativeImageMetaInfBase.getParent().getParent();
                     Path componentDirectory = resourceRoot.relativize(nativeImagePropertyFile).getParent();
-                    Path optionArgKey = componentDirectory.subpath(2, componentDirectory.getNameCount());
-                    return resolvePropertyValue(str, System.getProperty(optionArgKey.toString()), componentDirectory.toString());
+                    int nameCount = componentDirectory.getNameCount();
+                    String optionArg = null;
+                    if (nameCount > 2) {
+                        String optionArgKey = componentDirectory.subpath(2, nameCount).toString();
+                        optionArg = propertyFileSubstitutionValues.get(optionArgKey);
+                    }
+                    return resolvePropertyValue(str, optionArg, componentDirectory.toString());
                 };
                 showVerboseMessage(verbose, "Apply " + nativeImagePropertyFile.toUri());
                 processNativeImageProperties(loadProperties(Files.newInputStream(nativeImagePropertyFile)), resolver);
