@@ -2404,7 +2404,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
             protected Object executeImpl(Object receiver, Object[] args) {
                 String key = (String) args[1];
                 Object[] guestArguments = toGuestValues.apply(polyglot.languageContext, (Object[]) args[2]);
-                return toHostValue.execute(executeShared((TruffleObject) receiver, key, guestArguments));
+                return toHostValue.execute(executeShared(receiver, key, guestArguments));
             }
 
         }
@@ -2431,7 +2431,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
             @Override
             protected Object executeImpl(Object receiver, Object[] args) {
                 String key = (String) args[1];
-                return toHostValue.execute(executeShared((TruffleObject) receiver, key, ExecuteVoidNoArgsNode.NO_ARGS));
+                return toHostValue.execute(executeShared(receiver, key, ExecuteVoidNoArgsNode.NO_ARGS));
             }
 
         }
