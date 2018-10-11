@@ -40,6 +40,8 @@
  */
 package org.graalvm.nativeimage;
 
+import java.util.Objects;
+
 import org.graalvm.nativeimage.impl.IsolateSupport;
 import org.graalvm.word.UnsignedWord;
 
@@ -57,74 +59,97 @@ public final class Isolates {
      *
      * @since 1.0
      */
-    public static class IsolateException extends RuntimeException {
+    public static final class IsolateException extends RuntimeException {
         private static final long serialVersionUID = 1L;
 
+        /**
+         * Constructs a new exception with the specified detail message.
+         *
+         * @since 1.0
+         */
         public IsolateException(String message) {
             super(message);
         }
     }
 
     /**
-     * Builder for a {@link CreateIsolateParameters} instance.
-     *
-     * @since 1.0
-     */
-    public static class CreateIsolateParametersBuilder {
-        private UnsignedWord reservedSpaceSize;
-
-        /**
-         * Creates a new builder with default values.
-         *
-         * @since 1.0
-         */
-        CreateIsolateParametersBuilder() {
-        }
-
-        /**
-         * Sets the size in bytes for the reserved virtual address space of the new isolate.
-         *
-         * @since 1.0
-         */
-        public CreateIsolateParametersBuilder reservedSpaceSize(UnsignedWord size) {
-            this.reservedSpaceSize = size;
-            return this;
-        }
-
-        public CreateIsolateParameters toParameters() {
-            return new CreateIsolateParameters(reservedSpaceSize);
-        }
-    }
-
-    /**
      * Parameters for the creation of an isolate.
      *
-     * @see CreateIsolateParametersBuilder
+     * @see CreateIsolateParameters.Builder
      *
      * @since 1.0
      */
-    public static class CreateIsolateParameters {
-        private static final CreateIsolateParameters DEFAULT = new CreateIsolateParametersBuilder().toParameters();
+    public static final class CreateIsolateParameters {
 
+        /**
+         * Builder for a {@link CreateIsolateParameters} instance.
+         *
+         * @since 1.0
+         */
+        public static final class Builder {
+            private UnsignedWord reservedAddressSpaceSize;
+
+            /**
+             * Creates a new builder with default values.
+             *
+             * @since 1.0
+             */
+            public Builder() {
+            }
+
+            /**
+             * Sets the size in bytes for the reserved virtual address space of the new isolate.
+             *
+             * @since 1.0
+             */
+            public Builder reservedAddressSpaceSize(UnsignedWord size) {
+                this.reservedAddressSpaceSize = size;
+                return this;
+            }
+
+            /**
+             * Produces the final {@link CreateIsolateParameters} with the values set previously by
+             * the builder methods.
+             *
+             * @since 1.0
+             */
+            public CreateIsolateParameters build() {
+                return new CreateIsolateParameters(reservedAddressSpaceSize);
+            }
+        }
+
+        private static final CreateIsolateParameters DEFAULT = new Builder().build();
+
+        /**
+         * Returns a {@link CreateIsolateParameters} with all default values.
+         *
+         * @since 1.0
+         */
         public static CreateIsolateParameters getDefault() {
             return DEFAULT;
         }
 
-        private final UnsignedWord reservedSpaceSize;
+        private final UnsignedWord reservedAddressSpaceSize;
 
-        private CreateIsolateParameters(UnsignedWord reservedSpaceSize) {
-            this.reservedSpaceSize = reservedSpaceSize;
+        private CreateIsolateParameters(UnsignedWord reservedAddressSpaceSize) {
+            this.reservedAddressSpaceSize = reservedAddressSpaceSize;
         }
 
-        public UnsignedWord getReservedSpaceSize() {
-            return reservedSpaceSize;
+        /**
+         * Returns the size in bytes for the reserved virtual address space of the new isolate.
+         * Returns a {@link CreateIsolateParameters} with all default values.
+         *
+         * @since 1.0
+         */
+        public UnsignedWord getReservedAddressSpaceSize() {
+            return reservedAddressSpaceSize;
         }
     }
 
     /**
-     * Create a new isolate, considering the passed {@linkplain CreateIsolateParameters parameters}.
-     * On success, the current thread is attached to the created isolate, and a pointer to its
-     * associated {@link IsolateThread} structure is returned.
+     * Creates a new isolate, considering the passed {@linkplain CreateIsolateParameters
+     * parameters}. On success, the current thread is attached to the created isolate, and a pointer
+     * to its associated {@link IsolateThread} structure is returned.
      *
      * @param parameters Parameters for the creation of the isolate.
      * @return A pointer to the structure that represents the current thread in the new isolate.
@@ -133,6 +158,7 @@ public final class Isolates {
      * @since 1.0
      */
     public static IsolateThread createIsolate(CreateIsolateParameters parameters) throws IsolateException {
+        Objects.requireNonNull(parameters);
         return ImageSingletons.lookup(IsolateSupport.class).createIsolate(parameters);
     }
 

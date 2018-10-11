@@ -32,7 +32,6 @@ import org.graalvm.nativeimage.Isolates.CreateIsolateParameters;
 import org.graalvm.nativeimage.Isolates.IsolateException;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.impl.IsolateSupport;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.c.function.CEntryPointNativeFunctions.IsolatePointer;
@@ -48,12 +47,10 @@ public final class IsolateSupportImpl implements IsolateSupport {
 
     @Override
     public IsolateThread createIsolate(CreateIsolateParameters parameters) throws IsolateException {
-        CEntryPointCreateIsolateParameters params = WordFactory.nullPointer();
-        if (parameters != null) {
-            params = StackValue.get(CEntryPointCreateIsolateParameters.class);
-            params.setReservedSpaceSize(parameters.getReservedSpaceSize());
-            params.setVersion(1);
-        }
+        CEntryPointCreateIsolateParameters params = StackValue.get(CEntryPointCreateIsolateParameters.class);
+        params.setReservedSpaceSize(parameters.getReservedAddressSpaceSize());
+        params.setVersion(1);
+
         IsolatePointer isolatePtr = StackValue.get(IsolatePointer.class);
         throwOnError(CEntryPointNativeFunctions.createIsolate(params, isolatePtr));
         Isolate isolate = isolatePtr.read();
