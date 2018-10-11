@@ -50,9 +50,9 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 
 import com.oracle.truffle.tools.chromeinspector.TruffleExecutionContext;
+import com.oracle.truffle.tools.chromeinspector.client.InspectWSClient;
 import com.oracle.truffle.tools.chromeinspector.server.ConnectionWatcher;
 import com.oracle.truffle.tools.chromeinspector.server.InspectServerSession;
-import com.oracle.truffle.tools.chromeinspector.server.InspectorServer;
 import com.oracle.truffle.tools.chromeinspector.server.WSInterceptorServer;
 import com.oracle.truffle.tools.chromeinspector.server.WebSocketServer;
 
@@ -87,6 +87,9 @@ public final class InspectorInstrument extends TruffleInstrument {
 
     @com.oracle.truffle.api.Option(name = "", help = "Start the Chrome inspector on [[host:]port]. (default: <loopback address>:" + DEFAULT_PORT + ")", category = OptionCategory.USER) //
     static final OptionKey<HostAndPort> Inspect = new OptionKey<>(DEFAULT_ADDRESS, ADDRESS_OR_BOOLEAN);
+
+    @com.oracle.truffle.api.Option(help = "Attach to an existing endpoint instead of creating a new one. (default:false)", category = OptionCategory.DEBUG) //
+    static final OptionKey<Boolean> Attach = new OptionKey<>(false);
 
     @com.oracle.truffle.api.Option(help = "Suspend the execution at first executed source line. (default:true)", category = OptionCategory.USER) //
     static final OptionKey<Boolean> Suspend = new OptionKey<>(true);
@@ -135,8 +138,8 @@ public final class InspectorInstrument extends TruffleInstrument {
             connectionWatcher = new ConnectionWatcher();
             try {
                 InetSocketAddress socketAddress = hostAndPort.createSocket(options.get(Remote));
-                server = new Server(env, "Main Context", socketAddress, options.get(Suspend), options.get(WaitAttached), options.get(HideErrors), options.get(Internal), options.get(Initialization),
-                                options.get(Path), options.get(Secure), new KeyStoreOptions(options), connectionWatcher);
+                server = new Server(env, "Main Context", socketAddress, options.get(Attach), options.get(Suspend), options.get(WaitAttached), options.get(HideErrors), options.get(Internal),
+                                options.get(Initialization), options.get(Path), options.get(Secure), new KeyStoreOptions(options), connectionWatcher);
             } catch (IOException e) {
                 throw new InspectorIOException(hostAndPort.getHostPort(options.get(Remote)), e);
             }
@@ -232,10 +235,10 @@ public final class InspectorInstrument extends TruffleInstrument {
 
     private static final class Server {
 
-        private InspectorServer wss;
+        private InspectorWSConnection wss;
         private final String wsspath;
 
-        Server(final Env env, final String contextName, final InetSocketAddress socketAdress, final boolean debugBreak, final boolean waitAttached, final boolean hideErrors,
+        Server(final Env env, final String contextName, final InetSocketAddress socketAdress, final boolean attach, final boolean debugBreak, final boolean waitAttached, final boolean hideErrors,
                         final boolean inspectInternal, final boolean inspectInitialization, final String path, final boolean secure, final KeyStoreOptions keyStoreOptions,
                         final ConnectionWatcher connectionWatcher) throws IOException {
             PrintWriter info = new PrintWriter(env.err());
@@ -248,31 +251,35 @@ public final class InspectorInstrument extends TruffleInstrument {
 
             PrintWriter err = (hideErrors) ? null : info;
             final TruffleExecutionContext executionContext = new TruffleExecutionContext(contextName, inspectInternal, inspectInitialization, env, err);
-            URI wsuri;
-            try {
-                wsuri = new URI(secure ? "wss" : "ws", null, socketAdress.getAddress().getHostAddress(), socketAdress.getPort(), path, null, null);
-            } catch (URISyntaxException ex) {
-                throw new IOException(ex);
-            }
-            InspectServerSession iss = InspectServerSession.create(executionContext, debugBreak, connectionWatcher);
-            WSInterceptorServer interceptor = new WSInterceptorServer(wsuri, iss);
-            MessageEndpoint serverEndpoint;
-            try {
-                serverEndpoint = env.startServer(wsuri, iss);
-            } catch (MessageTransport.VetoException vex) {
-                throw new IOException(vex.getLocalizedMessage());
-            }
-            if (serverEndpoint == null) {
-                interceptor.close(path);
-                wss = WebSocketServer.get(socketAdress, wsspath, executionContext, debugBreak, secure, keyStoreOptions, connectionWatcher, iss);
-                String address = buildAddress(socketAdress.getAddress().getHostAddress(), wss.getListeningPort(), wsspath, secure);
-                info.println("Debugger listening on port " + wss.getListeningPort() + ".");
-                info.println("To start debugging, open the following URL in Chrome:");
-                info.println("    " + address);
-                info.flush();
+            if (attach) {
+                wss = new InspectWSClient(socketAdress, wsspath, executionContext, debugBreak, secure, keyStoreOptions, connectionWatcher, info);
             } else {
-                interceptor.opened(serverEndpoint, connectionWatcher);
-                wss = interceptor;
+                URI wsuri;
+                try {
+                    wsuri = new URI(secure ? "wss" : "ws", null, socketAdress.getAddress().getHostAddress(), socketAdress.getPort(), path, null, null);
+                } catch (URISyntaxException ex) {
+                    throw new IOException(ex);
+                }
+                InspectServerSession iss = InspectServerSession.create(executionContext, debugBreak, connectionWatcher);
+                WSInterceptorServer interceptor = new WSInterceptorServer(wsuri, iss);
+                MessageEndpoint serverEndpoint;
+                try {
+                    serverEndpoint = env.startServer(wsuri, iss);
+                } catch (MessageTransport.VetoException vex) {
+                    throw new IOException(vex.getLocalizedMessage());
+                }
+                if (serverEndpoint == null) {
+                    interceptor.close(path);
+                    wss = WebSocketServer.get(socketAdress, wsspath, executionContext, debugBreak, secure, keyStoreOptions, connectionWatcher, iss);
+                    String address = buildAddress(socketAdress.getAddress().getHostAddress(), wss.getPort(), wsspath, secure);
+                    info.println("Debugger listening on port " + wss.getPort() + ".");
+                    info.println("To start debugging, open the following URL in Chrome:");
+                    info.println("    " + address);
+                    info.flush();
+                } else {
+                    interceptor.opened(serverEndpoint, connectionWatcher);
+                    wss = interceptor;
+                }
             }
             if (debugBreak || waitAttached) {
                 final AtomicReference<EventBinding<?>> execEnter = new AtomicReference<>();

@@ -31,10 +31,12 @@ import java.nio.ByteBuffer;
 import org.graalvm.polyglot.io.MessageEndpoint;
 import org.graalvm.polyglot.io.MessageTransport;
 
+import com.oracle.truffle.tools.chromeinspector.instrument.InspectorWSConnection;
+
 /**
  * Inspector server that delegates to {@link MessageTransport}.
  */
-public final class WSInterceptorServer implements InspectorServer, MessageEndpoint {
+public final class WSInterceptorServer implements InspectorWSConnection, MessageEndpoint {
 
     private final URI uri;
     private MessageEndpoint inspectEndpoint;
@@ -52,7 +54,7 @@ public final class WSInterceptorServer implements InspectorServer, MessageEndpoi
     }
 
     @Override
-    public int getListeningPort() {
+    public int getPort() {
         return uri.getPort();
     }
 

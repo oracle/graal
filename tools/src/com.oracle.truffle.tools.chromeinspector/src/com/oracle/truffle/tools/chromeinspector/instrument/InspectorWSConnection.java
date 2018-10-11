@@ -22,16 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.tools.chromeinspector.server;
+package com.oracle.truffle.tools.chromeinspector.instrument;
 
 import java.io.IOException;
 
 /**
- * An abstraction of an inspector server.
+ * Web socket connection for the inspector protocol.
  */
-public interface InspectorServer {
+public interface InspectorWSConnection {
 
-    int getListeningPort();
+    int getPort();
 
-    void close(String path) throws IOException;
+    void close(String wsspath) throws IOException;
 }
