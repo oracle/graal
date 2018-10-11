@@ -24,6 +24,7 @@ public class TestInstrument extends TruffleInstrument implements TruffleAdapterP
     @Override
     protected void onCreate(Env env) {
         truffleAdapter = new TruffleAdapter(env);
+        env.getOptions().set(LSOptions.LanguageDeveloperMode, true);
         env.registerService(truffleAdapter);
         env.registerService(this);
     }
