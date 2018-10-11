@@ -32,22 +32,22 @@ import org.graalvm.polyglot.Instrument;
 
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.tools.profiler.HeapAllocationMonitor;
+import com.oracle.truffle.tools.profiler.HeapMonitor;
 
 /**
  * The {@link TruffleInstrument} for the heap allocation monitor.
  *
  * @since 1.0
  */
-@TruffleInstrument.Registration(id = HeapAllocationMonitorInstrument.ID, name = "Heap Allocation Monitor", version = HeapAllocationMonitorInstrument.VERSION, services = {HeapAllocationMonitor.class})
-public class HeapAllocationMonitorInstrument extends TruffleInstrument {
+@TruffleInstrument.Registration(id = HeapMonitorInstrument.ID, name = "Heap Allocation Monitor", version = HeapMonitorInstrument.VERSION, services = {HeapMonitor.class})
+public class HeapMonitorInstrument extends TruffleInstrument {
 
     /**
      * Default constructor.
      *
      * @since 1.0
      */
-    public HeapAllocationMonitorInstrument() {
+    public HeapMonitorInstrument() {
     }
 
     /**
@@ -55,28 +55,28 @@ public class HeapAllocationMonitorInstrument extends TruffleInstrument {
      *
      * @since 1.0
      */
-    public static final String ID = "heapallocmonitor";
+    public static final String ID = "heapmonitor";
     static final String VERSION = "0.1.0";
-    private HeapAllocationMonitor monitor;
-    private static ProfilerToolFactory<HeapAllocationMonitor> factory;
+    private HeapMonitor monitor;
+    private static ProfilerToolFactory<HeapMonitor> factory;
 
     /**
-     * Sets the factory which instantiates the {@link HeapAllocationMonitor}.
+     * Sets the factory which instantiates the {@link HeapMonitor}.
      *
-     * @param factory the factory which instantiates the {@link HeapAllocationMonitor}.
+     * @param factory the factory which instantiates the {@link HeapMonitor}.
      * @since 1.0
      */
-    public static void setFactory(ProfilerToolFactory<HeapAllocationMonitor> factory) {
+    public static void setFactory(ProfilerToolFactory<HeapMonitor> factory) {
         if (factory == null || !factory.getClass().getName().startsWith("com.oracle.truffle.tools.profiler")) {
             throw new IllegalArgumentException("Wrong factory: " + factory);
         }
-        HeapAllocationMonitorInstrument.factory = factory;
+        HeapMonitorInstrument.factory = factory;
     }
 
     static {
         // Be sure that the factory is initialized:
         try {
-            Class.forName(HeapAllocationMonitor.class.getName(), true, HeapAllocationMonitor.class.getClassLoader());
+            Class.forName(HeapMonitor.class.getName(), true, HeapMonitor.class.getClassLoader());
         } catch (ClassNotFoundException ex) {
             // Can not happen
             throw new AssertionError();
@@ -85,16 +85,16 @@ public class HeapAllocationMonitorInstrument extends TruffleInstrument {
 
     /**
      * Does a lookup in the runtime instruments of the engine and returns an instance of the
-     * {@link HeapAllocationMonitor}.
+     * {@link HeapMonitor}.
      *
      * @since 1.0
      */
-    public static HeapAllocationMonitor getMonitor(Engine engine) {
+    public static HeapMonitor getMonitor(Engine engine) {
         Instrument instrument = engine.getInstruments().get(ID);
         if (instrument == null) {
-            throw new IllegalStateException("Heap Histogram is not installed.");
+            throw new IllegalStateException("Heap Monitor is not installed.");
         }
-        return instrument.lookup(HeapAllocationMonitor.class);
+        return instrument.lookup(HeapMonitor.class);
     }
 
     /**
@@ -106,19 +106,19 @@ public class HeapAllocationMonitorInstrument extends TruffleInstrument {
     @Override
     protected void onCreate(TruffleInstrument.Env env) {
         monitor = factory.create(env);
-        if (env.getOptions().get(HeapAllocationMonitorInstrument.ENABLED)) {
+        if (env.getOptions().get(HeapMonitorInstrument.ENABLED)) {
             monitor.setCollecting(true);
         }
         env.registerService(monitor);
     }
 
     /**
-     * @return A list of the options provided by the {@link HeapAllocationMonitor}.
+     * @return A list of the options provided by the {@link HeapMonitor}.
      * @since 1.0
      */
     @Override
     protected OptionDescriptors getOptionDescriptors() {
-        return new HeapAllocationMonitorInstrumentOptionDescriptors();
+        return new HeapMonitorInstrumentOptionDescriptors();
     }
 
     /**
