@@ -3,45 +3,13 @@
 #include <trufflenfi.h>
 #include <cstdlib>
 
-extern "C" {
-
 #define EXPAND(...) __VA_ARGS__
-#define MAP(LIST, FN, V) EXPAND(LIST(V FN))
-#define CONCAT(LEFT, RIGHT, V) LEFT(V) RIGHT(V)
-
-#define PRIMITIVE_LIST(V) \
-  V(Object)  \
-  V(Boolean) \
-  V(Byte)    \
-  V(Char)    \
-  V(Short)   \
-  V(Int)     \
-  V(Long)    \
-  V(Float)   \
-  V(Double)
-
-#define TYPE_LIST(V) \
-  V(Object)          \
-  PRIMITIVE_LIST(V)
-
-#define MAKE_GETTER(type) (Get##type##Field)
-#define MAKE_SETTER(type) (Set##type##Field)
-
-#define MAKE_STATIC_METHOD(type) (CallStatic##type##MethodV)
-
-#define FIELD_GETTER_LIST(V) MAP(TYPE_LIST, MAKE_GETTER, V)
-#define FIELD_SETTER_LIST(V) MAP(TYPE_LIST, MAKE_SETTER, V)
-
-#define CALL_STATIC_METHOD_LIST(V) MAP(TYPE_LIST, MAKE_STATIC_METHOD, V)
-
-
-#define FIELDS(V) CONCAT(FIELD_GETTER_LIST, FIELD_SETTER_LIST, V)
 
 #define JNI_FUNCTION_LIST(V) \
   V(GetVersion) \
   V(GetObjectClass) \
-  V(GetMethodID)
-  
+  V(GetMethodID) \
+  V(GetStaticMethodID)
 /*
 // V(GetVersion) \
 // V(DefineClass) \
@@ -289,206 +257,214 @@ extern "C" {
 // V(GetDirectBufferAddress) \
 // V(GetDirectBufferCapacity) \
 // V(GetObjectRefType)
-  */
-
-static jobject (JNICALL *CallObjectMethod__)(JNIEnv *env, jobject obj, jmethodID methodID, jlong varargs);
-static void (JNICALL *CallVoidMethod__)(JNIEnv *env, jobject obj, jmethodID methodID, jlong varargs);
+*/
 
 class VarArgs {
-  public:
-    virtual jboolean popBoolean() = 0;        
-    virtual jbyte popByte() = 0;
-    virtual jchar popChar() = 0;
-    virtual jshort popShort() = 0;
-    virtual jint popInt() = 0;    
-    virtual jfloat popFloat() = 0;
-    virtual jdouble popDouble() = 0;
-    virtual jlong popLong() = 0;
-    virtual jobject popObject() = 0;
+public:
+  virtual jboolean popBoolean() = 0;
+  virtual jbyte popByte()       = 0;
+  virtual jchar popChar()       = 0;
+  virtual jshort popShort()     = 0;
+  virtual jint popInt()         = 0;
+  virtual jfloat popFloat()     = 0;
+  virtual jdouble popDouble()   = 0;
+  virtual jlong popLong()       = 0;
+  virtual jobject popObject()   = 0;
+  virtual ~VarArgs() { /* nop */ }
 };
 
 class VarArgsVaList : public VarArgs {
-private:  
-  va_list args;
+private:
+  va_list _args;
 public:
-  VarArgsVaList(va_list in_args) {
-    va_copy(args, in_args);
-  }    
-  jboolean popBoolean() {
-    return (va_arg(args, jint) == 0 ? JNI_FALSE : JNI_TRUE);
-  }  
-  jbyte popByte() {
-    return (jbyte) va_arg(args, jint);
+  VarArgsVaList(va_list args) {
+    va_copy(_args, args);
   }
-  jchar popChar() {
-    return (jchar) va_arg(args, jint);
+  ~VarArgsVaList() {
+    va_end(_args);
   }
-  jshort popShort() {
-    return (jshort) va_arg(args, jint);
+  // All sub-int values are promoted to int.
+  inline jboolean popBoolean() {
+    return (va_arg(_args, jint) == 0 ? JNI_FALSE : JNI_TRUE);
   }
-  jint popInt() {
-    return (jbyte) va_arg(args, jint);
+  inline jbyte popByte() {
+    return (jbyte) va_arg(_args, jint);
   }
-  jfloat popFloat() {
-    // float is promoted to double
-    return (jfloat) va_arg(args, jdouble);
+  inline jchar popChar() {
+    return (jchar) va_arg(_args, jint);
   }
-  jdouble popDouble() {
-    return (jdouble) va_arg(args, jdouble);
+  inline jshort popShort() {
+    return (jshort) va_arg(_args, jint);
   }
-  jlong popLong() {
-    return (jlong) va_arg(args, jlong);
+  inline jint popInt() {
+    return (jint) va_arg(_args, jint);
   }
-  jobject popObject() {
-    return (jobject) va_arg(args, jobject);
+  inline jfloat popFloat() {
+    // float is promoted to double.
+    return (jfloat) va_arg(_args, jdouble);
+  }
+  inline jdouble popDouble() {
+    return (jdouble) va_arg(_args, jdouble);
+  }
+  inline jlong popLong() {
+    return (jlong) va_arg(_args, jlong);
+  }
+  inline jobject popObject() {
+    return (jobject) va_arg(_args, jobject);
   }
 };
 
 class VarArgsJValues : public VarArgs {
-private:  
-  jvalue* args;
+private:
+  jvalue *_args;
 public:
-  VarArgsJValues(const jvalue *args) : args((jvalue*) args) {}
-  jboolean popBoolean() {
-    return args++->z;
+  VarArgsJValues(const jvalue *args) : _args((jvalue*) args) {}
+  inline jboolean popBoolean() {
+    return _args++->z;
   }
-  jbyte popByte() {
-    return args++->b;
+  inline jbyte popByte() {
+    return _args++->b;
   }
-  jchar popChar() {
-    return args++->c;
+  inline jchar popChar() {
+    return _args++->c;
   }
-  jshort popShort() {
-    return args++->s;
+  inline jshort popShort() {
+    return _args++->s;
   }
-  jint popInt() {
-    return args++->i;
+  inline jint popInt() {
+    return _args++->i;
   }
-  jfloat popFloat() {    
-    return args++->f;
+  inline jfloat popFloat() {
+    return _args++->f;
   }
-  jdouble popDouble() {
-    return args++->d;
+  inline jdouble popDouble() {
+    return _args++->d;
   }
-  jlong popLong() {
-    return args++->j;
+  inline jlong popLong() {
+    return _args++->j;
   }
-  jobject popObject() {
-    return args++->l;
+  inline jobject popObject() {
+    return _args++->l;
   }
 };
 
-jobject JNICALL CallObjectMethodV(JNIEnv *env, jobject obj, jmethodID methodID, va_list args) {
-  printf("native CallObjectMethodV");
-  VarArgsVaList varargs(args);    
-  //VarArgsDefault varargs;
-  return CallObjectMethod__(env, obj, methodID, (jlong) &varargs);
+#define TYPE_LIST2(V)  \
+  V(jobject, Object)   \
+  V(jboolean, Boolean) \
+  V(jchar, Char)       \
+  V(jbyte, Byte)       \
+  V(jshort, Short)     \
+  V(jint, Int)         \
+  V(jfloat, Float)     \
+  V(jdouble, Double)   \
+  V(jlong, Long)       \
+  V(void, Void)
+
+struct NespressoEnv {
+  #define CALL_METHOD(returnType, Type) \
+    returnType (*Call##Type##Method)(JNIEnv *env, jobject obj, jmethodID methodID, jlong varargs); \
+    returnType (*CallStatic##Type##Method)(JNIEnv *env, jobject clazz, jmethodID methodID, jlong varargs); \
+    returnType (*CallNonvirtual##Type##Method)(JNIEnv *env, jobject obj, jobject clazz, jmethodID methodID, jlong varargs);
+
+  TYPE_LIST2(CALL_METHOD)
+  #undef CALL_METHOD
+};
+
+#define CALL_METHOD_BRIDGE(returnType, Type) \
+returnType Call##Type##MethodV(JNIEnv *env, jobject obj, jmethodID methodID, va_list args) { \
+  VarArgsVaList varargs(args); \
+  NespressoEnv *nespresso_env = (NespressoEnv*) env->functions->reserved0; \
+  return nespresso_env->Call##Type##Method(env, obj, methodID, (jlong) &varargs); \
+} \
+returnType Call##Type##MethodA(JNIEnv *env, jobject obj, jmethodID methodID, const jvalue *args) { \
+  VarArgsJValues varargs(args); \
+  NespressoEnv *nespresso_env = (NespressoEnv*) env->functions->reserved0; \
+  return nespresso_env->Call##Type##Method(env, obj, methodID, (jlong) &varargs); \
 }
 
-jobject JNICALL CallObjectMethodA(JNIEnv *env, jobject obj, jmethodID methodID, const jvalue * args) {
-  printf("native CallObjectMethodA");
-  VarArgsJValues varargs(args);
-  // VarArgsDefault varargs;
-  return CallObjectMethod__(env, obj, methodID, (jlong) &varargs);
+#define CALL_STATIC_METHOD_BRIDGE(returnType, Type) \
+returnType CallStatic##Type##MethodV(JNIEnv *env, jclass clazz, jmethodID methodID, va_list args) { \
+  VarArgsVaList varargs(args); \
+  NespressoEnv *nespresso_env = (NespressoEnv*) env->functions->reserved0; \
+  return nespresso_env->CallStatic##Type##Method(env, clazz, methodID, (jlong) &varargs); \
+} \
+returnType CallStatic##Type##MethodA(JNIEnv *env, jclass clazz, jmethodID methodID, const jvalue *args) { \
+  VarArgsJValues varargs(args); \
+  NespressoEnv *nespresso_env = (NespressoEnv*) env->functions->reserved0; \
+  return nespresso_env->CallStatic##Type##Method(env, clazz, methodID, (jlong) &varargs); \
 }
 
-void JNICALL CallVoidMethodV(JNIEnv *env, jobject obj, jmethodID methodID, va_list args) {
-  printf("native CallVoidMethodV\n");
-  VarArgsVaList varargs(args);
-  CallVoidMethod__(env, obj, methodID, (jlong) &varargs);
-  printf("Done\n");
+#define CALL_NON_VIRTUAL_METHOD_BRIDGE(returnType, Type) \
+returnType CallNonvirtual##Type##MethodV(JNIEnv *env, jobject obj, jclass clazz, jmethodID methodID, va_list args) { \
+  VarArgsVaList varargs(args); \
+  NespressoEnv *nespresso_env = (NespressoEnv*) env->functions->reserved0; \
+  return nespresso_env->CallNonvirtual##Type##Method(env, obj, clazz, methodID, (jlong) &varargs); \
+} \
+returnType CallNonvirtual##Type##MethodA(JNIEnv *env, jobject obj, jclass clazz, jmethodID methodID, const jvalue *args) { \
+  VarArgsJValues varargs(args); \
+  NespressoEnv *nespresso_env = (NespressoEnv*) env->functions->reserved0; \
+  return nespresso_env->CallNonvirtual##Type##Method(env, obj, clazz, methodID, (jlong) &varargs); \
 }
 
-void JNICALL CallVoidMethodA(JNIEnv *env, jobject obj, jmethodID methodID, const jvalue * args) {
-  printf("native CallVoidMethodA\n");
-  VarArgsJValues varargs(args);
-  return CallVoidMethod__(env, obj, methodID, (jlong) &varargs);
-}
+TYPE_LIST2(CALL_METHOD_BRIDGE)
 
-// jobject CallObjectMethodV(JNIEnv *guest_env, jobject obj, jmethodID methodID, va_list args) {
-//   NespressoEnv* nenv = (NespressoEnv*) guest_env->reserved0;
-//   JNIEnv* host_env = (JNIEnv*) guest_env->reserved1;
+TYPE_LIST2(CALL_STATIC_METHOD_BRIDGE)
 
-//   jint arg_count = 16;
-//   jobject varargs = env->CallStaticVoidMethod(nenv->VarArgs, nenv->VarArgs_create, (jint) arg_count);
-//   for (int i = 0; i < arg_count; ++i) {
-//     switch (arg_type[i]) {
-//       case BOOLEAN: host_env->CallVoidMethod(nenv->VarArgs, varargs, nenv->VarArgs_pushByte,   (jboolean) ((va_arg(args, jint) == 0) ? JNI_FALSE : JNI_TRUE)); break;
-//       case BYTE   : host_env->CallVoidMethod(nenv->VarArgs, varargs, nenv->VarArgs_pushByte,   (jbyte) va_arg(args, jint));      break;
-//       case CHAR   : host_env->CallVoidMethod(nenv->VarArgs, varargs, nenv->VarArgs_pushChar,   (jchar) va_arg(args, jint));      break;
-//       case SHORT  : host_env->CallVoidMethod(nenv->VarArgs, varargs, nenv->VarArgs_pushShort,  (jshort) va_arg(args, jint));     break;
-//       case INT    : host_env->CallVoidMethod(nenv->VarArgs, varargs, nenv->VarArgs_pushInt,    (jint) va_arg(args, jint));       break;
-//       case FLOAT  : host_env->CallVoidMethod(nenv->VarArgs, varargs, nenv->VarArgs_pushFloat,  (jfloat) va_arg(args, jdouble));  break;
-//       case DOUBLE : host_env->CallVoidMethod(nenv->VarArgs, varargs, nenv->VarArgs_pushDouble, (jdouble) va_arg(args, jdouble)); break;
-//       case LONG   : host_env->CallVoidMethod(nenv->VarArgs, varargs, nenv->VarArgs_pushLong,   (jlong) va_arg(args, jlong));     break;
-//       case OBJECT : host_env->CallVoidMethod(nenv->VarArgs, varargs, nenv->VarArgs_pushObject, (jobject) va_arg(args, jobject)); break;
-//     }
-//   }
-//   jobjectArray tail = host_env->CallObjectMethod(ret->VarArgs, ret->VarArgs_getVarArgs);
-//   // Call host Object... args method
-//   return nenv->CallObjectMethod__(obj, methodID, tail);
-// }
+TYPE_LIST2(CALL_NON_VIRTUAL_METHOD_BRIDGE)
 
-// jobject CallObjectMethodA(JNIEnv *guest_env, jobject obj, jmethodID methodID, const jvalue * args) {
-//   NespressoEnv* nenv = (NespressoEnv*) guest_env->reserved0;
-//   JNIEnv* host_env = (JNIEnv*) guest_env->reserved1;
+#define MAKE_METHOD(unused, Type) (Call##Type##Method)
+#define MAKE_STATIC_METHOD(unused, Type) (CallStatic##Type##Method)
+#define MAKE_NON_VIRTUAL_METHOD(unused, Type) (CallNonvirtual##Type##Method)
 
-//   jint arg_count = 16;
-//   jobject varargs = env->CallStaticVoidMethod(nenv->VarArgs, nenv->VarArgs_create, (jint) arg_count);
-//   for (int i = 0; i < arg_count; ++i) {
-//     switch (arg_type[i]) {
-//       case BOOLEAN: henv->CallVoidMethod(nenv->VarArgs, varargs, nenv->VarArgs_pushByte,   args[i].z); break;
-//       case BYTE   : henv->CallVoidMethod(nenv->VarArgs, varargs, nenv->VarArgs_pushByte,   args[i].b); break;
-//       case CHAR   : henv->CallVoidMethod(nenv->VarArgs, varargs, nenv->VarArgs_pushChar,   args[i].c); break;
-//       case SHORT  : henv->CallVoidMethod(nenv->VarArgs, varargs, nenv->VarArgs_pushShort,  args[i].s); break;
-//       case INT    : henv->CallVoidMethod(nenv->VarArgs, varargs, nenv->VarArgs_pushInt,    args[i].i); break;
-//       case FLOAT  : henv->CallVoidMethod(nenv->VarArgs, varargs, nenv->VarArgs_pushFloat,  args[i].f); break;
-//       case DOUBLE : henv->CallVoidMethod(nenv->VarArgs, varargs, nenv->VarArgs_pushDouble, args[i].d); break;
-//       case LONG   : henv->CallVoidMethod(nenv->VarArgs, varargs, nenv->VarArgs_pushLong,   args[i].j); break;
-//       case OBJECT : henv->CallVoidMethod(nenv->VarArgs, varargs, nenv->VarArgs_pushObject, args[i].l); break;
-//     }
-//   }
-//   jobjectArray tail = (jobjectArray) host_env->CallObjectMethod(nenv->VarArgs, varargs, nenv->VarArgs_getVarArgs);
-//   // Call host Object... args method
-//   return nenv->CallObjectMethod__(obj, methodID, tail);
-// }
+#define MAKE_METHOD_A(unused, Type) (Call##Type##MethodA)
+#define MAKE_METHOD_V(unused, Type) (Call##Type##MethodV)
+#define MAKE_STATIC_METHOD_A(unused, Type) (CallStatic##Type##MethodA)
+#define MAKE_STATIC_METHOD_V(unused, Type) (CallStatic##Type##MethodV)
+#define MAKE_NON_VIRTUAL_METHOD_A(unused, Type) (CallNonvirtual##Type##MethodA)
+#define MAKE_NON_VIRTUAL_METHOD_V(unused, Type) (CallNonvirtual##Type##MethodV)
+
+#define VARARGS_METHOD_LIST(V) \
+  EXPAND(TYPE_LIST2(V MAKE_METHOD)) \
+  EXPAND(TYPE_LIST2(V MAKE_STATIC_METHOD)) \
+  EXPAND(TYPE_LIST2(V MAKE_NON_VIRTUAL_METHOD))
+
+#define BRIDGE_METHOD_LIST(V) \
+  EXPAND(TYPE_LIST2(V MAKE_METHOD_A)) \
+  EXPAND(TYPE_LIST2(V MAKE_METHOD_V)) \
+  EXPAND(TYPE_LIST2(V MAKE_STATIC_METHOD_A)) \
+  EXPAND(TYPE_LIST2(V MAKE_STATIC_METHOD_V)) \
+  EXPAND(TYPE_LIST2(V MAKE_NON_VIRTUAL_METHOD_A)) \
+  EXPAND(TYPE_LIST2(V MAKE_NON_VIRTUAL_METHOD_V))
+
+extern "C" {
 
 JNIEnv* createJniEnv(TruffleEnv* truffle_env, void* (*fetch_by_name)(const char *)) {
-  JNINativeInterface_* functions = new JNINativeInterface_();
-  JNIEnv* guest_env = new JNIEnv();
-  guest_env->functions = functions;
+  JNINativeInterface_ *functions = new JNINativeInterface_();
+  JNIEnv* env = new JNIEnv();
+  NespressoEnv *nespresso_env = new NespressoEnv();
+  functions->reserved0 = nespresso_env;
+
+  // Fetch Java ... varargs methods.
+  #define INIT_VARARGS_METHOD__(name) \
+    nespresso_env->name = truffle_env->dupClosureRef((typeof(nespresso_env->name)) fetch_by_name(#name));
+    VARARGS_METHOD_LIST(INIT_VARARGS_METHOD__)
+  #undef INIT_VARARGS_METHOD__
+
+  // Put ... bridges in the env.
+  #define INIT_BRIDGE_METHOD__(name) \
+    functions->name = &name;
+
+    BRIDGE_METHOD_LIST(INIT_BRIDGE_METHOD__)
+  #undef INIT_BRIDGE_METHOD__
+
+  env->functions = functions;
 
   #define INIT__(name) \
     functions->name = truffle_env->dupClosureRef((typeof(functions->name)) fetch_by_name(#name));
-
   JNI_FUNCTION_LIST(INIT__)
   #undef INIT__
 
-  //functions->CallObjectMethod = &CallObjectMethod;
-  functions->CallObjectMethodA = &CallObjectMethodA;
-  functions->CallObjectMethodV = &CallObjectMethodV;
-  
-  //functions->CallVoidMethod = &CallVoidMethod;
-  functions->CallVoidMethodA = &CallVoidMethodA;
-  functions->CallVoidMethodV = &CallVoidMethodV;
-  
-  CallObjectMethod__ = truffle_env->dupClosureRef((typeof(CallObjectMethod__)) fetch_by_name("CallObjectMethod__"));
-  CallVoidMethod__ = truffle_env->dupClosureRef((typeof(CallVoidMethod__)) fetch_by_name("CallVoidMethod__"));
-
-  // nenv->VarArgs = henv->NewGlobalRef(henv->FindClass("com/oracle/truffle/espresso/jni/VarArgs"));
-  // nenv->VarArgs_pushBoolean = henv->GetMethodID(nenv->VarArgs, "pushBoolean", "(Z)V");
-  // nenv->VarArgs_pushByte = henv->GetMethodID(nenv->VarArgs, "pushByte", "(B)V");
-  // nenv->VarArgs_pushChar = henv->GetMethodID(nenv->VarArgs, "pushChar", "(C)V");
-  // nenv->VarArgs_pushShort = henv->GetMethodID(nenv->VarArgs, "pushShort", "(S)V");
-  // nenv->VarArgs_pushInt = henv->GetMethodID(nenv->VarArgs, "pushInt", "(I)V");
-  // nenv->VarArgs_pushFloat = henv->GetMethodID(nenv->VarArgs, "pushFloat", "(F)V");
-  // nenv->VarArgs_pushDouble = henv->GetMethodID(nenv->VarArgs, "pushDouble", "(D)V");
-  // nenv->VarArgs_pushLong = henv->GetMethodID(nenv->VarArgs, "pushLong", "(J)V");
-  // nenv->VarArgs_pushObject = henv->GetMethodID(nenv->VarArgs, "pushObject", "(Ljava/lang/Object;)V");
-  // nenv->VarArgs_getVarArgs = henv->GetMethodID(nenv->VarArgs, "getVarArgs", "()[Ljava/lang/Object;");
-  // nenv->VarArgs_create = henv->GetStaticMethodID(nenv->VarArgs, "create", "(I)Lcom/oracle/truffle/espresso/jni/VarArgs;");
-
-  return guest_env;
+  return env;
 }
 
 void disposeJniEnv(TruffleEnv* truffle_env, JNIEnv* env) {
@@ -498,8 +474,11 @@ void disposeJniEnv(TruffleEnv* truffle_env, JNIEnv* env) {
   JNI_FUNCTION_LIST(DISPOSE__)
   #undef DISPOSE__
 
-  truffle_env->releaseClosureRef(CallObjectMethod__);
-  truffle_env->releaseClosureRef(CallVoidMethod__);
+  #define DISPOSE_VARARGS_METHOD__(name) \
+    truffle_env->releaseClosureRef(env->functions->name);
+
+  VARARGS_METHOD_LIST(DISPOSE_VARARGS_METHOD__)
+  #undef DISPOSE_VARARG_METHOD__
 
   delete env->functions;
   delete env;
@@ -515,17 +494,17 @@ jboolean popBoolean(jlong ptr) {
 }
 
 jbyte popByte(jlong ptr) {
-    VarArgs *varargs = (VarArgs*) ptr;    
+    VarArgs *varargs = (VarArgs*) ptr;
     return varargs->popByte();
 }
 
 jchar popChar(jlong ptr) {
-    VarArgs *varargs = (VarArgs*) ptr;    
+    VarArgs *varargs = (VarArgs*) ptr;
     return varargs->popChar();
 }
 
 jshort popShort(jlong ptr) {
-    VarArgs *varargs = (VarArgs*) ptr;    
+    VarArgs *varargs = (VarArgs*) ptr;
     return varargs->popShort();
 }
 
@@ -535,17 +514,17 @@ jint popInt(jlong ptr) {
 }
 
 jfloat popFloat(jlong ptr) {
-    VarArgs *varargs = (VarArgs*) ptr;    
+    VarArgs *varargs = (VarArgs*) ptr;
     return varargs->popFloat();
 }
 
 jdouble popDouble(jlong ptr) {
-    VarArgs *varargs = (VarArgs*) ptr;    
+    VarArgs *varargs = (VarArgs*) ptr;
     return varargs->popDouble();
 }
 
 jlong popLong(jlong ptr) {
-    VarArgs *varargs = (VarArgs*) ptr;    
+    VarArgs *varargs = (VarArgs*) ptr;
     return varargs->popLong();
 }
 
@@ -554,5 +533,4 @@ jobject popObject(jlong ptr) {
     return varargs->popObject();
 }
 
-
-} // extern
+} // extern "C"
