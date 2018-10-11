@@ -657,7 +657,7 @@ public final class Runner {
             parserResults.add(parserResult);
             return parserResult;
         } else if (!library.isNative()) {
-            throw new LLVMParserException("The file is not a bitcode file nor an ELF File with a .llvmbc section.");
+            throw new LLVMParserException("The file '" + source.getName() + "' is not a bitcode file nor an ELF File with an .llvmbc section.");
         } else {
             return null;
         }
