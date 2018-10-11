@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core;
 
+//Checkstyle: stop
+
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -50,7 +52,6 @@ import com.oracle.svm.core.thread.VMThreads;
 import sun.misc.Signal;
 import sun.misc.SignalHandler;
 
-//Checkstyle: stop
 //Checkstyle: resume
 
 @AutomaticFeature
