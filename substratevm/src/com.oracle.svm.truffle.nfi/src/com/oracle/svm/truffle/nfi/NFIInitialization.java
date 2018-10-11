@@ -26,7 +26,12 @@ package com.oracle.svm.truffle.nfi;
 
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
-import org.graalvm.nativeimage.c.function.CEntryPointContext;
+import org.graalvm.nativeimage.CurrentIsolate;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
+import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import com.oracle.svm.truffle.nfi.NativeAPI.NativeTruffleContext;
 import com.oracle.svm.truffle.nfi.NativeAPI.NativeTruffleEnv;
@@ -95,12 +100,12 @@ public final class NFIInitialization {
         ctx.threadAPI().setDetachCurrentThreadFunction(NativeAPIImpl.DETACH_CURRENT_THREAD.getFunctionPointer());
 
         ctx.setFunctions(ctx.threadAPI());
-        ctx.setIsolate(CEntryPointContext.getCurrentIsolate());
+        ctx.setIsolate(CurrentIsolate.getIsolate());
     }
 
     static void initializeEnv(NativeTruffleEnv env, NativeTruffleContext ctx) {
         env.setFunctions(ctx.nativeAPI());
         env.setContext(ctx);
-        env.setIsolateThread(CEntryPointContext.getCurrentIsolateThread());
+        env.setIsolateThread(CurrentIsolate.getCurrentThread());
     }
 }

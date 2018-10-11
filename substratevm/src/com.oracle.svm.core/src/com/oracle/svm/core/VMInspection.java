@@ -30,11 +30,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.nativeimage.c.function.CEntryPointContext;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.NeverInline;
@@ -45,11 +46,11 @@ import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.ThreadStackPrinter;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
-import org.graalvm.compiler.api.replacements.Fold;
 
-//Checkstyle: stop
 import sun.misc.Signal;
 import sun.misc.SignalHandler;
+
+//Checkstyle: stop
 //Checkstyle: resume
 
 @AutomaticFeature
@@ -90,7 +91,7 @@ class DumpAllStacks implements SignalHandler {
         VMOperation.enqueueBlockingSafepoint("DumpAllStacks", () -> {
             Log log = Log.log();
             for (IsolateThread vmThread = VMThreads.firstThread(); VMThreads.isNonNullThread(vmThread); vmThread = VMThreads.nextThread(vmThread)) {
-                if (vmThread == CEntryPointContext.getCurrentIsolateThread()) {
+                if (vmThread == CurrentIsolate.getCurrentThread()) {
                     /* Skip the signal handler stack */
                     continue;
                 }

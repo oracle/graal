@@ -38,24 +38,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.nativeimage.c.function;
-
-import org.graalvm.nativeimage.Isolate;
-import org.graalvm.nativeimage.IsolateThread;
+package org.graalvm.nativeimage;
 
 /**
  * Utility methods that provide access to the current isolate.
  *
  * @since 1.0
  */
-public final class CEntryPointContext {
+public final class CurrentIsolate {
 
     /**
      * Returns the current isolate.
      *
      * @since 1.0
      */
-    public static Isolate getCurrentIsolate() {
+    public static Isolate getIsolate() {
         throw new IllegalStateException("Cannot invoke method during native image generation");
     }
 
@@ -64,10 +61,10 @@ public final class CEntryPointContext {
      *
      * @since 1.0
      */
-    public static IsolateThread getCurrentIsolateThread() {
+    public static IsolateThread getCurrentThread() {
         throw new IllegalStateException("Cannot invoke method during native image generation");
     }
 
-    private CEntryPointContext() {
+    private CurrentIsolate() {
     }
 }

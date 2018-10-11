@@ -43,6 +43,11 @@ package org.graalvm.nativeimage;
 import org.graalvm.nativeimage.impl.IsolateSupport;
 import org.graalvm.word.UnsignedWord;
 
+/**
+ * Support for the creation, access to, and tear-down of isolates.
+ *
+ * @since 1.0
+ */
 public final class Isolates {
     private Isolates() {
     }

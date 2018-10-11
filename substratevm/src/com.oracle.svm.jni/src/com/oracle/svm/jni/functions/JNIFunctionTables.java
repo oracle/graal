@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.jni.functions;
 
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.UnmanagedMemory;
-import org.graalvm.nativeimage.c.function.CEntryPointContext;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 
 import com.oracle.svm.core.annotate.UnknownObjectField;
@@ -66,7 +66,7 @@ public final class JNIFunctionTables {
         if (globalJavaVM.isNull()) {
             JNIInvokeInterface invokes = UnmanagedMemory.calloc(SizeOf.get(JNIInvokeInterface.class));
             invokesInitializer.initialize(invokes);
-            invokes.setIsolate(CEntryPointContext.getCurrentIsolate());
+            invokes.setIsolate(CurrentIsolate.getIsolate());
             globalJavaVM = UnmanagedMemory.calloc(SizeOf.get(JNIJavaVM.class));
             globalJavaVM.setFunctions(invokes);
         }
