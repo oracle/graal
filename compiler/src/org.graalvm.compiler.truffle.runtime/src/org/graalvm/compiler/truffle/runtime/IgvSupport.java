@@ -81,7 +81,7 @@ final class IgvSupport implements TruffleDebugContext {
     }
 
     @Override
-    public boolean isBasicDumpEnabled() {
+    public boolean isDumpEnabled() {
         return false;
     }
 
@@ -364,7 +364,7 @@ final class IgvSupport implements TruffleDebugContext {
     }
 
     @Override
-    public void closeDumpHandlers() {
+    public void closeDebugChannels() {
         close();
     }
 }

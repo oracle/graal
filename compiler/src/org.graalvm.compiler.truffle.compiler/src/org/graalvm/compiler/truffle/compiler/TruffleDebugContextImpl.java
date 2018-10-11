@@ -47,7 +47,7 @@ public class TruffleDebugContextImpl implements TruffleDebugContext {
     }
 
     @Override
-    public boolean isBasicDumpEnabled() {
+    public boolean isDumpEnabled() {
         return debugContext.isDumpEnabled(DebugContext.BASIC_LEVEL);
     }
 
@@ -78,7 +78,7 @@ public class TruffleDebugContextImpl implements TruffleDebugContext {
     }
 
     @Override
-    public void closeDumpHandlers() {
+    public void closeDebugChannels() {
         debugContext.closeDumpHandlers(false);
     }
 }

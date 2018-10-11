@@ -708,7 +708,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         }
 
         static OutputGroup open(TruffleDebugContext debug, OptimizedCallTarget callTarget) {
-            if (debug != null && debug.isBasicDumpEnabled()) {
+            if (debug != null && debug.isDumpEnabled()) {
                 return new OutputGroup(debug, callTarget);
             }
             return null;
@@ -739,7 +739,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                  * The graph dumping code of Graal might leave inlining dump groups open, in case
                  * there are more graphs coming. Close these groups at the end of the compilation.
                  */
-                debug.closeDumpHandlers();
+                debug.closeDebugChannels();
             }
         }
         dequeueInlinedCallSites(inlining, callTarget);
@@ -766,7 +766,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             debug = IgvSupport.create(callTarget, "TruffleTree:" + callTarget.getName());
         }
         try (AutoCloseable c = debug.scope("TruffleTree")) {
-            if (debug.isBasicDumpEnabled()) {
+            if (debug.isDumpEnabled()) {
                 TruffleTreeDumper.dump(debug, callTarget, inlining);
             }
         }

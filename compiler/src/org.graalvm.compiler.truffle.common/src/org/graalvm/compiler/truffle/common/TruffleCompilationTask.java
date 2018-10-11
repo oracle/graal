@@ -28,6 +28,9 @@ package org.graalvm.compiler.truffle.common;
  * Describes the state and the configuration of a Truffle compilation.
  */
 public interface TruffleCompilationTask {
+    /**
+     * Determines if this compilation has been cancelled.
+     */
     boolean isCancelled();
 
     /**

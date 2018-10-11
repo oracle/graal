@@ -49,7 +49,7 @@ final class GraalTestTVMCI extends TVMCI.Test<GraalTestContext, OptimizedCallTar
         private static GraphOutput<Void, ?> beginGroup(TruffleDebugContext debug, String testName) {
             GraphOutput<Void, ?> output = null;
             try {
-                if (debug.isBasicDumpEnabled()) {
+                if (debug.isDumpEnabled()) {
                     output = debug.buildOutput(GraphOutput.newBuilder(VoidGraphStructure.INSTANCE).protocolVersion(6, 0));
                     output.beginGroup(null, testName, testName, null, 0, debug.getVersionProperties());
                     return output;
