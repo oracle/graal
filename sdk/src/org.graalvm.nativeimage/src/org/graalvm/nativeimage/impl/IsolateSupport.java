@@ -53,7 +53,7 @@ public interface IsolateSupport {
 
     IsolateThread getCurrentThread(Isolate isolate) throws IsolateException;
 
-    Isolate getCurrentIsolate(IsolateThread thread) throws IsolateException;
+    Isolate getIsolate(IsolateThread thread) throws IsolateException;
 
     void detachThread(IsolateThread thread) throws IsolateException;
 

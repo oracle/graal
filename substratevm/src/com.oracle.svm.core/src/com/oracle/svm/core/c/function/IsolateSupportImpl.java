@@ -72,7 +72,7 @@ public final class IsolateSupportImpl implements IsolateSupport {
     }
 
     @Override
-    public Isolate getCurrentIsolate(IsolateThread thread) throws IsolateException {
+    public Isolate getIsolate(IsolateThread thread) throws IsolateException {
         return CEntryPointNativeFunctions.getCurrentThreadIsolate(thread);
     }
 

@@ -174,8 +174,8 @@ public final class Isolates {
      *
      * @since 1.0
      */
-    public static Isolate getCurrentIsolate(IsolateThread thread) throws IsolateException {
-        return ImageSingletons.lookup(IsolateSupport.class).getCurrentIsolate(thread);
+    public static Isolate getIsolate(IsolateThread thread) throws IsolateException {
+        return ImageSingletons.lookup(IsolateSupport.class).getIsolate(thread);
     }
 
     /**
