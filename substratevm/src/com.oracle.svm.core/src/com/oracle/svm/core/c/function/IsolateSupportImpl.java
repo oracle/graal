@@ -28,9 +28,9 @@ import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.Isolates.CreateIsolateParameters;
+import org.graalvm.nativeimage.Isolates.IsolateException;
 import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.c.function.Isolates.CreateIsolateParameters;
-import org.graalvm.nativeimage.c.function.Isolates.IsolateException;
 import org.graalvm.nativeimage.impl.IsolateSupport;
 import org.graalvm.word.WordFactory;
 

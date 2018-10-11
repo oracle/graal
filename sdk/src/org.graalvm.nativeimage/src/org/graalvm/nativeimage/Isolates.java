@@ -38,11 +38,8 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.nativeimage.c.function;
+package org.graalvm.nativeimage;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Isolate;
-import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.impl.IsolateSupport;
 import org.graalvm.word.UnsignedWord;
 

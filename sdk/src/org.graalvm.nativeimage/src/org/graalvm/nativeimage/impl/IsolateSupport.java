@@ -42,8 +42,8 @@ package org.graalvm.nativeimage.impl;
 
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.nativeimage.c.function.Isolates.CreateIsolateParameters;
-import org.graalvm.nativeimage.c.function.Isolates.IsolateException;
+import org.graalvm.nativeimage.Isolates.CreateIsolateParameters;
+import org.graalvm.nativeimage.Isolates.IsolateException;
 
 public interface IsolateSupport {
 
