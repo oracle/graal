@@ -1458,7 +1458,7 @@ public final class TruffleFile {
         if (TruffleLanguage.AccessAPI.engineAccess().isDefaultFileSystem(fileSystem)) {
             throw sthrow(t);
         }
-        throw TruffleLanguage.AccessAPI.engineAccess().wrapHostException(null, t);
+        throw TruffleLanguage.AccessAPI.engineAccess().wrapHostException(TruffleLanguage.AccessAPI.engineAccess().getCurrentHostContext(), t);
     }
 
     @SuppressWarnings("unchecked")
