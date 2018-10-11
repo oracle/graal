@@ -47,7 +47,7 @@ public final class IsolateSupportImpl implements IsolateSupport {
     }
 
     @Override
-    public Isolate createIsolate(CreateIsolateParameters parameters) throws IsolateException {
+    public IsolateThread createIsolate(CreateIsolateParameters parameters) throws IsolateException {
         CEntryPointCreateIsolateParameters params = WordFactory.nullPointer();
         if (parameters != null) {
             params = StackValue.get(CEntryPointCreateIsolateParameters.class);
@@ -56,7 +56,8 @@ public final class IsolateSupportImpl implements IsolateSupport {
         }
         IsolatePointer isolatePtr = StackValue.get(IsolatePointer.class);
         throwOnError(CEntryPointNativeFunctions.createIsolate(params, isolatePtr));
-        return isolatePtr.read();
+        Isolate isolate = isolatePtr.read();
+        return getCurrentThread(isolate);
     }
 
     @Override
@@ -82,8 +83,8 @@ public final class IsolateSupportImpl implements IsolateSupport {
     }
 
     @Override
-    public void tearDownIsolate(Isolate isolate) throws IsolateException {
-        throwOnError(CEntryPointNativeFunctions.tearDownIsolate(isolate));
+    public void tearDownIsolate(IsolateThread thread) throws IsolateException {
+        throwOnError(CEntryPointNativeFunctions.tearDownIsolate(getIsolate(thread)));
     }
 
     private static void throwOnError(int code) {

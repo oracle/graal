@@ -47,7 +47,7 @@ import org.graalvm.nativeimage.c.function.Isolates.IsolateException;
 
 public interface IsolateSupport {
 
-    Isolate createIsolate(CreateIsolateParameters parameters) throws IsolateException;
+    IsolateThread createIsolate(CreateIsolateParameters parameters) throws IsolateException;
 
     IsolateThread attachCurrentThread(Isolate isolate) throws IsolateException;
 
@@ -57,5 +57,5 @@ public interface IsolateSupport {
 
     void detachThread(IsolateThread thread) throws IsolateException;
 
-    void tearDownIsolate(Isolate isolate) throws IsolateException;
+    void tearDownIsolate(IsolateThread thread) throws IsolateException;
 }

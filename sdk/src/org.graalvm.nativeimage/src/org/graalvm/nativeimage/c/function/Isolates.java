@@ -121,15 +121,16 @@ public final class Isolates {
 
     /**
      * Create a new isolate, considering the passed {@linkplain CreateIsolateParameters parameters}.
-     * On success, the current thread is attached to the created isolate.
+     * On success, the current thread is attached to the created isolate, and a pointer to its
+     * associated {@link IsolateThread} structure is returned.
      *
      * @param parameters Parameters for the creation of the isolate.
-     * @return A pointer to the newly created isolate.
+     * @return A pointer to the structure that represents the current thread in the new isolate.
      * @throws IsolateException on error.
      *
      * @since 1.0
      */
-    public static Isolate createIsolate(CreateIsolateParameters parameters) throws IsolateException {
+    public static IsolateThread createIsolate(CreateIsolateParameters parameters) throws IsolateException {
         return ImageSingletons.lookup(IsolateSupport.class).createIsolate(parameters);
     }
 
@@ -181,7 +182,7 @@ public final class Isolates {
     /**
      * Detaches the passed isolate thread from its isolate and discards any state or context that is
      * associated with it. At the time of the call, no code may still be executing in the isolate
-     * thread's context.
+     * thread's context. The passed pointer is no longer valid after the method returns.
      *
      * @param thread The isolate thread to detach from its isolate.
      * @throws IsolateException on error.
@@ -193,16 +194,18 @@ public final class Isolates {
     }
 
     /**
-     * Tears down the passed isolate, waiting for any attached threads to detach from it, then
-     * discards the isolate's objects, threads, and any other state or context that is associated
-     * with it.
+     * Tears down an isolate. Given an {@link IsolateThread} for the current thread which must be
+     * attached to the isolate to be torn down, waits for any other attached threads to detach from
+     * the isolate, then discards the isolate's objects, threads, and any other state or context
+     * that is associated with it. The passed pointer is no longer valid after the method returns.
      *
-     * @param isolate The isolate to tear down.
+     * @param thread {@link IsolateThread} of the current thread that is attached to the isolate
+     *            which is to be torn down.
      * @throws IsolateException on error.
      *
      * @since 1.0
      */
-    public static void tearDownIsolate(Isolate isolate) throws IsolateException {
-        ImageSingletons.lookup(IsolateSupport.class).tearDownIsolate(isolate);
+    public static void tearDownIsolate(IsolateThread thread) throws IsolateException {
+        ImageSingletons.lookup(IsolateSupport.class).tearDownIsolate(thread);
     }
 }
