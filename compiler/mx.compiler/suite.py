@@ -1398,8 +1398,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "org.graalvm.compiler.truffle.common",
-        "org.graalvm.compiler.processor",
         "org.graalvm.compiler.options.processor",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
@@ -1550,7 +1548,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "org.graalvm.compiler.hotspot",
         "org.graalvm.compiler.truffle.compiler.hotspot",
         "org.graalvm.compiler.truffle.runtime.hotspot",
       ],
