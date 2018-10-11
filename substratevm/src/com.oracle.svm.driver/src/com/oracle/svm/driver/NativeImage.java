@@ -26,14 +26,15 @@ package com.oracle.svm.driver;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
@@ -57,8 +58,6 @@ import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.jar.JarEntry;
-import java.util.jar.JarFile;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -186,8 +185,7 @@ public class NativeImage {
     final Registry optionRegistry;
     private LinkedHashSet<EnabledOption> enabledLanguages;
 
-    private static Path nativeImageMetaInfPrefix = Paths.get("META-INF", "native-image");
-    static Path nativeImageProperties = Paths.get("native-image.properties");
+    static String nativeImagePropertiesFilename = "native-image.properties";
 
     public interface BuildConfiguration {
         /**
@@ -629,73 +627,51 @@ public class NativeImage {
         }
     }
 
-    private static Stream<Path> mavenArtifactPathComponent(JarEntry entry) {
-        /* Extract artifact path component from maven meta information */
-        Path entryPath = Paths.get(entry.getName());
-        Path mavenMetaInfPrefix = Paths.get("META-INF", "maven");
-        if (entryPath.startsWith(mavenMetaInfPrefix)) {
-            Path candidate = mavenMetaInfPrefix.relativize(entryPath);
-            if (candidate.getNameCount() == 2) {
-                return Stream.of(candidate);
-            }
-        }
-        return Stream.empty();
-    }
-
-    private void processJarImageBuildArgs(Collection<Path> paths) {
-        for (Path jarFilePath : paths) {
-            if (!jarFilePath.getFileName().toString().toLowerCase().endsWith(".jar")) {
-                continue;
-            }
-
-            try (JarFile jarFile = new JarFile(jarFilePath.toFile())) {
-                List<Path> artifactComponents = jarFile.stream()
-                                .flatMap(NativeImage::mavenArtifactPathComponent)
-                                .map(path -> nativeImageMetaInfPrefix.resolve(path).resolve(nativeImageProperties))
-                                .collect(Collectors.toList());
-
-                if (artifactComponents.isEmpty()) {
-                    /* Trigger fallback for jar-files that do not contain maven meta information */
-                    artifactComponents = Collections.singletonList(null);
+    private void processClasspathNativeImageProperties(Collection<Path> paths) {
+        for (Path classpathEntry : paths) {
+            try {
+                String nativeImageMetaInfPrefix = "META-INF/native-image";
+                Path nativeImageMetaInfBase;
+                if (Files.isDirectory(classpathEntry)) {
+                    nativeImageMetaInfBase = classpathEntry.resolve(Paths.get(nativeImageMetaInfPrefix));
+                } else {
+                    URI jarFileURI = URI.create("jar:file:" + classpathEntry);
+                    FileSystem jarFS = FileSystems.newFileSystem(jarFileURI, Collections.emptyMap());
+                    nativeImageMetaInfBase = jarFS.getPath("/" + nativeImageMetaInfPrefix);
                 }
-
-                for (Path entryName : artifactComponents) {
-                    processNativeImageJarEntry(jarFile, entryName);
-                }
-            } catch (NativeImageError substitionError) {
-                throw showError("Invalid native-image.properties in jarfile " + jarFilePath, substitionError);
-            } catch (IOException ex) {
-                throw showError("Invalid or corrupt jarfile " + jarFilePath);
+                processNativeImageProperties(nativeImageMetaInfBase);
+            } catch (IOException e) {
+                throw showError("Invalid classpath entry " + classpathEntry, e);
             }
         }
     }
 
-    private void processNativeImageJarEntry(JarFile jarFile, Path nativeImageJarEntry) throws IOException {
-        /* Fallback for jar-files that do not contain maven meta information */
-        Path jarEntryPathFallback = nativeImageMetaInfPrefix.resolve(nativeImageProperties);
-        Path jarEntryPath = nativeImageJarEntry != null ? nativeImageJarEntry : jarEntryPathFallback;
+    private void processNativeImageProperties(Path nativeImageMetaInfBase) throws IOException {
+        if (Files.isDirectory(nativeImageMetaInfBase)) {
+            List<Path> nativeImageProperties = Files.walk(nativeImageMetaInfBase)
+                            .filter(p -> p.endsWith(nativeImagePropertiesFilename))
+                            .collect(Collectors.toList());
 
-        JarEntry nativeImagePropertiesEntry = jarFile.getJarEntry(jarEntryPath.toString());
-        if (nativeImagePropertiesEntry != null) {
-            showVerboseMessage(verbose, "Apply " + jarFile.getName() + ":" + jarEntryPath);
-
-            Function<String, String> resolver = str -> {
-                Path componentDirectory = jarEntryPath.getParent();
-                /*
-                 * Allow native-image substitutions-passing (see NativeImage.resolvePropertyValue)
-                 * via system properties that use key "groupID/artifactID" to specify an optionArg
-                 */
-                Path optionArgKey = nativeImageMetaInfPrefix.relativize(componentDirectory);
-                return resolvePropertyValue(str, System.getProperty(optionArgKey.toString()), componentDirectory.toString());
-            };
-            Map<String, String> properties = loadProperties(jarFile.getInputStream(nativeImagePropertiesEntry));
-            String imageName = properties.get("ImageName");
-            if (imageName != null) {
-                addPlainImageBuilderArg(NativeImage.oHName + resolver.apply(imageName));
+            for (Path nativeImagePropertyFile : nativeImageProperties) {
+                Function<String, String> resolver = str -> {
+                    Path resourceRoot = nativeImageMetaInfBase.getParent().getParent();
+                    Path componentDirectory = resourceRoot.relativize(nativeImagePropertyFile).getParent();
+                    Path optionArgKey = componentDirectory.subpath(2, componentDirectory.getNameCount());
+                    return resolvePropertyValue(str, System.getProperty(optionArgKey.toString()), componentDirectory.toString());
+                };
+                showVerboseMessage(verbose, "Apply " + nativeImagePropertyFile.toUri());
+                processNativeImageProperties(loadProperties(Files.newInputStream(nativeImagePropertyFile)), resolver);
             }
-            forEachPropertyValue(properties.get("JavaArgs"), this::addImageBuilderJavaArgs, resolver);
-            forEachPropertyValue(properties.get("Args"), this::addImageBuilderArg, resolver);
         }
+    }
+
+    private void processNativeImageProperties(Map<String, String> properties, Function<String, String> resolver) {
+        String imageName = properties.get("ImageName");
+        if (imageName != null) {
+            addPlainImageBuilderArg(NativeImage.oHName + resolver.apply(imageName));
+        }
+        forEachPropertyValue(properties.get("JavaArgs"), this::addImageBuilderJavaArgs, resolver);
+        forEachPropertyValue(properties.get("Args"), this::addImageBuilderArg, resolver);
     }
 
     private void completeImageBuildArgs() {
@@ -715,9 +691,9 @@ public class NativeImage {
             imageClasspath.addAll(customImageClasspath);
         }
 
-        /* Process all META-INF/native-image.properties found in jar files on the imageClasspath */
-        processJarImageBuildArgs(imageProvidedClasspath);
-        processJarImageBuildArgs(imageClasspath);
+        // Process all META-INF/*/native-image.properties found on the imageClasspath
+        processClasspathNativeImageProperties(imageProvidedClasspath);
+        processClasspathNativeImageProperties(imageClasspath);
 
         /* Perform JavaArgs consolidation - take the maximum of -Xmx, minimum of -Xms */
         Long xmxValue = consolidateArgs(imageBuilderJavaArgs, oXmx, SubstrateOptionsParser::parseLong, String::valueOf, () -> 0L, Math::max);
@@ -1126,14 +1102,11 @@ public class NativeImage {
     }
 
     static Map<String, String> loadProperties(Path propertiesPath) {
-        File propertiesFile = propertiesPath.toFile();
-        String errorMessage = "Could not read properties-file: " + propertiesFile;
-        if (propertiesFile.canRead()) {
+        if (Files.isReadable(propertiesPath)) {
             try {
-                InputStream propertiesInputStream = new FileInputStream(propertiesFile);
-                return loadProperties(propertiesInputStream);
-            } catch (FileNotFoundException e) {
-                throw showError(errorMessage, e);
+                return loadProperties(Files.newInputStream(propertiesPath));
+            } catch (IOException e) {
+                throw showError("Could not read properties-file: " + propertiesPath, e);
             }
         }
         return Collections.emptyMap();
