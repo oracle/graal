@@ -121,7 +121,7 @@ else:
 
     # Reflective access to org.graalvm.nativeimage.impl.ImageSingletonsSupport.
     graal_sdk_opens_packages = [
-        'org.graalvm.graal_sdk/org.graalvm.nativeimage.impl']
+        'org.graalvm.sdk/org.graalvm.nativeimage.impl']
     GRAAL_COMPILER_FLAGS.extend(add_opens_from_packages(graal_sdk_opens_packages))
 
 IMAGE_ASSERTION_FLAGS = ['-H:+VerifyGraalGraphs', '-H:+VerifyGraalGraphEdges', '-H:+VerifyPhases']
@@ -582,6 +582,7 @@ def svm_gate_body(args, tasks):
     with Task('maven plugin checks', tasks, tags=[GraalTags.maven]) as t:
         if t:
             maven_plugin_install(["--deploy-dependencies"])
+            maven_plugin_test([])
 
 
 def javac_image_command(javac_path):
@@ -772,14 +773,18 @@ def native_image_context_run(func, func_args=None):
     with native_image_context() as native_image:
         func(native_image, func_args)
 
-def deploy_native_image_maven_plugin(svmVersion, repo, gpg, keyid):
+def pom_from_template(proj_dir, svmVersion):
     # Create native-image-maven-plugin pom with correct version info from template
-    proj_dir = join(suite.dir, 'src', 'native-image-maven-plugin')
     dom = parse(join(proj_dir, 'pom_template.xml'))
     for svmVersionElement in dom.getElementsByTagName('svmVersion'):
         svmVersionElement.parentNode.replaceChild(dom.createTextNode(svmVersion), svmVersionElement)
     with open(join(proj_dir, 'pom.xml'), 'wb') as pom_file:
         dom.writexml(pom_file)
+
+def deploy_native_image_maven_plugin(svmVersion, repo, gpg, keyid):
+    proj_dir = join(suite.dir, 'src', 'native-image-maven-plugin')
+    pom_from_template(proj_dir, svmVersion)
+    # Build and install native-image-maven-plugin into local repository
 
     maven_args = []
     if keyid:
@@ -795,6 +800,15 @@ def deploy_native_image_maven_plugin(svmVersion, repo, gpg, keyid):
         ]
     mx.run_maven(maven_args, cwd=proj_dir)
 
+
+def maven_plugin_test(args):
+    # Create native-image-maven-plugin-test pom with correct version info from template
+    proj_dir = join(suite.dir, 'src', 'native-image-maven-plugin-test')
+    svmVersion = suite.release_version(snapshotSuffix='SNAPSHOT')
+    pom_from_template(proj_dir, svmVersion)
+    # Build native image with native-image-maven-plugin
+    mx.run_maven(['package'], cwd=proj_dir)
+    mx.run([join(proj_dir, 'target', 'com.oracle.substratevm.nativeimagemojotest')])
 
 def maven_plugin_install(args):
     parser = ArgumentParser(prog='mx maven-plugin-install')
@@ -830,7 +844,6 @@ def maven_plugin_install(args):
             '--all-distribution-types',
             '--validate=full',
             '--all-suites',
-            '--skip-existing'
         ]
         if parsed.licenses:
             deploy_args += ["--licenses", parsed.licenses]
@@ -942,5 +955,6 @@ mx.update_commands(suite, {
     'benchmark': [benchmark, '--vmargs [vmargs] --runargs [runargs] suite:benchname'],
     'native-image': [native_image_on_jvm, ''],
     'maven-plugin-install': [maven_plugin_install, ''],
+    'maven-plugin-test': [maven_plugin_test, ''],
     'native-unittest' : [lambda args: native_image_context_run(native_unittest, args), ''],
 })

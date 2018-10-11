@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,27 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.test;
+package com.oracle.substratevm;
 
-import org.graalvm.compiler.test.AddExports;
-import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
-import org.graalvm.compiler.truffle.test.nodes.ReadOnlyArrayListConstantNode;
-import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
-import org.junit.Test;
-
-import com.oracle.truffle.api.frame.FrameDescriptor;
-
-@AddExports("org.graalvm.truffle/com.oracle.truffle.api.interop.impl")
-public class ReadOnlyArrayListPartialEvaluationTest extends PartialEvaluationTest {
-
-    public static Object constant42() {
-        return 42;
-    }
-
-    @Test
-    public void constantValue() {
-        FrameDescriptor fd = new FrameDescriptor();
-        AbstractTestNode result = new ReadOnlyArrayListConstantNode(42);
-        assertPartialEvalEquals("constant42", new RootTestNode(fd, "constantValue", result));
+public class NativeImageMojoTest {
+    public static void main(String[] args) {
+        System.out.println("Hello Maven!");
     }
 }
+

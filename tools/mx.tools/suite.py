@@ -13,6 +13,11 @@ suite = {
       "organization" : "Graal",
       "organizationUrl" : "http://openjdk.java.net/projects/graal",
     },
+    "scm" : {
+        "url" : "https://github.com/oracle/graal",
+        "read" : "https://github.com/oracle/graal.git",
+        "write" : "git@github.com:oracle/graal.git",
+    },
 
     "imports": {
         "suites": [
@@ -39,7 +44,7 @@ suite = {
             ],
             "exports" : [
               "<package-info>", # exports all packages containing package-info.java
-              "com.oracle.truffle.tools.chromeinspector.instrument to com.oracle.truffle.truffle_api"
+              "com.oracle.truffle.tools.chromeinspector.instrument to org.graalvm.truffle"
             ],
             "javaCompliance" : "8+",
             "checkstyleVersion" : "8.8",
@@ -71,7 +76,7 @@ suite = {
                 ],
             "exports" : [
               "<package-info>", # exports all packages containing package-info.java
-              "com.oracle.truffle.tools.profiler.impl to com.oracle.truffle.truffle_api",
+              "com.oracle.truffle.tools.profiler.impl to org.graalvm.truffle",
             ],
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "checkstyleVersion" : "8.8",
