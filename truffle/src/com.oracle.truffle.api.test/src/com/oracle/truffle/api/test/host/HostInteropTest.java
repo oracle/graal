@@ -67,7 +67,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
-import java.util.concurrent.Callable;
 
 import org.hamcrest.CoreMatchers;
 import org.junit.Ignore;
@@ -230,22 +229,6 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
             fail("Expected exception when reading field: " + name);
         } catch (UnknownIdentifierException ex) {
             assertEquals(name, ex.getUnknownIdentifier());
-        }
-    }
-
-    static void assertThrowsExceptionWithCause(Callable<?> callable, Class<? extends Exception> exception) {
-        try {
-            callable.call();
-            fail("Expected " + exception.getSimpleName() + " but no exception was thrown");
-        } catch (Exception e) {
-            List<Class<? extends Throwable>> causes = new ArrayList<>();
-            for (Throwable cause = e; cause != null; cause = cause.getCause()) {
-                if (cause.getClass() == exception) {
-                    return;
-                }
-                causes.add(cause.getClass());
-            }
-            fail("Expected " + exception.getSimpleName() + ", got " + causes);
         }
     }
 
