@@ -188,7 +188,7 @@ public class NativeImageMojo extends AbstractMojo {
         public List<Path> getBuilderJVMCIClasspathAppend() {
             List<Path> paths = new ArrayList<>();
             paths.addAll(plugin.getArtifacts().stream()
-                    .filter(artifact -> artifact.getGroupId().equals("org.graalvm"))
+                    .filter(artifact -> artifact.getGroupId().equals("org.graalvm.compiler"))
                     .filter(artifact -> artifact.getArtifactId().equals("compiler"))
                     .map(Artifact::getFile)
                     .map(File::toPath)
@@ -205,7 +205,7 @@ public class NativeImageMojo extends AbstractMojo {
         @Override
         public List<Path> getBuilderBootClasspath() {
             return plugin.getArtifacts().stream()
-                            .filter(artifact -> artifact.getGroupId().equals("org.graalvm"))
+                            .filter(artifact -> artifact.getGroupId().equals("org.graalvm.sdk"))
                             .filter(artifact -> artifact.getArtifactId().equals("graal-sdk"))
                             .map(Artifact::getFile)
                             .map(File::toPath)
