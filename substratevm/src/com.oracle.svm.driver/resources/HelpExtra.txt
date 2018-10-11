@@ -9,4 +9,6 @@ Non-standard options help:
     --debug-attach[=<port>]
                           attach to debugger during image building (default port is 8000)
     --dry-run             output the command line that would be used for building
- 
+
+    -V<key>=<value>       provide values for placeholders in native-image.properties files
+

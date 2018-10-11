@@ -142,6 +142,17 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             nativeImage.addCustomJavaArgs(headArg);
             return true;
         }
+        String optionKeyPrefix = "-V";
+        if (headArg.startsWith(optionKeyPrefix)) {
+            args.poll();
+            String keyValueStr = headArg.substring(optionKeyPrefix.length());
+            String[] keyValue = keyValueStr.split("=");
+            if (keyValue.length != 2) {
+                throw NativeImage.showError("Use " + optionKeyPrefix + "<key>=<value>");
+            }
+            nativeImage.addOptionKeyValue(keyValue[0], keyValue[1]);
+            return true;
+        }
         if (headArg.startsWith("-J")) {
             args.poll();
             if (headArg.equals("-J")) {
