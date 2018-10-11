@@ -147,9 +147,9 @@ public final class Isolates {
     }
 
     /**
-     * Creates a new isolate, considering the passed {@linkplain CreateIsolateParameters
-     * parameters}. On success, the current thread is attached to the created isolate, and a pointer
-     * to its associated {@link IsolateThread} structure is returned.
+     * Creates a new isolate with the passed {@linkplain CreateIsolateParameters parameters}. On
+     * success, the current thread is attached to the created isolate, and a pointer to its
+     * associated {@link IsolateThread} structure is returned.
      *
      * @param parameters Parameters for the creation of the isolate.
      * @return A pointer to the structure that represents the current thread in the new isolate.
