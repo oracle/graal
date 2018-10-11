@@ -360,9 +360,7 @@ final class JNIFunctions {
     static int UnregisterNatives(JNIEnvironment env, JNIObjectHandle hclazz) {
         Class<?> clazz = JNIObjectHandles.getObject(hclazz);
         String internalName = MetaUtil.toInternalName(clazz.getName());
-        for (JNINativeLinkage linkage : JNIReflectionDictionary.singleton().getLinkages(internalName)) {
-            linkage.unsetEntryPoint();
-        }
+        JNIReflectionDictionary.singleton().unsetEntryPoints(internalName);
         return JNIErrors.JNI_OK();
     }
 
