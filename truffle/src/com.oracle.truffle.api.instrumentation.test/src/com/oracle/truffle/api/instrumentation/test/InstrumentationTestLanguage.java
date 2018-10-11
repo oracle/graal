@@ -1207,6 +1207,20 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         }
     }
 
+    private static class AllocatedObject implements TruffleObject {
+
+        final String metaObject;
+
+        AllocatedObject(String name) {
+            this.metaObject = name;
+        }
+
+        public ForeignAccess getForeignAccess() {
+            return null;
+        }
+
+    }
+
     private static class AllocationNode extends InstrumentedNode {
 
         AllocationNode(BaseNode[] children) {
@@ -1215,9 +1229,11 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         @Override
         public Object execute(VirtualFrame frame) {
-            getCurrentContext(InstrumentationTestLanguage.class).allocationReporter.onEnter(null, 0, 1);
-            getCurrentContext(InstrumentationTestLanguage.class).allocationReporter.onReturnValue(0, 0, 1);
-            return null;
+            AllocationReporter reporter = getCurrentContext(InstrumentationTestLanguage.class).allocationReporter;
+            Object allocatedObject = new AllocatedObject("Integer");
+            reporter.onEnter(null, 0, 1);
+            reporter.onReturnValue(allocatedObject, 0, 1);
+            return allocatedObject;
         }
     }
 
@@ -1643,6 +1659,9 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         }
         if (obj instanceof Boolean) {
             return "Boolean";
+        }
+        if (obj instanceof AllocatedObject) {
+            return ((AllocatedObject) obj).metaObject;
         }
         if (obj != null && obj.equals(Double.POSITIVE_INFINITY)) {
             return "Infinity";
