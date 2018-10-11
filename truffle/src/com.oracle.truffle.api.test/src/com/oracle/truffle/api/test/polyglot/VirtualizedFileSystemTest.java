@@ -142,20 +142,20 @@ public class VirtualizedFileSystemTest {
                         Files.createTempDirectory(VirtualizedFileSystemTest.class.getSimpleName()),
                         fullIO);
         Context ctx = Context.newBuilder(LANGAUGE_ID).allowIO(true).build();
-        result.add(new Configuration("Full IO", ctx, accessibleDir, cwd, fullIO, true, false, true, true, true));
+        result.add(new Configuration("Full IO", ctx, accessibleDir, cwd, fullIO, true, true, true, true));
         // No IO
         ctx = Context.newBuilder(LANGAUGE_ID).allowIO(false).build();
         Path privateDir = createContent(
                         Files.createTempDirectory(VirtualizedFileSystemTest.class.getSimpleName()),
                         fullIO);
-        result.add(new Configuration("No IO", ctx, privateDir, cwd, fullIO, false, false, false, false, true));
+        result.add(new Configuration("No IO", ctx, privateDir, cwd, fullIO, false, false, false, true));
         // No IO under language home
         ctx = Context.newBuilder(LANGAUGE_ID).allowIO(false).build();
         privateDir = createContent(
                         Files.createTempDirectory(VirtualizedFileSystemTest.class.getSimpleName()),
                         fullIO);
         final String langHome = privateDir.toString();
-        result.add(new Configuration("No IO under language home", ctx, privateDir, cwd, fullIO, false, false, true, false, true, () -> {
+        result.add(new Configuration("No IO under language home", ctx, privateDir, cwd, fullIO, false, true, false, true, () -> {
             System.setProperty(LANGAUGE_ID + ".home", langHome);
         }));
         // Checked IO
@@ -173,19 +173,19 @@ public class VirtualizedFileSystemTest {
                         new AccessPredicate(Arrays.asList(accessibleDir, readOnlyDir)),
                         new AccessPredicate(Collections.singleton(accessibleDir)));
         ctx = Context.newBuilder(LANGAUGE_ID).allowIO(true).fileSystem(fileSystem).build();
-        result.add(new Configuration("Conditional IO - read/write part", ctx, accessibleDir, fullIO, false, false, true, true, true));
+        result.add(new Configuration("Conditional IO - read/write part", ctx, accessibleDir, fullIO, false, true, true, true));
         fileSystem = new RestrictedFileSystem(
                         FileSystemProviderTest.newFullIOFileSystem(readOnlyDir),
                         new AccessPredicate(Arrays.asList(accessibleDir, readOnlyDir)),
                         new AccessPredicate(Collections.singleton(accessibleDir)));
         ctx = Context.newBuilder(LANGAUGE_ID).allowIO(true).fileSystem(fileSystem).build();
-        result.add(new Configuration("Conditional IO - read only part", ctx, readOnlyDir, fullIO, false, false, true, false, true));
+        result.add(new Configuration("Conditional IO - read only part", ctx, readOnlyDir, fullIO, false, true, false, true));
         fileSystem = new RestrictedFileSystem(
                         FileSystemProviderTest.newFullIOFileSystem(privateDir),
                         new AccessPredicate(Arrays.asList(accessibleDir, readOnlyDir)),
                         new AccessPredicate(Collections.singleton(accessibleDir)));
         ctx = Context.newBuilder(LANGAUGE_ID).allowIO(true).fileSystem(fileSystem).build();
-        result.add(new Configuration("Conditional IO - private part", ctx, privateDir, fullIO, false, false, false, false, true));
+        result.add(new Configuration("Conditional IO - private part", ctx, privateDir, fullIO, false, false, false, true));
 
         // Memory
         fileSystem = new MemoryFileSystem();
@@ -193,7 +193,7 @@ public class VirtualizedFileSystemTest {
         ((MemoryFileSystem) fileSystem).setUserDir(memDir);
         createContent(memDir, fileSystem);
         ctx = Context.newBuilder(LANGAUGE_ID).allowIO(true).fileSystem(fileSystem).build();
-        result.add(new Configuration("Memory FileSystem", ctx, memDir, fileSystem, false, false, true, true, true));
+        result.add(new Configuration("Memory FileSystem", ctx, memDir, fileSystem, false, true, true, true));
         return result;
     }
 
@@ -229,7 +229,7 @@ public class VirtualizedFileSystemTest {
         final boolean canRead = cfg.canRead();
         languageAction = (Env env) -> {
             final Path folderExisting = path.resolve(FOLDER_EXISTING);
-            final TruffleFile file = cfg.needsURI() ? env.getTruffleFile(folderExisting.toUri()) : env.getTruffleFile(folderExisting.toString());
+            final TruffleFile file = env.getTruffleFile(folderExisting.toString());
             try {
                 final String expected = path.resolve(FOLDER_EXISTING).resolve(FILE_EXISTING).toString();
                 final Collection<? extends TruffleFile> children = file.list();
@@ -252,7 +252,7 @@ public class VirtualizedFileSystemTest {
         final boolean canRead = cfg.canRead();
         languageAction = (Env env) -> {
             final Path folderExisting = path.resolve(FOLDER_EXISTING);
-            TruffleFile file = cfg.needsURI() ? env.getTruffleFile(folderExisting.toUri()) : env.getTruffleFile(folderExisting.toString());
+            TruffleFile file = env.getTruffleFile(folderExisting.toString());
             file = file.resolve("lib/../.");
             try {
                 final String expected = path.resolve(FOLDER_EXISTING).resolve("lib/../.").resolve(FILE_EXISTING).toString();
@@ -275,7 +275,7 @@ public class VirtualizedFileSystemTest {
         final Path path = cfg.getPath();
         final boolean canRead = cfg.canRead();
         languageAction = (Env env) -> {
-            final TruffleFile root = cfg.needsURI() ? env.getTruffleFile(path.toUri()) : env.getTruffleFile(path.toString());
+            final TruffleFile root = env.getTruffleFile(path.toString());
             try {
                 final TruffleFile file = root.resolve(FOLDER_EXISTING).resolve(FILE_EXISTING);
                 final String content = new String(file.readAllBytes(), StandardCharsets.UTF_8);
@@ -296,7 +296,7 @@ public class VirtualizedFileSystemTest {
         final Path path = cfg.getPath();
         final boolean canRead = cfg.canRead();
         languageAction = (Env env) -> {
-            final TruffleFile root = cfg.needsURI() ? env.getTruffleFile(path.toUri()) : env.getTruffleFile(path.toString());
+            final TruffleFile root = env.getTruffleFile(path.toString());
             try {
                 final TruffleFile file = root.resolve(FOLDER_EXISTING).resolve(FILE_EXISTING);
                 final StringBuilder content = new StringBuilder();
@@ -329,7 +329,7 @@ public class VirtualizedFileSystemTest {
         final boolean canRead = cfg.canRead();
         final boolean canWrite = cfg.canWrite();
         languageAction = (Env env) -> {
-            final TruffleFile root = cfg.needsURI() ? env.getTruffleFile(path.toUri()) : env.getTruffleFile(path.toString());
+            final TruffleFile root = env.getTruffleFile(path.toString());
             try {
                 final String expectedContent = "0123456789";
                 final TruffleFile file = root.resolve(FILE_NEW_WRITE_CHANNEL);
@@ -357,7 +357,7 @@ public class VirtualizedFileSystemTest {
         final boolean canRead = cfg.canRead();
         final boolean canWrite = cfg.canWrite();
         languageAction = (Env env) -> {
-            final TruffleFile root = cfg.needsURI() ? env.getTruffleFile(path.toUri()) : env.getTruffleFile(path.toString());
+            final TruffleFile root = env.getTruffleFile(path.toString());
             try {
                 final String expectedContent = "0123456789";
                 final TruffleFile file = root.resolve(FILE_NEW_WRITE_STREAM);
@@ -384,7 +384,7 @@ public class VirtualizedFileSystemTest {
         final boolean canRead = cfg.canRead();
         final boolean canWrite = cfg.canWrite();
         languageAction = (Env env) -> {
-            final TruffleFile root = cfg.needsURI() ? env.getTruffleFile(path.toUri()) : env.getTruffleFile(path.toString());
+            final TruffleFile root = env.getTruffleFile(path.toString());
             try {
                 final TruffleFile toCreate = root.resolve(FILE_NEW_CREATE_DIR);
                 toCreate.createDirectories();
@@ -408,7 +408,7 @@ public class VirtualizedFileSystemTest {
         final boolean canRead = cfg.canRead();
         final boolean canWrite = cfg.canWrite();
         languageAction = (Env env) -> {
-            final TruffleFile root = cfg.needsURI() ? env.getTruffleFile(path.toUri()) : env.getTruffleFile(path.toString());
+            final TruffleFile root = env.getTruffleFile(path.toString());
             try {
                 final TruffleFile toCreate = root.resolve(FILE_NEW_CREATE_FILE);
                 toCreate.createFile();
@@ -431,7 +431,7 @@ public class VirtualizedFileSystemTest {
         final Path path = cfg.getPath();
         final boolean canWrite = cfg.canWrite();
         languageAction = (Env env) -> {
-            final TruffleFile root = cfg.needsURI() ? env.getTruffleFile(path.toUri()) : env.getTruffleFile(path.toString());
+            final TruffleFile root = env.getTruffleFile(path.toString());
             try {
                 final TruffleFile toCreate = root.resolve(FILE_EXISTING_DELETE);
                 toCreate.delete();
@@ -451,7 +451,7 @@ public class VirtualizedFileSystemTest {
         final Path path = cfg.getPath();
         final boolean canRead = cfg.canRead();
         languageAction = (Env env) -> {
-            final TruffleFile root = cfg.needsURI() ? env.getTruffleFile(path.toUri()) : env.getTruffleFile(path.toString());
+            final TruffleFile root = env.getTruffleFile(path.toString());
             try {
                 final TruffleFile toCreate = root.resolve(FOLDER_EXISTING).resolve(FILE_EXISTING);
                 final boolean exists = toCreate.exists();
@@ -468,10 +468,6 @@ public class VirtualizedFileSystemTest {
     public void testGetAbsoluteFile() {
         final Context ctx = cfg.getContext();
         final boolean allowsUserDir = cfg.allowsUserDir();
-        if (cfg.needsURI()) {
-            // Nothing to test for URI path
-            return;
-        }
         languageAction = (Env env) -> {
             final TruffleFile file = env.getTruffleFile(FOLDER_EXISTING).resolve(FILE_EXISTING);
             try {
@@ -491,7 +487,7 @@ public class VirtualizedFileSystemTest {
         final Path path = cfg.getPath();
         final boolean canRead = cfg.canRead();
         languageAction = (Env env) -> {
-            final TruffleFile root = cfg.needsURI() ? env.getTruffleFile(path.toUri()) : env.getTruffleFile(path.toString());
+            final TruffleFile root = env.getTruffleFile(path.toString());
             try {
                 final TruffleFile canonical = root.resolve(FOLDER_EXISTING).resolve(FILE_EXISTING).getCanonicalFile();
                 Assert.assertTrue(cfg.formatErrorMessage("Expected SecurityException"), canRead);
@@ -511,7 +507,7 @@ public class VirtualizedFileSystemTest {
         final Path path = cfg.getPath();
         final boolean canRead = cfg.canRead();
         languageAction = (Env env) -> {
-            final TruffleFile root = cfg.needsURI() ? env.getTruffleFile(path.toUri()) : env.getTruffleFile(path.toString());
+            final TruffleFile root = env.getTruffleFile(path.toString());
             try {
                 final TruffleFile file = root.resolve(FOLDER_EXISTING).resolve(FILE_EXISTING);
                 final FileTime lastModifiedTime = file.getLastModifiedTime();
@@ -532,7 +528,7 @@ public class VirtualizedFileSystemTest {
         final Path path = cfg.getPath();
         final boolean canRead = cfg.canRead();
         languageAction = (Env env) -> {
-            final TruffleFile root = cfg.needsURI() ? env.getTruffleFile(path.toUri()) : env.getTruffleFile(path.toString());
+            final TruffleFile root = env.getTruffleFile(path.toString());
             try {
                 final TruffleFile file = root.resolve(FOLDER_EXISTING).resolve(FILE_EXISTING);
                 final boolean isDir = file.isDirectory();
@@ -551,7 +547,7 @@ public class VirtualizedFileSystemTest {
         final Path path = cfg.getPath();
         final boolean canRead = cfg.canRead();
         languageAction = (Env env) -> {
-            final TruffleFile root = cfg.needsURI() ? env.getTruffleFile(path.toUri()) : env.getTruffleFile(path.toString());
+            final TruffleFile root = env.getTruffleFile(path.toString());
             try {
                 final TruffleFile file = root.resolve(FOLDER_EXISTING).resolve(FILE_EXISTING);
                 final boolean isFile = file.isRegularFile();
@@ -570,7 +566,7 @@ public class VirtualizedFileSystemTest {
         final Path path = cfg.getPath();
         final boolean canRead = cfg.canRead();
         languageAction = (Env env) -> {
-            final TruffleFile root = cfg.needsURI() ? env.getTruffleFile(path.toUri()) : env.getTruffleFile(path.toString());
+            final TruffleFile root = env.getTruffleFile(path.toString());
             try {
                 final TruffleFile file = root.resolve(FOLDER_EXISTING).resolve(FILE_EXISTING);
                 final boolean readable = file.isReadable();
@@ -589,7 +585,7 @@ public class VirtualizedFileSystemTest {
         final Path path = cfg.getPath();
         final boolean canRead = cfg.canRead();
         languageAction = (Env env) -> {
-            final TruffleFile root = cfg.needsURI() ? env.getTruffleFile(path.toUri()) : env.getTruffleFile(path.toString());
+            final TruffleFile root = env.getTruffleFile(path.toString());
             try {
                 final TruffleFile file = root.resolve(FOLDER_EXISTING).resolve(FILE_EXISTING);
                 final boolean writable = file.isWritable();
@@ -608,7 +604,7 @@ public class VirtualizedFileSystemTest {
         final Path path = cfg.getPath();
         final boolean canRead = cfg.canRead();
         languageAction = (Env env) -> {
-            final TruffleFile root = cfg.needsURI() ? env.getTruffleFile(path.toUri()) : env.getTruffleFile(path.toString());
+            final TruffleFile root = env.getTruffleFile(path.toString());
             try {
                 final TruffleFile file = root.resolve(FOLDER_EXISTING).resolve(FILE_EXISTING);
                 final boolean executable = file.isExecutable();
@@ -628,7 +624,7 @@ public class VirtualizedFileSystemTest {
         final boolean canRead = cfg.canRead();
         final boolean canWrite = cfg.canWrite();
         languageAction = (Env env) -> {
-            final TruffleFile root = cfg.needsURI() ? env.getTruffleFile(path.toUri()) : env.getTruffleFile(path.toString());
+            final TruffleFile root = env.getTruffleFile(path.toString());
             try {
                 final TruffleFile file = root.resolve(FILE_EXISTING_RENAME);
                 final TruffleFile target = root.resolve(FILE_NEW_RENAME);
@@ -656,7 +652,7 @@ public class VirtualizedFileSystemTest {
         final Path path = cfg.getPath();
         final boolean canRead = cfg.canRead();
         languageAction = (Env env) -> {
-            final TruffleFile root = cfg.needsURI() ? env.getTruffleFile(path.toUri()) : env.getTruffleFile(path.toString());
+            final TruffleFile root = env.getTruffleFile(path.toString());
             try {
                 final TruffleFile file = root.resolve(FOLDER_EXISTING).resolve(FILE_EXISTING);
                 final long size = file.size();
@@ -676,10 +672,6 @@ public class VirtualizedFileSystemTest {
         final Context ctx = cfg.getContext();
         final Path userDir = cfg.getUserDir();
         final boolean allowsUserDir = cfg.allowsUserDir();
-        if (cfg.needsURI()) {
-            // Nothing to test for URI path
-            return;
-        }
         languageAction = (Env env) -> {
             final TruffleFile file = env.getTruffleFile(FOLDER_EXISTING).resolve(FILE_EXISTING);
             try {
@@ -866,7 +858,7 @@ public class VirtualizedFileSystemTest {
         boolean canRead = cfg.canRead();
         languageAction = (Env env) -> {
             Path folderExisting = path.resolve(FOLDER_EXISTING);
-            TruffleFile file = cfg.needsURI() ? env.getTruffleFile(folderExisting.toUri()) : env.getTruffleFile(folderExisting.toString());
+            TruffleFile file = env.getTruffleFile(folderExisting.toString());
             Set<String> expected = new HashSet<>();
             Collections.addAll(expected, FILE_EXISTING, FOLDER_EXISTING_INNER1, FOLDER_EXISTING_INNER2);
             try (DirectoryStream<TruffleFile> stream = file.newDirectoryStream()) {
@@ -1022,7 +1014,7 @@ public class VirtualizedFileSystemTest {
         Path path = cfg.getPath();
         boolean canWrite = cfg.canWrite();
         languageAction = (Env env) -> {
-            final TruffleFile root = cfg.needsURI() ? env.getTruffleFile(path.toUri()) : env.getTruffleFile(path.toString());
+            final TruffleFile root = env.getTruffleFile(path.toString());
             try {
                 TruffleFile target = root.resolve(FOLDER_EXISTING).resolve(FILE_EXISTING);
                 TruffleFile link = root.resolve(FILE_NEW_LINK);
@@ -1045,7 +1037,7 @@ public class VirtualizedFileSystemTest {
         Path path = cfg.getPath();
         boolean canWrite = cfg.canWrite();
         languageAction = (Env env) -> {
-            TruffleFile root = cfg.needsURI() ? env.getTruffleFile(path.toUri()) : env.getTruffleFile(path.toString());
+            TruffleFile root = env.getTruffleFile(path.toString());
             try {
                 TruffleFile target = root.resolve(FOLDER_EXISTING).resolve(FILE_EXISTING);
                 TruffleFile link = root.resolve(FILE_NEW_SYMLINK);
@@ -1068,7 +1060,7 @@ public class VirtualizedFileSystemTest {
         Path path = cfg.getPath();
         boolean canRead = cfg.canRead();
         languageAction = (Env env) -> {
-            final TruffleFile root = cfg.needsURI() ? env.getTruffleFile(path.toUri()) : env.getTruffleFile(path.toString());
+            final TruffleFile root = env.getTruffleFile(path.toString());
             try {
                 TruffleFile file = root.resolve(FOLDER_EXISTING);
                 UserPrincipal owner = file.getOwner();
@@ -1091,7 +1083,7 @@ public class VirtualizedFileSystemTest {
         Path path = cfg.getPath();
         boolean canRead = cfg.canRead();
         languageAction = (Env env) -> {
-            final TruffleFile root = cfg.needsURI() ? env.getTruffleFile(path.toUri()) : env.getTruffleFile(path.toString());
+            final TruffleFile root = env.getTruffleFile(path.toString());
             try {
                 TruffleFile file = root.resolve(FOLDER_EXISTING);
                 GroupPrincipal group = file.getGroup();
@@ -1115,7 +1107,7 @@ public class VirtualizedFileSystemTest {
         boolean canRead = cfg.canRead();
         boolean canWrite = cfg.canWrite();
         languageAction = (Env env) -> {
-            TruffleFile root = cfg.needsURI() ? env.getTruffleFile(path.toUri()) : env.getTruffleFile(path.toString());
+            TruffleFile root = env.getTruffleFile(path.toString());
             try {
                 TruffleFile file = root.resolve(FOLDER_EXISTING).resolve(FILE_EXISTING);
                 TruffleFile target = root.resolve(FILE_NEW_COPY);
@@ -1179,7 +1171,6 @@ public class VirtualizedFileSystemTest {
         private final Path userDir;
         private final FileSystem fileSystem;
         private final boolean isDefaultFileSystem;
-        private final boolean needsURI;
         private final boolean readable;
         private final boolean writable;
         private final boolean allowsUserDir;
@@ -1191,11 +1182,10 @@ public class VirtualizedFileSystemTest {
                         final Path path,
                         final FileSystem fileSystem,
                         final boolean isDefaultFileSystem,
-                        final boolean needsURI,
                         final boolean readable,
                         final boolean writable,
                         final boolean allowsUserDir) {
-            this(name, context, path, path, fileSystem, isDefaultFileSystem, needsURI, readable, writable, allowsUserDir, null);
+            this(name, context, path, path, fileSystem, isDefaultFileSystem, readable, writable, allowsUserDir, null);
         }
 
         Configuration(
@@ -1205,11 +1195,10 @@ public class VirtualizedFileSystemTest {
                         final Path userDir,
                         final FileSystem fileSystem,
                         final boolean isDefaultFileSystem,
-                        final boolean needsURI,
                         final boolean readable,
                         final boolean writable,
                         final boolean allowsUserDir) {
-            this(name, context, path, userDir, fileSystem, isDefaultFileSystem, needsURI, readable, writable, allowsUserDir, null);
+            this(name, context, path, userDir, fileSystem, isDefaultFileSystem, readable, writable, allowsUserDir, null);
         }
 
         Configuration(
@@ -1219,7 +1208,6 @@ public class VirtualizedFileSystemTest {
                         final Path userDir,
                         final FileSystem fileSystem,
                         final boolean isDefaultFileSystem,
-                        final boolean needsURI,
                         final boolean readable,
                         final boolean writable,
                         final boolean allowsUserDir,
@@ -1235,7 +1223,6 @@ public class VirtualizedFileSystemTest {
             this.userDir = userDir;
             this.fileSystem = fileSystem;
             this.isDefaultFileSystem = isDefaultFileSystem;
-            this.needsURI = needsURI;
             this.readable = readable;
             this.writable = writable;
             this.allowsUserDir = allowsUserDir;
@@ -1260,10 +1247,6 @@ public class VirtualizedFileSystemTest {
 
         Path getUserDir() {
             return userDir;
-        }
-
-        boolean needsURI() {
-            return needsURI;
         }
 
         boolean canRead() {
