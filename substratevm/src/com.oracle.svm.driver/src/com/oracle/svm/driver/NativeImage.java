@@ -632,15 +632,16 @@ public class NativeImage {
         for (Path classpathEntry : paths) {
             try {
                 String nativeImageMetaInfPrefix = "META-INF/native-image";
-                Path nativeImageMetaInfBase;
                 if (Files.isDirectory(classpathEntry)) {
-                    nativeImageMetaInfBase = classpathEntry.resolve(Paths.get(nativeImageMetaInfPrefix));
+                    Path nativeImageMetaInfBase = classpathEntry.resolve(Paths.get(nativeImageMetaInfPrefix));
+                    processNativeImageProperties(nativeImageMetaInfBase);
                 } else {
                     URI jarFileURI = URI.create("jar:file:" + classpathEntry);
-                    FileSystem jarFS = FileSystems.newFileSystem(jarFileURI, Collections.emptyMap());
-                    nativeImageMetaInfBase = jarFS.getPath("/" + nativeImageMetaInfPrefix);
+                    try (FileSystem jarFS = FileSystems.newFileSystem(jarFileURI, Collections.emptyMap())) {
+                        Path nativeImageMetaInfBase = jarFS.getPath("/" + nativeImageMetaInfPrefix);
+                        processNativeImageProperties(nativeImageMetaInfBase);
+                    }
                 }
-                processNativeImageProperties(nativeImageMetaInfBase);
             } catch (IOException e) {
                 throw showError("Invalid classpath entry " + classpathEntry, e);
             }
