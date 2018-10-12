@@ -366,6 +366,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
             for (int i = 0; i < nodes.size(); i++) {
                 Node node = nodes.get(i);
                 if (node instanceof ValueNode) {
+                    setSourcePosition(node.getNodeSourcePosition());
                     DebugContext debug = node.getDebug();
                     ValueNode valueNode = (ValueNode) node;
                     if (trace) {
@@ -466,7 +467,6 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         if (node.getDebug().isLogEnabled() && node.stamp(NodeView.DEFAULT).isEmpty()) {
             node.getDebug().log("This node has an empty stamp, we are emitting dead code(?): %s", node);
         }
-        setSourcePosition(node.getNodeSourcePosition());
         if (node instanceof LIRLowerable) {
             ((LIRLowerable) node).generate(this);
         } else {
