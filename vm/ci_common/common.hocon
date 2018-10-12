@@ -13,7 +13,8 @@ common_vm: ${common} ${vm_java} {
 common_vm_linux: ${common_vm} ${linux}  {
   packages: {
     gcc-build-essentials: "==4.9.1" # GCC 4.9.0 fails on cluster
-    make : ">=3.83"
+    make: ">=3.83"
+    binutils: "==2.23.2"
   }
 }
 
