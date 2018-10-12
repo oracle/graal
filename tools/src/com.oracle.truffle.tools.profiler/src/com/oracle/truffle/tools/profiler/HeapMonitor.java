@@ -259,10 +259,10 @@ public final class HeapMonitor implements Closeable {
                 Map<String, Object> metaObjMap = new HashMap<>();
                 metaObjMap.put("language", language.getId());
                 metaObjMap.put("name", objectsByMetaObject.getKey());
-                metaObjMap.put("allocatedInstancesCount", mi.getTotalInstances());
-                metaObjMap.put("bytes", mi.getTotalBytes());
-                metaObjMap.put("liveInstancesCount", mi.getAliveInstances());
-                metaObjMap.put("liveBytes", mi.getAliveBytes());
+                metaObjMap.put("totalInstances", mi.getTotalInstances());
+                metaObjMap.put("totalBytes", mi.getTotalBytes());
+                metaObjMap.put("aliveInstances", mi.getAliveInstances());
+                metaObjMap.put("aliveBytes", mi.getAliveBytes());
                 heapHisto.add(metaObjMap);
             }
         }
