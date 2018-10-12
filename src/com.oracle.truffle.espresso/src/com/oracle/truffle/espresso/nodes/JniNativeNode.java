@@ -14,7 +14,6 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 public class JniNativeNode extends RootNode {
 
@@ -36,11 +35,11 @@ public class JniNativeNode extends RootNode {
             // Having a constant length would help PEA to skip the copying.
 
             JniEnv jniEnv = EspressoLanguage.getCurrentContext().getJniEnv();
-            assert jniEnv.getJniEnvPtr() != 0;
+            assert jniEnv.getNativePointer() != 0;
 
             Object[] argsWithEnv = originalMethod.isStatic()
-                    ? prepend2(jniEnv.getJniEnvPtr(), originalMethod.getDeclaringClass().rawKlass().mirror(), frame.getArguments())
-                    : prepend1(jniEnv.getJniEnvPtr(), frame.getArguments());
+                    ? prepend2(jniEnv.getNativePointer(), originalMethod.getDeclaringClass().rawKlass().mirror(), frame.getArguments())
+                    : prepend1(jniEnv.getNativePointer(), frame.getArguments());
 
             return ForeignAccess.sendExecute(execute, boundNative, argsWithEnv);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {

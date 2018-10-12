@@ -39,6 +39,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.jni.Mangle;
+import com.oracle.truffle.espresso.jni.NativeLibrary;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
@@ -180,26 +181,25 @@ public final class MethodInfo implements ModifiersProvider {
         }
     }
 
-    private static TruffleObject bind(TruffleObject library, Meta.Method m, String mangledName) {
-        StringBuilder sb = new StringBuilder("(").append(NativeSimpleType.POINTER); // Prepend
-                                                                                    // JNIEnv.
-        SignatureDescriptor signature = m.rawMethod().getSignature();
-        if (!m.isStatic()) {
-            sb.append(", ").append(NativeSimpleType.OBJECT); // this
-        } else {
-            sb.append(", ").append(NativeSimpleType.OBJECT); // clazz
-        }
+    private static String buildJniNativeSignature(Meta.Method method) {
+        // Prepend JNIEnv*.
+        StringBuilder sb = new StringBuilder("(").append(NativeSimpleType.POINTER);
+        SignatureDescriptor signature = method.rawMethod().getSignature();
+
+        // Receiver for instance methods, class for static methods.
+        sb.append(", ").append(NativeSimpleType.OBJECT);
         int argCount = signature.getParameterCount(false);
         for (int i = 0; i < argCount; ++i) {
             sb.append(", ").append(kindToType(signature.getParameterKind(i)));
         }
-        sb.append("):").append(kindToType(signature.resultKind()));
-        try {
-            TruffleObject fn = (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), library, mangledName);
-            return (TruffleObject) ForeignAccess.sendInvoke(Message.INVOKE.createNode(), fn, "bind", sb.toString());
-        } catch (UnsupportedTypeException | UnsupportedMessageException | UnknownIdentifierException | ArityException e) {
-            throw EspressoError.shouldNotReachHere();
-        }
+        sb.append("): ").append(kindToType(signature.resultKind()));
+
+        return sb.toString();
+    }
+
+    private static TruffleObject bind(TruffleObject library, Meta.Method m, String mangledName) {
+        String signature = buildJniNativeSignature(m);
+        return NativeLibrary.lookupAndBind(library, mangledName, signature);
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -207,6 +207,8 @@ public final class MethodInfo implements ModifiersProvider {
         // TODO(peterssen): Make lazy call target thread-safe.
         if (callTarget == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
+
+            // TODO(peterssen): Rethink method substitution logic.
             CallTarget redirectedMethod = getContext().getVm().getIntrinsic(this);
             if (redirectedMethod != null) {
                 callTarget = redirectedMethod;
