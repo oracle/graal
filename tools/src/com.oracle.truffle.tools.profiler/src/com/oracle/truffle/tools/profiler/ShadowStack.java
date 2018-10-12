@@ -189,7 +189,7 @@ final class ShadowStack {
                     // Not needed if stack overflowed
                     final ThreadLocalStack stack = getStack();
                     if (!stack.hasStackOverflowed() &&
-                            stack.top().getInstrumentedNode() != interpretedLocation.getInstrumentedNode()) {
+                                    stack.top().getInstrumentedNode() != interpretedLocation.getInstrumentedNode()) {
 
                         return;
                     }
