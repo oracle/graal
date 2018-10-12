@@ -37,7 +37,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.function.BiFunction;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -76,8 +75,9 @@ public final class HeapMonitor implements Closeable {
     private final TruffleInstrument.Env env;
 
     private final ReferenceQueue<Object> referenceQueue = new ReferenceQueue<>();
-    private final ConcurrentLinkedQueue<ObjectPhantomReference> references = new ConcurrentLinkedQueue<>();
-    private final Map<LanguageInfo, Map<String, DeadObjectCounters>> deadObjectCounters = new LinkedHashMap<>();
+    private final ConcurrentLinkedQueue<ObjectPhantomReference> newReferences = new ConcurrentLinkedQueue<>();
+    private final ConcurrentLinkedQueue<ObjectPhantomReference> processedReferences = new ConcurrentLinkedQueue<>();
+    private final Map<LanguageInfo, Map<String, HeapSummary>> summaryData = new LinkedHashMap<>();
     private Thread referenceThread;
 
     private volatile boolean closed;
@@ -171,9 +171,17 @@ public final class HeapMonitor implements Closeable {
         if (closed) {
             throw new IllegalStateException("Heap Allocation Monitor is already closed.");
         }
-        HeapSummary summary = new HeapSummary();
-        computeSummaryImpl((l, m) -> summary);
-        return summary;
+        HeapSummary totalSummary = new HeapSummary();
+        cleanReferenceQueue();
+        processNewReferences();
+        synchronized (summaryData) {
+            for (Map<String, HeapSummary> languages : summaryData.values()) {
+                for (HeapSummary summaryEntry : languages.values()) {
+                    totalSummary.add(summaryEntry);
+                }
+            }
+        }
+        return totalSummary;
     }
 
     /**
@@ -189,37 +197,33 @@ public final class HeapMonitor implements Closeable {
      * @since 1.0
      */
     public Map<LanguageInfo, Map<String, HeapSummary>> takeMetaObjectSummary() {
-        Map<LanguageInfo, Map<String, HeapSummary>> summaries = new LinkedHashMap<>();
-        computeSummaryImpl((l, m) -> getSummary(summaries, l, m));
-
-        // make read-only
-        for (Entry<LanguageInfo, Map<String, HeapSummary>> summary : summaries.entrySet()) {
-            summaries.put(summary.getKey(), Collections.unmodifiableMap(summary.getValue()));
+        cleanReferenceQueue();
+        processNewReferences();
+        synchronized (summaryData) {
+            Map<LanguageInfo, Map<String, HeapSummary>> languageMap = new LinkedHashMap<>(summaryData);
+            for (Entry<LanguageInfo, Map<String, HeapSummary>> languageEntry : languageMap.entrySet()) {
+                Map<String, HeapSummary> copyLanguageMap = new LinkedHashMap<>(languageEntry.getValue());
+                for (Entry<String, HeapSummary> summaryEntry : copyLanguageMap.entrySet()) {
+                    summaryEntry.setValue(new HeapSummary(summaryEntry.getValue()));
+                }
+                languageEntry.setValue(Collections.unmodifiableMap(copyLanguageMap));
+            }
+            return Collections.unmodifiableMap(languageMap);
         }
-        return Collections.unmodifiableMap(summaries);
     }
 
-    private void computeSummaryImpl(BiFunction<LanguageInfo, String, HeapSummary> groupFunction) {
-        cleanReferenceQueue();
-        synchronized (deadObjectCounters) {
-            for (Entry<LanguageInfo, Map<String, DeadObjectCounters>> objectsByLanguage : deadObjectCounters.entrySet()) {
-                LanguageInfo language = objectsByLanguage.getKey();
-                for (Entry<String, DeadObjectCounters> objectsByMetaObject : objectsByLanguage.getValue().entrySet()) {
-                    HeapSummary summary = groupFunction.apply(language, objectsByMetaObject.getKey());
-                    DeadObjectCounters deadObjects = objectsByMetaObject.getValue();
-                    summary.totalInstances += deadObjects.instances;
-                    summary.totalBytes += deadObjects.bytes;
-                }
-            }
-            for (ObjectPhantomReference reference : references) {
-                HeapSummary summary = groupFunction.apply(reference.language, reference.metaObject);
-                long sizeDiff = reference.computeBytesDiff();
-                summary.totalBytes += sizeDiff;
-                summary.aliveBytes += sizeDiff;
-                if (reference.oldSize == 0) { // if not a reallocation
-                    summary.aliveInstances++;
-                    summary.totalInstances++;
-                }
+    private void processNewReferences() {
+        synchronized (summaryData) {
+            ObjectPhantomReference reference;
+            while ((reference = newReferences.poll()) != null) {
+                HeapSummary summary = getSummary(summaryData, reference.language, reference.metaObject);
+                summary.totalInstances++;
+                summary.aliveInstances++;
+                long bytesDiff = reference.computeBytesDiff();
+                summary.totalBytes += bytesDiff;
+                summary.aliveBytes += bytesDiff;
+                reference.processed = true;
+                processedReferences.add(reference);
             }
         }
     }
@@ -258,9 +262,9 @@ public final class HeapMonitor implements Closeable {
      * @since 1.0
      */
     public void clearData() {
-        synchronized (deadObjectCounters) {
-            references.clear();
-            deadObjectCounters.clear();
+        synchronized (summaryData) {
+            newReferences.clear();
+            summaryData.clear();
         }
     }
 
@@ -271,11 +275,11 @@ public final class HeapMonitor implements Closeable {
      * @since 1.0
      */
     public boolean hasData() {
-        if (!references.isEmpty()) {
+        if (!newReferences.isEmpty()) {
             return true;
         }
-        synchronized (deadObjectCounters) {
-            if (!deadObjectCounters.isEmpty()) {
+        synchronized (summaryData) {
+            if (!summaryData.isEmpty()) {
                 return true;
             }
         }
@@ -300,20 +304,27 @@ public final class HeapMonitor implements Closeable {
             // nothing to do avoid locking
             return;
         }
-        Set<ObjectPhantomReference> collectedReferences = new HashSet<>();
-        synchronized (deadObjectCounters) {
+        Set<ObjectPhantomReference> collectedNewReferences = new HashSet<>();
+        Set<ObjectPhantomReference> collectedProcessedReferences = new HashSet<>();
+        synchronized (summaryData) {
             do {
-                Map<String, DeadObjectCounters> counters = deadObjectCounters.computeIfAbsent(reference.language, k -> new LinkedHashMap<>());
-                DeadObjectCounters counter = counters.computeIfAbsent(reference.metaObject, k -> new DeadObjectCounters());
-                counter.bytes += reference.computeBytesDiff();
-                if (reference.oldSize == 0) { // if not a reallocation
-                    counter.instances++;
+                HeapSummary counter = getSummary(summaryData, reference.language, reference.metaObject);
+                long bytesDiff = reference.computeBytesDiff();
+                if (reference.processed) {
+                    counter.aliveInstances--;
+                    counter.aliveBytes -= bytesDiff;
+                    collectedProcessedReferences.add(reference);
+                } else {
+                    // object never was processed alive
+                    counter.totalInstances++;
+                    counter.totalBytes += bytesDiff;
+                    collectedNewReferences.add(reference);
                 }
-                collectedReferences.add(reference);
             } while ((reference = (ObjectPhantomReference) referenceQueue.poll()) != null);
             // note that ConcurrentLinkedQueue actually supports doing this
             // the iterator does not throw a ConcurrentModificationException
-            references.removeAll(collectedReferences);
+            newReferences.removeAll(collectedNewReferences);
+            processedReferences.removeAll(collectedProcessedReferences);
         }
     }
 
@@ -330,7 +341,7 @@ public final class HeapMonitor implements Closeable {
                 return;
             }
             LanguageInfo language = event.getLanguage();
-            references.add(new ObjectPhantomReference(object, referenceQueue, language, getMetaObjectString(language, object), event.getOldSize(), event.getNewSize()));
+            newReferences.add(new ObjectPhantomReference(object, referenceQueue, language, getMetaObjectString(language, object), event.getOldSize(), event.getNewSize()));
         }
 
         private String getMetaObjectString(LanguageInfo language, Object value) {
@@ -351,14 +362,6 @@ public final class HeapMonitor implements Closeable {
             }
             return "Unknown";
         }
-
-    }
-
-    private final class DeadObjectCounters {
-
-        long instances;
-        long bytes;
-
     }
 
     private static final class ObjectPhantomReference extends PhantomReference<Object> {
@@ -366,6 +369,8 @@ public final class HeapMonitor implements Closeable {
         final LanguageInfo language;
         final long oldSize;
         final long newSize;
+
+        boolean processed;
 
         ObjectPhantomReference(Object obj, ReferenceQueue<Object> rq, LanguageInfo language, String metaObject, long oldSize, long newSize) {
             super(obj, rq);
