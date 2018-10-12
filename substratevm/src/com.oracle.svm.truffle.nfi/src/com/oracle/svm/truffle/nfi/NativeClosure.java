@@ -40,13 +40,13 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
@@ -85,7 +85,7 @@ final class NativeClosure {
         if (size < SizeOf.get(ffi_arg.class)) {
             size = SizeOf.get(ffi_arg.class);
         }
-        return SubstrateUtil.wrapAsByteBuffer(buffer, size);
+        return CTypeConversion.asByteBuffer(buffer, size);
     }
 
     static Target_com_oracle_truffle_nfi_impl_ClosureNativePointer prepareClosure(Target_com_oracle_truffle_nfi_impl_NFIContext ctx,
@@ -125,7 +125,7 @@ final class NativeClosure {
                 // skip
             } else {
                 WordPointer argPtr = argPointers.read(i);
-                args[argIdx++] = SubstrateUtil.wrapAsByteBuffer(argPtr, argTypes[i].size);
+                args[argIdx++] = CTypeConversion.asByteBuffer(argPtr, argTypes[i].size);
             }
         }
 
