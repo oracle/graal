@@ -78,12 +78,12 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
         String imageName = enabledOption.getProperty("ImageName");
         if (imageName != null) {
-            nativeImage.addImageBuilderArg(NativeImage.oHName + imageName);
+            nativeImage.addPlainImageBuilderArg(NativeImage.oHName + imageName);
         }
 
         String launcherClass = enabledOption.getProperty("LauncherClass");
         if (launcherClass != null) {
-            nativeImage.addImageBuilderArg(NativeImage.oHClass + launcherClass);
+            nativeImage.addPlainImageBuilderArg(NativeImage.oHClass + launcherClass);
         }
 
         enabledOption.forEachPropertyValue("JavaArgs", nativeImage::addImageBuilderJavaArgs);
