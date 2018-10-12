@@ -636,10 +636,21 @@ public class NativeImage {
                     Path nativeImageMetaInfBase = classpathEntry.resolve(Paths.get(nativeImagePropertiesMetaInf));
                     processNativeImageProperties(nativeImageMetaInfBase);
                 } else {
-                    URI jarFileURI = URI.create("jar:file:" + classpathEntry);
-                    try (FileSystem jarFS = FileSystems.newFileSystem(jarFileURI, Collections.emptyMap())) {
-                        Path nativeImageMetaInfBase = jarFS.getPath("/" + nativeImagePropertiesMetaInf);
-                        processNativeImageProperties(nativeImageMetaInfBase);
+                    List<Path> jarFileMatches;
+                    if (classpathEntry.endsWith("*")) {
+                        jarFileMatches = Files.list(classpathEntry.getParent())
+                                        .filter(p -> p.getFileName().toString().toLowerCase().endsWith(".jar"))
+                                        .collect(Collectors.toList());
+                    } else {
+                        jarFileMatches = Collections.singletonList(classpathEntry);
+                    }
+
+                    for (Path jarFile : jarFileMatches) {
+                        URI jarFileURI = URI.create("jar:file:" + jarFile);
+                        try (FileSystem jarFS = FileSystems.newFileSystem(jarFileURI, Collections.emptyMap())) {
+                            Path nativeImageMetaInfBase = jarFS.getPath("/" + nativeImagePropertiesMetaInf);
+                            processNativeImageProperties(nativeImageMetaInfBase);
+                        }
                     }
                 }
             } catch (IOException e) {
