@@ -41,7 +41,7 @@ public class HighlightRequestHandler extends AbstractRequestHandler {
         return Collections.emptyList();
     }
 
-    private List<? extends DocumentHighlight> findOtherReadOrWrites(TextDocumentSurrogate surrogate, InstrumentableNode nodeAtCaret) {
+    List<? extends DocumentHighlight> findOtherReadOrWrites(TextDocumentSurrogate surrogate, InstrumentableNode nodeAtCaret) {
         String variableName = InteropUtils.getNodeObjectName(nodeAtCaret);
         if (variableName != null) {
             LinkedList<Scope> scopesOuterToInner = getScopesOuterToInner(surrogate, nodeAtCaret);
