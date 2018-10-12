@@ -32,28 +32,21 @@ public class AbstractRequestHandler {
         this.contextAwareExecutor = contextAwareExecutor;
     }
 
-    public InstrumentableNode findNodeAtCaret(TextDocumentSurrogate surrogate, int line, int character) {
-        return findNodeAtCaret(surrogate, line, character, null);
-    }
-
-    public InstrumentableNode findNodeAtCaret(TextDocumentSurrogate surrogate, int line, int character, Class<?> tag) {
+    public InstrumentableNode findNodeAtCaret(TextDocumentSurrogate surrogate, int line, int character, Class<?>... tag) {
         SourceWrapper sourceWrapper = surrogate.getSourceWrapper();
         if (sourceWrapper.isParsingSuccessful()) {
             Source source = sourceWrapper.getSource();
             if (SourceUtils.isLineValid(line, source)) {
                 int oneBasedLineNumber = SourceUtils.zeroBasedLineToOneBasedLine(line, source);
                 NearestSections nearestSections = NearestSectionsFinder.getNearestSections(source, env, oneBasedLineNumber, character, tag);
-                SourceSection definitionSearchSection = nearestSections.getContainsSourceSection();
-                InstrumentableNode definitionSearchNode = nearestSections.getContainsNode();
-                if (definitionSearchSection == null && nearestSections.getNextSourceSection() != null) {
+                if (nearestSections.getNextSourceSection() != null) {
                     SourceSection nextNodeSection = nearestSections.getNextSourceSection();
                     if (nextNodeSection.getStartLine() == oneBasedLineNumber && nextNodeSection.getStartColumn() == character + 1) {
-                        // nextNodeSection is directly before the caret, so we use that one as
-                        // fallback
+                        // nextNodeSection is directly before the caret, so we use that one
                         return nearestSections.getNextNode();
                     }
                 }
-                return definitionSearchNode;
+                return nearestSections.getContainsNode();
             }
         }
         return null;

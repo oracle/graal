@@ -300,7 +300,7 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
     }
 
     public Future<List<? extends Location>> definition(URI uri, int line, int character) {
-        return contextAwareExecutor.executeWithNestedContext(() -> definitionHandler.definitionWithEnteredContext(uri, line, character), true);
+        return contextAwareExecutor.executeWithDefaultContext(() -> definitionHandler.definitionWithEnteredContext(uri, line, character));
     }
 
     public Future<Hover> hover(URI uri, int line, int column) {

@@ -23,11 +23,7 @@ public final class NearestSectionsFinder {
     private NearestSectionsFinder() {
     }
 
-    public static NearestNodeHolder findNearestNode(Source source, int line, int character, Env env) {
-        return findNearestNode(source, line, character, env, null);
-    }
-
-    public static NearestNodeHolder findNearestNode(Source source, int line, int character, Env env, Class<?> tag) {
+    public static NearestNodeHolder findNearestNode(Source source, int line, int character, Env env, Class<?>... tag) {
         int oneBasedLineNumber = SourceUtils.zeroBasedLineToOneBasedLine(line, source);
         NearestNodeHolder nearestNodeHolder = findNearestNodeOneBased(oneBasedLineNumber, character, source, env, tag);
 
@@ -40,7 +36,7 @@ public final class NearestSectionsFinder {
         return nearestNodeHolder;
     }
 
-    protected static NearestNodeHolder findNearestNodeOneBased(int oneBasedLineNumber, int column, Source source, Env env, Class<?> tag) {
+    protected static NearestNodeHolder findNearestNodeOneBased(int oneBasedLineNumber, int column, Source source, Env env, Class<?>... tag) {
         NearestSections nearestSections = getNearestSections(source, env, oneBasedLineNumber, column, tag);
         SourceSection containsSection = nearestSections.getContainsSourceSection();
 
@@ -93,19 +89,15 @@ public final class NearestSectionsFinder {
         return false;
     }
 
-    public static NearestSections getNearestSections(Source source, TruffleInstrument.Env env, int line, int column) {
-        return getNearestSections(source, env, line, column, null);
-    }
-
-    public static NearestSections getNearestSections(Source source, TruffleInstrument.Env env, int line, int column, Class<?> tag) {
+    public static NearestSections getNearestSections(Source source, TruffleInstrument.Env env, int line, int column, Class<?>... tag) {
         return getNearestSections(source, env, SourceUtils.convertLineAndColumnToOffset(source, line, column), tag);
     }
 
-    protected static NearestSections getNearestSections(Source source, TruffleInstrument.Env env, int offset, Class<?> tag) {
+    protected static NearestSections getNearestSections(Source source, TruffleInstrument.Env env, int offset, Class<?>... tags) {
         NearestSections sectionsCollector = new NearestSections(offset);
         Builder filter = SourceSectionFilter.newBuilder().sourceIs(source);
-        if (tag != null) {
-            filter.tagIs(tag);
+        if (tags.length > 0) {
+            filter.tagIs(tags);
         }
         // All SourceSections of the Source are loaded already when the source was parsed
         env.getInstrumenter().attachLoadSourceSectionListener(

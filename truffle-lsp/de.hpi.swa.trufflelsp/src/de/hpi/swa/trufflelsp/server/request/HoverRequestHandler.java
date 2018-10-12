@@ -47,7 +47,7 @@ public class HoverRequestHandler extends AbstractRequestHandler {
 
     public Hover hoverWithEnteredContext(URI uri, int line, int column) {
         TextDocumentSurrogate surrogate = surrogateMap.get(uri);
-        InstrumentableNode nodeAtCaret = findNodeAtCaret(surrogate, line, column + 1);
+        InstrumentableNode nodeAtCaret = findNodeAtCaret(surrogate, line, column);
         if (nodeAtCaret != null) {
             SourceSection hoverSection = ((Node) nodeAtCaret).getSourceSection();
             System.out.println("hover: SourceSection(" + hoverSection.getCharacters() + ")");
