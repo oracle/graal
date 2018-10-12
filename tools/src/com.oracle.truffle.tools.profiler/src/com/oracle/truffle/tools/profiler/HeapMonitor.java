@@ -36,8 +36,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.instrumentation.ContextsListener;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 
@@ -83,9 +86,41 @@ public final class HeapMonitor implements Closeable {
     private volatile boolean closed;
     private boolean collecting;
     private EventBinding<?> activeBinding;
+    private final Map<LanguageInfo, LanguageInfo> initializedLanguages = new ConcurrentHashMap<>();
 
     private HeapMonitor(TruffleInstrument.Env env) {
         this.env = env;
+        env.getInstrumenter().attachContextsListener(new ContextsListener() {
+            @Override
+            public void onContextCreated(TruffleContext context) {
+
+            }
+
+            @Override
+            public void onLanguageContextCreated(TruffleContext context, LanguageInfo language) {
+
+            }
+
+            @Override
+            public void onLanguageContextInitialized(TruffleContext context, LanguageInfo language) {
+                initializedLanguages.put(language, language);
+            }
+
+            @Override
+            public void onLanguageContextFinalized(TruffleContext context, LanguageInfo language) {
+                initializedLanguages.remove(language);
+            }
+
+            @Override
+            public void onLanguageContextDisposed(TruffleContext context, LanguageInfo language) {
+
+            }
+
+            @Override
+            public void onContextClosed(TruffleContext context) {
+
+            }
+        }, true);
     }
 
     private void resetMonitor() {
@@ -341,7 +376,9 @@ public final class HeapMonitor implements Closeable {
                 return;
             }
             LanguageInfo language = event.getLanguage();
-            newReferences.add(new ObjectPhantomReference(object, referenceQueue, language, getMetaObjectString(language, object), event.getOldSize(), event.getNewSize()));
+            if (initializedLanguages.containsKey(language)) {
+                newReferences.add(new ObjectPhantomReference(object, referenceQueue, language, getMetaObjectString(language, object), event.getOldSize(), event.getNewSize()));
+            }
         }
 
         private String getMetaObjectString(LanguageInfo language, Object value) {
