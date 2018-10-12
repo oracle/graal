@@ -43,7 +43,7 @@ public final class HeapSummary {
         add(summary);
     }
 
-    final void add(HeapSummary summary) {
+    void add(HeapSummary summary) {
         this.totalBytes += summary.totalBytes;
         this.aliveInstances += summary.aliveInstances;
         this.totalInstances += summary.totalInstances;
