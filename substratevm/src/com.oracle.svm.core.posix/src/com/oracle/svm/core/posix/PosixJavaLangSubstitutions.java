@@ -54,7 +54,6 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.LibCHelper;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.InjectAccessors;
@@ -161,11 +160,11 @@ final class Target_java_lang_ProcessEnvironment {
                 int valLength = (int) LibC.strlen(valBeg).rawValue();
 
                 byte[] var = new byte[varLength];
-                SubstrateUtil.wrapAsByteBuffer(varBeg, varLength).get(var);
+                CTypeConversion.asByteBuffer(varBeg, varLength).get(var);
                 result[2 * j] = var;
 
                 byte[] val = new byte[valLength];
-                SubstrateUtil.wrapAsByteBuffer(valBeg, valLength).get(val);
+                CTypeConversion.asByteBuffer(valBeg, valLength).get(val);
                 result[2 * j + 1] = val;
 
                 j++;

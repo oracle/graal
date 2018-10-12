@@ -443,7 +443,7 @@ final class JNIFunctions {
     static JNIObjectHandle NewStringUTF(JNIEnvironment env, CCharPointer bytes) {
         String str = null;
         if (bytes.isNonNull()) {
-            ByteBuffer buffer = SubstrateUtil.wrapAsByteBuffer(bytes, Integer.MAX_VALUE);
+            ByteBuffer buffer = CTypeConversion.asByteBuffer(bytes, Integer.MAX_VALUE);
             try {
                 str = Utf8.utf8ToString(true, buffer);
             } catch (CharConversionException ignore) {
@@ -578,7 +578,7 @@ final class JNIFunctions {
         }
         int capacity = Utf8.maxUtf8ByteLength(len, true); // estimate: caller must pre-allocate
                                                           // enough
-        ByteBuffer buffer = SubstrateUtil.wrapAsByteBuffer(buf, capacity);
+        ByteBuffer buffer = CTypeConversion.asByteBuffer(buf, capacity);
         Utf8.substringToUtf8(buffer, str, start, start + len, true);
     }
 

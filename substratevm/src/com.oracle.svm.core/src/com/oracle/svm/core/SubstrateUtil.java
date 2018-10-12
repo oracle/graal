@@ -27,7 +27,6 @@ package com.oracle.svm.core;
 import java.io.FileDescriptor;
 import java.io.FileOutputStream;
 import java.nio.ByteBuffer;
-import java.nio.MappedByteBuffer;
 import java.util.Arrays;
 
 import org.graalvm.compiler.api.replacements.Fold;
@@ -56,7 +55,6 @@ import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfoTable;
-import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
@@ -149,30 +147,10 @@ public class SubstrateUtil {
         return n;
     }
 
-    @TargetClass(className = "java.nio.DirectByteBuffer")
-    @SuppressWarnings("unused")
-    static final class Target_java_nio_DirectByteBuffer {
-        @Alias
-        Target_java_nio_DirectByteBuffer(long addr, int cap) {
-        }
-
-        @Alias
-        public native long address();
-    }
-
-    /**
-     * Wraps a pointer to C memory into a {@link ByteBuffer}.
-     *
-     * @param pointer The pointer to C memory.
-     * @param size The size of the C memory.
-     * @return A new {@link ByteBuffer} wrapping the pointer.
-     */
+    /** @deprecated replaced by {@link CTypeConversion#asByteBuffer(PointerBase, int)} */
+    @Deprecated
     public static ByteBuffer wrapAsByteBuffer(PointerBase pointer, int size) {
-        return KnownIntrinsics.unsafeCast(new Target_java_nio_DirectByteBuffer(pointer.rawValue(), size), ByteBuffer.class).order(ConfigurationValues.getTarget().arch.getByteOrder());
-    }
-
-    public static <T extends PointerBase> T getBaseAddress(MappedByteBuffer buffer) {
-        return WordFactory.pointer(KnownIntrinsics.unsafeCast(buffer, Target_java_nio_DirectByteBuffer.class).address());
+        return CTypeConversion.asByteBuffer(pointer, size);
     }
 
     /**
