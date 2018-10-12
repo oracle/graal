@@ -61,13 +61,14 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 
 import com.oracle.truffle.tools.chromeinspector.TruffleExecutionContext;
 import com.oracle.truffle.tools.chromeinspector.instrument.KeyStoreOptions;
+import com.oracle.truffle.tools.chromeinspector.instrument.InspectorWSConnection;
 
 /**
  * Server of the
  * <a href="https://chromium.googlesource.com/v8/v8/+/master/src/inspector/js_protocol.json">Chrome
  * inspector protocol</a>.
  */
-public final class WebSocketServer extends NanoWSD implements InspectorServer {
+public final class WebSocketServer extends NanoWSD implements InspectorWSConnection {
 
     private static final Map<InetSocketAddress, WebSocketServer> SERVERS = new HashMap<>();
 
@@ -232,10 +233,16 @@ public final class WebSocketServer extends NanoWSD implements InspectorServer {
         return new ClientHandler(pbInputStream, finalAccept);
     }
 
+    @Override
+    public int getPort() {
+        return getListeningPort();
+    }
+
     /**
      * Close the web socket server on the specific path. No web socket connection is active on the
      * path already, this is called after the {@link ConnectionWatcher#waitForClose()} is done.
      */
+    @Override
     public void close(String wspath) {
         synchronized (sessions) {
             sessions.remove(wspath);

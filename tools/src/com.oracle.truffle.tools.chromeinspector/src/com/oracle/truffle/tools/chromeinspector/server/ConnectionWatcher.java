@@ -67,12 +67,12 @@ public final class ConnectionWatcher {
         doWaitForClose = true;
     }
 
-    synchronized void notifyOpen() {
+    public synchronized void notifyOpen() {
         opened = Boolean.TRUE;
         notifyAll();
     }
 
-    synchronized void notifyClosing() {
+    public synchronized void notifyClosing() {
         opened = Boolean.FALSE;
         notifyAll();
     }

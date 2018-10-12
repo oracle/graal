@@ -130,6 +130,12 @@ public final class TruffleExecutionContext {
         }
     }
 
+    public boolean canRun() {
+        synchronized (runPermission) {
+            return runPermission[0];
+        }
+    }
+
     public ScriptsHandler acquireScriptsHandler() {
         if (sch == null) {
             InstrumentInfo instrumentInfo = getEnv().getInstruments().get(SourceLoadInstrument.ID);
