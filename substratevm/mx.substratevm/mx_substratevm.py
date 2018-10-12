@@ -352,7 +352,9 @@ def native_image_on_jvm(args, **kwargs):
     driver_cp = [join(suite_native_image_root(), 'lib', subdir, '*.jar') for subdir in ['boot', 'jvmci', 'graalvm']]
     driver_cp += [join(suite_native_image_root(), 'lib', 'svm', tail) for tail in ['*.jar', join('builder', '*.jar')]]
     driver_cp = list(itertools.chain.from_iterable(glob.glob(cp) for cp in driver_cp))
-    run_java(['-Dnative-image.root=' + suite_native_image_root(), '-cp', os.pathsep.join(driver_cp),
+
+    svmVersion = suite.release_version(snapshotSuffix='SNAPSHOT')
+    run_java(['-Dorg.graalvm.version=' + svmVersion, '-Dnative-image.root=' + suite_native_image_root(), '-cp', os.pathsep.join(driver_cp),
         mx.dependency('substratevm:SVM_DRIVER').mainClass] + save_args, **kwargs)
 
 def build_native_image_image():
