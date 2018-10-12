@@ -187,8 +187,9 @@ final class ShadowStack {
                     // Than there should be no stack pop until we exit the original compilation
                     // root.
                     // Not needed if stack overflowed
-                    if (!getStack().hasStackOverflowed() &&
-                            getStack().top().getInstrumentedNode() != interpretedLocation.getInstrumentedNode()) {
+                    final ThreadLocalStack stack = getStack();
+                    if (!stack.hasStackOverflowed() &&
+                            stack.top().getInstrumentedNode() != interpretedLocation.getInstrumentedNode()) {
 
                         return;
                     }
