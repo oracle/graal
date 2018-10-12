@@ -18,6 +18,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 import org.eclipse.lsp4j.CompletionList;
+import org.eclipse.lsp4j.DocumentHighlight;
 import org.eclipse.lsp4j.Hover;
 import org.eclipse.lsp4j.Location;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
@@ -39,6 +40,7 @@ import de.hpi.swa.trufflelsp.exceptions.UnknownLanguageException;
 import de.hpi.swa.trufflelsp.server.request.CompletionRequestHandler;
 import de.hpi.swa.trufflelsp.server.request.CoverageRequestHandler;
 import de.hpi.swa.trufflelsp.server.request.DefinitionRequestHandler;
+import de.hpi.swa.trufflelsp.server.request.HighlightRequestHandler;
 import de.hpi.swa.trufflelsp.server.request.HoverRequestHandler;
 import de.hpi.swa.trufflelsp.server.request.ReferencesRequestHandler;
 import de.hpi.swa.trufflelsp.server.request.SignatureHelpRequestHandler;
@@ -60,6 +62,7 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
     private SignatureHelpRequestHandler signatureHelpHandler;
     private CoverageRequestHandler coverageHandler;
     private ReferencesRequestHandler referencesHandler;
+    private HighlightRequestHandler highlightHandler;
     private SurrogateMap surrogateMap;
 
     public TruffleAdapter(Env env) {
@@ -84,6 +87,7 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
         this.signatureHelpHandler = new SignatureHelpRequestHandler(env, surrogateMap, contextAwareExecutor, sourceCodeEvaluator);
         this.coverageHandler = new CoverageRequestHandler(env, surrogateMap, contextAwareExecutor, sourceCodeEvaluator);
         this.referencesHandler = new ReferencesRequestHandler(env, surrogateMap, contextAwareExecutor);
+        this.highlightHandler = new HighlightRequestHandler(env, surrogateMap, contextAwareExecutor);
     }
 
     private void initSurrogateMap() {
@@ -379,6 +383,10 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
 
     public Future<List<? extends Location>> references(URI uri, int line, int character) {
         return contextAwareExecutor.executeWithDefaultContext(() -> referencesHandler.referencesWithEnteredContext(uri, line, character));
+    }
+
+    public Future<List<? extends DocumentHighlight>> documentHighlight(URI uri, int line, int character) {
+        return contextAwareExecutor.executeWithDefaultContext(() -> highlightHandler.highlightWithEnteredContext(uri, line, character));
     }
 
     public String getSourceText(Path path) {

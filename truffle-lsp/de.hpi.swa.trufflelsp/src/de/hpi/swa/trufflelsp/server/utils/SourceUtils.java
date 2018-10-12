@@ -9,6 +9,7 @@ import java.util.List;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
+import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
@@ -18,6 +19,8 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+
+import de.hpi.swa.trufflelsp.instrument.LSOptions;
 
 public class SourceUtils {
 
@@ -228,5 +231,10 @@ public class SourceUtils {
             boundLine = maxLine;
         }
         return boundLine;
+    }
+
+    public static boolean isValidSourceSection(SourceSection sourceSection, OptionValues options) {
+        boolean includeInternal = options.get(LSOptions.IncludeInternlSourcesInDefinitionSearch);
+        return sourceSection != null && sourceSection.isAvailable() && (includeInternal || !sourceSection.getSource().isInternal());
     }
 }

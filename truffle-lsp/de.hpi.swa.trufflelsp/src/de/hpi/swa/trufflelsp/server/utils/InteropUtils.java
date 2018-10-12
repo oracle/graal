@@ -2,6 +2,7 @@ package de.hpi.swa.trufflelsp.server.utils;
 
 import java.util.Map;
 
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags.DeclarationTag;
 import com.oracle.truffle.api.interop.TruffleObject;
 
@@ -44,5 +45,16 @@ public class InteropUtils {
                         clazz == Character.class ||
                         clazz == Boolean.class ||
                         clazz == String.class);
+    }
+
+    public static String getNodeObjectName(InstrumentableNode node) {
+        Object nodeObject = node.getNodeObject();
+        if (nodeObject instanceof TruffleObject) {
+            Map<Object, Object> map = ObjectStructures.asMap(new MessageNodes(), (TruffleObject) nodeObject);
+            if (map.containsKey("name")) {
+                return map.get("name").toString();
+            }
+        }
+        return null;
     }
 }

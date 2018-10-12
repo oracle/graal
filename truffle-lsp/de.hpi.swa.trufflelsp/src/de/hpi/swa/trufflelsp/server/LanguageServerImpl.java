@@ -112,7 +112,7 @@ public class LanguageServerImpl implements LanguageServer, LanguageClientAware, 
         capabilities.setDocumentSymbolProvider(true);
         capabilities.setWorkspaceSymbolProvider(true);
         capabilities.setDefinitionProvider(true);
-        capabilities.setDocumentHighlightProvider(false);
+        capabilities.setDocumentHighlightProvider(true);
         capabilities.setCodeLensProvider(new CodeLensOptions(false));
         CompletionOptions completionOptions = new CompletionOptions();
         completionOptions.setResolveProvider(false);
@@ -199,12 +199,9 @@ public class LanguageServerImpl implements LanguageServer, LanguageClientAware, 
 
     @Override
     public CompletableFuture<List<? extends DocumentHighlight>> documentHighlight(TextDocumentPositionParams position) {
-// List<? extends DocumentHighlight> highlights =
-// truffleAdapter.documentHighlight(URI.create(position.getTextDocument().getUri()),
-// position.getPosition().getLine(),
-// position.getPosition().getCharacter());
-// return CompletableFuture.supplyAsync(() -> highlights);
-        return CompletableFuture.completedFuture(new ArrayList<>());
+        Future<List<? extends DocumentHighlight>> future = truffleAdapter.documentHighlight(URI.create(position.getTextDocument().getUri()), position.getPosition().getLine(),
+                        position.getPosition().getCharacter());
+        return CompletableFuture.supplyAsync(() -> waitForResultAndHandleExceptions(future, new ArrayList<>()));
     }
 
     @Override
