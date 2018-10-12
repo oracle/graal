@@ -103,6 +103,7 @@ suite = {
             "testProject" : True,
         },
 
+        # Native library for Espresso native interface
         "com.oracle.truffle.espresso.native" : {
             "subDir" : "src",
             "native" : True,
@@ -123,14 +124,36 @@ suite = {
 
         "com.oracle.truffle.espresso.test" : {
             "subDir" : "src",
+            "jniHeaders" : True,
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "com.oracle.truffle.espresso",
                 "truffle:TRUFFLE_INSTRUMENT_TEST",
                 "mx:JUNIT",
             ],
+            "javaProperties" : {
+                "native.test.lib" : "<path:ESPRESSO_TEST_NATIVE>/<lib:nativetest>"
+            },
             "javaCompliance" : "1.8+",
             "checkstyle" : "com.oracle.truffle.espresso",
+        },
+
+        # Native library for tests
+        "com.oracle.truffle.espresso.test.native" : {
+            "subDir" : "src",
+            "native" : True,
+            "vpath" : True,
+            "results" : [
+                "bin/<lib:nativetest>",
+            ],
+            "buildDependencies" : [
+                "com.oracle.truffle.espresso.test",
+            ],
+            "buildEnv" : {
+                "TARGET" : "bin/<lib:nativetest>",
+                "CPPFLAGS" : "-I<jnigen:com.oracle.truffle.espresso.test>",
+                "OS" : "<os>",
+            },
         },
     },
 
@@ -163,6 +186,17 @@ suite = {
                 "mx:JUNIT",
             ],
             "testDistribution" : True,
+        },
+
+        "ESPRESSO_TESTS_NATIVE" : {
+            "native" : True,
+            "platformDependent" : True,
+            "output" : "<mxbuild>/espresso-test-native",
+            "dependencies" : [
+                "com.oracle.truffle.espresso.test.native",
+            ],
+            "testDistribution" : True,
+            "maven" : False,
         },
 
         "ESPRESSO_LAUNCHER" : {
