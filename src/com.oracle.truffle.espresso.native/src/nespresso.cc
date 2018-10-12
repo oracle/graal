@@ -330,7 +330,7 @@ public:
   }
   inline jshort popShort() {
     return _args++->s;
-  }
+  } 
   inline jint popInt() {
     return _args++->i;
   }
@@ -438,9 +438,9 @@ TYPE_LIST2(CALL_NON_VIRTUAL_METHOD_BRIDGE)
 
 extern "C" {
 
-JNIEnv* createJniEnv(TruffleEnv* truffle_env, void* (*fetch_by_name)(const char *)) {
-  JNINativeInterface_ *functions = new JNINativeInterface_();
+JNIEnv* initializeNativeContext(TruffleEnv* truffle_env, void* (*fetch_by_name)(const char *)) {
   JNIEnv* env = new JNIEnv();
+  JNINativeInterface_ *functions = new JNINativeInterface_();
   NespressoEnv *nespresso_env = new NespressoEnv();
   functions->reserved0 = nespresso_env;
 
@@ -449,6 +449,11 @@ JNIEnv* createJniEnv(TruffleEnv* truffle_env, void* (*fetch_by_name)(const char 
     nespresso_env->name = truffle_env->dupClosureRef((typeof(nespresso_env->name)) fetch_by_name(#name));
     VARARGS_METHOD_LIST(INIT_VARARGS_METHOD__)
   #undef INIT_VARARGS_METHOD__
+
+  #define INIT__(name) \
+    functions->name = truffle_env->dupClosureRef((typeof(functions->name)) fetch_by_name(#name));
+  JNI_FUNCTION_LIST(INIT__)
+  #undef INIT__
 
   // Put ... bridges in the env.
   #define INIT_BRIDGE_METHOD__(name) \
@@ -459,15 +464,11 @@ JNIEnv* createJniEnv(TruffleEnv* truffle_env, void* (*fetch_by_name)(const char 
 
   env->functions = functions;
 
-  #define INIT__(name) \
-    functions->name = truffle_env->dupClosureRef((typeof(functions->name)) fetch_by_name(#name));
-  JNI_FUNCTION_LIST(INIT__)
-  #undef INIT__
-
   return env;
 }
 
-void disposeJniEnv(TruffleEnv* truffle_env, JNIEnv* env) {
+void disposeNativeContext(TruffleEnv* truffle_env, jlong envPtr) {
+  JNIEnv *env = (JNIEnv*) envPtr;
   #define DISPOSE__(name) \
      truffle_env->releaseClosureRef(env->functions->name);
 
@@ -480,6 +481,7 @@ void disposeJniEnv(TruffleEnv* truffle_env, JNIEnv* env) {
   VARARGS_METHOD_LIST(DISPOSE_VARARGS_METHOD__)
   #undef DISPOSE_VARARG_METHOD__
 
+  delete (NespressoEnv*) env->functions->reserved0;
   delete env->functions;
   delete env;
 }
