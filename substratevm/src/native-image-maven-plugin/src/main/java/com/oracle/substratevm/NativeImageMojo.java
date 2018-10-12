@@ -26,6 +26,9 @@ package com.oracle.substratevm;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -118,8 +121,8 @@ public class NativeImageMojo extends AbstractMojo {
         }
     };
 
-    private TarGZipUnArchiver tarGzExtract = new TarGZipUnArchiver();
-    private List<Path> classpath;
+    private final TarGZipUnArchiver tarGzExtract = new TarGZipUnArchiver();
+    private final List<Path> classpath = new ArrayList<>();
 
     NativeImageMojo() {
         tarGzExtract.enableLogging(tarGzLogger);
@@ -138,16 +141,13 @@ public class NativeImageMojo extends AbstractMojo {
     }
 
     public void execute() throws MojoExecutionException {
-        classpath = new ArrayList<>();
+        classpath.clear();
         List<String> imageClasspathScopes = Arrays.asList(Artifact.SCOPE_COMPILE, Artifact.SCOPE_RUNTIME);
         project.setArtifactFilter(artifact -> imageClasspathScopes.contains(artifact.getScope()));
         for (Artifact dependency : project.getArtifacts()) {
-            getLog().info("Dependency: " + dependency + " path: " + dependency.getFile());
-            classpath.add(dependency.getFile().toPath());
+            addClasspath(dependency);
         }
-        Artifact projectArtifact = project.getArtifact();
-        getLog().info("Artifact: " + projectArtifact + " path: " + projectArtifact.getFile());
-        classpath.add(projectArtifact.getFile().toPath());
+        addClasspath(project.getArtifact());
         String classpathStr = classpath.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator));
 
         Path nativeImageExecutable = getJavaHome().resolve("bin/native-image");
@@ -225,6 +225,36 @@ public class NativeImageMojo extends AbstractMojo {
                 throw new MojoExecutionException("Error creating native image:", e);
             }
         }
+    }
+
+    private void addClasspath(Artifact artifact) throws MojoExecutionException {
+        Path jarFilePath = artifact.getFile().toPath();
+        getLog().info("ImageClasspath Entry: " + artifact + " (" + jarFilePath.toUri() + ")");
+
+        URI jarFileURI = URI.create("jar:file:" + jarFilePath);
+        try (FileSystem jarFS = FileSystems.newFileSystem(jarFileURI, Collections.emptyMap())) {
+            Path nativeImageMetaInfBase = jarFS.getPath("/" + NativeImage.nativeImagePropertiesMetaInf);
+            if (Files.isDirectory(nativeImageMetaInfBase)) {
+                List<Path> nativeImageProperties = Files.walk(nativeImageMetaInfBase)
+                                .filter(p -> p.endsWith(NativeImage.nativeImagePropertiesFilename))
+                                .collect(Collectors.toList());
+
+                for (Path nativeImageProperty : nativeImageProperties) {
+                    Path relativeSubDir = nativeImageMetaInfBase.relativize(nativeImageProperty).getParent();
+                    boolean valid = relativeSubDir != null && (relativeSubDir.getNameCount() == 2);
+                    valid = valid && relativeSubDir.getName(0).toString().equals(artifact.getGroupId());
+                    valid = valid && relativeSubDir.getName(1).toString().equals(artifact.getArtifactId());
+                    if (!valid) {
+                        String example = NativeImage.nativeImagePropertiesMetaInf + "/${groupId}/${artifactId}/" + NativeImage.nativeImagePropertiesFilename;
+                        getLog().warn(nativeImageProperty.toUri() + " does not conform with " + example);
+                    }
+                }
+            }
+        } catch (IOException e) {
+            throw new MojoExecutionException("Artifact " + artifact + "cannot be added to image classpath", e);
+        }
+
+        classpath.add(jarFilePath);
     }
 
     private static Path getJavaHome() {

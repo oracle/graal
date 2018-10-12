@@ -186,7 +186,8 @@ public class NativeImage {
     final Registry optionRegistry;
     private LinkedHashSet<EnabledOption> enabledLanguages;
 
-    static String nativeImagePropertiesFilename = "native-image.properties";
+    public static final String nativeImagePropertiesFilename = "native-image.properties";
+    public static final String nativeImagePropertiesMetaInf = "META-INF/native-image";
 
     public interface BuildConfiguration {
         /**
@@ -631,14 +632,13 @@ public class NativeImage {
     private void processClasspathNativeImageProperties(Collection<Path> paths) {
         for (Path classpathEntry : paths) {
             try {
-                String nativeImageMetaInfPrefix = "META-INF/native-image";
                 if (Files.isDirectory(classpathEntry)) {
-                    Path nativeImageMetaInfBase = classpathEntry.resolve(Paths.get(nativeImageMetaInfPrefix));
+                    Path nativeImageMetaInfBase = classpathEntry.resolve(Paths.get(nativeImagePropertiesMetaInf));
                     processNativeImageProperties(nativeImageMetaInfBase);
                 } else {
                     URI jarFileURI = URI.create("jar:file:" + classpathEntry);
                     try (FileSystem jarFS = FileSystems.newFileSystem(jarFileURI, Collections.emptyMap())) {
-                        Path nativeImageMetaInfBase = jarFS.getPath("/" + nativeImageMetaInfPrefix);
+                        Path nativeImageMetaInfBase = jarFS.getPath("/" + nativeImagePropertiesMetaInf);
                         processNativeImageProperties(nativeImageMetaInfBase);
                     }
                 }
