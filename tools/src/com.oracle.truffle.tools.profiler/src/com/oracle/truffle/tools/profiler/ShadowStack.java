@@ -186,7 +186,10 @@ final class ShadowStack {
                     // inlined root.
                     // Than there should be no stack pop until we exit the original compilation
                     // root.
-                    if (getStack().top().getInstrumentedNode() != interpretedLocation.getInstrumentedNode()) {
+                    // Not needed if stack overflowed
+                    if (!getStack().hasStackOverflowed() &&
+                            getStack().top().getInstrumentedNode() != interpretedLocation.getInstrumentedNode()) {
+
                         return;
                     }
                 }
