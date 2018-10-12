@@ -405,7 +405,9 @@ class HeapMonitorSnippets {
             thread.start();
             for (int i = 0; i < 10; i++) {
                 final HeapSummary summary = monitor.takeSummary();
-                System.out.println(summary);
+                final long aliveInstances = summary.getAliveInstances();
+                final long totalInstances = summary.getTotalInstances();
+                // ...
                 Thread.sleep(100);
             }
             monitor.setCollecting(false);
