@@ -63,7 +63,7 @@ import com.oracle.truffle.tools.profiler.impl.ProfilerToolFactory;
  * while the heap monitor was not collecting data are not tracked.
  *
  * <p>
- * Usage example: {@codesnippet HeapMonitorSnippets#example}
+ * Usage example: {@link HeapMonitorSnippets#example}
  *
  * @see #takeSummary()
  * @see #takeMetaObjectSummary()
@@ -249,7 +249,7 @@ public final class HeapMonitor implements Closeable {
     /*
      * This is used reflectively by some tools.
      */
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "rawtypes"})
     static Map<String, Object>[] toMap(Map<LanguageInfo, Map<String, HeapSummary>> summaries) {
         List<Map<String, Object>> heapHisto = new ArrayList<>(summaries.size());
         for (Entry<LanguageInfo, Map<String, HeapSummary>> objectsByLanguage : summaries.entrySet()) {
@@ -425,8 +425,9 @@ class HeapMonitorSnippets {
     @SuppressWarnings("unused")
     public void example() throws InterruptedException {
         // @formatter:off
-        // BEGIN: HeapAllocationMonitorSnippets#example
-        try (Context context = Context.create(); HeapMonitor monitor = HeapMonitor.find(context.getEngine())) {
+        // BEGIN: HeapMonitorSnippets#example
+        try (Context context = Context.create()) {
+            HeapMonitor monitor = HeapMonitor.find(context.getEngine());
             monitor.setCollecting(true);
             final Thread thread = new Thread(() -> {
                 context.eval("...", "...");
@@ -440,7 +441,7 @@ class HeapMonitorSnippets {
             monitor.setCollecting(false);
         }
         // Print the number of live instances per meta object every 100ms.
-        // END: HeapAllocationMonitorSnippets#example
+        // END: HeapMonitorSnippets#example
         // @formatter:on
     }
 }
