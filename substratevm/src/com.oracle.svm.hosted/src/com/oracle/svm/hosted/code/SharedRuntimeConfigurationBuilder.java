@@ -40,7 +40,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.word.WordTypes;
 
-import com.oracle.svm.core.amd64.FrameAccess;
+import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.GraalConfiguration;
 import com.oracle.svm.core.graal.code.amd64.SubstrateAMD64RegisterConfig;

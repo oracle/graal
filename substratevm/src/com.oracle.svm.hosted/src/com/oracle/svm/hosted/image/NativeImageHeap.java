@@ -53,10 +53,10 @@ import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.HostedIdentityHashCodeProvider;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.amd64.FrameAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.Heap;

@@ -106,8 +106,8 @@ import org.graalvm.compiler.phases.tiers.SuitesProvider;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.amd64.FrameAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,51 +24,36 @@
  */
 package com.oracle.svm.core.amd64;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform.AMD64;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.annotate.AutomaticFeature;
 
-import jdk.vm.ci.meta.JavaKind;
+@AutomaticFeature
+@Platforms(AMD64.class)
+class AMD64FrameAccessFeature implements Feature {
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(FrameAccess.class, new AMD64FrameAccess());
+    }
+}
 
-public final class FrameAccess {
+@Platforms(AMD64.class)
+public final class AMD64FrameAccess extends FrameAccess {
 
-    @Platforms(Platform.AMD64.class)
-    public static CodePointer readReturnAddress(Pointer sourceSp) {
+    @Override
+    public CodePointer readReturnAddress(Pointer sourceSp) {
         /* Read the return address, which is stored just below the stack pointer. */
         return (CodePointer) sourceSp.readWord(-returnAddressSize());
     }
 
-    @Platforms(Platform.AMD64.class)
-    public static void writeReturnAddress(Pointer sourceSp, CodePointer newReturnAddress) {
+    @Override
+    public void writeReturnAddress(Pointer sourceSp, CodePointer newReturnAddress) {
         sourceSp.writeWord(-returnAddressSize(), newReturnAddress);
-    }
-
-    /* TODO move these methods to a different class. */
-
-    @Fold
-    public static int returnAddressSize() {
-        return ConfigurationValues.getTarget().arch.getReturnAddressSize();
-    }
-
-    public static int wordSize() {
-        return ConfigurationValues.getTarget().arch.getWordSize();
-    }
-
-    public static int uncompressedReferenceSize() {
-        return wordSize();
-    }
-
-    public static JavaKind getWordKind() {
-        return ConfigurationValues.getTarget().wordJavaKind;
-    }
-
-    public static Stamp getWordStamp() {
-        return StampFactory.forKind(ConfigurationValues.getTarget().wordJavaKind);
     }
 }
