@@ -228,7 +228,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     @Override
-    public final Map<String, Object> getInitialOptions() {
+    public final Map<String, Object> getOptions() {
         Map<String, Object> res = initialOptions;
         if (res == null) {
             synchronized (this) {

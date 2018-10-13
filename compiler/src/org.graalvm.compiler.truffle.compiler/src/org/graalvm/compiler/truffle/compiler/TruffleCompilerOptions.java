@@ -29,16 +29,13 @@ import static org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions
 
 import java.util.Map;
 
-import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.options.OptionsParser;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.SharedTruffleOptions;
+import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 
 import jdk.vm.ci.common.NativeImageReinitialize;
 
@@ -62,14 +59,7 @@ public final class TruffleCompilerOptions {
     private static OptionValues getInitialOptions() {
         OptionValues result = optionValues;
         if (result == null) {
-            final EconomicMap<OptionKey<?>, Object> values = OptionValues.newOptionMap();
-            final Iterable<OptionDescriptors> loader = OptionsParser.getOptionsLoader();
-            for (Map.Entry<String, Object> e : TruffleCompilerRuntime.getRuntime().getInitialOptions().entrySet()) {
-                final String optionName = e.getKey();
-                final Object optionValue = e.getValue();
-                OptionsParser.parseOption(optionName, optionValue, values, loader);
-            }
-            result = new OptionValues(values);
+            result = TruffleCompilerRuntime.getRuntime().getOptions(OptionValues.class);
             optionValues = result;
         }
         return result;
@@ -152,13 +142,8 @@ public final class TruffleCompilerOptions {
     }
 
     public static TruffleOptionsOverrideScope overrideOptions(Map<String, Object> overrides) {
-        final EconomicMap<OptionKey<?>, Object> values = OptionValues.newOptionMap();
-        final Iterable<OptionDescriptors> loader = OptionsParser.getOptionsLoader();
-        for (Map.Entry<String, Object> e : overrides.entrySet()) {
-            final String optionName = e.getKey();
-            final Object optionValue = e.getValue();
-            OptionsParser.parseOption(optionName, optionValue, values, loader);
-        }
+        TruffleCompilerRuntime runtime = TruffleCompilerRuntime.getRuntime();
+        UnmodifiableEconomicMap<OptionKey<?>, Object> values = runtime.convertOptions(OptionValues.class, overrides).getMap();
         return new TruffleOptionsOverrideScope(values);
     }
 

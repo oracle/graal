@@ -59,7 +59,7 @@ final class IgvOptions {
         if (result == null) {
             final EconomicMap<OptionKey<?>, Object> valuesMap = EconomicMap.create();
             final OptionDescriptors descriptors = new IgvOptionsOptionDescriptors();
-            for (Map.Entry<String, Object> e : TruffleCompilerRuntime.getRuntime().getInitialOptions().entrySet()) {
+            for (Map.Entry<String, Object> e : TruffleCompilerRuntime.getRuntime().getOptions().entrySet()) {
                 final OptionDescriptor descriptor = descriptors.get(e.getKey());
                 final OptionKey<?> k = descriptor != null ? descriptor.getKey() : null;
                 if (k != null) {

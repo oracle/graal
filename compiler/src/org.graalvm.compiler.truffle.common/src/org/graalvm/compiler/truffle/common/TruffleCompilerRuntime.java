@@ -28,6 +28,7 @@ import static org.graalvm.compiler.truffle.common.TruffleCompilerRuntimeInstance
 
 import java.util.Map;
 import java.util.function.Consumer;
+
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -347,9 +348,28 @@ public interface TruffleCompilerRuntime {
     ResolvedJavaType resolveType(MetaAccessProvider metaAccess, String className, boolean required);
 
     /**
-     * Gets the initial option values for this runtime.
+     * Gets the option values for this runtime as a map from option name to option value.
      */
-    Map<String, Object> getInitialOptions();
+    Map<String, Object> getOptions();
+
+    /**
+     * Gets the option values for this runtime in an instance of {@code type}.
+     *
+     * @throws IllegalArgumentException if this runtime does not support {@code type}
+     */
+    default <T> T getOptions(Class<T> type) {
+        throw new IllegalArgumentException(getClass().getName() + " can not return option values of type " + type.getName());
+    }
+
+    /**
+     * Convert option values in name/value pairs to an instance of {@code type}.
+     *
+     * @param map input option values as {@link String} names to values
+     * @throws IllegalArgumentException if this runtime does not support {@code type}
+     */
+    default <T> T convertOptions(Class<T> type, Map<String, Object> map) {
+        throw new IllegalArgumentException(getClass().getName() + " can not return option values of type " + type.getName());
+    }
 
     /**
      * Gets an object describing whether and how a method can be inlined based on Truffle

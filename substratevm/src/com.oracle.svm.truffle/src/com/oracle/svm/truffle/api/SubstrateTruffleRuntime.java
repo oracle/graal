@@ -32,23 +32,27 @@ import java.nio.file.Path;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue;
 import org.graalvm.compiler.truffle.runtime.CancellableCompileTask;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.LoopNodeFactory;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
+import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
@@ -60,6 +64,7 @@ import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.option.RuntimeOptionParser;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.stack.SubstrateStackIntrospection;
 import com.oracle.svm.graal.GraalSupport;
@@ -296,6 +301,38 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     @Override
     protected StackIntrospection getStackIntrospection() {
         return SubstrateStackIntrospection.SINGLETON;
+    }
+
+    @Override
+    public <T> T getOptions(Class<T> type) {
+        if (type == OptionValues.class) {
+            return type.cast(RuntimeOptionValues.singleton());
+        }
+        return super.getOptions(type);
+    }
+
+    @Override
+    public <T> T convertOptions(Class<T> type, Map<String, Object> map) {
+        if (type == OptionValues.class) {
+            final EconomicMap<OptionKey<?>, Object> values = OptionValues.newOptionMap();
+            for (Map.Entry<String, Object> e : map.entrySet()) {
+                final String optionName = e.getKey();
+                final Object optionValue = e.getValue();
+                Optional<OptionDescriptor> descriptor = RuntimeOptionParser.singleton().getDescriptor(optionName);
+                if (descriptor.isPresent()) {
+                    OptionDescriptor desc = descriptor.get();
+                    Class<?> valueType = optionValue.getClass();
+                    if (desc.getOptionValueType().isAssignableFrom(valueType)) {
+                        values.put(desc.getOptionKey(), optionValue);
+                    } else {
+                        throw new IllegalArgumentException("Invalid type of option '" + optionName + "': required " + desc.getOptionValueType().getSimpleName() + ", got " + valueType);
+                    }
+                }
+            }
+            return type.cast(new OptionValues(values));
+
+        }
+        return super.convertOptions(type, map);
     }
 
     @Override
