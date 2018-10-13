@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
+import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleExperimentalSplitting;
+import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleExperimentalSplittingAllowForcedSplits;
 import static org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.getOptions;
 
 import java.util.HashMap;
@@ -102,7 +104,8 @@ final class TruffleSplittingStrategy {
     }
 
     static void forceSplitting(OptimizedDirectCallNode call, GraalTVMCI tvmci, boolean traceSplittingSummary) {
-        if (!TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplitting) || TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplittingAllowForcedSplits)) {
+        if (!TruffleRuntimeOptions.getValue(TruffleExperimentalSplitting) ||
+                        TruffleRuntimeOptions.getValue(TruffleExperimentalSplittingAllowForcedSplits)) {
             if (!canSplit(call) || isRecursiveSplit(call)) {
                 return;
             }

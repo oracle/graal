@@ -24,6 +24,9 @@
  */
 package org.graalvm.compiler.truffle.runtime.debug;
 
+import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleCompilationStatisticDetails;
+import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleCompilationStatistics;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -116,7 +119,8 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
     private final ThreadLocal<Times> compilationTimes = new ThreadLocal<>();
 
     public static void install(GraalTruffleRuntime runtime) {
-        if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompilationStatistics) || TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompilationStatisticDetails)) {
+        if (TruffleRuntimeOptions.getValue(TruffleCompilationStatistics) ||
+                        TruffleRuntimeOptions.getValue(TruffleCompilationStatisticDetails)) {
             runtime.addListener(new StatisticsListener(runtime));
         }
     }
