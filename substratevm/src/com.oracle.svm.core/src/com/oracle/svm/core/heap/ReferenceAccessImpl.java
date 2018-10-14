@@ -98,7 +98,7 @@ public final class ReferenceAccessImpl implements ReferenceAccess {
     @AlwaysInline("Performance")
     @Uninterruptible(reason = "for uninterruptible callers", mayBeInlined = true)
     public boolean haveCompressedReferences() {
-        return SubstrateOptions.UseHeapBaseRegister.getValue();
+        return SubstrateOptions.SpawnIsolates.getValue();
     }
 
     @Override
