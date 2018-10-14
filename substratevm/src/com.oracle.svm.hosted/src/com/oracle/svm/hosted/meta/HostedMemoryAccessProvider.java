@@ -79,7 +79,7 @@ public class HostedMemoryAccessProvider implements SubstrateMemoryAccessProvider
 
     @Override
     public JavaConstant readNarrowObjectConstant(Constant base, long displacement, CompressEncoding encoding) {
-        assert SubstrateOptions.UseHeapBaseRegister.getValue();
+        assert SubstrateOptions.SpawnIsolates.getValue();
         // NOTE: the encoding parameter only applies at image runtime, not for hosted execution
         JavaConstant result = readObjectConstant(base, displacement);
         if (result == null) {

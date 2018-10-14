@@ -46,7 +46,7 @@ public class SubstrateAMD64AddressLowering extends AMD64CompressAddressLowering 
 
     @Override
     protected final boolean improveUncompression(AMD64AddressNode addr, CompressionNode compression, ValueNode other) {
-        assert SubstrateOptions.UseHeapBaseRegister.getValue();
+        assert SubstrateOptions.SpawnIsolates.getValue();
 
         CompressEncoding encoding = compression.getEncoding();
         Scale scale = Scale.fromShift(encoding.getShift());

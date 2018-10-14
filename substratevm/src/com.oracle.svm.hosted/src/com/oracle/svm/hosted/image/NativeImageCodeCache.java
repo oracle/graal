@@ -456,7 +456,7 @@ public class NativeImageCodeCache {
                     long addend = (patchData.nextInstructionPosition - patchData.operandPosition);
                     relocs.addPCRelativeRelocationWithAddend((int) siteOffset, patchData.operandSize, addend, ref);
                 } else if (ref instanceof ConstantReference) {
-                    assert SubstrateOptions.UseHeapBaseRegister.getValue() : "Inlined object references must be base-relative";
+                    assert SubstrateOptions.SpawnIsolates.getValue() : "Inlined object references must be base-relative";
                     relocs.addDirectRelocationWithoutAddend((int) siteOffset, patchData.operandSize, ref);
                 } else {
                     throw VMError.shouldNotReachHere("Unknown type of reference in code");

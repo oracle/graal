@@ -106,7 +106,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
             // even though they are passed in registers.
             nativeParamsStackOffset = 4 * target.wordSize;
 
-            heapBaseRegister = SubstrateOptions.UseHeapBaseRegister.getValue() ? r14 : null;
+            heapBaseRegister = SubstrateOptions.SpawnIsolates.getValue() ? r14 : null;
             threadRegister = SubstrateOptions.MultiThreaded.getValue() ? r15 : null;
 
             ArrayList<Register> regs = new ArrayList<>(valueRegistersSSE.asList());
@@ -122,7 +122,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
 
             nativeParamsStackOffset = 0;
 
-            heapBaseRegister = SubstrateOptions.UseHeapBaseRegister.getValue() ? r14 : null;
+            heapBaseRegister = SubstrateOptions.SpawnIsolates.getValue() ? r14 : null;
             threadRegister = SubstrateOptions.MultiThreaded.getValue() ? r15 : null;
 
             ArrayList<Register> regs = new ArrayList<>(valueRegistersSSE.asList());

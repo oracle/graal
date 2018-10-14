@@ -88,7 +88,7 @@ public final class NativeImageHeap {
 
     @Fold
     static boolean useHeapBase() {
-        return SubstrateOptions.UseHeapBaseRegister.getValue() && ImageSingletons.lookup(CompressEncoding.class).hasBase();
+        return SubstrateOptions.SpawnIsolates.getValue() && ImageSingletons.lookup(CompressEncoding.class).hasBase();
     }
 
     @Fold
