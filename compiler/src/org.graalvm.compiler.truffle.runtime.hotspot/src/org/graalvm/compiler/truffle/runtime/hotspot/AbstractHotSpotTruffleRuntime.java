@@ -241,13 +241,13 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     }
 
     private String getLazyCompilerConfigurationName() {
-        String compilerConfig;
-        compilerConfig = this.lazyConfigurationName;
+        String compilerConfig = this.lazyConfigurationName;
         if (compilerConfig == null) {
             synchronized (this) {
                 compilerConfig = this.lazyConfigurationName;
                 if (compilerConfig == null) {
-                    this.lazyConfigurationName = initLazyCompilerConfigurationName();
+                    compilerConfig = initLazyCompilerConfigurationName();
+                    this.lazyConfigurationName = compilerConfig;
                 }
             }
         }

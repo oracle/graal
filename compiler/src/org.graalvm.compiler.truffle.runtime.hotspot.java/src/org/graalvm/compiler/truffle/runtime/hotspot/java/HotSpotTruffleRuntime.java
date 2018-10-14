@@ -91,7 +91,8 @@ final class HotSpotTruffleRuntime extends AbstractHotSpotTruffleRuntime {
     @Override
     protected String initLazyCompilerConfigurationName() {
         final OptionValues options = TruffleCompilerOptions.getOptions();
-        CompilerConfigurationFactory compilerConfigurationFactory = CompilerConfigurationFactory.selectFactory(Options.TruffleCompilerConfiguration.getValue(options), options);
+        String factoryName = Options.TruffleCompilerConfiguration.getValue(options);
+        CompilerConfigurationFactory compilerConfigurationFactory = CompilerConfigurationFactory.selectFactory(factoryName, options);
         return compilerConfigurationFactory.getName();
     }
 
