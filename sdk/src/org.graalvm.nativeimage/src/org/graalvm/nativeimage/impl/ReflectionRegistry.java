@@ -48,5 +48,5 @@ public interface ReflectionRegistry {
 
     void register(Executable... methods);
 
-    void register(Field... fields);
+    void register(boolean finalIsWritable, Field... fields);
 }
