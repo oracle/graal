@@ -178,12 +178,13 @@ public class NativeImageMojo extends AbstractMojo {
             }
 
             if (!nativeImageExecutableVersion.equals(plugin.getVersion())) {
-                getLog().warn("Mismatch between " + plugin.getArtifactId() + " version (" + plugin.getVersion() + ") and native-image executable version (" + nativeImageExecutableVersion + ")");
+                getLog().warn("Version mismatch between " + plugin.getArtifactId() + " (" + plugin.getVersion() + ") and native-image executable (" + nativeImageExecutableVersion + ")");
             }
 
             try {
                 ProcessBuilder processBuilder = new ProcessBuilder(nativeImageExecutable.toString(), "-cp", classpathStr);
                 processBuilder.command().addAll(getBuildArgs());
+                processBuilder.directory(getWorkingDirectory().toFile());
                 processBuilder.inheritIO();
 
                 String commandString = String.join(" ", processBuilder.command());
@@ -228,7 +229,11 @@ public class NativeImageMojo extends AbstractMojo {
     }
 
     private void addClasspath(Artifact artifact) throws MojoExecutionException {
-        Path jarFilePath = artifact.getFile().toPath();
+        File artifactFile = artifact.getFile();
+        if (artifactFile == null) {
+            throw new MojoExecutionException("Missing jar-file for " + artifact + ". Ensure " + plugin.getArtifactId() + " runs in package phase.");
+        }
+        Path jarFilePath = artifactFile.toPath();
         getLog().info("ImageClasspath Entry: " + artifact + " (" + jarFilePath.toUri() + ")");
 
         URI jarFileURI = URI.create("jar:file:" + jarFilePath);
@@ -246,7 +251,7 @@ public class NativeImageMojo extends AbstractMojo {
                     valid = valid && relativeSubDir.getName(1).toString().equals(artifact.getArtifactId());
                     if (!valid) {
                         String example = NativeImage.nativeImagePropertiesMetaInf + "/${groupId}/${artifactId}/" + NativeImage.nativeImagePropertiesFilename;
-                        getLog().warn(nativeImageProperty.toUri() + " does not conform with " + example);
+                        getLog().warn(nativeImageProperty.toUri() + " does not match recommended " + example + " layout.");
                     }
                 }
             }
