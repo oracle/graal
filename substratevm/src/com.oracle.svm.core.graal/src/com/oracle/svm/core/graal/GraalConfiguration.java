@@ -50,7 +50,7 @@ import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.graal.code.amd64.SubstrateAMD64Backend;
+import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
 import com.oracle.svm.core.graal.meta.SubstrateBasicLoweringProvider;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -86,7 +86,7 @@ public class GraalConfiguration {
     }
 
     public Backend createBackend(Providers newProviders) {
-        return new SubstrateAMD64Backend(newProviders);
+        return SubstrateBackendFactory.get().newBackend(newProviders);
     }
 
     public void runAdditionalCompilerPhases(@SuppressWarnings("unused") StructuredGraph graph, @SuppressWarnings("unused") Feature graalFeature) {
