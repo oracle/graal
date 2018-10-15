@@ -23,22 +23,19 @@
 
 package com.oracle.truffle.espresso.intrinsics;
 
+import static com.oracle.truffle.espresso.meta.Meta.meta;
+
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.util.Properties;
 
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.impl.MethodInfo;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
-import com.oracle.truffle.espresso.runtime.StaticObjectWrapper;
-
-import static com.oracle.truffle.espresso.meta.Meta.meta;
 
 @EspressoIntrinsics
 public class Target_java_lang_System {
@@ -76,8 +73,10 @@ public class Target_java_lang_System {
                         "file.encoding",
                         "java.library.path",
                         "sun.boot.library.path",
-                        // TODO(peterssen): Remove, only for HelloJNI tests
-                        "playground.library"
+                        // FIXME(peterssen): Only needed by some tests/examples. Remove once
+                        // dictionary-like options are merged.
+                        "playground.library",
+                        "native.test.lib"
         };
 
         Meta.Method.WithInstance setProperty = meta(props).method("setProperty", Object.class, String.class, String.class);
