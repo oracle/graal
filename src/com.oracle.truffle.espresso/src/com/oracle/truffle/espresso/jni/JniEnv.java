@@ -467,10 +467,5 @@ public class JniEnv {
         methodID.asStatic().invoke(VarArgs.pop(varargsPtr, methodID.getParameterTypes()));
     }
 
-    @JniImpl
-    public Object CallNonvirtualObjectMethod(Object clazz, Meta.Method methodID, long varargsPtr) {
-        return methodID.asStatic().invoke(VarArgs.pop(varargsPtr, methodID.getParameterTypes()));
-    }
-
     // endregion CallStatic*Method
 }
