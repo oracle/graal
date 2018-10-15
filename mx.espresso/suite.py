@@ -132,7 +132,7 @@ suite = {
                 "mx:JUNIT",
             ],
             "javaProperties" : {
-                "native.test.lib" : "<path:ESPRESSO_TEST_NATIVE>/<lib:nativetest>"
+                "native.test.lib" : "<path:ESPRESSO_TESTS_NATIVE>/<lib:nativetest>"
             },
             "javaCompliance" : "1.8+",
             "checkstyle" : "com.oracle.truffle.espresso",
