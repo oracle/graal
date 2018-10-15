@@ -107,11 +107,6 @@ public class Mman {
     @CConstant
     public static native int MAP_ANON();
 
-    /** Only give out 32-bit addresses. */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int MAP_32BIT();
-
     /* These are Linux-specific. */
 
     /** Stack-like segment. */
