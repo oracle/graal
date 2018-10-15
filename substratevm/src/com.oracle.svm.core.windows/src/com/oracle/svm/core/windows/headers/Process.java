@@ -64,6 +64,9 @@ public class Process {
     @CFunction
     public static native int SwitchToThread();
 
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native int GetCurrentThreadId();
+
     /**
      * Windows Thread local storage functions
      */
@@ -146,5 +149,4 @@ public class Process {
     /** Wake all threads waiting on the condition variable */
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native void WakeAllConditionVariable(PCONDITION_VARIABLE cond);
-
 }

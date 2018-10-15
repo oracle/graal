@@ -24,11 +24,11 @@
  */
 package com.oracle.svm.core.c.function;
 
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPoint.Builtin;
-import org.graalvm.nativeimage.c.function.CEntryPointContext;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -52,7 +52,7 @@ public final class CEntryPointBuiltins {
         Isolate result = WordFactory.nullPointer();
         int status = CEntryPointActions.enterCreateIsolate(WordFactory.nullPointer());
         if (status == 0) {
-            result = CEntryPointContext.getCurrentIsolate();
+            result = CurrentIsolate.getIsolate();
             CEntryPointActions.leave();
         }
         return result;
@@ -65,7 +65,7 @@ public final class CEntryPointBuiltins {
         IsolateThread result = WordFactory.nullPointer();
         int status = CEntryPointActions.enterAttachThread(isolate);
         if (status == 0) {
-            result = CEntryPointContext.getCurrentIsolateThread();
+            result = CurrentIsolate.getCurrentThread();
             status = CEntryPointActions.leave();
         }
         return result;
@@ -79,7 +79,7 @@ public final class CEntryPointBuiltins {
         if (status != 0) {
             return WordFactory.nullPointer();
         }
-        IsolateThread thread = CEntryPointContext.getCurrentIsolateThread();
+        IsolateThread thread = CurrentIsolate.getCurrentThread();
         if (CEntryPointActions.leave() != 0) {
             thread = WordFactory.nullPointer();
         }
@@ -94,7 +94,7 @@ public final class CEntryPointBuiltins {
         if (status != 0) {
             return WordFactory.nullPointer();
         }
-        Isolate isolate = CEntryPointContext.getCurrentIsolate();
+        Isolate isolate = CurrentIsolate.getIsolate();
         if (CEntryPointActions.leave() != 0) {
             isolate = WordFactory.nullPointer();
         }

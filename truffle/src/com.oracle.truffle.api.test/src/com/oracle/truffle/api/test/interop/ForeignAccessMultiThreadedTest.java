@@ -75,22 +75,21 @@ public class ForeignAccessMultiThreadedTest implements ForeignAccess.Factory, Tr
         Node n = Message.IS_EXECUTABLE.createNode();
         ForeignAccess.sendIsExecutable(n, this);
         // access from different thread allowed.
-        assertEquals(2, cnt);
+        assertEquals(1, cnt);
     }
 
     @Override
     public boolean canHandle(TruffleObject obj) {
-        cnt++;
         return true;
     }
 
     @Override
     public CallTarget accessMessage(Message tree) {
-        cnt++;
         if (tree == Message.IS_EXECUTABLE) {
             return Truffle.getRuntime().createCallTarget(new RootNode(null) {
                 @Override
                 public Object execute(VirtualFrame frame) {
+                    cnt++;
                     return Boolean.FALSE;
                 }
             });

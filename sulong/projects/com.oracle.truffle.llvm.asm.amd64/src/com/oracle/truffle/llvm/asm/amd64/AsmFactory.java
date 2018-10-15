@@ -1750,7 +1750,7 @@ class AsmFactory {
                     assert arg.isMemory();
                     slot = getArgumentSlot(arg.getIndex(), argTypes[arg.getOutIndex()]);
                     LLVMExpressionNode argnode = LLVMArgNodeGen.create(arg.getOutIndex());
-                    arguments.add(LLVMWritePointerNodeGen.create(argnode, slot, sourceLocation));
+                    arguments.add(LLVMWritePointerNodeGen.create(slot, sourceLocation, argnode));
                 }
             }
 
@@ -1763,19 +1763,19 @@ class AsmFactory {
                     todoRegisters.remove(reg);
                     LLVMExpressionNode argnode = LLVMArgNodeGen.create(arg.getInIndex());
                     if (argTypes[arg.getInIndex()] instanceof PointerType) {
-                        arguments.add(LLVMWritePointerNodeGen.create(argnode, slot, null));
+                        arguments.add(LLVMWritePointerNodeGen.create(slot, null, argnode));
                     } else {
                         LLVMExpressionNode node = nodeFactory.createSignedCast(argnode, PrimitiveType.I64);
-                        arguments.add(LLVMWriteI64NodeGen.create(node, slot, null));
+                        arguments.add(LLVMWriteI64NodeGen.create(slot, null, node));
                     }
                 }
                 slot = getArgumentSlot(arg.getIndex(), argTypes[arg.getInIndex()]);
                 LLVMExpressionNode argnode = LLVMArgNodeGen.create(arg.getInIndex());
                 if (arg.getType() instanceof PrimitiveType) {
                     LLVMExpressionNode node = nodeFactory.createSignedCast(argnode, PrimitiveType.I64);
-                    arguments.add(LLVMWriteI64NodeGen.create(node, slot, null));
+                    arguments.add(LLVMWriteI64NodeGen.create(slot, null, node));
                 } else if (arg.getType() instanceof PointerType) {
-                    arguments.add(LLVMWritePointerNodeGen.create(argnode, slot, null));
+                    arguments.add(LLVMWritePointerNodeGen.create(slot, null, argnode));
                 } else {
                     throw new AsmParseException("invalid operand size: " + arg.getType());
                 }
@@ -1785,7 +1785,7 @@ class AsmFactory {
         if (retType instanceof StructureType) {
             LLVMExpressionNode addrArg = LLVMArgNodeGen.create(1);
             FrameSlot slot = frameDescriptor.addFrameSlot("returnValue", null, FrameSlotKind.Object);
-            LLVMWritePointerNode writeAddr = LLVMWritePointerNodeGen.create(addrArg, slot, null);
+            LLVMWritePointerNode writeAddr = LLVMWritePointerNodeGen.create(slot, null, addrArg);
             statements.add(writeAddr);
             LLVMExpressionNode addr = LLVMAddressReadNodeGen.create(slot);
             this.result = StructLiteralNodeGen.create(retOffsets, writeNodes, valueNodes, addr);
@@ -1799,25 +1799,25 @@ class AsmFactory {
             }
             LLVMExpressionNode node = LLVMAMD64I64NodeGen.create(0);
             FrameSlot slot = getRegisterSlot(register);
-            arguments.add(LLVMWriteI64NodeGen.create(node, slot, null));
+            arguments.add(LLVMWriteI64NodeGen.create(slot, null, node));
         }
 
         // initialize flags
         LLVMExpressionNode zero = LLVMAMD64I1NodeGen.create(false);
-        arguments.add(LLVMWriteI1NodeGen.create(zero, getFlagSlot(LLVMAMD64Flags.CF), sourceLocation));
-        arguments.add(LLVMWriteI1NodeGen.create(zero, getFlagSlot(LLVMAMD64Flags.PF), sourceLocation));
-        arguments.add(LLVMWriteI1NodeGen.create(zero, getFlagSlot(LLVMAMD64Flags.AF), sourceLocation));
-        arguments.add(LLVMWriteI1NodeGen.create(zero, getFlagSlot(LLVMAMD64Flags.ZF), sourceLocation));
-        arguments.add(LLVMWriteI1NodeGen.create(zero, getFlagSlot(LLVMAMD64Flags.SF), sourceLocation));
-        arguments.add(LLVMWriteI1NodeGen.create(zero, getFlagSlot(LLVMAMD64Flags.OF), sourceLocation));
+        arguments.add(LLVMWriteI1NodeGen.create(getFlagSlot(LLVMAMD64Flags.CF), sourceLocation, zero));
+        arguments.add(LLVMWriteI1NodeGen.create(getFlagSlot(LLVMAMD64Flags.PF), sourceLocation, zero));
+        arguments.add(LLVMWriteI1NodeGen.create(getFlagSlot(LLVMAMD64Flags.AF), sourceLocation, zero));
+        arguments.add(LLVMWriteI1NodeGen.create(getFlagSlot(LLVMAMD64Flags.ZF), sourceLocation, zero));
+        arguments.add(LLVMWriteI1NodeGen.create(getFlagSlot(LLVMAMD64Flags.SF), sourceLocation, zero));
+        arguments.add(LLVMWriteI1NodeGen.create(getFlagSlot(LLVMAMD64Flags.OF), sourceLocation, zero));
 
         // copy stack pointer
         LLVMExpressionNode stackPointer = LLVMArgNodeGen.create(0);
         FrameSlot stackSlot = frameDescriptor.addFrameSlot(LLVMStack.FRAME_ID);
         frameDescriptor.setFrameSlotKind(stackSlot, FrameSlotKind.Object);
-        arguments.add(LLVMWritePointerNodeGen.create(stackPointer, frameDescriptor.findFrameSlot(LLVMStack.FRAME_ID), sourceLocation));
+        arguments.add(LLVMWritePointerNodeGen.create(frameDescriptor.findFrameSlot(LLVMStack.FRAME_ID), sourceLocation, stackPointer));
 
-        arguments.add(LLVMWritePointerNodeGen.create(stackPointer, getRegisterSlot("rsp"), null));
+        arguments.add(LLVMWritePointerNodeGen.create(getRegisterSlot("rsp"), null, stackPointer));
 
         assert retType instanceof VoidType || retType != null;
     }
@@ -2064,7 +2064,7 @@ class AsmFactory {
                 default:
                     throw new AsmParseException("unsupported operand type: " + op.getType());
             }
-            return LLVMWriteI64NodeGen.create(out, frame, null);
+            return LLVMWriteI64NodeGen.create(frame, null, out);
         } else if (operand instanceof AsmArgumentOperand) {
             AsmArgumentOperand op = (AsmArgumentOperand) operand;
             Argument info = argInfo.get(op.getIndex());
@@ -2105,7 +2105,7 @@ class AsmFactory {
                     default:
                         throw new AsmParseException("unsupported operand type: " + type);
                 }
-                return LLVMWriteI64NodeGen.create(out, frame, null);
+                return LLVMWriteI64NodeGen.create(frame, null, out);
             } else {
                 throw new AssertionError("this should not happen; " + info);
             }

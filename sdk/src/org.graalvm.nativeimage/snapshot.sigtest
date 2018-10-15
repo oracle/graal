@@ -419,9 +419,9 @@ CLSS public abstract interface static !annotation org.graalvm.nativeimage.c.func
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[PARAMETER])
 intf java.lang.annotation.Annotation
 
-CLSS public final org.graalvm.nativeimage.c.function.CEntryPointContext
-meth public static org.graalvm.nativeimage.Isolate getCurrentIsolate()
-meth public static org.graalvm.nativeimage.IsolateThread getCurrentIsolateThread()
+CLSS public final org.graalvm.nativeimage.CurrentIsolate
+meth public static org.graalvm.nativeimage.Isolate getIsolate()
+meth public static org.graalvm.nativeimage.IsolateThread getCurrentThread()
 supr java.lang.Object
 
 CLSS public final org.graalvm.nativeimage.c.function.CEntryPointLiteral<%0 extends org.graalvm.nativeimage.c.function.CFunctionPointer>

@@ -57,15 +57,18 @@ import jdk.vm.ci.code.InstalledCode;
 
 public class SubstrateTruffleCompiler extends TruffleCompilerImpl {
 
+    private final String compilerConfigurationName;
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public SubstrateTruffleCompiler(TruffleCompilerRuntime runtime, Plugins plugins, Suites suites, LIRSuites lirSuites, Backend backend, SnippetReflectionProvider snippetReflection) {
-        super(runtime, plugins, suites, lirSuites, backend, snippetReflection);
+        super(runtime, plugins, suites, lirSuites, backend, null, null, null, snippetReflection);
+        compilerConfigurationName = GraalConfiguration.instance().getCompilerConfigurationName();
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     @Override
     protected PartialEvaluator createPartialEvaluator() {
-        return TruffleFeature.getSupport().createPartialEvaluator(providers, config, snippetReflection, backend.getTarget().arch);
+        return TruffleFeature.getSupport().createPartialEvaluator(lastTierProviders, config, snippetReflection, backend.getTarget().arch);
     }
 
     @Override
@@ -75,7 +78,7 @@ public class SubstrateTruffleCompiler extends TruffleCompilerImpl {
 
     @Override
     public String getCompilerConfigurationName() {
-        return GraalConfiguration.instance().getCompilerConfigurationName();
+        return compilerConfigurationName;
     }
 
     @Override

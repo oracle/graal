@@ -67,11 +67,11 @@ public final class ClassInitializationFeature implements Feature, RuntimeClassIn
 
     public static class Options {
         @APIOption(name = "delay-class-initialization-to-runtime")//
-        @Option(help = "A comma-separate list of classes (and implicitly all of their subclasses) that are initialized at runtime and not during image building", type = OptionType.User)//
+        @Option(help = "A comma-separated list of classes (and implicitly all of their subclasses) that are initialized at runtime and not during image building", type = OptionType.User)//
         public static final HostedOptionKey<String> DelayClassInitialization = new HostedOptionKey<>("");
 
         @APIOption(name = "rerun-class-initialization-at-runtime") //
-        @Option(help = "A comma-separate list of classes (and implicitly all of their subclasses) that are initialized both at runtime and during image building", type = OptionType.User)//
+        @Option(help = "A comma-separated list of classes (and implicitly all of their subclasses) that are initialized both at runtime and during image building", type = OptionType.User)//
         public static final HostedOptionKey<String> RerunClassInitialization = new HostedOptionKey<>("");
     }
 
@@ -221,7 +221,7 @@ public final class ClassInitializationFeature implements Feature, RuntimeClassIn
          * user cannot later manually register it as RERUN or DELAY.
          */
         if (obj != null && computeInitKindAndMaybeInitializeClass(obj.getClass()) != InitKind.EAGER) {
-            throw new UnsupportedFeatureException("No instances are allowed in the image heap for a class that is initialized or reinitialzied at image runtime: " + obj.getClass().getTypeName());
+            throw new UnsupportedFeatureException("No instances are allowed in the image heap for a class that is initialized or reinitialized at image runtime: " + obj.getClass().getTypeName());
         }
         return obj;
     }
@@ -234,7 +234,7 @@ public final class ClassInitializationFeature implements Feature, RuntimeClassIn
          */
         for (Map.Entry<Class<?>, InitKind> entry : classInitKinds.entrySet()) {
             if (entry.getValue() == InitKind.DELAY && !UnsafeAccess.UNSAFE.shouldBeInitialized(entry.getKey())) {
-                throw UserError.abort("Class that is marked for delaying initialzation to runtime got initialized during image building: " + entry.getKey().getTypeName());
+                throw UserError.abort("Class that is marked for delaying initialization to runtime got initialized during image building: " + entry.getKey().getTypeName());
             }
         }
     }

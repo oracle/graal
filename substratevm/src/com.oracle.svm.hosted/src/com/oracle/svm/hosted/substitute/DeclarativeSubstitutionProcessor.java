@@ -458,7 +458,7 @@ class ClassDescriptor extends PlatformsDescriptor {
          */
         @Override
         public Class<? extends BooleanSupplier>[] onlyWith() {
-            return (Class<? extends BooleanSupplier>[]) new Class<?>[]{DEFAULT_TARGETCLASS_PREDICATE};
+            return (Class<? extends BooleanSupplier>[]) new Class<?>[]{TargetClass.AlwaysIncluded.class};
         }
     }
 }
@@ -484,7 +484,7 @@ class ElementDescriptor extends PlatformsDescriptor {
 
         @Override
         public Class<? extends Predicate<Class<?>>>[] onlyWith() {
-            return (Class<? extends Predicate<Class<?>>>[]) new Class<?>[]{TargetElement.AlwaysIncluded.class};
+            return (Class<? extends Predicate<Class<?>>>[]) new Class<?>[]{TargetClass.AlwaysIncluded.class};
         }
     }
 }

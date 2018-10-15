@@ -26,6 +26,9 @@ package com.oracle.substratevm;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -34,13 +37,15 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Scanner;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.apache.maven.artifact.Artifact;
-import org.apache.maven.artifact.DependencyResolutionRequiredException;
+import org.apache.maven.model.ConfigurationContainer;
 import org.apache.maven.model.Plugin;
+import org.apache.maven.model.PluginExecution;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.descriptor.PluginDescriptor;
@@ -49,13 +54,16 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.archiver.tar.TarGZipUnArchiver;
-import org.codehaus.plexus.logging.console.ConsoleLogger;
+import org.codehaus.plexus.logging.AbstractLogger;
+import org.codehaus.plexus.logging.Logger;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
 
 import com.oracle.svm.driver.NativeImage;
 
 @Mojo(name = "native-image", defaultPhase = LifecyclePhase.PACKAGE)
 public class NativeImageMojo extends AbstractMojo {
+    private static final String svmGroupId = "com.oracle.substratevm";
+
     @Parameter(defaultValue = "${project}", readonly = true, required = true)//
     private MavenProject project;
 
@@ -71,95 +79,293 @@ public class NativeImageMojo extends AbstractMojo {
     @Parameter(property = "buildArgs")//
     private String buildArgs;
 
-    private ConsoleLogger tarGzLogger = new ConsoleLogger();
-    private TarGZipUnArchiver tarGzExtract = new TarGZipUnArchiver();
+    private Logger tarGzLogger = new AbstractLogger(Logger.LEVEL_WARN, "NativeImageMojo.tarGzLogger") {
+        @Override
+        public void debug(String message, Throwable throwable) {
+            if (isDebugEnabled()) {
+                getLog().debug(message, throwable);
+            }
+        }
+
+        @Override
+        public void info(String message, Throwable throwable) {
+            if (isInfoEnabled()) {
+                getLog().info(message, throwable);
+            }
+        }
+
+        @Override
+        public void warn(String message, Throwable throwable) {
+            if (isWarnEnabled()) {
+                getLog().warn(message, throwable);
+            }
+        }
+
+        @Override
+        public void error(String message, Throwable throwable) {
+            if (isErrorEnabled()) {
+                getLog().error(message, throwable);
+            }
+        }
+
+        @Override
+        public void fatalError(String message, Throwable throwable) {
+            if (isFatalErrorEnabled()) {
+                getLog().error(message, throwable);
+            }
+        }
+
+        @Override
+        public Logger getChildLogger(String name) {
+            return this;
+        }
+    };
+
+    private final TarGZipUnArchiver tarGzExtract = new TarGZipUnArchiver();
+    private final List<Path> classpath = new ArrayList<>();
 
     NativeImageMojo() {
         tarGzExtract.enableLogging(tarGzLogger);
     }
 
+    private Stream<Artifact> getSelectedArtifactsStream(String groupId, String... artifactIds) {
+        return plugin.getArtifacts().stream()
+                        .filter(artifact -> artifact.getGroupId().equals(groupId))
+                        .filter(artifact -> {
+                            List<String> artifactIdsList = Arrays.asList(artifactIds);
+                            if (artifactIdsList.isEmpty()) {
+                                return true;
+                            }
+                            return artifactIdsList.contains(artifact.getArtifactId());
+                        });
+    }
+
     public void execute() throws MojoExecutionException {
-        //getLog().warn("mx.platform: " + System.getProperty("mx.platform"));
-
-        File untarDestDirectory = getUntarDestDirectory();
-        if (!untarDestDirectory.exists()) {
-            untarDestDirectory.mkdirs();
-            plugin.getArtifacts().stream()
-                            .filter(artifact -> artifact.getGroupId().equals("com.oracle.substratevm"))
-                            .filter(artifact -> artifact.getArtifactId().startsWith("svm-hosted-native"))
-                            .forEach(artifact -> {
-                                if (artifact.getType().equals("tar.gz")) {
-                                    tarGzExtract.setSourceFile(artifact.getFile());
-                                    tarGzExtract.setDestDirectory(untarDestDirectory);
-                                    tarGzExtract.extract();
-                                }
-                            });
+        classpath.clear();
+        List<String> imageClasspathScopes = Arrays.asList(Artifact.SCOPE_COMPILE, Artifact.SCOPE_RUNTIME);
+        project.setArtifactFilter(artifact -> imageClasspathScopes.contains(artifact.getScope()));
+        for (Artifact dependency : project.getArtifacts()) {
+            addClasspath(dependency);
         }
+        addClasspath(project.getArtifact());
+        String classpathStr = classpath.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator));
 
-        try {
-            MojoBuildConfiguration config = new MojoBuildConfiguration();
-            getLog().info("WorkingDirectory: " + config.getWorkingDirectory());
-            getLog().info("ImageClasspath: " + config.getImageClasspath());
-            getLog().info("BuildArgs: " + config.getBuildArgs());
-            NativeImage.build(config);
-        } catch (NativeImage.NativeImageError e) {
-            throw new MojoExecutionException("Error creating native image:", e);
+        Path nativeImageExecutable = getJavaHome().resolve("bin/native-image");
+        if (Files.isExecutable(nativeImageExecutable)) {
+            String nativeImageExecutableVersion = "Unknown";
+            Process versionCheckProcess = null;
+            try {
+                ProcessBuilder processBuilder = new ProcessBuilder(nativeImageExecutable.toString(), "--version");
+                versionCheckProcess = processBuilder.start();
+                try (Scanner scanner = new Scanner(versionCheckProcess.getInputStream())) {
+                    while (true) {
+                        if (scanner.findInLine("GraalVM Version ") != null) {
+                            nativeImageExecutableVersion = scanner.next();
+                            break;
+                        }
+                        if (!scanner.hasNextLine()) {
+                            break;
+                        }
+                        scanner.nextLine();
+                    }
+
+                    if (versionCheckProcess.waitFor() != 0) {
+                        throw new MojoExecutionException("Execution of " + String.join(" ", processBuilder.command()) + " returned non-zero result");
+                    }
+                }
+            } catch (IOException | InterruptedException e) {
+                throw new MojoExecutionException("Probing version info of native-image executable " + nativeImageExecutable + " failed", e);
+            }
+
+            if (!nativeImageExecutableVersion.equals(plugin.getVersion())) {
+                getLog().warn("Mismatch between " + plugin.getArtifactId() + " version (" + plugin.getVersion() + ") and native-image executable version (" + nativeImageExecutableVersion + ")");
+            }
+
+            try {
+                ProcessBuilder processBuilder = new ProcessBuilder(nativeImageExecutable.toString(), "-cp", classpathStr);
+                processBuilder.command().addAll(getBuildArgs());
+                processBuilder.inheritIO();
+
+                String commandString = String.join(" ", processBuilder.command());
+                getLog().info("Executing: " + commandString);
+                Process imageBuildProcess = processBuilder.start();
+                if (imageBuildProcess.waitFor() != 0) {
+                    throw new MojoExecutionException("Execution of " + commandString + " returned non-zero result");
+                }
+            } catch (IOException | InterruptedException e) {
+                throw new MojoExecutionException("Building image with " + nativeImageExecutable + " failed", e);
+            }
+        } else {
+            Path untarDestDirectory = getUntarDestDirectory();
+            if (!Files.isDirectory(untarDestDirectory)) {
+                try {
+                    Files.createDirectories(untarDestDirectory);
+                } catch (IOException e) {
+                    throw new MojoExecutionException("Unable to create directory " + untarDestDirectory, e);
+                }
+                plugin.getArtifacts().stream()
+                                .filter(artifact -> artifact.getGroupId().equals(svmGroupId))
+                                .filter(artifact -> artifact.getArtifactId().startsWith("svm-hosted-native-"))
+                                .forEach(artifact -> {
+                                    if (artifact.getType().equals("tar.gz")) {
+                                        tarGzExtract.setSourceFile(artifact.getFile());
+                                        tarGzExtract.setDestDirectory(untarDestDirectory.toFile());
+                                        tarGzExtract.extract();
+                                    }
+                                });
+            }
+
+            try {
+                MojoBuildConfiguration config = new MojoBuildConfiguration();
+                getLog().info("WorkingDirectory: " + config.getWorkingDirectory());
+                getLog().info("ImageClasspath: " + classpathStr);
+                getLog().info("BuildArgs: " + config.getBuildArgs());
+                NativeImage.build(config);
+            } catch (NativeImage.NativeImageError e) {
+                throw new MojoExecutionException("Error creating native image:", e);
+            }
         }
     }
 
-    private File getUntarDestDirectory() {
-        return Paths.get(project.getBuild().getDirectory()).resolve(plugin.getArtifactId()).resolve(plugin.getVersion()).toFile();
+    private void addClasspath(Artifact artifact) throws MojoExecutionException {
+        Path jarFilePath = artifact.getFile().toPath();
+        getLog().info("ImageClasspath Entry: " + artifact + " (" + jarFilePath.toUri() + ")");
+
+        URI jarFileURI = URI.create("jar:file:" + jarFilePath);
+        try (FileSystem jarFS = FileSystems.newFileSystem(jarFileURI, Collections.emptyMap())) {
+            Path nativeImageMetaInfBase = jarFS.getPath("/" + NativeImage.nativeImagePropertiesMetaInf);
+            if (Files.isDirectory(nativeImageMetaInfBase)) {
+                List<Path> nativeImageProperties = Files.walk(nativeImageMetaInfBase)
+                                .filter(p -> p.endsWith(NativeImage.nativeImagePropertiesFilename))
+                                .collect(Collectors.toList());
+
+                for (Path nativeImageProperty : nativeImageProperties) {
+                    Path relativeSubDir = nativeImageMetaInfBase.relativize(nativeImageProperty).getParent();
+                    boolean valid = relativeSubDir != null && (relativeSubDir.getNameCount() == 2);
+                    valid = valid && relativeSubDir.getName(0).toString().equals(artifact.getGroupId());
+                    valid = valid && relativeSubDir.getName(1).toString().equals(artifact.getArtifactId());
+                    if (!valid) {
+                        String example = NativeImage.nativeImagePropertiesMetaInf + "/${groupId}/${artifactId}/" + NativeImage.nativeImagePropertiesFilename;
+                        getLog().warn(nativeImageProperty.toUri() + " does not conform with " + example);
+                    }
+                }
+            }
+        } catch (IOException e) {
+            throw new MojoExecutionException("Artifact " + artifact + "cannot be added to image classpath", e);
+        }
+
+        classpath.add(jarFilePath);
+    }
+
+    private static Path getJavaHome() {
+        return Paths.get(System.getProperty("java.home"));
+    }
+
+    private Path getWorkingDirectory() {
+        return outputDirectory.toPath();
+    }
+
+    private boolean consumeConfigurationNodeValue(Consumer<String> consumer, String pluginKey, String... nodeNames) {
+        Plugin selectedPlugin = project.getPlugin(pluginKey);
+        if (selectedPlugin == null) {
+            return false;
+        }
+        return consumeConfigurationNodeValue(consumer, selectedPlugin, nodeNames);
+    }
+
+    private boolean consumeExecutionsNodeValue(Consumer<String> consumer, String pluginKey, String... nodeNames) {
+        Plugin selectedPlugin = project.getPlugin(pluginKey);
+        if (selectedPlugin == null) {
+            return false;
+        }
+        for (PluginExecution execution : selectedPlugin.getExecutions()) {
+            if (consumeConfigurationNodeValue(consumer, execution, nodeNames)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean consumeConfigurationNodeValue(Consumer<String> consumer, ConfigurationContainer container, String... nodeNames) {
+        if (container != null && container.getConfiguration() instanceof Xpp3Dom) {
+            Xpp3Dom node = (Xpp3Dom) container.getConfiguration();
+            for (String nodeName : nodeNames) {
+                node = node.getChild(nodeName);
+                if (node == null) {
+                    return false;
+                }
+            }
+            consumer.accept(node.getValue());
+            return true;
+        }
+        return false;
+    }
+
+    private List<String> getBuildArgs() {
+        List<String> list = new ArrayList<>();
+        if (buildArgs != null && !buildArgs.isEmpty()) {
+            list.addAll(Arrays.asList(buildArgs.split(" ")));
+        }
+        if (mainClass != null && !mainClass.isEmpty()) {
+            list.add(mainClass);
+        } else {
+            boolean consumed = false;
+            if (!consumed) {
+                consumed = consumeExecutionsNodeValue(list::add, "org.apache.maven.plugins:maven-shade-plugin", "transformers", "transformer", "mainClass");
+            }
+            if (!consumed) {
+                consumed = consumeConfigurationNodeValue(list::add, "org.apache.maven.plugins:maven-assembly-plugin", "archive", "manifest", "mainClass");
+            }
+            if (!consumed) {
+                consumed = consumeConfigurationNodeValue(list::add, "org.apache.maven.plugins:maven-jar-plugin", "archive", "manifest", "mainClass");
+            }
+            if (!consumed && !list.contains("--shared")) {
+                getLog().warn("Building executable native image requires mainClass to be specified (via maven-{assembly,jar}-plugin) or explicitly");
+            }
+        }
+        return list;
+    }
+
+    private Path getUntarDestDirectory() {
+        return Paths.get(project.getBuild().getDirectory()).resolve(plugin.getArtifactId()).resolve(plugin.getVersion());
     }
 
     private final class MojoBuildConfiguration implements NativeImage.BuildConfiguration {
-        private final List<String> classpath;
         private final List<Path> jvmciJars;
 
         MojoBuildConfiguration() throws MojoExecutionException {
             try {
-                getLog().info("project.getArtifact: " + project.getArtifact().getFile());
-                for (Artifact artifact : project.getArtifacts()) {
-                    getLog().info("project.getArtifacts.artifact: " + artifact.getFile());
-                }
-                classpath = new ArrayList<>(project.getRuntimeClasspathElements());
-                classpath.add(project.getArtifact().getFile().toString());
-            } catch (DependencyResolutionRequiredException e) {
-                throw new MojoExecutionException("Error while determining ImageClasspath", e);
-            }
-            try {
-                Path jvmciSubdir = Paths.get("lib", "jvmci");
-                jvmciJars = Files.list(Paths.get(System.getProperty("java.home")).resolve(jvmciSubdir))
-                                .collect(Collectors.toList());
+                jvmciJars = Files.list(getJavaHome().resolve("lib/jvmci")).collect(Collectors.toList());
             } catch (IOException e) {
-                throw new MojoExecutionException("JVM does not support JVMCI interface", e);
+                throw new MojoExecutionException("JVM in " + getJavaHome() + " does not support JVMCI interface", e);
             }
-
         }
 
         @Override
         public Path getWorkingDirectory() {
-            return outputDirectory.toPath();
+            return NativeImageMojo.this.getWorkingDirectory();
         }
 
         @Override
         public Path getJavaExecutable() {
-            return Paths.get(System.getProperty("java.home")).resolve(Paths.get("bin", "java"));
+            return getJavaHome().resolve("bin/java");
         }
 
-        @Override
-        public List<Path> getBuilderClasspath() {
-            String[] builderArtifacts = {"svm", "svm-enterprise", "objectfile", "pointsto"};
-            return plugin.getArtifacts().stream()
-                            .filter(artifact -> artifact.getGroupId().equals("com.oracle.substratevm"))
-                            .filter(artifact -> Arrays.asList(builderArtifacts).contains(artifact.getArtifactId()))
+        private List<Path> getSelectedArtifactPaths(String groupId, String... artifactIds) {
+            return getSelectedArtifactsStream(groupId, artifactIds)
                             .map(Artifact::getFile)
                             .map(File::toPath)
                             .collect(Collectors.toList());
         }
 
         @Override
+        public List<Path> getBuilderClasspath() {
+            return getSelectedArtifactPaths(svmGroupId, "svm", "objectfile", "pointsto");
+        }
+
+        @Override
         public List<Path> getBuilderCLibrariesPaths() {
-            return Collections.singletonList(getUntarDestDirectory().toPath());
+            return Collections.singletonList(getUntarDestDirectory());
         }
 
         @Override
@@ -169,13 +375,7 @@ public class NativeImageMojo extends AbstractMojo {
 
         @Override
         public List<Path> getImageProvidedClasspath() {
-            String[] librarySupportArtifacts = {"library-support", "library-support-enterprise"};
-            return plugin.getArtifacts().stream()
-                            .filter(artifact -> artifact.getGroupId().equals("com.oracle.substratevm"))
-                            .filter(artifact -> Arrays.asList(librarySupportArtifacts).contains(artifact.getArtifactId()))
-                            .map(Artifact::getFile)
-                            .map(File::toPath)
-                            .collect(Collectors.toList());
+            return getSelectedArtifactPaths(svmGroupId, "library-support");
         }
 
         @Override
@@ -188,23 +388,12 @@ public class NativeImageMojo extends AbstractMojo {
 
         @Override
         public List<Path> getBuilderJVMCIClasspathAppend() {
-            String[] builderArtifacts = {"graal", "graal-enterprise"};
-            return plugin.getArtifacts().stream()
-                            .filter(artifact -> artifact.getGroupId().equals("com.oracle.compiler"))
-                            .filter(artifact -> Arrays.asList(builderArtifacts).contains(artifact.getArtifactId()))
-                            .map(Artifact::getFile)
-                            .map(File::toPath)
-                            .collect(Collectors.toList());
+            return getSelectedArtifactPaths("org.graalvm.compiler", "compiler");
         }
 
         @Override
         public List<Path> getBuilderBootClasspath() {
-            return plugin.getArtifacts().stream()
-                            .filter(artifact -> artifact.getGroupId().equals("org.graalvm"))
-                            .filter(artifact -> artifact.getArtifactId().equals("graal-sdk"))
-                            .map(Artifact::getFile)
-                            .map(File::toPath)
-                            .collect(Collectors.toList());
+            return getSelectedArtifactPaths("org.graalvm.sdk", "graal-sdk");
         }
 
         @Override
@@ -214,45 +403,12 @@ public class NativeImageMojo extends AbstractMojo {
 
         @Override
         public List<Path> getImageClasspath() {
-            return classpath.stream().map(Paths::get).collect(Collectors.toList());
-        }
-
-        private boolean consumeConfigurationNodeValue(Consumer<String> consumer, Plugin plugin, String... nodeNames) {
-            if (plugin != null && plugin.getConfiguration() instanceof Xpp3Dom) {
-                Xpp3Dom node = (Xpp3Dom) plugin.getConfiguration();
-                for (String nodeName : nodeNames) {
-                    node = node.getChild(nodeName);
-                    if (node == null) {
-                        return false;
-                    }
-                }
-                consumer.accept(node.getValue());
-                return true;
-            }
-            return false;
+            return classpath;
         }
 
         @Override
         public List<String> getBuildArgs() {
-            List<String> list = new ArrayList<>();
-            if (buildArgs != null && !buildArgs.isEmpty()) {
-                list.addAll(Arrays.asList(buildArgs.split(" ")));
-            }
-            if (mainClass != null && !mainClass.isEmpty()) {
-                list.add(mainClass);
-            } else {
-                boolean consumed = false;
-                if (!consumed) {
-                    consumed = consumeConfigurationNodeValue(list::add, project.getPlugin("org.apache.maven.plugins:maven-assembly-plugin"), "archive", "manifest", "mainClass");
-                }
-                if (!consumed) {
-                    consumed = consumeConfigurationNodeValue(list::add, project.getPlugin("org.apache.maven.plugins:maven-jar-plugin"), "archive", "manifest", "mainClass");
-                }
-                if (!consumed && !list.contains("--shared")) {
-                    getLog().warn("Building executable native image requires mainClass to be specified (via maven-{assembly,jar}-plugin) or explicitly");
-                }
-            }
-            return list;
+            return NativeImageMojo.this.getBuildArgs();
         }
 
         /* Launcher usage currently unsupported in maven plugin */

@@ -30,6 +30,7 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.io.Serializable;
 import java.lang.annotation.Annotation;
+import java.lang.annotation.Inherited;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.Constructor;
@@ -59,7 +60,6 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.svm.core.HostedIdentityHashCodeProvider;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Hybrid;
 import com.oracle.svm.core.annotate.KeepOriginal;
 import com.oracle.svm.core.annotate.Substitute;
@@ -260,13 +260,12 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private GenericInfo genericInfo;
     private AnnotatedSuperInfo annotatedSuperInfo;
 
-    @Alias private static java.security.ProtectionDomain allPermDomain;
+    private static java.security.ProtectionDomain allPermDomain;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHub(String name, boolean isLocalClass, DynamicHub superType, DynamicHub componentHub, String sourceFileName, boolean isStatic, boolean isSynthetic,
                     Target_java_lang_ClassLoader classLoader) {
-        /* Class names must be interned strings according to the Java spec. */
-        this.name = name.intern();
+        this.name = name;
         this.isLocalClass = isLocalClass;
         this.superHub = superType;
         this.componentHub = componentHub;
@@ -733,6 +732,31 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Override
     public Annotation[] getAnnotations() {
         return AnnotationsEncoding.getAnnotations(annotationsEncoding);
+    }
+
+    @Substitute
+    @Override
+    @SuppressWarnings("unchecked")
+    public <T extends Annotation> T[] getAnnotationsByType(Class<T> annotationClass) {
+
+        /*
+         * Custom rewrite of GenericDeclaration.super.getAnnotationsByType(annotationClass) to avoid
+         * the call to AnnotationType.getInstance(annotationClass).isInherited(). Calling
+         * AnnotationType.getInstance(annotationClass) requires registration of the corresponding
+         * AnnotationType objects in the image heap during image build time. This is currently done
+         * only for repeatable annotations for space economy reasons.
+         */
+        T[] result = getDeclaredAnnotationsByType(annotationClass);
+
+        if (result.length == 0 && annotationClass.getAnnotation(Inherited.class) != null) {
+            DynamicHub superClass = (DynamicHub) this.getSuperclass();
+            if (superClass != null) {
+                /* Determine if the annotation is associated with the superclass. */
+                result = superClass.getAnnotationsByType(annotationClass);
+            }
+        }
+
+        return result;
     }
 
     @Substitute

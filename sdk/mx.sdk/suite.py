@@ -41,11 +41,11 @@
 suite = {
   "mxversion" : "5.183.0",
   "name" : "sdk",
-  "version" : "1.0.0-rc7",
-  "release" : True,
+  "version" : "1.0.0-rc8",
+  "release" : False,
   "sourceinprojectwhitelist" : [],
   "url" : "https://github.com/oracle/graal",
-  "groupId" : "org.graalvm",
+  "groupId" : "org.graalvm.sdk",
   "developer" : {
     "name" : "Graal developers",
     "email" : "graal-dev@openjdk.java.net",
@@ -102,7 +102,7 @@ suite = {
       "uses" : ["org.graalvm.polyglot.impl.AbstractPolyglotImpl"],
       "exports" : [
         "<package-info>",  # exports all packages containing package-info.java
-        "org.graalvm.polyglot.impl to com.oracle.truffle.truffle_api", # exported to truffle
+        "org.graalvm.polyglot.impl to org.graalvm.truffle", # exported to truffle
         "org.graalvm.polyglot",
         "org.graalvm.polyglot.proxy",
       ],
@@ -196,7 +196,7 @@ suite = {
   "distributions" : {
     "GRAAL_SDK" : {
       "subDir" : "src",
-      "moduleName" : "org.graalvm.graal_sdk",
+      "moduleName" : "org.graalvm.sdk",
       "dependencies" : [
         "org.graalvm.polyglot",
         "org.graalvm.nativeimage",

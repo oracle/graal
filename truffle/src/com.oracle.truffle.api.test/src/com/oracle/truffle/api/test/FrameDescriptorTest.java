@@ -102,13 +102,11 @@ public class FrameDescriptorTest {
         s2 = d.addFrameSlot("v2", "i2", FrameSlotKind.Float);
 
         assertEquals(2, d.getSize());
-        assertEquals(d.getSlots().get(1).getInfo(), "i2");
-        assertEquals(d.getFrameSlotKind(d.getSlots().get(1)), FrameSlotKind.Float);
-        assertEquals(d.getSlots().get(1).getIndex(), 1);
+        assertEquals("i2", d.getSlots().get(1).getInfo());
+        assertEquals(FrameSlotKind.Float, d.getFrameSlotKind(d.getSlots().get(1)));
 
         FrameDescriptor copy = d.copy();
         assertEquals(2, copy.getSize());
-        assertEquals(1, copy.getSlots().get(1).getIndex());
         assertEquals("Info is copied", "i2", copy.getSlots().get(1).getInfo());
         assertEquals("Kind isn't copied", FrameSlotKind.Illegal, copy.getFrameSlotKind(copy.getSlots().get(1)));
     }

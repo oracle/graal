@@ -27,7 +27,7 @@ package com.oracle.svm.core.stack;
 import static com.oracle.svm.core.util.VMError.unimplemented;
 
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.c.function.CEntryPointContext;
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
@@ -300,7 +300,7 @@ class SubstrateInspectedFrame implements InspectedFrame {
     @Override
     public void materializeVirtualObjects(boolean invalidateCode) {
         if (virtualFrame == null) {
-            DeoptimizedFrame deoptimizedFrame = getDeoptimizer().deoptSourceFrame(ip, false, CEntryPointContext.getCurrentIsolateThread());
+            DeoptimizedFrame deoptimizedFrame = getDeoptimizer().deoptSourceFrame(ip, false, CurrentIsolate.getCurrentThread());
             assert deoptimizedFrame == Deoptimizer.checkDeoptimized(sp);
         }
 

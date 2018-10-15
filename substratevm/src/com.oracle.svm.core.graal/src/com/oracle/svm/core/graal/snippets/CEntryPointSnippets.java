@@ -26,7 +26,6 @@ package com.oracle.svm.core.graal.snippets;
 
 import static com.oracle.svm.core.SubstrateOptions.MultiThreaded;
 import static com.oracle.svm.core.SubstrateOptions.SpawnIsolates;
-import static com.oracle.svm.core.SubstrateOptions.UseHeapBaseRegister;
 import static com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode.writeCurrentVMThread;
 import static com.oracle.svm.core.graal.nodes.WriteHeapBaseNode.writeCurrentVMHeapBase;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
@@ -52,12 +51,12 @@ import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.compiler.word.Word;
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.c.function.CEntryPointContext;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.LocationIdentity;
@@ -140,7 +139,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @Uninterruptible(reason = "Called by an uninterruptible method.")
     public static void setHeapBase(PointerBase heapBase) {
-        assert UseHeapBaseRegister.getValue();
+        assert SpawnIsolates.getValue();
         writeCurrentVMHeapBase(hasHeapBase() ? heapBase : WordFactory.nullPointer());
     }
 
@@ -165,12 +164,12 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         if (error != CEntryPointErrors.NO_ERROR) {
             return error;
         }
-        if (UseHeapBaseRegister.getValue()) {
+        if (SpawnIsolates.getValue()) {
             setHeapBase(Isolates.getHeapBase(isolate.read()));
         }
         if (MultiThreaded.getValue()) {
             if (!VMThreads.ensureInitialized()) {
-                return CEntryPointErrors.THREAD_INITIALIZATION_FAILED;
+                return CEntryPointErrors.THREADING_INITIALIZATION_FAILED;
             }
         }
         return attachThread(isolate.read(), vmThreadSize);
@@ -195,19 +194,18 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         if (sanityError != CEntryPointErrors.NO_ERROR) {
             return sanityError;
         }
-        if (UseHeapBaseRegister.getValue()) {
+        if (SpawnIsolates.getValue()) {
             setHeapBase(Isolates.getHeapBase(isolate));
         }
         if (MultiThreaded.getValue()) {
             if (!VMThreads.isInitialized()) {
                 return CEntryPointErrors.UNINITIALIZED_ISOLATE;
             }
-            IsolateThread thread = VMThreads.singleton().readIsolateThreadFromOSThreadLocal();
+            IsolateThread thread = VMThreads.singleton().findIsolateThreadforCurrentOSThread();
             if (VMThreads.isNullThread(thread)) { // not attached
                 thread = VMThreads.singleton().allocateIsolateThread(vmThreadSize);
-                VMThreads.attachThread(thread);
+                VMThreads.singleton().attachThread(thread);
                 // Store thread and isolate in thread-local variables.
-                VMThreads.singleton().writeIsolateThreadToOSThreadLocal(thread);
                 VMThreads.IsolateTL.set(thread, isolate);
             }
             writeCurrentVMThread(thread);
@@ -219,10 +217,10 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     public static int detachThreadSnippet() {
         int result = CEntryPointErrors.NO_ERROR;
         if (MultiThreaded.getValue()) {
-            IsolateThread thread = CEntryPointContext.getCurrentIsolateThread();
+            IsolateThread thread = CurrentIsolate.getCurrentThread();
             result = runtimeCall(DETACH_THREAD_MT, thread);
         }
-        if (UseHeapBaseRegister.getValue()) {
+        if (SpawnIsolates.getValue()) {
             writeCurrentVMHeapBase(WordFactory.nullPointer());
         }
         return result;
@@ -249,7 +247,6 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
             // clear references to thread to avoid unintended use
             writeCurrentVMThread(VMThreads.nullThread());
-            VMThreads.singleton().writeIsolateThreadToOSThreadLocal(VMThreads.nullThread());
 
             VMThreads.detachThread(thread);
         } catch (Throwable t) {
@@ -278,7 +275,6 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         if (!success) {
             return CEntryPointErrors.UNSPECIFIED;
         }
-        VMThreads.singleton().tearDown();
         return Isolates.tearDownCurrent();
     }
 
@@ -293,7 +289,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             }
         } else {
             result = Isolates.checkSanity(isolate);
-            if (result == CEntryPointErrors.NO_ERROR && UseHeapBaseRegister.getValue()) {
+            if (result == CEntryPointErrors.NO_ERROR && SpawnIsolates.getValue()) {
                 setHeapBase(Isolates.getHeapBase(isolate));
             }
         }
@@ -307,13 +303,13 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         if (sanityError != CEntryPointErrors.NO_ERROR) {
             return sanityError;
         }
-        if (UseHeapBaseRegister.getValue()) {
+        if (SpawnIsolates.getValue()) {
             setHeapBase(Isolates.getHeapBase(isolate));
         }
         if (!VMThreads.isInitialized()) {
             return CEntryPointErrors.UNINITIALIZED_ISOLATE;
         }
-        IsolateThread thread = VMThreads.singleton().readIsolateThreadFromOSThreadLocal();
+        IsolateThread thread = VMThreads.singleton().findIsolateThreadforCurrentOSThread();
         if (VMThreads.isNullThread(thread)) {
             return CEntryPointErrors.UNATTACHED_THREAD;
         }
@@ -340,7 +336,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             }
             isolate = (Isolate) ((Word) thread).subtract(CEntryPointSetup.SINGLE_ISOLATE_TO_SINGLE_THREAD_ADDEND);
         }
-        if (UseHeapBaseRegister.getValue()) {
+        if (SpawnIsolates.getValue()) {
             setHeapBase(Isolates.getHeapBase(isolate));
         }
         if (MultiThreaded.getValue()) {
@@ -386,10 +382,10 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     @Uninterruptible(reason = "Thread state not yet set up.")
     @SubstrateForeignCallTarget
     private static boolean isAttachedMT(Isolate isolate) {
-        if (UseHeapBaseRegister.getValue()) {
+        if (SpawnIsolates.getValue()) {
             setHeapBase(Isolates.getHeapBase(isolate));
         }
-        return VMThreads.isInitialized() && VMThreads.singleton().readIsolateThreadFromOSThreadLocal().isNonNull();
+        return VMThreads.isInitialized() && VMThreads.singleton().findIsolateThreadforCurrentOSThread().isNonNull();
     }
 
     @Snippet

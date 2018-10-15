@@ -198,7 +198,7 @@ public abstract class LLVMForeignCallNode extends LLVMNode {
         if (function.isLLVMIRFunction()) {
             return function.getLLVMIRFunction();
         } else if (function.isIntrinsicFunction()) {
-            return function.getNativeIntrinsic().cachedCallTarget(function.getType());
+            return function.getIntrinsic().cachedCallTarget(function.getType());
         } else {
             CompilerDirectives.transferToInterpreter();
             throw new AssertionError("native function not supported at this point");

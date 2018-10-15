@@ -27,18 +27,14 @@ package com.oracle.svm.core.jdk;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.SoftReference;
 import java.text.BreakIterator;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.TimeZone;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.spi.LocaleServiceProvider;
 
-import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -56,7 +52,6 @@ import com.oracle.svm.core.util.VMError;
 
 import sun.util.locale.provider.JRELocaleProviderAdapter;
 import sun.util.locale.provider.LocaleProviderAdapter;
-import sun.util.locale.provider.LocaleProviderAdapter.Type;
 import sun.util.locale.provider.LocaleResources;
 import sun.util.locale.provider.LocaleServiceProviderPool;
 import sun.util.locale.provider.LocaleServiceProviderPool.LocalizedObjectGetter;
@@ -175,106 +170,15 @@ final class Target_sun_util_locale_provider_LocaleServiceProviderPool {
                     Boolean isObjectProvider,
                     String key,
                     Object... params);
-}
 
-@TargetClass(sun.util.locale.provider.LocaleProviderAdapter.class)
-final class Target_sun_util_locale_provider_LocaleProviderAdapter {
-
-    @Substitute
-    @SuppressWarnings({"unused"})
-    public static LocaleProviderAdapter getAdapter(Class<? extends LocaleServiceProvider> providerClass, Locale locale) {
-        LocaleProviderAdapter result = Util_sun_util_locale_provider_LocaleProviderAdapter.cachedAdapters.get(providerClass);
-        if (result == null) {
-            throw VMError.unsupportedFeature("LocaleServiceProviderAdapter.getAdapter " + providerClass.getName());
-        }
-        return result;
-    }
-
-    @Alias //
-    @TargetElement(onlyWith = JDK8OrEarlier.class) //
-    private static LocaleProviderAdapter jreLocaleProviderAdapter;
-
-    @Substitute
-    public static LocaleProviderAdapter forType(Type type) {
-        if (GraalServices.Java8OrEarlier) {
-            if (type == Type.JRE) {
-                return jreLocaleProviderAdapter;
-            } else {
-                throw VMError.unsupportedFeature("LocaleProviderAdapter.forType: " + type);
-            }
-        } else {
-            /*
-             * TODO: If I only wanted the JRE adapter, I could cache the result of calling
-             * `LocaleProviderAdapter.forJRE()` during image building.
-             */
-            throw VMError.unsupportedFeature("JDK9OrLater: LocaleProviderAdapter.forType: " + type);
-        }
-    }
-}
-
-final class Util_sun_util_locale_provider_LocaleProviderAdapter {
-
-    static final Map<Class<? extends LocaleServiceProvider>, LocaleProviderAdapter> cachedAdapters;
-
-    static {
-        cachedAdapters = new HashMap<>();
-
-        try {
-            Class<LocaleServiceProvider>[] spiClasses = Target_sun_util_locale_provider_LocaleServiceProviderPool.spiClasses();
-            for (Class<LocaleServiceProvider> providerClass : spiClasses) {
-                LocaleProviderAdapter adapter = LocaleProviderAdapter.getAdapter(providerClass, Locale.getDefault());
-                cachedAdapters.put(providerClass, adapter);
-            }
-
-        } catch (Throwable ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
-
-    }
+    @KeepOriginal //
+    @TargetElement(onlyWith = JDK9OrLater.class) //
+    static native void config(Class<? extends Object> caller, String message);
 }
 
 @Delete
 @TargetClass(sun.util.locale.provider.AuxLocaleProviderAdapter.class)
 final class Target_sun_util_locale_provider_AuxLocaleProviderAdapter {
-}
-
-@TargetClass(java.util.TimeZone.class)
-final class Target_java_util_TimeZone {
-
-    @Substitute
-    private static TimeZone getDefaultRef() {
-        return Util_java_util_TimeZone.defaultZone;
-    }
-
-    @Substitute
-    private static void setDefault(TimeZone zone) {
-        Util_java_util_TimeZone.defaultZone = zone;
-    }
-
-    @Substitute
-    public static TimeZone getTimeZone(String id) {
-        for (TimeZone zone : Util_java_util_TimeZone.zones) {
-            if (zone.getID().equals(id)) {
-                return zone;
-            }
-        }
-        return Util_java_util_TimeZone.zones.get(0);
-    }
-}
-
-final class Util_java_util_TimeZone {
-
-    protected static final List<TimeZone> zones;
-    protected static TimeZone defaultZone = TimeZone.getDefault();
-
-    static {
-        defaultZone = TimeZone.getDefault();
-        zones = new ArrayList<>();
-        /* The first entry must be GMT, it is returned when no other match found. */
-        zones.add(TimeZone.getTimeZone("GMT"));
-        zones.add(TimeZone.getTimeZone("UTC"));
-        zones.add(defaultZone);
-    }
 }
 
 @TargetClass(sun.util.locale.provider.TimeZoneNameUtility.class)
@@ -362,7 +266,4 @@ final class Util_java_text_BreakIterator {
 /** Dummy class to have a class with the file's name. */
 public final class LocaleSubstitutions {
 
-    public static void registerTimeZone(TimeZone zone) {
-        Util_java_util_TimeZone.zones.add(zone);
-    }
 }

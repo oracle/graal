@@ -24,6 +24,10 @@
  */
 package com.oracle.truffle.tools.chromeinspector;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -53,6 +57,7 @@ public final class TruffleExecutionContext {
     private final String name;
     private final TruffleInstrument.Env env;
     private final PrintWriter err;
+    private final PrintStream traceLogger;
     private final List<Listener> listeners = Collections.synchronizedList(new ArrayList<>(3));
     private final long id = LAST_ID.incrementAndGet();
     private final boolean[] runPermission = new boolean[]{false};
@@ -67,12 +72,30 @@ public final class TruffleExecutionContext {
     private volatile String lastMimeType = "text/javascript";   // Default JS
     private volatile String lastLanguage = "js";
 
-    public TruffleExecutionContext(String name, boolean inspectInternal, boolean inspectInitialization, TruffleInstrument.Env env, PrintWriter err) {
+    public TruffleExecutionContext(String name, boolean inspectInternal, boolean inspectInitialization, TruffleInstrument.Env env, PrintWriter err) throws IOException {
         this.name = name;
         this.inspectInternal = inspectInternal;
         this.inspectInitialization = inspectInitialization;
         this.env = env;
         this.err = err;
+        this.traceLogger = createTraceLogger();
+    }
+
+    private static PrintStream createTraceLogger() throws IOException {
+        PrintStream traceLog = null;
+        String traceLogFile = System.getProperty("chromeinspector.traceMessages");
+        if (traceLogFile != null) {
+            if (Boolean.parseBoolean(traceLogFile)) {
+                traceLog = System.err;
+            } else if (!"false".equalsIgnoreCase(traceLogFile)) {
+                if ("tmp".equalsIgnoreCase(traceLogFile)) {
+                    traceLog = new PrintStream(new FileOutputStream(File.createTempFile("ChromeInspectorProtocol", ".txt")));
+                } else {
+                    traceLog = new PrintStream(new FileOutputStream(traceLogFile));
+                }
+            }
+        }
+        return traceLog;
     }
 
     public boolean isInspectInternal() {
@@ -95,11 +118,21 @@ public final class TruffleExecutionContext {
         return err;
     }
 
+    public PrintStream getLogger() {
+        return traceLogger;
+    }
+
     public void doRunIfWaitingForDebugger() {
         fireContextCreated();
         synchronized (runPermission) {
             runPermission[0] = true;
             runPermission.notifyAll();
+        }
+    }
+
+    public boolean canRun() {
+        synchronized (runPermission) {
+            return runPermission[0];
         }
     }
 

@@ -525,7 +525,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         if (original == null) {
             /* Optional target that is not present, so nothing to do. */
         } else {
-            register(fieldSubstitutions, annotated, original, annotated);
+            register(fieldSubstitutions, annotated, original, new SubstitutionField(original, annotated));
         }
     }
 
@@ -631,16 +631,29 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     }
 
     private static boolean isIncluded(TargetElement targetElementAnnotation, Class<?> originalClass, AnnotatedElement annotatedElement) {
-        for (Class<? extends Predicate<Class<?>>> predicateClass : targetElementAnnotation.onlyWith()) {
-            Predicate<Class<?>> predicate;
+        for (Class<?> onlyWithClass : targetElementAnnotation.onlyWith()) {
+            Object onlyWithProvider;
             try {
-                Constructor<? extends Predicate<Class<?>>> constructor = predicateClass.getDeclaredConstructor();
+                Constructor<?> constructor = onlyWithClass.getDeclaredConstructor();
                 constructor.setAccessible(true);
-                predicate = constructor.newInstance();
+                onlyWithProvider = constructor.newInstance();
             } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
-                throw UserError.abort("Class specified as onlyWith for " + annotatedElement + " cannot be loaded or instantiated: " + predicateClass.getTypeName());
+                throw UserError.abort("Class specified as onlyWith for " + annotatedElement + " cannot be loaded or instantiated: " + onlyWithClass.getTypeName());
             }
-            if (!predicate.test(originalClass)) {
+
+            boolean onlyWithResult;
+            if (onlyWithProvider instanceof BooleanSupplier) {
+                onlyWithResult = ((BooleanSupplier) onlyWithProvider).getAsBoolean();
+            } else if (onlyWithProvider instanceof Predicate) {
+                @SuppressWarnings("unchecked")
+                Predicate<Class<?>> onlyWithPredicate = (Predicate<Class<?>>) onlyWithProvider;
+                onlyWithResult = onlyWithPredicate.test(originalClass);
+            } else {
+                throw UserError.abort("Class specified as onlyWith for " + annotatedElement + " does not implement " +
+                                BooleanSupplier.class.getSimpleName() + " or " + Predicate.class.getSimpleName());
+            }
+
+            if (!onlyWithResult) {
                 return false;
             }
         }
@@ -720,20 +733,6 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     }
 
     Class<?> findTargetClass(Class<?> annotatedBaseClass, TargetClass target) {
-        for (Class<? extends BooleanSupplier> predicateClass : target.onlyWith()) {
-            BooleanSupplier predicate;
-            try {
-                Constructor<? extends BooleanSupplier> constructor = predicateClass.getDeclaredConstructor();
-                constructor.setAccessible(true);
-                predicate = constructor.newInstance();
-            } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
-                throw UserError.abort("Class specified as onlyWith for " + annotatedBaseClass.getTypeName() + " cannot be loaded or instantiated: " + predicateClass.getTypeName());
-            }
-            if (!predicate.getAsBoolean()) {
-                return null;
-            }
-        }
-
         String className;
         if (target.value() != TargetClass.class) {
             guarantee(target.className().isEmpty(), "Both class and class name specified for substitution");
@@ -752,6 +751,34 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             guarantee(!target.className().isEmpty(), "Neither class, className, nor classNameProvider specified for substitution");
             className = target.className();
         }
+
+        for (Class<?> onlyWithClass : target.onlyWith()) {
+            Object onlyWithProvider;
+            try {
+                Constructor<?> constructor = onlyWithClass.getDeclaredConstructor();
+                constructor.setAccessible(true);
+                onlyWithProvider = constructor.newInstance();
+            } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
+                throw UserError.abort("Class specified as onlyWith for " + annotatedBaseClass.getTypeName() + " cannot be loaded or instantiated: " + onlyWithClass.getTypeName());
+            }
+
+            boolean onlyWithResult;
+            if (onlyWithProvider instanceof BooleanSupplier) {
+                onlyWithResult = ((BooleanSupplier) onlyWithProvider).getAsBoolean();
+            } else if (onlyWithProvider instanceof Predicate) {
+                @SuppressWarnings("unchecked")
+                Predicate<String> onlyWithPredicate = (Predicate<String>) onlyWithProvider;
+                onlyWithResult = onlyWithPredicate.test(className);
+            } else {
+                throw UserError.abort("Class specified as onlyWith for " + annotatedBaseClass.getTypeName() + " does not implement " +
+                                BooleanSupplier.class.getSimpleName() + " or " + Predicate.class.getSimpleName());
+            }
+
+            if (!onlyWithResult) {
+                return null;
+            }
+        }
+
         Class<?> holder = imageClassLoader.findClassByName(className, false);
         if (holder == null) {
             throw UserError.abort("substitution target for " + annotatedBaseClass.getName() +

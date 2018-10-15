@@ -31,13 +31,12 @@ package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateStringNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-@NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
+@NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMTruffleStringAsCString extends LLVMIntrinsic {
 
     @Child private LLVMAllocateStringNode allocString;
@@ -46,16 +45,8 @@ public abstract class LLVMTruffleStringAsCString extends LLVMIntrinsic {
         this.allocString = allocString;
     }
 
-    @SuppressWarnings("unused")
-    @Specialization(limit = "2", guards = "cachedId.equals(readStr.executeWithTarget(id))")
-    protected Object cached(Object id,
-                    @Cached("createReadString()") LLVMReadStringNode readStr,
-                    @Cached("readStr.executeWithTarget(id)") String cachedId) {
-        return allocString.executeWithTarget(cachedId);
-    }
-
-    @Specialization(replaces = "cached")
-    protected Object uncached(Object id,
+    @Specialization
+    protected Object doIntrinsic(Object id,
                     @Cached("createReadString()") LLVMReadStringNode readStr) {
         return allocString.executeWithTarget(readStr.executeWithTarget(id));
     }

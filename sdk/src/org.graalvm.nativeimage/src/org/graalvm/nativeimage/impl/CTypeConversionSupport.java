@@ -40,10 +40,12 @@
  */
 package org.graalvm.nativeimage.impl;
 
+import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
+import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
 public interface CTypeConversionSupport {
@@ -59,4 +61,6 @@ public interface CTypeConversionSupport {
     String toJavaString(CCharPointer cString, UnsignedWord length);
 
     String toJavaString(CCharPointer cString, UnsignedWord length, Charset charset);
+
+    ByteBuffer asByteBuffer(PointerBase address, int size);
 }

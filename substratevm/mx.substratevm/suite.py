@@ -1,6 +1,8 @@
 suite = {
-    "mxversion": "5.138.0",
+    "mxversion": "5.189.0",
     "name": "substratevm",
+    "version" : "1.0.0-rc8",
+    "release" : False,
     "url" : "https://github.com/oracle/graal/tree/master/substratevm",
 
     "developer" : {
@@ -8,6 +10,11 @@ suite = {
         "email" : "graal-dev@openjdk.java.net",
         "organization" : "Graal",
         "organizationUrl" : "http://openjdk.java.net/projects/graal",
+    },
+    "scm" : {
+        "url" : "https://github.com/oracle/graal",
+        "read" : "https://github.com/oracle/graal.git",
+        "write" : "git@github.com:oracle/graal.git",
     },
 
     "defaultLicense" : "GPLv2-CPE",
@@ -220,7 +227,6 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.graal",
                 "com.oracle.svm.reflect",
-                "com.oracle.svm.core.posix", # Posix dependency is temporary, see GR-11750
             ],
             "checkstyle": "com.oracle.svm.driver",
             "checkstyleVersion" : "8.8",
@@ -493,7 +499,6 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.hosted",
                 "com.oracle.svm.truffle.nfi",
-                "com.oracle.svm.junit",
                 "com.oracle.svm.core",
                 "com.oracle.svm.core.jdk8",
                 "com.oracle.svm.core.jdk9",
@@ -512,7 +517,7 @@ suite = {
                 "mx:JUNIT_TOOL",
                 "truffle:TRUFFLE_NFI",
                 "compiler:GRAAL",
-            ]
+            ],
         },
 
         "SVM_CORE": {
@@ -527,7 +532,8 @@ suite = {
                 "compiler:GRAAL",
             ],
             "exclude": [
-            ]
+            ],
+            "maven": False
         },
 
         "SVM_HOSTED": {
@@ -545,7 +551,8 @@ suite = {
                 "SVM_CORE",
             ],
             "exclude": [
-            ]
+            ],
+            "maven": False
         },
 
         "LIBRARY_SUPPORT": {
@@ -554,6 +561,7 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.jni",
                 "com.oracle.svm.jline",
+                "com.oracle.svm.junit",
                 "com.oracle.svm.polyglot",
                 "com.oracle.svm.thirdparty",
             ],
@@ -565,7 +573,7 @@ suite = {
             ],
             "exclude": [
                 "truffle:JLINE",
-            ]
+            ],
         },
 
         "OBJECTFILE": {
@@ -573,7 +581,7 @@ suite = {
             "description" : "SubstrateVM object file writing library",
             "dependencies": [
                 "com.oracle.objectfile"
-            ]
+            ],
         },
 
         #
@@ -593,6 +601,7 @@ suite = {
             "description" : "SubstrateVM image builder native components",
             "relpath": True,
             "output": "clibraries",
+            "maven": True
         },
 
         #
@@ -620,7 +629,7 @@ suite = {
                 "compiler:GRAAL",
             ],
             "exclude": [
-            ]
+            ],
         },
 
         "SVM_TESTS" : {
@@ -643,6 +652,7 @@ suite = {
                 "sdk:GRAAL_SDK",
                 "SVM",
             ],
+            "maven": False
         },
 
         "POLYGLOT_NATIVE_API_HEADERS" : {

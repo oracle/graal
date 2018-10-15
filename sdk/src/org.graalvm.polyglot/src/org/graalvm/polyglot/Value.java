@@ -389,6 +389,48 @@ public final class Value {
     }
 
     /**
+     * Returns <code>true</code> if the given member exists and can be invoked. Returns
+     * <code>false</code> if the member does not exist ({@link #hasMember(String)} returns
+     * <code>false</code>), or is not invocable.
+     *
+     * @param identifier the member identifier
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred.
+     * @see #getMemberKeys() For a list of members.
+     * @see #invokeMember(String, Object...)
+     * @since 1.0
+     */
+    public boolean canInvokeMember(String identifier) {
+        Objects.requireNonNull(identifier, "identifier");
+        return impl.canInvoke(identifier, receiver);
+    }
+
+    /**
+     * Invokes the given member of this value. Unlike {@link #execute(Object...)}, this is an object
+     * oriented execution of a member of an object. To test whether invocation is supported, call
+     * {@link #canInvokeMember(String)}. When object oriented semantics is not supported, use
+     * <code>{@link #getMember(String)}.{@link #execute(Object...) execute(Object...)}</code>
+     * instead.
+     *
+     * @param identifier the member identifier to invoke
+     * @param arguments the invocation arguments
+     * @throws UnsupportedOperationException if this member cannot be invoked.
+     * @throws PolyglotException if a guest language error occurred during invocation.
+     * @throws NullPointerException if the arguments array is null.
+     * @see #canInvokeMember(String)
+     * @since 1.0
+     */
+    public Value invokeMember(String identifier, Object... arguments) {
+        Objects.requireNonNull(identifier, "identifier");
+        if (arguments.length == 0) {
+            // specialized entry point for zero argument invoke calls
+            return impl.invoke(receiver, identifier);
+        } else {
+            return impl.invoke(receiver, identifier, arguments);
+        }
+    }
+
+    /**
      * Returns <code>true</code> if this value represents a string.
      *
      * @throws PolyglotException if a guest language error occurred during execution.

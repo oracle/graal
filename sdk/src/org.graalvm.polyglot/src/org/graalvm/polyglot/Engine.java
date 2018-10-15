@@ -52,6 +52,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractStackFrameImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
 import org.graalvm.polyglot.io.ByteSequence;
+import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.management.ExecutionEvent;
 
 import java.io.File;
@@ -290,6 +291,7 @@ public final class Engine implements AutoCloseable {
         private Map<String, String> options = new HashMap<>();
         private boolean useSystemProperties = true;
         private boolean boundEngine;
+        private MessageTransport messageTransport;
         private Handler customLogHandler;
 
         Builder() {
@@ -399,6 +401,23 @@ public final class Engine implements AutoCloseable {
         }
 
         /**
+         * Take over transport of message communication with a server peer. Provide an
+         * implementation of {@link MessageTransport} to virtualize a transport of messages to a
+         * server endpoint.
+         * {@link MessageTransport#open(java.net.URI, org.graalvm.polyglot.io.MessageEndpoint)}
+         * corresponds to accept of a server socket.
+         *
+         * @param serverTransport an implementation of message transport interceptor
+         * @see MessageTransport
+         * @since 1.0
+         */
+        public Builder serverTransport(final MessageTransport serverTransport) {
+            Objects.requireNonNull(serverTransport, "MessageTransport must be non null.");
+            this.messageTransport = serverTransport;
+            return this;
+        }
+
+        /**
          * Installs a new logging {@link Handler}. The logger's {@link Level} configuration is done
          * using the {@link #options(java.util.Map) Engine's options}. The level option key has the
          * following format: {@code log.languageId.loggerName.level} or
@@ -436,7 +455,7 @@ public final class Engine implements AutoCloseable {
                 throw new IllegalStateException("The Polyglot API implementation failed to load.");
             }
             return loadedImpl.buildEngine(out, err, in, options, 0, null,
-                            false, 0, useSystemProperties, boundEngine, customLogHandler);
+                            false, 0, useSystemProperties, boundEngine, messageTransport, customLogHandler);
         }
 
     }
@@ -614,7 +633,7 @@ public final class Engine implements AutoCloseable {
 
         @Override
         public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
-                        long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean boundEngine, Handler logHandler) {
+                        long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean boundEngine, MessageTransport messageInterceptor, Handler logHandler) {
             throw noPolyglotImplementationFound();
         }
 

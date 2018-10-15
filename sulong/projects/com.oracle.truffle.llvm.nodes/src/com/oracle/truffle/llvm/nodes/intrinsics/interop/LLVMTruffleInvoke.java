@@ -108,19 +108,8 @@ public abstract class LLVMTruffleInvoke extends LLVMIntrinsic {
         }
     }
 
-    @SuppressWarnings("unused")
-    @Specialization(limit = "2", guards = "idStr.equals(readStr.executeWithTarget(id))")
-    protected Object cachedId(VirtualFrame frame, LLVMManagedPointer value, Object id,
-                    @Cached("createReadString()") LLVMReadStringNode readStr,
-                    @Cached("readStr.executeWithTarget(id)") String idStr,
-                    @Cached("getContextReference()") ContextReference<LLVMContext> context,
-                    @Cached("create()") LLVMGetStackNode getStack) {
-        TruffleObject foreign = asForeign.execute(value);
-        return doInvoke(frame, foreign, idStr, context, getStack);
-    }
-
-    @Specialization(replaces = "cachedId")
-    protected Object uncached(VirtualFrame frame, LLVMManagedPointer value, Object id,
+    @Specialization
+    protected Object doIntrinsic(VirtualFrame frame, LLVMManagedPointer value, Object id,
                     @Cached("createReadString()") LLVMReadStringNode readStr,
                     @Cached("getContextReference()") ContextReference<LLVMContext> context,
                     @Cached("create()") LLVMGetStackNode getStack) {

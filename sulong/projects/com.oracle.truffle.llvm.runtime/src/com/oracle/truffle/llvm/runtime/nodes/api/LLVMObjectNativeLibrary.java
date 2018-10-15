@@ -48,6 +48,11 @@ public abstract class LLVMObjectNativeLibrary extends LLVMNode {
     public abstract boolean isPointer(Object obj);
 
     /**
+     * Check whether the object represent the NULL pointer.
+     */
+    public abstract boolean isNull(Object obj);
+
+    /**
      * Get the native pointer representation of an object. This can only be called when
      * {@link #isPointer} is true.
      */

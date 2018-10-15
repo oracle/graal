@@ -30,6 +30,7 @@ import java.lang.ref.PhantomReference;
 import java.lang.ref.Reference;
 import java.lang.reflect.Field;
 
+import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -156,7 +157,7 @@ final class Target_java_lang_ref_Reference {
     // @ForceInline
     @SuppressWarnings("unused")
     public static void reachabilityFence(Object ref) {
-        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ref_Reference.reachabilityFence(Object ref)");
+        GraalDirectives.blackhole(ref);
     }
 }
 

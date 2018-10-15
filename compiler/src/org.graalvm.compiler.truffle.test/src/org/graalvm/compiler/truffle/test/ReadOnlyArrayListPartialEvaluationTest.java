@@ -32,7 +32,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 
-@AddExports("com.oracle.truffle.truffle_api/com.oracle.truffle.api.interop.impl")
+@AddExports("org.graalvm.truffle/com.oracle.truffle.api.interop.impl")
 public class ReadOnlyArrayListPartialEvaluationTest extends PartialEvaluationTest {
 
     public static Object constant42() {

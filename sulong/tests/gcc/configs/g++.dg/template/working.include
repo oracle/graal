@@ -33,7 +33,6 @@ gcc-5.2.0/gcc/testsuite/g++.dg/template/alignof1.C
 gcc-5.2.0/gcc/testsuite/g++.dg/template/repo8.C
 gcc-5.2.0/gcc/testsuite/g++.dg/template/arg6.C
 gcc-5.2.0/gcc/testsuite/g++.dg/template/friend28.C
-gcc-5.2.0/gcc/testsuite/g++.dg/template/error50.C
 gcc-5.2.0/gcc/testsuite/g++.dg/template/friend49.C
 gcc-5.2.0/gcc/testsuite/g++.dg/template/using8.C
 gcc-5.2.0/gcc/testsuite/g++.dg/template/mem-partial2.C
@@ -95,7 +94,6 @@ gcc-5.2.0/gcc/testsuite/g++.dg/template/qualttp17.C
 gcc-5.2.0/gcc/testsuite/g++.dg/template/call1.C
 gcc-5.2.0/gcc/testsuite/g++.dg/template/memfriend9.C
 gcc-5.2.0/gcc/testsuite/g++.dg/template/sizeof2.C
-gcc-5.2.0/gcc/testsuite/g++.dg/template/static15.C
 gcc-5.2.0/gcc/testsuite/g++.dg/template/static33.C
 gcc-5.2.0/gcc/testsuite/g++.dg/template/array18.C
 gcc-5.2.0/gcc/testsuite/g++.dg/template/unify8.C
@@ -110,7 +108,6 @@ gcc-5.2.0/gcc/testsuite/g++.dg/template/defarg16.C
 gcc-5.2.0/gcc/testsuite/g++.dg/template/defarg14.C
 gcc-5.2.0/gcc/testsuite/g++.dg/template/partial15.C
 gcc-5.2.0/gcc/testsuite/g++.dg/template/using1.C
-gcc-5.2.0/gcc/testsuite/g++.dg/template/array27.C
 gcc-5.2.0/gcc/testsuite/g++.dg/template/repo2.C
 gcc-5.2.0/gcc/testsuite/g++.dg/template/subst1.C
 gcc-5.2.0/gcc/testsuite/g++.dg/template/ptrmem16.C

@@ -36,12 +36,17 @@ REF_TARGETS:=
 endif
 
 BC_TARGETS:=$(foreach var,$(VARIANTS),$(TESTS:%=%/$(var).bc))
-CXXFLAGS=-std=c++11 -stdlib=libc++ -DLIBCXXABI_SILENT_TERMINATE
 
 CLANG?=clang
 CLANGXX?=clang++
 LLVM_AS?=llvm-as
 OPT?=opt
+FC?=gfortran
+
+CFLAGS+= $(SUITE_CFLAGS)
+CXXFLAGS+= $(SUITE_CXXFLAGS) -std=c++11 -stdlib=libc++ -DLIBCXXABI_SILENT_TERMINATE
+CPPFLAGS+= $(SUITE_CPPFLAGS)
+LDFLAGS+= $(SUITE_LDFLAGS)
 
 .PHONY: default
 default: $(REF_TARGETS) $(BC_TARGETS)

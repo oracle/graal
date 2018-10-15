@@ -31,13 +31,19 @@ import java.util.function.Supplier;
 
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.code.CEntryPointJavaCallStubs;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
+import com.oracle.svm.hosted.image.NativeBootImage;
+import com.oracle.svm.hosted.meta.MethodPointer;
+
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class CEntryPointCallStubSupport {
 
@@ -51,6 +57,7 @@ public final class CEntryPointCallStubSupport {
 
     private final BigBang bigbang;
     private final Map<AnalysisMethod, AnalysisMethod> methodToStub = new ConcurrentHashMap<>();
+    private final Map<AnalysisMethod, AnalysisMethod> methodToJavaStub = new ConcurrentHashMap<>();
     private NativeLibraries nativeLibraries;
 
     private CEntryPointCallStubSupport(BigBang bigbang) {
@@ -76,13 +83,33 @@ public final class CEntryPointCallStubSupport {
     }
 
     public AnalysisMethod registerStubForMethod(AnalysisMethod method, Supplier<CEntryPointData> entryPointDataSupplier) {
-        assert !bigbang.getUniverse().sealed();
-        return methodToStub.computeIfAbsent(method, m -> {
-            CEntryPointData entryPointData = entryPointDataSupplier.get();
-            CEntryPointCallStubMethod stub = CEntryPointCallStubMethod.create(method, entryPointData, bigbang.getMetaAccess());
-            AnalysisMethod wrapped = bigbang.getUniverse().lookup(stub);
-            bigbang.addRootMethod(wrapped).registerAsEntryPoint(entryPointData);
-            return wrapped;
+        return methodToStub.compute(method, (key, existingValue) -> {
+            AnalysisMethod value = existingValue;
+            if (value == null) {
+                assert !bigbang.getUniverse().sealed();
+                CEntryPointData entryPointData = entryPointDataSupplier.get();
+                CEntryPointCallStubMethod stub = CEntryPointCallStubMethod.create(method, entryPointData, bigbang.getMetaAccess());
+                AnalysisMethod wrapped = bigbang.getUniverse().lookup(stub);
+                bigbang.addRootMethod(wrapped).registerAsEntryPoint(entryPointData);
+                value = wrapped;
+            }
+            return value;
+        });
+    }
+
+    public AnalysisMethod registerJavaStubForMethod(AnalysisMethod method) {
+        return methodToJavaStub.compute(method, (key, existingValue) -> {
+            AnalysisMethod value = existingValue;
+            if (value == null) {
+                assert !bigbang.getUniverse().sealed();
+                AnalysisMethod nativeStub = registerStubForMethod(method, () -> CEntryPointData.create(method));
+                CFunctionPointer nativeStubAddress = MethodPointer.factory(nativeStub);
+                String stubName = NativeBootImage.globalSymbolNameForMethod(method);
+                ResolvedJavaType holderClass = bigbang.getMetaAccess().lookupJavaType(CEntryPointJavaCallStubs.class).getWrapped();
+                CEntryPointJavaCallStubMethod stub = new CEntryPointJavaCallStubMethod(method.getWrapped(), stubName, holderClass, nativeStubAddress);
+                value = bigbang.getUniverse().lookup(stub);
+            }
+            return value;
         });
     }
 

@@ -1,5 +1,6 @@
 common_vm: ${common} ${vm_java} {
   setup: [
+    [set-export, SNAPSHOT_CATALOG, [mx, urlrewrite, "http://www.graalvm.org/catalog"]]
     [cd, ${vm_subdir}]
   ]
   logs: [
@@ -12,7 +13,8 @@ common_vm: ${common} ${vm_java} {
 common_vm_linux: ${common_vm} ${linux}  {
   packages: {
     gcc-build-essentials: "==4.9.1" # GCC 4.9.0 fails on cluster
-    make : ">=3.83"
+    make: ">=3.83"
+    binutils: "==2.23.2"
   }
 }
 
@@ -143,18 +145,6 @@ builds += [
     ]
     name: gate-vm-style-linux-amd64
   },
-  ${full_vm_build_linux} ${linux-deploy} ${gate_vm_linux} {
-    run: [
-      ${mx_vm_common} [--dynamicimports, ${vm_extra_suites}, build]
-      ${mx_vm_common} [--dynamicimports, ${vm_extra_suites}] ${maven_deploy_dry_run_vm}
-      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, build]
-      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}] ${maven_deploy_dry_run_vm}
-      ${mx_vm_common} [build]
-      ${mx_vm_common}  ${maven_deploy_dry_run_vm}
-    ]
-    timelimit: "50:00"
-    name: gate-vm-build-linux-amd64
-  },
   ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} {
     run: [
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, build]
@@ -212,5 +202,25 @@ builds += [
     ]
     timelimit: "35:00"
     name: daily-vm-native-truffleruby
+  },
+  ${svm-common-linux} ${sulong_linux} ${graalpython_linux} ${custom_vm_linux} ${gate_vm_linux} {
+    run: [
+      [git, clone, --depth, "1", [mx, urlrewrite, "https://github.com/oracle/graalpython.git"], "../../graalpython"]
+      [export, "SVM_SUITE="${svm_suite}]
+      [export, "NATIVE_IMAGE_TESTING=True"]
+      [mx, --dynamicimports, "$SVM_SUITE,graalpython", --disable-polyglot, --disable-libpolyglot, "--force-bash-launchers=lli,native-image", gate, --no-warning-as-error, --tags, "build,python"]
+    ]
+    timelimit: "35:00"
+    name: gate-vm-native-graalpython-tip
+  },
+  ${svm-common-linux} ${sulong_linux} ${graalpython_linux} ${custom_vm_linux} ${vm_linux} {
+    targets: [daily]
+    run: [
+      [export, "SVM_SUITE="${svm_suite}]
+      [export, "NATIVE_IMAGE_TESTING=True"]
+      [mx, --dynamicimports, "$SVM_SUITE,graalpython", --disable-polyglot, --disable-libpolyglot, "--force-bash-launchers=lli,native-image", gate, --no-warning-as-error, --tags, "build,python"]
+    ]
+    timelimit: "35:00"
+    name: daily-vm-native-graalpython
   },
 ]

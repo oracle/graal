@@ -53,6 +53,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.NativeImageInfo;
@@ -60,6 +61,7 @@ import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.PinnedAllocator;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
 import com.oracle.svm.core.log.Log;
@@ -116,6 +118,7 @@ public class HeapImpl extends Heap {
         this.classList = null;
         SubstrateUtil.DiagnosticThunkRegister.getSingleton().register(() -> {
             bootImageHeapBoundariesToLog(Log.log()).newline();
+            zapValuesToLog(Log.log()).newline();
             report(Log.log(), true).newline();
             Log.log().newline();
         });
@@ -229,6 +232,15 @@ public class HeapImpl extends Heap {
             result = HeapChunkProvider.get().walkHeapChunks(visitor);
         }
         return result;
+    }
+
+    /** Tear down the heap, return all allocated virtual memory chunks to VirtualMemoryProvider. */
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public final void tearDown() {
+        youngGeneration.tearDown();
+        oldGeneration.tearDown();
+        HeapChunkProvider.get().tearDown();
     }
 
     /** State: Who handles object headers? */
@@ -486,6 +498,39 @@ public class HeapImpl extends Heap {
         return log;
     }
 
+    /** Log the zap values to make it easier to search for them. */
+    Log zapValuesToLog(Log log) {
+        if (HeapPolicy.getZapProducedHeapChunks() || HeapPolicy.getZapConsumedHeapChunks()) {
+            log.string("[Heap Chunk zap values: ").indent(true);
+            /* Padded with spaces so the columns line up between the int and word variants. */
+            if (HeapPolicy.getZapProducedHeapChunks()) {
+                log.string("  producedHeapChunkZapInt: ")
+                                .string("  hex: ").spaces(8).hex(HeapPolicy.getProducedHeapChunkZapInt())
+                                .string("  signed: ").spaces(9).signed(HeapPolicy.getProducedHeapChunkZapInt())
+                                .string("  unsigned: ").spaces(10).unsigned(HeapPolicy.getProducedHeapChunkZapInt()).newline();
+                log.string("  producedHeapChunkZapWord:")
+                                .string("  hex: ").hex(HeapPolicy.getProducedHeapChunkZapWord())
+                                .string("  signed: ").signed(HeapPolicy.getProducedHeapChunkZapWord())
+                                .string("  unsigned: ").unsigned(HeapPolicy.getProducedHeapChunkZapWord());
+                if (HeapPolicy.getZapConsumedHeapChunks()) {
+                    log.newline();
+                }
+            }
+            if (HeapPolicy.getZapConsumedHeapChunks()) {
+                log.string("  consumedHeapChunkZapInt: ")
+                                .string("  hex: ").spaces(8).hex(HeapPolicy.getConsumedHeapChunkZapInt())
+                                .string("  signed: ").spaces(10).signed(HeapPolicy.getConsumedHeapChunkZapInt())
+                                .string("  unsigned: ").spaces(10).unsigned(HeapPolicy.getConsumedHeapChunkZapInt()).newline();
+                log.string("  consumedHeapChunkZapWord:")
+                                .string("  hex: ").hex(HeapPolicy.getConsumedHeapChunkZapWord())
+                                .string("  signed: ").signed(HeapPolicy.getConsumedHeapChunkZapWord())
+                                .string("  unsigned: ").unsigned(HeapPolicy.getConsumedHeapChunkZapWord());
+            }
+            log.redent(false).string("]");
+        }
+        return log;
+    }
+
     /** An accessor for the MemoryMXBean. */
     @Override
     public MemoryMXBean getMemoryMXBean() {
@@ -591,6 +636,23 @@ public class HeapImpl extends Heap {
                 assert false;
             }
         }
+    }
+
+    /** For assertions: Verify that the hub is a reference to where DynamicHubs live in the heap. */
+    public boolean assertHub(DynamicHub hub) {
+        /* DynamicHubs live only in the read-only reference section of the image heap. */
+        return NativeImageInfo.isObjectInReadOnlyReferencePartition(hub);
+    }
+
+    /** For assertions: Verify the hub of the object. */
+    public boolean assertHubOfObject(Object obj) {
+        final DynamicHub hub = ObjectHeader.readDynamicHubFromObject(obj);
+        return assertHub(hub);
+    }
+
+    /** For assertions: Verify that a Space is a valid Space. */
+    public boolean isValidSpace(Space space) {
+        return (getYoungGeneration().isValidSpace(space) || getOldGeneration().isValidSpace(space));
     }
 
     /** State: The stack verifier. */

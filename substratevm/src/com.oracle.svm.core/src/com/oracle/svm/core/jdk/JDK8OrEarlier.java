@@ -24,19 +24,13 @@
  */
 package com.oracle.svm.core.jdk;
 
+import java.util.function.BooleanSupplier;
+
 import org.graalvm.compiler.serviceprovider.GraalServices;
 
-import java.util.function.BooleanSupplier;
-import java.util.function.Predicate;
-
-public class JDK8OrEarlier implements BooleanSupplier, Predicate<Class<?>> {
+public class JDK8OrEarlier implements BooleanSupplier {
     @Override
     public boolean getAsBoolean() {
         return GraalServices.Java8OrEarlier;
-    }
-
-    @Override
-    public boolean test(Class<?> originalClass) {
-        return getAsBoolean();
     }
 }

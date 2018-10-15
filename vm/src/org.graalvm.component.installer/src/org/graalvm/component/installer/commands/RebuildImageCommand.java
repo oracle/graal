@@ -35,6 +35,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.graalvm.component.installer.CommandInput;
+import org.graalvm.component.installer.Commands;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.InstallerCommand;
 import static org.graalvm.component.installer.Commands.DO_NOT_PROCESS_OPTIONS;
@@ -99,6 +100,9 @@ public class RebuildImageCommand implements InstallerCommand {
         Path toolPath = input.getGraalHomePath().resolve(SystemUtils.fromCommonString(feedback.l10n("REBUILD_ToolRelativePath")));
         String procName = toolPath.toAbsolutePath().toString();
         commandLine.add(procName);
+        if (input.optValue(Commands.OPTION_VERBOSE) != null) {
+            commandLine.add("--verbose"); // NOI18N
+        }
         while (input.hasParameter()) {
             commandLine.add(input.nextParameter());
         }

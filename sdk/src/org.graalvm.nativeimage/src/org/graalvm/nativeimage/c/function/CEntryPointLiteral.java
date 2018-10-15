@@ -76,7 +76,7 @@ import org.graalvm.nativeimage.impl.CEntryPointLiteralCodePointer;
  * // Call from Java
  * void caller() {
  *     MyFunctionPointer fp = myFunctionLiteral.getFunctionPointer(); // entry point, could be returned to C code
- *     int fiftyeight = fp.invoke(CEntryPointContext.getCurrentIsolateThread(), 47, 11);
+ *     int fiftyeight = fp.invoke(CurrentIsolate.getCurrentThread(), 47, 11);
  * }
  * </pre>
  *

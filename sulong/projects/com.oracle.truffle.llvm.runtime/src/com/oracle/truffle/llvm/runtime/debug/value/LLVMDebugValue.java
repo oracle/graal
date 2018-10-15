@@ -161,6 +161,10 @@ public interface LLVMDebugValue {
 
     Object readBigInteger(long bitOffset, int bitSize, boolean signed);
 
+    default boolean isAlwaysSafeToDereference(@SuppressWarnings("unused") long bitOffset) {
+        return false;
+    }
+
     LLVMDebugValue dereferencePointer(long bitOffset);
 
     boolean isInteropValue();

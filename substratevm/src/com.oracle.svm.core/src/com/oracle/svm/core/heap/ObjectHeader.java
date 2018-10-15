@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.heap;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -34,6 +33,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -120,7 +120,7 @@ public abstract class ObjectHeader {
     }
 
     /** Decode a DynamicHub from an Object header. */
-    protected static DynamicHub dynamicHubFromObjectHeader(UnsignedWord header) {
+    public static DynamicHub dynamicHubFromObjectHeader(UnsignedWord header) {
         // Turn the Unsigned header into a Pointer, and then to an Object of type DynamicHub.
         final UnsignedWord pointerBits = clearBits(header);
         final Object objectValue;

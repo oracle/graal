@@ -30,16 +30,22 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.word.ComparableWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.windows.headers.LibC;
+import com.oracle.svm.core.windows.headers.Process;
 
 public final class WindowsVMThreads extends VMThreads {
 
-    private static final WindowsThreadLocal<IsolateThread> VMThreadTL = new WindowsThreadLocal<>();
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Override
+    protected ComparableWord getCurrentOSThreadId() {
+        return WordFactory.unsigned(Process.GetCurrentThreadId());
+    }
 
     /**
      * Make sure the runtime is initialized for threading.
@@ -50,27 +56,8 @@ public final class WindowsVMThreads extends VMThreads {
         /*
          * TODO: Check for failures here.
          */
-        VMThreadTL.initialize();
         WindowsVMLockSupport.initialize();
         return true;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code. Too late for safepoints.")
-    @Override
-    public void tearDown() {
-        VMThreadTL.destroy();
-    }
-
-    @Uninterruptible(reason = "Thread state not set up.")
-    @Override
-    public IsolateThread readIsolateThreadFromOSThreadLocal() {
-        return VMThreadTL.get();
-    }
-
-    @Uninterruptible(reason = "Thread state not set up.")
-    @Override
-    public void writeIsolateThreadToOSThreadLocal(IsolateThread thread) {
-        VMThreadTL.set(thread);
     }
 
     @Uninterruptible(reason = "Thread state not set up.")

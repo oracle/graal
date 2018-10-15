@@ -64,7 +64,7 @@ public class RegexEngineBuilder implements RegexLanguageObject {
     }
 
     public static boolean isInstance(TruffleObject object) {
-        return object instanceof RegexCompiler;
+        return object instanceof RegexEngineBuilder;
     }
 
     @Override

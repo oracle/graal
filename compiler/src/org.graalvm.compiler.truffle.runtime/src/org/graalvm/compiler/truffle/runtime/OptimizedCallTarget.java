@@ -109,7 +109,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * When this field is not null, this {@link OptimizedCallTarget} is {@linkplain #isCompiling()
      * being compiled}.<br/>
      *
-     * It is only set to non-null in {@link #compile()} in a synchronized block. It is only
+     * It is only set to non-null in {@link #compile(boolean)} in a synchronized block. It is only
      * {@linkplain #resetCompilationTask() set to null} by the compilation thread once the
      * compilation is over.<br/>
      *
@@ -120,6 +120,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * {@link #resetCompilationTask()} even if that compilation fails or is cancelled.
      */
     private volatile CancellableCompileTask compilationTask;
+
     /**
      * When this call target is inlined, the inlining {@link InstalledCode} registers this
      * assumption. It gets invalidated when a node rewrite in this call target is performed. This
@@ -266,6 +267,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
     protected final Object callRoot(Object[] originalArguments) {
+        if (GraalCompilerDirectives.inFirstTier()) {
+            getCompilationProfile().firstTierCall(this);
+        }
         Object[] args = originalArguments;
         OptimizedCompilationProfile profile = this.compilationProfile;
         if (CompilerDirectives.inCompiledCode() && profile != null) {
@@ -280,7 +284,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     protected final Object callProxy(VirtualFrame frame) {
-        final boolean inCompiled = CompilerDirectives.inCompiledCode();
+        final boolean inCompiled = CompilerDirectives.inCompilationRoot();
         try {
             return getRootNode().execute(frame);
         } catch (ControlFlowException t) {
@@ -327,12 +331,20 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     /**
+     * @deprecated Please use {@code compile(boolean)} instead.
+     */
+    @Deprecated
+    public final boolean compile() {
+        return compile(true);
+    }
+
+    /**
      * Returns <code>true</code> if the call target was already compiled or was compiled
      * synchronously. Returns <code>false</code> if compilation was not scheduled or is happening in
      * the background. Use {@link #isCompiling()} to find out whether it is actually compiling.
      */
-    public final boolean compile() {
-        if (isValid()) {
+    public final boolean compile(boolean lastTierCompilation) {
+        if (!needsCompile(lastTierCompilation)) {
             return true;
         }
         if (!isCompiling()) {
@@ -344,14 +356,14 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             // Do not try to compile this target concurrently,
             // but do not block other threads if compilation is not asynchronous.
             synchronized (this) {
-                if (isValid()) {
+                if (!needsCompile(lastTierCompilation)) {
                     return true;
                 }
                 if (this.compilationProfile == null) {
                     initialize();
                 }
                 if (!isCompiling()) {
-                    this.compilationTask = task = runtime().submitForCompilation(this);
+                    this.compilationTask = task = runtime().submitForCompilation(this, lastTierCompilation);
                 }
             }
             if (task != null) {
@@ -363,6 +375,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             }
         }
         return false;
+    }
+
+    private boolean needsCompile(boolean isLastTierCompilation) {
+        return !isValid() || (isLastTierCompilation && !isValidLastTier());
     }
 
     public final boolean isCompiling() {
@@ -378,14 +394,15 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     public abstract long getCodeAddress();
 
     /**
-     * Invalidates any machine code attached to this call target.
-     */
-    protected abstract void invalidateCode();
-
-    /**
      * Determines if this call target has valid machine code attached to it.
      */
     public abstract boolean isValid();
+
+    /**
+     * Determines if this call target has valid machine code attached to it, and that this code was
+     * compiled in the last tier.
+     */
+    public abstract boolean isValidLastTier();
 
     /**
      * Invalidates this call target by invalidating any machine code attached to it.
@@ -678,7 +695,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     /**
      * This marks the end of the compilation.
      *
-     * It should only ever be called by the thread that performed the compilation.
+     * It may only ever be called by the thread that performed the compilation, and after the
+     * compilation is completely done (either successfully or not successfully).
      */
     public void resetCompilationTask() {
         /*
@@ -738,7 +756,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             onlyCaller = numberOfKnownCallNodes == 1 ? knownCallNodes.get(0).get() : null;
         }
         if (depth > TruffleCompilerOptions.getValue(TruffleExperimentalSplittingMaxPropagationDepth) || needsSplit || numberOfKnownCallNodes == 0 ||
-                        compilationProfile.getInterpreterCallCount() == 1) {
+                        compilationProfile.getCallCount() == 1) {
             return false;
         }
         if (numberOfKnownCallNodes == 1) {

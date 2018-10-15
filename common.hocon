@@ -36,14 +36,16 @@ common : ${mx} {
   catch_files : [
     "Graal diagnostic output saved in (?P<filename>.+\.zip)"
   ]
+  packages : {
+    "pip:astroid" : "==1.1.0"
+    "pip:pylint" : "==1.1.0"
+  }
 }
 
 linux : ${common} {
   packages : {
     git : ">=1.8.3"
     mercurial : ">=2.2"
-    "pip:astroid" : "==1.1.0"
-    "pip:pylint" : "==1.1.0"
     "apache/ant": ">=1.9.4"
   }
 }
@@ -52,20 +54,17 @@ solaris : ${common} {
   packages : {
     git : ">=1.8.3"
     mercurial : ">=2.2"
-    "pip:astroid" : "==1.1.0"
-    "pip:pylint" : "==1.1.0"
     "apache/ant": ">=1.9.4"
   }
 }
 
 darwin : ${common} {
-  packages : {
-    "pip:astroid" : "==1.1.0"
-    "pip:pylint" : "==1.1.0"
-  }
   environment : {
     PATH : "/usr/local/bin:$PATH"
   }
+}
+
+windows : ${common} {
 }
 
 linux-amd64 : ${linux} {
@@ -74,6 +73,10 @@ linux-amd64 : ${linux} {
 
 darwin-amd64 : ${darwin} {
   capabilities : [darwin_next, amd64]
+}
+
+windows-amd64 : ${windows} {
+  capabilities : [windows, amd64]
 }
 
 solaris-sparcv9 : ${solaris} {
@@ -127,14 +130,6 @@ darwin-deploy : ${darwin} ${maven-download-unix} {
   }
 }
 
-maven-deploy-dry-run : {
-  targets : [gate]
-  run : [
-    ["mx", "--strict-compliance", "build"]
-    ["mx", "maven-deploy", "--validate", "full", "--licenses", "GPLv2-CPE,UPL", "--dry-run", "ossrh", "https://this-is-only-a-test"]
-  ]
-}
-
 svm-common: ${mx} {
   environment: {
     DEFAULT_VM: "server"
@@ -175,6 +170,13 @@ svm-capabilities-manycores : {
 }
 
 svm-common-darwin: ${svm-common} ${darwin-amd64} {
+  timelimit: "45:00"
+}
+
+svm-common-windows: ${svm-common} ${windows-amd64} {
+  packages : {
+    msvc : "==10.0"
+  }
   timelimit: "45:00"
 }
 

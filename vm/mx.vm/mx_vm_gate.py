@@ -44,11 +44,12 @@ class VmGateTasks:
     graal_js = 'graal-js'
     graal_nodejs = 'graal-nodejs'
     truffleruby = 'truffleruby'
-    truffleruby_standalone = 'truffleruby-standalone'
     ruby = 'ruby'
+    python = 'python'
     fastr = 'fastr'
     graalpython = 'graalpython'
     integration = 'integration'
+    tools = 'tools'
 
 
 def gate_body(args, tasks):
@@ -86,6 +87,7 @@ def gate_body(args, tasks):
 
     gate_sulong(tasks)
     gate_ruby(tasks)
+    gate_python(tasks)
 
 def graalvm_svm():
     """
@@ -135,3 +137,10 @@ def gate_ruby(tasks):
                 ruby_image = native_image(['--language:ruby', '-H:Path=' + ruby_bindir, '-H:GreyToBlackObjectVisitorDiagnosticHistory=' + str(debug_gr_9912)])
                 truffleruby_suite = mx.suite('truffleruby')
                 truffleruby_suite.extensions.ruby_testdownstream_aot([ruby_image, 'spec', 'release'])
+
+def gate_python(tasks):
+    with Task('Python', tasks, tags=[VmGateTasks.python]) as t:
+        if t:
+            python_svm_image_path = join(mx_vm.graalvm_output(), 'bin', 'graalpython')
+            python_suite = mx.suite("graalpython")
+            python_suite.extensions.run_python_unittests(python_svm_image_path)

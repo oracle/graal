@@ -41,6 +41,11 @@
 package com.oracle.truffle.api.test.host;
 
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Callable;
 
 import org.graalvm.polyglot.Context;
 import org.junit.After;
@@ -77,6 +82,28 @@ public abstract class ProxyLanguageEnvTest {
     public void after() {
         context.leave();
         context.close();
+    }
+
+    void assertThrowsExceptionWithCause(Callable<?> callable, Class<? extends Exception> exception) {
+        try {
+            callable.call();
+            fail("Expected " + exception.getSimpleName() + " but no exception was thrown");
+        } catch (Exception e) {
+            List<Class<? extends Throwable>> causes = new ArrayList<>();
+            Throwable cause = e;
+            while (cause != null) {
+                if (cause.getClass() == exception) {
+                    return;
+                }
+                causes.add(cause.getClass());
+                if (env.isHostException(cause)) {
+                    cause = env.asHostException(cause);
+                } else {
+                    cause = cause.getCause();
+                }
+            }
+            fail("Expected " + exception.getSimpleName() + ", got " + causes);
+        }
     }
 
     protected TruffleObject asTruffleObject(Object javaObj) {

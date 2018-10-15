@@ -75,6 +75,7 @@ import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.management.ExecutionEvent;
 import org.graalvm.polyglot.management.ExecutionListener;
 
@@ -161,7 +162,7 @@ public abstract class AbstractPolyglotImpl {
     }
 
     public abstract Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
-                    long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean boundEngine, Handler logHandler);
+                    long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean boundEngine, MessageTransport messageInterceptor, Handler logHandler);
 
     public abstract void preInitializeEngine();
 
@@ -584,6 +585,22 @@ public abstract class AbstractPolyglotImpl {
 
         public final void executeVoidUnsupported(Object receiver) {
             throw unsupported(receiver, "executeVoid(Object...)", "canExecute()");
+        }
+
+        public boolean canInvoke(String identifier, Object receiver) {
+            return false;
+        }
+
+        public Value invoke(Object receiver, String identifier, Object[] arguments) {
+            return invokeUnsupported(receiver, identifier);
+        }
+
+        public Value invoke(Object receiver, String identifier) {
+            return invokeUnsupported(receiver, identifier);
+        }
+
+        public final Value invokeUnsupported(Object receiver, String identifier) {
+            throw unsupported(receiver, "invoke(" + identifier + ", Object...)", "canInvoke(String)");
         }
 
         public boolean isString(Object receiver) {

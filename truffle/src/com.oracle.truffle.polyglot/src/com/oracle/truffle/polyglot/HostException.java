@@ -49,12 +49,14 @@ import com.oracle.truffle.api.nodes.Node;
 @SuppressWarnings("serial")
 final class HostException extends RuntimeException implements TruffleException {
 
+    private final Throwable original;
+
     HostException(Throwable original) {
-        this.initCause(original);
+        this.original = original;
     }
 
     Throwable getOriginal() {
-        return getCause();
+        return original;
     }
 
     @Override
@@ -72,7 +74,7 @@ final class HostException extends RuntimeException implements TruffleException {
     }
 
     public boolean isCancelled() {
-        return getCause() instanceof InterruptedException;
+        return getOriginal() instanceof InterruptedException;
     }
 
 }

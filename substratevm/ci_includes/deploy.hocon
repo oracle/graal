@@ -1,0 +1,13 @@
+
+maven-deploy-all-suites : ${svm-common-linux-gate} {
+  run: [
+    ["mx", "--dynamicimports", "/tools,/regex", "build"]
+    ["mx", "--dynamicimports", "/tools,/regex", "maven-deploy", "--all-suites", "--all-distribution-types", "--validate", "full", "--licenses", "GPLv2-CPE,UPL", "--dry-run", "ossrh", "https://this-is-only-a-test"]
+  ]
+  targets : [gate]
+}
+
+builds += [
+  ${maven-deploy-all-suites} ${linux-amd64} ${linux-deploy} ${labsjdk8} {name: "gate-maven-dry-run-all-jdk8-linux-amd64"}
+  ${maven-deploy-all-suites} ${linux-amd64} ${linux-deploy} ${oraclejdk11} {name: "gate-maven-dry-run-all-jdk11-linux-amd64"}
+]

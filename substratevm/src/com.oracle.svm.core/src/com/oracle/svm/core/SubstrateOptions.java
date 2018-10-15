@@ -114,21 +114,8 @@ public class SubstrateOptions {
     @Option(help = "Use only a writable native image heap.")//
     public static final HostedOptionKey<Boolean> UseOnlyWritableBootImageHeap = new HostedOptionKey<>(false);
 
-    @Option(help = "Use heap base register. ")//
-    public static final HostedOptionKey<Boolean> UseHeapBaseRegister = new HostedOptionKey<>(false);
-
-    @Option(help = "Use linear pointer compression (requires the use of heap base register).")//
-    public static final HostedOptionKey<Boolean> UseLinearPointerCompression = new HostedOptionKey<>(true);
-
-    @Option(help = "Support multiple isolates (disable for legacy mode with a single isolate). ")//
-    public static final HostedOptionKey<Boolean> SpawnIsolates = new HostedOptionKey<Boolean>(false) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
-            if (newValue) {
-                UseHeapBaseRegister.update(values, true);
-            }
-        }
-    };
+    @Option(help = "Support multiple isolates. ")//
+    public static final HostedOptionKey<Boolean> SpawnIsolates = new HostedOptionKey<>(false);
 
     @Option(help = "Trace VMOperation execution.")//
     public static final RuntimeOptionKey<Boolean> TraceVMOperations = new RuntimeOptionKey<>(false);
@@ -172,7 +159,7 @@ public class SubstrateOptions {
     };
 
     @Option(help = "Enable Java Native Interface (JNI) support.")//
-    public static final HostedOptionKey<Boolean> JNI = new HostedOptionKey<>(false);
+    public static final HostedOptionKey<Boolean> JNI = new HostedOptionKey<>(true);
 
     @Option(help = "Files describing program elements to be made accessible via JNI (for syntax, see ReflectionConfigurationFiles)", type = OptionType.User)//
     public static final HostedOptionKey<String> JNIConfigurationFiles = new HostedOptionKey<>("");

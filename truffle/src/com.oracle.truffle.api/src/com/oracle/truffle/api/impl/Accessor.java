@@ -58,6 +58,7 @@ import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.MessageTransport;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -432,7 +433,7 @@ public abstract class Accessor {
 
         public abstract <T> T getInstrumentationHandlerService(Object handler, Object key, Class<T> type);
 
-        public abstract Object createInstrumentationHandler(Object vm, DispatchOutputStream out, DispatchOutputStream err, InputStream in);
+        public abstract Object createInstrumentationHandler(Object vm, DispatchOutputStream out, DispatchOutputStream err, InputStream in, MessageTransport messageInterceptor);
 
         public abstract void collectEnvServices(Set<Object> collectTo, Object languageShared, TruffleLanguage<?> language);
 
@@ -626,6 +627,8 @@ public abstract class Accessor {
         } else if (simpleName.endsWith("TruffleTCKAccessor")) {
             // O.K.
         } else if (simpleName.endsWith("TestAccessor")) {
+            // O.K.
+        } else if (simpleName.endsWith("TestAPIAccessor")) {
             // O.K.
         } else {
             assert simpleName.endsWith("VMAccessor");

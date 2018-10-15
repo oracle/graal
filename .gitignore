@@ -1,3 +1,4 @@
+*~
 *.aux
 *.bak
 *.bgv
@@ -46,7 +47,5 @@ scratch/
 src_gen/
 test-output/
 workingsets.xml
-native-image
-native-image-*
 bench-results.json
 jmh_result.json

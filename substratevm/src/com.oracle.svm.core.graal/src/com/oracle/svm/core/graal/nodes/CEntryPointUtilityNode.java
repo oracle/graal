@@ -34,7 +34,7 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.nativeimage.c.function.CEntryPointContext;
+import org.graalvm.nativeimage.CurrentIsolate;
 
 import com.oracle.svm.core.c.function.CEntryPointActions;
 
@@ -46,7 +46,7 @@ public final class CEntryPointUtilityNode extends FixedWithNextNode implements L
     public static final NodeClass<CEntryPointUtilityNode> TYPE = NodeClass.create(CEntryPointUtilityNode.class);
 
     /**
-     * @see CEntryPointContext
+     * @see CurrentIsolate
      * @see CEntryPointActions
      */
     public enum UtilityAction {

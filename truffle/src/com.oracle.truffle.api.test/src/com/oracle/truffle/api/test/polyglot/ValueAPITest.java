@@ -93,6 +93,13 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.KeyInfo;
+import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
 public class ValueAPITest {
@@ -500,10 +507,23 @@ public class ValueAPITest {
             assertFalse(value.hasArrayElements());
         });
 
+        MembersAndInvocable invocable = new MembersAndInvocable();
+        invocable.invokeMember = "foo";
+        invocable.invocableResult = "foobarbaz";
+
+        objectCoercionTest(invocable, Map.class, (v) -> {
+            Value value = context.asValue(v);
+            assertTrue(value.canInvokeMember("foo"));
+            assertEquals("foobarbaz", value.invokeMember("foo").asString());
+        }, false);
+    }
+
+    private <T> void objectCoercionTest(Object value, Class<T> expectedType, Consumer<T> validator) {
+        objectCoercionTest(value, expectedType, validator, true);
     }
 
     @SuppressWarnings({"unchecked"})
-    private <T> void objectCoercionTest(Object value, Class<T> expectedType, Consumer<T> validator) {
+    private <T> void objectCoercionTest(Object value, Class<T> expectedType, Consumer<T> validator, boolean valueTest) {
         Value coerce = context.asValue(new CoerceObject()).getMember("coerce");
         T result = (T) context.asValue(value).as(Object.class);
         if (result != null) {
@@ -519,8 +539,10 @@ public class ValueAPITest {
             coerce.execute(value, validator);
         }
 
-        assertValue(context, context.asValue(value));
-        assertValue(context, context.asValue(result));
+        if (valueTest) {
+            assertValue(context, context.asValue(value));
+            assertValue(context, context.asValue(result));
+        }
     }
 
     private static class DummyList extends DummyCollection implements List<Object> {
@@ -765,6 +787,118 @@ public class ValueAPITest {
 
         public Object execute(Value... arguments) {
             return executableResult;
+        }
+
+    }
+
+    static class MembersAndInvocable implements TruffleObject {
+
+        String invokeMember;
+        Object invocableResult;
+
+        @Override
+        public ForeignAccess getForeignAccess() {
+            return MembersAndInvocableMessageResolutionForeign.ACCESS;
+        }
+
+        public static boolean isInstance(TruffleObject obj) {
+            return obj instanceof MembersAndInvocable;
+        }
+
+        @MessageResolution(receiverType = MembersAndInvocable.class)
+        static final class MembersAndInvocableMessageResolution {
+
+            @Resolve(message = "HAS_KEYS")
+            abstract static class MemberHasKeysNode extends Node {
+
+                @SuppressWarnings("unused")
+                public Object access(MembersAndInvocable mi) {
+                    return true;
+                }
+            }
+
+            @Resolve(message = "KEYS")
+            abstract static class MemberKeysNode extends Node {
+
+                @SuppressWarnings("unused")
+                public Object access(MembersAndInvocable mi, boolean internal) {
+                    return new MemberKeysTruffleObject(mi.invokeMember);
+                }
+            }
+
+            @Resolve(message = "INVOKE")
+            abstract static class MemberInvokeNode extends Node {
+
+                @SuppressWarnings("unused")
+                public Object access(MembersAndInvocable mi, String name, Object... arguments) {
+                    if (name.equals(mi.invokeMember)) {
+                        return mi.invocableResult;
+                    } else {
+                        throw UnknownIdentifierException.raise(name);
+                    }
+                }
+            }
+
+            @Resolve(message = "KEY_INFO")
+            abstract static class MemberKeyInfoNode extends Node {
+
+                public int access(MembersAndInvocable mi, String propName) {
+                    if (propName.equals(mi.invokeMember)) {
+                        return KeyInfo.READABLE | KeyInfo.INVOCABLE;
+                    } else {
+                        return KeyInfo.NONE;
+                    }
+                }
+            }
+        }
+
+        static final class MemberKeysTruffleObject implements TruffleObject {
+
+            private final String keyName;
+
+            MemberKeysTruffleObject(String keyName) {
+                this.keyName = keyName;
+            }
+
+            @Override
+            public ForeignAccess getForeignAccess() {
+                return MemberKeysMessageResolutionForeign.ACCESS;
+            }
+
+            public static boolean isInstance(TruffleObject obj) {
+                return obj instanceof MemberKeysTruffleObject;
+            }
+
+            @MessageResolution(receiverType = MemberKeysTruffleObject.class)
+            static final class MemberKeysMessageResolution {
+
+                @Resolve(message = "HAS_SIZE")
+                abstract static class MemberKeysHasSizeNode extends Node {
+
+                    @SuppressWarnings("unused")
+                    public boolean access(MemberKeysTruffleObject keys) {
+                        return true;
+                    }
+                }
+
+                @Resolve(message = "GET_SIZE")
+                abstract static class MemberKeysGetSizeNode extends Node {
+
+                    @SuppressWarnings("unused")
+                    public int access(MemberKeysTruffleObject keys) {
+                        return 1;
+                    }
+                }
+
+                @Resolve(message = "READ")
+                abstract static class MemberKeysReadNode extends Node {
+
+                    @SuppressWarnings("unused")
+                    public Object access(MemberKeysTruffleObject keys, int index) {
+                        return keys.keyName;
+                    }
+                }
+            }
         }
 
     }
@@ -1192,6 +1326,43 @@ public class ValueAPITest {
                         "Invalid argument when executing 'com.oracle.truffle.api.test.polyglot.ValueAPITest$AmbiguousType.f'" +
                                         "(language: Java, type: Bound Method) with arguments ['1'(language: Java, type: java.lang.Integer), " +
                                         "'2'(language: Java, type: java.lang.Integer)].");
+    }
+
+    public static class InvocableType {
+
+        @SuppressWarnings("unused")
+        public String f(int a, byte b) {
+            return "1";
+        }
+
+        @Override
+        public String toString() {
+            return getClass().getCanonicalName();
+        }
+    }
+
+    @Test
+    public void testInvokableErrors() {
+        Value value = context.asValue(new InvocableType());
+        assertTrue(value.canInvokeMember("f"));
+
+        assertFails(() -> value.invokeMember(""), IllegalArgumentException.class,
+                        "Invalid member key '' for object 'com.oracle.truffle.api.test.polyglot.ValueAPITest.InvocableType'" +
+                                        "(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$InvocableType).");
+        assertFails(() -> value.invokeMember("f", 2), IllegalArgumentException.class,
+                        "Invalid argument count when executing 'com.oracle.truffle.api.test.polyglot.ValueAPITest.InvocableType'" +
+                                        "(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$InvocableType) " +
+                                        "with arguments ['2'(language: Java, type: java.lang.Integer)]. Expected 2 argument(s) but got 1.");
+        assertFails(() -> value.invokeMember("f", "2", "3"), IllegalArgumentException.class,
+                        "Invalid argument when executing 'com.oracle.truffle.api.test.polyglot.ValueAPITest.InvocableType'" +
+                                        "(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$InvocableType) " +
+                                        "with arguments ['2'(language: Java, type: java.lang.String), '3'(language: Java, type: java.lang.String)].");
+        assertEquals("1", value.invokeMember("f", 2, 3).asString());
+
+        Value primitiveValue = context.asValue(42);
+        assertFails(() -> primitiveValue.invokeMember(""), UnsupportedOperationException.class,
+                        "Unsupported operation Value.invoke(, Object...) for '42'(language: Java, type: java.lang.Integer)." +
+                                        " You can ensure that the operation is supported using Value.canInvoke(String).");
     }
 
     private static void assertFails(Runnable r, Class<?> hostExceptionType, String message) {

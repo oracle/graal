@@ -56,6 +56,7 @@ import com.oracle.svm.core.util.VMError;
  */
 @AutomaticFeature
 public final class ICU4JFeature implements Feature {
+
     static final class IsEnabled implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
@@ -112,6 +113,16 @@ final class Target_com_ibm_icu_impl_ICUBinary {
 
     static final class IcuDataFilesAccessors {
 
+        private static final String ICU4J_DATA_PATH_SYS_PROP = "com.ibm.icu.impl.ICUBinary.dataPath";
+        private static final String ICU4J_DATA_PATH_ENV_VAR = "ICU4J_DATA_PATH";
+
+        private static final String NO_DATA_PATH_ERR_MSG = "No ICU4J data path was set or found. This will likely end up with a MissingResourceException. " +
+                        "To take advantage of the ICU4J library, you should either set system property, " +
+                        ICU4J_DATA_PATH_SYS_PROP +
+                        ", or set environment variable, " +
+                        ICU4J_DATA_PATH_ENV_VAR +
+                        ", to contain path to your ICU4J icudt directory";
+
         private static volatile List<?> instance;
 
         static List<?> get() {
@@ -120,13 +131,17 @@ final class Target_com_ibm_icu_impl_ICUBinary {
                 // Checkstyle: allow synchronization
                 synchronized (IcuDataFilesAccessors.class) {
                     if (instance == null) {
+
                         instance = new ArrayList<>();
-                        String dataPath = System.getProperty("com.ibm.icu.impl.ICUBinary.dataPath");
+
+                        String dataPath = System.getProperty(ICU4J_DATA_PATH_SYS_PROP);
                         if (dataPath == null || dataPath.isEmpty()) {
-                            dataPath = System.getenv("ICU4J_DATA_PATH");
+                            dataPath = System.getenv(ICU4J_DATA_PATH_ENV_VAR);
                         }
                         if (dataPath != null && !dataPath.isEmpty()) {
                             addDataFilesFromPath(dataPath, instance);
+                        } else {
+                            System.err.println(NO_DATA_PATH_ERR_MSG);
                         }
                     }
                 }

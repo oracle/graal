@@ -102,10 +102,6 @@ abstract class SlowPathSerializeArgumentNode extends Node {
         return null;
     }
 
-    protected static Node createIsNull() {
-        return Message.IS_NULL.createNode();
-    }
-
     protected static Node createUnbox() {
         return Message.UNBOX.createNode();
     }

@@ -40,32 +40,39 @@
  */
 package org.graalvm.nativeimage.c.function;
 
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 
 /**
  * Utility methods that provide access to the current isolate.
  *
+ * @deprecated Replaced by {@link CurrentIsolate}.
  * @since 1.0
  */
+@Deprecated
 public final class CEntryPointContext {
 
     /**
      * Returns the current isolate.
      *
+     * @deprecated Replaced by {@link CurrentIsolate#getIsolate()}.
      * @since 1.0
      */
+    @Deprecated
     public static Isolate getCurrentIsolate() {
-        throw new IllegalStateException("Cannot invoke method during native image generation");
+        return CurrentIsolate.getIsolate();
     }
 
     /**
      * Returns the current thread in the current isolate.
      *
+     * @deprecated Replaced by {@link CurrentIsolate#getCurrentThread()}.
      * @since 1.0
      */
+    @Deprecated
     public static IsolateThread getCurrentIsolateThread() {
-        throw new IllegalStateException("Cannot invoke method during native image generation");
+        return CurrentIsolate.getCurrentThread();
     }
 
     private CEntryPointContext() {

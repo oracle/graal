@@ -40,6 +40,8 @@
  */
 package org.graalvm.nativeimage.c.type;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -258,5 +260,19 @@ public final class CTypeConversion {
      */
     public static CCharPointerPointerHolder toCStrings(CharSequence[] javaStrings) {
         return new CCharPointerPointerHolder(javaStrings);
+    }
+
+    /**
+     * Creates a {@link ByteBuffer} that refers to the native memory at the specified address. The
+     * passed size becomes the {@linkplain ByteBuffer#capacity capacity} of the byte buffer, and the
+     * buffer's {@linkplain ByteBuffer#order() byte order} is set to
+     * {@linkplain ByteOrder#nativeOrder() native byte order}. The caller is responsible for
+     * ensuring that the memory can be safely accessed while the ByteBuffer is used, and for freeing
+     * the memory afterwards.
+     *
+     * @since 1.0
+     */
+    public static ByteBuffer asByteBuffer(PointerBase address, int size) {
+        return ImageSingletons.lookup(CTypeConversionSupport.class).asByteBuffer(address, size);
     }
 }

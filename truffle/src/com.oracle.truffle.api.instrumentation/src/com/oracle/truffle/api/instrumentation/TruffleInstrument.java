@@ -47,14 +47,19 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.net.URI;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.io.MessageEndpoint;
+import org.graalvm.polyglot.io.MessageTransport;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -192,15 +197,17 @@ public abstract class TruffleInstrument {
         private final InputStream in;
         private final OutputStream err;
         private final OutputStream out;
+        private final MessageTransport messageTransport;
         OptionValues options;
         InstrumentClientInstrumenter instrumenter;
         private List<Object> services;
 
-        Env(Object vm, OutputStream out, OutputStream err, InputStream in) {
+        Env(Object vm, OutputStream out, OutputStream err, InputStream in, MessageTransport messageInterceptor) {
             this.vmObject = vm;
             this.in = in;
             this.err = err;
             this.out = out;
+            this.messageTransport = messageInterceptor != null ? new MessageTransportProxy(messageInterceptor) : null;
         }
 
         Object getVMObject() {
@@ -248,6 +255,37 @@ public abstract class TruffleInstrument {
          */
         public OutputStream err() {
             return err;
+        }
+
+        /**
+         * Start a server at the provided URI via the {@link MessageTransport} service. Before an
+         * instrument creates a server endpoint for a message protocol, it needs to check the result
+         * of this method. When a virtual message transport is available, it blocks until a client
+         * connects and {@link MessageEndpoint} representing the peer endpoint is returned. Those
+         * endpoints need to be used instead of a direct creation of a server socket. If no virtual
+         * message transport is available at that URI, <code>null</code> is returned and the
+         * instrument needs to set up the server itself.
+         * <p>
+         * When {@link org.graalvm.polyglot.io.MessageTransport.VetoException} is thrown, the server
+         * creation needs to be abandoned.
+         * <p>
+         * This method can be called concurrently from multiple threads. However, the
+         * {@link MessageEndpoint} ought to be called on one thread at a time, unless you're sure
+         * that the particular implementation can handle concurrent calls. The same holds true for
+         * the returned endpoint, it's called synchronously.
+         *
+         * @param uri the URI of the server endpoint
+         * @param server the handler of messages at the server side
+         * @return an implementation of {@link MessageEndpoint} call back representing the client
+         *         side, or <code>null</code> when no virtual transport is available
+         * @throws MessageTransport.VetoException if creation of a server at that URI is not allowed
+         * @since 1.0
+         */
+        public MessageEndpoint startServer(URI uri, MessageEndpoint server) throws IOException, MessageTransport.VetoException {
+            if (messageTransport == null) {
+                return null;
+            }
+            return messageTransport.open(uri, server);
         }
 
         /**
@@ -673,6 +711,58 @@ public abstract class TruffleInstrument {
             return langScopes;
         }
 
+        private static class MessageTransportProxy implements MessageTransport {
+
+            private final MessageTransport transport;
+
+            MessageTransportProxy(MessageTransport transport) {
+                this.transport = transport;
+            }
+
+            @Override
+            public MessageEndpoint open(URI uri, MessageEndpoint peerEndpoint) throws IOException, VetoException {
+                Objects.requireNonNull(peerEndpoint, "The peer endpoint must be non null.");
+                MessageEndpoint openedEndpoint = transport.open(uri, new MessageEndpointProxy(peerEndpoint));
+                if (openedEndpoint == null) {
+                    return null;
+                }
+                return new MessageEndpointProxy(openedEndpoint);
+            }
+
+            private static class MessageEndpointProxy implements MessageEndpoint {
+
+                private final MessageEndpoint endpoint;
+
+                MessageEndpointProxy(MessageEndpoint endpoint) {
+                    this.endpoint = endpoint;
+                }
+
+                @Override
+                public void sendText(String text) throws IOException {
+                    endpoint.sendText(text);
+                }
+
+                @Override
+                public void sendBinary(ByteBuffer data) throws IOException {
+                    endpoint.sendBinary(data);
+                }
+
+                @Override
+                public void sendPing(ByteBuffer data) throws IOException {
+                    endpoint.sendPing(data);
+                }
+
+                @Override
+                public void sendPong(ByteBuffer data) throws IOException {
+                    endpoint.sendPong(data);
+                }
+
+                @Override
+                public void sendClose() throws IOException {
+                    endpoint.sendClose();
+                }
+            }
+        }
     }
 
     /**

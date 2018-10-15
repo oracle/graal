@@ -23,6 +23,7 @@ sulong-gateTest-linux: ${sulong-gateCommon} ${linux-amd64} {
     environment: {
         CPPFLAGS: "-g -I$LIBGMP/include"
         LD_LIBRARY_PATH: "$LIBGMP/lib:$LD_LIBRARY_PATH"
+        LDFLAGS: "-L$LIBGMP/lib"
     }
 }
 
@@ -91,6 +92,16 @@ sulong-gate-asm-parser: ${sulong-gateCommon} ${linux-amd64} {
   ]
 }
 
+sulong-coverage-linux: ${sulong-gateTest38-linux} ${requireGCC} {
+    run: [
+        [mx, --jacoco-whitelist-package, com.oracle.truffle.llvm, --jacoco-exclude-annotation, "@GeneratedBy", gate, --tags, "build,sulongCoverage", --jacoco-zip, report.zip, --jacoco-omit-excluded]
+    ]
+    logs: [*/report.zip]
+    targets: [weekly]
+    timelimit: "1:00:00"
+    notify_emails: ["josef.eisl@oracle.com", "roland.schatz@oracle.com"]
+}
+
 builds += [
   ${sulong-gateStyle} { name: gate-sulong-style, run: [[mx, gate, --tags, "style"]] }
   ${sulong-gateStyle} ${jdt} { name: gate-sulong-fullbuild, run: [[mx, gate, --tags, "fullbuild"]] }
@@ -107,4 +118,6 @@ builds += [
 
   ${sulong-gateTest38-linux} ${sulong-ruby-downstream-test} { name: gate-sulong-ruby-downstream }
   ${sulong-gateTest38-linux} ${sulong-python-downstream-test} { name: gate-sulong-python-downstream }
+
+  ${sulong-coverage-linux} { name: weekly-sulong-coverage }
 ]

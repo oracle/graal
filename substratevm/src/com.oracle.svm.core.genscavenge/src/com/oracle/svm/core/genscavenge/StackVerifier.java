@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.nativeimage.c.function.CEntryPointContext;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
@@ -68,14 +68,14 @@ public final class StackVerifier {
         trace.string("[StackVerifier.verifyInAllThreads:").string(message).newline();
         // Flush thread-local allocation data.
         ThreadLocalAllocation.disableThreadLocalAllocation();
-        trace.string("Current thread ").hex(CEntryPointContext.getCurrentIsolateThread()).string(": [").newline();
+        trace.string("Current thread ").hex(CurrentIsolate.getCurrentThread()).string(": [").newline();
         if (!JavaStackWalker.walkCurrentThread(currentSp, currentIp, stackFrameVisitor)) {
             return false;
         }
         trace.string("]").newline();
         if (SubstrateOptions.MultiThreaded.getValue()) {
             for (IsolateThread vmThread = VMThreads.firstThread(); VMThreads.isNonNullThread(vmThread); vmThread = VMThreads.nextThread(vmThread)) {
-                if (vmThread == CEntryPointContext.getCurrentIsolateThread()) {
+                if (vmThread == CurrentIsolate.getCurrentThread()) {
                     continue;
                 }
                 trace.string("Thread ").hex(vmThread).string(": [").newline();

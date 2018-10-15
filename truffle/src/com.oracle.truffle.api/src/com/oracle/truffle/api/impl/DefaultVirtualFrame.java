@@ -85,85 +85,85 @@ final class DefaultVirtualFrame implements VirtualFrame {
     @Override
     public Object getObject(FrameSlot slot) throws FrameSlotTypeException {
         verifyGet(slot, FrameSlotKind.Object);
-        return locals[slot.getIndex()];
+        return locals[getFrameSlotIndex(slot)];
     }
 
     @Override
     public void setObject(FrameSlot slot, Object value) {
         verifySet(slot, FrameSlotKind.Object);
-        locals[slot.getIndex()] = value;
+        locals[getFrameSlotIndex(slot)] = value;
     }
 
     @Override
     public byte getByte(FrameSlot slot) throws FrameSlotTypeException {
         verifyGet(slot, FrameSlotKind.Byte);
-        return (byte) locals[slot.getIndex()];
+        return (byte) locals[getFrameSlotIndex(slot)];
     }
 
     @Override
     public void setByte(FrameSlot slot, byte value) {
         verifySet(slot, FrameSlotKind.Byte);
-        locals[slot.getIndex()] = value;
+        locals[getFrameSlotIndex(slot)] = value;
     }
 
     @Override
     public boolean getBoolean(FrameSlot slot) throws FrameSlotTypeException {
         verifyGet(slot, FrameSlotKind.Boolean);
-        return (boolean) locals[slot.getIndex()];
+        return (boolean) locals[getFrameSlotIndex(slot)];
     }
 
     @Override
     public void setBoolean(FrameSlot slot, boolean value) {
         verifySet(slot, FrameSlotKind.Boolean);
-        locals[slot.getIndex()] = value;
+        locals[getFrameSlotIndex(slot)] = value;
     }
 
     @Override
     public int getInt(FrameSlot slot) throws FrameSlotTypeException {
         verifyGet(slot, FrameSlotKind.Int);
-        return (int) locals[slot.getIndex()];
+        return (int) locals[getFrameSlotIndex(slot)];
     }
 
     @Override
     public void setInt(FrameSlot slot, int value) {
         verifySet(slot, FrameSlotKind.Int);
-        locals[slot.getIndex()] = value;
+        locals[getFrameSlotIndex(slot)] = value;
     }
 
     @Override
     public long getLong(FrameSlot slot) throws FrameSlotTypeException {
         verifyGet(slot, FrameSlotKind.Long);
-        return (long) locals[slot.getIndex()];
+        return (long) locals[getFrameSlotIndex(slot)];
     }
 
     @Override
     public void setLong(FrameSlot slot, long value) {
         verifySet(slot, FrameSlotKind.Long);
-        locals[slot.getIndex()] = value;
+        locals[getFrameSlotIndex(slot)] = value;
     }
 
     @Override
     public float getFloat(FrameSlot slot) throws FrameSlotTypeException {
         verifyGet(slot, FrameSlotKind.Float);
-        return (float) locals[slot.getIndex()];
+        return (float) locals[getFrameSlotIndex(slot)];
     }
 
     @Override
     public void setFloat(FrameSlot slot, float value) {
         verifySet(slot, FrameSlotKind.Float);
-        locals[slot.getIndex()] = value;
+        locals[getFrameSlotIndex(slot)] = value;
     }
 
     @Override
     public double getDouble(FrameSlot slot) throws FrameSlotTypeException {
         verifyGet(slot, FrameSlotKind.Double);
-        return (double) locals[slot.getIndex()];
+        return (double) locals[getFrameSlotIndex(slot)];
     }
 
     @Override
     public void setDouble(FrameSlot slot, double value) {
         verifySet(slot, FrameSlotKind.Double);
-        locals[slot.getIndex()] = value;
+        locals[getFrameSlotIndex(slot)] = value;
     }
 
     @Override
@@ -178,7 +178,7 @@ final class DefaultVirtualFrame implements VirtualFrame {
     }
 
     private int getSlotIndexChecked(FrameSlot slot) {
-        int slotIndex = slot.getIndex();
+        int slotIndex = getFrameSlotIndex(slot);
         if (slotIndex >= tags.length) {
             if (!resize()) {
                 throw new IllegalArgumentException(String.format("The frame slot '%s' is not known by the frame descriptor.", slot));
@@ -215,6 +215,11 @@ final class DefaultVirtualFrame implements VirtualFrame {
     private byte getTag(FrameSlot slot) {
         int slotIndex = getSlotIndexChecked(slot);
         return tags[slotIndex];
+    }
+
+    @SuppressWarnings("deprecation")
+    private static int getFrameSlotIndex(FrameSlot slot) {
+        return slot.getIndex();
     }
 
     @Override

@@ -29,9 +29,9 @@ import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_END;
 import static org.graalvm.word.WordFactory.nullPointer;
 
 import org.graalvm.compiler.word.Word;
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.c.function.CEntryPointContext;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
@@ -46,6 +46,8 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointSetup;
+import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
 import com.oracle.svm.core.util.PointerUtils;
@@ -100,6 +102,12 @@ public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
         return CEntryPointErrors.NO_ERROR;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    protected static void tearDownVirtualMemoryConsumers() {
+        CodeInfoTable.getRuntimeCodeCache().tearDown();
+        Heap.getHeap().tearDown();
+    }
+
     @Override
     @Uninterruptible(reason = "Tear-down in progress.")
     public int tearDown() {
@@ -107,7 +115,9 @@ public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
             return CEntryPointErrors.NO_ERROR;
         }
 
-        PointerBase heapBase = Isolates.getHeapBase(CEntryPointContext.getCurrentIsolate());
+        tearDownVirtualMemoryConsumers();
+
+        PointerBase heapBase = Isolates.getHeapBase(CurrentIsolate.getIsolate());
         Word size = Isolates.IMAGE_HEAP_END.get().subtract(Isolates.IMAGE_HEAP_BEGIN.get());
         if (VirtualMemoryProvider.get().free(heapBase, size) != 0) {
             return CEntryPointErrors.MAP_HEAP_FAILED;
@@ -193,6 +203,7 @@ public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean free(PointerBase start, UnsignedWord nbytes, UnsignedWord alignment, boolean executable) {
         final UnsignedWord pageSize = getGranularity();
         // Re-discover the paged-aligned ends of the memory region.
@@ -204,6 +215,7 @@ public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
         return free(pagedStart, pagedSize);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private boolean free(Pointer start, UnsignedWord size) {
         boolean success = (VirtualMemoryProvider.get().free(start, size) == 0);
         if (success) {
@@ -216,6 +228,7 @@ public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
         tracker.track(size);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void untrackVirtualMemory(UnsignedWord size) {
         tracker.untrack(size);
     }
@@ -237,6 +250,7 @@ public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
             totalAllocated = totalAllocated.add(size);
         }
 
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void untrack(UnsignedWord size) {
             totalAllocated = totalAllocated.subtract(size);
         }

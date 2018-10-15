@@ -47,6 +47,7 @@ import mx_gate
 import mx_sdk
 import mx_subst
 import mx_vm_gate
+import mx_vm_benchmark
 
 _suite = mx.suite('vm')
 """:type: mx.SourceSuite | mx.Suite"""
@@ -328,6 +329,12 @@ GRAALVM_VERSION={version}""".format(
             commit_info=json.dumps(_commit_info, sort_keys=True),
             version=_suite.release_version()
         )
+
+        if not _suite.is_release():
+            snapshot_catalog = _snapshot_catalog()
+            if snapshot_catalog:
+                _metadata += "\ncomponent_catalog={}/{}".format(snapshot_catalog, _suite.vc.parent(_suite.vc_dir))
+
         return _metadata
 
 
@@ -511,8 +518,9 @@ class SvmSupport(object):
         return SvmSupport._debug_supported
 
 
-def _get_svm_support():
-    return SvmSupport(mx.suite('substratevm', fatalIfMissing=False))
+def _get_svm_support(fatalIfMissing=False):
+    """:type fatalIfMissing: bool"""
+    return SvmSupport(mx.suite('substratevm', fatalIfMissing=fatalIfMissing))
 
 
 class GraalVmNativeProperties(mx.Project):
@@ -1034,6 +1042,7 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
         if self.subject.deps:
             build_args += ['-cp', mx.classpath(self.subject.native_image_jar_distributions)]
         build_args += self.subject.build_args()
+        build_args += ['-H:NumberOfThreads={}'.format(self.parallelism)]
 
         # rewrite --language:all & --tool:all
         final_build_args = []
@@ -1336,6 +1345,7 @@ def get_lib_polyglot_project():
                     destination="<lib:polyglot>",
                     jar_distributions=polyglot_lib_jar_dependencies,
                     build_args=[
+                        "-H:+IncludeAllTimeZones",
                         "--language:all",
                         "-Dgraalvm.libpolyglot=true",
                         "-Dorg.graalvm.polyglot.install_name_id=@rpath/jre/lib/polyglot/<lib:polyglot>"
@@ -1479,21 +1489,48 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         register_distribution(get_stage1_graalvm_distribution())
 
 
-def has_svm_launcher(component):
-    """:type component: mx.GraalVmComponent | str"""
-    component = get_component(component) if isinstance(component, str) else component
-    return _get_svm_support().is_supported() and not _has_forced_launchers(component) and bool(component.launcher_configs)
+def has_svm_launcher(component, fatalIfMissing=False):
+    """
+    :type component: mx_sdk.GraalVmComponent | str
+    :type fatalIfMissing: bool
+    :rtype: bool
+    """
+    component = get_component(component, fatalIfMissing) if isinstance(component, str) else component
+    result = _get_svm_support(fatalIfMissing).is_supported() and not _has_forced_launchers(component) and bool(component.launcher_configs)
+    if fatalIfMissing and not result:
+        hint = None
+        if _has_forced_launchers(component):
+            hint = "Are you forcing bash launchers?"
+        elif not bool(component.launcher_configs):
+            hint = "Does '{}' register launcher configs?".format(component.name)
+        mx.abort("'{}' does not have a native launcher.".format(component.name) + ("\n" + hint if hint else ""))
+    return result
+
+
+def has_svm_launchers(components, fatalIfMissing=False):
+    """
+    :type components: list[mx_sdk.GraalVmComponent | str]
+    :type fatalIfMissing: bool
+    :rtype: bool
+    """
+    return all((has_svm_launcher(component, fatalIfMissing=fatalIfMissing) for component in components))
 
 
 def has_svm_polyglot_lib():
     return _get_svm_support().is_supported() and _with_polyglot_lib_project()
 
 
-def get_component(name):
-    """:type name: str"""
+def get_component(name, fatalIfMissing=False):
+    """
+    :type name: str
+    :type fatalIfMissing: bool
+    :rtype: mx_sdk.GraalVmComponent | None
+    """
     for c in mx_sdk.graalvm_components():
         if c.short_name == name or c.name == name:
             return c
+    if fatalIfMissing:
+        mx.abort("'{}' is not registered as GraalVM component. Did you forget to dynamically import it?".format(name))
     return None
 
 
@@ -1501,17 +1538,16 @@ def has_component(name, fatalIfMissing=False):
     """
     :type name: str
     :type fatalIfMissing: bool
+    :rtype: bool
     """
-    result = get_component(name)
-    if fatalIfMissing and not result:
-        mx.abort("'{}' is not registered as GraalVM component. Did you forget to dynamically import it?".format(name))
-    return result
+    return get_component(name, fatalIfMissing) is not None
 
 
 def has_components(names, fatalIfMissing=False):
     """
     :type names: list[str]
     :type fatalIfMissing: bool
+    :rtype: bool
     """
     return all((has_component(name, fatalIfMissing=fatalIfMissing) for name in names))
 
@@ -1530,9 +1566,12 @@ def graalvm_version():
     return _suite.release_version()
 
 
-def graalvm_home():
+def graalvm_home(fatalIfMissing=False):
     _graalvm_dist = get_final_graalvm_distribution()
-    return join(_graalvm_dist.output, _graalvm_dist.jdk_base)
+    _graalvm_home = join(_graalvm_dist.output, _graalvm_dist.jdk_base)
+    if fatalIfMissing and not exists(_graalvm_home):
+        mx.abort("GraalVM home '{}' does not exist. Did you forget to build with this set of dynamic imports and mx options?".format(_graalvm_home))
+    return _graalvm_home
 
 
 def standalone_home(comp_dir_name):
@@ -1678,14 +1717,15 @@ def check_versions(jdk_dir, jdk_version_regex, graalvm_version_regex, expect_gra
 
 
 mx_gate.add_gate_runner(_suite, mx_vm_gate.gate_body)
-mx.add_argument('--disable-libpolyglot', action='store_true', help='Disable the \'polyglot\' library project')
-mx.add_argument('--disable-polyglot', action='store_true', help='Disable the \'polyglot\' launcher project')
+mx.add_argument('--disable-libpolyglot', action='store_true', help='Disable the \'polyglot\' library project.')
+mx.add_argument('--disable-polyglot', action='store_true', help='Disable the \'polyglot\' launcher project.')
 mx.add_argument('--disable-installables', action='store', help='Disable the \'installable\' distributions for gu.'
                                                                'This can be a comma-separated list of disabled components short names or `true` to disable all installables.', default=None)
-mx.add_argument('--debug-images', action='store_true', help='Build native images in debug mode: -H:-AOTInline and with -ea')
+mx.add_argument('--debug-images', action='store_true', help='Build native images in debug mode: \'-H:-AOTInline\' and with \'-ea\'.')
 mx.add_argument('--force-bash-launchers', action='store', help='Force the use of bash launchers instead of native images.'
                                                                'This can be a comma-separated list of disabled launchers or `true` to disable all native launchers.', default=None)
-mx.add_argument('--no-sources', action='store_true', help='Do not include the archives with the source files of open-source components')
+mx.add_argument('--no-sources', action='store_true', help='Do not include the archives with the source files of open-source components.')
+mx.add_argument('--snapshot-catalog', action='store', help='Change the default URL of the component catalog for snapshots.', default=None)
 
 register_vm_config('ce', ['cmp', 'gu', 'gvm', 'ins', 'js', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'tfl', 'libpoly', 'poly', 'vvm'])
 
@@ -1732,7 +1772,7 @@ def _disable_installable(component):
 
 
 def _has_forced_launchers(component, forced=None):
-    """:type component: mx.GraalVmComponent"""
+    """:type component: mx_sdk.GraalVmComponent"""
     for launcher_config in _get_launcher_configs(component):
         if _force_bash_launchers(launcher_config, forced):
             return True
@@ -1741,6 +1781,14 @@ def _has_forced_launchers(component, forced=None):
 
 def _include_sources():
     return not (mx.get_opts().no_sources or _env_var_to_bool('NO_SOURCES'))
+
+
+def _snapshot_catalog():
+    return mx.get_opts().snapshot_catalog or mx.get_env('SNAPSHOT_CATALOG')
+
+
+def mx_post_parse_cmd_line(args):
+    mx_vm_benchmark.register_graalvm_vms()
 
 
 mx.update_commands(_suite, {
