@@ -623,7 +623,8 @@ public class TruffleGraphBuilderPlugins {
                 } else {
                     String message = "unsafeCast arguments could not reduce to a constant: " + clazz + ", " + nonNull + ", " + isExactType;
                     if (DumpOnError.getValue(b.getOptions())) {
-                        // Produce a graph dump to diagnose GR-8831
+                        // Throw an error to produce a graph dump to diagnose GR-8831
+                        message = String.format("%s%nParsing context: %s", message, b);
                         throw new GraalError(message);
                     }
                     throw b.bailout(message);
