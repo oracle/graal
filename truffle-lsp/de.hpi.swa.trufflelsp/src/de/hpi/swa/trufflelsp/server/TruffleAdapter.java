@@ -134,7 +134,7 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
     }
 
     public Future<CallTarget> parse(final String text, final String langId, final URI uri) {
-        return contextAwareExecutor.executeWithDefaultContext(() -> parseWithEnteredContext(text, langId, uri));
+        return contextAwareExecutor.executeWithNestedContext(() -> parseWithEnteredContext(text, langId, uri));
     }
 
     protected CallTarget parseWithEnteredContext(final String text, final String langId, final URI uri) throws DiagnosticsNotification {
@@ -149,7 +149,7 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
 
     public Future<?> reparse(URI uri) {
         TextDocumentSurrogate surrogate = surrogateMap.get(uri);
-        return contextAwareExecutor.executeWithDefaultContext(() -> parseWithEnteredContext(surrogate));
+        return contextAwareExecutor.executeWithNestedContext(() -> parseWithEnteredContext(surrogate));
     }
 
     /**
@@ -185,7 +185,7 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
     }
 
     public Future<TextDocumentSurrogate> processChangesAndParse(List<? extends TextDocumentContentChangeEvent> list, URI uri) {
-        return contextAwareExecutor.executeWithDefaultContext(() -> processChangesAndParseWithContextEntered(list, uri));
+        return contextAwareExecutor.executeWithNestedContext(() -> processChangesAndParseWithContextEntered(list, uri));
     }
 
     protected TextDocumentSurrogate processChangesAndParseWithContextEntered(List<? extends TextDocumentContentChangeEvent> list, URI uri) throws DiagnosticsNotification {
@@ -217,7 +217,7 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
             throw new IllegalArgumentException("Root URI is not referencing a directory. URI: " + rootUri);
         }
 
-        Future<Map<String, LanguageInfo>> futureMimeTypes = contextAwareExecutor.executeWithDefaultContext(() -> {
+        Future<Map<String, LanguageInfo>> futureMimeTypes = contextAwareExecutor.executeWithNestedContext(() -> {
             Map<String, LanguageInfo> mimeType2LangInfo = new HashMap<>();
             for (LanguageInfo langInfo : env.getLanguages().values()) {
                 if (langInfo.isInternal()) {
@@ -267,7 +267,7 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
                 return FileVisitResult.CONTINUE;
             }
             TextDocumentSurrogate surrogate = getOrCreateSurrogate(uri, null, mimeTypesAllLang.get(mimeType));
-            parsingTasks.add(contextAwareExecutor.executeWithDefaultContext(() -> parseWithEnteredContext(surrogate)));
+            parsingTasks.add(contextAwareExecutor.executeWithNestedContext(() -> parseWithEnteredContext(surrogate)));
             return FileVisitResult.CONTINUE;
         }
 
@@ -282,11 +282,11 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
     }
 
     public Future<List<? extends SymbolInformation>> documentSymbol(URI uri) {
-        return contextAwareExecutor.executeWithDefaultContext(() -> symbolHandler.documentSymbolWithEnteredContext(uri));
+        return contextAwareExecutor.executeWithNestedContext(() -> symbolHandler.documentSymbolWithEnteredContext(uri));
     }
 
     public Future<List<? extends SymbolInformation>> workspaceSymbol(String query) {
-        return contextAwareExecutor.executeWithDefaultContext(() -> symbolHandler.workspaceSymbolWithEnteredContext(query));
+        return contextAwareExecutor.executeWithNestedContext(() -> symbolHandler.workspaceSymbolWithEnteredContext(query));
     }
 
     /**
@@ -300,15 +300,15 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
      *         position
      */
     public Future<CompletionList> completion(final URI uri, int line, int column) {
-        return contextAwareExecutor.executeWithDefaultContext(() -> completionHandler.completionWithEnteredContext(uri, line, column));
+        return contextAwareExecutor.executeWithNestedContext(() -> completionHandler.completionWithEnteredContext(uri, line, column));
     }
 
     public Future<List<? extends Location>> definition(URI uri, int line, int character) {
-        return contextAwareExecutor.executeWithDefaultContext(() -> definitionHandler.definitionWithEnteredContext(uri, line, character));
+        return contextAwareExecutor.executeWithNestedContext(() -> definitionHandler.definitionWithEnteredContext(uri, line, character));
     }
 
     public Future<Hover> hover(URI uri, int line, int column) {
-        return contextAwareExecutor.executeWithDefaultContext(() -> hoverHandler.hoverWithEnteredContext(uri, line, column));
+        return contextAwareExecutor.executeWithNestedContext(() -> hoverHandler.hoverWithEnteredContext(uri, line, column));
     }
 
     public Future<SignatureHelp> signatureHelp(URI uri, int line, int character) {
@@ -382,11 +382,11 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
     }
 
     public Future<List<? extends Location>> references(URI uri, int line, int character) {
-        return contextAwareExecutor.executeWithDefaultContext(() -> referencesHandler.referencesWithEnteredContext(uri, line, character));
+        return contextAwareExecutor.executeWithNestedContext(() -> referencesHandler.referencesWithEnteredContext(uri, line, character));
     }
 
     public Future<List<? extends DocumentHighlight>> documentHighlight(URI uri, int line, int character) {
-        return contextAwareExecutor.executeWithDefaultContext(() -> highlightHandler.highlightWithEnteredContext(uri, line, character));
+        return contextAwareExecutor.executeWithNestedContext(() -> highlightHandler.highlightWithEnteredContext(uri, line, character));
     }
 
     public String getSourceText(Path path) {
