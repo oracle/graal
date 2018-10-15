@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -72,9 +72,17 @@ import jdk.vm.ci.runtime.JVMCI;
 
 /**
  * HotSpot specific implementation of a Graal-enabled Truffle runtime.
+ *
+ * This class contains functionality for interfacing with a HotSpot-based Truffle compiler,
+ * independent of where the compiler resides (i.e., co-located in the HotSpot heap or running in a
+ * native-image shared library).
  */
 public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime implements HotSpotTruffleCompilerRuntime {
 
+    /**
+     * Contains lazily computed data such as the compilation queue and helper for stack
+     * introspection.
+     */
     static class Lazy extends BackgroundCompileQueue {
         StackIntrospection stackIntrospection;
 

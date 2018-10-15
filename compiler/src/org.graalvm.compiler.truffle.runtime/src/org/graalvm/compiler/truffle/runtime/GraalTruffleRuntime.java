@@ -149,6 +149,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     private final GraalTVMCI tvmci = new GraalTVMCI();
 
     private volatile GraalTestTVMCI testTvmci;
+
+    /**
+     * Option values initialized from Truffle compiler runtime.
+     */
     @NativeImageReinitialize private volatile Map<String, Object> initialOptions;
 
     /**
