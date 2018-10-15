@@ -44,7 +44,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -70,7 +69,9 @@ import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
  * </ol>
  */
 @NodeInfo(shortName = ".=")
-@NodeChildren({@NodeChild("receiverNode"), @NodeChild("nameNode"), @NodeChild("valueNode")})
+@NodeChild("receiverNode")
+@NodeChild("nameNode")
+@NodeChild("valueNode")
 @ImportStatic({SLContext.class, Message.class})
 public abstract class SLWritePropertyNode extends SLExpressionNode {
 

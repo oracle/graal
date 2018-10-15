@@ -30,14 +30,15 @@
 package com.oracle.truffle.llvm.nodes.memory;
 
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-@NodeChildren({@NodeChild, @NodeChild, @NodeChild})
+@NodeChild
+@NodeChild
+@NodeChild
 public abstract class LLVMInsertValueNode extends LLVMExpressionNode {
 
     protected final long sourceAggregateSize;

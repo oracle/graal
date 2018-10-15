@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.nodes.asm.support;
 
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -65,7 +64,8 @@ public abstract class LLVMAMD64AddressComputationNode extends LLVMExpressionNode
         }
     }
 
-    @NodeChildren({@NodeChild(value = "base", type = LLVMExpressionNode.class), @NodeChild(value = "offset", type = LLVMExpressionNode.class)})
+    @NodeChild(value = "base", type = LLVMExpressionNode.class)
+    @NodeChild(value = "offset", type = LLVMExpressionNode.class)
     public abstract static class LLVMAMD64AddressOffsetComputationNode extends LLVMAMD64AddressComputationNode {
         private final int shift;
 
@@ -125,7 +125,8 @@ public abstract class LLVMAMD64AddressComputationNode extends LLVMExpressionNode
         }
     }
 
-    @NodeChildren({@NodeChild(value = "base", type = LLVMExpressionNode.class), @NodeChild(value = "offset", type = LLVMExpressionNode.class)})
+    @NodeChild(value = "base", type = LLVMExpressionNode.class)
+    @NodeChild(value = "offset", type = LLVMExpressionNode.class)
     public abstract static class LLVMAMD64AddressSegmentComputationNode extends LLVMAMD64AddressComputationNode {
         public LLVMAMD64AddressSegmentComputationNode() {
             super(0);

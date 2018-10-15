@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.nodes.asm;
 
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
@@ -38,7 +37,8 @@ public abstract class LLVMAMD64SetNode {
     private static final byte ZERO = 0;
     private static final byte ONE = 1;
 
-    @NodeChildren({@NodeChild("cf"), @NodeChild("zf")})
+    @NodeChild("cf")
+    @NodeChild("zf")
     public abstract static class LLVMAMD64SetaNode extends LLVMExpressionNode {
         @Specialization
         protected byte doI8(boolean cf, boolean zf) {
@@ -46,7 +46,7 @@ public abstract class LLVMAMD64SetNode {
         }
     }
 
-    @NodeChildren({@NodeChild("zf")})
+    @NodeChild("zf")
     public abstract static class LLVMAMD64SetzNode extends LLVMExpressionNode {
         @Specialization
         protected byte doI8(boolean zf) {
@@ -54,7 +54,7 @@ public abstract class LLVMAMD64SetNode {
         }
     }
 
-    @NodeChildren({@NodeChild("zf")})
+    @NodeChild("zf")
     public abstract static class LLVMAMD64SetnzNode extends LLVMExpressionNode {
         @Specialization
         protected byte doI8(boolean zf) {
@@ -62,7 +62,8 @@ public abstract class LLVMAMD64SetNode {
         }
     }
 
-    @NodeChildren({@NodeChild("cf"), @NodeChild("zf")})
+    @NodeChild("cf")
+    @NodeChild("zf")
     public abstract static class LLVMAMD64SetorNode extends LLVMExpressionNode {
         @Specialization
         protected byte doI8(boolean cf, boolean zf) {
@@ -70,7 +71,9 @@ public abstract class LLVMAMD64SetNode {
         }
     }
 
-    @NodeChildren({@NodeChild("zf"), @NodeChild("sf"), @NodeChild("of")})
+    @NodeChild("zf")
+    @NodeChild("sf")
+    @NodeChild("of")
     public abstract static class LLVMAMD64SetgNode extends LLVMExpressionNode {
         @Specialization
         protected byte doI8(boolean zf, boolean sf, boolean of) {
@@ -78,7 +81,8 @@ public abstract class LLVMAMD64SetNode {
         }
     }
 
-    @NodeChildren({@NodeChild("sf"), @NodeChild("of")})
+    @NodeChild("sf")
+    @NodeChild("of")
     public abstract static class LLVMAMD64SeteqNode extends LLVMExpressionNode {
         @Specialization
         protected byte doI8(boolean sf, boolean of) {
@@ -86,7 +90,8 @@ public abstract class LLVMAMD64SetNode {
         }
     }
 
-    @NodeChildren({@NodeChild("sf"), @NodeChild("of")})
+    @NodeChild("sf")
+    @NodeChild("of")
     public abstract static class LLVMAMD64SetneNode extends LLVMExpressionNode {
         @Specialization
         protected byte doI8(boolean sf, boolean of) {
@@ -94,7 +99,9 @@ public abstract class LLVMAMD64SetNode {
         }
     }
 
-    @NodeChildren({@NodeChild("zf"), @NodeChild("sf"), @NodeChild("of")})
+    @NodeChild("zf")
+    @NodeChild("sf")
+    @NodeChild("of")
     public abstract static class LLVMAMD64SetleNode extends LLVMExpressionNode {
         @Specialization
         protected byte doI8(boolean zf, boolean sf, boolean of) {
@@ -102,7 +109,8 @@ public abstract class LLVMAMD64SetNode {
         }
     }
 
-    @NodeChildren({@NodeChild("cf"), @NodeChild("zf")})
+    @NodeChild("cf")
+    @NodeChild("zf")
     public abstract static class LLVMAMD64SetandNode extends LLVMExpressionNode {
         @Specialization
         protected byte doI8(boolean cf, boolean zf) {

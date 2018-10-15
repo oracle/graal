@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.nodes.op;
 
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -43,7 +42,8 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 
-@NodeChildren({@NodeChild("leftNode"), @NodeChild("rightNode")})
+@NodeChild("leftNode")
+@NodeChild("rightNode")
 public abstract class LLVMVectorArithmeticNode extends LLVMExpressionNode {
     private final int vectorLength;
 
