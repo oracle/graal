@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.test;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -46,7 +47,7 @@ public abstract class BaseSingleTestHarness extends BaseTestHarness {
 
     @Override
     @Test
-    public void test() throws Exception {
+    public void test() throws IOException {
         assert Files.walk(getTestDirectory()).filter(isExecutable).count() == 1;
 
         Path referenceFile = Files.walk(getTestDirectory()).filter(isExecutable).findFirst().get();
