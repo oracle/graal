@@ -158,13 +158,23 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
             Node nearestNode = nearestNodeHolder.getNearestNode();
 
             if (isInstrumentable(nearestNode)) {
-                VirtualFrame frame = null;
-                List<CoverageData> coverages = surrogate.getCoverageData(nearestNode.getSourceSection());
-                if (coverages != null && !coverages.isEmpty()) {
-                    CoverageData coverageData = coverages.get(0);
-                    frame = coverageData.getFrame();
+                if (surrogate.hasCoverageData()) {
+                    List<CoverageData> coverages = surrogate.getCoverageData(nearestNode.getSourceSection());
+                    if (coverages == null || coverages.isEmpty()) {
+                        coverages = SourceCodeEvaluator.findCoverageDataBeforeNode(surrogate, nearestNode);
+                    }
+                    if (coverages != null && !coverages.isEmpty()) {
+                        CoverageData coverageData = coverages.get(coverages.size() - 1);
+                        VirtualFrame frame = coverageData.getFrame();
+                        fillCompletionsWithLocals(surrogate, nearestNode, completions, frame);
+                        // Call again, regardless if it was called with a frame argument before,
+                        // because duplicates will be filter, but it will add missing local
+                        // variables which were dropped in the call above (because of null values)
+                        fillCompletionsWithLocals(surrogate, nearestNode, completions, null);
+                    }
+                } else {
+                    fillCompletionsWithLocals(surrogate, nearestNode, completions, null);
                 }
-                fillCompletionsWithLocals(surrogate, nearestNode, completions, frame);
             }
         }
     }

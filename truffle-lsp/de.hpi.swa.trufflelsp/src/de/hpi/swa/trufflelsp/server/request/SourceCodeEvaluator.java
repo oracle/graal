@@ -3,8 +3,7 @@ package de.hpi.swa.trufflelsp.server.request;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
-import java.util.Arrays;
-import java.util.HashSet;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -25,7 +24,6 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.Builder;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.IndexRange;
-import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.KeyInfo;
@@ -36,6 +34,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -50,7 +49,6 @@ import de.hpi.swa.trufflelsp.server.utils.CoverageEventNode;
 import de.hpi.swa.trufflelsp.server.utils.EvaluationResult;
 import de.hpi.swa.trufflelsp.server.utils.InteropUtils;
 import de.hpi.swa.trufflelsp.server.utils.RunScriptUtils;
-import de.hpi.swa.trufflelsp.server.utils.SourceLocation;
 import de.hpi.swa.trufflelsp.server.utils.SourcePredicateBuilder;
 import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
 import de.hpi.swa.trufflelsp.server.utils.SourceWrapper;
@@ -139,43 +137,27 @@ public class SourceCodeEvaluator extends AbstractRequestHandler {
             return EvaluationResult.createEvaluationSectionNotReached();
         }
 
-        Node rootNode = ((InstrumentableNode) nearestNode).findNearestNodeAt(nearestNode.getSourceSection().getCharIndex(),
-                        new HashSet<>(Arrays.asList(StandardTags.RootTag.class)));
-        if (!(rootNode instanceof InstrumentableNode)) {
+        List<CoverageData> dataBeforeNode = findCoverageDataBeforeNode(textDocumentSurrogate, nearestNode);
+        if (dataBeforeNode == null || dataBeforeNode.isEmpty()) {
             return EvaluationResult.createEvaluationSectionNotReached();
         }
 
-        Node firstStatement = ((InstrumentableNode) rootNode).findNearestNodeAt(rootNode.getSourceSection().getCharIndex(),
-                        new HashSet<>(Arrays.asList(StandardTags.StatementTag.class)));
+        LanguageInfo info = nearestNode.getRootNode().getLanguageInfo();
+        String code = nearestNode.getSourceSection().getCharacters().toString();
+        Source inlineEvalSource = Source.newBuilder(info.getId(), code, "in-line eval (hover request)").cached(false).build();
+        CoverageData coverageData = dataBeforeNode.get(dataBeforeNode.size() - 1);
+        ExecutableNode executableNode = env.parseInline(inlineEvalSource, nearestNode, coverageData.getFrame());
 
-        if (!(firstStatement instanceof InstrumentableNode)) {
-            return EvaluationResult.createEvaluationSectionNotReached();
-        }
+        CoverageEventNode coverageEventNode = coverageData.getCoverageEventNode();
+        coverageEventNode.insertOrReplaceChild(executableNode);
 
-        SourceSection siblingSection = firstStatement.getSourceSection();
-        if (siblingSection != null && siblingSection.isAvailable()) {
-            SourceLocation siblingLocation = SourceLocation.from(siblingSection);
-            if (textDocumentSurrogate.isLocationCovered(siblingLocation)) {
-                List<CoverageData> coverageDataObjects = textDocumentSurrogate.getCoverageData(siblingLocation);
-
-                final LanguageInfo info = nearestNode.getRootNode().getLanguageInfo();
-                final String code = nearestNode.getSourceSection().getCharacters().toString();
-                final Source inlineEvalSource = Source.newBuilder(info.getId(), code, "in-line eval (hover request)").cached(false).build();
-                for (CoverageData coverageData : coverageDataObjects) {
-                    final ExecutableNode executableNode = env.parseInline(inlineEvalSource, nearestNode, coverageData.getFrame());
-                    final CoverageEventNode coverageEventNode = coverageData.getCoverageEventNode();
-                    coverageEventNode.insertOrReplaceChild(executableNode);
-
-                    try {
-                        System.out.println("Trying coverage-based eval...");
-                        Object result = executableNode.execute(coverageData.getFrame());
-                        return EvaluationResult.createResult(result);
-                    } catch (Exception e) {
-                    } finally {
-                        coverageEventNode.clearChild();
-                    }
-                }
-            }
+        try {
+            System.out.println("Trying coverage-based eval...");
+            Object result = executableNode.execute(coverageData.getFrame());
+            return EvaluationResult.createResult(result);
+        } catch (Exception e) {
+        } finally {
+            coverageEventNode.clearChild();
         }
         return EvaluationResult.createEvaluationSectionNotReached();
     }
@@ -335,7 +317,7 @@ public class SourceCodeEvaluator extends AbstractRequestHandler {
      * @param sourceSection to filter for with same start and end indices
      * @return a builder to add further filter options
      */
-    public static SourceSectionFilter.Builder createSourceSectionFilter(URI uri, SourceSection sourceSection) {
+    static SourceSectionFilter.Builder createSourceSectionFilter(URI uri, SourceSection sourceSection) {
         // @formatter:off
         return SourceSectionFilter.newBuilder()
                         .lineStartsIn(IndexRange.between(sourceSection.getStartLine(), sourceSection.getStartLine() + 1))
@@ -344,5 +326,34 @@ public class SourceCodeEvaluator extends AbstractRequestHandler {
                         .columnEndsIn(IndexRange.between(sourceSection.getEndColumn(), sourceSection.getEndColumn() + 1))
                         .sourceIs(SourcePredicateBuilder.newBuilder().uriOrTruffleName(uri).build());
         // @formatter:on
+    }
+
+    static List<CoverageData> findCoverageDataBeforeNode(TextDocumentSurrogate surrogate, Node targetNode) {
+        List<CoverageData> coveragesBeforeNode = new ArrayList<>();
+        targetNode.getRootNode().accept(new NodeVisitor() {
+            boolean found = false;
+
+            public boolean visit(Node node) {
+                if (found) {
+                    return false;
+                }
+
+                if (node.equals(targetNode)) {
+                    found = true;
+                    return false;
+                }
+
+                SourceSection sourceSection = node.getSourceSection();
+                if (sourceSection != null && sourceSection.isAvailable()) {
+                    List<CoverageData> coverageData = surrogate.getCoverageData(sourceSection);
+                    if (coverageData != null) {
+                        coveragesBeforeNode.addAll(coverageData);
+                    }
+                }
+
+                return true;
+            }
+        });
+        return coveragesBeforeNode;
     }
 }
