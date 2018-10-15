@@ -22,18 +22,32 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
+import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.meta.EspressoError;
 
-public class StaticObjectWrapper<T> extends StaticObject {
+public class StaticObjectWrapper<T> implements StaticObject {
     private final T wrapped;
+    private final Klass klass;
 
     public StaticObjectWrapper(Klass klass, T wrapped) {
-        super(klass);
+        assert klass != null;
+        this.klass = klass;
         assert wrapped != null;
         this.wrapped = wrapped;
     }
 
     public T getWrapped() {
         return wrapped;
+    }
+
+    @Override
+    public Klass getKlass() {
+        return klass;
+    }
+
+    @Override
+    public ForeignAccess getForeignAccess() {
+        throw EspressoError.unimplemented();
     }
 }

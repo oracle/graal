@@ -26,37 +26,44 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.espresso.impl.Klass;
 
-import static com.oracle.truffle.espresso.meta.Meta.meta;
-
-public class StaticObject implements TruffleObject {
-    private final Klass klass;
-
+public interface StaticObject extends TruffleObject {
     // Context-less objects.
-    public static final StaticObject NULL = new StaticObject(null);
-    public static final StaticObject VOID = new StaticObject(null);
+    StaticObject NULL = new Null();
+    StaticObject VOID = new Void();
 
-    public Klass getKlass() {
-        return klass;
-    }
+    Klass getKlass();
+}
 
-    protected StaticObject(Klass klass) {
-        this.klass = klass;
-    }
-
+class Void implements StaticObject {
     @Override
-    public String toString() {
-        if (this == NULL) {
-            return "null";
-        }
-        if (this == VOID) {
-            return "void";
-        }
-        return meta(this).guestToString();
-        // return klass.getTypeDescriptor().toJavaName();
+    public Klass getKlass() {
+        return null;
     }
 
     @Override
     public ForeignAccess getForeignAccess() {
-        return StaticObjectMessageResolutionForeign.ACCESS;
+        return VoidMessageResolutionForeign.ACCESS;
+    }
+
+    @Override
+    public String toString() {
+        return "void";
+    }
+}
+
+class Null implements StaticObject {
+    @Override
+    public Klass getKlass() {
+        return null;
+    }
+
+    @Override
+    public ForeignAccess getForeignAccess() {
+        return NullMessageResolutionForeign.ACCESS;
+    }
+
+    @Override
+    public String toString() {
+        return "null";
     }
 }

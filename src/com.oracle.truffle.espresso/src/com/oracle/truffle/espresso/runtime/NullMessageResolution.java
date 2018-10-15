@@ -22,31 +22,28 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
-import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.api.interop.CanResolve;
+import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
 
-public final class StaticObjectClass extends StaticObjectImpl {
-    private Klass mirror;
+@MessageResolution(receiverType = Null.class)
+public class NullMessageResolution {
 
-    public void setMirror(Klass mirror) {
-        assert this.mirror == null;
-        this.mirror = mirror;
+    @Resolve(message = "IS_NULL")
+    abstract static class IsNullNode extends Node {
+
+        @SuppressWarnings("unused")
+        boolean access(Null object) {
+            return true;
+        }
     }
 
-    public Klass getMirror() {
-        assert this.mirror != null;
-        return this.mirror;
-    }
-
-    public StaticObjectClass(Klass klass) {
-        super(klass);
-    }
-
-    public StaticObjectClass(Klass klass, boolean isStatic) {
-        super(klass, isStatic);
-    }
-
-    @Override
-    public String toString() {
-        return "class " + mirror.getName();
+    @CanResolve
+    abstract static class CanResolveNull extends Node {
+        boolean test(TruffleObject object) {
+            return object instanceof Null;
+        }
     }
 }

@@ -25,19 +25,22 @@ package com.oracle.truffle.espresso.runtime;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.espresso.impl.FieldInfo;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.meta.EspressoError;
 
-public class StaticObjectImpl extends StaticObject {
+public class StaticObjectImpl implements StaticObject {
     private final Map<String, Object> fields;
     private final boolean isStatic;
+    private final Klass klass;
 
     public boolean isStatic() {
         return isStatic;
     }
 
     public StaticObjectImpl(Klass klass, Map<String, Object> fields, boolean isStatic) {
-        super(klass);
+        this.klass = klass;
         this.fields = fields;
         this.isStatic = isStatic;
     }
@@ -48,54 +51,50 @@ public class StaticObjectImpl extends StaticObject {
     }
 
     public StaticObjectImpl(Klass klass) {
-        super(klass);
-        if (klass == null) {
-            this.fields = null;
-        } else {
-            this.fields = new HashMap<>();
-            FieldInfo[] allFields = klass.getInstanceFields(true);
-            for (FieldInfo fi : allFields) {
-                Object value = null;
-                switch (fi.getKind()) {
-                    case Object:
-                        value = StaticObject.NULL;
-                        break;
-                    case Float:
-                        value = 0f;
-                        break;
-                    case Double:
-                        value = 0.0;
-                        break;
-                    case Long:
-                        value = 0L;
-                        break;
-                    case Char:
-                        value = (char) 0;
-                        break;
-                    case Short:
-                        value = (short) 0;
-                        break;
-                    case Int:
-                        value = 0;
-                        break;
-                    case Byte:
-                        value = (byte) 0;
-                        break;
-                    case Boolean:
-                        value = false;
-                        break;
-                    case Illegal:
-                    case Void:
-                        throw new RuntimeException("Invalid type " + fi.getKind() + " for field: " + fi.getName());
-                }
-                this.fields.put(fi.getName(), value);
-            }
-        }
+        this.klass = klass;
+        this.fields = new HashMap<>();
         this.isStatic = false;
+        FieldInfo[] allFields = klass.getInstanceFields(true);
+        for (FieldInfo fi : allFields) {
+            Object value = null;
+            switch (fi.getKind()) {
+                case Object:
+                    value = StaticObject.NULL;
+                    break;
+                case Float:
+                    value = 0f;
+                    break;
+                case Double:
+                    value = 0.0;
+                    break;
+                case Long:
+                    value = 0L;
+                    break;
+                case Char:
+                    value = (char) 0;
+                    break;
+                case Short:
+                    value = (short) 0;
+                    break;
+                case Int:
+                    value = 0;
+                    break;
+                case Byte:
+                    value = (byte) 0;
+                    break;
+                case Boolean:
+                    value = false;
+                    break;
+                case Illegal:
+                case Void:
+                    throw new RuntimeException("Invalid type " + fi.getKind() + " for field: " + fi.getName());
+            }
+            this.fields.put(fi.getName(), value);
+        }
     }
 
     public StaticObjectImpl(Klass klass, boolean isStatic) {
-        super(klass);
+        this.klass = klass;
         if (klass.getSuperclass() != null) {
             klass.getSuperclass().initialize();
         }
@@ -163,5 +162,15 @@ public class StaticObjectImpl extends StaticObject {
 
     public Object getHiddenField(String name) {
         return fields.get(name);
+    }
+
+    @Override
+    public Klass getKlass() {
+        return klass;
+    }
+
+    @Override
+    public ForeignAccess getForeignAccess() {
+        throw EspressoError.unimplemented();
     }
 }
