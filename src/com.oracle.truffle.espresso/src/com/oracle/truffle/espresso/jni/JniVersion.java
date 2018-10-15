@@ -28,4 +28,8 @@ public interface JniVersion {
     int JNI_VERSION_1_4 = 0x00010004;
     int JNI_VERSION_1_6 = 0x00010006;
     int JNI_VERSION_1_8 = 0x00010008;
+    /**
+     * JNI version implemented by Espresso.
+     */
+    int JNI_VERSION_ESPRESSO = JNI_VERSION_1_8;
 }

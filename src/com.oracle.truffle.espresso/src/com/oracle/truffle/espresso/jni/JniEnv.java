@@ -186,7 +186,7 @@ public class JniEnv {
 
     @JniImpl
     public int GetVersion() {
-        return JniVersion.JNI_VERSION_1_8;
+        return JniVersion.JNI_VERSION_ESPRESSO;
     }
 
     @JniImpl
