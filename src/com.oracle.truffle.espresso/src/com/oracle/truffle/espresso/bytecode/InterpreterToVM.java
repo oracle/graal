@@ -345,73 +345,133 @@ public class InterpreterToVM {
     // region Get (array) operations
 
     public int getArrayInt(int index, Object arr) {
-        return ((int[]) arr)[index];
+        try {
+            return ((int[]) arr)[index];
+        } catch (ArrayIndexOutOfBoundsException e) {
+            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayIndexOutOfBoundsException.class, e.getMessage());
+        }
     }
 
     public Object getArrayObject(int index, Object arr) {
-        return ((StaticObjectArray) arr).getWrapped()[index];
+        try {
+            return ((StaticObjectArray) arr).getWrapped()[index];
+        } catch (ArrayIndexOutOfBoundsException e) {
+            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayIndexOutOfBoundsException.class, e.getMessage());
+        }
     }
 
     public long getArrayLong(int index, Object arr) {
-        return ((long[]) arr)[index];
+        try {
+            return ((long[]) arr)[index];
+        } catch (ArrayIndexOutOfBoundsException e) {
+            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayIndexOutOfBoundsException.class, e.getMessage());
+        }
     }
 
     public float getArrayFloat(int index, Object arr) {
-        return ((float[]) arr)[index];
+        try {
+            return ((float[]) arr)[index];
+        } catch (ArrayIndexOutOfBoundsException e) {
+            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayIndexOutOfBoundsException.class, e.getMessage());
+        }
     }
 
     public double getArrayDouble(int index, Object arr) {
-        return ((double[]) arr)[index];
+        try {
+            return ((double[]) arr)[index];
+        } catch (ArrayIndexOutOfBoundsException e) {
+            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayIndexOutOfBoundsException.class, e.getMessage());
+        }
     }
 
     public byte getArrayByte(int index, Object arr) {
-        if (arr instanceof boolean[]) {
-            return (byte) (((boolean[]) arr)[index] ? 1 : 0);
+        try {
+            if (arr instanceof boolean[]) {
+                return (byte) (((boolean[]) arr)[index] ? 1 : 0);
+            }
+            return ((byte[]) arr)[index];
+        } catch (ArrayIndexOutOfBoundsException e) {
+            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayIndexOutOfBoundsException.class, e.getMessage());
         }
-        return ((byte[]) arr)[index];
     }
 
     public char getArrayChar(int index, Object arr) {
-        return ((char[]) arr)[index];
+        try {
+            return ((char[]) arr)[index];
+        } catch (ArrayIndexOutOfBoundsException e) {
+            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayIndexOutOfBoundsException.class, e.getMessage());
+        }
     }
 
     public short getArrayShort(int index, Object arr) {
-        return ((short[]) arr)[index];
+        try {
+            return ((short[]) arr)[index];
+        } catch (ArrayIndexOutOfBoundsException e) {
+            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayIndexOutOfBoundsException.class, e.getMessage());
+        }
     }
     // endregion
 
     // region Set (array) operations
     public void setArrayInt(int value, int index, Object arr) {
-        ((int[]) arr)[index] = value;
+        try {
+            ((int[]) arr)[index] = value;
+        } catch (ArrayIndexOutOfBoundsException e) {
+            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayIndexOutOfBoundsException.class, e.getMessage());
+        }
     }
 
     public void setArrayLong(long value, int index, Object arr) {
-        ((long[]) arr)[index] = value;
+        try {
+            ((long[]) arr)[index] = value;
+        } catch (ArrayIndexOutOfBoundsException e) {
+            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayIndexOutOfBoundsException.class, e.getMessage());
+        }
     }
 
     public void setArrayFloat(float value, int index, Object arr) {
-        ((float[]) arr)[index] = value;
+        try {
+            ((float[]) arr)[index] = value;
+        } catch (ArrayIndexOutOfBoundsException e) {
+            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayIndexOutOfBoundsException.class, e.getMessage());
+        }
     }
 
     public void setArrayDouble(double value, int index, Object arr) {
-        ((double[]) arr)[index] = value;
+        try {
+            ((double[]) arr)[index] = value;
+        } catch (ArrayIndexOutOfBoundsException e) {
+            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayIndexOutOfBoundsException.class, e.getMessage());
+        }
     }
 
     public void setArrayByte(byte value, int index, Object arr) {
-        if (arr instanceof boolean[]) {
-            assert value == 0 || value == 1;
-            ((boolean[]) arr)[index] = (value != 0);
-        } else {
-            ((byte[]) arr)[index] = value;
+        try {
+            if (arr instanceof boolean[]) {
+                assert value == 0 || value == 1;
+                ((boolean[]) arr)[index] = (value != 0);
+            } else {
+                ((byte[]) arr)[index] = value;
+            }
+        } catch (ArrayIndexOutOfBoundsException e) {
+            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayIndexOutOfBoundsException.class, e.getMessage());
         }
     }
 
     public void setArrayChar(char value, int index, Object arr) {
-        ((char[]) arr)[index] = value;
+        try {
+            ((char[]) arr)[index] = value;
+        } catch (ArrayIndexOutOfBoundsException e) {
+            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayIndexOutOfBoundsException.class, e.getMessage());
+        }
     }
 
     public void setArrayShort(short value, int index, Object arr) {
-        ((short[]) arr)[index] = value;
+        try {
+            ((short[]) arr)[index] = value;
+        } catch (ArrayIndexOutOfBoundsException e) {
+            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayIndexOutOfBoundsException.class, e.getMessage());
+        }
     }
 
     public void setArrayObject(Object value, int index, Object arr) {
@@ -419,7 +479,11 @@ public class InterpreterToVM {
         if (value != StaticObject.NULL && !instanceOf(value, ((StaticObjectArray) arr).getKlass().getComponentType())) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayStoreException.class);
         }
-        ((StaticObjectArray) arr).getWrapped()[index] = value;
+        try {
+            ((StaticObjectArray) arr).getWrapped()[index] = value;
+        } catch (ArrayIndexOutOfBoundsException e) {
+            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayIndexOutOfBoundsException.class, e.getMessage());
+        }
     }
     // endregion
 
