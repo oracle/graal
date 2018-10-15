@@ -101,7 +101,7 @@ public class DefinitionRequestHandler extends AbstractRequestHandler {
     private List<? extends Location> definitionOfCallTaggedNode(TextDocumentSurrogate surrogate, InstrumentableNode definitionSearchNode, SourceSection definitionSearchSection) {
         System.out.println("Trying run-to-section eval...");
 
-        SourceSectionFilter.Builder builder = SourceUtils.createSourceSectionFilter(surrogate, definitionSearchSection);
+        SourceSectionFilter.Builder builder = SourceCodeEvaluator.createSourceSectionFilter(surrogate.getUri(), definitionSearchSection);
         SourceSectionFilter eventFilter = builder.tagIs(StandardTags.CallTag.class).build();
         SourceSectionFilter inputFilter = SourceSectionFilter.ANY;
         Callable<EvaluationResult> taskWithResult = () -> sourceCodeEvaluator.runToSectionAndEval(surrogate, definitionSearchSection, eventFilter, inputFilter);
@@ -130,8 +130,8 @@ public class DefinitionRequestHandler extends AbstractRequestHandler {
 
     List<Location> findMatchingSymbols(TextDocumentSurrogate surrogate, String symbol) {
         List<Location> locations = new ArrayList<>();
-        SourcePredicate srcPredicate = SourceUtils.createLanguageFilterPredicate(surrogate.getLanguageInfo());
-        List<? extends SymbolInformation> docSymbols = symbolHandler.symbolWithEnteredContext(srcPredicate);
+        SourcePredicate predicate = newDefaultSourcePredicateBuilder().language(surrogate.getLanguageInfo()).build();
+        List<? extends SymbolInformation> docSymbols = symbolHandler.symbolWithEnteredContext(predicate);
         for (SymbolInformation symbolInfo : docSymbols) {
             if (symbol.equals(symbolInfo.getName())) {
                 locations.add(symbolInfo.getLocation());

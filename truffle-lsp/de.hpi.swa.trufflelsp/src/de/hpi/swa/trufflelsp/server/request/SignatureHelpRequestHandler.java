@@ -28,7 +28,6 @@ import de.hpi.swa.trufflelsp.interop.GetSignature;
 import de.hpi.swa.trufflelsp.interop.ObjectStructures;
 import de.hpi.swa.trufflelsp.server.utils.EvaluationResult;
 import de.hpi.swa.trufflelsp.server.utils.InteropUtils;
-import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
 import de.hpi.swa.trufflelsp.server.utils.SurrogateMap;
 import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogate;
 
@@ -48,7 +47,7 @@ public class SignatureHelpRequestHandler extends AbstractRequestHandler {
         InstrumentableNode nodeAtCaret = findNodeAtCaret(surrogate, line, originalCharacter, StandardTags.CallTag.class);
         if (nodeAtCaret != null) {
             SourceSection signatureSection = ((Node) nodeAtCaret).getSourceSection();
-            SourceSectionFilter.Builder builder = SourceUtils.createSourceSectionFilter(surrogate, signatureSection);
+            SourceSectionFilter.Builder builder = SourceCodeEvaluator.createSourceSectionFilter(surrogate.getUri(), signatureSection);
             SourceSectionFilter eventFilter = builder.tagIs(StandardTags.CallTag.class).build();
             SourceSectionFilter inputFilter = SourceSectionFilter.ANY;
             EvaluationResult evalResult = sourceCodeEvaluator.runToSectionAndEval(surrogate, signatureSection, eventFilter, inputFilter);

@@ -36,12 +36,11 @@ public class SymbolRequestHandler extends AbstractRequestHandler {
     }
 
     public List<? extends SymbolInformation> documentSymbolWithEnteredContext(URI uri) {
-        SourcePredicate srcPredicate = SourceUtils.createUriOrTruffleNameMatchingPredicate(uri);
+        SourcePredicate srcPredicate = newDefaultSourcePredicateBuilder().uriOrTruffleName(uri).build();
         return symbolWithEnteredContext(srcPredicate);
     }
 
-    List<? extends SymbolInformation> symbolWithEnteredContext(SourcePredicate otherPedicate) {
-        SourcePredicate srcPredicate = src -> otherPedicate.test(src) && surrogateMap.isSourceNewestInSurrogate(src);
+    List<? extends SymbolInformation> symbolWithEnteredContext(SourcePredicate srcPredicate) {
         Set<SymbolInformation> symbolInformation = new LinkedHashSet<>();
         SourceSectionFilter filter = SourceSectionFilter.newBuilder().sourceIs(srcPredicate).tagIs(DeclarationTag.class).build();
         env.getInstrumenter().attachLoadSourceSectionListener(
@@ -103,7 +102,7 @@ public class SymbolRequestHandler extends AbstractRequestHandler {
     }
 
     public List<? extends SymbolInformation> workspaceSymbolWithEnteredContext(@SuppressWarnings("unused") String query) {
-        SourcePredicate srcPredicate = src -> !src.isInternal();
+        SourcePredicate srcPredicate = newDefaultSourcePredicateBuilder().build();
         return symbolWithEnteredContext(srcPredicate);
     }
 }

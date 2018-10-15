@@ -23,6 +23,8 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter.Builder;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter.IndexRange;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -49,6 +51,7 @@ import de.hpi.swa.trufflelsp.server.utils.EvaluationResult;
 import de.hpi.swa.trufflelsp.server.utils.InteropUtils;
 import de.hpi.swa.trufflelsp.server.utils.RunScriptUtils;
 import de.hpi.swa.trufflelsp.server.utils.SourceLocation;
+import de.hpi.swa.trufflelsp.server.utils.SourcePredicateBuilder;
 import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
 import de.hpi.swa.trufflelsp.server.utils.SourceWrapper;
 import de.hpi.swa.trufflelsp.server.utils.SurrogateMap;
@@ -182,7 +185,7 @@ public class SourceCodeEvaluator extends AbstractRequestHandler {
             return EvaluationResult.createEvaluationSectionNotReached();
         }
 
-        SourceSectionFilter eventFilter = SourceUtils.createSourceSectionFilter(surrogate, nearestNode.getSourceSection()).build();
+        SourceSectionFilter eventFilter = createSourceSectionFilter(surrogate.getUri(), nearestNode.getSourceSection()).build();
         return runToSectionAndEval(surrogate, nearestNode.getSourceSection(), eventFilter, null);
     }
 
@@ -317,5 +320,29 @@ public class SourceCodeEvaluator extends AbstractRequestHandler {
         } catch (Exception e) {
             return EvaluationResult.createError(e);
         }
+    }
+
+    /**
+     * A special method to create a {@link SourceSectionFilter} which filters for a specific source
+     * section during source code evaluation. We cannot simply filter with
+     * {@link Builder#sourceIs(Source...)} and
+     * {@link Builder#sourceSectionEquals(SourceSection...)}, because we are possibly not the
+     * creator of the Source and do not know which properties are set. The source which is evaluated
+     * could have been created by the language. For example by a Python import statement. Therefore
+     * we need to filter via URI (or name if the URI is a generated truffle-schema-URI).
+     *
+     * @param uri to filter sources for
+     * @param sourceSection to filter for with same start and end indices
+     * @return a builder to add further filter options
+     */
+    public static SourceSectionFilter.Builder createSourceSectionFilter(URI uri, SourceSection sourceSection) {
+        // @formatter:off
+        return SourceSectionFilter.newBuilder()
+                        .lineStartsIn(IndexRange.between(sourceSection.getStartLine(), sourceSection.getStartLine() + 1))
+                        .lineEndsIn(IndexRange.between(sourceSection.getEndLine(), sourceSection.getEndLine() + 1))
+                        .columnStartsIn(IndexRange.between(sourceSection.getStartColumn(), sourceSection.getStartColumn() + 1))
+                        .columnEndsIn(IndexRange.between(sourceSection.getEndColumn(), sourceSection.getEndColumn() + 1))
+                        .sourceIs(SourcePredicateBuilder.newBuilder().uriOrTruffleName(uri).build());
+        // @formatter:on
     }
 }

@@ -54,7 +54,8 @@ public class ReferencesRequestHandler extends AbstractRequestHandler {
         SourceSection sourceSection = ((Node) nodeAtCaret).getSourceSection();
         String symbol = sourceSection.getCharacters().toString();
         String normalizedSymbolToFindRef = InteropUtils.getNormalizedSymbolName(nodeAtCaret.getNodeObject(), symbol);
-        SourcePredicate srcPredicate = SourceUtils.createLanguageFilterPredicate(surrogate.getLanguageInfo());
+        SourcePredicate srcPredicate = newDefaultSourcePredicateBuilder().language(surrogate.getLanguageInfo()).build();
+
         env.getInstrumenter().attachLoadSourceSectionListener(
                         SourceSectionFilter.newBuilder().sourceIs(srcPredicate).tagIs(StandardTags.CallTag.class).build(),
                         new LoadSourceSectionListener() {

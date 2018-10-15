@@ -12,15 +12,11 @@ import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.TruffleException;
-import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
-import com.oracle.truffle.api.instrumentation.SourceSectionFilter.IndexRange;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.SourcePredicate;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-
-import de.hpi.swa.trufflelsp.instrument.LSOptions;
 
 public class SourceUtils {
 
@@ -183,25 +179,6 @@ public class SourceUtils {
         return offset;
     }
 
-    public static SourceSectionFilter.Builder createSourceSectionFilter(final TextDocumentSurrogate surrogate, SourceSection sourceSection) {
-        // @formatter:off
-        return SourceSectionFilter.newBuilder()
-                        .lineStartsIn(IndexRange.between(sourceSection.getStartLine(), sourceSection.getStartLine() + 1))
-                        .lineEndsIn(IndexRange.between(sourceSection.getEndLine(), sourceSection.getEndLine() + 1))
-                        .columnStartsIn(IndexRange.between(sourceSection.getStartColumn(), sourceSection.getStartColumn() + 1))
-                        .columnEndsIn(IndexRange.between(sourceSection.getEndColumn(), sourceSection.getEndColumn() + 1))
-                        .sourceIs(createUriOrTruffleNameMatchingPredicate(surrogate.getUri()));
-        // @formatter:on
-    }
-
-    public static SourcePredicate createUriOrTruffleNameMatchingPredicate(URI uri) {
-        return src -> src.getURI().equals(uri) || (src.getURI().getScheme().equals("truffle") && src.getName().equals(uri.getPath()));
-    }
-
-    public static SourcePredicate createLanguageFilterPredicate(final LanguageInfo languageInfo) {
-        return src -> languageInfo.getId().equals(src.getLanguage()) || (src.getMimeType() != null && languageInfo.getMimeTypes().contains(src.getMimeType()));
-    }
-
     public static URI getOrFixFileUri(Source source) {
         if (source.getURI().getScheme().equals("file")) {
             return source.getURI();
@@ -234,7 +211,8 @@ public class SourceUtils {
     }
 
     public static boolean isValidSourceSection(SourceSection sourceSection, OptionValues options) {
-        boolean includeInternal = options.get(LSOptions.IncludeInternlSourcesInDefinitionSearch);
-        return sourceSection != null && sourceSection.isAvailable() && (includeInternal || !sourceSection.getSource().isInternal());
+        SourcePredicate predicate = SourcePredicateBuilder.newBuilder().excludeInternal(options).build();
+        return sourceSection != null && sourceSection.isAvailable() && predicate.test(sourceSection.getSource());
     }
+
 }

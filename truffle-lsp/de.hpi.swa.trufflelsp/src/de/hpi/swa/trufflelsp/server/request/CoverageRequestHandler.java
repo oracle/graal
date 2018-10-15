@@ -23,6 +23,7 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter.SourcePredicate;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -33,6 +34,7 @@ import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapper;
 import de.hpi.swa.trufflelsp.exceptions.DiagnosticsNotification;
 import de.hpi.swa.trufflelsp.server.utils.CoverageEventNode;
 import de.hpi.swa.trufflelsp.server.utils.SourceLocation;
+import de.hpi.swa.trufflelsp.server.utils.SourcePredicateBuilder;
 import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
 import de.hpi.swa.trufflelsp.server.utils.SurrogateMap;
 import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogate;
@@ -56,7 +58,8 @@ public class CoverageRequestHandler extends AbstractRequestHandler {
         try {
             final CallTarget callTarget = sourceCodeEvaluator.parse(surrogateOfTestFile);
             LanguageInfo languageInfo = surrogateOfTestFile.getLanguageInfo();
-            SourceSectionFilter eventFilter = SourceSectionFilter.newBuilder().sourceIs(SourceUtils.createLanguageFilterPredicate(languageInfo)).build();
+            SourcePredicate predicate = SourcePredicateBuilder.newBuilder().language(languageInfo).excludeInternal(env.getOptions()).build();
+            SourceSectionFilter eventFilter = SourceSectionFilter.newBuilder().sourceIs(predicate).build();
             EventBinding<ExecutionEventNodeFactory> eventFactoryBinding = env.getInstrumenter().attachExecutionEventFactory(
                             eventFilter,
                             new ExecutionEventNodeFactory() {

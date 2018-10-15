@@ -19,6 +19,7 @@ import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapper;
 import de.hpi.swa.trufflelsp.server.utils.CoverageData;
 import de.hpi.swa.trufflelsp.server.utils.NearestSectionsFinder;
 import de.hpi.swa.trufflelsp.server.utils.NearestSectionsFinder.NearestSections;
+import de.hpi.swa.trufflelsp.server.utils.SourcePredicateBuilder;
 import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
 import de.hpi.swa.trufflelsp.server.utils.SourceWrapper;
 import de.hpi.swa.trufflelsp.server.utils.SurrogateMap;
@@ -87,5 +88,9 @@ public class AbstractRequestHandler {
             scopesOuterToInner.addFirst(scope);
         }
         return scopesOuterToInner;
+    }
+
+    protected SourcePredicateBuilder newDefaultSourcePredicateBuilder() {
+        return SourcePredicateBuilder.newBuilder().excludeInternal(env.getOptions()).newestSource(surrogateMap);
     }
 }
