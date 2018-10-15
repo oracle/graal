@@ -22,11 +22,13 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.espresso.impl.Klass;
 
 import static com.oracle.truffle.espresso.meta.Meta.meta;
 
-public class StaticObject {
+public class StaticObject implements TruffleObject {
     private final Klass klass;
 
     // Context-less objects.
@@ -51,5 +53,10 @@ public class StaticObject {
         }
         return meta(this).guestToString();
         // return klass.getTypeDescriptor().toJavaName();
+    }
+
+    @Override
+    public ForeignAccess getForeignAccess() {
+        return StaticObjectMessageResolutionForeign.ACCESS;
     }
 }
