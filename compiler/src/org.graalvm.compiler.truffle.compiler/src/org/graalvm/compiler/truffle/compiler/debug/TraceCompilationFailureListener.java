@@ -48,7 +48,7 @@ public final class TraceCompilationFailureListener implements TruffleCompilerLis
     /**
      * Determines if a failure is permanent.
      */
-    private static boolean isPermanentFailure(boolean bailout, boolean permanentBailout) {
+    public static boolean isPermanentFailure(boolean bailout, boolean permanentBailout) {
         return !bailout || permanentBailout;
     }
 
