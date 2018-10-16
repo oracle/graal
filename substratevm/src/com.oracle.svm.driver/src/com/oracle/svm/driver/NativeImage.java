@@ -646,7 +646,7 @@ public class NativeImage {
                     }
 
                     for (Path jarFile : jarFileMatches) {
-                        URI jarFileURI = URI.create("jar:file:" + jarFile);
+                        URI jarFileURI = URI.create("jar:" + jarFile.toUri());
                         try (FileSystem jarFS = FileSystems.newFileSystem(jarFileURI, Collections.emptyMap())) {
                             Path nativeImageMetaInfBase = jarFS.getPath("/" + nativeImagePropertiesMetaInf);
                             processNativeImageProperties(nativeImageMetaInfBase);

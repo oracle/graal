@@ -153,9 +153,7 @@ public final class ImageClassLoader {
         if (Files.exists(path)) {
             if (Files.isRegularFile(path)) {
                 try {
-                    String name = path.toAbsolutePath().toString();
-                    name = name.replace('\\', '/');
-                    URI jarURI = new URI("jar:file:///" + name);
+                    URI jarURI = new URI("jar:" + path.toAbsolutePath().toUri());
                     try (FileSystem jarFileSystem = FileSystems.newFileSystem(jarURI, Collections.emptyMap())) {
                         initAllClasses(jarFileSystem.getPath("/"), Collections.emptySet(), executor);
                     }
