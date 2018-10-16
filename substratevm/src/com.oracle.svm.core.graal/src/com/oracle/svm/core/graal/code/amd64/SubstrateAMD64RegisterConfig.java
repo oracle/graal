@@ -55,6 +55,7 @@ import java.util.ArrayList;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 
 import jdk.vm.ci.amd64.AMD64;
@@ -76,11 +77,6 @@ import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
 
 public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
-
-    public enum ConfigKind {
-        NORMAL,
-        NATIVE_TO_JAVA,
-    }
 
     private final TargetDescription target;
     private final int nativeParamsStackOffset;

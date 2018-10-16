@@ -1,4 +1,4 @@
-svm-common-linux-gate: ${svm-common-linux} {
+svm-common-linux-gate: ${svm-common-linux-amd64} {
   setup: [
     ["cd", "./substratevm"]
   ]
