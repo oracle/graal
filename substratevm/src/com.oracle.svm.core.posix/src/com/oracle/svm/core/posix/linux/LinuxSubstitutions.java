@@ -27,9 +27,16 @@ package com.oracle.svm.core.posix.linux;
 import static com.oracle.svm.core.posix.headers.Time.gettimeofday;
 import static com.oracle.svm.core.posix.headers.linux.LinuxTime.CLOCK_MONOTONIC;
 import static com.oracle.svm.core.posix.headers.linux.LinuxTime.clock_gettime;
+import static org.graalvm.nativeimage.UnmanagedMemory.calloc;
+import static org.graalvm.nativeimage.UnmanagedMemory.free;
 
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.posix.headers.Unistd;
+import com.oracle.svm.core.posix.headers.linux.LinuxSched;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.WordFactory;
 
@@ -65,6 +72,46 @@ final class Target_java_lang_System {
         return "lib" + libname + ".so";
     }
 }
+
+@Platforms(Platform.LINUX.class)
+@TargetClass(java.lang.Runtime.class)
+final class Target_java_lang_Runtime {
+
+    @Substitute
+    public int availableProcessors() {
+        if (SubstrateOptions.MultiThreaded.getValue()) {
+            LinuxSched.cpu_set_t cpuSet;
+            int size, res;
+            final int pid = Unistd.getpid();
+            // try easy path
+            cpuSet = StackValue.get(LinuxSched.cpu_set_t.class);
+            size = SizeOf.get(LinuxSched.cpu_set_t.class);
+            res = LinuxSched.sched_getaffinity(pid, size, cpuSet);
+            if (res == 0) return LinuxSched.CPU_COUNT_S(size, cpuSet);
+            // try with more CPUs in a loop
+            size = Integer.highestOneBit(size) << 1;
+            while (Integer.numberOfTrailingZeros(size) < 16) { // we have to give up at *some* point
+                assert Integer.bitCount(size) == 1;
+                cpuSet = calloc(size); // to be safe
+                if (cpuSet.isNull()) throw new InternalError("Cannot determine CPU count");
+                try {
+                    res = LinuxSched.sched_getaffinity(pid, size, cpuSet);
+                    if (res == 0) return LinuxSched.CPU_COUNT_S(size, cpuSet);
+                } finally {
+                    free(cpuSet);
+                }
+                size <<= 1;
+            }
+            // give up
+            res = (int) Unistd.sysconf(Unistd._SC_NPROCESSORS_ONLN());
+            if (res == -1) throw new InternalError("Cannot determine CPU count");
+            return res;
+        } else {
+            return 1;
+        }
+    }
+}
+
 
 /** Dummy class to have a class with the file's name. */
 public final class LinuxSubstitutions {
