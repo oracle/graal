@@ -74,6 +74,14 @@ import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64DivNodeFactory.LLVMAMD64DivbNo
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64DivNodeFactory.LLVMAMD64DivlNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64DivNodeFactory.LLVMAMD64DivqNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64DivNodeFactory.LLVMAMD64DivwNodeGen;
+import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64GetFlagNodesFactory.LLVMAMD64GetFlagEqualNodeGen;
+import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64GetFlagNodesFactory.LLVMAMD64GetFlagGNodeGen;
+import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64GetFlagNodesFactory.LLVMAMD64GetFlagLENodeGen;
+import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64GetFlagNodesFactory.LLVMAMD64GetFlagNegNodeGen;
+import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64GetFlagNodesFactory.LLVMAMD64GetFlagNodeGen;
+import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64GetFlagNodesFactory.LLVMAMD64GetFlagNorNodeGen;
+import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64GetFlagNodesFactory.LLVMAMD64GetFlagOrNodeGen;
+import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64GetFlagNodesFactory.LLVMAMD64GetFlagXorNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64IdivNodeFactory.LLVMAMD64IdivbNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64IdivNodeFactory.LLVMAMD64IdivlNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64IdivNodeFactory.LLVMAMD64IdivqNodeGen;
@@ -143,14 +151,6 @@ import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64SarNodeFactory.LLVMAMD64SarlNo
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64SarNodeFactory.LLVMAMD64SarqNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64SarNodeFactory.LLVMAMD64SarwNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64SetFlagNode;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64SetNodeFactory.LLVMAMD64SetaNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64SetNodeFactory.LLVMAMD64SeteqNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64SetNodeFactory.LLVMAMD64SetgNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64SetNodeFactory.LLVMAMD64SetleNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64SetNodeFactory.LLVMAMD64SetneNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64SetNodeFactory.LLVMAMD64SetnzNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64SetNodeFactory.LLVMAMD64SetorNodeGen;
-import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64SetNodeFactory.LLVMAMD64SetzNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64ShlNodeFactory.LLVMAMD64ShlbNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64ShlNodeFactory.LLVMAMD64ShllNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64ShlNodeFactory.LLVMAMD64ShlqNodeGen;
@@ -560,83 +560,80 @@ class AsmFactory {
         switch (operation) {
             case "seta":
             case "setnbe":
-                out = LLVMAMD64SetaNodeGen.create(getFlag(LLVMAMD64Flags.CF), getFlag(LLVMAMD64Flags.ZF));
+                out = LLVMAMD64GetFlagNorNodeGen.create(getFlag(LLVMAMD64Flags.CF), getFlag(LLVMAMD64Flags.ZF));
                 dstType = PrimitiveType.I8;
                 break;
             case "setae":
             case "setnb":
             case "setnc":
-                out = LLVMAMD64SetzNodeGen.create(getFlag(LLVMAMD64Flags.CF));
+                out = LLVMAMD64GetFlagNegNodeGen.create(getFlag(LLVMAMD64Flags.CF));
                 dstType = PrimitiveType.I8;
                 break;
             case "setb":
             case "setc":
             case "setnae":
-                out = LLVMAMD64SetnzNodeGen.create(getFlag(LLVMAMD64Flags.CF));
-                dstType = PrimitiveType.I8;
-                break;
-            case "setbe":
-                out = LLVMAMD64SetorNodeGen.create(getFlag(LLVMAMD64Flags.CF), getFlag(LLVMAMD64Flags.ZF));
+                out = LLVMAMD64GetFlagNodeGen.create(getFlag(LLVMAMD64Flags.CF));
                 dstType = PrimitiveType.I8;
                 break;
             case "sete":
             case "setz":
-                out = LLVMAMD64SetzNodeGen.create(getFlag(LLVMAMD64Flags.ZF));
+                out = LLVMAMD64GetFlagNodeGen.create(getFlag(LLVMAMD64Flags.ZF));
                 dstType = PrimitiveType.I8;
                 break;
             case "setg":
             case "setnle":
-                out = LLVMAMD64SetgNodeGen.create(getFlag(LLVMAMD64Flags.ZF), getFlag(LLVMAMD64Flags.SF), getFlag(LLVMAMD64Flags.OF));
+                out = LLVMAMD64GetFlagGNodeGen.create(getFlag(LLVMAMD64Flags.ZF), getFlag(LLVMAMD64Flags.SF), getFlag(LLVMAMD64Flags.OF));
                 dstType = PrimitiveType.I8;
                 break;
             case "setge":
             case "setnl":
-                out = LLVMAMD64SeteqNodeGen.create(getFlag(LLVMAMD64Flags.SF), getFlag(LLVMAMD64Flags.OF));
+                out = LLVMAMD64GetFlagEqualNodeGen.create(getFlag(LLVMAMD64Flags.SF), getFlag(LLVMAMD64Flags.OF));
                 dstType = PrimitiveType.I8;
                 break;
             case "setl":
             case "setnge":
-                out = LLVMAMD64SetneNodeGen.create(getFlag(LLVMAMD64Flags.SF), getFlag(LLVMAMD64Flags.OF));
+                out = LLVMAMD64GetFlagXorNodeGen.create(getFlag(LLVMAMD64Flags.SF), getFlag(LLVMAMD64Flags.OF));
                 dstType = PrimitiveType.I8;
                 break;
             case "setle":
             case "setng":
-                out = LLVMAMD64SetleNodeGen.create(getFlag(LLVMAMD64Flags.ZF), getFlag(LLVMAMD64Flags.SF), getFlag(LLVMAMD64Flags.OF));
+                out = LLVMAMD64GetFlagLENodeGen.create(getFlag(LLVMAMD64Flags.ZF), getFlag(LLVMAMD64Flags.SF), getFlag(LLVMAMD64Flags.OF));
                 dstType = PrimitiveType.I8;
                 break;
+            case "setbe":
             case "setna":
-                out = LLVMAMD64SetorNodeGen.create(getFlag(LLVMAMD64Flags.CF), getFlag(LLVMAMD64Flags.ZF));
+                out = LLVMAMD64GetFlagOrNodeGen.create(getFlag(LLVMAMD64Flags.CF), getFlag(LLVMAMD64Flags.ZF));
                 dstType = PrimitiveType.I8;
                 break;
             case "setne":
             case "setnz":
-                out = LLVMAMD64SetzNodeGen.create(getFlag(LLVMAMD64Flags.ZF));
+                out = LLVMAMD64GetFlagNegNodeGen.create(getFlag(LLVMAMD64Flags.ZF));
                 dstType = PrimitiveType.I8;
                 break;
             case "setno":
-                out = LLVMAMD64SetzNodeGen.create(getFlag(LLVMAMD64Flags.OF));
+                out = LLVMAMD64GetFlagNegNodeGen.create(getFlag(LLVMAMD64Flags.OF));
                 dstType = PrimitiveType.I8;
                 break;
             case "setnp":
             case "setpo":
-                out = LLVMAMD64SetzNodeGen.create(getFlag(LLVMAMD64Flags.PF));
+                out = LLVMAMD64GetFlagNegNodeGen.create(getFlag(LLVMAMD64Flags.PF));
                 dstType = PrimitiveType.I8;
                 break;
             case "setns":
-                out = LLVMAMD64SetzNodeGen.create(getFlag(LLVMAMD64Flags.SF));
+                out = LLVMAMD64GetFlagNegNodeGen.create(getFlag(LLVMAMD64Flags.SF));
                 dstType = PrimitiveType.I8;
                 break;
             case "seto":
-                out = LLVMAMD64SetnzNodeGen.create(getFlag(LLVMAMD64Flags.OF));
+                out = LLVMAMD64GetFlagNodeGen.create(getFlag(LLVMAMD64Flags.OF));
                 dstType = PrimitiveType.I8;
                 break;
             case "setp":
             case "setpe":
-                out = LLVMAMD64SetnzNodeGen.create(getFlag(LLVMAMD64Flags.PF));
+                out = LLVMAMD64GetFlagNodeGen.create(getFlag(LLVMAMD64Flags.PF));
                 dstType = PrimitiveType.I8;
                 break;
             case "sets":
-                out = LLVMAMD64SetnzNodeGen.create(getFlag(LLVMAMD64Flags.SF));
+                out = LLVMAMD64GetFlagNodeGen.create(getFlag(LLVMAMD64Flags.SF));
                 dstType = PrimitiveType.I8;
                 break;
             case "rdrand":
