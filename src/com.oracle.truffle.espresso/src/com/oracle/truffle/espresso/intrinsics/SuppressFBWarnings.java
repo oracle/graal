@@ -20,4 +20,3 @@ import java.lang.annotation.RetentionPolicy;
      */
     String justification();
 }
-
