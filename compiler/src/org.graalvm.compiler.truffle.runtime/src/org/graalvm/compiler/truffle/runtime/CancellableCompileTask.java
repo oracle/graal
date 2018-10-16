@@ -70,7 +70,7 @@ public final class CancellableCompileTask implements TruffleCompilationTask {
     }
 
     @Override
-    public synchronized boolean isCancelled() {
+    public boolean isCancelled() {
         return cancelled;
     }
 
