@@ -74,7 +74,6 @@ public final class MethodInfo implements ModifiersProvider {
     @CompilerDirectives.CompilationFinal private Klass returnType;
     @CompilerDirectives.CompilationFinal(dimensions = 1) private Klass[] parameterTypes;
 
-
     MethodInfo(Klass declaringClass, String name, SignatureDescriptor signature,
                     byte[] code, int maxStackSize, int maxLocals, int modifiers,
                     ExceptionHandler[] exceptionHandlers, LineNumberTable lineNumberTable, LocalVariableTable localVariableTable) {
@@ -218,13 +217,12 @@ public final class MethodInfo implements ModifiersProvider {
                     System.err.println("Linking native method: " + meta(this).getDeclaringClass().getName() + "#" + getName() + " " + getSignature());
                     Meta meta = getContext().getMeta();
 
-                    Meta.Method.WithInstance findNative = meta.knownKlass(ClassLoader.class)
-                            .staticMethod("findNative", long.class, ClassLoader.class, String.class);
+                    Meta.Method.WithInstance findNative = meta.knownKlass(ClassLoader.class).staticMethod("findNative", long.class, ClassLoader.class, String.class);
 
                     // Lookup the short name first, otherwise lookup the long name (with signature).
                     callTarget = lookupJniCallTarget(findNative, false);
                     if (callTarget == null) {
-                        callTarget = lookupJniCallTarget(findNative,true);
+                        callTarget = lookupJniCallTarget(findNative, true);
                     }
 
                     if (callTarget == null) {

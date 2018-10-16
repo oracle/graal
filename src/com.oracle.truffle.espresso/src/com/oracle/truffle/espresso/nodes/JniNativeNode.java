@@ -53,15 +53,16 @@ public class JniNativeNode extends RootNode {
     public Object execute(VirtualFrame frame) {
         try {
             // TODO(peterssen): Inject JNIEnv properly, without copying.
-            // The frame.getArguments().length must match the arity of the native method, which is constant.
+            // The frame.getArguments().length must match the arity of the native method, which is
+            // constant.
             // Having a constant length would help PEA to skip the copying.
 
             JniEnv jniEnv = EspressoLanguage.getCurrentContext().getJniEnv();
             assert jniEnv.getNativePointer() != 0;
 
             Object[] argsWithEnv = originalMethod.isStatic()
-                    ? prepend2(jniEnv.getNativePointer(), originalMethod.getDeclaringClass().rawKlass().mirror(), frame.getArguments())
-                    : prepend1(jniEnv.getNativePointer(), frame.getArguments());
+                            ? prepend2(jniEnv.getNativePointer(), originalMethod.getDeclaringClass().rawKlass().mirror(), frame.getArguments())
+                            : prepend1(jniEnv.getNativePointer(), frame.getArguments());
 
             return ForeignAccess.sendExecute(execute, boundNative, argsWithEnv);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {

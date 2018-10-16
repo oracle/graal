@@ -64,7 +64,7 @@ public class Target_java_lang_Class {
 
     @Intrinsic(hasReceiver = true)
     public static boolean desiredAssertionStatus(Object self) {
-        return false;
+        return true;
     }
 
     @Intrinsic
@@ -168,7 +168,7 @@ public class Target_java_lang_Class {
     @Intrinsic(hasReceiver = true)
     public static @Type(Method[].class) StaticObject getDeclaredMethods0(StaticObjectClass self, boolean publicOnly) {
         final MethodInfo[] methods = Arrays.stream(self.getMirror().getDeclaredMethods()).filter(m -> !publicOnly || m.isPublic()).toArray(
-                MethodInfo[]::new);
+                        MethodInfo[]::new);
 
         EspressoContext context = EspressoLanguage.getCurrentContext();
         Meta meta = context.getMeta();
@@ -178,16 +178,16 @@ public class Target_java_lang_Class {
             Meta.Method m = meta(methods[i]);
 
             StaticObject parameterTypes = (StaticObject) meta.CLASS.allocateArray(
-                    m.getParameterCount(),
-                    j -> m.getParameterTypes()[j].rawKlass().mirror());
+                            m.getParameterCount(),
+                            j -> m.getParameterTypes()[j].rawKlass().mirror());
 
             StaticObjectImpl method = (StaticObjectImpl) methodKlass.metaNew().fields(
-                    Meta.Field.set("modifiers", m.getModifiers()),
-                    Meta.Field.set("clazz", m.getDeclaringClass().rawKlass().mirror()),
-                    Meta.Field.set("slot", i),
-                    Meta.Field.set("name", context.getVm().intern(meta.toGuest(m.getName()))),
-                    Meta.Field.set("returnType", m.getReturnType().rawKlass().mirror()),
-                    Meta.Field.set("parameterTypes", parameterTypes)).getInstance();
+                            Meta.Field.set("modifiers", m.getModifiers()),
+                            Meta.Field.set("clazz", m.getDeclaringClass().rawKlass().mirror()),
+                            Meta.Field.set("slot", i),
+                            Meta.Field.set("name", context.getVm().intern(meta.toGuest(m.getName()))),
+                            Meta.Field.set("returnType", m.getReturnType().rawKlass().mirror()),
+                            Meta.Field.set("parameterTypes", parameterTypes)).getInstance();
 
             method.setHiddenField("$$method_info", m.rawMethod());
             return method;
@@ -199,7 +199,7 @@ public class Target_java_lang_Class {
     @Intrinsic(hasReceiver = true)
     public static @Type(Class[].class) StaticObject getInterfaces0(StaticObjectClass self) {
         final Klass[] interfaces = Arrays.stream(self.getMirror().getInterfaces()).toArray(
-                Klass[]::new);
+                        Klass[]::new);
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
         Meta.Klass classKlass = meta.knownKlass(Class.class);
         StaticObject arr = (StaticObject) classKlass.allocateArray(interfaces.length, i -> interfaces[i].mirror());
