@@ -69,9 +69,7 @@ public final class LLVMIVarBit {
             if (shouldAddLeadingOnes) {
                 // set MSB bit's outside of given bitwidth
                 if (getByteSize() >= arr.length) {
-                    for (int i = 0; i < thisArrMostSignificantByte; i++) {
-                        this.arr[i] = (byte) 0xFF;
-                    }
+                    Arrays.fill(arr, 0, thisArrMostSignificantByte, (byte) 0xff);
                 }
                 if (arrBits % Byte.SIZE != 0) {
                     this.arr[thisArrMostSignificantByte] |= 0xFF << (arrBits % Byte.SIZE);
@@ -79,9 +77,7 @@ public final class LLVMIVarBit {
             } else {
                 // clear MSB bit's outside of given bitwidth
                 if (getByteSize() >= arr.length) {
-                    for (int i = 0; i < thisArrMostSignificantByte; i++) {
-                        this.arr[i] = (byte) 0x00;
-                    }
+                    Arrays.fill(arr, 0, thisArrMostSignificantByte, (byte) 0x00);
                 }
                 if (arrBits % Byte.SIZE != 0) {
                     this.arr[thisArrMostSignificantByte] &= 0xFF >>> (8 - (arrBits % Byte.SIZE));
