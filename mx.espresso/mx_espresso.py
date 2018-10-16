@@ -23,118 +23,37 @@
 
 import mx
 import mx_sdk
-import os
-import subprocess
 
 from mx_gate import Task, add_gate_runner
 from mx_unittest import unittest
 
 _suite = mx.suite('espresso')
-_root = os.path.join(_suite.dir, "java/")
-_benchroot = os.path.join(_suite.dir, "../espresso-bench/src/")
 
 
-def runEspresso(args):
-    _runEspresso(args, verbose=False)
+class EspressoDefaultTags:
+    default = 'default'
+    all = 'all'
 
 
-def testEspresso(args):
-    _testEspresso(args)
+def _run_espresso(args, verbose=False):
+    vm_args, args = mx.extract_VM_args(args, useDoubleDash=True, defaultAllVMArgs=False)
 
-
-# def benchEspresso(args):
-#     _runBenchmarks(args, runEspresso, [])
-#
-#
-# def benchBaselineJavaServer(args):
-#     _runBenchmarks(args, mx.run_java, ['-server'])
-#
-#
-# def benchBaselineJavaClient(args):
-#     _runBenchmarks(args, mx.run_java, ['-client'])
-
-def _runEspresso(args, verbose):
-    vmArgs, args = mx.extract_VM_args(args, useDoubleDash=True, defaultAllVMArgs=False)
-
-    mx.run_java(vmArgs
+    mx.run_java(vm_args
                 + mx.get_runtime_jvm_args(['ESPRESSO', 'ESPRESSO_LAUNCHER'], jdk=mx.get_jdk())
                 + ["com.oracle.truffle.espresso.launcher.EspressoLauncher"]
                 + args)
 
 
-def _testEspresso(args):
-    _testEspressoSuite(args, "framework.AllTests")
-    _testEspressoSuite(args + ['-Dtruffle.espresso.dynamic=true'], "framework.AllTests")
-
-
-def _testEspressoSuite(args, suitename, package='com.oracle.truffle.espresso.test'):
-    # grab additional java properties specified in suite.py
-    javaProps = mx.project(package).getJavaProperties()
-    for (_, item) in enumerate(javaProps):
-        args += ['-D' + item + '=' + javaProps[item]]
-
-    # grab vm arguments
-    vmArgs, espressoArgs, cp = _truffle_extract_VM_args(args)
-
-
-    mx.run_java(vmArgs + ['-ea',
-                          '-Dgraal.TruffleBackgroundCompilation=false',
-                          '-Dgraal.TruffleCompilationThreshold=3',
-                          '-Dgraal.TraceTruffleCompilation=false']
-                + mx.get_runtime_jvm_args('ESPRESSO', jdk=mx.get_jdk()) + ["com.oracle.truffle.espresso.test." + suitename] + espressoArgs)
-
-
-def _runBenchmarks(args, runner, vmArgs=None):
-    print "Building source..."
-    if mx.command_function('build')(['-p', '--warning-as-error', '--force-javac']):
-        print "Build not successful!"
-    else:
-        if os.path.isdir(_benchroot):
-            os.chdir(_benchroot)
-            print "Compiling benchmarks with javac..."
-            os.system("javac *.java")
-            print "Running benchmarks..."
-
-            if vmArgs is None:
-                vmArgs = []
-
-            runner(vmArgs + ['-cp', _benchroot, "Harness"] + args)
-        else:
-            print "Checkout espresso-bench repository!"
-
-
-def _truffle_extract_VM_args(args, useDoubleDash=False):
-    vmArgs, remainder, classpath = [], [], ""
-    argIter = iter(enumerate(args))
-    for (i, arg) in argIter:
-        if any(arg.startswith(prefix) for prefix in ['-X', '-G:', '-D', '-verbose', '-ea']) or arg in ['-esa']:
-            vmArgs += [arg]
-        elif arg in ['-cp']:
-            (i, arg) = next(argIter)
-            classpath = arg
-        elif useDoubleDash and arg == '--':
-            remainder += args[i:]
-            break
-        else:
-            remainder += [arg]
-
-    return vmArgs, remainder, classpath
+def _espresso_gate_runner(args, tasks):
+    with Task('UnitTests', tasks, tags=[EspressoDefaultTags.default, EspressoDefaultTags.all]) as t:
+        if t:
+            unittest(['--enable-timing', '--very-verbose', 'com.oracle.truffle.espresso.test'])
 
 
 # REGISTER MX GATE RUNNER
 #########################
+add_gate_runner(_suite, _espresso_gate_runner)
 
-add_gate_runner(_suite, lambda args, tasks: executeGate())
-
-
-def executeGate():
-    """
-    Executes custom Tasks from Espresso with a 'mx gate'
-    """
-    tasks = []
-    with Task('UnitTests', tasks) as t:
-        if t:
-            unittest(['--enable-timing', '--very-verbose', 'com.oracle.truffle.espresso.test'])
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     suite=_suite,
@@ -158,11 +77,8 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     ],
 ))
 
+
 # register new commands which can be used from the commandline with mx
 mx.update_commands(_suite, {
-    'espresso': [runEspresso, ''],
-    'espresso-test': [testEspresso, ''],
-    # 'espresso-bench': [benchEspresso, ''],
-    # 'espresso-bench-server': [benchBaselineJavaServer, ''],
-    # 'espresso-bench-client': [benchBaselineJavaClient, ''],
+    'espresso': [_run_espresso, ''],
 })
