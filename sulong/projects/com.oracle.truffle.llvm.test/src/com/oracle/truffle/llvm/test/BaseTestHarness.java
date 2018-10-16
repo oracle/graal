@@ -63,7 +63,7 @@ public abstract class BaseTestHarness {
     protected abstract String getTestName();
 
     @Test
-    public abstract void test() throws Exception;
+    public abstract void test() throws IOException;
 
     protected Map<String, String> getContextOptions() {
         return Collections.emptyMap();
@@ -121,12 +121,11 @@ public abstract class BaseTestHarness {
         // rel
         Set<Path> availableSourceFilesRelative = availableSourceFiles.stream().map(e -> getRelative(sourceDir.getParent().toUri(), e.toUri())).collect(Collectors.toSet());
 
-        List<Object[]> collectedTests = greyList.stream().sorted().map(
+        return greyList.stream().sorted().map(
                         t -> new Object[]{t, availableSourceFilesRelative.stream().filter(s -> {
                             return s.toString().startsWith(getRelative(suiteDir.toUri(), t.toUri()).toString());
                         }).findAny().get().toString()}).collect(
                                         Collectors.toList());
-        return collectedTests;
     }
 
     private static Path getRelative(URI base, URI abs) {

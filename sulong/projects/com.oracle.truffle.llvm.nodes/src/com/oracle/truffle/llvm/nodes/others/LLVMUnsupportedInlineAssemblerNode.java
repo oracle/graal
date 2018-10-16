@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.others;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
@@ -52,6 +53,7 @@ public class LLVMUnsupportedInlineAssemblerNode extends LLVMStatementNode {
 
     @Override
     public void execute(VirtualFrame frame) {
-        throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER, message);
+        CompilerDirectives.transferToInterpreter();
+        throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER, "Unsupported operation: " + message);
     }
 }

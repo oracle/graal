@@ -43,7 +43,6 @@ import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -60,7 +59,8 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import sun.misc.Signal;
 import sun.misc.SignalHandler;
 
-@NodeChildren({@NodeChild(type = LLVMExpressionNode.class, value = "signal"), @NodeChild(type = LLVMExpressionNode.class, value = "handler")})
+@NodeChild(type = LLVMExpressionNode.class, value = "signal")
+@NodeChild(type = LLVMExpressionNode.class, value = "handler")
 public abstract class LLVMSignal extends LLVMExpressionNode {
 
     @Specialization

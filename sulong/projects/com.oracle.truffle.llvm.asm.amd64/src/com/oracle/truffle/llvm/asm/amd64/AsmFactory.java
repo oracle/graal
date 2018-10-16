@@ -284,6 +284,22 @@ class AsmFactory {
         parseArguments();
     }
 
+    private static AsmParseException invalidOperandSize(PrimitiveType.PrimitiveKind kind) {
+        return new AsmParseException("invalid operand size: " + kind);
+    }
+
+    private static AsmParseException invalidOperandSize(Type type) {
+        return new AsmParseException("invalid operand size: " + type);
+    }
+
+    private static AsmParseException invalidOperandType(Type type) {
+        return new AsmParseException("invalid operand type: " + type);
+    }
+
+    private static AsmParseException unsupportedOperandType(Type type) {
+        return new AsmParseException("unsupported operand type: " + type);
+    }
+
     private void parseArguments() {
         argInfo = new ArrayList<>();
         String[] tokens = asmFlags.substring(1, asmFlags.length() - 1).split(",");
@@ -397,7 +413,7 @@ class AsmFactory {
         if (id == 3) {
             statements.add(new LLVMDebugTrapNode(sourceLocation));
         } else {
-            statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceLocation, "Unsupported interrupt " + nr));
+            statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceLocation, "interrupt " + nr));
         }
     }
 
@@ -419,7 +435,7 @@ class AsmFactory {
             case "clc":
             case "cli":
             case "cmc":
-                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceLocation, "Unsupported operation: " + operation));
+                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceLocation, operation));
                 break;
             case "lahf": {
                 LLVMExpressionNode lahf = LLVMAMD64LahfNodeGen.create(getFlag(LLVMAMD64Flags.CF), getFlag(LLVMAMD64Flags.PF), getFlag(LLVMAMD64Flags.AF), getFlag(LLVMAMD64Flags.ZF),
@@ -452,7 +468,7 @@ class AsmFactory {
                 break;
             case "stc":
             case "sti":
-                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceLocation, "Unsupported operation: " + operation));
+                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceLocation, operation));
                 break;
             case "nop":
             case "pause":
@@ -529,7 +545,7 @@ class AsmFactory {
                 break;
             }
             default:
-                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceLocation, "Unsupported operation: " + operation));
+                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceLocation, operation));
                 return;
         }
     }
@@ -636,10 +652,10 @@ class AsmFactory {
                             out = LLVMAMD64RdRandqNodeGen.create(getFlagWrite(LLVMAMD64Flags.CF));
                             break;
                         default:
-                            throw new AsmParseException("invalid operand size: " + dstPrimitiveType);
+                            throw invalidOperandSize(dstPrimitiveType);
                     }
                 } else {
-                    throw new AsmParseException("invalid operand type: " + dstType);
+                    throw invalidOperandType(dstType);
                 }
                 break;
             case "rdseed":
@@ -655,10 +671,10 @@ class AsmFactory {
                             out = LLVMAMD64RdSeedqNodeGen.create(getFlagWrite(LLVMAMD64Flags.CF));
                             break;
                         default:
-                            throw new AsmParseException("invalid operand size: " + dstPrimitiveType);
+                            throw invalidOperandSize(dstPrimitiveType);
                     }
                 } else {
-                    throw new AsmParseException("invalid operand type: " + dstType);
+                    throw invalidOperandType(dstType);
                 }
                 break;
             case "pop":
@@ -679,7 +695,7 @@ class AsmFactory {
                             out = LLVMAMD64PopqNodeGen.create();
                             break;
                         default:
-                            throw new AsmParseException("invalid operand size: " + dstPrimitiveType);
+                            throw invalidOperandSize(dstPrimitiveType);
                     }
                 } else if (dstType instanceof PointerType) {
                     PointerType ptr = (PointerType) dstType;
@@ -696,13 +712,13 @@ class AsmFactory {
                                 out = LLVMAMD64PopqNodeGen.create();
                                 break;
                             default:
-                                throw new AsmParseException("invalid operand size: " + dstPrimitiveType);
+                                throw invalidOperandSize(dstPrimitiveType);
                         }
                     } else {
-                        throw new AsmParseException("invalid operand type: " + dstType);
+                        throw invalidOperandType(dstType);
                     }
                 } else {
-                    throw new AsmParseException("invalid operand type: " + dstType);
+                    throw invalidOperandType(dstType);
                 }
                 break;
             case "push":
@@ -724,7 +740,7 @@ class AsmFactory {
                             statements.add(LLVMAMD64PushqNodeGen.create(src));
                             return;
                         default:
-                            throw new AsmParseException("invalid operand size: " + dstPrimitiveType);
+                            throw invalidOperandSize(dstPrimitiveType);
                     }
                 } else if (dstType instanceof PointerType) {
                     PointerType ptr = (PointerType) dstType;
@@ -742,13 +758,13 @@ class AsmFactory {
                                 statements.add(LLVMAMD64PushqNodeGen.create(src));
                                 return;
                             default:
-                                throw new AsmParseException("invalid operand size: " + dstPrimitiveType);
+                                throw invalidOperandSize(dstPrimitiveType);
                         }
                     } else {
-                        throw new AsmParseException("invalid operand type: " + dstType);
+                        throw invalidOperandType(dstType);
                     }
                 } else {
-                    throw new AsmParseException("invalid operand type: " + dstType);
+                    throw invalidOperandType(dstType);
                 }
             case "bswap":
                 if (dstType instanceof PrimitiveType) {
@@ -761,14 +777,14 @@ class AsmFactory {
                             out = LLVMAMD64BswapqNodeGen.create(src);
                             break;
                         default:
-                            throw new AsmParseException("invalid operand size: " + dstPrimitiveType);
+                            throw invalidOperandSize(dstPrimitiveType);
                     }
                     break;
                 } else {
-                    throw new AsmParseException("invalid operand type: " + dstType);
+                    throw invalidOperandType(dstType);
                 }
             default:
-                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceLocation, "Unsupported operation: " + operation));
+                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceLocation, operation));
                 return;
         }
         if (dstType == null) {
@@ -955,7 +971,7 @@ class AsmFactory {
                 statements.add(LLVMAMD64PushqNodeGen.create(src));
                 return;
             default:
-                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceLocation, "Unsupported operation: " + operation));
+                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceLocation, operation));
                 return;
         }
         statements.add(getOperandStore(dstType, dst, out));
@@ -1074,10 +1090,10 @@ class AsmFactory {
                             out = LLVMAMD64XorqNodeGen.create(srcA, srcB);
                             break;
                         default:
-                            throw new AsmParseException("invalid operand type: " + dstType);
+                            throw invalidOperandType(dstType);
                     }
                 } else {
-                    throw new AsmParseException("invalid operand type: " + dstType);
+                    throw invalidOperandType(dstType);
                 }
                 break;
             case "mov":
@@ -1088,7 +1104,7 @@ class AsmFactory {
                     LLVMExpressionNode srcA = getOperandLoad(dstType, a);
                     out = srcA;
                 } else {
-                    throw new AsmParseException("invalid operand type: " + dstType);
+                    throw invalidOperandType(dstType);
                 }
                 break;
             case "bsr":
@@ -1106,10 +1122,10 @@ class AsmFactory {
                             out = LLVMAMD64BsrqNodeGen.create(getFlagWrite(LLVMAMD64Flags.ZF), srcA, srcB);
                             break;
                         default:
-                            throw new AsmParseException("invalid operand type: " + dstType);
+                            throw invalidOperandType(dstType);
                     }
                 } else {
-                    throw new AsmParseException("invalid operand type: " + dstType);
+                    throw invalidOperandType(dstType);
                 }
                 break;
             case "bsf":
@@ -1127,10 +1143,10 @@ class AsmFactory {
                             out = LLVMAMD64BsfqNodeGen.create(getFlagWrite(LLVMAMD64Flags.ZF), srcA, srcB);
                             break;
                         default:
-                            throw new AsmParseException("invalid operand type: " + dstType);
+                            throw invalidOperandType(dstType);
                     }
                 } else {
-                    throw new AsmParseException("invalid operand type: " + dstType);
+                    throw invalidOperandType(dstType);
                 }
                 break;
             case "xchg": {
@@ -1151,12 +1167,12 @@ class AsmFactory {
                             res = LLVMAMD64XchgqNodeGen.create(operands.dst, operands.srcA, operands.srcB);
                             break;
                         default:
-                            throw new AsmParseException("invalid operand type: " + dstType);
+                            throw invalidOperandType(dstType);
                     }
                     statements.add(res);
                     return;
                 } else {
-                    throw new AsmParseException("invalid operand type: " + dstType);
+                    throw invalidOperandType(dstType);
                 }
             }
             case "cmpxchg": {
@@ -1198,13 +1214,13 @@ class AsmFactory {
                                 res = LLVMAMD64CmpXchgqNodeGen.create(getUpdateCPAZSOFlagsNode(), dst1, dst2, accumulator, srcA, srcB);
                                 break;
                             default:
-                                throw new AsmParseException("invalid operand type: " + dstType);
+                                throw invalidOperandType(dstType);
                         }
                     }
                     statements.add(res);
                     return;
                 } else {
-                    throw new AsmParseException("invalid operand type: " + dstType);
+                    throw invalidOperandType(dstType);
                 }
             }
             case "and":
@@ -1225,10 +1241,10 @@ class AsmFactory {
                             out = LLVMAMD64AndqNodeGen.create(getUpdatePZSFlagsNode(), srcA, srcB);
                             break;
                         default:
-                            throw new AsmParseException("invalid operand type: " + dstType);
+                            throw invalidOperandType(dstType);
                     }
                 } else {
-                    throw new AsmParseException("invalid operand type: " + dstType);
+                    throw invalidOperandType(dstType);
                 }
                 break;
             case "or":
@@ -1249,14 +1265,14 @@ class AsmFactory {
                             out = LLVMAMD64OrqNodeGen.create(srcA, srcB);
                             break;
                         default:
-                            throw new AsmParseException("invalid operand type: " + dstType);
+                            throw invalidOperandType(dstType);
                     }
                 } else {
-                    throw new AsmParseException("invalid operand type: " + dstType);
+                    throw invalidOperandType(dstType);
                 }
                 break;
             default:
-                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceLocation, "Unsupported operation: " + operation));
+                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceLocation, operation));
                 return;
         }
         statements.add(getOperandStore(dstType, dst, out));
@@ -1622,7 +1638,7 @@ class AsmFactory {
                 out = LLVMAMD64BsfqNodeGen.create(getFlagWrite(LLVMAMD64Flags.ZF), srcA, srcB);
                 break;
             default:
-                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceLocation, "Unsupported operation: " + operation));
+                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceLocation, operation));
                 return;
         }
         statements.add(getOperandStore(dstType, dst, out));
@@ -1655,7 +1671,7 @@ class AsmFactory {
                                 getFlagWrite(LLVMAMD64Flags.SF), getFlagWrite(LLVMAMD64Flags.OF), res, srcA, srcB));
                 return;
             default:
-                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceLocation, "Unsupported operation: " + operation));
+                statements.add(new LLVMUnsupportedInlineAssemblerNode(sourceLocation, operation));
                 return;
         }
     }
@@ -1740,7 +1756,7 @@ class AsmFactory {
                                     writeNodes[arg.getOutIndex()] = LLVMI64StoreNodeGen.create(null, null);
                                     break;
                                 default:
-                                    throw new AsmParseException("invalid operand size: " + arg.getType());
+                                    throw invalidOperandSize(arg.getType());
                             }
                         }
                     } else {
@@ -1777,7 +1793,7 @@ class AsmFactory {
                 } else if (arg.getType() instanceof PointerType) {
                     arguments.add(LLVMWritePointerNodeGen.create(slot, null, argnode));
                 } else {
-                    throw new AsmParseException("invalid operand size: " + arg.getType());
+                    throw invalidOperandSize(arg.getType());
                 }
             }
         }
@@ -1946,7 +1962,7 @@ class AsmFactory {
                     case I64:
                         return LLVMAMD64ReadAddressNodeGen.create(frame);
                     default:
-                        throw new AsmParseException("unsupported operand type: " + type);
+                        throw unsupportedOperandType(type);
                 }
             }
             switch (((PrimitiveType) op.getType()).getPrimitiveKind()) {
@@ -1959,7 +1975,7 @@ class AsmFactory {
                 case I64:
                     return register;
                 default:
-                    throw new AsmParseException("unsupported operand type: " + type);
+                    throw unsupportedOperandType(type);
             }
         } else if (operand instanceof AsmImmediateOperand) {
             AsmImmediateOperand op = (AsmImmediateOperand) operand;
@@ -1976,7 +1992,7 @@ class AsmFactory {
                     case I64:
                         return LLVMAMD64I64NodeGen.create(op.getValue());
                     default:
-                        throw new AsmParseException("unsupported operand type: " + type);
+                        throw unsupportedOperandType(type);
                 }
             }
         } else if (operand instanceof AsmArgumentOperand) {
@@ -1997,7 +2013,7 @@ class AsmFactory {
                     case I64:
                         return LLVMI64LoadNodeGen.create(LLVMAddressReadNodeGen.create(frame));
                     default:
-                        throw new AsmParseException("unsupported operand type: " + type);
+                        throw unsupportedOperandType(type);
                 }
             } else if (info.isRegister()) {
                 frame = getRegisterSlot(info.getRegister());
@@ -2028,12 +2044,12 @@ class AsmFactory {
                     case I64:
                         return LLVMI64LoadNodeGen.create(addr);
                     default:
-                        throw new AsmParseException("unsupported operand type: " + type);
+                        throw unsupportedOperandType(type);
                 }
             } else if (type instanceof PointerType) {
                 return LLVMPointerDirectLoadNodeGen.create(addr);
             } else {
-                throw new AsmParseException("unsupported operand type: " + type);
+                throw unsupportedOperandType(type);
             }
         }
         throw new AsmParseException("unsupported operand: " + operand);
@@ -2080,7 +2096,7 @@ class AsmFactory {
                     case I64:
                         return LLVMI64StoreNodeGen.create(address, from);
                     default:
-                        throw new AsmParseException("unsupported operand type: " + type);
+                        throw unsupportedOperandType(type);
                 }
             } else if (info.isRegister()) {
                 FrameSlot frame = getRegisterSlot(info.getRegister());
@@ -2103,7 +2119,7 @@ class AsmFactory {
                         out = from;
                         break;
                     default:
-                        throw new AsmParseException("unsupported operand type: " + type);
+                        throw unsupportedOperandType(type);
                 }
                 return LLVMWriteI64NodeGen.create(frame, null, out);
             } else {
@@ -2121,10 +2137,10 @@ class AsmFactory {
                 case I64:
                     return LLVMI64StoreNodeGen.create(null, address, from);
                 default:
-                    throw new AsmParseException("unsupported operand type: " + type);
+                    throw unsupportedOperandType(type);
             }
         }
-        throw new AsmParseException("unsupported operand type: " + operand);
+        throw unsupportedOperandType(operand.getType());
     }
 
     private LLVMAMD64Target getTarget(Type type, AsmOperand operand) {
@@ -2141,7 +2157,7 @@ class AsmFactory {
                 case I64:
                     return new LLVMAMD64Target(frame);
                 default:
-                    throw new AsmParseException("unsupported operand type: " + op.getType());
+                    throw unsupportedOperandType(op.getType());
             }
         } else if (operand instanceof AsmArgumentOperand) {
             AsmArgumentOperand op = (AsmArgumentOperand) operand;
@@ -2158,7 +2174,7 @@ class AsmFactory {
                     case I64:
                         return new LLVMAMD64Target(address);
                     default:
-                        throw new AsmParseException("unsupported operand type: " + type);
+                        throw unsupportedOperandType(type);
                 }
             } else if (info.isRegister()) {
                 FrameSlot frame = getRegisterSlot(info.getRegister());
@@ -2172,13 +2188,13 @@ class AsmFactory {
                     case I64:
                         return new LLVMAMD64Target(frame);
                     default:
-                        throw new AsmParseException("unsupported operand type: " + type);
+                        throw unsupportedOperandType(type);
                 }
             } else {
                 throw new AssertionError("this should not happen; " + info);
             }
         }
-        throw new AsmParseException("unsupported operand type: " + operand);
+        throw unsupportedOperandType(operand.getType());
     }
 
     private LLVMAMD64Target getRegisterTarget(Type type, AsmOperand operand) {
@@ -2193,9 +2209,8 @@ class AsmFactory {
             } else {
                 throw new AsmParseException("unsupported operand: " + info);
             }
-        } else {
-            throw new AsmParseException("unsupported operand: " + operand);
         }
+        throw unsupportedOperandType(operand.getType());
     }
 
     private LLVMAMD64Target getRegisterTarget(String name) {
@@ -2215,7 +2230,7 @@ class AsmFactory {
             case I64:
                 return new LLVMAMD64Target(frame);
             default:
-                throw new AsmParseException("unsupported operand type");
+                throw unsupportedOperandType(type);
         }
     }
 

@@ -126,7 +126,7 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
 
     @Override
     @Test
-    public void test() throws Exception {
+    public void test() throws IOException {
         final List<Path> files = Files.walk(getTestDirectory()).filter(isExecutable).collect(Collectors.toList());
         if (files.isEmpty()) {
             // some tests do not compile with certain versions of clang

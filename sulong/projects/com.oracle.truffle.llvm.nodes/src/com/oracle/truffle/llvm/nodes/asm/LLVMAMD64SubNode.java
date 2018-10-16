@@ -30,12 +30,12 @@
 package com.oracle.truffle.llvm.nodes.asm;
 
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public abstract class LLVMAMD64SubNode extends LLVMExpressionNode {
-    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
+    @NodeChild("left")
+    @NodeChild("right")
     public abstract static class LLVMAMD64SubbNode extends LLVMExpressionNode {
         @Specialization
         protected byte doI8(byte left, byte right) {
@@ -43,7 +43,8 @@ public abstract class LLVMAMD64SubNode extends LLVMExpressionNode {
         }
     }
 
-    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
+    @NodeChild("left")
+    @NodeChild("right")
     public abstract static class LLVMAMD64SubwNode extends LLVMExpressionNode {
         @Specialization
         protected short doI16(short left, short right) {
@@ -51,7 +52,8 @@ public abstract class LLVMAMD64SubNode extends LLVMExpressionNode {
         }
     }
 
-    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
+    @NodeChild("left")
+    @NodeChild("right")
     public abstract static class LLVMAMD64SublNode extends LLVMExpressionNode {
         @Specialization
         protected int doI32(int left, int right) {
@@ -59,7 +61,8 @@ public abstract class LLVMAMD64SubNode extends LLVMExpressionNode {
         }
     }
 
-    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
+    @NodeChild("left")
+    @NodeChild("right")
     public abstract static class LLVMAMD64SubqNode extends LLVMExpressionNode {
         @Specialization
         protected long doI64(long left, long right) {

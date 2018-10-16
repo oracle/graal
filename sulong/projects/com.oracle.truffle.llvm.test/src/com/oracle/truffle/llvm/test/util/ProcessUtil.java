@@ -129,7 +129,7 @@ public class ProcessUtil {
         }
     }
 
-    public static ProcessResult executeSulongTestMain(File bitcodeFile, String[] args, Map<String, String> options, Function<Context.Builder, CaptureOutput> captureOutput) throws Exception {
+    public static ProcessResult executeSulongTestMain(File bitcodeFile, String[] args, Map<String, String> options, Function<Context.Builder, CaptureOutput> captureOutput) throws IOException {
         if (TestOptions.TEST_AOT_IMAGE == null) {
             org.graalvm.polyglot.Source source = org.graalvm.polyglot.Source.newBuilder(LLVMLanguage.NAME, bitcodeFile).build();
             Builder builder = Context.newBuilder();
