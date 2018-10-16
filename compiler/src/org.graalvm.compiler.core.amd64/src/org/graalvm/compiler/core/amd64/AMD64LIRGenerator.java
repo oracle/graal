@@ -264,8 +264,8 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     public void emitCompareAndSwapBranch(ValueKind<?> kind, AMD64AddressValue address, Value expectedValue, Value newValue, Condition condition, LabelRef trueLabel, LabelRef falseLabel,
                     double trueLabelProbability) {
-        assert kind.equals(expectedValue.getValueKind());
-        assert kind.equals(newValue.getValueKind());
+        assert kind.getPlatformKind().getSizeInBytes() <= expectedValue.getValueKind().getPlatformKind().getSizeInBytes();
+        assert kind.getPlatformKind().getSizeInBytes() <= newValue.getValueKind().getPlatformKind().getSizeInBytes();
         assert condition == Condition.EQ || condition == Condition.NE;
         AMD64Kind memKind = (AMD64Kind) kind.getPlatformKind();
         RegisterValue raxValue = AMD64.rax.asValue(kind);
