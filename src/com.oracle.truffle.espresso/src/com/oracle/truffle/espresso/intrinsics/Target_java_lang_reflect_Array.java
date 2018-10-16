@@ -25,8 +25,6 @@ package com.oracle.truffle.espresso.intrinsics;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.bytecode.InterpreterToVM;
-import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 
 @EspressoIntrinsics
