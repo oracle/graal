@@ -1,6 +1,5 @@
 package de.hpi.swa.trufflelsp.server;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.FileVisitResult;
@@ -165,10 +164,10 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
         }
 
         String possibleMimeType = langId;
-        String actualLangId = org.graalvm.polyglot.Source.findLanguage(possibleMimeType);
+        String actualLangId = Source.findLanguage(possibleMimeType);
         if (actualLangId == null) {
             try {
-                actualLangId = org.graalvm.polyglot.Source.findLanguage(new File(uri));
+                actualLangId = Source.findLanguage(uri.toURL());
             } catch (IOException e) {
             }
 

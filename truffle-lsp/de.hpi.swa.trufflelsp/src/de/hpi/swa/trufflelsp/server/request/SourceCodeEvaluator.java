@@ -1,6 +1,5 @@
 package de.hpi.swa.trufflelsp.server.request;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
@@ -287,7 +286,7 @@ public class SourceCodeEvaluator extends AbstractRequestHandler {
 
     private static String findLanguageOfTestFile(URI runScriptUri, String fallbackLangId) {
         try {
-            return org.graalvm.polyglot.Source.findLanguage(new File(runScriptUri));
+            return Source.findLanguage(runScriptUri.toURL());
         } catch (IOException e) {
             return fallbackLangId;
         }
