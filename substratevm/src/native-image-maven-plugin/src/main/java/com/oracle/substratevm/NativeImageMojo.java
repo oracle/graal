@@ -236,7 +236,7 @@ public class NativeImageMojo extends AbstractMojo {
         Path jarFilePath = artifactFile.toPath();
         getLog().info("ImageClasspath Entry: " + artifact + " (" + jarFilePath.toUri() + ")");
 
-        URI jarFileURI = URI.create("jar:file:" + jarFilePath);
+        URI jarFileURI = URI.create("jar:" + jarFilePath.toUri());
         try (FileSystem jarFS = FileSystems.newFileSystem(jarFileURI, Collections.emptyMap())) {
             Path nativeImageMetaInfBase = jarFS.getPath("/" + NativeImage.nativeImagePropertiesMetaInf);
             if (Files.isDirectory(nativeImageMetaInfBase)) {
