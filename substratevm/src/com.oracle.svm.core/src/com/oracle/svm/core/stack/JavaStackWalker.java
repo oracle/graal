@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,7 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.amd64.FrameAccess;
+import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
@@ -61,7 +61,7 @@ public final class JavaStackWalker {
         CodePointer ip = WordFactory.nullPointer();
         if (anchor.isNonNull()) {
             sp = anchor.getLastJavaSP();
-            ip = FrameAccess.readReturnAddress(sp);
+            ip = FrameAccess.singleton().readReturnAddress(sp);
         }
         // always call doWalk() to invoke visitor's methods
         return doWalk(anchor, sp, ip, visitor);
@@ -101,7 +101,7 @@ public final class JavaStackWalker {
                     /* Bump sp *up* over my frame. */
                     sp = sp.add(WordFactory.unsigned(totalFrameSize));
                     /* Read the return address to my caller. */
-                    ip = FrameAccess.readReturnAddress(sp);
+                    ip = FrameAccess.singleton().readReturnAddress(sp);
 
                 } else if (anchor.isNonNull()) {
                     /*
@@ -110,7 +110,7 @@ public final class JavaStackWalker {
                      */
                     assert anchor.getLastJavaSP().aboveThan(sp);
                     sp = anchor.getLastJavaSP();
-                    ip = FrameAccess.readReturnAddress(sp);
+                    ip = FrameAccess.singleton().readReturnAddress(sp);
                     anchor = anchor.getPreviousAnchor();
 
                 } else {
