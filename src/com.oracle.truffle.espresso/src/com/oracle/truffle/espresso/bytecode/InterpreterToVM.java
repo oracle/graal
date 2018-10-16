@@ -474,17 +474,23 @@ public class InterpreterToVM {
         }
     }
 
-    public void setArrayObject(Object value, int index, Object arr) {
-        // TODO(peterssen): Array store check.
-        if (value != StaticObject.NULL && !instanceOf(value, ((StaticObjectArray) arr).getKlass().getComponentType())) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayStoreException.class);
-        }
-        try {
-            ((StaticObjectArray) arr).getWrapped()[index] = value;
-        } catch (ArrayIndexOutOfBoundsException e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayIndexOutOfBoundsException.class, e.getMessage());
+    public void setArrayObject(Object value, int index, StaticObjectArray wrapper) {
+        Object[] array = wrapper.getWrapped();
+        if (index >= 0 && index < array.length) {
+            array[index] = arrayStoreExCheck(value, wrapper.getKlass().getComponentType());
+        } else {
+            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayIndexOutOfBoundsException.class);
         }
     }
+
+    private Object arrayStoreExCheck(Object value, Klass componentType) {
+        if (value == StaticObject.NULL || instanceOf(value, componentType)) {
+            return value;
+        } else {
+            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayStoreException.class);
+        }
+    }
+
     // endregion
 
     // region Monitor enter/exit

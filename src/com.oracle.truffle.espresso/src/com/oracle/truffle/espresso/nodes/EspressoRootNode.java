@@ -265,6 +265,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 
 public class EspressoRootNode extends RootNode {
     private final TruffleLanguage<EspressoContext> language;
@@ -573,7 +574,7 @@ public class EspressoRootNode extends RootNode {
                         vm.setArrayDouble(stack.popDouble(), stack.popInt(), nullCheck(stack.popObject()));
                         break;
                     case AASTORE:
-                        vm.setArrayObject(stack.popObject(), stack.popInt(), nullCheck(stack.popObject()));
+                        vm.setArrayObject(stack.popObject(), stack.popInt(), (StaticObjectArray) nullCheck(stack.popObject()));
                         break;
                     case BASTORE:
                         vm.setArrayByte((byte) stack.popInt(), stack.popInt(), nullCheck(stack.popObject()));
