@@ -32,6 +32,7 @@ import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.chardata.CodePointRange;
 import com.oracle.truffle.regex.chardata.CodePointSet;
 import com.oracle.truffle.regex.chardata.UnicodeCharacterProperties;
+import com.oracle.truffle.regex.tregex.parser.CaseFoldTable;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 import java.math.BigInteger;
@@ -565,7 +566,8 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
         if (getLocalFlags().isLocale()) {
             throw new UnsupportedRegexException("locale-specific case folding is not supported");
         }
-        throw new UnsupportedRegexException("case folding not yet implemented");
+        CaseFoldTable.CaseFoldingAlgorithm caseFolding = getLocalFlags().isUnicode() ? CaseFoldTable.CaseFoldingAlgorithm.PythonUnicode : CaseFoldTable.CaseFoldingAlgorithm.PythonAscii;
+        return CaseFoldTable.applyCaseFold(charSet, caseFolding);
     }
 
     /// Error reporting

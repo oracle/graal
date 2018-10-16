@@ -220,7 +220,8 @@ public final class RegexLexer {
 
     private Token charClass(CodePointSet codePointSet, boolean invert) {
         CodePointSet processedSet = codePointSet;
-        processedSet = flags.isIgnoreCase() ? CaseFoldTable.applyCaseFold(processedSet, flags.isUnicode()) : processedSet;
+        CaseFoldTable.CaseFoldingAlgorithm caseFolding = flags.isUnicode() ? CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptUnicode : CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptNonUnicode;
+        processedSet = flags.isIgnoreCase() ? CaseFoldTable.applyCaseFold(processedSet, caseFolding) : processedSet;
         processedSet = invert ? processedSet.createInverse() : processedSet;
         return Token.createCharClass(processedSet);
     }
