@@ -46,7 +46,7 @@ public class StaticObjectImpl implements StaticObject {
     }
 
     // Shallow copy.
-    public StaticObject clone() {
+    public StaticObject copy() {
         return new StaticObjectImpl(getKlass(), new HashMap<>(fields), isStatic);
     }
 

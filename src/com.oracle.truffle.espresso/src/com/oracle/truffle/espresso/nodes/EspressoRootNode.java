@@ -925,7 +925,7 @@ public class EspressoRootNode extends RootNode {
                         stack.pushObject(allocateInstance(resolveType(bs.currentBC(curBCI), bs.readCPI(curBCI))));
                         break;
                     case NEWARRAY:
-                        stack.pushObject(vm.allocateNativeArray(bs.readByte(curBCI), stack.popInt()));
+                        stack.pushObject(InterpreterToVM.allocateNativeArray(bs.readByte(curBCI), stack.popInt()));
                         break;
                     case ANEWARRAY:
                         stack.pushObject(
@@ -1314,7 +1314,8 @@ public class EspressoRootNode extends RootNode {
 
     /**
      * The switch lookup can be efficiently implemented using a binary search. It was intentionally
-     * replaced by a linear search to help partial evaluation infer control flow structure correctly.
+     * replaced by a linear search to help partial evaluation infer control flow structure
+     * correctly.
      */
     @ExplodeLoop
     private static int tableSwitch(OperandStack stack, BytecodeStream bs, int curBCI) {

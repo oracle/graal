@@ -27,7 +27,6 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
@@ -76,7 +75,7 @@ public class Target_java_lang_Object {
     public static @Type(Object.class) Object clone(Object self) {
         if (self instanceof StaticObjectArray) {
             // For arrays.
-            return ((StaticObjectArray) self).clone();
+            return ((StaticObjectArray) self).copy();
         }
 
         if (self instanceof int[]) {
@@ -98,13 +97,12 @@ public class Target_java_lang_Object {
         }
 
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-        if (!meta.knownKlass(Cloneable.class)
-                .isAssignableFrom(meta(((StaticObject) self).getKlass()))) {
+        if (!meta.knownKlass(Cloneable.class).isAssignableFrom(meta(((StaticObject) self).getKlass()))) {
             throw meta.throwEx(java.lang.CloneNotSupportedException.class);
         }
 
-        // Normal object just copy the
-        return ((StaticObjectImpl) self).clone();
+        // Normal object just copy the fields.
+        return ((StaticObjectImpl) self).copy();
     }
 
     @Intrinsic
@@ -112,6 +110,7 @@ public class Target_java_lang_Object {
         /* nop */
     }
 
+    @SuppressFBWarnings(value = {"IMSE"}, justification = "Not dubious, .notify is just forwarded from the guest.")
     @Intrinsic(hasReceiver = true)
     public static void notifyAll(Object self) {
         try {
@@ -121,6 +120,7 @@ public class Target_java_lang_Object {
         }
     }
 
+    @SuppressFBWarnings(value = {"IMSE"}, justification = "Not dubious, .notify is just forwarded from the guest.")
     @Intrinsic(hasReceiver = true)
     public static void notify(Object self) {
         try {
@@ -130,6 +130,7 @@ public class Target_java_lang_Object {
         }
     }
 
+    @SuppressFBWarnings(value = {"IMSE"}, justification = "Not dubious, .notify is just forwarded from the guest.")
     @Intrinsic(hasReceiver = true)
     public static void wait(Object self, long timeout) {
         try {

@@ -104,7 +104,10 @@ public class ClassRegistries {
                 }
                 ClassfileParser parser = new ClassfileParser(classLoader, classpathFile, className, hostClass, context);
                 klass = parser.parseClass();
-                bootClassRegistry.put(type, klass);
+                Klass loadedFirst = bootClassRegistry.putIfAbsent(type, klass);
+                if (loadedFirst != null) {
+                    klass = loadedFirst;
+                }
             }
 
             return klass;

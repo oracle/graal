@@ -29,7 +29,7 @@ public final class StaticObjectArray extends StaticObjectWrapper<Object[]> {
         super(componentType.getArrayClass(), arr);
     }
 
-    public StaticObjectArray clone() {
+    public StaticObjectArray copy() {
         return new StaticObjectArray(getKlass().getComponentType(), getWrapped().clone());
     }
 }

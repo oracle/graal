@@ -58,7 +58,7 @@ public class Target_java_lang_Throwable {
         if (backtrace == StaticObject.NULL) {
             return 0;
         }
-        return ((StaticObjectWrapper<FrameInstance[]>) backtrace).getWrapped().length;
+        return ((FrameInstance[]) ((StaticObjectWrapper<?>) backtrace).getWrapped()).length;
     }
 
     @Intrinsic(hasReceiver = true)
@@ -66,7 +66,7 @@ public class Target_java_lang_Throwable {
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
         StaticObject ste = meta.knownKlass(StackTraceElement.class).allocateInstance();
         Object backtrace = meta.THROWABLE.field("backtrace").get(self);
-        FrameInstance[] frames = ((StaticObjectWrapper<FrameInstance[]>) backtrace).getWrapped();
+        FrameInstance[] frames = (FrameInstance[]) ((StaticObjectWrapper<?>) backtrace).getWrapped();
 
         FrameInstance frame = frames[index];
 

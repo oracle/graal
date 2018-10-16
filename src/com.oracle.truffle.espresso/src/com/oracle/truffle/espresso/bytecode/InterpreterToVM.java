@@ -488,11 +488,13 @@ public class InterpreterToVM {
     // endregion
 
     // region Monitor enter/exit
+    @SuppressWarnings({"deprecation"})
     public void monitorEnter(Object obj) {
         // TODO(peterssen): Nop for single-threaded language.
         hostUnsafe.monitorEnter(obj);
     }
 
+    @SuppressWarnings({"deprecation"})
     public void monitorExit(Object obj) {
         // TODO(peterssen): Nop for single-threaded language.
         hostUnsafe.monitorExit(obj);
