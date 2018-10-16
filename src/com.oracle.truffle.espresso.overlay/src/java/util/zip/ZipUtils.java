@@ -20,7 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
+// Checkstyle: stop
+// @formatter:off
+// Class copied from JDK9
 package java.util.zip;
 
 import java.nio.file.attribute.FileTime;

@@ -20,7 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
+// Checkstyle: stop
+// @formatter:off
+// Class copied from JDK9
 package java.util.zip;
 
 import java.io.Closeable;
@@ -845,9 +847,11 @@ class ZipFile implements ZipConstants, Closeable {
                     public boolean startsWithLocHeader(ZipFile zip) {
                         return zip.zsrc.startsWithLoc;
                     }
-                    public String[] getMetaInfEntryNames(ZipFile zip) {
-                        return zip.getMetaInfEntryNames();
-                    }
+                    // Espresso start
+                    // public String[] getMetaInfEntryNames(ZipFile zip) {
+                    //     return zip.getMetaInfEntryNames();
+                    // }
+                    // Espresso end
                 }
         );
         isWindows = VM.getSavedProperty("os.name").contains("Windows");
@@ -969,7 +973,11 @@ class ZipFile implements ZipConstants, Closeable {
             this.key = key;
             if (toDelete) {
                 if (isWindows) {
+                    // Espresso start
+                    // this.zfile = SharedSecrets.getJavaIORandomAccessFileAccess()
+                    //                           .openAndDelete(key.file, "r");
                     this.zfile = new RandomAccessFile(key.file, "r");
+                    // Espresso end
                 } else {
                     this.zfile = new RandomAccessFile(key.file, "r");
                     key.file.delete();
