@@ -984,7 +984,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     @SuppressWarnings({"all"})
     public synchronized Context createContext(OutputStream configOut, OutputStream configErr, InputStream configIn, boolean allowHostAccess,
                     boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading,
-                    Predicate<String> classFilter, Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Handler logHandler) {
+                    Predicate<String> classFilter, Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream) {
         checkState();
         if (boundEngine && preInitializedContext == null && !contexts.isEmpty()) {
             throw new IllegalArgumentException("Automatically created engines cannot be used to create more than one context. " +
@@ -1016,8 +1016,9 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
             useErr = INSTRUMENT.createDelegatingOutput(configErr, this.err);
         }
 
-        Handler useHandler = logHandler != null ? logHandler : this.logHandler;
-        useHandler = useHandler != null ? useHandler : impl.getAPIAccess().newLogHandler(useErr, false, true);
+        Handler useHandler = PolyglotLogHandler.asHandler(logHandlerOrStream);
+        useHandler = useHandler != null ? useHandler : logHandler;
+        useHandler = useHandler != null ? useHandler : PolyglotLogHandler.createStreamHandler(useErr, false, true);
 
         final InputStream useIn = configIn == null ? this.in : configIn;
 

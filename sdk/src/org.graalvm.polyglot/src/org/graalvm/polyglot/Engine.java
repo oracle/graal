@@ -292,7 +292,7 @@ public final class Engine implements AutoCloseable {
         private boolean useSystemProperties = true;
         private boolean boundEngine;
         private MessageTransport messageTransport;
-        private Handler customLogHandler;
+        private Object customLogHandler;
 
         Builder() {
         }
@@ -471,7 +471,7 @@ public final class Engine implements AutoCloseable {
          */
         public Builder logHandler(final OutputStream logOut) {
             Objects.requireNonNull(logOut, "LogOut must be non null.");
-            this.customLogHandler = new PolyglotStreamHandler(logOut, true, true);
+            this.customLogHandler = logOut;
             return this;
         }
 
@@ -572,11 +572,6 @@ public final class Engine implements AutoCloseable {
         public StackFrame newPolyglotStackTraceElement(PolyglotException e, AbstractStackFrameImpl impl) {
             return e.new StackFrame(impl);
         }
-
-        @Override
-        public Handler newLogHandler(OutputStream logOut, boolean closeStream, boolean flushOnPublish) {
-            return new PolyglotStreamHandler(logOut, closeStream, flushOnPublish);
-        }
     }
 
     private static final boolean JDK8_OR_EARLIER = System.getProperty("java.specification.version").compareTo("1.9") < 0;
@@ -669,7 +664,7 @@ public final class Engine implements AutoCloseable {
 
         @Override
         public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
-                        long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean boundEngine, MessageTransport messageInterceptor, Handler logHandler) {
+                        long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean boundEngine, MessageTransport messageInterceptor, Object logHandlerOrStream) {
             throw noPolyglotImplementationFound();
         }
 

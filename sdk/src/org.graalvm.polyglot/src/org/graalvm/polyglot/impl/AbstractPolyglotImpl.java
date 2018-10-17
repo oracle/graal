@@ -138,7 +138,6 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract StackFrame newPolyglotStackTraceElement(PolyglotException e, AbstractStackFrameImpl impl);
 
-        public abstract Handler newLogHandler(OutputStream logOut, boolean closeStream, boolean flushOnPublish);
     }
 
     // shared SPI
@@ -163,7 +162,7 @@ public abstract class AbstractPolyglotImpl {
     }
 
     public abstract Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
-                    long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean boundEngine, MessageTransport messageInterceptor, Handler logHandler);
+                    long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean boundEngine, MessageTransport messageInterceptor, Object logHandlerOrStream);
 
     public abstract void preInitializeEngine();
 
@@ -362,7 +361,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Context createContext(OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess, boolean allowNativeAccess,
                         boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading, Predicate<String> classFilter, Map<String, String> options, Map<String, String[]> arguments,
-                        String[] onlyLanguages, FileSystem fileSystem, Handler logHandler);
+                        String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream);
 
         public abstract String getImplementationName();
 

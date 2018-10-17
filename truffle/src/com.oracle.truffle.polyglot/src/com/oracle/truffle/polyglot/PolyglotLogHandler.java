@@ -40,10 +40,15 @@
  */
 package com.oracle.truffle.polyglot;
 
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.ResourceBundle;
+import java.util.logging.Formatter;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
+import java.util.logging.StreamHandler;
 
 import com.oracle.truffle.api.interop.TruffleObject;
 
@@ -95,6 +100,46 @@ final class PolyglotLogHandler extends Handler {
 
     static LogRecord createLogRecord(final Level level, String loggerName, final String message, final String className, final String methodName, final Object[] parameters, final Throwable thrown) {
         return new ImmutableLogRecord(level, loggerName, message, className, methodName, parameters, thrown);
+    }
+
+    /**
+     * Returns a {@link Handler} for given {@link Handler} or {@link OutputStream}. If the
+     * {@code logHandlerOrStream} is instance of {@link Handler} the {@code logHandlerOrStream} is
+     * returned. If the {@code logHandlerOrStream} is instance of {@link OutputStream} a new
+     * {@link StreamHandler} is created for given stream. If the {@code logHandlerOrStream} is
+     * {@code null} the {@code null} is returned. Otherwise a {@link IllegalArgumentException} is
+     * thrown.
+     *
+     * @param logHandlerOrStream the {@link Handler} or {@link OutputStream}
+     * @return {@link Handler} or {@code null}
+     * @throws IllegalArgumentException if {@code logHandlerOrStream} is not {@code null} nor
+     *             {@link Handler} nor {@link OutputStream}
+     */
+    static Handler asHandler(Object logHandlerOrStream) {
+        if (logHandlerOrStream == null) {
+            return null;
+        }
+        if (logHandlerOrStream instanceof Handler) {
+            return (Handler) logHandlerOrStream;
+        }
+        if (logHandlerOrStream instanceof OutputStream) {
+            return createStreamHandler((OutputStream) logHandlerOrStream, true, true);
+        }
+        throw new IllegalArgumentException("Unexpected logHandlerOrStream parameter: " + logHandlerOrStream);
+    }
+
+    /**
+     * Creates a {@link Handler} printing log messages into given {@link OutputStream}.
+     *
+     * @param out the {@link OutputStream} to print log messages into
+     * @param closeStream if true the {@link Handler#close() handler's close} method closes given
+     *            stream
+     * @param flushOnPublish if true the {@link Handler#flush() flush} method is called after
+     *            {@link Handler#publish(java.util.logging.LogRecord) publish}
+     * @return the {@link Handler}
+     */
+    static Handler createStreamHandler(final OutputStream out, final boolean closeStream, final boolean flushOnPublish) {
+        return new PolyglotStreamHandler(out, closeStream, flushOnPublish);
     }
 
     private static final class ImmutableLogRecord extends LogRecord {
@@ -199,6 +244,98 @@ final class PolyglotLogHandler extends Handler {
                 return VMAccessor.LANGUAGE.toStringIfVisible(displayLanguageContext.env, param, false);
             }
             return param.toString();
+        }
+    }
+
+    private static final class PolyglotStreamHandler extends StreamHandler {
+
+        private final boolean closeStream;
+        private final boolean flushOnPublish;
+
+        PolyglotStreamHandler(final OutputStream out, final boolean closeStream, final boolean flushOnPublish) {
+            super(out, FormatterImpl.INSTANCE);
+            setLevel(Level.ALL);
+            this.closeStream = closeStream;
+            this.flushOnPublish = flushOnPublish;
+        }
+
+        @Override
+        public synchronized void publish(LogRecord record) {
+            super.publish(record);
+            if (flushOnPublish) {
+                flush();
+            }
+        }
+
+        @SuppressWarnings("sync-override")
+        @Override
+        public void close() {
+            if (closeStream) {
+                super.close();
+            } else {
+                flush();
+            }
+        }
+
+        private static final class FormatterImpl extends Formatter {
+            private static final String FORMAT = "[%1$s] %2$s: %3$s%4$s%n";
+            static final Formatter INSTANCE = new FormatterImpl();
+
+            private FormatterImpl() {
+            }
+
+            @Override
+            public String format(LogRecord record) {
+                String loggerName = formatLoggerName(record.getLoggerName());
+                final String message = formatMessage(record);
+                String stackTrace = "";
+                final Throwable exception = record.getThrown();
+                if (exception != null) {
+                    final StringWriter str = new StringWriter();
+                    try (PrintWriter out = new PrintWriter(str)) {
+                        out.println();
+                        exception.printStackTrace(out);
+                    }
+                    stackTrace = str.toString();
+                }
+                return String.format(
+                                FORMAT,
+                                loggerName,
+                                record.getLevel().getName(),
+                                message,
+                                stackTrace);
+            }
+
+            private static String formatLoggerName(final String loggerName) {
+                final String id;
+                String name;
+                int index = loggerName.indexOf('.');
+                if (index < 0) {
+                    id = loggerName;
+                    name = "";
+                } else {
+                    id = loggerName.substring(0, index);
+                    name = loggerName.substring(index + 1);
+                }
+                if (name.isEmpty()) {
+                    return id;
+                }
+                final StringBuilder sb = new StringBuilder(id);
+                sb.append("::");
+                sb.append(possibleSimpleName(name));
+                return sb.toString();
+            }
+
+            private static String possibleSimpleName(final String loggerName) {
+                int index = -1;
+                for (int i = 0; i >= 0; i = loggerName.indexOf('.', i + 1)) {
+                    if (i + 1 < loggerName.length() && Character.isUpperCase(loggerName.charAt(i + 1))) {
+                        index = i + 1;
+                        break;
+                    }
+                }
+                return index < 0 ? loggerName : loggerName.substring(index);
+            }
         }
     }
 }

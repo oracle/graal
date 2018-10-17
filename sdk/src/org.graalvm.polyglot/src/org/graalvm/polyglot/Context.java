@@ -701,7 +701,7 @@ public final class Context implements AutoCloseable {
         private Boolean allowHostClassLoading;
         private FileSystem customFileSystem;
         private MessageTransport messageTransport;
-        private Handler customLogHandler;
+        private Object customLogHandler;
 
         Builder(String... onlyLanguages) {
             Objects.requireNonNull(onlyLanguages);
@@ -1035,7 +1035,7 @@ public final class Context implements AutoCloseable {
          */
         public Builder logHandler(final OutputStream logOut) {
             Objects.requireNonNull(logOut, "LogOut must be non null.");
-            this.customLogHandler = new PolyglotStreamHandler(logOut, true, true);
+            this.customLogHandler = logOut;
             return this;
         }
 
@@ -1075,9 +1075,6 @@ public final class Context implements AutoCloseable {
                 }
                 if (in != null) {
                     engineBuilder.in(in);
-                }
-                if (customLogHandler != null) {
-                    engineBuilder.logHandler(customLogHandler);
                 }
                 if (messageTransport != null) {
                     engineBuilder.serverTransport(messageTransport);
