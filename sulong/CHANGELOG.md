@@ -1,3 +1,10 @@
+# Version 1.0.0 RC8
+
+New features:
+
+* Expert-level option `--llvm.loadC++Libraries=false` to disable automatic
+  loading of C++ standard libraries.
+
 # Version 1.0.0 RC7
 
 New features:
