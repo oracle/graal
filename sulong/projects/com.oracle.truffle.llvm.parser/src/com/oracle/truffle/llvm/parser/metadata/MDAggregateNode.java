@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.parser.metadata;
 
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 abstract class MDAggregateNode implements MDBaseNode, Iterable<MDBaseNode> {
 
@@ -69,6 +70,9 @@ abstract class MDAggregateNode implements MDBaseNode, Iterable<MDBaseNode> {
 
             @Override
             public MDBaseNode next() {
+                if (i >= elements.length) {
+                    throw new NoSuchElementException();
+                }
                 return elements[i++];
             }
         };
