@@ -135,7 +135,7 @@ public final class ImageClassLoader {
 
     static Stream<Path> toClassPathEntries(String classPathEntry) {
         Path entry = Paths.get(classPathEntry);
-        if (entry.getFileName().toString().endsWith("*")) {
+        if (entry.getFileName() != null && entry.getFileName().toString().endsWith("*")) {
             return Arrays.stream(entry.getParent().toFile().listFiles()).filter(File::isFile).map(File::toPath);
         }
         return Stream.of(entry);
