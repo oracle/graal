@@ -225,8 +225,9 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
             DebugContext debugContext;
             if (compilable == null) {
                 debugContext = DebugContext.create(TruffleCompilerOptions.getOptions(), DebugHandlersFactory.LOADER);
+            } else {
+                debugContext = createDebugContext(TruffleCompilerOptions.getOptions(), getOrCreateCompilationId(compilationId, compilable).getValue(), compilable);
             }
-            debugContext = createDebugContext(TruffleCompilerOptions.getOptions(), getOrCreateCompilationId(compilationId, compilable).getValue(), compilable);
             return new TruffleDebugContextImpl(debugContext);
         }
     }
