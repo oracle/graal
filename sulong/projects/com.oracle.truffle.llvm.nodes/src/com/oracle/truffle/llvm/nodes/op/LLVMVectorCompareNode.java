@@ -41,6 +41,7 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMVector;
 
 @NodeChild(type = LLVMExpressionNode.class)
 @NodeChild(type = LLVMExpressionNode.class)
@@ -54,10 +55,14 @@ public abstract class LLVMVectorCompareNode extends LLVMExpressionNode {
         this.compare = compare;
     }
 
+    private boolean checkLength(LLVMVector val1, LLVMVector val2) {
+        return val1.getLength() == vectorLength && val2.getLength() == vectorLength;
+    }
+
     @Specialization
     @ExplodeLoop
     protected LLVMI1Vector doI1(LLVMI1Vector val1, LLVMI1Vector val2) {
-        assert val1.getLength() == vectorLength && val1.getLength() == vectorLength;
+        assert checkLength(val1, val2);
         boolean[] result = new boolean[vectorLength];
         for (int i = 0; i < vectorLength; i++) {
             result[i] = compare.executeWithTarget(val1.getValue(i), val2.getValue(i));
@@ -68,7 +73,7 @@ public abstract class LLVMVectorCompareNode extends LLVMExpressionNode {
     @Specialization
     @ExplodeLoop
     protected LLVMI1Vector doI8(LLVMI8Vector val1, LLVMI8Vector val2) {
-        assert val1.getLength() == vectorLength && val1.getLength() == vectorLength;
+        assert checkLength(val1, val2);
         boolean[] result = new boolean[vectorLength];
         for (int i = 0; i < vectorLength; i++) {
             result[i] = compare.executeWithTarget(val1.getValue(i), val2.getValue(i));
@@ -79,7 +84,7 @@ public abstract class LLVMVectorCompareNode extends LLVMExpressionNode {
     @Specialization
     @ExplodeLoop
     protected LLVMI1Vector doI16(LLVMI16Vector val1, LLVMI16Vector val2) {
-        assert val1.getLength() == vectorLength && val1.getLength() == vectorLength;
+        assert checkLength(val1, val2);
         boolean[] result = new boolean[vectorLength];
         for (int i = 0; i < vectorLength; i++) {
             result[i] = compare.executeWithTarget(val1.getValue(i), val2.getValue(i));
@@ -90,7 +95,7 @@ public abstract class LLVMVectorCompareNode extends LLVMExpressionNode {
     @Specialization
     @ExplodeLoop
     protected LLVMI1Vector doI32(LLVMI32Vector val1, LLVMI32Vector val2) {
-        assert val1.getLength() == vectorLength && val1.getLength() == vectorLength;
+        assert checkLength(val1, val2);
         boolean[] result = new boolean[vectorLength];
         for (int i = 0; i < vectorLength; i++) {
             result[i] = compare.executeWithTarget(val1.getValue(i), val2.getValue(i));
@@ -101,7 +106,7 @@ public abstract class LLVMVectorCompareNode extends LLVMExpressionNode {
     @Specialization
     @ExplodeLoop
     protected LLVMI1Vector doI64(LLVMI64Vector val1, LLVMI64Vector val2) {
-        assert val1.getLength() == vectorLength && val1.getLength() == vectorLength;
+        assert checkLength(val1, val2);
         boolean[] result = new boolean[vectorLength];
         for (int i = 0; i < vectorLength; i++) {
             result[i] = compare.executeWithTarget(val1.getValue(i), val2.getValue(i));
@@ -112,7 +117,7 @@ public abstract class LLVMVectorCompareNode extends LLVMExpressionNode {
     @Specialization
     @ExplodeLoop
     protected LLVMI1Vector doI64AndPointer(LLVMPointerVector val1, LLVMI64Vector val2) {
-        assert val1.getLength() == vectorLength && val1.getLength() == vectorLength;
+        assert checkLength(val1, val2);
         boolean[] result = new boolean[vectorLength];
         for (int i = 0; i < vectorLength; i++) {
             result[i] = compare.executeWithTarget(val1.getValue(i), val2.getValue(i));
@@ -123,7 +128,7 @@ public abstract class LLVMVectorCompareNode extends LLVMExpressionNode {
     @Specialization
     @ExplodeLoop
     protected LLVMI1Vector doI64AndPointer(LLVMI64Vector val1, LLVMPointerVector val2) {
-        assert val1.getLength() == vectorLength && val1.getLength() == vectorLength;
+        assert checkLength(val1, val2);
         boolean[] result = new boolean[vectorLength];
         for (int i = 0; i < vectorLength; i++) {
             result[i] = compare.executeWithTarget(val1.getValue(i), val2.getValue(i));
@@ -134,7 +139,7 @@ public abstract class LLVMVectorCompareNode extends LLVMExpressionNode {
     @Specialization
     @ExplodeLoop
     protected LLVMI1Vector doPointer(LLVMPointerVector val1, LLVMPointerVector val2) {
-        assert val1.getLength() == vectorLength && val1.getLength() == vectorLength;
+        assert checkLength(val1, val2);
         boolean[] result = new boolean[vectorLength];
         for (int i = 0; i < vectorLength; i++) {
             result[i] = compare.executeWithTarget(val1.getValue(i), val2.getValue(i));
@@ -145,7 +150,7 @@ public abstract class LLVMVectorCompareNode extends LLVMExpressionNode {
     @Specialization
     @ExplodeLoop
     protected LLVMI1Vector doDouble(LLVMDoubleVector val1, LLVMDoubleVector val2) {
-        assert val1.getLength() == vectorLength && val1.getLength() == vectorLength;
+        assert checkLength(val1, val2);
         boolean[] result = new boolean[vectorLength];
         for (int i = 0; i < vectorLength; i++) {
             result[i] = compare.executeWithTarget(val1.getValue(i), val2.getValue(i));
@@ -156,7 +161,7 @@ public abstract class LLVMVectorCompareNode extends LLVMExpressionNode {
     @Specialization
     @ExplodeLoop
     protected LLVMI1Vector doFloat(LLVMFloatVector val1, LLVMFloatVector val2) {
-        assert val1.getLength() == vectorLength && val1.getLength() == vectorLength;
+        assert checkLength(val1, val2);
         boolean[] result = new boolean[vectorLength];
         for (int i = 0; i < vectorLength; i++) {
             result[i] = compare.executeWithTarget(val1.getValue(i), val2.getValue(i));
