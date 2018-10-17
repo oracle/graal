@@ -52,19 +52,19 @@ import java.io.OutputStream;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import org.graalvm.launcher.AbstractLanguageLauncher;
+import org.graalvm.launcher.Launcher;
 import org.junit.Before;
 import org.junit.Test;
 
-public class AbstractLanguageLauncherTest {
+public class LauncherTest {
 
     private Path tmpDir;
     private Method newLogStreamMethod;
 
     @Before
     public void setUp() throws IOException, ReflectiveOperationException {
-        tmpDir = Files.createTempDirectory(AbstractLanguageLauncherTest.class.getName()).toAbsolutePath();
-        Class<AbstractLanguageLauncher> launcherClass = AbstractLanguageLauncher.class;
+        tmpDir = Files.createTempDirectory(LauncherTest.class.getName()).toAbsolutePath();
+        Class<Launcher> launcherClass = Launcher.class;
         newLogStreamMethod = launcherClass.getDeclaredMethod("newLogStream", Path.class);
         newLogStreamMethod.setAccessible(true);
     }

@@ -40,14 +40,8 @@
  */
 package org.graalvm.launcher;
 
-import static java.nio.file.StandardOpenOption.CREATE;
-import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
-import static java.nio.file.StandardOpenOption.WRITE;
-
-import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -204,7 +198,7 @@ public final class PolyglotLauncher extends Launcher {
         final Path logFile = getLogFile();
         if (logFile != null) {
             try {
-                contextBuilder.logHandler(new BufferedOutputStream(Files.newOutputStream(logFile, WRITE, CREATE, TRUNCATE_EXISTING)));
+                contextBuilder.logHandler(newLogStream(logFile));
             } catch (IOException ioe) {
                 throw abort(ioe);
             }
