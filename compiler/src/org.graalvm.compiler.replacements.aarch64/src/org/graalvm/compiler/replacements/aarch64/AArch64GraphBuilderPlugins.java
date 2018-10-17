@@ -167,19 +167,16 @@ public class AArch64GraphBuilderPlugins {
     }
 
     private static void registerUnsafePlugins(InvocationPlugins plugins, BytecodeProvider replacementsBytecodeProvider) {
-        Registration r;
-        JavaKind[] unsafeJavaKinds;
-        if (Java8OrEarlier) {
-            r = new Registration(plugins, Unsafe.class);
-            unsafeJavaKinds = new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object};
-        } else {
-            r = new Registration(plugins, "jdk.internal.misc.Unsafe", replacementsBytecodeProvider);
-            unsafeJavaKinds = new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object};
+        registerUnsafePlugins(new Registration(plugins, Unsafe.class), new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object});
+        if (!Java8OrEarlier) {
+            registerUnsafePlugins(new Registration(plugins, "jdk.internal.misc.Unsafe", replacementsBytecodeProvider), new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object});
         }
+    }
+
+    private static void registerUnsafePlugins(Registration r, JavaKind[] unsafeJavaKinds) {
 
         for (JavaKind kind : unsafeJavaKinds) {
             Class<?> javaClass = kind == JavaKind.Object ? Object.class : kind.toJavaClass();
-
             r.register4("getAndSet" + kind.name(), Receiver.class, Object.class, long.class, javaClass, new InvocationPlugin() {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode value) {

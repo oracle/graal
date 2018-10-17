@@ -1,5 +1,5 @@
 # overlay version
-overlay = e2d86bcb06922e4d9017e675376ed7515902392c
+overlay = 7947cd42f4281b5e8d164e88bde61302426738e7
 
 # oraclejdk* are released OracleJDK binaries
 # labsjdk* are JDKs based on OracleJDK binaries
@@ -10,6 +10,7 @@ jdks: {
   openjdk8:      {name : openjdk,   version : "8u172-jvmci-0.48", platformspecific: true}
   labsjdk8Debug: {name : labsjdk,   version : "8u172-jvmci-0.48-fastdebug", platformspecific: true}
   oraclejdk11:   {name : oraclejdk, version : "11+25", platformspecific: true}
+  openjdk11:     {name : openjdk,   version : "11+28", platformspecific: true}
 
   # Snapshot of http://hg.openjdk.java.net/jdk/jdk
   oraclejdkSNAPSHOT : {name : labsjdk, version : "20180808-073750", platformspecific: true}
@@ -30,6 +31,7 @@ labsjdk8Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk8Debug}, EXTRA_JAVA_HO
 openjdk8 :        { downloads : { JAVA_HOME : ${jdks.openjdk8} }}
 
 oraclejdk11 :     { downloads : { JAVA_HOME : ${jdks.oraclejdk11} }}
+openjdk11 :       { downloads : { JAVA_HOME : ${jdks.openjdk11} }}
 
 common : ${mx} {
   timelimit : "30:00"
@@ -145,7 +147,17 @@ svm-common: ${mx} {
   ]
 }
 
-svm-common-linux: ${svm-common} ${linux-amd64} {
+svm-common-linux-amd64: ${svm-common} ${linux-amd64} {
+  packages: {
+    make: ">=3.83"
+    gcc-build-essentials: ">=4.9.1" # GCC 4.9.0 fails on cluster
+    ruby: ">=2.1.0"
+    valgrind: ">=3.9.0"
+  }
+  timelimit: "55:00"
+}
+
+svm-common-linux-aarch64: ${svm-common} ${linux-aarch64} {
   packages: {
     make: ">=3.83"
     gcc-build-essentials: ">=4.9.1" # GCC 4.9.0 fails on cluster

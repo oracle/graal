@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.code.amd64;
+package com.oracle.svm.core.graal.code;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -32,7 +32,7 @@ public class SubstrateCallingConvention extends CallingConvention {
     private final Type type;
     private final JavaKind[] kinds;
 
-    SubstrateCallingConvention(Type type, JavaKind[] kinds, int stackSize, AllocatableValue returnLocation, AllocatableValue... argumentLocations) {
+    public SubstrateCallingConvention(Type type, JavaKind[] kinds, int stackSize, AllocatableValue returnLocation, AllocatableValue... argumentLocations) {
         super(stackSize, returnLocation, argumentLocations);
         this.type = type;
         this.kinds = kinds;
