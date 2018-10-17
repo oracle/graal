@@ -54,6 +54,7 @@ public enum AArch64ArithmeticOp {
     SUBS(ARITHMETIC),
     MUL,
     MULVS,
+    MNEG,
     DIV,
     SMULH,
     UMULH,
@@ -274,6 +275,9 @@ public enum AArch64ArithmeticOp {
                     break;
                 case SMULH:
                     masm.smulh(size, dst, src1, src2);
+                    break;
+                case MNEG:
+                    masm.mneg(size, dst, src1, src2);
                     break;
                 case DIV:
                     masm.sdiv(size, dst, src1, src2);
