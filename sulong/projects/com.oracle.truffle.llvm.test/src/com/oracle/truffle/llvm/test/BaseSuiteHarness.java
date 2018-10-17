@@ -35,12 +35,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.graalvm.polyglot.Context;
 import org.junit.AfterClass;
@@ -127,20 +129,25 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
     @Override
     @Test
     public void test() throws IOException {
-        final List<Path> files = Files.walk(getTestDirectory()).filter(isExecutable).collect(Collectors.toList());
-        if (files.isEmpty()) {
-            // some tests do not compile with certain versions of clang
-            return;
+        Path referenceBinary;
+        ProcessResult referenceResult;
+        try (Stream<Path> walk = Files.walk(getTestDirectory())) {
+            List<Path> files = walk.filter(isExecutable).collect(Collectors.toList());
+            if (files.isEmpty()) {
+                // some tests do not compile with certain versions of clang
+                return;
+            }
+            referenceBinary = files.get(0);
+            referenceResult = runReference(referenceBinary);
         }
 
-        Path referenceBinary = files.get(0);
-        ProcessResult referenceResult = runReference(referenceBinary);
-
-        List<Path> testCandidates = Files.walk(getTestDirectory()).filter(isFile).filter(getIsSulongFilter()).collect(Collectors.toList());
-        for (Path candidate : testCandidates) {
-            runCandidate(referenceBinary, referenceResult, candidate);
+        try (Stream<Path> walk = Files.walk(getTestDirectory())) {
+            List<Path> testCandidates = walk.filter(isFile).filter(getIsSulongFilter()).collect(Collectors.toList());
+            for (Path candidate : testCandidates) {
+                runCandidate(referenceBinary, referenceResult, candidate);
+            }
+            pass(getTestName());
         }
-        pass(getTestName());
     }
 
     protected Predicate<? super Path> getIsSulongFilter() {
@@ -246,14 +253,16 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
     }
 
     private static Set<Path> getListEntries(Path suiteDirectory, Path configDir, Predicate<? super Path> filter) {
-        try {
-            return Files.walk(configDir).filter(filter).flatMap(f -> {
-                try {
-                    return Files.lines(f);
-                } catch (IOException e) {
-                    throw new AssertionError("Error creating whitelist.", e);
+        try (Stream<Path> files = Files.walk(configDir)) {
+            Set<Path> results = new HashSet<>();
+            for (Path path : (Iterable<Path>) (files.filter(filter))::iterator) {
+                try (Stream<String> lines = Files.lines(path)) {
+                    for (String line : (Iterable<String>) lines::iterator) {
+                        results.add(new File(suiteDirectory.getParent().toString(), line).toPath());
+                    }
                 }
-            }).map(s -> new File(suiteDirectory.getParent().toString(), s).toPath()).collect(Collectors.toSet());
+            }
+            return results;
         } catch (IOException e) {
             throw new AssertionError("Error creating whitelist.", e);
         }

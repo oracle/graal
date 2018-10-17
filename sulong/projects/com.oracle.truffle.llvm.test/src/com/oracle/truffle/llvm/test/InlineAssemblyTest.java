@@ -35,6 +35,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -53,8 +54,8 @@ public final class InlineAssemblyTest extends BaseSuiteHarness {
 
     @Parameters(name = "{1}")
     public static Collection<Object[]> data() {
-        try {
-            return Files.walk(ASSEMBLY_SUITE_DIR).filter(isExecutable).map(f -> f.getParent()).map(f -> new Object[]{f, f.toString().substring(ASSEMBLY_SUITE_DIR.toString().length() + 1)}).collect(
+        try (Stream<Path> files = Files.walk(ASSEMBLY_SUITE_DIR)) {
+            return files.filter(isExecutable).map(f -> f.getParent()).map(f -> new Object[]{f, f.toString().substring(ASSEMBLY_SUITE_DIR.toString().length() + 1)}).collect(
                             Collectors.toList());
         } catch (IOException e) {
             throw new AssertionError("Test cases not found", e);
