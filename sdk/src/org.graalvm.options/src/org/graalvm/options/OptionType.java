@@ -251,23 +251,23 @@ public final class OptionType<T> {
         }));
     }
 
-    private static class ReadonlyPropertiesMap extends AbstractMap<String, String> {
+    private static class ReadonlyPropertiesMap<V> extends AbstractMap<String, V> {
 
-        final Map<String, String> backingMap;
-        final Map<String, String> readonlyMap;
+        final Map<String, V> backingMap;
+        final Map<String, V> readonlyMap;
 
-        ReadonlyPropertiesMap(Map<String, String> map) {
+        ReadonlyPropertiesMap(Map<String, V> map) {
             this.readonlyMap = Collections.unmodifiableMap(map);
             this.backingMap = map;
         }
 
         @Override
-        public Set<Entry<String, String>> entrySet() {
+        public Set<Entry<String, V>> entrySet() {
             return readonlyMap.entrySet();
         }
 
         @Override
-        public String get(Object key) {
+        public V get(Object key) {
             return readonlyMap.get(key);
         }
 
@@ -282,6 +282,27 @@ public final class OptionType<T> {
     @SuppressWarnings("unchecked")
     public static <T> OptionType<T> defaultType(T value) {
         return defaultType((Class<T>) value.getClass());
+    }
+
+    /**
+     * Returns the default option type for property maps for the given value class. Returns
+     * <code>null</code> if no default option type is available for the value class.
+     */
+    public static <V> OptionType<Map<String, V>> mapOf(Class<V> valueClass) {
+        final OptionType<V> valueType = defaultType(valueClass);
+        if (valueType == null) {
+            return null;
+        }
+        return new OptionType<>("Properties", Collections.emptyMap(), new Converter<Map<String, V>>() {
+            public Map<String, V> convert(Map<String, V> previousValue, String key, String t) {
+                Map<String, V> map = previousValue;
+                if (!(map instanceof ReadonlyPropertiesMap)) {
+                    map = new ReadonlyPropertiesMap<>(new HashMap<>(map));
+                }
+                ((ReadonlyPropertiesMap<V>) map).backingMap.put(key, valueType.convert(map.get(key), key, t));
+                return map;
+            }
+        });
     }
 
     /**

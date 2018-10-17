@@ -40,6 +40,7 @@
  */
 package org.graalvm.options;
 
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -77,6 +78,19 @@ public final class OptionKey<T> {
         Objects.requireNonNull(type);
         this.defaultValue = defaultValue;
         this.type = type;
+    }
+
+    /**
+     * Constructs a new option key to group options with common prefixes. Throws
+     * {@link IllegalArgumentException} if no default {@link OptionType} could be
+     * {@link OptionType#defaultType(Object) resolved} for the value type.
+     */
+    public static <V> OptionKey<Map<String, V>> mapOf(Class<V> valueClass) {
+        OptionType<Map<String, V>> type = OptionType.mapOf(valueClass);
+        if (type == null) {
+            throw new IllegalArgumentException("No default type specified for type " + valueClass.getName());
+        }
+        return new OptionKey<>(type.getDefaultValue(), type);
     }
 
     /**

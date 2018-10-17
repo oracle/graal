@@ -361,7 +361,9 @@ public class OptionProcessor extends AbstractProcessor {
                 continue;
             }
             elseIf = builder.startIf(elseIf);
-            builder.startCall(nameVariableName, "startsWith").doubleQuote(info.name).end();
+            // The prefix option check must end with a '.' to differentiate between:
+            // e.g. java.Props.Threshold and java.PropsThreshold
+            builder.startCall(nameVariableName, "startsWith").doubleQuote(info.name + ".").end();
             builder.end().startBlock();
             builder.startReturn().tree(createBuildOptionDescriptor(context, info)).end();
             builder.end();
