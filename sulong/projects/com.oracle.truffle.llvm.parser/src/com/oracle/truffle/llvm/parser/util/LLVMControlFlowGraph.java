@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.parser.util;
 
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -51,12 +52,13 @@ public final class LLVMControlFlowGraph {
         public boolean visited = false;
         public boolean active = false;
         public boolean isLoopHeader = false;
-        public long loops;  // could use bitmap instead
+        public BitSet loops;
         public int loopId;
 
         public CFGBlock(InstructionBlock block) {
             this.instructionBlock = block;
             this.id = block.getBlockIndex();
+            loops = new BitSet(64);
         }
 
         @Override
@@ -185,8 +187,7 @@ public final class LLVMControlFlowGraph {
         reducible = true;
         // set successors and predecessors
         resolveEdges();
-        long openLoops = openLoops(blocks[0]);
-        if (openLoops != 0) {
+        if (!(openLoops(blocks[0]).isEmpty())) {
             reducible = false;
             return;
         }
@@ -239,7 +240,7 @@ public final class LLVMControlFlowGraph {
         active.remove(loop);
     }
 
-    private long openLoops(CFGBlock block) {
+    private BitSet openLoops(CFGBlock block) {
         if (block.visited) {
             if (block.active) {
                 // Reached block via backward branch.
@@ -247,34 +248,35 @@ public final class LLVMControlFlowGraph {
                 // Return cached loop information for this block.
                 return block.loops;
             } else if (block.isLoopHeader) {
-                return block.loops & ~(1L << block.loopId);
+                BitSet outerLoops = new BitSet();
+                outerLoops.or(block.loops);
+                outerLoops.clear(block.loopId);
+                return outerLoops;
             } else {
                 return block.loops;
             }
         }
         block.visited = true;
         block.active = true;
-        long loops = 0;
+        BitSet loops = new BitSet();
         for (CFGBlock successor : block.sucs) {
             // Recursively process successors.
-            loops |= openLoops(successor);
+            loops.or(openLoops(successor));
             if (successor.active) {
                 // Reached block via backward branch.
-                loops |= (1L << successor.loopId);
+                loops.set(successor.loopId);
             }
         }
         block.loops = loops;
         if (block.isLoopHeader) {
-            loops &= ~(1L << block.loopId);
+            loops.clear(block.loopId);
         }
         block.active = false;
-        int inLoop = 0;
         // add blocks to all loops they are contained in
-        long loopsToProcess = loops;
-        while (loopsToProcess > 0) {
-            inLoop = 64 - Long.numberOfLeadingZeros(loopsToProcess);
-            loopsToProcess &= ~(1L << (inLoop - 1));
-            this.cfgLoops.get(inLoop - 1).body.add(block);
+        for (int i = 0; i < nextLoop; i++) {
+            if (loops.get(i)) {
+                this.cfgLoops.get(i).body.add(block);
+            }
         }
         return loops;
     }
@@ -282,14 +284,13 @@ public final class LLVMControlFlowGraph {
     private void makeLoopHeader(CFGBlock block) {
         if (!block.isLoopHeader) {
             block.isLoopHeader = true;
-            assert block.loops == 0;
-            block.loops = 1L << nextLoop;
-            assert block.loops > 0 : "Too many loops!";
+            assert block.loops.isEmpty();
+            block.loops.set(nextLoop);
             cfgLoops.add(new CFGLoop(nextLoop));
             cfgLoops.get(nextLoop).loopHeader = block;
             block.loopId = nextLoop++;
         }
-        assert Long.bitCount(block.loops) == 1;
+        assert block.loops.cardinality() == 1;
     }
 
     private class ControlFlowBailoutException extends Exception {
