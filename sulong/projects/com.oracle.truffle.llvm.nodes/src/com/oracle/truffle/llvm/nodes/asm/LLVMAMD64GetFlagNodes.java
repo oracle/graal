@@ -33,88 +33,98 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-public abstract class LLVMAMD64SetNode {
+public abstract class LLVMAMD64GetFlagNodes {
     private static final byte ZERO = 0;
     private static final byte ONE = 1;
 
-    @NodeChild("cf")
-    @NodeChild("zf")
-    public abstract static class LLVMAMD64SetaNode extends LLVMExpressionNode {
+    private LLVMAMD64GetFlagNodes() {
+        // private constructor
+    }
+
+    @NodeChild("value")
+    public abstract static class LLVMAMD64GetFlagNode extends LLVMExpressionNode {
         @Specialization
-        protected byte doI8(boolean cf, boolean zf) {
-            return !cf && !zf ? ONE : ZERO;
+        protected byte doI8(boolean value) {
+            return value ? ONE : ZERO;
         }
     }
 
-    @NodeChild("zf")
-    public abstract static class LLVMAMD64SetzNode extends LLVMExpressionNode {
+    @NodeChild("value")
+    public abstract static class LLVMAMD64GetFlagNegNode extends LLVMExpressionNode {
         @Specialization
-        protected byte doI8(boolean zf) {
-            return zf ? ONE : ZERO;
+        protected byte doI8(boolean value) {
+            return value ? ZERO : ONE;
         }
     }
 
-    @NodeChild("zf")
-    public abstract static class LLVMAMD64SetnzNode extends LLVMExpressionNode {
+    @NodeChild("value1")
+    @NodeChild("value2")
+    public abstract static class LLVMAMD64GetFlagOrNode extends LLVMExpressionNode {
         @Specialization
-        protected byte doI8(boolean zf) {
-            return zf ? ONE : ZERO;
+        protected byte doI8(boolean value1, boolean value2) {
+            return value1 || value2 ? ONE : ZERO;
         }
     }
 
-    @NodeChild("cf")
-    @NodeChild("zf")
-    public abstract static class LLVMAMD64SetorNode extends LLVMExpressionNode {
+    @NodeChild("value1")
+    @NodeChild("value2")
+    public abstract static class LLVMAMD64GetFlagNorNode extends LLVMExpressionNode {
         @Specialization
-        protected byte doI8(boolean cf, boolean zf) {
-            return cf || zf ? ONE : ZERO;
+        protected byte doI8(boolean value1, boolean value2) {
+            return !(value1 || value2) ? ONE : ZERO;
         }
     }
 
+    @NodeChild("value1")
+    @NodeChild("value2")
+    public abstract static class LLVMAMD64GetFlagAndNode extends LLVMExpressionNode {
+        @Specialization
+        protected byte doI8(boolean value1, boolean value2) {
+            return value1 && value2 ? ONE : ZERO;
+        }
+    }
+
+    @NodeChild("value1")
+    @NodeChild("value2")
+    public abstract static class LLVMAMD64GetFlagEqualNode extends LLVMExpressionNode {
+        @Specialization
+        protected byte doI8(boolean value1, boolean value2) {
+            return value1 == value2 ? ONE : ZERO;
+        }
+    }
+
+    @NodeChild("value1")
+    @NodeChild("value2")
+    public abstract static class LLVMAMD64GetFlagXorNode extends LLVMExpressionNode {
+        @Specialization
+        protected byte doI8(boolean value1, boolean value2) {
+            return value1 != value2 ? ONE : ZERO;
+        }
+    }
+
+    /**
+     * This is used to implement the {@code setg} and {@code setnle} instructions.
+     */
     @NodeChild("zf")
     @NodeChild("sf")
     @NodeChild("of")
-    public abstract static class LLVMAMD64SetgNode extends LLVMExpressionNode {
+    public abstract static class LLVMAMD64GetFlagGNode extends LLVMExpressionNode {
         @Specialization
         protected byte doI8(boolean zf, boolean sf, boolean of) {
             return !zf && sf == of ? ONE : ZERO;
         }
     }
 
-    @NodeChild("sf")
-    @NodeChild("of")
-    public abstract static class LLVMAMD64SeteqNode extends LLVMExpressionNode {
-        @Specialization
-        protected byte doI8(boolean sf, boolean of) {
-            return sf == of ? ONE : ZERO;
-        }
-    }
-
-    @NodeChild("sf")
-    @NodeChild("of")
-    public abstract static class LLVMAMD64SetneNode extends LLVMExpressionNode {
-        @Specialization
-        protected byte doI8(boolean sf, boolean of) {
-            return sf != of ? ONE : ZERO;
-        }
-    }
-
+    /**
+     * This is used to implement the {@code setng} and {@code setle} instructions.
+     */
     @NodeChild("zf")
     @NodeChild("sf")
     @NodeChild("of")
-    public abstract static class LLVMAMD64SetleNode extends LLVMExpressionNode {
+    public abstract static class LLVMAMD64GetFlagLENode extends LLVMExpressionNode {
         @Specialization
         protected byte doI8(boolean zf, boolean sf, boolean of) {
             return zf || sf != of ? ONE : ZERO;
-        }
-    }
-
-    @NodeChild("cf")
-    @NodeChild("zf")
-    public abstract static class LLVMAMD64SetandNode extends LLVMExpressionNode {
-        @Specialization
-        protected byte doI8(boolean cf, boolean zf) {
-            return cf && zf ? ONE : ZERO;
         }
     }
 }
