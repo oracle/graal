@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.test;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
@@ -61,9 +62,9 @@ public final class ParserTortureSuite {
     }
 
     @Test
-    public void test() throws Exception {
         List<Path> testCandidates = Files.walk(path).filter(BaseTestHarness.isFile).filter(BaseTestHarness.isSulong).collect(Collectors.toList());
         for (Path candidate : testCandidates) {
+    public void test() throws IOException {
 
             if (!candidate.toAbsolutePath().toFile().exists()) {
                 throw new AssertionError("File " + candidate.toAbsolutePath().toFile() + " does not exist.");
