@@ -78,8 +78,9 @@ final class WriteGenerator extends MessageGenerator {
         w.append(indent).append("        @Override\n");
         w.append(indent).append("        public Object execute(VirtualFrame frame) {\n");
         w.append(indent).append("            Object receiver = ForeignAccess.getReceiver(frame);\n");
-        w.append(indent).append("            Object identifier = ForeignAccess.getArguments(frame).get(0);\n");
-        w.append(indent).append("            Object value = ForeignAccess.getArguments(frame).get(1);\n");
+        w.append(indent).append("            Object[] arguments = frame.getArguments();\n");
+        w.append(indent).append("            Object identifier = arguments[1];\n");
+        w.append(indent).append("            Object value = arguments[2];\n");
         w.append(indent).append("            try {\n");
         w.append(indent).append("                return node.executeWithTarget(frame, receiver, identifier, value);\n");
         w.append(indent).append("            } catch (UnsupportedSpecializationException e) {\n");

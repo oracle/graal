@@ -89,18 +89,17 @@ final class GenericGenerator extends MessageGenerator {
         appendGetName(w);
         w.append(indent).append("        @Override\n");
         w.append(indent).append("        public Object execute(VirtualFrame frame) {\n");
-        w.append(indent).append("            try {\n");
-        w.append(indent).append("              Object receiver = ForeignAccess.getReceiver(frame);\n");
+        w.append(indent).append("            Object receiver = ForeignAccess.getReceiver(frame);\n");
         boolean listGenerated = false;
         for (int i = 0; i < getParameterCount() - 1; i++) {
             if (!listGenerated) {
-                w.append("              java.util.List<Object> arguments = ForeignAccess.getArguments(frame);\n");
+                w.append(indent).append("            Object[] arguments = frame.getArguments();\n");
                 listGenerated = true;
             }
-            String index = String.valueOf(i);
-            w.append(indent).append("              Object arg").append(index).append(" = arguments.get(").append(index).append(");\n");
+            w.append(indent).append("            Object arg").append(String.valueOf(i)).append(" = arguments[").append(String.valueOf(i + 1)).append("];\n");
         }
-        w.append(indent).append("              return node.executeWithTarget(frame, receiver");
+        w.append(indent).append("            try {\n");
+        w.append(indent).append("                return node.executeWithTarget(frame, receiver");
         for (int i = 0; i < getParameterCount() - 1; i++) {
             String index = String.valueOf(i);
             w.append(", ").append("arg").append(index);

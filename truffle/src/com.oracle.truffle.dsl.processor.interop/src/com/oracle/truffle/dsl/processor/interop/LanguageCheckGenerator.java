@@ -166,9 +166,9 @@ final class LanguageCheckGenerator extends InteropNodeGenerator {
         w.append("\n");
         w.append(indent).append("        @Override\n");
         w.append(indent).append("        public Object execute(VirtualFrame frame) {\n");
+        w.append(indent).append("            Object receiver = ForeignAccess.getReceiver(frame);\n");
         w.append(indent).append("            try {\n");
-        w.append(indent).append("              Object receiver = ForeignAccess.getReceiver(frame);\n");
-        w.append(indent).append("              return node.executeWithTarget(frame, receiver);\n");
+        w.append(indent).append("                return node.executeWithTarget(frame, receiver);\n");
         w.append(indent).append("            } catch (UnsupportedSpecializationException e) {\n");
         appendHandleUnsupportedTypeException(w);
         w.append(indent).append("            }\n");
