@@ -280,12 +280,12 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
     private void fillCompletionsWithScopesValues(TextDocumentSurrogate surrogate, CompletionList completions, Iterable<Scope> scopes,
                     CompletionItemKind completionItemKindDefault, int displayPriority) {
         String langId = surrogate.getLangId();
-        LinkedHashMap<String, Map<Object, Object>> scopeMap = scopesToObjectMap(scopes);
+        LinkedHashMap<Scope, Map<Object, Object>> scopeMap = scopesToObjectMap(scopes);
         String[] existingCompletions = completions.getItems().stream().map((item) -> item.getLabel()).toArray(String[]::new);
         // Filter duplicates
         Set<String> completionKeys = new HashSet<>(Arrays.asList(existingCompletions));
         int scopeCounter = 0;
-        for (Entry<String, Map<Object, Object>> scopeEntry : scopeMap.entrySet()) {
+        for (Entry<Scope, Map<Object, Object>> scopeEntry : scopeMap.entrySet()) {
             ++scopeCounter;
             for (Entry<Object, Object> entry : scopeEntry.getValue().entrySet()) {
                 String key = entry.getKey().toString();
@@ -310,7 +310,7 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
                 CompletionItemKind completionItemKind = findCompletionItemKind(object);
                 completion.setKind(completionItemKind != null ? completionItemKind : completionItemKindDefault);
                 completion.setDetail(createCompletionDetail(entry.getKey(), object, langId));
-                completion.setDocumentation(createDocumentation(object, langId, "in " + scopeEntry.getKey()));
+                completion.setDocumentation(createDocumentation(object, langId, "in " + scopeEntry.getKey().getName()));
 
                 completions.getItems().add(completion);
             }
@@ -514,8 +514,8 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
         return metaObject;
     }
 
-    public static LinkedHashMap<String, Map<Object, Object>> scopesToObjectMap(Iterable<Scope> scopes) {
-        LinkedHashMap<String, Map<Object, Object>> map = new LinkedHashMap<>();
+    public static LinkedHashMap<Scope, Map<Object, Object>> scopesToObjectMap(Iterable<Scope> scopes) {
+        LinkedHashMap<Scope, Map<Object, Object>> map = new LinkedHashMap<>();
         for (Scope scope : scopes) {
             Object variables = scope.getVariables();
             if (variables instanceof TruffleObject) {
@@ -527,11 +527,7 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
                         continue;
                     }
 
-                    if (map.containsKey(scope.getName())) {
-                        System.err.println("CompletionRequestHandler.scopesToObjectMap() -> There is already a scope named " + scope.getName() + ". Skipping the duplicate");
-                    } else {
-                        map.put(scope.getName(), ObjectStructures.asMap(new ObjectStructures.MessageNodes(), truffleObj));
-                    }
+                    map.put(scope, ObjectStructures.asMap(new ObjectStructures.MessageNodes(), truffleObj));
                 } catch (UnsupportedMessageException e) {
                     throw new RuntimeException(e);
                 }
