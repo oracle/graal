@@ -17,7 +17,8 @@ public final class NearestSectionsFinder {
         CONTAINS,
         CONTAINS_END,
         PREVIOUS,
-        NEXT
+        NEXT,
+        ROOT
     }
 
     private NearestSectionsFinder() {
@@ -43,9 +44,17 @@ public final class NearestSectionsFinder {
         Node nearestNode;
         NodeLocationType locationType;
         if (containsSection == null) {
-            // We are not in a local scope, so only top scope objects possible
-            nearestNode = null;
-            locationType = null;
+            // We are not in a valid local scope, try to find any node near us
+            Node nextOrPreviousNode = nearestSections.getNextNode() != null ? (Node) nearestSections.getNextNode() : (Node) nearestSections.getPreviousNode();
+            if (nextOrPreviousNode != null) {
+                // Use the root as reference for local scoping
+                nearestNode = nextOrPreviousNode.getRootNode();
+                locationType = NodeLocationType.ROOT;
+            } else {
+                // Empty source, no nodes found
+                nearestNode = null;
+                locationType = null;
+            }
         } else if (isEndOfSectionMatchingCaretPosition(oneBasedLineNumber, column, containsSection)) {
             // Our caret is directly behind the containing section, so we can simply use that one to
             // find local scope objects
