@@ -3,6 +3,7 @@
 Changes:
 
 * Uncaught exceptions are now output on stderr (previously stdout).
+* Hide internal functions (e.g. `_start` or `__cxa_throw`) in stack traces.
 
 # Version 1.0.0 RC9
 

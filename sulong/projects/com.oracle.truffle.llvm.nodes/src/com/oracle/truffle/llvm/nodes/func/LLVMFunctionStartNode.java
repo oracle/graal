@@ -73,8 +73,7 @@ public class LLVMFunctionStartNode extends RootNode {
 
     @Override
     public boolean isInternal() {
-        // currently we never create internal LLVM sources, so we can take a shortcut here
-        return false;
+        return debugInformation.bcSource.isInternal();
     }
 
     @Override
