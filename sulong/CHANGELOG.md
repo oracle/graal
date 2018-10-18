@@ -1,5 +1,10 @@
 # Version 1.0.0 RC10
 
+New features:
+
+* New option `--llvm.sourcePath` to specify search path for source files when
+  debugging.
+
 Changes:
 
 * Uncaught exceptions are now output on stderr (previously stdout).
