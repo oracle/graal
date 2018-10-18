@@ -608,7 +608,6 @@ public final class Deoptimizer {
             }
         }
 
-        assert sourceChunk.getTotalFrameSize() >= FrameAccess.wordSize() : "no place in frame to put pointer to DeoptimizedFrame";
         assert endOfParams == 0;
 
         /*
@@ -664,6 +663,9 @@ public final class Deoptimizer {
                 }
             }
         }
+
+        VMError.guarantee(sourceChunk.getTotalFrameSize() >= FrameAccess.wordSize(), "Insufficient space in frame for pointer to DeoptimizedFrame");
+
         /* Allocate a buffer to hold the contents of the new target frame. */
         DeoptimizedFrame deoptimizedFrame = DeoptimizedFrame.factory(targetContentSize, sourceChunk.getTotalFrameSize(), CodeInfoTable.lookupInstalledCode(pc), topFrame, pc);
 
