@@ -42,8 +42,12 @@ package com.oracle.truffle.polyglot;
 
 import static com.oracle.truffle.polyglot.VMAccessor.LANGUAGE;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
+import com.oracle.truffle.polyglot.PolyglotValue.CodeCache;
 
 final class PolyglotLanguageInstance {
 
@@ -51,6 +55,9 @@ final class PolyglotLanguageInstance {
     final TruffleLanguage<?> spi;
 
     private final PolyglotSourceCache sourceCache;
+    final Map<Class<?>, CodeCache> valueCodeCache;
+    final Map<Object, Object> hostInteropCodeCache;
+    final CodeCache defaultValueCache;
 
     private volatile OptionValuesImpl firstOptionValues;
 
@@ -66,6 +73,9 @@ final class PolyglotLanguageInstance {
             throw new IllegalStateException(String.format("Error initializing language '%s' using class '%s'.", language.cache.getId(), language.cache.getClassName()), e);
         }
         this.sourceCache = new PolyglotSourceCache();
+        this.valueCodeCache = new ConcurrentHashMap<>();
+        this.hostInteropCodeCache = new ConcurrentHashMap<>();
+        this.defaultValueCache = new CodeCache(this, Object.class);
     }
 
     boolean areOptionsCompatible(OptionValuesImpl newOptionValues) {

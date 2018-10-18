@@ -60,7 +60,6 @@ import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import java.util.WeakHashMap;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -146,7 +145,6 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     private volatile CancelHandler cancelHandler;
     // Data used by the runtime to enable "global" state per Engine
     volatile Object runtimeData;
-    final Map<Object, Object> javaInteropCodeCache = new ConcurrentHashMap<>();
     Map<String, Level> logLevels;    // effectively final
 
     PolyglotEngineImpl(PolyglotImpl impl, DispatchOutputStream out, DispatchOutputStream err, InputStream in, Map<String, String> options, boolean useSystemProperties, ClassLoader contextClassLoader,

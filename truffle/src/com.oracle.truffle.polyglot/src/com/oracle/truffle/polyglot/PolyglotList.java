@@ -157,14 +157,14 @@ class PolyglotList<T> extends AbstractList<T> {
         }
 
         private static CallTarget initializeCall(PolyglotListNode node) {
-            return HostEntryRootNode.createTarget(node);
+            return HostRootNode.createTarget(node);
         }
 
         static Cache lookup(PolyglotLanguageContext languageContext, Class<?> receiverClass, Class<?> valueClass, Type valueType) {
             Key cacheKey = new Key(receiverClass, valueClass, valueType);
-            Cache cache = HostEntryRootNode.lookupHostCodeCache(languageContext, cacheKey, Cache.class);
+            Cache cache = HostRootNode.lookupHostCodeCache(languageContext, cacheKey, Cache.class);
             if (cache == null) {
-                cache = HostEntryRootNode.installHostCodeCache(languageContext, cacheKey, new Cache(receiverClass, valueClass, valueType), Cache.class);
+                cache = HostRootNode.installHostCodeCache(languageContext, cacheKey, new Cache(receiverClass, valueClass, valueType), Cache.class);
             }
             assert cache.receiverClass == receiverClass;
             assert cache.valueClass == valueClass;
@@ -202,7 +202,7 @@ class PolyglotList<T> extends AbstractList<T> {
             }
         }
 
-        private abstract static class PolyglotListNode extends HostEntryRootNode<TruffleObject> {
+        private abstract static class PolyglotListNode extends HostRootNode<TruffleObject> {
 
             final Cache cache;
 
@@ -235,7 +235,7 @@ class PolyglotList<T> extends AbstractList<T> {
             }
 
             @Override
-            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args, int offset) {
+            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args) {
                 int size = 0;
                 if (sendHasSize(hasSize, receiver)) {
                     try {
@@ -271,8 +271,8 @@ class PolyglotList<T> extends AbstractList<T> {
             }
 
             @Override
-            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args, int offset) {
-                Object key = args[offset];
+            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args) {
+                Object key = args[OFFSET];
                 Object result = null;
                 assert key instanceof Integer;
                 if (sendHasSize(hasSize, receiver)) {
@@ -317,11 +317,11 @@ class PolyglotList<T> extends AbstractList<T> {
             }
 
             @Override
-            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args, int offset) {
-                Object key = args[offset];
+            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args) {
+                Object key = args[OFFSET];
                 Object result = null;
                 assert key instanceof Integer;
-                Object originalValue = args[offset + 1];
+                Object originalValue = args[OFFSET + 1];
                 Object value = toGuest.apply(languageContext, originalValue);
                 if (sendHasSize(hasSize, receiver)) {
                     if (KeyInfo.isWritable(sendKeyInfo(keyInfo, receiver, key))) {
@@ -364,8 +364,8 @@ class PolyglotList<T> extends AbstractList<T> {
             }
 
             @Override
-            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args, int offset) {
-                Object key = args[offset];
+            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args) {
+                Object key = args[OFFSET];
                 Object result = null;
                 assert key instanceof Integer;
                 if (sendHasSize(hasSize, receiver)) {
@@ -407,8 +407,8 @@ class PolyglotList<T> extends AbstractList<T> {
             }
 
             @Override
-            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject function, Object[] args, int offset) {
-                return apply.execute(languageContext, function, args[offset], Object.class, Object.class);
+            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject function, Object[] args) {
+                return apply.execute(languageContext, function, args[OFFSET], Object.class, Object.class);
             }
         }
     }
