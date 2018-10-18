@@ -34,7 +34,7 @@ public class SourceUtils {
 
     public static boolean isLineValid(int line, Source source) {
         // line is zero-based, source line is one-based
-        return line >= 0 && line < source.getLineCount();
+        return line >= 0 && (line < source.getLineCount() || (line == source.getLineCount() && endsWithNewline(source)));
     }
 
     public static int zeroBasedLineToOneBasedLine(int line, Source source) {
@@ -42,13 +42,17 @@ public class SourceUtils {
             return line + 1;
         }
 
-        String text = source.getCharacters().toString();
-        boolean isNewlineEnd = text.charAt(text.length() - 1) == '\n';
-        if (isNewlineEnd) {
+        if (endsWithNewline(source)) {
             return line;
         }
 
         throw new IllegalStateException("Mismatch in line numbers. Source line count (one-based): " + source.getLineCount() + ", zero-based line count: " + line);
+    }
+
+    private static boolean endsWithNewline(Source source) {
+        String text = source.getCharacters().toString();
+        boolean isNewlineEnd = text.charAt(text.length() - 1) == '\n';
+        return isNewlineEnd;
     }
 
     public static Range sourceSectionToRange(SourceSection section) {
