@@ -781,7 +781,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
-        public Thread createThread(Object vmObject, Runnable runnable, Object innerContextImpl) {
+        public Thread createThread(Object vmObject, ThreadGroup group, Runnable runnable, long stackSize, Object innerContextImpl) {
             if (!isCreateThreadAllowed(vmObject)) {
                 throw new IllegalStateException("Creating threads is not allowed.");
             }
@@ -791,7 +791,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                 PolyglotContextImpl innerContext = (PolyglotContextImpl) innerContextImpl;
                 threadContext = innerContext.getContext(threadContext.language);
             }
-            return new PolyglotThread(threadContext, runnable);
+            return new PolyglotThread(threadContext, group, runnable, stackSize);
         }
 
         @Override

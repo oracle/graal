@@ -265,7 +265,15 @@ public abstract class Accessor {
 
         public abstract boolean isCreateThreadAllowed(Object vmObject);
 
-        public abstract Thread createThread(Object vmObject, Runnable runnable, Object context);
+        public Thread createThread(Object vmObject, ThreadGroup group, Runnable runnable, Object innerContextImpl) {
+            return createThread(vmObject, group, runnable, 0, innerContextImpl);
+        }
+
+        public Thread createThread(Object vmObject, Runnable runnable, Object innerContextImpl) {
+            return createThread(vmObject, null, runnable, 0, innerContextImpl);
+        }
+
+        public abstract Thread createThread(Object vmObject, ThreadGroup group, Runnable runnable, long stackSize, Object innerContextImpl);
 
         public abstract Iterable<Scope> createDefaultLexicalScope(Node node, Frame frame);
 

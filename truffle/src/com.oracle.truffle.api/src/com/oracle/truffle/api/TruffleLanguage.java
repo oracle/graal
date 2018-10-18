@@ -1455,7 +1455,76 @@ public abstract class TruffleLanguage<C> {
          */
         @TruffleBoundary
         public Thread createThread(Runnable runnable, @SuppressWarnings("hiding") TruffleContext context) {
-            return AccessAPI.engineAccess().createThread(vmObject, runnable, context != null ? context.impl : null);
+            return createThread(null, runnable, 0, context);
+        }
+
+        /**
+         * Creates a new thread that has access to the given context. A thread is
+         * {@link TruffleLanguage#initializeThread(Object, Thread) initialized} when it is
+         * {@link Thread#start() started} and {@link TruffleLanguage#disposeThread(Object, Thread)
+         * disposed} as soon as the thread finished the execution.
+         * <p>
+         * It is recommended to set an
+         * {@link Thread#setUncaughtExceptionHandler(java.lang.Thread.UncaughtExceptionHandler)
+         * uncaught exception handler} for the created thread. For example the thread can throw an
+         * uncaught exception if one of the initialized language contexts don't support execution on
+         * this thread.
+         * <p>
+         * The language that created and started the thread is responsible to complete all running
+         * or waiting threads when the context is {@link TruffleLanguage#disposeContext(Object)
+         * disposed}.
+         * <p>
+         * The {@link TruffleContext} can be either an inner context created by
+         * {@link #newContextBuilder()}.{@link TruffleContext.Builder#build() build()}, or the
+         * context associated with this environment obtained from {@link #getContext()}.
+         *
+         * @param group the thread group, passed on to the underlying {@link Thread}.
+         * @param runnable the runnable to run on this thread.
+         * @param context the context to enter and leave when the thread is started.
+         * @throws IllegalStateException if thread creation is not {@link #isCreateThreadAllowed()
+         *             allowed}.
+         * @see #getContext()
+         * @see #newContextBuilder()
+         * @since 0.28
+         */
+        @TruffleBoundary
+        public Thread createThread(ThreadGroup group, Runnable runnable, @SuppressWarnings("hiding") TruffleContext context) {
+            return createThread(group, runnable, 0, context);
+        }
+
+        /**
+         * Creates a new thread that has access to the given context. A thread is
+         * {@link TruffleLanguage#initializeThread(Object, Thread) initialized} when it is
+         * {@link Thread#start() started} and {@link TruffleLanguage#disposeThread(Object, Thread)
+         * disposed} as soon as the thread finished the execution.
+         * <p>
+         * It is recommended to set an
+         * {@link Thread#setUncaughtExceptionHandler(java.lang.Thread.UncaughtExceptionHandler)
+         * uncaught exception handler} for the created thread. For example the thread can throw an
+         * uncaught exception if one of the initialized language contexts don't support execution on
+         * this thread.
+         * <p>
+         * The language that created and started the thread is responsible to complete all running
+         * or waiting threads when the context is {@link TruffleLanguage#disposeContext(Object)
+         * disposed}.
+         * <p>
+         * The {@link TruffleContext} can be either an inner context created by
+         * {@link #newContextBuilder()}.{@link TruffleContext.Builder#build() build()}, or the
+         * context associated with this environment obtained from {@link #getContext()}.
+         *
+         * @param group the thread group, passed on to the underlying {@link Thread}.
+         * @param runnable the runnable to run on this thread.
+         * @param stackSize the desired stack size for the new thread, or zero if this parameter is to be ignored.
+         * @param context the context to enter and leave when the thread is started.
+         * @throws IllegalStateException if thread creation is not {@link #isCreateThreadAllowed()
+         *             allowed}.
+         * @see #getContext()
+         * @see #newContextBuilder()
+         * @since 0.28
+         */
+        @TruffleBoundary
+        public Thread createThread(ThreadGroup group, Runnable runnable, long stackSize, @SuppressWarnings("hiding") TruffleContext context) {
+            return AccessAPI.engineAccess().createThread(vmObject, group, runnable, stackSize, context != null ? context.impl : null);
         }
 
         /**
