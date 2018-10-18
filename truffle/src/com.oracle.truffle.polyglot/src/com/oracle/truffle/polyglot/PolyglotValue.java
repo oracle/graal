@@ -297,23 +297,25 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     @Override
     public Value getMetaObject(Object receiver) {
-        Object prev = languageContext.context.enterIfNeeded();
+        Object prev = enter(languageContext);
         try {
             Object metaObject = findMetaObject(receiver);
             if (metaObject != null) {
-                return newValue(metaObject);
+                return languageContext.asValue(metaObject);
             } else {
                 return null;
             }
         } catch (Throwable e) {
             throw PolyglotImpl.wrapGuestException(languageContext, e);
         } finally {
-            languageContext.context.leaveIfNeeded(prev);
+            leave(languageContext, prev);
         }
     }
 
     private Object findMetaObject(Object target) {
-        if (target instanceof PolyglotLanguageBindings) {
+        if (languageContext == null) {
+            return null;
+        } else if (target instanceof PolyglotLanguageBindings) {
             return languageContext.language.getName() + " Bindings";
         } else if (target instanceof PolyglotBindings) {
             return "Polyglot Bindings";
@@ -328,8 +330,18 @@ abstract class PolyglotValue extends AbstractValueImpl {
         }
     }
 
+    private static Object enter(PolyglotLanguageContext languageContext) {
+        return languageContext != null ? languageContext.context.enterIfNeeded() : null;
+    }
+
+    private static void leave(PolyglotLanguageContext languageContext, Object prev) {
+        if (languageContext != null) {
+            languageContext.context.leaveIfNeeded(prev);
+        }
+    }
+
     protected static RuntimeException unsupported(PolyglotLanguageContext languageContext, Object receiver, String message, String useToCheck) {
-        Object prev = languageContext.context.enterIfNeeded();
+        Object prev = enter(languageContext);
         try {
             String polyglotMessage;
             if (useToCheck != null) {
@@ -343,7 +355,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
         } catch (Throwable e) {
             throw PolyglotImpl.wrapGuestException(languageContext, e);
         } finally {
-            languageContext.context.leaveIfNeeded(prev);
+            leave(languageContext, prev);
         }
     }
 
@@ -425,7 +437,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
     }
 
     protected static RuntimeException nullCoercion(PolyglotLanguageContext languageContext, Object receiver, Class<?> targetType, String message, String useToCheck) {
-        Object prev = languageContext.context.enterIfNeeded();
+        Object prev = enter(languageContext);
         try {
             String valueInfo = getValueInfo(languageContext, receiver);
             throw new PolyglotNullPointerException(String.format("Cannot convert null value %s to Java type '%s' using %s.%s. " +
@@ -434,12 +446,12 @@ abstract class PolyglotValue extends AbstractValueImpl {
         } catch (Throwable e) {
             throw PolyglotImpl.wrapGuestException(languageContext, e);
         } finally {
-            languageContext.context.leaveIfNeeded(prev);
+            leave(languageContext, prev);
         }
     }
 
     protected static RuntimeException cannotConvert(PolyglotLanguageContext languageContext, Object receiver, Class<?> targetType, String message, String useToCheck, String reason) {
-        Object prev = languageContext.context.enterIfNeeded();
+        Object prev = enter(languageContext);
         try {
             String valueInfo = getValueInfo(languageContext, receiver);
             String targetTypeString = "";
@@ -452,7 +464,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
         } catch (Throwable e) {
             throw PolyglotImpl.wrapGuestException(languageContext, e);
         } finally {
-            languageContext.context.leaveIfNeeded(prev);
+            leave(languageContext, prev);
         }
     }
 
@@ -514,9 +526,11 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     @Override
     public String toString(Object receiver) {
-        Object prev = languageContext.context.enterIfNeeded();
+        Object prev = enter(languageContext);
         try {
-            if (receiver instanceof PolyglotLanguageBindings) {
+            if (languageContext == null) {
+                return receiver.toString();
+            } else if (receiver instanceof PolyglotLanguageBindings) {
                 return languageContext.language.getName() + " Bindings";
             } else if (receiver instanceof PolyglotBindings) {
                 return "Polyglot Bindings";
@@ -531,14 +545,17 @@ abstract class PolyglotValue extends AbstractValueImpl {
         } catch (Throwable e) {
             throw PolyglotImpl.wrapGuestException(languageContext, e);
         } finally {
-            languageContext.context.leaveIfNeeded(prev);
+            leave(languageContext, prev);
         }
     }
 
     @Override
     public SourceSection getSourceLocation(Object receiver) {
-        Object prev = languageContext.context.enterIfNeeded();
+        Object prev = enter(languageContext);
         try {
+            if (languageContext == null) {
+                return null;
+            }
             final PolyglotLanguage resolvedLanguage = PolyglotImpl.EngineImpl.findObjectLanguage(languageContext.context, languageContext, receiver);
             if (resolvedLanguage == null) {
                 return null;
@@ -549,15 +566,11 @@ abstract class PolyglotValue extends AbstractValueImpl {
         } catch (final Throwable t) {
             throw PolyglotImpl.wrapGuestException(languageContext, t);
         } finally {
-            languageContext.context.leaveIfNeeded(prev);
+            leave(languageContext, prev);
         }
     }
 
-    protected final Value newValue(Object receiver) {
-        return languageContext.asValue(receiver);
-    }
-
-    static CallTarget createTarget(ValueNode root) {
+    static CallTarget createTarget(InteropNode root) {
         CallTarget target = Truffle.getRuntime().createCallTarget(root);
         Class<?>[] types = root.getArgumentTypes();
         if (types != null) {
@@ -568,7 +581,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     static PolyglotValue createInteropValue(PolyglotLanguageContext languageContext, TruffleObject receiver, Class<?> receiverType) {
         PolyglotLanguageInstance languageInstance = languageContext.getLanguageInstance();
-        InteropCodeCache cache = (InteropCodeCache) languageInstance.valueCodeCache.get(receiverType);
+        InteropCodeCache cache = languageInstance.valueCodeCache.get(receiverType);
         if (cache == null) {
             cache = new InteropCodeCache(languageInstance, receiver, receiverType);
             languageInstance.valueCodeCache.put(receiverType, cache);
@@ -576,25 +589,16 @@ abstract class PolyglotValue extends AbstractValueImpl {
         return new InteropValue(languageContext, cache);
     }
 
-    static void createDefaultValues(PolyglotLanguageContext context, PolyglotLanguageInstance languageInstance, Map<Class<?>, PolyglotValue> valueCache) {
-        valueCache.put(Boolean.class, new BooleanValue(context, getPrimitiveCache(languageInstance, Boolean.class)));
-        valueCache.put(Byte.class, new ByteValue(context, getPrimitiveCache(languageInstance, Byte.class)));
-        valueCache.put(Short.class, new ShortValue(context, getPrimitiveCache(languageInstance, Short.class)));
-        valueCache.put(Integer.class, new IntValue(context, getPrimitiveCache(languageInstance, Integer.class)));
-        valueCache.put(Long.class, new LongValue(context, getPrimitiveCache(languageInstance, Long.class)));
-        valueCache.put(Float.class, new FloatValue(context, getPrimitiveCache(languageInstance, Float.class)));
-        valueCache.put(Double.class, new DoubleValue(context, getPrimitiveCache(languageInstance, Double.class)));
-        valueCache.put(String.class, new StringValue(context, getPrimitiveCache(languageInstance, String.class)));
-        valueCache.put(Character.class, new CharacterValue(context, getPrimitiveCache(languageInstance, Character.class)));
-    }
-
-    private static CodeCache getPrimitiveCache(PolyglotLanguageInstance instance, Class<?> clazz) {
-        CodeCache cache = instance.valueCodeCache.get(clazz);
-        if (cache == null) {
-            cache = new CodeCache(instance, clazz);
-            instance.valueCodeCache.put(clazz, cache);
-        }
-        return cache;
+    static void createDefaultValues(PolyglotLanguageContext context, Map<Class<?>, PolyglotValue> valueCache) {
+        valueCache.put(Boolean.class, new BooleanValue(context));
+        valueCache.put(Byte.class, new ByteValue(context));
+        valueCache.put(Short.class, new ShortValue(context));
+        valueCache.put(Integer.class, new IntValue(context));
+        valueCache.put(Long.class, new LongValue(context));
+        valueCache.put(Float.class, new FloatValue(context));
+        valueCache.put(Double.class, new DoubleValue(context));
+        valueCache.put(String.class, new StringValue(context));
+        valueCache.put(Character.class, new CharacterValue(context));
     }
 
     private static boolean inSafeIntegerRange(double d) {
@@ -625,7 +629,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
         return f == 0f && Float.floatToRawIntBits(f) == Float.floatToRawIntBits(-0f);
     }
 
-    static class InteropCodeCache extends CodeCache {
+    static class InteropCodeCache {
 
         final Node keysNode = Message.KEYS.createNode();
         final Node keyInfoNode = Message.KEY_INFO.createNode();
@@ -660,9 +664,17 @@ abstract class PolyglotValue extends AbstractValueImpl {
         final boolean isProxy;
         final boolean isHost;
 
+        final CallTarget asClassLiteral;
+        final CallTarget asTypeLiteral;
+        final Class<?> receiverType;
+        final PolyglotLanguageInstance languageInstance;
+
         InteropCodeCache(PolyglotLanguageInstance languageInstance, TruffleObject receiver, Class<?> receiverType) {
-            super(languageInstance, receiverType);
             Objects.requireNonNull(receiverType);
+            this.languageInstance = languageInstance;
+            this.receiverType = receiverType;
+            this.asClassLiteral = createTarget(new AsClassLiteralNode(this));
+            this.asTypeLiteral = createTarget(new AsTypeLiteralNode(this));
             this.isNativePointer = createTarget(new IsNativePointerNode(this));
             this.asNativePointer = createTarget(new AsNativePointerNode(this));
             this.hasArrayElements = createTarget(new HasArrayElementsNode(this));
@@ -691,7 +703,57 @@ abstract class PolyglotValue extends AbstractValueImpl {
             this.isHost = HostObject.isInstance(receiver);
         }
 
-        private static class IsNativePointerNode extends ValueNode {
+        private static class AsClassLiteralNode extends InteropNode {
+
+            @Child ToHostNode toHost = ToHostNode.create();
+
+            protected AsClassLiteralNode(InteropCodeCache interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType, Class.class};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "as";
+            }
+
+            @Override
+            protected Object executeImpl(PolyglotLanguageContext context, Object receiver, Object[] args) {
+                return toHost.execute(receiver, (Class<?>) args[OFFSET], null, context);
+            }
+
+        }
+
+        private static class AsTypeLiteralNode extends InteropNode {
+
+            @Child ToHostNode toHost = ToHostNode.create();
+
+            protected AsTypeLiteralNode(InteropCodeCache interop) {
+                super(interop);
+            }
+
+            @Override
+            protected Class<?>[] getArgumentTypes() {
+                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType, TypeLiteral.class};
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "as";
+            }
+
+            @Override
+            protected Object executeImpl(PolyglotLanguageContext context, Object receiver, Object[] args) {
+                TypeLiteral<?> typeLiteral = (TypeLiteral<?>) args[OFFSET];
+                return toHost.execute(receiver, typeLiteral.getRawType(), typeLiteral.getType(), context);
+            }
+        }
+
+        private static class IsNativePointerNode extends InteropNode {
 
             @Child private Node isPointerNode = Message.IS_POINTER.createNode();
 
@@ -716,7 +778,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         }
 
-        private static class AsNativePointerNode extends ValueNode {
+        private static class AsNativePointerNode extends InteropNode {
 
             @Child private Node asPointerNode = Message.AS_POINTER.createNode();
 
@@ -746,7 +808,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         }
 
-        private static class HasArrayElementsNode extends ValueNode {
+        private static class HasArrayElementsNode extends InteropNode {
 
             @Child private Node hasSizeNode = Message.HAS_SIZE.createNode();
 
@@ -771,7 +833,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         }
 
-        private static class GetArrayElementNode extends ValueNode {
+        private static class GetArrayElementNode extends InteropNode {
 
             @Child private Node readArrayNode = Message.READ.createNode();
             private final ToHostValueNode toHostValue;
@@ -807,7 +869,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         }
 
-        private static class SetArrayElementNode extends ValueNode {
+        private static class SetArrayElementNode extends InteropNode {
 
             @Child private Node writeArrayNode = Message.WRITE.createNode();
 
@@ -847,7 +909,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
             }
         }
 
-        private static class RemoveArrayElementNode extends ValueNode {
+        private static class RemoveArrayElementNode extends InteropNode {
 
             @Child private Node removeArrayNode = Message.REMOVE.createNode();
             @Child private Node keyInfoNode = Message.KEY_INFO.createNode();
@@ -904,7 +966,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
             }
         }
 
-        private static class GetArraySizeNode extends ValueNode {
+        private static class GetArraySizeNode extends InteropNode {
 
             @Child private Node getSizeNode = Message.GET_SIZE.createNode();
 
@@ -934,7 +996,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         }
 
-        private static class GetMemberNode extends ValueNode {
+        private static class GetMemberNode extends InteropNode {
 
             @Child private Node readMemberNode = Message.READ.createNode();
             @Child private Node keyInfoNode = Message.KEY_INFO.createNode();
@@ -995,7 +1057,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         }
 
-        private static class PutMemberNode extends ValueNode {
+        private static class PutMemberNode extends InteropNode {
 
             @Child private Node writeMemberNode = Message.WRITE.createNode();
             private final ToGuestValueNode toGuestValue = ToGuestValueNode.create();
@@ -1036,7 +1098,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         }
 
-        private static class RemoveMemberNode extends ValueNode {
+        private static class RemoveMemberNode extends InteropNode {
 
             @Child private Node removeMemberNode = Message.REMOVE.createNode();
             @Child private Node keyInfoNode = Message.KEY_INFO.createNode();
@@ -1093,7 +1155,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         }
 
-        private static class IsNullNode extends ValueNode {
+        private static class IsNullNode extends InteropNode {
 
             @Child private Node isNullNode = Message.IS_NULL.createNode();
 
@@ -1118,7 +1180,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         }
 
-        private static class HasMembersNode extends ValueNode {
+        private static class HasMembersNode extends InteropNode {
 
             @Child private Node hasKeysNode = Message.HAS_KEYS.createNode();
 
@@ -1143,7 +1205,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         }
 
-        private abstract static class AbstractMemberInfoNode extends ValueNode {
+        private abstract static class AbstractMemberInfoNode extends InteropNode {
 
             final Node keyInfoNode = Message.KEY_INFO.createNode();
 
@@ -1202,7 +1264,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         }
 
-        private static class CanExecuteNode extends ValueNode {
+        private static class CanExecuteNode extends InteropNode {
 
             @Child private Node isExecutableNode = Message.IS_EXECUTABLE.createNode();
 
@@ -1227,7 +1289,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         }
 
-        private static class CanInstantiateNode extends ValueNode {
+        private static class CanInstantiateNode extends InteropNode {
 
             @Child private Node isInstantiableNode = Message.IS_INSTANTIABLE.createNode();
 
@@ -1252,7 +1314,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         }
 
-        private static class AsPrimitiveNode extends ValueNode {
+        private static class AsPrimitiveNode extends InteropNode {
 
             @Child private Node isBoxedNode = Message.IS_BOXED.createNode();
             @Child private Node unboxNode = Message.UNBOX.createNode();
@@ -1286,7 +1348,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
             }
         }
 
-        private abstract static class AbstractExecuteNode extends ValueNode {
+        private abstract static class AbstractExecuteNode extends InteropNode {
 
             @Child private Node executeNode = Message.EXECUTE.createNode();
             private final ToGuestValuesNode toGuestValues = ToGuestValuesNode.create();
@@ -1415,7 +1477,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         }
 
-        private static class NewInstanceNode extends ValueNode {
+        private static class NewInstanceNode extends InteropNode {
 
             @Child private Node newInstanceNode = Message.NEW.createNode();
             private final ToGuestValuesNode toGuestValues = ToGuestValuesNode.create();
@@ -1455,7 +1517,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         }
 
-        private abstract static class AbstractInvokeNode extends ValueNode {
+        private abstract static class AbstractInvokeNode extends InteropNode {
 
             @Child private Node invokeNode = Message.INVOKE.createNode();
 
@@ -1545,101 +1607,42 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     }
 
-    static class CodeCache {
+    abstract static class PrimitiveValue extends PolyglotValue {
 
-        final CallTarget asClassLiteral;
-        final CallTarget asTypeLiteral;
-        final Class<?> receiverType;
-        final PolyglotLanguageInstance languageInstance;
-
-        CodeCache(PolyglotLanguageInstance languageInstance, Class<?> receiverType) {
-            this.languageInstance = languageInstance;
-            this.receiverType = receiverType;
-            this.asClassLiteral = createTarget(new AsClassLiteralNode(this));
-            this.asTypeLiteral = createTarget(new AsTypeLiteralNode(this));
-        }
-
-        private static class AsClassLiteralNode extends ValueNode {
-
-            @Child ToHostNode toHost = ToHostNode.create();
-
-            protected AsClassLiteralNode(CodeCache interop) {
-                super(interop);
-            }
-
-            @Override
-            protected Class<?>[] getArgumentTypes() {
-                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType, Class.class};
-            }
-
-            @Override
-            protected String getOperationName() {
-                return "as";
-            }
-
-            @Override
-            protected Object executeImpl(PolyglotLanguageContext context, Object receiver, Object[] args) {
-                return toHost.execute(receiver, (Class<?>) args[OFFSET], null, context);
-            }
-
-        }
-
-        private static class AsTypeLiteralNode extends ValueNode {
-
-            @Child ToHostNode toHost = ToHostNode.create();
-
-            protected AsTypeLiteralNode(CodeCache interop) {
-                super(interop);
-            }
-
-            @Override
-            protected Class<?>[] getArgumentTypes() {
-                return new Class<?>[]{PolyglotLanguageContext.class, polyglot.receiverType, TypeLiteral.class};
-            }
-
-            @Override
-            protected String getOperationName() {
-                return "as";
-            }
-
-            @Override
-            protected Object executeImpl(PolyglotLanguageContext context, Object receiver, Object[] args) {
-                TypeLiteral<?> typeLiteral = (TypeLiteral<?>) args[OFFSET];
-                return toHost.execute(receiver, typeLiteral.getRawType(), typeLiteral.getType(), context);
-            }
-        }
-    }
-
-    abstract static class BaseValue extends PolyglotValue {
-
-        final CodeCache cache;
-
-        BaseValue(PolyglotLanguageContext context, CodeCache cache) {
+        PrimitiveValue(PolyglotLanguageContext context) {
             super(context);
-            this.cache = cache;
         }
 
         @SuppressWarnings("unchecked")
         @Override
         public final <T> T as(Object receiver, Class<T> targetType) {
-            return (T) VMAccessor.SPI.callProfiled(cache.asClassLiteral, languageContext, receiver, targetType);
+            Object result;
+            if (targetType == Object.class) {
+                result = receiver;
+            } else {
+                result = ToHostNode.toPrimitiveLossy(receiver, targetType);
+                if (result == null) {
+                    throw HostInteropErrors.cannotConvertPrimitive(languageContext, receiver, targetType);
+                }
+            }
+            return (T) result;
         }
 
         @SuppressWarnings("unchecked")
         @Override
         public final <T> T as(Object receiver, TypeLiteral<T> targetType) {
-            return (T) VMAccessor.SPI.callProfiled(cache.asTypeLiteral, languageContext, receiver, targetType);
+            return as(receiver, targetType.getRawType());
         }
 
     }
 
-    private abstract static class ValueNode extends HostRootNode<Object> {
+    private abstract static class InteropNode extends HostRootNode<Object> {
 
-        protected final CodeCache polyglot;
+        protected final InteropCodeCache polyglot;
 
         protected abstract String getOperationName();
 
-        protected ValueNode(CodeCache polyglot) {
+        protected InteropNode(InteropCodeCache polyglot) {
             this.polyglot = polyglot;
         }
 
@@ -1662,10 +1665,10 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     }
 
-    private static final class StringValue extends BaseValue {
+    private static final class StringValue extends PrimitiveValue {
 
-        StringValue(PolyglotLanguageContext context, CodeCache codeCache) {
-            super(context, codeCache);
+        StringValue(PolyglotLanguageContext context) {
+            super(context);
         }
 
         @Override
@@ -1680,10 +1683,10 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     }
 
-    private static final class BooleanValue extends BaseValue {
+    private static final class BooleanValue extends PrimitiveValue {
 
-        BooleanValue(PolyglotLanguageContext context, CodeCache codeCache) {
-            super(context, codeCache);
+        BooleanValue(PolyglotLanguageContext context) {
+            super(context);
         }
 
         @Override
@@ -1698,10 +1701,10 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     }
 
-    private static final class ByteValue extends BaseValue {
+    private static final class ByteValue extends PrimitiveValue {
 
-        ByteValue(PolyglotLanguageContext context, CodeCache codeCache) {
-            super(context, codeCache);
+        ByteValue(PolyglotLanguageContext context) {
+            super(context);
         }
 
         @Override
@@ -1771,10 +1774,10 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     }
 
-    private static final class ShortValue extends BaseValue {
+    private static final class ShortValue extends PrimitiveValue {
 
-        ShortValue(PolyglotLanguageContext context, CodeCache codeCache) {
-            super(context, codeCache);
+        ShortValue(PolyglotLanguageContext context) {
+            super(context);
         }
 
         @Override
@@ -1852,10 +1855,10 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     }
 
-    private static final class CharacterValue extends BaseValue {
+    private static final class CharacterValue extends PrimitiveValue {
 
-        CharacterValue(PolyglotLanguageContext context, CodeCache codeCache) {
-            super(context, codeCache);
+        CharacterValue(PolyglotLanguageContext context) {
+            super(context);
         }
 
         @Override
@@ -1869,10 +1872,10 @@ abstract class PolyglotValue extends AbstractValueImpl {
         }
     }
 
-    private static final class LongValue extends BaseValue {
+    private static final class LongValue extends PrimitiveValue {
 
-        LongValue(PolyglotLanguageContext context, CodeCache codeCache) {
-            super(context, codeCache);
+        LongValue(PolyglotLanguageContext context) {
+            super(context);
         }
 
         @Override
@@ -1979,10 +1982,10 @@ abstract class PolyglotValue extends AbstractValueImpl {
         }
     }
 
-    private static final class FloatValue extends BaseValue {
+    private static final class FloatValue extends PrimitiveValue {
 
-        FloatValue(PolyglotLanguageContext context, CodeCache codeCache) {
-            super(context, codeCache);
+        FloatValue(PolyglotLanguageContext context) {
+            super(context);
         }
 
         @Override
@@ -2091,10 +2094,10 @@ abstract class PolyglotValue extends AbstractValueImpl {
         }
     }
 
-    private static final class DoubleValue extends BaseValue {
+    private static final class DoubleValue extends PrimitiveValue {
 
-        DoubleValue(PolyglotLanguageContext context, CodeCache codeCache) {
-            super(context, codeCache);
+        DoubleValue(PolyglotLanguageContext context) {
+            super(context);
         }
 
         @Override
@@ -2203,10 +2206,10 @@ abstract class PolyglotValue extends AbstractValueImpl {
         }
     }
 
-    private static final class IntValue extends BaseValue {
+    private static final class IntValue extends PrimitiveValue {
 
-        IntValue(PolyglotLanguageContext context, CodeCache codeCache) {
-            super(context, codeCache);
+        IntValue(PolyglotLanguageContext context) {
+            super(context);
         }
 
         @Override
@@ -2298,21 +2301,33 @@ abstract class PolyglotValue extends AbstractValueImpl {
         }
     }
 
-    static final class DefaultValue extends BaseValue {
+    static final class DefaultValue extends PrimitiveValue {
 
-        DefaultValue(PolyglotLanguageContext context, CodeCache codeCache) {
-            super(context, codeCache);
+        DefaultValue(PolyglotLanguageContext context) {
+            super(context);
         }
 
     }
 
-    private static final class InteropValue extends BaseValue {
+    private static final class InteropValue extends PolyglotValue {
 
         private final InteropCodeCache cache;
 
         InteropValue(PolyglotLanguageContext context, InteropCodeCache codeCache) {
-            super(context, codeCache);
+            super(context);
             this.cache = codeCache;
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public final <T> T as(Object receiver, Class<T> targetType) {
+            return (T) VMAccessor.SPI.callProfiled(cache.asClassLiteral, languageContext, receiver, targetType);
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public final <T> T as(Object receiver, TypeLiteral<T> targetType) {
+            return (T) VMAccessor.SPI.callProfiled(cache.asTypeLiteral, languageContext, receiver, targetType);
         }
 
         @Override

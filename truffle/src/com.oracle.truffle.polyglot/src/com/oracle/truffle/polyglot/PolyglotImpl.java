@@ -243,6 +243,31 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         return homeFinder == null ? null : homeFinder.getHomeFolder();
     }
 
+    @Override
+    @TruffleBoundary
+    public Value asValue(Object hostValue) {
+        assert !(hostValue instanceof Value);
+        PolyglotLanguageContext languageContext = null;
+        Object guestValue = null;
+        if (hostValue instanceof PolyglotList) {
+            languageContext = ((PolyglotList<?>) hostValue).languageContext;
+            guestValue = ((PolyglotList<?>) hostValue).guestObject;
+        } else if (hostValue instanceof PolyglotMap) {
+            languageContext = ((PolyglotMap<?, ?>) hostValue).languageContext;
+            guestValue = ((PolyglotMap<?, ?>) hostValue).guestObject;
+        } else if (hostValue instanceof PolyglotFunction) {
+            languageContext = ((PolyglotFunction<?, ?>) hostValue).languageContext;
+            guestValue = ((PolyglotFunction<?, ?>) hostValue).guestObject;
+        }
+        if (languageContext == null) {
+            PolyglotContextImpl context = PolyglotContextImpl.current();
+            languageContext = context.getHostContext();
+            return languageContext.asValue(languageContext.toGuestValue(hostValue));
+        } else {
+            return languageContext.asValue(guestValue);
+        }
+    }
+
     org.graalvm.polyglot.Source getPolyglotSource(Source source) {
         org.graalvm.polyglot.Source polyglotSource = VMAccessor.SOURCE.getPolyglotSource(source);
         if (polyglotSource == null) {

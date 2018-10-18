@@ -92,7 +92,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             this.polyglotGuestBindings = new PolyglotBindings(PolyglotLanguageContext.this, context.polyglotBindings);
             this.uncaughtExceptionHandler = new PolyglotUncaughtExceptionHandler();
             this.valueCache = new ConcurrentHashMap<>();
-            this.defaultValueCache = new PolyglotValue.DefaultValue(PolyglotLanguageContext.this, languageInstance.defaultValueCache);
+            this.defaultValueCache = new PolyglotValue.DefaultValue(PolyglotLanguageContext.this);
         }
     }
 
@@ -296,7 +296,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                                         envConfig.getApplicationArguments(language),
                                         envConfig.fileSystem);
                         Lazy localLazy = new Lazy(lang);
-                        PolyglotValue.createDefaultValues(PolyglotLanguageContext.this, lang, localLazy.valueCache);
+                        PolyglotValue.createDefaultValues(PolyglotLanguageContext.this, localLazy.valueCache);
                         checkThreadAccess(localEnv);
 
                         // no more errors after this line
@@ -679,7 +679,6 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         } else {
             return HostInteropReflect.asTruffleViaReflection(receiver, this);
         }
-
     }
 
     @TruffleBoundary

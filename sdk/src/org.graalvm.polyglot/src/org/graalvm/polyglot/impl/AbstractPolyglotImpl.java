@@ -623,4 +623,6 @@ public abstract class AbstractPolyglotImpl {
 
     public abstract Collection<Engine> findActiveEngines();
 
+    public abstract Value asValue(Object o);
+
 }
