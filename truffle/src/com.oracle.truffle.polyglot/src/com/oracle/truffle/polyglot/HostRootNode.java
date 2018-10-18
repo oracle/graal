@@ -47,20 +47,18 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.polyglot.PolyglotLanguage.ContextProfile;
 
-/*
- * TODO merge this with PolyglotValue.PolyglotNode
- */
-abstract class HostEntryRootNode<T> extends RootNode {
+abstract class HostRootNode<T> extends RootNode {
 
-    private static final Object UNINITIALIZED_CONTEXT = new Object();
+    protected static final int OFFSET = 2;
 
     @CompilationFinal private boolean seenEnter;
     @CompilationFinal private boolean seenNonEnter;
 
-    @CompilationFinal private Object constantContext = UNINITIALIZED_CONTEXT;
+    @CompilationFinal private volatile ContextProfile profile;
 
-    HostEntryRootNode() {
+    HostRootNode() {
         super(null);
     }
 
@@ -91,7 +89,7 @@ abstract class HostEntryRootNode<T> extends RootNode {
             Object[] arguments = frame.getArguments();
             T receiver = getReceiverType().cast(arguments[1]);
             Object result;
-            result = executeImpl(languageContext, receiver, arguments, 2);
+            result = executeImpl(languageContext, receiver, arguments);
             assert !(result instanceof TruffleObject);
             return result;
         } catch (Throwable e) {
@@ -105,29 +103,22 @@ abstract class HostEntryRootNode<T> extends RootNode {
     }
 
     private PolyglotLanguageContext profileContext(Object languageContext) {
-        if (constantContext != null) {
-            if (constantContext == languageContext) {
-                return (PolyglotLanguageContext) constantContext;
-            } else {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                if (constantContext == UNINITIALIZED_CONTEXT) {
-                    constantContext = languageContext;
-                } else {
-                    constantContext = null;
-                }
-            }
+        ContextProfile localProfile = this.profile;
+        if (localProfile == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            profile = localProfile = ((PolyglotLanguageContext) languageContext).language.profile;
         }
-        return (PolyglotLanguageContext) languageContext;
+        return profile.profile(languageContext);
     }
 
-    protected abstract Object executeImpl(PolyglotLanguageContext languageContext, T receiver, Object[] args, int offset);
+    protected abstract Object executeImpl(PolyglotLanguageContext languageContext, T receiver, Object[] args);
 
-    protected static CallTarget createTarget(HostEntryRootNode<?> node) {
+    protected static CallTarget createTarget(HostRootNode<?> node) {
         return Truffle.getRuntime().createCallTarget(node);
     }
 
     static <T> T installHostCodeCache(PolyglotLanguageContext languageContext, Object key, T value, Class<T> expectedType) {
-        T result = expectedType.cast(languageContext.context.engine.javaInteropCodeCache.putIfAbsent(key, value));
+        T result = expectedType.cast(languageContext.getLanguageInstance().hostInteropCodeCache.putIfAbsent(key, value));
         if (result != null) {
             return result;
         } else {
@@ -136,7 +127,7 @@ abstract class HostEntryRootNode<T> extends RootNode {
     }
 
     static <T> T lookupHostCodeCache(PolyglotLanguageContext languageContext, Object key, Class<T> expectedType) {
-        return expectedType.cast(languageContext.context.engine.javaInteropCodeCache.get(key));
+        return expectedType.cast(languageContext.getLanguageInstance().hostInteropCodeCache.get(key));
     }
 
 }

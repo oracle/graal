@@ -338,7 +338,7 @@ final class HostInteropReflect {
     }
 }
 
-class FunctionProxyNode extends HostEntryRootNode<TruffleObject> {
+class FunctionProxyNode extends HostRootNode<TruffleObject> {
 
     final Class<?> receiverClass;
     final Method method;
@@ -363,14 +363,14 @@ class FunctionProxyNode extends HostEntryRootNode<TruffleObject> {
     }
 
     @Override
-    protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject function, Object[] args, int offset) {
+    protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject function, Object[] args) {
         if (executeNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             this.returnClass = HostInteropReflect.getMethodReturnType(method);
             this.returnType = HostInteropReflect.getMethodGenericReturnType(method);
             this.executeNode = insert(new PolyglotExecuteNode());
         }
-        return executeNode.execute(languageContext, function, args[offset], returnClass, returnType);
+        return executeNode.execute(languageContext, function, args[OFFSET], returnClass, returnType);
     }
 
     @Override
@@ -465,7 +465,7 @@ final class FunctionProxyHandler implements InvocationHandler {
     }
 }
 
-class ObjectProxyNode extends HostEntryRootNode<TruffleObject> {
+class ObjectProxyNode extends HostRootNode<TruffleObject> {
 
     final Class<?> receiverClass;
     final Class<?> interfaceType;
@@ -490,14 +490,14 @@ class ObjectProxyNode extends HostEntryRootNode<TruffleObject> {
     }
 
     @Override
-    protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args, int offset) {
+    protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args) {
         if (proxyInvoke == null || toGuests == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             toGuests = ToGuestValuesNode.create();
             proxyInvoke = ProxyInvokeNodeGen.create();
         }
-        Method method = (Method) args[offset];
-        Object[] arguments = toGuests.apply(languageContext, (Object[]) args[offset + 1]);
+        Method method = (Method) args[OFFSET];
+        Object[] arguments = toGuests.apply(languageContext, (Object[]) args[OFFSET + 1]);
         return proxyInvoke.execute(languageContext, receiver, method, arguments);
     }
 
