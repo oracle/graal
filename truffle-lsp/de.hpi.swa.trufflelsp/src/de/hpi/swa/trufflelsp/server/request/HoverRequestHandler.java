@@ -70,7 +70,7 @@ public class HoverRequestHandler extends AbstractRequestHandler {
         return new Hover(new ArrayList<>());
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "rawtypes"})
     private static String getTags(InstrumentableNode nodeAtCaret) {
         List<String> tags = new ArrayList<>();
         for (Class<Tag> tagClass : new Class[]{StatementTag.class, CallTag.class, RootTag.class, ExpressionTag.class, DeclarationTag.class, ReadVariableTag.class, WriteVariableTag.class}) {
