@@ -17,6 +17,7 @@ import org.eclipse.lsp4j.CompletionList;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.MarkupContent;
+import org.eclipse.lsp4j.jsonrpc.messages.Either;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Scope;
@@ -39,6 +40,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapper;
 import de.hpi.swa.trufflelsp.exceptions.DiagnosticsNotification;
 import de.hpi.swa.trufflelsp.hacks.LanguageSpecificHacks;
+import de.hpi.swa.trufflelsp.interop.GetDocumentation;
 import de.hpi.swa.trufflelsp.interop.GetSignature;
 import de.hpi.swa.trufflelsp.interop.ObjectStructures;
 import de.hpi.swa.trufflelsp.server.utils.CoverageData;
@@ -69,6 +71,8 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
     private static final Node IS_INSTANTIABLE = Message.IS_INSTANTIABLE.createNode();
     private static final Node IS_EXECUTABLE = Message.IS_EXECUTABLE.createNode();
     private static final Node GET_SIGNATURE = GetSignature.INSTANCE.createNode();
+    private static final Node GET_DOCUMENTATION = GetDocumentation.INSTANCE.createNode();
+    private static final Node IS_NULL = Message.IS_NULL.createNode();
     private static final Node INVOKE = Message.INVOKE.createNode();
 
     private static final int SORTING_PRIORITY_LOCALS = 1;
@@ -150,33 +154,53 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
     }
 
     private void fillCompletionsWithGlobalsAndLocals(int line, TextDocumentSurrogate surrogate, int character, CompletionList completions) {
-        fillCompletionsWithGlobals(surrogate, completions);
+        Node nearestNode = findNearestNode(surrogate.getSourceWrapper(), line, character);
 
-        SourceWrapper sourceWrapper = surrogate.getSourceWrapper();
+        if (nearestNode == null) {
+            // Cannot locate a valid node near the caret position, therefore provide globals only
+            fillCompletionsWithGlobals(surrogate, completions);
+            return;
+        }
+
+        if (!surrogate.hasCoverageData()) {
+            // No coverage data, so we simply display locals without specific frame information and
+            // globals
+            fillCompletionsWithLocals(surrogate, nearestNode, completions, null);
+            fillCompletionsWithGlobals(surrogate, completions);
+            return;
+        }
+
+        // We have coverage data, so we try to derive locals from coverage data
+
+        List<CoverageData> coverages = surrogate.getCoverageData(nearestNode.getSourceSection());
+        if (coverages == null || coverages.isEmpty()) {
+            coverages = SourceCodeEvaluator.findCoverageDataBeforeNode(surrogate, nearestNode);
+        }
+
+        if (coverages != null && !coverages.isEmpty()) {
+            CoverageData coverageData = coverages.get(coverages.size() - 1);
+            VirtualFrame frame = coverageData.getFrame();
+            fillCompletionsWithLocals(surrogate, nearestNode, completions, frame);
+
+            // Call again, regardless if it was called with a frame argument before,
+            // because duplicates will be filter, but it will add missing local
+            // variables which were dropped (because of null values) in the call above
+            fillCompletionsWithLocals(surrogate, nearestNode, completions, null);
+            fillCompletionsWithGlobals(surrogate, completions);
+        } else {
+            // No coverage data found for the designated source section, so use the default look-up
+            // as fallback
+            fillCompletionsWithGlobals(surrogate, completions);
+            fillCompletionsWithLocals(surrogate, nearestNode, completions, null);
+        }
+    }
+
+    private Node findNearestNode(SourceWrapper sourceWrapper, int line, int character) {
         if (sourceWrapper.isParsingSuccessful() && SourceUtils.isLineValid(line, sourceWrapper.getSource())) {
             NearestNodeHolder nearestNodeHolder = NearestSectionsFinder.findNearestNode(sourceWrapper.getSource(), line, character, env);
-            Node nearestNode = nearestNodeHolder.getNearestNode();
-
-            if (isInstrumentable(nearestNode)) {
-                if (surrogate.hasCoverageData()) {
-                    List<CoverageData> coverages = surrogate.getCoverageData(nearestNode.getSourceSection());
-                    if (coverages == null || coverages.isEmpty()) {
-                        coverages = SourceCodeEvaluator.findCoverageDataBeforeNode(surrogate, nearestNode);
-                    }
-                    if (coverages != null && !coverages.isEmpty()) {
-                        CoverageData coverageData = coverages.get(coverages.size() - 1);
-                        VirtualFrame frame = coverageData.getFrame();
-                        fillCompletionsWithLocals(surrogate, nearestNode, completions, frame);
-                        // Call again, regardless if it was called with a frame argument before,
-                        // because duplicates will be filter, but it will add missing local
-                        // variables which were dropped in the call above (because of null values)
-                        fillCompletionsWithLocals(surrogate, nearestNode, completions, null);
-                    }
-                } else {
-                    fillCompletionsWithLocals(surrogate, nearestNode, completions, null);
-                }
-            }
+            return nearestNodeHolder.getNearestNode();
         }
+        return null;
     }
 
     private void fillCompletionsWithObjectProperties(TextDocumentSurrogate surrogate, int line, int character, CompletionList completions) throws DiagnosticsNotification {
@@ -335,6 +359,7 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
             return false;
         }
 
+        int counter = 0;
         for (Entry<Object, Object> entry : map.entrySet()) {
             Object value;
             try {
@@ -342,7 +367,11 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
             } catch (Exception e) {
                 continue;
             }
-            CompletionItem completion = new CompletionItem(entry.getKey().toString());
+            String key = entry.getKey().toString();
+            CompletionItem completion = new CompletionItem(key);
+            ++counter;
+            // Keep the order in which the keys were provided
+            completion.setSortText(String.format("%06d.%s", counter, key));
             CompletionItemKind kind = findCompletionItemKind(value);
             completion.setKind(kind != null ? kind : CompletionItemKind.Property);
             completion.setDetail(createCompletionDetail(entry.getKey(), value, langId));
@@ -354,25 +383,35 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
         return !map.isEmpty();
     }
 
-    private MarkupContent createDocumentation(Object value, String langId, String scopeInformation) {
-        String documentation = LanguageSpecificHacks.getDocumentation(getMetaObject(langId, value), langId);
+    private Either<String, MarkupContent> createDocumentation(Object value, String langId, String scopeInformation) {
+        MarkupContent markup = new MarkupContent();
+        String documentation = null;
+
+        if (value instanceof TruffleObject) {
+            documentation = getDocumentation((TruffleObject) value);
+// markup.setKind("plaintext");
+            return Either.forLeft(documentation);
+        }
 
         if (documentation == null) {
-            documentation = escapeMarkdown(scopeInformation);
-        }
+            documentation = LanguageSpecificHacks.getDocumentation(getMetaObject(langId, value), langId);
 
-        SourceSection section = SourceUtils.findSourceLocation(env, langId, value);
-        if (section != null) {
-            String code = section.getCharacters().toString();
-            if (!code.isEmpty()) {
-                documentation += "\n\n```\n" + section.getCharacters().toString() + "\n```";
+            if (documentation == null) {
+                documentation = escapeMarkdown(scopeInformation);
             }
+
+            SourceSection section = SourceUtils.findSourceLocation(env, langId, value);
+            if (section != null) {
+                String code = section.getCharacters().toString();
+                if (!code.isEmpty()) {
+                    documentation += "\n\n```\n" + section.getCharacters().toString() + "\n```";
+                }
+            }
+            markup.setKind("markdown");
         }
 
-        MarkupContent markup = new MarkupContent();
         markup.setValue(documentation);
-        markup.setKind("markdown");
-        return markup;
+        return Either.forRight(markup);
     }
 
     public String escapeMarkdown(String original) {
@@ -385,6 +424,9 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
         TruffleObject truffleObj = null;
         if (obj instanceof TruffleObject) {
             truffleObj = (TruffleObject) obj;
+            if (ForeignAccess.sendIsNull(IS_NULL, truffleObj)) {
+                return "";
+            }
         } else {
             Object boxedObject = env.boxPrimitive(langId, obj);
             if (boxedObject instanceof TruffleObject) {
@@ -409,6 +451,24 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
         detailText += metaObjectString;
 
         return detailText;
+    }
+
+    private String getDocumentation(TruffleObject truffleObj) {
+        try {
+            Object docu = ForeignAccess.send(GET_DOCUMENTATION, truffleObj);
+            if (docu instanceof String && !((String) docu).isEmpty()) {
+                return (String) docu;
+            }
+            if (docu instanceof TruffleObject) {
+                if (!ForeignAccess.sendIsNull(IS_NULL, (TruffleObject) docu)) {
+                    return docu.toString();
+                }
+            }
+        } catch (UnsupportedMessageException | UnsupportedTypeException e) {
+        } catch (InteropException e) {
+            e.printStackTrace(err);
+        }
+        return null;
     }
 
     public String getFormattedSignature(TruffleObject truffleObj) {
@@ -461,13 +521,17 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
             if (variables instanceof TruffleObject) {
                 TruffleObject truffleObj = (TruffleObject) variables;
                 try {
-                    TruffleObject keys = ForeignAccess.sendKeys(KEYS, truffleObj, true);
+                    TruffleObject keys = ForeignAccess.sendKeys(KEYS, truffleObj, false);
                     boolean hasSize = ForeignAccess.sendHasSize(HAS_SIZE, keys);
                     if (!hasSize) {
                         continue;
                     }
 
-                    map.put(scope.getName(), ObjectStructures.asMap(new ObjectStructures.MessageNodes(), truffleObj));
+                    if (map.containsKey(scope.getName())) {
+                        System.err.println("CompletionRequestHandler.scopesToObjectMap() -> There is already a scope named " + scope.getName() + ". Skipping the duplicate");
+                    } else {
+                        map.put(scope.getName(), ObjectStructures.asMap(new ObjectStructures.MessageNodes(), truffleObj));
+                    }
                 } catch (UnsupportedMessageException e) {
                     throw new RuntimeException(e);
                 }

@@ -193,7 +193,9 @@ public class SourceCodeEvaluator extends AbstractRequestHandler {
 
                                     @Override
                                     public void onReturnValue(VirtualFrame frame, Object result) {
-                                        indent.setLength(indent.length() - 2);
+                                        if (indent.length() > 1) {
+                                            indent.setLength(indent.length() - 2);
+                                        }
                                         System.out.println(indent + "onReturnValue " + context.getInstrumentedNode().getClass().getSimpleName() + " " +
                                                         sourceSectionFormat(context.getInstrumentedSourceSection()) + result);
 
