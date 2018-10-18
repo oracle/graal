@@ -1,3 +1,13 @@
+# Version 1.0.0 RC10
+
+Changes:
+
+* Uncaught exceptions are now output on stderr (previously stdout).
+
+# Version 1.0.0 RC9
+
+No changes.
+
 # Version 1.0.0 RC8
 
 New features:
