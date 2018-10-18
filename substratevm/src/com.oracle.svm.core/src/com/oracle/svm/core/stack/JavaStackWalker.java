@@ -31,9 +31,11 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.annotate.AlwaysInline;
+import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * Applies a {@link StackFrameVisitor} to each of the Java frames in a thread stack. It skips native
@@ -91,31 +93,30 @@ public final class JavaStackWalker {
                 } else {
                     totalFrameSize = CodeInfoTable.lookupTotalFrameSize(ip);
                 }
+                VMError.guarantee(totalFrameSize != -1, "Stack walk must walk only frames of known code");
 
-                if (totalFrameSize != -1) {
-                    /* This is a Java frame, visit it. */
-                    if (!visitor.visitFrame(sp, ip, deoptFrame)) {
-                        return false;
-                    }
+                /* This is a Java frame, visit it. */
+                if (!visitor.visitFrame(sp, ip, deoptFrame)) {
+                    return false;
+                }
 
+                if (totalFrameSize != CodeInfoQueryResult.ENTRY_POINT_FRAME_SIZE) {
                     /* Bump sp *up* over my frame. */
                     sp = sp.add(WordFactory.unsigned(totalFrameSize));
                     /* Read the return address to my caller. */
                     ip = FrameAccess.singleton().readReturnAddress(sp);
-
-                } else if (anchor.isNonNull()) {
-                    /*
-                     * At the end of a block of Java frames, but we have more Java frames after a
-                     * block of C frames.
-                     */
-                    assert anchor.getLastJavaSP().aboveThan(sp);
-                    sp = anchor.getLastJavaSP();
-                    ip = FrameAccess.singleton().readReturnAddress(sp);
-                    anchor = anchor.getPreviousAnchor();
-
                 } else {
-                    /* Really at the end of the stack, we are done with walking. */
-                    break;
+                    /* Reached an entry point frame. */
+                    if (anchor.isNonNull()) {
+                        /* We have more Java frames after a block of C frames. */
+                        assert anchor.getLastJavaSP().aboveThan(sp);
+                        sp = anchor.getLastJavaSP();
+                        ip = FrameAccess.singleton().readReturnAddress(sp);
+                        anchor = anchor.getPreviousAnchor();
+                    } else {
+                        /* Really at the end of the stack, we are done with walking. */
+                        break;
+                    }
                 }
             }
         } else {
