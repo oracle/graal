@@ -225,6 +225,7 @@ suite = {
       ],
       "distDependencies" : [
         "GRAAL_SDK",
+        "LAUNCHER_COMMON"
       ],
       "maven" : False,
     },
