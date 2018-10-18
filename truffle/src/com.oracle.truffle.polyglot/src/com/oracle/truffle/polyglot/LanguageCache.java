@@ -237,6 +237,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
             try {
                 p = new Properties();
                 connection = u.openConnection();
+                connection.setUseCaches(false);
                 try (InputStream is = connection.getInputStream()) {
                     p.load(is);
                 }
