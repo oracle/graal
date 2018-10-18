@@ -910,10 +910,11 @@ public final class Value {
      * @throws NullPointerException if the target type is null.
      * @since 1.0
      */
+    @SuppressWarnings("unchecked")
     public <T> T as(Class<T> targetType) throws ClassCastException, IllegalStateException, PolyglotException {
         Objects.requireNonNull(targetType, "targetType");
         if (targetType == Value.class) {
-            return targetType.cast(this);
+            return (T) this;
         }
         return impl.as(receiver, targetType);
     }
@@ -974,7 +975,10 @@ public final class Value {
      * @since 1.0
      */
     public static Value asValue(Object o) {
-        return Context.getCurrent().asValue(o);
+        if (o instanceof Value) {
+            return (Value) o;
+        }
+        return Engine.getImpl().asValue(o);
     }
 
 }

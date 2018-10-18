@@ -47,7 +47,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
-import com.oracle.truffle.polyglot.PolyglotValue.CodeCache;
+import com.oracle.truffle.polyglot.PolyglotValue.InteropCodeCache;
 
 final class PolyglotLanguageInstance {
 
@@ -55,9 +55,8 @@ final class PolyglotLanguageInstance {
     final TruffleLanguage<?> spi;
 
     private final PolyglotSourceCache sourceCache;
-    final Map<Class<?>, CodeCache> valueCodeCache;
+    final Map<Class<?>, InteropCodeCache> valueCodeCache;
     final Map<Object, Object> hostInteropCodeCache;
-    final CodeCache defaultValueCache;
 
     private volatile OptionValuesImpl firstOptionValues;
 
@@ -75,7 +74,6 @@ final class PolyglotLanguageInstance {
         this.sourceCache = new PolyglotSourceCache();
         this.valueCodeCache = new ConcurrentHashMap<>();
         this.hostInteropCodeCache = new ConcurrentHashMap<>();
-        this.defaultValueCache = new CodeCache(this, Object.class);
     }
 
     boolean areOptionsCompatible(OptionValuesImpl newOptionValues) {

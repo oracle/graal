@@ -106,23 +106,30 @@ abstract class ToHostNode extends Node {
         return convertImpl(operand, targetType, genericType, languageContext);
     }
 
+    static Object toPrimitiveLossy(Object unboxedValue, Class<?> targetType) {
+        Object convertedValue = ToHostPrimitiveNode.toPrimitive(unboxedValue, targetType);
+        if (convertedValue != null) {
+            return convertedValue;
+        } else if (targetType == char.class || targetType == Character.class) {
+            Integer safeChar = ToHostPrimitiveNode.toInteger(unboxedValue);
+            if (safeChar != null) {
+                int v = safeChar;
+                if (v >= 0 && v < 65536) {
+                    return (char) v;
+                }
+            }
+        } else if (targetType == String.class && PolyglotImpl.isGuestPrimitive(unboxedValue)) {
+            return convertToString(unboxedValue);
+        }
+        return null;
+    }
+
     private Object convertImpl(Object value, Class<?> targetType, Type genericType, PolyglotLanguageContext languageContext) {
         Object convertedValue;
         if (isAssignableFromTrufflePrimitiveType(targetType)) {
-            Object unboxed = primitive.unbox(value);
-            convertedValue = primitive.toPrimitive(unboxed, targetType);
+            convertedValue = toPrimitiveLossy(primitive.unbox(value), targetType);
             if (convertedValue != null) {
                 return convertedValue;
-            } else if (targetType == char.class || targetType == Character.class) {
-                Integer safeChar = primitive.toInteger(unboxed);
-                if (safeChar != null) {
-                    int v = safeChar;
-                    if (v >= 0 && v < 65536) {
-                        return (char) v;
-                    }
-                }
-            } else if (targetType == String.class && PolyglotImpl.isGuestPrimitive(unboxed)) {
-                return convertToString(unboxed);
             }
         }
         if (targetType == Value.class && languageContext != null) {
@@ -133,13 +140,7 @@ abstract class ToHostNode extends Node {
             convertedValue = value;
         } else {
             CompilerDirectives.transferToInterpreter();
-            String reason;
-            if (isAssignableFromTrufflePrimitiveType(targetType)) {
-                reason = "Invalid or lossy primitive coercion.";
-            } else {
-                reason = "Unsupported target type.";
-            }
-            throw HostInteropErrors.cannotConvert(languageContext, value, targetType, reason);
+            throw HostInteropErrors.cannotConvertPrimitive(languageContext, value, targetType);
         }
         return convertedValue;
     }
@@ -152,7 +153,7 @@ abstract class ToHostNode extends Node {
             return false;
         }
         Object unboxed = primitive.unbox(value);
-        Object convertedValue = primitive.toPrimitive(unboxed, targetType);
+        Object convertedValue = ToHostPrimitiveNode.toPrimitive(unboxed, targetType);
         if (convertedValue != null) {
             return true;
         }
@@ -160,7 +161,7 @@ abstract class ToHostNode extends Node {
             return false;
         }
         if (targetType == char.class || targetType == Character.class) {
-            Integer safeChar = primitive.toInteger(unboxed);
+            Integer safeChar = ToHostPrimitiveNode.toInteger(unboxed);
             if (safeChar != null) {
                 int v = safeChar;
                 if (v >= 0 && v < 65536) {
