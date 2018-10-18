@@ -4,6 +4,8 @@ New features:
 
 * New option `--llvm.sourcePath` to specify search path for source files when
   debugging.
+* Make debugging of internal functions possible. This is disabled by default,
+  enable with the `--inspect.Internal` option.
 
 Changes:
 
