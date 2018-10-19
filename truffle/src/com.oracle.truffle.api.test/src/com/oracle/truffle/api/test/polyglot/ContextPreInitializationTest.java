@@ -994,6 +994,7 @@ public class ContextPreInitializationTest {
         final Map<OptionKey<Boolean>, Boolean> optionValues;
         final List<String> arguments;
         String languageHome;
+        boolean preInitialized;
 
         CountingContext(final String id, final TruffleLanguage.Env env) {
             this.id = id;
@@ -1040,12 +1041,15 @@ public class ContextPreInitializationTest {
         protected void initializeContext(CountingContext context) throws Exception {
             context.initializeContextCount++;
             context.initializeContextOrder = nextId();
+            context.preInitialized = context.env.isPreInitialization();
             super.initializeContext(context);
         }
 
         @Override
         protected boolean patchContext(CountingContext context, TruffleLanguage.Env newEnv) {
             assertNotNull(getContextReference().get());
+            assertTrue(context.preInitialized);
+            assertFalse(context.env.isPreInitialization());
             context.patchContextCount++;
             context.patchContextOrder = nextId();
             context.languageHome = getLanguageHome();

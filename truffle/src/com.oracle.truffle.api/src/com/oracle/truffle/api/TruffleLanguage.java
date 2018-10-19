@@ -1943,6 +1943,20 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
+         * Returns <code>true</code> if this {@link org.graalvm.polyglot.Context} is being
+         * pre-initialized. For a given {@link Env environment}, the return value of this method
+         * never changes.
+         *
+         * @see #initializeContext(Object)
+         * @see #patchContext(Object, Env)
+         * @since 1.0
+         */
+        @TruffleBoundary
+        public boolean isPreInitialization() {
+            return AccessAPI.engineAccess().inContextPreInitialization(vmObject);
+        }
+
+        /**
          * Returns a {@link TruffleFile} for given path.
          *
          * @param path the absolute or relative path to create {@link TruffleFile} for
