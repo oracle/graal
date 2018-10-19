@@ -40,6 +40,8 @@
  */
 package org.graalvm.launcher;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -118,6 +120,14 @@ public abstract class AbstractLanguageLauncher extends Launcher {
             builder = Context.newBuilder(getDefaultLanguages()).options(polyglotOptions);
         }
         builder.allowAllAccess(true);
+        final Path logFile = getLogFile();
+        if (logFile != null) {
+            try {
+                builder.logHandler(newLogStream(logFile));
+            } catch (IOException ioe) {
+                throw abort(ioe);
+            }
+        }
 
         launch(builder);
     }

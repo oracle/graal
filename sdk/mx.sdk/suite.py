@@ -151,6 +151,17 @@ suite = {
       "workingSets" : "Truffle,Tools",
       "checkstyle" : "org.graalvm.word",
     },
+    "org.graalvm.launcher.test" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "mx:JUNIT",
+        "org.graalvm.launcher"
+      ],
+      "javaCompliance" : "8+",
+      "workingSets" : "Truffle,Tools,Test",
+      "checkstyle" : "org.graalvm.word",
+    },
     "org.graalvm.polyglot.tck" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -210,9 +221,11 @@ suite = {
       "subDir" : "src",
       "dependencies" : [
         "org.graalvm.collections.test",
+        "org.graalvm.launcher.test",
       ],
       "distDependencies" : [
         "GRAAL_SDK",
+        "LAUNCHER_COMMON"
       ],
       "maven" : False,
     },
