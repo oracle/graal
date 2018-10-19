@@ -22,7 +22,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
-import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapper;
+import de.hpi.swa.trufflelsp.api.ContextAwareExecutor;
 import de.hpi.swa.trufflelsp.exceptions.DiagnosticsNotification;
 import de.hpi.swa.trufflelsp.interop.GetSignature;
 import de.hpi.swa.trufflelsp.interop.ObjectStructures;
@@ -37,7 +37,7 @@ public class SignatureHelpRequestHandler extends AbstractRequestHandler {
     private static final Node INVOKE = Message.INVOKE.createNode();
     private final SourceCodeEvaluator sourceCodeEvaluator;
 
-    public SignatureHelpRequestHandler(Env env, SurrogateMap surrogateMap, ContextAwareExecutorWrapper contextAwareExecutor, SourceCodeEvaluator sourceCodeEvaluator) {
+    public SignatureHelpRequestHandler(Env env, SurrogateMap surrogateMap, ContextAwareExecutor contextAwareExecutor, SourceCodeEvaluator sourceCodeEvaluator) {
         super(env, surrogateMap, contextAwareExecutor);
         this.sourceCodeEvaluator = sourceCodeEvaluator;
     }

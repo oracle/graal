@@ -15,7 +15,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
-import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapper;
+import de.hpi.swa.trufflelsp.api.ContextAwareExecutor;
 import de.hpi.swa.trufflelsp.server.utils.CoverageData;
 import de.hpi.swa.trufflelsp.server.utils.NearestSectionsFinder;
 import de.hpi.swa.trufflelsp.server.utils.NearestSectionsFinder.NearestSections;
@@ -30,9 +30,9 @@ public class AbstractRequestHandler {
     protected final TruffleInstrument.Env env;
     protected final SurrogateMap surrogateMap;
     protected final PrintWriter err;
-    protected final ContextAwareExecutorWrapper contextAwareExecutor;
+    protected final ContextAwareExecutor contextAwareExecutor;
 
-    public AbstractRequestHandler(TruffleInstrument.Env env, SurrogateMap surrogateMap, ContextAwareExecutorWrapper contextAwareExecutor) {
+    public AbstractRequestHandler(TruffleInstrument.Env env, SurrogateMap surrogateMap, ContextAwareExecutor contextAwareExecutor) {
         this.env = env;
         this.err = new PrintWriter(env.err(), true);
         this.surrogateMap = surrogateMap;

@@ -20,7 +20,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
-import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapper;
+import de.hpi.swa.trufflelsp.api.ContextAwareExecutor;
 import de.hpi.swa.trufflelsp.server.utils.InteropUtils;
 import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
 import de.hpi.swa.trufflelsp.server.utils.SurrogateMap;
@@ -30,7 +30,7 @@ public class ReferencesRequestHandler extends AbstractRequestHandler {
 
     private final HighlightRequestHandler highlightHandler;
 
-    public ReferencesRequestHandler(Env env, SurrogateMap surrogateMap, ContextAwareExecutorWrapper contextAwareExecutor, HighlightRequestHandler highlightHandler) {
+    public ReferencesRequestHandler(Env env, SurrogateMap surrogateMap, ContextAwareExecutor contextAwareExecutor, HighlightRequestHandler highlightHandler) {
         super(env, surrogateMap, contextAwareExecutor);
         this.highlightHandler = highlightHandler;
     }

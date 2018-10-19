@@ -31,8 +31,8 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
 
-import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapper;
-import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapperRegistry;
+import de.hpi.swa.trufflelsp.api.ContextAwareExecutor;
+import de.hpi.swa.trufflelsp.api.ContextAwareExecutorRegistry;
 import de.hpi.swa.trufflelsp.api.VirtualLanguageServerFileProvider;
 import de.hpi.swa.trufflelsp.exceptions.DiagnosticsNotification;
 import de.hpi.swa.trufflelsp.exceptions.UnknownLanguageException;
@@ -49,10 +49,10 @@ import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
 import de.hpi.swa.trufflelsp.server.utils.SurrogateMap;
 import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogate;
 
-public class TruffleAdapter implements VirtualLanguageServerFileProvider, ContextAwareExecutorWrapperRegistry {
+public class TruffleAdapter implements VirtualLanguageServerFileProvider, ContextAwareExecutorRegistry {
 
     private final TruffleInstrument.Env env;
-    ContextAwareExecutorWrapper contextAwareExecutor;
+    ContextAwareExecutor contextAwareExecutor;
     private SourceCodeEvaluator sourceCodeEvaluator;
     private CompletionRequestHandler completionHandler;
     private SymbolRequestHandler symbolHandler;
@@ -68,7 +68,7 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
         this.env = env;
     }
 
-    public void register(ContextAwareExecutorWrapper executor) {
+    public void register(ContextAwareExecutor executor) {
         this.contextAwareExecutor = executor;
     }
 
@@ -315,7 +315,7 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
     }
 
     public Future<Boolean> runCoverageAnalysis(final URI uri) {
-        contextAwareExecutor.resetCachedContext(); // We choose coverage runs as checkpoints to
+        contextAwareExecutor.resetContextCache(); // We choose coverage runs as checkpoints to
                                                    // clear the pooled context. A coverage run can
                                                    // be triggered by the user via the editor, so
                                                    // that the user can actively control the reset

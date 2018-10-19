@@ -18,7 +18,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.source.SourceSection;
 
-import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapper;
+import de.hpi.swa.trufflelsp.api.ContextAwareExecutor;
 import de.hpi.swa.trufflelsp.server.utils.InteropUtils;
 import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
 import de.hpi.swa.trufflelsp.server.utils.SurrogateMap;
@@ -26,7 +26,7 @@ import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogate;
 
 public class HighlightRequestHandler extends AbstractRequestHandler {
 
-    public HighlightRequestHandler(TruffleInstrument.Env env, SurrogateMap surrogateMap, ContextAwareExecutorWrapper executor) {
+    public HighlightRequestHandler(TruffleInstrument.Env env, SurrogateMap surrogateMap, ContextAwareExecutor executor) {
         super(env, surrogateMap, executor);
     }
 

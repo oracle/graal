@@ -23,7 +23,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 
-import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapper;
+import de.hpi.swa.trufflelsp.api.ContextAwareExecutor;
 import de.hpi.swa.trufflelsp.interop.ObjectStructures;
 import de.hpi.swa.trufflelsp.interop.ObjectStructures.MessageNodes;
 import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
@@ -31,7 +31,7 @@ import de.hpi.swa.trufflelsp.server.utils.SurrogateMap;
 
 public class SymbolRequestHandler extends AbstractRequestHandler {
 
-    public SymbolRequestHandler(Env env, SurrogateMap surrogateMap, ContextAwareExecutorWrapper contextAwareExecutor) {
+    public SymbolRequestHandler(Env env, SurrogateMap surrogateMap, ContextAwareExecutor contextAwareExecutor) {
         super(env, surrogateMap, contextAwareExecutor);
     }
 

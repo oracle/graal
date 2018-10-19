@@ -17,8 +17,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 
-import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapper;
-import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapperRegistry;
+import de.hpi.swa.trufflelsp.api.ContextAwareExecutor;
+import de.hpi.swa.trufflelsp.api.ContextAwareExecutorRegistry;
 import de.hpi.swa.trufflelsp.api.VirtualLanguageServerFileProvider;
 import de.hpi.swa.trufflelsp.exceptions.DiagnosticsNotification;
 import de.hpi.swa.trufflelsp.filesystem.LSPFileSystem;
@@ -49,8 +49,8 @@ public abstract class TruffleLSPTest {
         context = contextBuilder.build();
         context.enter();
 
-        ContextAwareExecutorWrapperRegistry registry = instrument.lookup(ContextAwareExecutorWrapperRegistry.class);
-        ContextAwareExecutorWrapper executorWrapper = new ContextAwareExecutorWrapper() {
+        ContextAwareExecutorRegistry registry = instrument.lookup(ContextAwareExecutorRegistry.class);
+        ContextAwareExecutor executorWrapper = new ContextAwareExecutor() {
 
             public <T> Future<T> executeWithDefaultContext(Callable<T> taskWithResult) {
                 try {
@@ -82,7 +82,7 @@ public abstract class TruffleLSPTest {
             public void shutdown() {
             }
 
-            public void resetCachedContext() {
+            public void resetContextCache() {
             }
         };
         registry.register(executorWrapper);

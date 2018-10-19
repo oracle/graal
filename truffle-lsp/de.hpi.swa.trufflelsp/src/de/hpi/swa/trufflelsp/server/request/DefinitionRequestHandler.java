@@ -22,7 +22,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.source.SourceSection;
 
-import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapper;
+import de.hpi.swa.trufflelsp.api.ContextAwareExecutor;
 import de.hpi.swa.trufflelsp.server.utils.EvaluationResult;
 import de.hpi.swa.trufflelsp.server.utils.InteropUtils;
 import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
@@ -34,7 +34,7 @@ public class DefinitionRequestHandler extends AbstractRequestHandler {
     final SourceCodeEvaluator sourceCodeEvaluator;
     private final SymbolRequestHandler symbolHandler;
 
-    public DefinitionRequestHandler(Env env, SurrogateMap surrogateMap, ContextAwareExecutorWrapper contextAwareExecutor, SourceCodeEvaluator evaluator,
+    public DefinitionRequestHandler(Env env, SurrogateMap surrogateMap, ContextAwareExecutor contextAwareExecutor, SourceCodeEvaluator evaluator,
                     SymbolRequestHandler documentSymbolHandler) {
         super(env, surrogateMap, contextAwareExecutor);
         this.sourceCodeEvaluator = evaluator;

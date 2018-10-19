@@ -37,7 +37,7 @@ import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
-import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapper;
+import de.hpi.swa.trufflelsp.api.ContextAwareExecutor;
 import de.hpi.swa.trufflelsp.exceptions.DiagnosticsNotification;
 import de.hpi.swa.trufflelsp.exceptions.EvaluationResultException;
 import de.hpi.swa.trufflelsp.exceptions.InlineParsingNotSupportedException;
@@ -56,7 +56,7 @@ import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogate;
 
 public class SourceCodeEvaluator extends AbstractRequestHandler {
 
-    public SourceCodeEvaluator(TruffleInstrument.Env env, SurrogateMap surrogateMap, ContextAwareExecutorWrapper executor) {
+    public SourceCodeEvaluator(TruffleInstrument.Env env, SurrogateMap surrogateMap, ContextAwareExecutor executor) {
         super(env, surrogateMap, executor);
     }
 

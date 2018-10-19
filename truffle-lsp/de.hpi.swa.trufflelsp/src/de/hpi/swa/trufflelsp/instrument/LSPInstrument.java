@@ -13,7 +13,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 
-import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapperRegistry;
+import de.hpi.swa.trufflelsp.api.ContextAwareExecutorRegistry;
 import de.hpi.swa.trufflelsp.api.LanguageServerBootstrapper;
 import de.hpi.swa.trufflelsp.api.VirtualLanguageServerFileProvider;
 import de.hpi.swa.trufflelsp.exceptions.LSPIOException;
@@ -22,7 +22,7 @@ import de.hpi.swa.trufflelsp.instrument.LSOptions.HostAndPort;
 import de.hpi.swa.trufflelsp.server.LanguageServerImpl;
 import de.hpi.swa.trufflelsp.server.TruffleAdapter;
 
-@Registration(id = LSPInstrument.ID, name = "Language Server", version = "0.1", services = {VirtualLanguageServerFileProvider.class, ContextAwareExecutorWrapperRegistry.class,
+@Registration(id = LSPInstrument.ID, name = "Language Server", version = "0.1", services = {VirtualLanguageServerFileProvider.class, ContextAwareExecutorRegistry.class,
                 LanguageServerBootstrapper.class})
 public class LSPInstrument extends TruffleInstrument implements LanguageServerBootstrapper {
     public static final String ID = "lsp";

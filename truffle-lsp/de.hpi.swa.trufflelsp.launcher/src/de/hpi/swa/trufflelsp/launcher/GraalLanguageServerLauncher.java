@@ -21,8 +21,8 @@ import org.graalvm.polyglot.Context.Builder;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
 
-import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapper;
-import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapperRegistry;
+import de.hpi.swa.trufflelsp.api.ContextAwareExecutor;
+import de.hpi.swa.trufflelsp.api.ContextAwareExecutorRegistry;
 import de.hpi.swa.trufflelsp.api.LanguageServerBootstrapper;
 import de.hpi.swa.trufflelsp.api.VirtualLanguageServerFileProvider;
 import de.hpi.swa.trufflelsp.filesystem.LSPFileSystem;
@@ -75,84 +75,12 @@ public class GraalLanguageServerLauncher extends AbstractLanguageLauncher {
         contextBuilder.fileSystem(LSPFileSystem.newReadOnlyFileSystem(userDir, lspFileProvider));
         contextBuilder.engine(engine);
 
-        ContextAwareExecutorWrapperRegistry registry = instrument.lookup(ContextAwareExecutorWrapperRegistry.class);
-        ContextAwareExecutorWrapper executorWrapper = new ContextAwareExecutorWrapper() {
-            String GRAAL_WORKER_THREAD_ID = "LSP server Graal worker thread";
-            Context lastNestedContext = null;
-
-            private ExecutorService executor = Executors.newSingleThreadExecutor(new ThreadFactory() {
-                private final ThreadFactory factory = Executors.defaultThreadFactory();
-
-                public Thread newThread(Runnable r) {
-                    Thread thread = factory.newThread(r);
-                    thread.setName(GRAAL_WORKER_THREAD_ID);
-                    return thread;
-                }
-            });
-
-            public <T> Future<T> executeWithDefaultContext(Callable<T> taskWithResult) {
-                return execute(taskWithResult);
-            }
-
-            public <T> Future<T> executeWithNestedContext(Callable<T> taskWithResult, boolean cached) {
-                return execute(wrapWithNewContext(taskWithResult, cached));
-            }
-
-            private <T> Future<T> execute(Callable<T> taskWithResult) {
-                if (GRAAL_WORKER_THREAD_ID.equals(Thread.currentThread().getName())) {
-                    FutureTask<T> futureTask = new FutureTask<>(taskWithResult);
-                    futureTask.run();
-                    return futureTask;
-                }
-
-                return executor.submit(taskWithResult);
-            }
-
-            private <T> Callable<T> wrapWithNewContext(Callable<T> taskWithResult, boolean cached) {
-                return new Callable<T>() {
-
-                    public T call() throws Exception {
-                        Context context;
-                        if (cached) {
-                            if (lastNestedContext == null) {
-                                lastNestedContext = contextBuilder.build();
-                            }
-                            context = lastNestedContext;
-                        } else {
-                            context = contextBuilder.build();
-                        }
-
-                        try {
-                            context.enter();
-                            try {
-                                return taskWithResult.call();
-                            } finally {
-                                context.leave();
-                            }
-                        } finally {
-                            if (!cached) {
-                                context.close();
-                            }
-                        }
-                    }
-                };
-            }
-
-            public void shutdown() {
-                executor.shutdownNow();
-            }
-
-            public void resetCachedContext() {
-                if (lastNestedContext != null) {
-                    lastNestedContext.close();
-                }
-                lastNestedContext = contextBuilder.build();
-            }
-        };
+        ContextAwareExecutorRegistry registry = instrument.lookup(ContextAwareExecutorRegistry.class);
+        ContextAwareExecutor executorWrapper = new ContextAwareExecutorImpl(contextBuilder);
         registry.register(executorWrapper);
 
         Future<Context> futureDefaultContext = executorWrapper.executeWithDefaultContext(() -> {
-            // Create and enter the default context from "LSP server Graal worker"-thread
+            // Create and enter the default context from "Context-aware worker"-thread
             Context context = contextBuilder.build();
             context.enter();
             return context;
@@ -192,5 +120,83 @@ public class GraalLanguageServerLauncher extends AbstractLanguageLauncher {
     @Override
     protected void printVersion(Engine engine) {
         System.out.println(String.format("%s (GraalVM %s)", getLanguageId(), engine.getVersion()));
+    }
+
+    private static final class ContextAwareExecutorImpl implements ContextAwareExecutor {
+        private final Builder contextBuilder;
+        final String WORKER_THREAD_ID = "Context-aware worker";
+        Context lastNestedContext = null;
+        private ExecutorService executor = Executors.newSingleThreadExecutor(new ThreadFactory() {
+            private final ThreadFactory factory = Executors.defaultThreadFactory();
+
+            public Thread newThread(Runnable r) {
+                Thread thread = factory.newThread(r);
+                thread.setName(WORKER_THREAD_ID);
+                return thread;
+            }
+        });
+
+        private ContextAwareExecutorImpl(Builder contextBuilder) {
+            this.contextBuilder = contextBuilder;
+        }
+
+        public <T> Future<T> executeWithDefaultContext(Callable<T> taskWithResult) {
+            return execute(taskWithResult);
+        }
+
+        public <T> Future<T> executeWithNestedContext(Callable<T> taskWithResult, boolean cached) {
+            return execute(wrapWithNewContext(taskWithResult, cached));
+        }
+
+        private <T> Future<T> execute(Callable<T> taskWithResult) {
+            if (WORKER_THREAD_ID.equals(Thread.currentThread().getName())) {
+                FutureTask<T> futureTask = new FutureTask<>(taskWithResult);
+                futureTask.run();
+                return futureTask;
+            }
+
+            return executor.submit(taskWithResult);
+        }
+
+        private <T> Callable<T> wrapWithNewContext(Callable<T> taskWithResult, boolean cached) {
+            return new Callable<T>() {
+
+                public T call() throws Exception {
+                    Context context;
+                    if (cached) {
+                        if (lastNestedContext == null) {
+                            lastNestedContext = contextBuilder.build();
+                        }
+                        context = lastNestedContext;
+                    } else {
+                        context = contextBuilder.build();
+                    }
+
+                    try {
+                        context.enter();
+                        try {
+                            return taskWithResult.call();
+                        } finally {
+                            context.leave();
+                        }
+                    } finally {
+                        if (!cached) {
+                            context.close();
+                        }
+                    }
+                }
+            };
+        }
+
+        public void shutdown() {
+            executor.shutdownNow();
+        }
+
+        public void resetContextCache() {
+            if (lastNestedContext != null) {
+                lastNestedContext.close();
+            }
+            lastNestedContext = contextBuilder.build();
+        }
     }
 }

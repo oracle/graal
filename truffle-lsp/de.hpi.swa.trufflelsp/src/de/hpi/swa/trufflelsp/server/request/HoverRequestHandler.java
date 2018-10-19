@@ -31,7 +31,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
-import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapper;
+import de.hpi.swa.trufflelsp.api.ContextAwareExecutor;
 import de.hpi.swa.trufflelsp.instrument.LSOptions;
 import de.hpi.swa.trufflelsp.server.utils.CoverageData;
 import de.hpi.swa.trufflelsp.server.utils.CoverageEventNode;
@@ -42,7 +42,7 @@ import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogate;
 public class HoverRequestHandler extends AbstractRequestHandler {
     private CompletionRequestHandler completionHandler;
 
-    public HoverRequestHandler(Env env, SurrogateMap surrogateMap, ContextAwareExecutorWrapper contextAwareExecutor, CompletionRequestHandler completionHandler) {
+    public HoverRequestHandler(Env env, SurrogateMap surrogateMap, ContextAwareExecutor contextAwareExecutor, CompletionRequestHandler completionHandler) {
         super(env, surrogateMap, contextAwareExecutor);
         this.completionHandler = completionHandler;
     }

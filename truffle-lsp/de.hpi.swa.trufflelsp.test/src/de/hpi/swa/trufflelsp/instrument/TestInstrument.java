@@ -7,12 +7,12 @@ import org.graalvm.options.OptionKey;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 
-import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapperRegistry;
+import de.hpi.swa.trufflelsp.api.ContextAwareExecutorRegistry;
 import de.hpi.swa.trufflelsp.api.VirtualLanguageServerFileProvider;
 import de.hpi.swa.trufflelsp.instrument.TestInstrumentOptionDescriptors;
 import de.hpi.swa.trufflelsp.server.TruffleAdapter;
 
-@Registration(id = "lspTestInstrument", name = "LspTestInstrument", version = "0.1", services = {VirtualLanguageServerFileProvider.class, ContextAwareExecutorWrapperRegistry.class,
+@Registration(id = "lspTestInstrument", name = "LspTestInstrument", version = "0.1", services = {VirtualLanguageServerFileProvider.class, ContextAwareExecutorRegistry.class,
                 TruffleAdapterProvider.class})
 public class TestInstrument extends TruffleInstrument implements TruffleAdapterProvider {
 

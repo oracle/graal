@@ -3,7 +3,7 @@ package de.hpi.swa.trufflelsp.api;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 
-public interface ContextAwareExecutorWrapper {
+public interface ContextAwareExecutor {
 
     public <T> Future<T> executeWithDefaultContext(Callable<T> taskWithResult);
 
@@ -13,7 +13,7 @@ public interface ContextAwareExecutorWrapper {
 
     public <T> Future<T> executeWithNestedContext(Callable<T> taskWithResult, boolean cached);
 
-    public void resetCachedContext();
+    public void resetContextCache();
 
     public void shutdown();
 

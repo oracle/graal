@@ -37,7 +37,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
-import de.hpi.swa.trufflelsp.api.ContextAwareExecutorWrapper;
+import de.hpi.swa.trufflelsp.api.ContextAwareExecutor;
 import de.hpi.swa.trufflelsp.exceptions.DiagnosticsNotification;
 import de.hpi.swa.trufflelsp.hacks.LanguageSpecificHacks;
 import de.hpi.swa.trufflelsp.interop.GetDocumentation;
@@ -80,7 +80,7 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
 
     private final SourceCodeEvaluator sourceCodeEvaluator;
 
-    public CompletionRequestHandler(TruffleInstrument.Env env, SurrogateMap surrogateMap, ContextAwareExecutorWrapper executor,
+    public CompletionRequestHandler(TruffleInstrument.Env env, SurrogateMap surrogateMap, ContextAwareExecutor executor,
                     SourceCodeEvaluator sourceCodeEvaluator) {
         super(env, surrogateMap, executor);
         this.sourceCodeEvaluator = sourceCodeEvaluator;
