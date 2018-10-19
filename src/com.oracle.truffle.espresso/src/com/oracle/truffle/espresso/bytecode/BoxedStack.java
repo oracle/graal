@@ -32,7 +32,7 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.types.TypeDescriptors;
 
-public class OperandStack {
+public class OperandStack implements OperandStackInterface {
 
     private final Object[] stack;
     private final byte[] stackTag;
@@ -50,12 +50,14 @@ public class OperandStack {
 
     // region Operand stack operations
 
+    @Override
     public void popVoid(int slots) {
         assert slots == 1 || slots == 2;
         stackSize -= slots;
         assert stackSize >= 0;
     }
 
+    @Override
     public void pushObject(Object value) {
         assert value != null;
         assert isEspressoReference(value);
@@ -63,6 +65,7 @@ public class OperandStack {
         stack[stackSize++] = value;
     }
 
+    @Override
     public void pushInt(int value) {
         stackTag[stackSize] = (byte) FrameSlotKind.Int.ordinal();
         stack[stackSize++] = value;
@@ -73,17 +76,20 @@ public class OperandStack {
         stack[stackSize++] = null;
     }
 
+    @Override
     public void pushLong(long value) {
         pushIllegal();
         stackTag[stackSize] = (byte) FrameSlotKind.Long.ordinal();
         stack[stackSize++] = value;
     }
 
+    @Override
     public void pushFloat(float value) {
         stackTag[stackSize] = (byte) FrameSlotKind.Float.ordinal();
         stack[stackSize++] = value;
     }
 
+    @Override
     public void pushDouble(double value) {
         pushIllegal();
         stackTag[stackSize] = (byte) FrameSlotKind.Double.ordinal();
@@ -95,13 +101,14 @@ public class OperandStack {
         return FrameSlotKind.values()[(int) stackTag[stackSize - 1]];
     }
 
-    public Object peekObject() {
-        assert peekTag() == FrameSlotKind.Object;
-        Object top = stack[stackSize - 1];
-        assert isEspressoReference(top);
-        return top;
-    }
+//    public Object peekObject() {
+//        assert peekTag() == FrameSlotKind.Object;
+//        Object top = stack[stackSize - 1];
+//        assert isEspressoReference(top);
+//        return top;
+//    }
 
+    @Override
     public Object popObject() {
         assert peekTag() == FrameSlotKind.Object;
         Object top = stack[--stackSize];
@@ -110,16 +117,19 @@ public class OperandStack {
         return top;
     }
 
+    @Override
     public int popInt() {
         assert peekTag() == FrameSlotKind.Int;
         return (int) stack[--stackSize];
     }
 
+    @Override
     public float popFloat() {
         assert peekTag() == FrameSlotKind.Float;
         return (float) stack[--stackSize];
     }
 
+    @Override
     public long popLong() {
         assert peekTag() == FrameSlotKind.Long;
         long ret = (long) stack[--stackSize];
@@ -127,6 +137,7 @@ public class OperandStack {
         return ret;
     }
 
+    @Override
     public double popDouble() {
         assert peekTag() == FrameSlotKind.Double;
         double ret = (double) stack[--stackSize];
@@ -160,6 +171,7 @@ public class OperandStack {
         return 1;
     }
 
+    @Override
     public void dup1() {
         assert numberOfSlots(peekTag()) == 1;
         pushUnsafe1(peekUnsafe1(), peekTag());
@@ -179,6 +191,7 @@ public class OperandStack {
         stack[stackSize++] = value;
     }
 
+    @Override
     public void swapSingle() {
         // value2, value1 → value1, value2
         FrameSlotKind tag1 = peekTag();
@@ -193,6 +206,7 @@ public class OperandStack {
         pushUnsafe1(elem2, tag2);
     }
 
+    @Override
     public void dupx1() {
         // value2, value1 → value1, value2, value1
         FrameSlotKind tag1 = peekTag();
@@ -208,6 +222,7 @@ public class OperandStack {
         pushUnsafe1(elem1, tag1);
     }
 
+    @Override
     public void dupx2() {
         // value3, value2, value1 → value1, value3, value2, value1
         FrameSlotKind tag1 = peekTag();
@@ -226,6 +241,7 @@ public class OperandStack {
         pushUnsafe1(elem1, tag1);
     }
 
+    @Override
     public void dup2() {
         // {value2, value1} → {value2, value1}, {value2, value1}
         FrameSlotKind tag1 = peekTag();
@@ -240,6 +256,7 @@ public class OperandStack {
         pushUnsafe1(elem1, tag1);
     }
 
+    @Override
     public void dup2x1() {
         // value3, {value2, value1} → {value2, value1}, value3, {value2, value1}
         FrameSlotKind tag1 = peekTag();
@@ -259,6 +276,7 @@ public class OperandStack {
         pushUnsafe1(elem1, tag1);
     }
 
+    @Override
     public void dup2x2() {
         // {value4, value3}, {value2, value1} → {value2, value1}, {value4, value3}, {value2, value1}
         FrameSlotKind tag1 = peekTag();
@@ -405,6 +423,7 @@ public class OperandStack {
         return receiver;
     }
 
+    @Override
     public void clear() {
         stackSize = 0;
     }

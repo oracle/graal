@@ -31,12 +31,12 @@ import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.types.TypeDescriptor;
 
 /**
- * A {@link ClassRegistryImpl} maps class names to resolved {@link Klass} instances. Each class
- * loader is associated with a {@link ClassRegistryImpl} and vice versa.
+ * A {@link GuestClassRegistry} maps class names to resolved {@link Klass} instances. Each class
+ * loader is associated with a {@link GuestClassRegistry} and vice versa.
  *
  * This class is analogous to the ClassLoaderData C++ class in HotSpot.
  */
-public class ClassRegistryImpl implements ClassRegistry {
+public class GuestClassRegistry implements ClassRegistry {
 
     private final EspressoContext context;
 
@@ -53,7 +53,7 @@ public class ClassRegistryImpl implements ClassRegistry {
      */
     private final Object classLoader;
 
-    public ClassRegistryImpl(EspressoContext context, Object classLoader) {
+    public GuestClassRegistry(EspressoContext context, Object classLoader) {
         this.context = context;
         this.classLoader = classLoader;
     }
@@ -64,7 +64,6 @@ public class ClassRegistryImpl implements ClassRegistry {
             return resolve(type.getComponentType()).getArrayClass();
         }
         assert classLoader != null;
-
         MethodInfo loadClass = ((StaticObject) classLoader).getKlass().findMethod("loadClass", context.getSignatureDescriptors().make("(Ljava/lang/String;Z)Ljava/lang/Class;"));
         // TODO(peterssen): Should the class be resolved?
         StaticObjectClass guestClass = (StaticObjectClass) loadClass.getCallTarget().call(classLoader, context.getMeta().toGuest(type.toJavaName()), false);
