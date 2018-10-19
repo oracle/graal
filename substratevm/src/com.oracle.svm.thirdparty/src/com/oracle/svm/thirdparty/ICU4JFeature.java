@@ -72,13 +72,14 @@ public final class ICU4JFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         registerShimClass(access, "com.ibm.icu.text.NumberFormatServiceShim");
+        registerShimClass(access, "com.ibm.icu.text.CollatorServiceShim");
     }
 
     private static void registerShimClass(BeforeAnalysisAccess access, String shimClassName) {
-        Class<?> numberFormatServiceShim = access.findClassByName(shimClassName);
-        if (numberFormatServiceShim != null) {
-            RuntimeReflection.register(numberFormatServiceShim.getDeclaredConstructors());
-            ClassForNameSupport.registerClass(numberFormatServiceShim);
+        Class<?> shimClass = access.findClassByName(shimClassName);
+        if (shimClass != null) {
+            RuntimeReflection.register(shimClass.getDeclaredConstructors());
+            ClassForNameSupport.registerClass(shimClass);
         } else {
             throw VMError.shouldNotReachHere(shimClassName + " not found");
         }
