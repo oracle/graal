@@ -45,28 +45,24 @@ public class IntrinsicReflectionRootNode extends RootNode {
     public Object execute(VirtualFrame frame) {
         try {
             return callIntrinsic(frame.getArguments());
-        } catch (EspressoException wrapped) {
-            CompilerDirectives.transferToInterpreter();
-            throw wrapped;
         } catch (InvocationTargetException e) {
             CompilerDirectives.transferToInterpreter();
             Throwable inner = e.getTargetException();
             if (inner instanceof EspressoException) {
                 throw (EspressoException) inner;
-            } else if (inner instanceof ArrayIndexOutOfBoundsException) {
-                throw (ArrayIndexOutOfBoundsException) inner;
-            } else if (inner instanceof StackOverflowError) {
-                throw (StackOverflowError) inner;
+            }
+            if (inner instanceof VirtualMachineError) {
+                throw (VirtualMachineError) inner;
             }
             throw EspressoError.shouldNotReachHere(inner);
-        } catch (Throwable throwable) {
+        } catch (Throwable e) {
             // Non-espresso exceptions cannot escape to the guest.
-            throw EspressoError.shouldNotReachHere(throwable);
+            throw EspressoError.shouldNotReachHere(e);
         }
     }
 
     @CompilerDirectives.TruffleBoundary
-    private Object callIntrinsic(Object... args) throws Throwable {
+    private Object callIntrinsic(Object... args) throws InvocationTargetException, IllegalAccessException {
         return method.invoke(null, args);
     }
 }

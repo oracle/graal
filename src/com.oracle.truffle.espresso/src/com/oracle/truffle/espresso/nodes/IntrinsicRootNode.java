@@ -28,6 +28,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 
 public class IntrinsicRootNode extends RootNode {
@@ -43,13 +44,12 @@ public class IntrinsicRootNode extends RootNode {
     public Object execute(VirtualFrame frame) {
         try {
             return callIntrinsic(frame.getArguments());
-        } catch (EspressoException | StackOverflowError wrapped) {
-            throw wrapped;
-        } catch (Throwable throwable) {
+        } catch (EspressoException | VirtualMachineError allowed) {
+            throw allowed;
+        } catch (Throwable e) {
             CompilerDirectives.transferToInterpreter();
             // Non-espresso exceptions cannot escape to the guest.
-            throw new RuntimeException(throwable);
-            // throw EspressoError.shouldNotReachHere();
+            throw EspressoError.shouldNotReachHere(e);
         }
     }
 
