@@ -256,7 +256,7 @@ public final class InspectorInstrument extends TruffleInstrument {
             } else {
                 URI wsuri;
                 try {
-                    wsuri = new URI(secure ? "wss" : "ws", null, socketAdress.getAddress().getHostAddress(), socketAdress.getPort(), path, null, null);
+                    wsuri = new URI(secure ? "wss" : "ws", null, socketAdress.getAddress().getHostAddress(), socketAdress.getPort(), wsspath, null, null);
                 } catch (URISyntaxException ex) {
                     throw new IOException(ex);
                 }
