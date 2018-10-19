@@ -64,4 +64,9 @@ public class Target_java_lang_StrictMath {
     public static double pow(double a, double b) {
         return StrictMath.pow(a, b);
     }
+
+    @Intrinsic
+    public static double atan2(double a, double b) {
+        return StrictMath.atan2(a, b);
+    }
 }
