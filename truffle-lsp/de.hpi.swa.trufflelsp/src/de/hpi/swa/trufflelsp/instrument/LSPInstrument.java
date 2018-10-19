@@ -9,6 +9,7 @@ import java.util.concurrent.Future;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 
@@ -33,6 +34,8 @@ public class LSPInstrument extends TruffleInstrument implements LanguageServerBo
 
     @Override
     protected void onCreate(Env env) {
+        System.out.println("Truffle Runtime: " + Truffle.getRuntime().getName());
+
         options = env.getOptions();
         if (options.hasSetOptions()) {
             LanguageSpecificHacks.enableLanguageSpecificHacks = options.get(LSOptions.LanguageSpecificHacksOption).booleanValue();
