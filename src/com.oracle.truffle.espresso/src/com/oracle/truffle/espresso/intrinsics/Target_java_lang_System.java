@@ -132,9 +132,8 @@ public class Target_java_lang_System {
                 assert dest.getClass().isArray();
                 System.arraycopy(src, srcPos, dest, destPos, length);
             }
-        } catch (Throwable e) {
-            // TODO(peterssen): Throw guest exception.
-            throw e;
+        } catch (Exception e) {
+            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
         }
     }
 
