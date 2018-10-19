@@ -239,14 +239,14 @@ public final class InspectorInstrument extends TruffleInstrument {
         private final String wsspath;
 
         Server(final Env env, final String contextName, final InetSocketAddress socketAdress, final boolean attach, final boolean debugBreak, final boolean waitAttached, final boolean hideErrors,
-                        final boolean inspectInternal, final boolean inspectInitialization, final String path, final boolean secure, final KeyStoreOptions keyStoreOptions,
+                        final boolean inspectInternal, final boolean inspectInitialization, final String pathOrNull, final boolean secure, final KeyStoreOptions keyStoreOptions,
                         final ConnectionWatcher connectionWatcher) throws IOException {
             PrintWriter info = new PrintWriter(env.err());
-            if (path == null || path.isEmpty()) {
+            if (pathOrNull == null || pathOrNull.isEmpty()) {
                 wsspath = "/" + Long.toHexString(System.identityHashCode(env)) + "-" + Long.toHexString(System.nanoTime() ^ System.identityHashCode(env));
             } else {
-                String head = path.startsWith("/") ? "" : "/";
-                wsspath = head + path;
+                String head = pathOrNull.startsWith("/") ? "" : "/";
+                wsspath = head + pathOrNull;
             }
 
             PrintWriter err = (hideErrors) ? null : info;
@@ -256,7 +256,7 @@ public final class InspectorInstrument extends TruffleInstrument {
             } else {
                 URI wsuri;
                 try {
-                    wsuri = new URI(secure ? "wss" : "ws", null, socketAdress.getAddress().getHostAddress(), socketAdress.getPort(), path, null, null);
+                    wsuri = new URI(secure ? "wss" : "ws", null, socketAdress.getAddress().getHostAddress(), socketAdress.getPort(), wsspath, null, null);
                 } catch (URISyntaxException ex) {
                     throw new IOException(ex);
                 }
@@ -269,7 +269,7 @@ public final class InspectorInstrument extends TruffleInstrument {
                     throw new IOException(vex.getLocalizedMessage());
                 }
                 if (serverEndpoint == null) {
-                    interceptor.close(path);
+                    interceptor.close(wsspath);
                     wss = WebSocketServer.get(socketAdress, wsspath, executionContext, debugBreak, secure, keyStoreOptions, connectionWatcher, iss);
                     String address = buildAddress(socketAdress.getAddress().getHostAddress(), wss.getPort(), wsspath, secure);
                     info.println("Debugger listening on port " + wss.getPort() + ".");
