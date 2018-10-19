@@ -68,6 +68,17 @@ public final class Meta {
         INT = knownKlass(int.class);
         DOUBLE = knownKlass(double.class);
         LONG = knownKlass(long.class);
+        VOID = knownKlass(void.class);
+
+        BOXED_BOOLEAN = knownKlass(Boolean.class);
+        BOXED_BYTE = knownKlass(Byte.class);
+        BOXED_CHAR = knownKlass(Character.class);
+        BOXED_SHORT = knownKlass(Short.class);
+        BOXED_FLOAT = knownKlass(Float.class);
+        BOXED_INT = knownKlass(Integer.class);
+        BOXED_DOUBLE = knownKlass(Double.class);
+        BOXED_LONG = knownKlass(Long.class);
+        BOXED_VOID = knownKlass(Void.class);
 
         THROWABLE = knownKlass(Throwable.class);
         STACK_OVERFLOW_ERROR = knownKlass(StackOverflowError.class);
@@ -144,6 +155,18 @@ public final class Meta {
     public final Klass INT;
     public final Klass DOUBLE;
     public final Klass LONG;
+    public final Klass VOID;
+
+    // Boxed
+    public final Klass BOXED_BOOLEAN;
+    public final Klass BOXED_BYTE;
+    public final Klass BOXED_CHAR;
+    public final Klass BOXED_SHORT;
+    public final Klass BOXED_FLOAT;
+    public final Klass BOXED_INT;
+    public final Klass BOXED_DOUBLE;
+    public final Klass BOXED_LONG;
+    public final Klass BOXED_VOID;
 
     public final Klass STACK_OVERFLOW_ERROR;
     public final Klass OUT_OF_MEMORY_ERROR;
