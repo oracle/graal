@@ -32,7 +32,7 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.types.TypeDescriptors;
 
-public class OperandStack implements OperandStackInterface {
+public final class BoxedStack implements OperandStack {
 
     private final Object[] stack;
     private final byte[] stackTag;
@@ -42,13 +42,18 @@ public class OperandStack implements OperandStackInterface {
         return instance != null && (instance instanceof StaticObject || instance.getClass().isArray());
     }
 
-    public OperandStack(int maxStackSize) {
+    public BoxedStack(int maxStackSize) {
         this.stack = new Object[maxStackSize];
         this.stackTag = new byte[maxStackSize];
         this.stackSize = 0;
     }
 
     // region Operand stack operations
+
+    @Override
+    public int stackIndex() {
+        return stackSize;
+    }
 
     @Override
     public void popVoid(int slots) {
@@ -98,15 +103,8 @@ public class OperandStack implements OperandStackInterface {
 
     public FrameSlotKind peekTag() {
         // TODO(peterssen): Avoid recreating values() array.
-        return FrameSlotKind.values()[(int) stackTag[stackSize - 1]];
+        return KIND_VALUES.get(stackTag[stackSize - 1]);
     }
-
-//    public Object peekObject() {
-//        assert peekTag() == FrameSlotKind.Object;
-//        Object top = stack[stackSize - 1];
-//        assert isEspressoReference(top);
-//        return top;
-//    }
 
     @Override
     public Object popObject() {
@@ -145,24 +143,13 @@ public class OperandStack implements OperandStackInterface {
         return ret;
     }
 
-    public void popIllegal() {
+    private void popIllegal() {
         assert peekTag() == FrameSlotKind.Illegal;
         assert stackSize > 0;
         --stackSize;
     }
 
-    static int numberOfSlotsUnsafe(FrameSlotKind kind) {
-        assert kind != null;
-        if (kind == FrameSlotKind.Illegal) {
-            throw new RuntimeException("Unexpected Illegal kind");
-        }
-        if (kind == FrameSlotKind.Long || kind == FrameSlotKind.Double) {
-            return 2;
-        }
-        return 1;
-    }
-
-    static int numberOfSlots(FrameSlotKind kind) {
+    private static int numberOfSlots(FrameSlotKind kind) {
         assert kind != null;
         if (kind == FrameSlotKind.Long || kind == FrameSlotKind.Double) {
             return 2;
@@ -295,128 +282,9 @@ public class OperandStack implements OperandStackInterface {
         pushUnsafe1(elem1, tag1);
     }
 
-    public Object[] popArguments(MethodInfo method) {
-        boolean hasReceiver = !method.isStatic();
-        TypeDescriptors descriptors = method.getConstantPool().getContext().getLanguage().getTypeDescriptors();
-        // TODO(peterssen): Check parameter count.
-        int argCount = method.getSignature().getParameterCount(false);
-
-        int extraParam = hasReceiver ? 1 : 0;
-        Object[] arguments = new Object[argCount + extraParam];
-
-        for (int i = argCount - 1; i >= 0; --i) {
-            JavaKind expectedKind = method.getSignature().getParameterKind(i);
-            switch (expectedKind) {
-                case Boolean:
-                    int b = popInt();
-                    assert b == 0 || b == 1;
-                    arguments[i + extraParam] = (b != 0);
-                    break;
-                case Byte:
-                    arguments[i + extraParam] = (byte) popInt();
-                    break;
-                case Short:
-                    arguments[i + extraParam] = (short) popInt();
-                    break;
-                case Char:
-                    arguments[i + extraParam] = (char) popInt();
-                    break;
-                case Int:
-                    arguments[i + extraParam] = popInt();
-                    break;
-                case Float:
-                    arguments[i + extraParam] = popFloat();
-                    break;
-                case Long:
-                    arguments[i + extraParam] = popLong();
-                    break;
-                case Double:
-                    arguments[i + extraParam] = popDouble();
-                    break;
-                case Object:
-                    arguments[i + extraParam] = popObject();
-                    break;
-                case Void:
-                case Illegal:
-                    throw EspressoError.shouldNotReachHere();
-            }
-        }
-        if (hasReceiver) {
-            arguments[0] = popObject();
-        }
-        return arguments;
-    }
-
-    public void pushKind(Object returnValue, JavaKind kind) {
-        switch (kind) {
-            case Boolean:
-            case Byte:
-            case Short:
-            case Char:
-            case Int:
-                pushInt((int) returnValue);
-                break;
-            case Float:
-                pushFloat((float) returnValue);
-                break;
-            case Long:
-                pushLong((long) returnValue);
-                break;
-            case Double:
-                pushDouble((double) returnValue);
-                break;
-            case Object:
-                // TODO(peterssen): Wrap
-                pushObject(returnValue);
-                break;
-            case Void:
-                // do not push
-                break;
-            case Illegal:
-                throw EspressoError.shouldNotReachHere();
-        }
-    }
-
-    public void pushKindIntrinsic(Object returnValue, JavaKind kind) {
-        switch (kind) {
-            case Boolean:
-                pushInt(((boolean) returnValue) ? 1 : 0);
-                break;
-            case Byte:
-                pushInt((int) (byte) returnValue);
-                break;
-            case Short:
-                pushInt((int) (short) returnValue);
-                break;
-            case Char:
-                pushInt((int) (char) returnValue);
-                break;
-            case Int:
-                pushInt((int) returnValue);
-                break;
-            case Float:
-                pushFloat((float) returnValue);
-                break;
-            case Long:
-                pushLong((long) returnValue);
-                break;
-            case Double:
-                pushDouble((double) returnValue);
-                break;
-            case Object:
-                // TODO(peterssen): Wrap
-                pushObject(returnValue);
-                break;
-            case Void:
-                // do not push
-                break;
-            case Illegal:
-                throw EspressoError.shouldNotReachHere();
-        }
-    }
-
+    @Override
     public Object peekReceiver(MethodInfo method) {
-        assert !Modifier.isStatic(method.getModifiers());
+        assert !method.isStatic();
         int slots = method.getSignature().getNumberOfSlotsForParameters();
         Object receiver = stack[stackSize - slots - 1];
         assert isEspressoReference(receiver);
