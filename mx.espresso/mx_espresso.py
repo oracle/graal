@@ -26,6 +26,7 @@ import mx_sdk
 
 from mx_gate import Task, add_gate_runner
 from mx_unittest import unittest
+from argparse import ArgumentParser
 
 _suite = mx.suite('espresso')
 
@@ -78,7 +79,17 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
 ))
 
 
+def _run_espresso_playground(args, verbose=False):
+    parser = ArgumentParser(prog='mx espresso-playground')
+    parser.add_argument('main_class', action='store', help='Unqualified class name to run.')
+    parser.add_argument('main_class_args', nargs='*')
+    args = parser.parse_args(args)
+    return _run_espresso(['-cp', mx.distribution("espresso:ESPRESSO_PLAYGROUND").path,
+                          'com.oracle.truffle.espresso.playground.' + args.main_class] + args.main_class_args, verbose)
+
+
 # register new commands which can be used from the commandline with mx
 mx.update_commands(_suite, {
     'espresso': [_run_espresso, ''],
+    'espresso-playground': [_run_espresso_playground, ''],
 })
