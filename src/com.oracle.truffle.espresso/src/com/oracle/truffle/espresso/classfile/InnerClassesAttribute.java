@@ -23,10 +23,10 @@
 
 package com.oracle.truffle.espresso.classfile;
 
-import com.oracle.truffle.espresso.runtime.AttributeInfo;
-
 import java.util.Arrays;
 import java.util.List;
+
+import com.oracle.truffle.espresso.runtime.AttributeInfo;
 
 public class InnerClassesAttribute extends AttributeInfo {
 

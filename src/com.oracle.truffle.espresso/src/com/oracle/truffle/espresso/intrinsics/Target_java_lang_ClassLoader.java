@@ -37,8 +37,6 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.types.TypeDescriptor;
 
-import static com.oracle.truffle.espresso.meta.Meta.meta;
-
 @EspressoIntrinsics
 public class Target_java_lang_ClassLoader {
     @Intrinsic

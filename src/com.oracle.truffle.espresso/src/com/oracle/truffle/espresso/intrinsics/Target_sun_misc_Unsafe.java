@@ -34,7 +34,6 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
-import com.oracle.truffle.espresso.runtime.StaticObjectWrapper;
 import com.oracle.truffle.espresso.runtime.Utils;
 
 import sun.misc.Unsafe;

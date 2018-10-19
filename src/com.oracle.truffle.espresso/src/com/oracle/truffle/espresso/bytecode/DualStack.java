@@ -27,10 +27,7 @@ import java.lang.reflect.Modifier;
 
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.espresso.impl.MethodInfo;
-import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.types.TypeDescriptors;
 
 public final class DualStack implements OperandStack {
 

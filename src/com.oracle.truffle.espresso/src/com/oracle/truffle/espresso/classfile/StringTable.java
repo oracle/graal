@@ -24,14 +24,11 @@ package com.oracle.truffle.espresso.classfile;
 
 import java.lang.ref.WeakReference;
 
+import org.graalvm.collections.EconomicMap;
+
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.Utils;
-import org.graalvm.collections.EconomicMap;
-
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.espresso.meta.EspressoError;
 
 /**
  * Used to implement String interning.
