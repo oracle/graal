@@ -42,6 +42,11 @@ public abstract class LLVMAMD64AddressComputationNode extends LLVMExpressionNode
         this.displacement = displacement;
     }
 
+    protected static long toLong(int value) {
+        // TODO: find out if signed cast is always correct
+        return value;
+    }
+
     @NodeChild(value = "base", type = LLVMExpressionNode.class)
     public abstract static class LLVMAMD64AddressDisplacementComputationNode extends LLVMAMD64AddressComputationNode {
         public LLVMAMD64AddressDisplacementComputationNode(int displacement) {
@@ -54,8 +59,8 @@ public abstract class LLVMAMD64AddressComputationNode extends LLVMExpressionNode
         }
 
         @Specialization
-        protected int doInt(int base) {
-            return base + displacement;
+        protected long doInt(int base) {
+            return toLong(base) + displacement;
         }
 
         @Specialization
@@ -75,13 +80,13 @@ public abstract class LLVMAMD64AddressComputationNode extends LLVMExpressionNode
         }
 
         @Specialization
-        protected int doI64(int base, int offset) {
-            return base + displacement + (offset << shift);
+        protected long doI64(int base, int offset) {
+            return toLong(base) + displacement + (toLong(offset) << shift);
         }
 
         @Specialization
         protected long doI64(long base, int offset) {
-            return base + displacement + (offset << shift);
+            return base + displacement + (toLong(offset) << shift);
         }
 
         @Specialization
@@ -91,7 +96,7 @@ public abstract class LLVMAMD64AddressComputationNode extends LLVMExpressionNode
 
         @Specialization
         protected LLVMPointer doLLVMPointer(LLVMPointer base, int offset) {
-            return base.increment(displacement + (offset << shift));
+            return base.increment(displacement + (toLong(offset) << shift));
         }
 
         @Specialization
@@ -111,7 +116,7 @@ public abstract class LLVMAMD64AddressComputationNode extends LLVMExpressionNode
 
         @Specialization
         protected LLVMNativePointer doInt(int offset) {
-            return LLVMNativePointer.create(displacement + (offset << shift));
+            return LLVMNativePointer.create(displacement + (toLong(offset) << shift));
         }
 
         @Specialization
