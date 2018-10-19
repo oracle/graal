@@ -106,9 +106,7 @@ suite = {
         "de.hpi.swa.trufflelsp.api": {
             "subDir": "truffle-lsp",
             "sourceDirs": ["src"],
-            "dependencies": [
-                "sdk:GRAAL_SDK",
-            ],
+            "dependencies": [ ],
             "checkstyle": "de.hpi.swa.trufflelsp",
             "javaCompliance": "1.8",
             "workingSets": "TruffleLSP"
@@ -121,7 +119,6 @@ suite = {
                 "de.hpi.swa.trufflelsp.api",
                 "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_NFI",
-                "sdk:GRAAL_SDK",
                 "LSP4J"
             ],
             "checkstyle": "de.hpi.swa.trufflelsp",
@@ -163,9 +160,7 @@ suite = {
     "distributions" : {
         "TRUFFLELSP-API": {
             "dependencies": ["de.hpi.swa.trufflelsp.api"],
-            "distDependencies" : [
-                "sdk:GRAAL_SDK",
-            ],
+            "distDependencies" : [ ],
         },
         "TRUFFLELSP": {
             "dependencies": ["de.hpi.swa.trufflelsp"],
@@ -173,7 +168,6 @@ suite = {
                 "de.hpi.swa.trufflelsp.api",
                 "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_NFI",
-                "sdk:GRAAL_SDK",
                 "LSP4J"
             ],
         },
