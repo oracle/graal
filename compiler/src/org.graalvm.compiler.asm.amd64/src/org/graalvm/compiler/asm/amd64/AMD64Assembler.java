@@ -2475,7 +2475,6 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     // Insn: VPACKUSWB xmm1, xmm1, xmm2
 
     public final void packuswb(Register dst, Register src) {
-        assert supports(CPUFeature.AVX);
         assert inRC(XMM, dst) && inRC(XMM, src);
         // Code: VEX.NDS.128.66.0F.WIG 67 /r
         simdPrefix(dst, dst, src, PD, P_0F, false);
