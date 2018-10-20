@@ -78,7 +78,7 @@ public final class ICU4JFeature implements Feature {
     private static void registerShimClass(BeforeAnalysisAccess access, String shimClassName) {
         Class<?> shimClass = access.findClassByName(shimClassName);
         if (shimClass != null) {
-            RuntimeReflection.register(shimClass);
+            RuntimeReflection.registerForReflectiveInstantiation(shimClass);
             ClassForNameSupport.registerClass(shimClass);
         } else {
             throw VMError.shouldNotReachHere(shimClassName + " not found");
