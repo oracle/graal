@@ -93,7 +93,7 @@ import com.oracle.graal.pointsto.nodes.AnalysisArraysCopyOfNode;
 import com.oracle.graal.pointsto.nodes.AnalysisUnsafePartitionLoadNode;
 import com.oracle.graal.pointsto.nodes.AnalysisUnsafePartitionStoreNode;
 import com.oracle.graal.pointsto.nodes.ConvertUnknownValueNode;
-import com.oracle.svm.core.amd64.FrameAccess;
+import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.jdk.SubstrateArraysCopyOfNode;
 import com.oracle.svm.core.graal.jdk.SubstrateObjectCloneNode;

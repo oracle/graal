@@ -226,7 +226,7 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
                 throw e;
             }
         } catch (IOException e) {
-            throw abort(e);
+            throw abort(String.format("Error loading file '%s' (%s)", file, e.getMessage()));
         }
     }
 

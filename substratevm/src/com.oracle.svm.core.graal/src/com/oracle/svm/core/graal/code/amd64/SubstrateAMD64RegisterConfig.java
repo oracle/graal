@@ -55,6 +55,7 @@ import java.util.ArrayList;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 
 import jdk.vm.ci.amd64.AMD64;
@@ -76,11 +77,6 @@ import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
 
 public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
-
-    public enum ConfigKind {
-        NORMAL,
-        NATIVE_TO_JAVA,
-    }
 
     private final TargetDescription target;
     private final int nativeParamsStackOffset;
@@ -106,7 +102,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
             // even though they are passed in registers.
             nativeParamsStackOffset = 4 * target.wordSize;
 
-            heapBaseRegister = SubstrateOptions.UseHeapBaseRegister.getValue() ? r14 : null;
+            heapBaseRegister = SubstrateOptions.SpawnIsolates.getValue() ? r14 : null;
             threadRegister = SubstrateOptions.MultiThreaded.getValue() ? r15 : null;
 
             ArrayList<Register> regs = new ArrayList<>(valueRegistersSSE.asList());
@@ -122,7 +118,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
 
             nativeParamsStackOffset = 0;
 
-            heapBaseRegister = SubstrateOptions.UseHeapBaseRegister.getValue() ? r14 : null;
+            heapBaseRegister = SubstrateOptions.SpawnIsolates.getValue() ? r14 : null;
             threadRegister = SubstrateOptions.MultiThreaded.getValue() ? r15 : null;
 
             ArrayList<Register> regs = new ArrayList<>(valueRegistersSSE.asList());

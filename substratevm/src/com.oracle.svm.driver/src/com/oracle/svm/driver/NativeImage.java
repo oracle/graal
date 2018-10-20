@@ -26,13 +26,15 @@ package com.oracle.svm.driver;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
@@ -74,6 +76,7 @@ import com.oracle.svm.driver.MacroOption.EnabledOption;
 import com.oracle.svm.driver.MacroOption.MacroOptionKind;
 import com.oracle.svm.driver.MacroOption.Registry;
 import com.oracle.svm.graal.hosted.GraalFeature;
+import com.oracle.svm.hosted.ClassInitializationFeature;
 import com.oracle.svm.hosted.FeatureHandler;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.image.AbstractBootImage.NativeImageKind;
@@ -146,6 +149,8 @@ public class NativeImage {
     static final String oHDynamicProxyConfigurationResources = oH(DynamicProxyFeature.Options.DynamicProxyConfigurationResources);
     static final String oHJNIConfigurationFiles = oH(SubstrateOptions.JNIConfigurationFiles);
     static final String oHJNIConfigurationResources = oH(SubstrateOptions.JNIConfigurationResources);
+    static final String oHDelayClassInitialization = oH(ClassInitializationFeature.Options.DelayClassInitialization);
+    static final String oHRerunClassInitialization = oH(ClassInitializationFeature.Options.RerunClassInitialization);
     static final String oHInterfacesForJNR = oH + "InterfacesForJNR=";
 
     static final String oHMaxRuntimeCompileMethods = oH(GraalFeature.Options.MaxRuntimeCompileMethods);
@@ -172,6 +177,7 @@ public class NativeImage {
     protected final BuildConfiguration config;
 
     private final Map<String, String> userConfigProperties = new HashMap<>();
+    private final Map<String, String> propertyFileSubstitutionValues = new HashMap<>();
 
     private boolean verbose = Boolean.valueOf(System.getenv("VERBOSE_GRAALVM_LAUNCHERS"));
     private boolean dryRun = false;
@@ -179,6 +185,9 @@ public class NativeImage {
 
     final Registry optionRegistry;
     private LinkedHashSet<EnabledOption> enabledLanguages;
+
+    public static final String nativeImagePropertiesFilename = "native-image.properties";
+    public static final String nativeImagePropertiesMetaInf = "META-INF/native-image";
 
     public interface BuildConfiguration {
         /**
@@ -444,7 +453,7 @@ public class NativeImage {
         addImageBuilderJavaArgs("-Dcom.oracle.graalvm.isaot=true");
 
         // Generate images into the current directory
-        addImageBuilderArg(oHPath + config.getWorkingDirectory());
+        addPlainImageBuilderArg(oHPath + config.getWorkingDirectory());
 
         /* Discover supported MacroOptions */
         optionRegistry = new MacroOption.Registry();
@@ -498,9 +507,9 @@ public class NativeImage {
                         .stream()
                         .map(path -> canonicalize(path.resolve(platform)).toString())
                         .collect(Collectors.joining(",", oHCLibraryPath, ""));
-        addImageBuilderArg(clibrariesBuilderArg);
+        addPlainImageBuilderArg(clibrariesBuilderArg);
         if (config.getBuilderInspectServerPath() != null) {
-            addImageBuilderArg(oHInspectServerContentPath + config.getBuilderInspectServerPath());
+            addPlainImageBuilderArg(oHInspectServerContentPath + config.getBuilderInspectServerPath());
         }
 
         config.getBuilderJVMCIClasspath().forEach((Consumer<? super Path>) this::addImageBuilderClasspath);
@@ -620,14 +629,77 @@ public class NativeImage {
         }
     }
 
+    private void processClasspathNativeImageProperties(Collection<Path> paths) {
+        for (Path classpathEntry : paths) {
+            try {
+                if (Files.isDirectory(classpathEntry)) {
+                    Path nativeImageMetaInfBase = classpathEntry.resolve(Paths.get(nativeImagePropertiesMetaInf));
+                    processNativeImageProperties(nativeImageMetaInfBase);
+                } else {
+                    List<Path> jarFileMatches;
+                    if (classpathEntry.endsWith("*")) {
+                        jarFileMatches = Files.list(classpathEntry.getParent())
+                                        .filter(p -> p.getFileName().toString().toLowerCase().endsWith(".jar"))
+                                        .collect(Collectors.toList());
+                    } else {
+                        jarFileMatches = Collections.singletonList(classpathEntry);
+                    }
+
+                    for (Path jarFile : jarFileMatches) {
+                        URI jarFileURI = URI.create("jar:" + jarFile.toUri());
+                        try (FileSystem jarFS = FileSystems.newFileSystem(jarFileURI, Collections.emptyMap())) {
+                            Path nativeImageMetaInfBase = jarFS.getPath("/" + nativeImagePropertiesMetaInf);
+                            processNativeImageProperties(nativeImageMetaInfBase);
+                        }
+                    }
+                }
+            } catch (IOException e) {
+                throw showError("Invalid classpath entry " + classpathEntry, e);
+            }
+        }
+    }
+
+    private void processNativeImageProperties(Path nativeImageMetaInfBase) throws IOException {
+        if (Files.isDirectory(nativeImageMetaInfBase)) {
+            List<Path> nativeImageProperties = Files.walk(nativeImageMetaInfBase)
+                            .filter(p -> p.endsWith(nativeImagePropertiesFilename))
+                            .collect(Collectors.toList());
+
+            for (Path nativeImagePropertyFile : nativeImageProperties) {
+                Function<String, String> resolver = str -> {
+                    Path resourceRoot = nativeImageMetaInfBase.getParent().getParent();
+                    Path componentDirectory = resourceRoot.relativize(nativeImagePropertyFile).getParent();
+                    int nameCount = componentDirectory.getNameCount();
+                    String optionArg = null;
+                    if (nameCount > 2) {
+                        String optionArgKey = componentDirectory.subpath(2, nameCount).toString();
+                        optionArg = propertyFileSubstitutionValues.get(optionArgKey);
+                    }
+                    return resolvePropertyValue(str, optionArg, componentDirectory.toString());
+                };
+                showVerboseMessage(verbose, "Apply " + nativeImagePropertyFile.toUri());
+                processNativeImageProperties(loadProperties(Files.newInputStream(nativeImagePropertyFile)), resolver);
+            }
+        }
+    }
+
+    private void processNativeImageProperties(Map<String, String> properties, Function<String, String> resolver) {
+        String imageName = properties.get("ImageName");
+        if (imageName != null) {
+            addPlainImageBuilderArg(NativeImage.oHName + resolver.apply(imageName));
+        }
+        forEachPropertyValue(properties.get("JavaArgs"), this::addImageBuilderJavaArgs, resolver);
+        forEachPropertyValue(properties.get("Args"), this::addImageBuilderArg, resolver);
+    }
+
     private void completeImageBuildArgs() {
         List<String> leftoverArgs = processNativeImageArgs();
 
         completeOptionArgs();
 
         if (queryOption != null) {
-            addImageBuilderArg(NativeImage.oH + NativeImage.enablePrintFlags + queryOption);
-            addImageBuilderArg(NativeImage.oR + NativeImage.enablePrintFlags + queryOption);
+            addPlainImageBuilderArg(NativeImage.oH + NativeImage.enablePrintFlags + queryOption);
+            addPlainImageBuilderArg(NativeImage.oR + NativeImage.enablePrintFlags + queryOption);
         }
 
         /* If no customImageClasspath was specified put "." on classpath */
@@ -636,6 +708,10 @@ public class NativeImage {
         } else {
             imageClasspath.addAll(customImageClasspath);
         }
+
+        // Process all META-INF/*/native-image.properties found on the imageClasspath
+        processClasspathNativeImageProperties(imageProvidedClasspath);
+        processClasspathNativeImageProperties(imageClasspath);
 
         /* Perform JavaArgs consolidation - take the maximum of -Xmx, minimum of -Xms */
         Long xmxValue = consolidateArgs(imageBuilderJavaArgs, oXmx, SubstrateOptionsParser::parseLong, String::valueOf, () -> 0L, Math::max);
@@ -663,6 +739,8 @@ public class NativeImage {
         consolidateListArgs(imageBuilderArgs, oHJNIConfigurationFiles, ",", canonicalizedPathStr);
         consolidateListArgs(imageBuilderArgs, oHJNIConfigurationResources, ",", Function.identity());
         consolidateListArgs(imageBuilderArgs, oHFeatures, ",", Function.identity());
+        consolidateListArgs(imageBuilderArgs, oHDelayClassInitialization, ",", Function.identity());
+        consolidateListArgs(imageBuilderArgs, oHRerunClassInitialization, ",", Function.identity());
 
         BiFunction<String, String, String> takeLast = (a, b) -> b;
         consolidateArgs(imageBuilderArgs, oHPath, Function.identity(), canonicalizedPathStr, () -> null, takeLast);
@@ -864,8 +942,15 @@ public class NativeImage {
     }
 
     void addImageBuilderArg(String arg) {
-        imageBuilderArgs.remove(arg);
-        imageBuilderArgs.add(arg);
+        String translatedArg = apiOptionHandler.translateOption(arg);
+        String plainArg = translatedArg != null ? translatedArg : arg;
+        addPlainImageBuilderArg(plainArg);
+    }
+
+    void addPlainImageBuilderArg(String plainArg) {
+        assert plainArg.startsWith(NativeImage.oH) || plainArg.startsWith(NativeImage.oR);
+        imageBuilderArgs.remove(plainArg);
+        imageBuilderArgs.add(plainArg);
     }
 
     void addImageClasspath(Path classpath) {
@@ -892,9 +977,9 @@ public class NativeImage {
         customJavaArgs.add(javaArg);
     }
 
-    void addCustomImageBuilderArgs(String arg) {
-        addImageBuilderArg(arg);
-        customImageBuilderArgs.add(arg);
+    void addCustomImageBuilderArgs(String plainArg) {
+        addPlainImageBuilderArg(plainArg);
+        customImageBuilderArgs.add(plainArg);
     }
 
     void setVerbose(boolean val) {
@@ -1035,20 +1120,74 @@ public class NativeImage {
     }
 
     static Map<String, String> loadProperties(Path propertiesPath) {
-        Properties properties = new Properties();
-        File propertiesFile = propertiesPath.toFile();
-        if (propertiesFile.canRead()) {
-            try (FileReader reader = new FileReader(propertiesFile)) {
-                properties.load(reader);
-            } catch (Exception e) {
-                showError("Could not read properties-file: " + propertiesFile, e);
+        if (Files.isReadable(propertiesPath)) {
+            try {
+                return loadProperties(Files.newInputStream(propertiesPath));
+            } catch (IOException e) {
+                throw showError("Could not read properties-file: " + propertiesPath, e);
             }
+        }
+        return Collections.emptyMap();
+    }
+
+    static Map<String, String> loadProperties(InputStream propertiesInputStream) {
+        Properties properties = new Properties();
+        try (InputStream input = propertiesInputStream) {
+            properties.load(input);
+        } catch (IOException e) {
+            showError("Could not read properties", e);
         }
         Map<String, String> map = new HashMap<>();
         for (String key : properties.stringPropertyNames()) {
             map.put(key, properties.getProperty(key));
         }
         return Collections.unmodifiableMap(map);
+    }
+
+    static boolean forEachPropertyValue(String propertyValue, Consumer<String> target, Function<String, String> resolver) {
+        if (propertyValue != null) {
+            for (String propertyValuePart : propertyValue.split(" ")) {
+                target.accept(resolver.apply(propertyValuePart));
+            }
+            return true;
+        }
+        return false;
+    }
+
+    public void addOptionKeyValue(String key, String value) {
+        propertyFileSubstitutionValues.put(key, value);
+    }
+
+    static String resolvePropertyValue(String val, String optionArg, String componentDirectory) {
+        String resultVal = val;
+        if (optionArg != null) {
+            /* Substitute ${*} -> optionArg in resultVal (always possible) */
+            resultVal = safeSubstitution(resultVal, "${*}", optionArg);
+            /*
+             * If optionArg consists of "<argName>:<argValue>,..." additionally perform
+             * substitutions of kind ${<argName>} -> <argValue> on resultVal.
+             */
+            for (String argNameValue : optionArg.split(",")) {
+                String[] splitted = argNameValue.split(":");
+                if (splitted.length == 2) {
+                    String argName = splitted[0];
+                    String argValue = splitted[1];
+                    if (!argName.isEmpty()) {
+                        resultVal = safeSubstitution(resultVal, "${" + argName + "}", argValue);
+                    }
+                }
+            }
+        }
+        /* Substitute ${.} -> absolute path to optionDirectory */
+        resultVal = safeSubstitution(resultVal, "${.}", componentDirectory);
+        return resultVal;
+    }
+
+    private static String safeSubstitution(String source, CharSequence target, CharSequence replacement) {
+        if (replacement == null && source.contains(target)) {
+            throw showError("Unable to provide meaningful substitution for \"" + target + "\" in " + source);
+        }
+        return source.replace(target, replacement);
     }
 
     private static String deletedFileSuffix = ".deleted";

@@ -43,6 +43,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.junit.Test;
 
@@ -63,7 +64,7 @@ public abstract class BaseTestHarness {
     protected abstract String getTestName();
 
     @Test
-    public abstract void test() throws Exception;
+    public abstract void test() throws IOException;
 
     protected Map<String, String> getContextOptions() {
         return Collections.emptyMap();
@@ -121,12 +122,11 @@ public abstract class BaseTestHarness {
         // rel
         Set<Path> availableSourceFilesRelative = availableSourceFiles.stream().map(e -> getRelative(sourceDir.getParent().toUri(), e.toUri())).collect(Collectors.toSet());
 
-        List<Object[]> collectedTests = greyList.stream().sorted().map(
+        return greyList.stream().sorted().map(
                         t -> new Object[]{t, availableSourceFilesRelative.stream().filter(s -> {
                             return s.toString().startsWith(getRelative(suiteDir.toUri(), t.toUri()).toString());
                         }).findAny().get().toString()}).collect(
                                         Collectors.toList());
-        return collectedTests;
     }
 
     private static Path getRelative(URI base, URI abs) {
@@ -134,8 +134,8 @@ public abstract class BaseTestHarness {
     }
 
     private static Set<Path> collectTestCases(String testDiscoveryPath) throws AssertionError {
-        try {
-            return Files.walk(Paths.get(testDiscoveryPath)).filter(isExecutable).map(f -> f.getParent()).collect(Collectors.toSet());
+        try (Stream<Path> files = Files.walk(Paths.get(testDiscoveryPath))) {
+            return files.filter(isExecutable).map(f -> f.getParent()).collect(Collectors.toSet());
         } catch (IOException e) {
             throw new AssertionError("Test cases not found", e);
         }
@@ -165,8 +165,8 @@ public abstract class BaseTestHarness {
                 return false;
             }
         };
-        try {
-            return Files.walk(configDir).filter(isIncludeFile).flatMap(f -> {
+        try (Stream<Path> files = Files.walk(configDir)) {
+            return files.filter(isIncludeFile).flatMap(f -> {
                 try {
                     return Files.lines(f).filter(file -> file.length() > 0);
                 } catch (IOException e) {
@@ -187,8 +187,8 @@ public abstract class BaseTestHarness {
     }
 
     public static Set<Path> getFiles(Path source) {
-        try {
-            return Files.walk(source).filter(f -> supportedFiles.contains(getFileEnding(f.getFileName().toString()))).collect(Collectors.toSet());
+        try (Stream<Path> files = Files.walk(source)) {
+            return files.filter(f -> supportedFiles.contains(getFileEnding(f.getFileName().toString()))).collect(Collectors.toSet());
         } catch (IOException e) {
             throw new AssertionError("Error getting files.", e);
         }

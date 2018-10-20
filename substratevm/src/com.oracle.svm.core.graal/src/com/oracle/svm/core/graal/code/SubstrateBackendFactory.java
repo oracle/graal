@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,16 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.tools.chromeinspector.server;
+package com.oracle.svm.core.graal.code;
 
-import java.io.IOException;
+import org.graalvm.compiler.core.target.Backend;
+import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.nativeimage.ImageSingletons;
 
-/**
- * An abstraction of an inspector server.
- */
-public interface InspectorServer {
+public abstract class SubstrateBackendFactory {
+    public abstract Backend newBackend(Providers newProviders);
 
-    int getListeningPort();
-
-    void close(String path) throws IOException;
+    public static SubstrateBackendFactory get() {
+        return ImageSingletons.lookup(SubstrateBackendFactory.class);
+    }
 }

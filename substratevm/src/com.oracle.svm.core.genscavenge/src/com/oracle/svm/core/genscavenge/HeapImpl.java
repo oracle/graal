@@ -650,6 +650,11 @@ public class HeapImpl extends Heap {
         return assertHub(hub);
     }
 
+    /** For assertions: Verify that a Space is a valid Space. */
+    public boolean isValidSpace(Space space) {
+        return (getYoungGeneration().isValidSpace(space) || getOldGeneration().isValidSpace(space));
+    }
+
     /** State: The stack verifier. */
     private final StackVerifier stackVerifier;
 

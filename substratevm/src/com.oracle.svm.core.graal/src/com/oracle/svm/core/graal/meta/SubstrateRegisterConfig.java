@@ -31,6 +31,11 @@ import jdk.vm.ci.code.RegisterConfig;
 
 public interface SubstrateRegisterConfig extends RegisterConfig {
 
+    enum ConfigKind {
+        NORMAL,
+        NATIVE_TO_JAVA,
+    }
+
     /**
      * Gets the register that contains the current {@link IsolateThread}.
      */

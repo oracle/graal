@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.nodes.memory;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.memory.LLVMGetElementPtrNodeGen.LLVMIncrementPointerNodeGen;
@@ -42,7 +41,8 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-@NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+@NodeChild(type = LLVMExpressionNode.class)
+@NodeChild(type = LLVMExpressionNode.class)
 @NodeField(type = long.class, name = "typeWidth")
 public abstract class LLVMGetElementPtrNode extends LLVMExpressionNode {
 

@@ -33,7 +33,11 @@ import java.nio.charset.CoderResult;
 
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.ObjectHandles;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platform.DARWIN;
+import org.graalvm.nativeimage.Platform.LINUX;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -44,9 +48,6 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.truffle.nfi.NativeAPI.TruffleContextHandle;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platform.DARWIN;
-import org.graalvm.nativeimage.Platform.LINUX;
 
 public final class TruffleNFISupport {
 
@@ -142,7 +143,7 @@ public final class TruffleNFISupport {
             return null;
         } else {
             UnsignedWord len = SubstrateUtil.strlen(str);
-            ByteBuffer buffer = SubstrateUtil.wrapAsByteBuffer(str, (int) len.rawValue());
+            ByteBuffer buffer = CTypeConversion.asByteBuffer(str, (int) len.rawValue());
             return UTF8.decode(buffer).toString();
         }
     }

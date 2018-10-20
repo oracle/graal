@@ -984,7 +984,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                 if (!this.config.logLevels.isEmpty()) {
                     VMAccessor.LANGUAGE.configureLoggers(this, null);
                 }
-                if (this.config.logHandler != null) {
+                if (this.config.logHandler != null && this.config.logHandler != engine.logHandler) {
                     this.config.logHandler.close();
                 }
             }

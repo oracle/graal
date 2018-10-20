@@ -51,7 +51,7 @@ public abstract class LLVMAMD64SyscallGetcwdNode extends LLVMSyscallOperationNod
             return -LLVMAMD64Error.ERANGE;
         } else {
             LLVMString.strcpy(memory, buf, cwd);
-            return cwd.length() + 1;
+            return cwd.length() + 1L;
         }
     }
 

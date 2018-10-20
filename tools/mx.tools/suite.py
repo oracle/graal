@@ -4,7 +4,7 @@ suite = {
     "defaultLicense" : "GPLv2-CPE",
 
     "groupId" : "org.graalvm.tools",
-    "version": "1.0.0-rc8",
+    "version": "1.0.0-rc9",
     "release" : False,
     "url" : "http://openjdk.java.net/projects/graal",
     "developer" : {
@@ -41,6 +41,7 @@ suite = {
                 "NanoHTTPD",
                 "NanoHTTPD-WebSocket",
                 "TruffleJSON",
+                "Java-WebSocket",
             ],
             "exports" : [
               "<package-info>", # exports all packages containing package-info.java
@@ -130,6 +131,18 @@ suite = {
             "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20180130.jar",
           ],
           "sha1" : "8819cea8bfe22c9c63f55465e296b3855ea41786",
+        },
+        "Java-WebSocket" : {
+            "path" : "lib/Java-WebSocket-1.3.9.jar",
+            "urls" : [
+                "https://search.maven.org/remotecontent?filepath=org/java-websocket/Java-WebSocket/1.3.9/Java-WebSocket-1.3.9.jar",
+            ],
+            "sha1" : "e6e60889b7211a80b21052a249bd7e0f88f79fee",
+            "maven" : {
+                "groupId" : "org.java-websocket",
+                "artifactId" : "Java-WebSocket",
+                "version" : "1.3.9",
+            }
         },
         "VISUALVM_COMMON" : {
             "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-606.tar.gz"],

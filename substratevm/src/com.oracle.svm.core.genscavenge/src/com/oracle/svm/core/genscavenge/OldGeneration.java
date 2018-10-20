@@ -336,6 +336,12 @@ public class OldGeneration extends Generation {
     }
 
     @Override
+    protected boolean isValidSpace(Space space) {
+        return (space == getFromSpace() || (space == getToSpace()) ||
+                        (space == getPinnedFromSpace()) || (space == getPinnedToSpace()));
+    }
+
+    @Override
     protected boolean verify(HeapVerifier.Occasion occasion) {
         boolean result = true;
         final HeapImpl heap = HeapImpl.getHeapImpl();

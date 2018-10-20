@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm;
 
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -38,8 +37,10 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public abstract class LLVMMemMove {
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class, value = "dest"), @NodeChild(type = LLVMExpressionNode.class, value = "src"),
-                    @NodeChild(type = LLVMExpressionNode.class, value = "length"), @NodeChild(type = LLVMExpressionNode.class, value = "isVolatile")})
+    @NodeChild(type = LLVMExpressionNode.class, value = "dest")
+    @NodeChild(type = LLVMExpressionNode.class, value = "src")
+    @NodeChild(type = LLVMExpressionNode.class, value = "length")
+    @NodeChild(type = LLVMExpressionNode.class, value = "isVolatile")
     public abstract static class LLVMMemMoveI64 extends LLVMBuiltin {
 
         @Child private LLVMMemMoveNode memMove;

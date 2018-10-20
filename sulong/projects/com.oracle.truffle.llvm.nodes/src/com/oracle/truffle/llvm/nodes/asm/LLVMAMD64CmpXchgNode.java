@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.nodes.asm;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -45,7 +44,9 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
-@NodeChildren({@NodeChild(value = "a", type = LLVMExpressionNode.class), @NodeChild(value = "src", type = LLVMExpressionNode.class), @NodeChild(value = "dst", type = LLVMExpressionNode.class)})
+@NodeChild(value = "a", type = LLVMExpressionNode.class)
+@NodeChild(value = "src", type = LLVMExpressionNode.class)
+@NodeChild(value = "dst", type = LLVMExpressionNode.class)
 public abstract class LLVMAMD64CmpXchgNode extends LLVMStatementNode {
     @Child protected LLVMAMD64UpdateCPAZSOFlagsNode flags;
 

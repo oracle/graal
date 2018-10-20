@@ -44,14 +44,14 @@ package com.oracle.truffle.api.test.polyglot;
  * This class is used in {@link HostClassLoadingTest}. Renaming this class might be requiring
  * changes.
  */
-public final class HostClassLoadingTestClass {
+public final class HostClassLoadingTestClass2 {
 
-    public int testField = 42;
+    public int testField = 1;
 
     @SuppressWarnings("static-method")
     public int testMethod() {
-        return 42;
+        return 1;
     }
 
-    public static int staticField = 42;
+    public static int staticField = 1;
 }

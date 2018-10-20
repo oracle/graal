@@ -24,11 +24,14 @@
  */
 package com.oracle.svm.core.posix;
 
+import java.io.IOException;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.SocketOptions;
+import java.net.StandardProtocolFamily;
+import java.nio.channels.DatagramChannel;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.PinnedObject;
@@ -620,10 +623,24 @@ class JavaNetNetUtilMD {
         return holder.address;
     }
 
+    /**
+     * This method is only called during image building, to determine if the JVM on which the image
+     * builder is running supports IPv6. That information is baked into the generated image, in
+     * {@link JavaNetNetUtil#IPv6_available}.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
     static boolean IPv6_supported() {
-        // TODO: Lines 305-426 of platform-dependent code elided,
-        // because it looks like IPv6 is supported by Linux, MacOSX, and Solaris.
-        // TODO: I am also not implementing building HotSpot with -DDONT_ENABLE_IPV6.
+        /*
+         * Can I open a DatagramChannel that uses IPv6, or will I get an
+         * UnsupportedOperationException?
+         */
+        try {
+            DatagramChannel.open(StandardProtocolFamily.INET6);
+        } catch (UnsupportedOperationException uoe) {
+            return false;
+        } catch (IOException ioe) {
+            return false;
+        }
         return true;
     }
 

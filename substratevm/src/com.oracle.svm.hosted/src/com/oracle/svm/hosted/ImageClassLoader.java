@@ -135,7 +135,7 @@ public final class ImageClassLoader {
 
     static Stream<Path> toClassPathEntries(String classPathEntry) {
         Path entry = Paths.get(classPathEntry);
-        if (entry.getFileName().toString().endsWith("*")) {
+        if (entry.getFileName() != null && entry.getFileName().toString().endsWith("*")) {
             return Arrays.stream(entry.getParent().toFile().listFiles()).filter(File::isFile).map(File::toPath);
         }
         return Stream.of(entry);
@@ -153,9 +153,7 @@ public final class ImageClassLoader {
         if (Files.exists(path)) {
             if (Files.isRegularFile(path)) {
                 try {
-                    String name = path.toAbsolutePath().toString();
-                    name = name.replace('\\', '/');
-                    URI jarURI = new URI("jar:file:///" + name);
+                    URI jarURI = new URI("jar:" + path.toAbsolutePath().toUri());
                     try (FileSystem jarFileSystem = FileSystems.newFileSystem(jarURI, Collections.emptyMap())) {
                         initAllClasses(jarFileSystem.getPath("/"), Collections.emptySet(), executor);
                     }

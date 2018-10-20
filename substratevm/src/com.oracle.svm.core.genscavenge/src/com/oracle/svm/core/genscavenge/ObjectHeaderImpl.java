@@ -217,7 +217,7 @@ public class ObjectHeaderImpl extends ObjectHeader {
          * can convert the hub to a Pointer without any precautions.
          */
         Word result = Word.objectToUntrackedPointer(hub);
-        if (SubstrateOptions.UseHeapBaseRegister.getValue()) {
+        if (SubstrateOptions.SpawnIsolates.getValue()) {
             if (hasBase()) {
                 result = result.subtract(KnownIntrinsics.heapBase());
             }
@@ -593,7 +593,7 @@ public class ObjectHeaderImpl extends ObjectHeader {
     /** Log an object header. */
     public Log objectHeaderToLog(Object obj, Log log) {
         log.string("  obj: ").hex(Word.objectToUntrackedPointer(obj));
-        final UnsignedWord header = ObjectHeaderImpl.readHeaderBitsFromObjectCarefully(obj);
+        final UnsignedWord header = ObjectHeaderImpl.readHeaderFromObjectCarefully(obj);
         final DynamicHub hub = ObjectHeader.dynamicHubFromObjectHeader(header);
         log.string("  header: ").hex(header)
                         .string("  hub:").hex(Word.objectToUntrackedPointer(hub))

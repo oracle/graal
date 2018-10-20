@@ -67,9 +67,9 @@ import com.oracle.objectfile.ObjectFile.RelocationKind;
 import com.oracle.objectfile.ObjectFile.Section;
 import com.oracle.objectfile.SectionName;
 import com.oracle.objectfile.macho.MachOObjectFile;
+import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.amd64.FrameAccess;
 import com.oracle.svm.core.c.CConst;
 import com.oracle.svm.core.c.CGlobalDataImpl;
 import com.oracle.svm.core.c.CHeader;
@@ -339,7 +339,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
 
             long roSectionSize = roConstantsSize;
             long rwSectionSize = cglobalsSize;
-            if (!SubstrateOptions.UseHeapBaseRegister.getValue()) {
+            if (!SubstrateOptions.SpawnIsolates.getValue()) {
                 roSectionSize += heap.getReadOnlySectionSize();
                 rwSectionSize += heap.getWritableSectionSize();
             }
@@ -374,7 +374,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
 
             final RelocatableBuffer heapSectionBuffer;
             final ProgbitsSectionImpl heapSectionImpl;
-            if (SubstrateOptions.UseHeapBaseRegister.getValue()) {
+            if (SubstrateOptions.SpawnIsolates.getValue()) {
                 boolean writable = !SubstrateOptions.SpawnIsolates.getValue();
                 final long heapSize = heap.getReadOnlySectionSize() + heap.getWritableSectionSize();
 
@@ -413,7 +413,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
             defineDataSymbol(CGlobalDataInfo.CGLOBALDATA_BASE_SYMBOL_NAME, rwDataSection, RWDATA_CGLOBALS_PARTITION_OFFSET);
 
             // - Write the heap, either to its own section, or to the ro and rw data sections.
-            if (SubstrateOptions.UseHeapBaseRegister.getValue()) {
+            if (SubstrateOptions.SpawnIsolates.getValue()) {
                 heap.writeHeap(debug, heapSectionBuffer, heapSectionBuffer);
 
                 long firstRelocOffset = heap.getFirstRelocatablePointerOffsetInSection();

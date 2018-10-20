@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,27 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.code.amd64;
+package com.oracle.truffle.tools.chromeinspector.instrument;
 
-import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.JavaKind;
+import java.io.IOException;
 
-public class SubstrateCallingConvention extends CallingConvention {
-    private final Type type;
-    private final JavaKind[] kinds;
+/**
+ * Web socket connection for the inspector protocol.
+ */
+public interface InspectorWSConnection {
 
-    SubstrateCallingConvention(Type type, JavaKind[] kinds, int stackSize, AllocatableValue returnLocation, AllocatableValue... argumentLocations) {
-        super(stackSize, returnLocation, argumentLocations);
-        this.type = type;
-        this.kinds = kinds;
-    }
+    int getPort();
 
-    public Type getType() {
-        return type;
-    }
-
-    public JavaKind[] getArgumentStorageKinds() {
-        return kinds;
-    }
+    void close(String wsspath) throws IOException;
 }

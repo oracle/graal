@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.nodes.memory.rmw;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI8LoadNode;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI8LoadNodeGen;
@@ -42,7 +41,8 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
-@NodeChildren(value = {@NodeChild(type = LLVMExpressionNode.class, value = "pointerNode"), @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")})
+@NodeChild(type = LLVMExpressionNode.class, value = "pointerNode")
+@NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
 public abstract class LLVMI8RMWNode extends LLVMExpressionNode {
 
     protected static LLVMI8LoadNode createRead() {

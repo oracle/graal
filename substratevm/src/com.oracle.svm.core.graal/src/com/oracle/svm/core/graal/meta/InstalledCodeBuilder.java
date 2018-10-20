@@ -39,11 +39,11 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfoEncoder;
 import com.oracle.svm.core.code.CodeInfoTable;
@@ -294,7 +294,7 @@ public class InstalledCodeBuilder {
         }
 
         /* Write primitive constants to the buffer, record object constants with offsets */
-        ByteBuffer constantsBuffer = SubstrateUtil.wrapAsByteBuffer(code.add(constantsOffset), compilation.getDataSection().getSectionSize());
+        ByteBuffer constantsBuffer = CTypeConversion.asByteBuffer(code.add(constantsOffset), compilation.getDataSection().getSectionSize());
         compilation.getDataSection().buildDataSection(constantsBuffer, (position, constant) -> {
             objectConstants.add(constantsOffset + position, (SubstrateObjectConstant) constant);
         });

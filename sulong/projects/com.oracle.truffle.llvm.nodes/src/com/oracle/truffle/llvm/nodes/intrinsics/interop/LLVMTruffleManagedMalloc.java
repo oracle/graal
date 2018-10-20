@@ -94,7 +94,6 @@ public abstract class LLVMTruffleManagedMalloc extends LLVMIntrinsic {
                 return value;
             }
         }
-
     }
 
     public static class ManagedMallocObject implements LLVMObjectAccess, LLVMInternalTruffleObject {

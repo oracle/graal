@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,96 +38,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.source;
+package com.oracle.truffle.api.test.polyglot;
 
-import java.io.IOException;
-import java.io.Reader;
-import java.net.URI;
-import java.net.URL;
-import java.nio.ByteBuffer;
-import java.util.Objects;
-import java.util.function.Function;
+/**
+ * This class is used in {@link HostClassLoadingTest}. Renaming this class might be requiring
+ * changes.
+ */
+public final class HostClassLoadingTestClass1 {
 
-import com.sun.org.apache.bcel.internal.util.ByteSequence;
+    public int testField = 42;
 
-final class ByteSequenceSourceImpl extends Content implements Content.CreateURI {
-
-    private final String name;
-    private final ByteSequence bytes;
-
-    ByteSequenceSourceImpl(String name, ByteSequence bytes) {
-        this.name = name;
-        this.bytes = bytes;
+    @SuppressWarnings("static-method")
+    public int testMethod() {
+        return 42;
     }
 
-    @Override
-    public String getName() {
-        return name;
-    }
-
-    private CharSequence materializeCode() {
-        if (code == null) {
-            synchronized (this) {
-                if (code == null) {
-                    if (materialize == null) {
-                        code = "";
-                    } else {
-                        code = materialize.apply(bytes);
-                    }
-                }
-            }
-        }
-        return code;
-    }
-
-    @Override
-    boolean isBinary() {
-        return true;
-    }
-
-    @Override
-    public CharSequence getCharacters() {
-        return materializeCode();
-    }
-
-    @Override
-    public String getPath() {
-        return null;
-    }
-
-    @Override
-    public URL getURL() {
-        return null;
-    }
-
-    @Override
-    URI getURI() {
-        return createURIOnce(this);
-    }
-
-    @Override
-    public URI createURI() {
-        return getNamedURI(name, bytes);
-    }
-
-    @Override
-    public Reader getReader() {
-        return new CharSequenceReader(materializeCode());
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(name, bytes);
-    }
-
-    @Override
-    String findMimeType() throws IOException {
-        return null;
-    }
-
-    @Override
-    Object getHashKey() {
-        return bytes;
-    }
-
+    public static int staticField = 42;
 }

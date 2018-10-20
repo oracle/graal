@@ -237,7 +237,7 @@ public final class CPUTracer implements Closeable {
          * Returns a set tags a stack location marked with. Common tags are {@link RootTag root},
          * {@link StatementTag statement} and {@link ExpressionTag expression}. Whether statement or
          * expression stack trace entries appear depends on the configured
-         * {@link CPUSampler#setFilter(com.oracle.truffle.api.instrumentation.SourceSectionFilter)
+         * {@link CPUTracer#setFilter(com.oracle.truffle.api.instrumentation.SourceSectionFilter)
          * filter}.
          *
          * @since 0.30

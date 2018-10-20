@@ -34,7 +34,7 @@ import org.graalvm.compiler.code.DataSection.SerializableData;
 import org.graalvm.compiler.code.DataSection.ZeroData;
 import org.graalvm.compiler.lir.asm.DataBuilder;
 
-import com.oracle.svm.core.amd64.FrameAccess;
+import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;

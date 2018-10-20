@@ -33,7 +33,6 @@ import java.util.function.IntPredicate;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMBuiltin;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -44,7 +43,7 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 
 public abstract class LLVMX86_VectorMathNode {
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMX86_VectorSquareRootNode extends LLVMBuiltin { // mm_sqrt_pd
         @Specialization(guards = "vector.getLength() == 2")
         protected LLVMDoubleVector doM128(LLVMDoubleVector vector) {
@@ -52,7 +51,8 @@ public abstract class LLVMX86_VectorMathNode {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMX86_VectorMaxNode extends LLVMBuiltin { // mm_max_pd
         @Specialization(guards = {"v1.getLength() == 2", "v2.getLength() == 2"})
         protected LLVMDoubleVector doM128(LLVMDoubleVector v1, LLVMDoubleVector v2) {
@@ -63,7 +63,8 @@ public abstract class LLVMX86_VectorMathNode {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMX86_VectorMinNode extends LLVMBuiltin { // mm_min_pd
         @Specialization(guards = {"v1.getLength() == 2", "v2.getLength() == 2"})
         protected LLVMDoubleVector doM128(LLVMDoubleVector v1, LLVMDoubleVector v2) {
@@ -74,7 +75,8 @@ public abstract class LLVMX86_VectorMathNode {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMX86_VectorPackNode extends LLVMBuiltin {
         short saturatedPack(int value) {
             if (value > Short.MAX_VALUE) {
@@ -115,7 +117,9 @@ public abstract class LLVMX86_VectorMathNode {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMX86_VectorCmpNode extends LLVMBuiltin { // mm_cmp_sd
         private static double mask = Double.longBitsToDouble(0xffffffffffffffffL);
 

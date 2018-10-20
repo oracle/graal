@@ -101,6 +101,14 @@ final class FileSystems {
         return new NIOFileSystem(fileSystemProvider, userDir);
     }
 
+    static boolean isDefaultFileSystem(FileSystem fileSystem) {
+        return fileSystem != null && fileSystem.getClass() == NIOFileSystem.class && FILE_SCHEME.equals(((NIOFileSystem) fileSystem).delegate.getScheme());
+    }
+
+    static boolean isNoIOFileSystem(FileSystem fileSystem) {
+        return fileSystem != null && fileSystem.getClass() == DeniedIOFileSystem.class;
+    }
+
     private static FileSystemProvider findDefaultFileSystemProvider() {
         for (FileSystemProvider fsp : FileSystemProvider.installedProviders()) {
             if (FILE_SCHEME.equals(fsp.getScheme())) {
