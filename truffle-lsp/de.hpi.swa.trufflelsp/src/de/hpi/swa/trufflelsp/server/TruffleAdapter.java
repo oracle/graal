@@ -46,7 +46,7 @@ import de.hpi.swa.trufflelsp.server.request.SignatureHelpRequestHandler;
 import de.hpi.swa.trufflelsp.server.request.SourceCodeEvaluator;
 import de.hpi.swa.trufflelsp.server.request.SymbolRequestHandler;
 import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
-import de.hpi.swa.trufflelsp.server.utils.SurrogateMap;
+import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogateMap;
 import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogate;
 
 public class TruffleAdapter implements VirtualLanguageServerFileProvider, ContextAwareExecutorRegistry {
@@ -62,7 +62,7 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
     private CoverageRequestHandler coverageHandler;
     private ReferencesRequestHandler referencesHandler;
     private HighlightRequestHandler highlightHandler;
-    private SurrogateMap surrogateMap;
+    private TextDocumentSurrogateMap surrogateMap;
 
     public TruffleAdapter(Env env) {
         this.env = env;
@@ -116,7 +116,7 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
             Map<String, LanguageInfo> mimeType2LangInfo = futureMimeTypes.get();
             Map<String, List<String>> langId2CompletionTriggerCharacters = futureCompletionTriggerCharacters.get();
 
-            this.surrogateMap = new SurrogateMap(langId2CompletionTriggerCharacters, mimeType2LangInfo);
+            this.surrogateMap = new TextDocumentSurrogateMap(langId2CompletionTriggerCharacters, mimeType2LangInfo);
         } catch (InterruptedException | ExecutionException e) {
             throw new RuntimeException(e);
         }

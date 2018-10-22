@@ -52,7 +52,7 @@ public final class SourcePredicateBuilder {
         return this;
     }
 
-    public SourcePredicateBuilder newestSource(SurrogateMap surrogateMap) {
+    public SourcePredicateBuilder newestSource(TextDocumentSurrogateMap surrogateMap) {
         this.predicates.add(src -> surrogateMap.isSourceNewestInSurrogate(src));
         return this;
     }

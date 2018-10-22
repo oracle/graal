@@ -11,12 +11,12 @@ import java.util.function.Supplier;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
 
-public class SurrogateMap {
+public class TextDocumentSurrogateMap {
     private final Map<URI, TextDocumentSurrogate> uri2TextDocumentSurrogate = new HashMap<>();
     private final Map<String, List<String>> langId2CompletionTriggerCharacters;
     private final Map<String, LanguageInfo> mimeType2LangInfo;
 
-    public SurrogateMap(Map<String, List<String>> langId2CompletionTriggerCharacters, Map<String, LanguageInfo> mimeType2LangInfo) {
+    public TextDocumentSurrogateMap(Map<String, List<String>> langId2CompletionTriggerCharacters, Map<String, LanguageInfo> mimeType2LangInfo) {
         this.langId2CompletionTriggerCharacters = langId2CompletionTriggerCharacters;
         this.mimeType2LangInfo = mimeType2LangInfo;
     }

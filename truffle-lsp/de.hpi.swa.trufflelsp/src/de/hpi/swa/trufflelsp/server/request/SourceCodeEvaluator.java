@@ -51,12 +51,12 @@ import de.hpi.swa.trufflelsp.server.utils.RunScriptUtils;
 import de.hpi.swa.trufflelsp.server.utils.SourcePredicateBuilder;
 import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
 import de.hpi.swa.trufflelsp.server.utils.SourceWrapper;
-import de.hpi.swa.trufflelsp.server.utils.SurrogateMap;
+import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogateMap;
 import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogate;
 
 public class SourceCodeEvaluator extends AbstractRequestHandler {
 
-    public SourceCodeEvaluator(TruffleInstrument.Env env, SurrogateMap surrogateMap, ContextAwareExecutor executor) {
+    public SourceCodeEvaluator(TruffleInstrument.Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor executor) {
         super(env, surrogateMap, executor);
     }
 

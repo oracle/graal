@@ -36,13 +36,13 @@ import de.hpi.swa.trufflelsp.instrument.LSOptions;
 import de.hpi.swa.trufflelsp.server.utils.CoverageData;
 import de.hpi.swa.trufflelsp.server.utils.CoverageEventNode;
 import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
-import de.hpi.swa.trufflelsp.server.utils.SurrogateMap;
+import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogateMap;
 import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogate;
 
 public class HoverRequestHandler extends AbstractRequestHandler {
     private CompletionRequestHandler completionHandler;
 
-    public HoverRequestHandler(Env env, SurrogateMap surrogateMap, ContextAwareExecutor contextAwareExecutor, CompletionRequestHandler completionHandler) {
+    public HoverRequestHandler(Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor contextAwareExecutor, CompletionRequestHandler completionHandler) {
         super(env, surrogateMap, contextAwareExecutor);
         this.completionHandler = completionHandler;
     }

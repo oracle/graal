@@ -51,7 +51,7 @@ import de.hpi.swa.trufflelsp.server.utils.NearestSectionsFinder.NodeLocationType
 import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
 import de.hpi.swa.trufflelsp.server.utils.SourceUtils.SourceFix;
 import de.hpi.swa.trufflelsp.server.utils.SourceWrapper;
-import de.hpi.swa.trufflelsp.server.utils.SurrogateMap;
+import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogateMap;
 import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogate;
 
 public class CompletionRequestHandler extends AbstractRequestHandler {
@@ -80,7 +80,7 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
 
     private final SourceCodeEvaluator sourceCodeEvaluator;
 
-    public CompletionRequestHandler(TruffleInstrument.Env env, SurrogateMap surrogateMap, ContextAwareExecutor executor,
+    public CompletionRequestHandler(TruffleInstrument.Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor executor,
                     SourceCodeEvaluator sourceCodeEvaluator) {
         super(env, surrogateMap, executor);
         this.sourceCodeEvaluator = sourceCodeEvaluator;

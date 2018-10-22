@@ -22,17 +22,17 @@ import de.hpi.swa.trufflelsp.server.utils.NearestSectionsFinder.NearestSections;
 import de.hpi.swa.trufflelsp.server.utils.SourcePredicateBuilder;
 import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
 import de.hpi.swa.trufflelsp.server.utils.SourceWrapper;
-import de.hpi.swa.trufflelsp.server.utils.SurrogateMap;
+import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogateMap;
 import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogate;
 
 public class AbstractRequestHandler {
 
     protected final TruffleInstrument.Env env;
-    protected final SurrogateMap surrogateMap;
+    protected final TextDocumentSurrogateMap surrogateMap;
     protected final PrintWriter err;
     protected final ContextAwareExecutor contextAwareExecutor;
 
-    public AbstractRequestHandler(TruffleInstrument.Env env, SurrogateMap surrogateMap, ContextAwareExecutor contextAwareExecutor) {
+    public AbstractRequestHandler(TruffleInstrument.Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor contextAwareExecutor) {
         this.env = env;
         this.err = new PrintWriter(env.err(), true);
         this.surrogateMap = surrogateMap;

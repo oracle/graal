@@ -26,7 +26,7 @@ import de.hpi.swa.trufflelsp.api.ContextAwareExecutor;
 import de.hpi.swa.trufflelsp.server.utils.EvaluationResult;
 import de.hpi.swa.trufflelsp.server.utils.InteropUtils;
 import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
-import de.hpi.swa.trufflelsp.server.utils.SurrogateMap;
+import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogateMap;
 import de.hpi.swa.trufflelsp.server.utils.TextDocumentSurrogate;
 
 public class DefinitionRequestHandler extends AbstractRequestHandler {
@@ -34,7 +34,7 @@ public class DefinitionRequestHandler extends AbstractRequestHandler {
     final SourceCodeEvaluator sourceCodeEvaluator;
     private final SymbolRequestHandler symbolHandler;
 
-    public DefinitionRequestHandler(Env env, SurrogateMap surrogateMap, ContextAwareExecutor contextAwareExecutor, SourceCodeEvaluator evaluator,
+    public DefinitionRequestHandler(Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor contextAwareExecutor, SourceCodeEvaluator evaluator,
                     SymbolRequestHandler documentSymbolHandler) {
         super(env, surrogateMap, contextAwareExecutor);
         this.sourceCodeEvaluator = evaluator;
