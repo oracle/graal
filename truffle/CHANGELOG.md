@@ -2,6 +2,11 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 1.0.0 RC9
+
+* Added `Instrumenter.lookupExecutionEventNode()` to find an execution event node inserted at the node's location by an event binding.
+* Added `SourceElement.ROOT` and `StepConfig.suspendAnchors()` to tune debugger stepping.
+
 ## Version 1.0.0 RC8
 
 * Added `SuspendedEvent.setReturnValue` to change the return value of the currently executed source location.

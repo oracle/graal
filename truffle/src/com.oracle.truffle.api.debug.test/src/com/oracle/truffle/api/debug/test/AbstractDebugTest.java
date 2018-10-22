@@ -154,7 +154,12 @@ public abstract class AbstractDebugTest {
     }
 
     protected SuspendedEvent checkState(SuspendedEvent suspendedEvent, final int expectedLineNumber, final boolean expectedIsBefore, final String expectedCode, final String... expectedFrame) {
-        final int actualLineNumber = suspendedEvent.getSourceSection().getStartLine();
+        final int actualLineNumber;
+        if (expectedIsBefore) {
+            actualLineNumber = suspendedEvent.getSourceSection().getStartLine();
+        } else {
+            actualLineNumber = suspendedEvent.getSourceSection().getEndLine();
+        }
         Assert.assertEquals(expectedLineNumber, actualLineNumber);
         final String actualCode = suspendedEvent.getSourceSection().getCharacters().toString();
         Assert.assertEquals(expectedCode, actualCode);
@@ -162,6 +167,16 @@ public abstract class AbstractDebugTest {
         Assert.assertEquals(expectedIsBefore, actualIsBefore);
 
         checkStack(suspendedEvent.getTopStackFrame(), expectedFrame);
+        return suspendedEvent;
+    }
+
+    protected SuspendedEvent checkReturn(SuspendedEvent suspendedEvent, final String expectedReturnValue) {
+        DebugValue returnValue = suspendedEvent.getReturnValue();
+        if (expectedReturnValue == null) {
+            Assert.assertNull(returnValue);
+        } else {
+            Assert.assertEquals(expectedReturnValue, returnValue.as(String.class));
+        }
         return suspendedEvent;
     }
 
@@ -175,7 +190,7 @@ public abstract class AbstractDebugTest {
             String expectedIdentifier = expectedFrame[i];
             String expectedValue = expectedFrame[i + 1];
             DebugValue value = values.get(expectedIdentifier);
-            Assert.assertNotNull(value);
+            Assert.assertNotNull("Identifier " + expectedIdentifier + " not found.", value);
             Assert.assertEquals(expectedValue, value.as(String.class));
         }
     }
