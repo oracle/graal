@@ -36,6 +36,7 @@ include "compiler/ci_includes/deploy.hocon"
 
 include "compiler/ci_common/bench.hocon"
 include "compiler/ci_common/bench-hwloc.hocon"
+include "compiler/ci_common/bench-weekly.hocon"
 include "compiler/ci_common/x52.hocon"
 include "compiler/ci_common/x52-tracera.hocon"
 include "compiler/ci_common/m7_eighth.hocon"

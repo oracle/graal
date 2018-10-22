@@ -7,7 +7,8 @@ x52.c2 : ${labsjdk8} {
     JVM_CONFIG :  "default"
     JVM        :  "server"
     MACHINE_NAME: "x52"
-  }
+    BENCH_SERVER_EXTRAS : "target:weekly-perf"
+    }
 }
 
 x52.c2-tmpfs10g : ${x52.c2} {
