@@ -635,7 +635,7 @@ class JavaNetNetUtilMD {
          * UnsupportedOperationException?
          */
         try {
-            DatagramChannel.open(StandardProtocolFamily.INET6);
+            DatagramChannel.open(StandardProtocolFamily.INET6).close();
         } catch (UnsupportedOperationException uoe) {
             return false;
         } catch (IOException ioe) {
