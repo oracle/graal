@@ -384,12 +384,6 @@ final class DIScopeBuilder {
 
         @Override
         public void visit(MDLocation md) {
-            if (md.getInlinedAt() != MDVoidNode.INSTANCE) {
-                loc = buildLocation(md.getInlinedAt());
-                localCache.put(md, loc);
-                return;
-            }
-
             parent = buildLocation(md.getScope());
             kind = LLVMSourceLocation.Kind.LINE;
             file = fileExtractor.extractFile(md);
