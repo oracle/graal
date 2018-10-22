@@ -37,6 +37,18 @@ gateTestMaxVS : ${gateTest} {
   }
 }
 
+gateTestAVX0 : ${gateTest} {
+  environment : {
+    EXTRA_VM_ARGS : "-XX:UseAVX=0"
+  }
+}
+
+gateTestAVX1 : ${gateTest} {
+  environment : {
+    EXTRA_VM_ARGS : "-XX:UseAVX=1"
+  }
+}
+
 gateTestCTW : {
   environment : {
     EXTRA_VM_ARGS : ""

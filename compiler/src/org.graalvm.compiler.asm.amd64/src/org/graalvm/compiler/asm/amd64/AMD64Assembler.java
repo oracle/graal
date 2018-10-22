@@ -1024,7 +1024,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src) {
             assert assertion.check((AMD64) asm.target.arch, size, dst, null, src);
             assert op != 0x1A || op != 0x5A;
-            asm.vexPrefix(dst, Register.None, src, size, pp, mmmmm, w);
+            asm.vexPrefix(dst, Register.None, src, size, pp, mmmmm, w, false);
             asm.emitByte(op);
             asm.emitModRM(dst, src);
         }
@@ -1085,7 +1085,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, AMD64Address src) {
             assert assertion.check((AMD64) asm.target.arch, size, dst, null, null);
-            asm.vexPrefix(dst, Register.None, src, size, pp, mmmmm, w);
+            asm.vexPrefix(dst, Register.None, src, size, pp, mmmmm, w, false);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src, 0);
         }
@@ -1124,14 +1124,14 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         public void emit(AMD64Assembler asm, AVXSize size, AMD64Address dst, Register src) {
             assert assertion.check((AMD64) asm.target.arch, size, src, null, null);
-            asm.vexPrefix(src, Register.None, dst, size, pp, mmmmm, w);
+            asm.vexPrefix(src, Register.None, dst, size, pp, mmmmm, w, false);
             asm.emitByte(opReverse);
             asm.emitOperandHelper(src, dst, 0);
         }
 
         public void emitReverse(AMD64Assembler asm, AVXSize size, Register dst, Register src) {
             assert assertion.check((AMD64) asm.target.arch, size, src, null, dst);
-            asm.vexPrefix(src, Register.None, dst, size, pp, mmmmm, w);
+            asm.vexPrefix(src, Register.None, dst, size, pp, mmmmm, w, false);
             asm.emitByte(opReverse);
             asm.emitModRM(src, dst);
         }
@@ -1159,7 +1159,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         @Override
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src, int imm8) {
             assert assertion.check((AMD64) asm.target.arch, size, dst, null, src);
-            asm.vexPrefix(dst, Register.None, src, size, pp, mmmmm, w);
+            asm.vexPrefix(dst, Register.None, src, size, pp, mmmmm, w, false);
             asm.emitByte(op);
             asm.emitModRM(dst, src);
             asm.emitByte(imm8);
@@ -1167,7 +1167,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, AMD64Address src, int imm8) {
             assert assertion.check((AMD64) asm.target.arch, size, dst, null, null);
-            asm.vexPrefix(dst, Register.None, src, size, pp, mmmmm, w);
+            asm.vexPrefix(dst, Register.None, src, size, pp, mmmmm, w, false);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src, 1);
             asm.emitByte(imm8);
@@ -1194,7 +1194,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         @Override
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src, int imm8) {
             assert assertion.check((AMD64) asm.target.arch, size, src, null, dst);
-            asm.vexPrefix(src, Register.None, dst, size, pp, mmmmm, w);
+            asm.vexPrefix(src, Register.None, dst, size, pp, mmmmm, w, false);
             asm.emitByte(op);
             asm.emitModRM(src, dst);
             asm.emitByte(imm8);
@@ -1202,7 +1202,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         public void emit(AMD64Assembler asm, AVXSize size, AMD64Address dst, Register src, int imm8) {
             assert assertion.check((AMD64) asm.target.arch, size, src, null, null);
-            asm.vexPrefix(src, Register.None, dst, size, pp, mmmmm, w);
+            asm.vexPrefix(src, Register.None, dst, size, pp, mmmmm, w, false);
             asm.emitByte(op);
             asm.emitOperandHelper(src, dst, 1);
             asm.emitByte(imm8);
@@ -1225,7 +1225,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register mask, Register src1, Register src2) {
             assert assertion.check((AMD64) asm.target.arch, size, dst, mask, src1, src2);
-            asm.vexPrefix(dst, src1, src2, size, pp, mmmmm, w);
+            asm.vexPrefix(dst, src1, src2, size, pp, mmmmm, w, false);
             asm.emitByte(op);
             asm.emitModRM(dst, src2);
             asm.emitByte(mask.encoding() << 4);
@@ -1233,7 +1233,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register mask, Register src1, AMD64Address src2) {
             assert assertion.check((AMD64) asm.target.arch, size, dst, mask, src1, null);
-            asm.vexPrefix(dst, src1, src2, size, pp, mmmmm, w);
+            asm.vexPrefix(dst, src1, src2, size, pp, mmmmm, w, false);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src2, 0);
             asm.emitByte(mask.encoding() << 4);
@@ -1321,14 +1321,14 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, Register src2) {
             assert assertion.check((AMD64) asm.target.arch, size, dst, src1, src2);
-            asm.vexPrefix(dst, src1, src2, size, pp, mmmmm, w);
+            asm.vexPrefix(dst, src1, src2, size, pp, mmmmm, w, false);
             asm.emitByte(op);
             asm.emitModRM(dst, src2);
         }
 
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, AMD64Address src2) {
             assert assertion.check((AMD64) asm.target.arch, size, dst, src1, null);
-            asm.vexPrefix(dst, src1, src2, size, pp, mmmmm, w);
+            asm.vexPrefix(dst, src1, src2, size, pp, mmmmm, w, false);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src2, 0);
         }
@@ -1350,7 +1350,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, Register src2) {
             assert assertion.check((AMD64) asm.target.arch, LZ, dst, src1, src2, null);
             assert size == AVXSize.DWORD || size == AVXSize.QWORD;
-            asm.vexPrefix(dst, src1, src2, size, pp, mmmmm, size == AVXSize.DWORD ? W0 : W1);
+            asm.vexPrefix(dst, src1, src2, size, pp, mmmmm, size == AVXSize.DWORD ? W0 : W1, false);
             asm.emitByte(op);
             asm.emitModRM(dst, src2);
         }
@@ -1359,7 +1359,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, AMD64Address src2) {
             assert assertion.check((AMD64) asm.target.arch, LZ, dst, src1, null, null);
             assert size == AVXSize.DWORD || size == AVXSize.QWORD;
-            asm.vexPrefix(dst, src1, src2, size, pp, mmmmm, size == AVXSize.DWORD ? W0 : W1);
+            asm.vexPrefix(dst, src1, src2, size, pp, mmmmm, size == AVXSize.DWORD ? W0 : W1, false);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src2, 0);
         }
@@ -1381,7 +1381,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, Register src2) {
             assert assertion.check((AMD64) asm.target.arch, LZ, dst, src2, src1, null);
             assert size == AVXSize.DWORD || size == AVXSize.QWORD;
-            asm.vexPrefix(dst, src2, src1, size, pp, mmmmm, size == AVXSize.DWORD ? W0 : W1);
+            asm.vexPrefix(dst, src2, src1, size, pp, mmmmm, size == AVXSize.DWORD ? W0 : W1, false);
             asm.emitByte(op);
             asm.emitModRM(dst, src1);
         }
@@ -1389,7 +1389,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, AMD64Address src1, Register src2) {
             assert assertion.check((AMD64) asm.target.arch, LZ, dst, src2, null, null);
             assert size == AVXSize.DWORD || size == AVXSize.QWORD;
-            asm.vexPrefix(dst, src2, src1, size, pp, mmmmm, size == AVXSize.DWORD ? W0 : W1);
+            asm.vexPrefix(dst, src2, src1, size, pp, mmmmm, size == AVXSize.DWORD ? W0 : W1, false);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src1, 0);
         }
@@ -1411,7 +1411,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         @Override
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src) {
             assert assertion.check((AMD64) asm.target.arch, size, dst, null, null);
-            asm.vexPrefix(AMD64.cpuRegisters[ext], dst, src, size, pp, mmmmm, size == AVXSize.DWORD ? W0 : W1);
+            asm.vexPrefix(AMD64.cpuRegisters[ext], dst, src, size, pp, mmmmm, size == AVXSize.DWORD ? W0 : W1, false);
             asm.emitByte(op);
             asm.emitModRM(ext, src);
         }
@@ -1419,7 +1419,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         @Override
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, AMD64Address src) {
             assert assertion.check((AMD64) asm.target.arch, size, dst, null, null);
-            asm.vexPrefix(AMD64.cpuRegisters[ext], dst, src, size, pp, mmmmm, size == AVXSize.DWORD ? W0 : W1);
+            asm.vexPrefix(AMD64.cpuRegisters[ext], dst, src, size, pp, mmmmm, size == AVXSize.DWORD ? W0 : W1, false);
             asm.emitByte(op);
             asm.emitOperandHelper(ext, src, 0);
         }
@@ -1452,7 +1452,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         @Override
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src, int imm8) {
             assert assertion.check((AMD64) asm.target.arch, size, null, dst, src);
-            asm.vexPrefix(null, dst, src, size, pp, mmmmm, w);
+            asm.vexPrefix(null, dst, src, size, pp, mmmmm, w, false);
             asm.emitByte(immOp);
             asm.emitModRM(r, src);
             asm.emitByte(imm8);
@@ -1480,14 +1480,14 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register mask, AMD64Address src) {
             assert assertion.check((AMD64) asm.target.arch, size, dst, mask, null);
-            asm.vexPrefix(dst, mask, src, size, pp, mmmmm, w);
+            asm.vexPrefix(dst, mask, src, size, pp, mmmmm, w, false);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src, 0);
         }
 
         public void emit(AMD64Assembler asm, AVXSize size, AMD64Address dst, Register mask, Register src) {
             assert assertion.check((AMD64) asm.target.arch, size, src, mask, null);
-            asm.vexPrefix(src, mask, dst, size, pp, mmmmm, w);
+            asm.vexPrefix(src, mask, dst, size, pp, mmmmm, w, false);
             asm.emitByte(opReverse);
             asm.emitOperandHelper(src, dst, 0);
         }
@@ -1515,7 +1515,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, Register src2, int imm8) {
             assert assertion.check((AMD64) asm.target.arch, size, dst, src1, src2);
             assert (imm8 & 0xFF) == imm8;
-            asm.vexPrefix(dst, src1, src2, size, pp, mmmmm, w);
+            asm.vexPrefix(dst, src1, src2, size, pp, mmmmm, w, false);
             asm.emitByte(op);
             asm.emitModRM(dst, src2);
             asm.emitByte(imm8);
@@ -1524,7 +1524,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, AMD64Address src2, int imm8) {
             assert assertion.check((AMD64) asm.target.arch, size, dst, src1, null);
             assert (imm8 & 0xFF) == imm8;
-            asm.vexPrefix(dst, src1, src2, size, pp, mmmmm, w);
+            asm.vexPrefix(dst, src1, src2, size, pp, mmmmm, w, false);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src2, 1);
             asm.emitByte(imm8);
@@ -1628,7 +1628,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, Register src2, Predicate p) {
             assert assertion.check((AMD64) asm.target.arch, size, dst, src1, src2);
-            asm.vexPrefix(dst, src1, src2, size, pp, mmmmm, w);
+            asm.vexPrefix(dst, src1, src2, size, pp, mmmmm, w, false);
             asm.emitByte(op);
             asm.emitModRM(dst, src2);
             asm.emitByte(p.imm8);
@@ -1636,7 +1636,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, AMD64Address src2, Predicate p) {
             assert assertion.check((AMD64) asm.target.arch, size, dst, src1, null);
-            asm.vexPrefix(dst, src1, src2, size, pp, mmmmm, w);
+            asm.vexPrefix(dst, src1, src2, size, pp, mmmmm, w, false);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src2, 1);
             asm.emitByte(p.imm8);
@@ -2475,7 +2475,6 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     // Insn: VPACKUSWB xmm1, xmm1, xmm2
 
     public final void packuswb(Register dst, Register src) {
-        assert supports(CPUFeature.AVX);
         assert inRC(XMM, dst) && inRC(XMM, src);
         // Code: VEX.NDS.128.66.0F.WIG 67 /r
         simdPrefix(dst, dst, src, PD, P_0F, false);
@@ -3549,7 +3548,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void vzeroupper() {
-        emitVEX(L128, P_, M_0F, W0, 0, 0);
+        emitVEX(L128, P_, M_0F, W0, 0, 0, true);
         emitByte(0x77);
     }
 
@@ -3560,7 +3559,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         assert supports(CPUFeature.AVX512BW);
         assert inRC(MASK, src1) && inRC(MASK, src2);
         // Code: VEX.L0.66.0F.W1 98 /r
-        vexPrefix(src1, Register.None, src2, AVXSize.XMM, P_66, M_0F, W1);
+        vexPrefix(src1, Register.None, src2, AVXSize.XMM, P_66, M_0F, W1, true);
         emitByte(0x98);
         emitModRM(src1, src2);
     }
@@ -3572,7 +3571,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         assert supports(CPUFeature.AVX512BW);
         assert inRC(MASK, src1) && inRC(MASK, src2);
         // Code: VEX.L0.0F.W1 98 /r
-        vexPrefix(src1, Register.None, src2, AVXSize.XMM, P_, M_0F, W1);
+        vexPrefix(src1, Register.None, src2, AVXSize.XMM, P_, M_0F, W1, true);
         emitByte(0x98);
         emitModRM(src1, src2);
     }
@@ -3588,14 +3587,14 @@ public class AMD64Assembler extends AMD64BaseAssembler {
                 // kmovd(KRegister dst, KRegister src):
                 // Insn: KMOVD k1, k2/m32
                 // Code: VEX.L0.66.0F.W1 90 /r
-                vexPrefix(dst, Register.None, src, AVXSize.XMM, P_66, M_0F, W1);
+                vexPrefix(dst, Register.None, src, AVXSize.XMM, P_66, M_0F, W1, true);
                 emitByte(0x90);
                 emitModRM(dst, src);
             } else {
                 // kmovd(KRegister dst, Register src)
                 // Insn: KMOVD k1, r32
                 // Code: VEX.L0.F2.0F.W0 92 /r
-                vexPrefix(dst, Register.None, src, AVXSize.XMM, P_F2, M_0F, W0);
+                vexPrefix(dst, Register.None, src, AVXSize.XMM, P_F2, M_0F, W0, true);
                 emitByte(0x92);
                 emitModRM(dst, src);
             }
@@ -3604,7 +3603,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
                 // kmovd(Register dst, KRegister src)
                 // Insn: KMOVD r32, k1
                 // Code: VEX.L0.F2.0F.W0 93 /r
-                vexPrefix(dst, Register.None, src, AVXSize.XMM, P_F2, M_0F, W0);
+                vexPrefix(dst, Register.None, src, AVXSize.XMM, P_F2, M_0F, W0, true);
                 emitByte(0x93);
                 emitModRM(dst, src);
             } else {
@@ -3624,14 +3623,14 @@ public class AMD64Assembler extends AMD64BaseAssembler {
                 // kmovq(KRegister dst, KRegister src):
                 // Insn: KMOVQ k1, k2/m64
                 // Code: VEX.L0.0F.W1 90 /r
-                vexPrefix(dst, Register.None, src, AVXSize.XMM, P_, M_0F, W1);
+                vexPrefix(dst, Register.None, src, AVXSize.XMM, P_, M_0F, W1, true);
                 emitByte(0x90);
                 emitModRM(dst, src);
             } else {
                 // kmovq(KRegister dst, Register src)
                 // Insn: KMOVQ k1, r64
                 // Code: VEX.L0.F2.0F.W1 92 /r
-                vexPrefix(dst, Register.None, src, AVXSize.XMM, P_F2, M_0F, W1);
+                vexPrefix(dst, Register.None, src, AVXSize.XMM, P_F2, M_0F, W1, true);
                 emitByte(0x92);
                 emitModRM(dst, src);
             }
@@ -3640,7 +3639,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
                 // kmovq(Register dst, KRegister src)
                 // Insn: KMOVQ r64, k1
                 // Code: VEX.L0.F2.0F.W1 93 /r
-                vexPrefix(dst, Register.None, src, AVXSize.XMM, P_F2, M_0F, W1);
+                vexPrefix(dst, Register.None, src, AVXSize.XMM, P_F2, M_0F, W1, true);
                 emitByte(0x93);
                 emitModRM(dst, src);
             } else {
@@ -3655,7 +3654,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         assert supports(CPUFeature.AVX512BW);
         assert inRC(MASK, src1) && inRC(MASK, src2);
         // Code: VEX.L0.66.0F.W1 99 /r
-        vexPrefix(src1, Register.None, src2, AVXSize.XMM, P_66, M_0F, W1);
+        vexPrefix(src1, Register.None, src2, AVXSize.XMM, P_66, M_0F, W1, true);
         emitByte(0x99);
         emitModRM(src1, src2);
     }
