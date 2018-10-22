@@ -90,7 +90,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
         this.vmPageSize = vmPageSize;
         assert 0 < searchValues.length && searchValues.length <= 4;
         assert byteMode(kind) || charMode(kind);
-        assert supports(tool, CPUFeature.SSSE3) || supports(tool, CPUFeature.AVX) || supportsAVX2(tool);
+        assert supports(tool, CPUFeature.SSE2) || supports(tool, CPUFeature.AVX) || supportsAVX2(tool);
         nValues = searchValues.length;
         assert !findTwoConsecutive || nValues == 1;
         resultValue = result;
@@ -458,9 +458,13 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
                 } else if (asm.supports(CPUFeature.AVX)) {
                     VexRVMOp.VPXOR.emit(asm, vectorSize, vecTmp, vecTmp, vecTmp);
                     VexRVMOp.VPSHUFB.emit(asm, vectorSize, vecDst, vecDst, vecTmp);
-                } else { // SSE
+                } else if (asm.supports(CPUFeature.SSSE3)) {
                     asm.pxor(vecTmp, vecTmp);
                     asm.pshufb(vecDst, vecTmp);
+                } else { // SSE2
+                    asm.punpcklbw(vecDst, vecDst);
+                    asm.punpcklbw(vecDst, vecDst);
+                    asm.pshufd(vecDst, vecDst, 0);
                 }
                 break;
             case Short:

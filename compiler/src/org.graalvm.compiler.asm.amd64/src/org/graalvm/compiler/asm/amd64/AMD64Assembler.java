@@ -2727,6 +2727,14 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         emitModRM(dst, src);
     }
 
+    public final void punpcklbw(Register dst, Register src) {
+        assert supports(CPUFeature.SSE2);
+        assert inRC(XMM, dst) && inRC(XMM, src);
+        simdPrefix(dst, dst, src, PD, P_0F, false);
+        emitByte(0x60);
+        emitModRM(dst, src);
+    }
+
     public final void rcpps(Register dst, Register src) {
         assert inRC(XMM, dst) && inRC(XMM, src);
         simdPrefix(dst, Register.None, src, PS, P_0F, false);
