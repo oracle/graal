@@ -141,6 +141,8 @@ function libpolyglot() {
         "-Dorg.graalvm.polyglot.nativeapi.libraryPath=${graalvm_home}/jre/lib/polyglot"
         "-Dorg.graalvm.polyglot.nativeapi.nativeLibraryPath=${graalvm_home}/jre/lib/polyglot"
         "-H:CStandard=C11"
+        "-H:+IncludeAllTimeZones"
+        "-H:+SpawnIsolates"
         "-H:Name=libpolyglot"
         "-H:Kind=SHARED_LIBRARY"
     )
