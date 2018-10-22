@@ -315,12 +315,25 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
     }
 
     public Future<Boolean> runCoverageAnalysis(final URI uri) {
-        contextAwareExecutor.resetContextCache(); // We choose coverage runs as checkpoints to
-                                                   // clear the pooled context. A coverage run can
-                                                   // be triggered by the user via the editor, so
-                                                   // that the user can actively control the reset
-                                                   // of the current cached context.
-        return contextAwareExecutor.executeWithNestedContext(() -> coverageHandler.runCoverageAnalysisWithEnteredContext(uri), true);
+        Future<Boolean> future = contextAwareExecutor.executeWithDefaultContext(() -> {
+            contextAwareExecutor.resetContextCache(); // We choose coverage runs as checkpoints to
+                                                      // clear the pooled context. A coverage run
+                                                      // can be triggered by the user via the
+                                                      // editor, so that the user can actively
+                                                      // control the reset of the current cached
+                                                      // context.
+            Future<Boolean> futureCoverage = contextAwareExecutor.executeWithNestedContext(() -> coverageHandler.runCoverageAnalysisWithEnteredContext(uri), true);
+            try {
+                return futureCoverage.get();
+            } catch (ExecutionException e) {
+                if (e.getCause() instanceof Exception) {
+                    throw (Exception) e.getCause();
+                } else {
+                    throw e;
+                }
+            }
+        });
+        return future;
     }
 
     public Future<?> showCoverage(URI uri) {
