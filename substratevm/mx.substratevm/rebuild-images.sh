@@ -56,11 +56,12 @@ supported_languages=(
 )
 
 function usage_and_exit() {
-    echo "Usage: $0 [--verbose] polyglot|libpolyglot|js|llvm|python|ruby..."
+    echo "Usage: $0 [--verbose] polyglot|libpolyglot|js|llvm|python|ruby... [custom native-image args]..."
     exit 1
 }
 
 to_build=()
+custom_args=()
 
 for opt in "${@:1}"; do
     case "$opt" in
@@ -75,8 +76,8 @@ for opt in "${@:1}"; do
             VERBOSE=true
             ;;
         *)
-            echo "Unrecognized argument: '${opt}'"
-            usage_and_exit
+            custom_args+=("${opt}")
+            ;;
     esac
 done
 
@@ -88,8 +89,12 @@ fi
 function common() {
     cmd_line+=(
         "${graalvm_home}/bin/native-image"
-        "--no-server"
+        ${custom_args[@]}
     )
+
+    if ! is_shellscript "${graalvm_home}/bin/native-image"; then
+        cmd_line+=("--no-server")
+    fi
 
     if [[ -f "${graalvm_home}/jre/lib/svm/builder/svm-enterprise.jar" ]]; then
         cmd_line+=("-g")
@@ -172,6 +177,11 @@ function language() {
 
 function set_path() {
     cmd_line+=("-H:Path=$1")
+}
+
+function is_shellscript() {
+    local path="$1"
+    file -b -L --mime-type "${path}" | grep -q text/x-shellscript
 }
 
 for binary in "${to_build[@]}"; do
