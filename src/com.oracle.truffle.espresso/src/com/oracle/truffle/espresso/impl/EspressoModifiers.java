@@ -23,7 +23,6 @@
 
 package com.oracle.truffle.espresso.impl;
 
-import static com.oracle.truffle.espresso.impl.EspressoVMConfig.config;
 import static java.lang.reflect.Modifier.ABSTRACT;
 import static java.lang.reflect.Modifier.FINAL;
 import static java.lang.reflect.Modifier.INTERFACE;
@@ -39,19 +38,20 @@ import static java.lang.reflect.Modifier.VOLATILE;
 
 import java.lang.reflect.Modifier;
 
+import com.oracle.truffle.espresso.classfile.Constants;
+
 /**
- * The non-public modifiers in {@link Modifier} that need to be retrieved from
- * {@link EspressoVMConfig}.
+ * The non-public modifiers in {@link Modifier} that need to be retrieved from {@link Constants}.
  */
 public final class EspressoModifiers {
 
     // TODO(peterssen): Initialize properly non-standard flags, all are set to 0.
     // @formatter:off
-    public static final int ANNOTATION = 0x00002000; // config().jvmAccAnnotation;
-    public static final int ENUM       = 0x00004000; // config().jvmAccEnum;
-    public static final int VARARGS    = config().jvmAccVarargs;
-    public static final int BRIDGE     = config().jvmAccBridge;
-    public static final int SYNTHETIC  = 0x00001000; // config().jvmAccSynthetic;
+    public static final int ANNOTATION = Constants.ACC_ANNOTATION;
+    public static final int ENUM       = Constants.ACC_ENUM;
+    public static final int VARARGS    = Constants.ACC_VARARGS;
+    public static final int BRIDGE     = Constants.ACC_BRIDGE;
+    public static final int SYNTHETIC  = Constants.ACC_SYNTHETIC;
     // @formatter:on
 
     public static int jvmClassModifiers() {

@@ -23,8 +23,6 @@
 
 package com.oracle.truffle.espresso.impl;
 
-import static com.oracle.truffle.espresso.impl.EspressoVMConfig.config;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
@@ -38,7 +36,7 @@ public class FieldInfo implements ModifiersProvider {
     public static final FieldInfo[] EMPTY_ARRAY = new FieldInfo[0];
 
     private final Klass holder;
-    private TypeDescriptor typeDescriptor;
+    private final TypeDescriptor typeDescriptor;
     private final String name;
     private final int offset;
     private final short index;
@@ -99,10 +97,6 @@ public class FieldInfo implements ModifiersProvider {
         return modifiers & ModifiersProvider.jvmFieldModifiers();
     }
 
-    public boolean isInternal() {
-        return (modifiers & config().jvmAccFieldInternal) != 0;
-    }
-
     public Klass getDeclaringClass() {
         return holder;
     }
@@ -122,19 +116,6 @@ public class FieldInfo implements ModifiersProvider {
     @Override
     public String toString() {
         return "EspressoField<" + getDeclaringClass() + "." + getName() + ">";
-    }
-
-    public boolean isSynthetic() {
-        return (config().jvmAccSynthetic & modifiers) != 0;
-    }
-
-    /**
-     * Checks if this field has the {@link Stable} annotation.
-     *
-     * @return true if field has {@link Stable} annotation, false otherwise
-     */
-    public boolean isStable() {
-        return (config().jvmAccFieldStable & modifiers) != 0;
     }
 
     public int getFlags() {
