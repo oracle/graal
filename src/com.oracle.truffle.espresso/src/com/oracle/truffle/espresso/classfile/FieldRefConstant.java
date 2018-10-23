@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.impl.FieldInfo;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -88,11 +89,14 @@ public interface FieldRefConstant extends MemberRefConstant {
             return type;
         }
 
+        @Override
         public FieldInfo resolve(ConstantPool pool, int thisIndex) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             Klass declaringClass = pool.getContext().getRegistries().resolve(getDeclaringClass(pool, -1), pool.getClassLoader());
             while (declaringClass != null) {
                 for (FieldInfo fi : declaringClass.getDeclaredFields()) {
                     if (fi.getName().equals(getName(pool, -1)) && type.equals(fi.getTypeDescriptor())) {
+                        pool.updateAt(thisIndex, new FieldRefConstant.Resolved(fi));
                         return fi;
                     }
                 }
@@ -119,10 +123,12 @@ public interface FieldRefConstant extends MemberRefConstant {
         }
 
         public FieldInfo resolve(ConstantPool pool, int thisIndex) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             return replace(pool, thisIndex).resolve(pool, thisIndex);
         }
 
         public TypeDescriptor getTypeDescriptor(ConstantPool pool, int thisIndex) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             return replace(pool, thisIndex).getTypeDescriptor(pool, thisIndex);
         }
     }
