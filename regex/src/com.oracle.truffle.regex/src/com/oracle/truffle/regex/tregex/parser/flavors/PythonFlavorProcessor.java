@@ -564,7 +564,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
             return charSet;
         }
         if (getLocalFlags().isLocale()) {
-            throw new UnsupportedRegexException("locale-specific case folding is not supported");
+            bailOut("locale-specific case folding is not supported");
         }
         CaseFoldTable.CaseFoldingAlgorithm caseFolding = getLocalFlags().isUnicode() ? CaseFoldTable.CaseFoldingAlgorithm.PythonUnicode : CaseFoldTable.CaseFoldingAlgorithm.PythonAscii;
         return CaseFoldTable.applyCaseFold(charSet, caseFolding);
@@ -837,8 +837,6 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
      * @return {@code true} iff a category escape was found
      */
     private boolean categoryEscape(boolean inCharClass) {
-        // TODO: Check with asserts that these character classes are closed on case folding,
-        // once case folding is implemented.
         switch (curChar()) {
             case 'd':
             case 'D':
