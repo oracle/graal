@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.MethodInfo;
@@ -46,9 +47,13 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
             super(declaringClass, name, signature);
         }
 
+
         public MethodInfo resolve(ConstantPool pool, int index) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             Klass declaringClass = pool.getContext().getRegistries().resolve(getDeclaringClass(pool, -1), pool.getClassLoader());
-            return declaringClass.findMethod(getName(pool, -1), getSignature(pool, -1));
+            MethodInfo m = declaringClass.findMethod(getName(pool, -1), getSignature(pool, -1));
+            pool.updateAt(index, new ClassMethodRefConstant.Resolved(m));
+            return m;
         }
     }
 
