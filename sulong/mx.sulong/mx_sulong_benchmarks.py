@@ -28,6 +28,8 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 import re
+import tempfile
+
 import mx, mx_benchmark, mx_sulong, mx_buildtools
 import os
 import mx_subst
@@ -111,7 +113,6 @@ class GccLikeVm(Vm):
         self.currentDir = os.getcwd()
         os.chdir(_benchmarksDirectory())
 
-        f = open(os.devnull, 'w')
         benchmarkDir = args[0]
 
         # enter benchmark dir
@@ -135,10 +136,18 @@ class GccLikeVm(Vm):
         print os.getcwd()
         print cmdline
 
-        mx.run(cmdline, out=f, err=f, env=env)
+        with tempfile.TemporaryFile(mode="w+") as f:
+            try:
+                mx.run(cmdline, out=f, err=f, env=env)
 
-        myStdOut = mx.OutputCapture()
-        retCode = mx.run(['./bench'], out=myStdOut, err=f)
+                myStdOut = mx.OutputCapture()
+                retCode = mx.run(['./bench'], out=myStdOut, err=f)
+            except BaseException as e:
+                f.flush()
+            f.seek(0)
+            mx.logv(f.read())
+            raise e
+
         print myStdOut.data
 
         # reset current Directory
@@ -182,8 +191,6 @@ class SulongVm(GuestVm):
         self.currentDir = os.getcwd()
         os.chdir(_benchmarksDirectory())
 
-        f = open(os.devnull, 'w')
-
         mx_sulong.ensureLLVMBinariesExist()
         benchmarkDir = args[0]
 
@@ -206,23 +213,53 @@ class SulongVm(GuestVm):
 
         cmdline = ['make', '-f', '../Makefile']
 
-        mx.run(cmdline, out=f, err=f, env=env)
-        mx.run(['extract-bc', 'bench'], out=f, err=f)
-        mx_sulong.opt(['-o', 'bench.bc', 'bench.bc'] + ['-mem2reg', '-globalopt', '-simplifycfg', '-constprop', '-instcombine', '-dse', '-loop-simplify', '-reassociate', '-licm', '-gvn'], out=f, err=f)
+        with tempfile.TemporaryFile(mode="w+") as f:
+            try:
+                mx.run(cmdline, out=f, err=f, env=env)
+                mx.run(['extract-bc', 'bench'], out=f, err=f)
+                mx_sulong.opt(['-o', 'bench.bc', 'bench.bc'] + ['-mem2reg', '-globalopt', '-simplifycfg', '-constprop',
+                                                                '-instcombine', '-dse', '-loop-simplify',
+                                                                '-reassociate',
+                                                                '-licm', '-gvn'], out=f, err=f)
+            except BaseException as e:
+                f.flush()
+                f.seek(0)
+                mx.logv(f.read())
+                raise e
 
-        suTruffleOptions = [
-            '-Dgraal.TruffleBackgroundCompilation=false',
-            '-Dgraal.TruffleInliningMaxCallerSize=10000',
-            '-Dgraal.TruffleCompilationExceptionsAreFatal=true',
-            mx_subst.path_substitutions.substitute('-Dpolyglot.llvm.libraryPath=<path:SULONG_LIBS>'),
-            '-Dpolyglot.llvm.libraries=libgmp.so.10']
-        sulongCmdLine = suTruffleOptions + mx_sulong.getClasspathOptions() + ['-XX:-UseJVMCIClassLoader', "com.oracle.truffle.llvm.launcher.LLVMLauncher"] + ['bench.bc']
-        result = self.host_vm().run(cwd, sulongCmdLine + args)
+        launcher_args = self.launcher_args()
+
+        args = ['bench.bc']
+        if hasattr(self.host_vm(), 'run_lang'):
+            result = self.host_vm().run_lang('lli', launcher_args + args, cwd)
+        else:
+            sulongCmdLine = mx_sulong.getClasspathOptions() + \
+                            ['-XX:-UseJVMCIClassLoader', "com.oracle.truffle.llvm.launcher.LLVMLauncher"]
+            result = self.host_vm().run(cwd, sulongCmdLine + launcher_args + args)
 
         # reset current Directory
         os.chdir(self.currentDir)
 
         return result
+
+    def launcher_args(self):
+        launcher_args = [
+            '--jvm.Dgraal.TruffleBackgroundCompilation=false',
+            '--jvm.Dgraal.TruffleInliningMaxCallerSize=10000',
+            '--jvm.Dgraal.TruffleCompilationExceptionsAreFatal=true',
+            mx_subst.path_substitutions.substitute('--llvm.libraryPath=<path:SULONG_LIBS>'),
+            '--llvm.libraries=libgmp.so.10']
+        # FIXME: currently we do we do not support a common option prefix for jvm and native mode (GR-11165)
+        if self.host_vm().config_name() == "native":
+            def _convert_arg(arg):
+                jvm_prefix = "--jvm."
+                if arg.startswith(jvm_prefix):
+                    return "--native." + arg[len(jvm_prefix):]
+                return arg
+
+            launcher_args = [_convert_arg(arg) for arg in launcher_args]
+
+        return launcher_args
 
     def hosting_registry(self):
         return java_vm_registry
