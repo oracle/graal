@@ -1,0 +1,24 @@
+
+x52.c2 : ${labsjdk8} {
+  capabilities: [linux, x52, no_frequency_scaling]
+  environment : {
+    XMX          : "64g"
+    XMS          : "64g"
+    JVM_CONFIG :  "default"
+    JVM        :  "server"
+    MACHINE_NAME: "x52"
+    BENCH_SERVER_EXTRAS : "target:weekly-jfr"
+  }
+}
+
+x52.c2-tmpfs10g : ${x52.c2} {
+  capabilities: [linux, x52, no_frequency_scaling, tmpfs10g]
+}
+
+builds += [
+  ${x52.c2-tmpfs10g} ${bench-dacapo-jfr}          { targets: [bench, weekly], name: "bench-compiler-dacapo-linux-x52-c2-jfr" }
+  ${x52.c2-tmpfs10g} ${bench-scala-dacapo-jfr}    { targets: [bench, weekly], name: "bench-compiler-scala-dacapo-linux-x52-c2-jfr" }
+  ${x52.c2} ${bench-specjvm2008-Single-jfr}       { targets: [bench, weekly], name: "bench-compiler-specjvm2008-Single-linux-x52-c2-jfr" }
+  ${x52.c2} ${bench-specjbb2015-jfr}              { targets: [bench, weekly], name: "bench-compiler-specjbb2015-linux-x52-c2-jfr" }
+  ${x52.c2} ${bench-renaissance-jfr}              { targets: [bench, weekly], name: "bench-compiler-renaissance-linux-x52-c2-jfr" }
+]
