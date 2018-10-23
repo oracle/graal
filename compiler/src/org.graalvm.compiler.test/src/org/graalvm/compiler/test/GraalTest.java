@@ -242,8 +242,9 @@ public class GraalTest {
     /** @see <a href="https://bugs.openjdk.java.net/browse/JDK-8076557">JDK-8076557</a> */
     protected static void assumeManagementLibraryIsLoadable() {
         try {
-            System.loadLibrary("management");
-        } catch (UnsatisfiedLinkError e) {
+            /* Trigger loading of the management library using the bootstrap class loader. */
+            GraalServices.getCurrentThreadAllocatedBytes();
+        } catch (UnsatisfiedLinkError | NoClassDefFoundError e) {
             throw new AssumptionViolatedException("Management interface is unavailable: " + e);
         }
     }
