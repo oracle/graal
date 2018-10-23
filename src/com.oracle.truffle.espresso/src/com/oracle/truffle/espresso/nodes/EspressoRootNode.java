@@ -227,7 +227,6 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.TABLESWITCH;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.WIDE;
 
 import java.lang.reflect.Modifier;
-import java.util.Arrays;
 import java.util.function.Supplier;
 
 import com.oracle.truffle.api.CallTarget;
@@ -268,6 +267,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
+import com.oracle.truffle.espresso.types.SignatureDescriptor;
 
 public class EspressoRootNode extends RootNode {
     private final MethodInfo method;
@@ -1124,6 +1124,16 @@ public class EspressoRootNode extends RootNode {
     }
 
     @ExplodeLoop
+    private static Object[] copyOfRange(Object[] src, int from, int toExclusive) {
+        int len = toExclusive - from;
+        Object[] dst = new Object[len];
+        for (int i = 0; i < len; ++i) {
+            dst[i] = src[i + from];
+        }
+        return dst;
+    }
+
+    @ExplodeLoop
     private void initArguments(final VirtualFrame frame) {
         boolean hasReceiver = !getMethod().isStatic();
         int argCount = method.getSignature().getParameterCount(false);
@@ -1132,9 +1142,12 @@ public class EspressoRootNode extends RootNode {
         CompilerAsserts.partialEvaluationConstant(locals.length);
 
         Object[] frameArguments = frame.getArguments();
-        Object[] arguments = hasReceiver
-                        ? Arrays.copyOfRange(frameArguments, 1, frameArguments.length)
-                        : frameArguments;
+        Object[] arguments;
+        if (hasReceiver) {
+            arguments = copyOfRange(frameArguments, 1, argCount + 1);
+        } else {
+            arguments = frameArguments;
+        }
 
         assert arguments.length == argCount;
 
@@ -1183,6 +1196,7 @@ public class EspressoRootNode extends RootNode {
     }
 
     private void invokeInterface(OperandStack stack, MethodInfo method) {
+        CompilerAsserts.partialEvaluationConstant(method);
         resolveAndInvoke(stack, method);
     }
 
@@ -1190,15 +1204,15 @@ public class EspressoRootNode extends RootNode {
         if (!Modifier.isStatic(method.getModifiers())) {
             // TODO(peterssen): Intercept/hook methods on primitive arrays e.g. int[].clone().
             StaticObject receiver = (StaticObject) nullCheck(stack.peekReceiver(method));
-            invoke(stack, method, receiver);
+            invoke(stack, method, receiver, !method.isStatic(), method.getSignature());
         } else {
-            invoke(stack, method, null);
+            invoke(stack, method, null, !method.isStatic(), method.getSignature());
         }
     }
 
     private void invokeStatic(OperandStack stack, MethodInfo method) {
         method.getDeclaringClass().initialize();
-        invoke(stack, method, null);
+        invoke(stack, method, null, !method.isStatic(), method.getSignature());
     }
 
     private void invokeVirtual(OperandStack stack, MethodInfo method) {
@@ -1206,61 +1220,64 @@ public class EspressoRootNode extends RootNode {
             // TODO(peterssen): Intercept/hook methods on primitive arrays e.g. int[].clone().
             // Receiver can be a primitive array (not a StaticObject).
             Object receiver = nullCheck(stack.peekReceiver(method));
-            invoke(stack, method, receiver);
+            invoke(stack, method, receiver, !method.isStatic(), method.getSignature());
         } else {
             resolveAndInvoke(stack, method);
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
     private MethodInfo resolveMethod(int opcode, char cpi) {
         ConstantPool pool = getConstantPool();
         MethodInfo methodInfo = pool.methodAt(cpi).resolve(pool, cpi);
         return methodInfo;
     }
 
-    @CompilerDirectives.TruffleBoundary
     private MethodInfo resolveInterfaceMethod(int opcode, char cpi) {
         assert opcode == INVOKEINTERFACE;
         ConstantPool pool = getConstantPool();
         MethodInfo methodInfo = pool.interfaceMethodAt(cpi).resolve(pool, cpi);
+        CompilerAsserts.partialEvaluationConstant(methodInfo);
         return methodInfo;
     }
 
-    @CompilerDirectives.TruffleBoundary
     private Object call(CallTarget target, Object... arguments) {
         return target.call(arguments);
     }
 
-    @CompilerDirectives.TruffleBoundary
-    private void invoke(OperandStack stack, MethodInfo method, Object receiver) {
-        CallTarget redirectedMethod = vm.getIntrinsic(method);
+    private void invoke(OperandStack stack, MethodInfo targetMethod, Object receiver, boolean hasReceiver, SignatureDescriptor signature) {
+        CallTarget redirectedMethod = vm.getIntrinsic(targetMethod);
         if (redirectedMethod != null) {
-            invokeRedirectedMethodViaVM(stack, method, redirectedMethod);
+            CompilerDirectives.transferToInterpreter();
+            invokeRedirectedMethodViaVM(stack, targetMethod, redirectedMethod);
         } else {
-            Object[] arguments = popArguments(stack, method);
-            CallTarget target = method.getCallTarget();
+            Object[] arguments = popArguments(stack, hasReceiver, signature);
+            CallTarget callTarget = targetMethod.getCallTarget();
             assert receiver == null || arguments[0] == receiver;
-            JavaKind resultKind = method.getSignature().resultKind();
-            Object result = call(target, arguments);
+            JavaKind resultKind = signature.getReturnTypeDescriptor().toKind();
+            Object result = callTarget.call(arguments);
             pushKind(stack, result, resultKind);
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
-    private void resolveAndInvoke(OperandStack stack, MethodInfo method) {
+    private void resolveAndInvoke(OperandStack stack, MethodInfo originalMethod) {
+        CompilerAsserts.partialEvaluationConstant(originalMethod);
         // TODO(peterssen): Ignore return type on method signature.
         // TODO(peterssen): Intercept/hook methods on primitive arrays e.g. int[].clone().
-        StaticObject receiver = (StaticObject) nullCheck(stack.peekReceiver(method));
+        StaticObject receiver = (StaticObject) nullCheck(stack.peekReceiver(originalMethod));
         // Resolve
-        MethodInfo target = receiver.getKlass().findConcreteMethod(method.getName(), method.getSignature());
-        invoke(stack, target, receiver);
+        MethodInfo targetMethod = methodLookup(originalMethod, receiver);
+        invoke(stack, targetMethod, receiver, !originalMethod.isStatic(), originalMethod.getSignature());
     }
 
     @CompilerDirectives.TruffleBoundary
+    private MethodInfo methodLookup(MethodInfo originalMethod, StaticObject receiver) {
+        return receiver.getKlass().findConcreteMethod(originalMethod.getName(), originalMethod.getSignature());
+    }
+
     private void invokeRedirectedMethodViaVM(OperandStack stack, MethodInfo originalMethod, CallTarget intrinsic) {
-        Object[] originalCalleeParameters = popArguments(stack, originalMethod);
-        Object returnValue = intrinsic.call(originalCalleeParameters);
+        // CompilerAsserts.partialEvaluationConstant(originalMethod);
+        Object[] originalCalleeParameters = popArguments(stack, !originalMethod.isStatic(), originalMethod.getSignature());
+        Object returnValue = call(intrinsic, originalCalleeParameters);
         pushKindIntrinsic(stack, returnValue, originalMethod.getSignature().resultKind());
     }
 
@@ -1589,16 +1606,19 @@ public class EspressoRootNode extends RootNode {
     }
 
     @ExplodeLoop
-    private static Object[] popArguments(OperandStack stack, MethodInfo method) {
-        boolean hasReceiver = !method.isStatic();
+    private static Object[] popArguments(OperandStack stack, boolean hasReceiver, SignatureDescriptor signature) {
         // TODO(peterssen): Check parameter count.
-        int argCount = method.getSignature().getParameterCount(false);
+        int argCount = signature.getParameterCount(false);
 
         int extraParam = hasReceiver ? 1 : 0;
         Object[] arguments = new Object[argCount + extraParam];
 
+        CompilerAsserts.partialEvaluationConstant(argCount);
+        CompilerAsserts.partialEvaluationConstant(signature);
+        CompilerAsserts.partialEvaluationConstant(hasReceiver);
+
         for (int i = argCount - 1; i >= 0; --i) {
-            JavaKind expectedKind = method.getSignature().getParameterKind(i);
+            JavaKind expectedKind = signature.getParameterKind(i);
             switch (expectedKind) {
                 case Boolean:
                     int b = stack.popInt();
