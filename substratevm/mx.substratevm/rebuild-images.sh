@@ -137,11 +137,17 @@ function polyglot() {
 
 function libpolyglot() {
     polyglot_common
+    cp="${graalvm_home}/jre/lib/polyglot/polyglot-native-api.jar"
+    if [ -f "${graalvm_home}/jre/languages/js/trufflenode.jar" ]; then
+      cp="${cp}:${graalvm_home}/jre/languages/js/trufflenode.jar"
+      cmd_line+=(
+        "-H:JNIConfigurationResources=svmnodejs.jniconfig"
+      )
+    fi
     cmd_line+=(
         "-cp"
-        "${graalvm_home}/jre/lib/polyglot/polyglot-native-api.jar:${graalvm_home}/jre/languages/js/trufflenode.jar"
+        "${cp}"
         "-Dgraalvm.libpolyglot=true"
-        "-H:JNIConfigurationResources=svmnodejs.jniconfig"
         "-H:Features=org.graalvm.polyglot.nativeapi.PolyglotNativeAPIFeature"
         "-Dorg.graalvm.polyglot.nativeapi.libraryPath=${graalvm_home}/jre/lib/polyglot"
         "-Dorg.graalvm.polyglot.nativeapi.nativeLibraryPath=${graalvm_home}/jre/lib/polyglot"
