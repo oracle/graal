@@ -28,6 +28,7 @@ import static com.oracle.truffle.espresso.meta.Meta.meta;
 import java.util.Arrays;
 import java.util.stream.Stream;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
@@ -137,6 +138,7 @@ public final class ObjectKlass extends Klass {
     @Override
     public void initialize() {
         if (!isInitialized()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             if (getSuperclass() != null) {
                 getSuperclass().initialize();
             }

@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.impl;
 
 import java.util.Arrays;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
@@ -39,7 +40,10 @@ import com.oracle.truffle.espresso.types.TypeDescriptor;
 public abstract class Klass implements ModifiersProvider {
 
     public final static Klass[] EMPTY_ARRAY = new Klass[0];
+    @CompilerDirectives.CompilationFinal
     private StaticObject statics;
+
+    @CompilerDirectives.CompilationFinal
     private ArrayKlass arrayClass;
     private final String name;
 
@@ -55,10 +59,12 @@ public abstract class Klass implements ModifiersProvider {
         return name;
     }
 
+    @CompilerDirectives.CompilationFinal
     private StaticObject mirrorCache;
 
     public StaticObject mirror() {
         if (mirrorCache == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             mirrorCache = new StaticObjectClass(getContext().getRegistries().resolve(getContext().getTypeDescriptors().CLASS, null));
             ((StaticObjectClass) mirrorCache).setMirror(this);
         }
@@ -79,6 +85,7 @@ public abstract class Klass implements ModifiersProvider {
     public ArrayKlass getArrayClass() {
         // TODO(peterssen): Make thread-safe.
         if (arrayClass == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             arrayClass = new ArrayKlass(this);
         }
         return arrayClass;
@@ -100,6 +107,7 @@ public abstract class Klass implements ModifiersProvider {
 
     public StaticObject getStatics() {
         if (statics == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             statics = new StaticObjectImpl(this, true);
         }
         return statics;
