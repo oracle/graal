@@ -1,7 +1,7 @@
 org.graalvm.1.0.0-rc3-dev_darwin_amd64=GraalVM 1.0.0-rc3-dev darwin/amd64
 org.graalvm.1.0.0-rc3-dev_linux_amd64=GraalVM 1.0.0-rc3-dev linux/amd64
 
-Component.1.0.0-rc3-dev_darwin_amd64.org.graalvm.ruby=http://graal.us.oracle.com/slavefiles/tmp/rc3//darwin-amd64/ce/b1/ruby-installable.jar
+Component.1.0.0-rc3-dev_darwin_amd64.org.graalvm.ruby=http://acme.org/graal/components/darwin-amd64/ce/ruby-installable.jar
 Component.1.0.0-rc3-dev_darwin_amd64.org.graalvm.ruby-hash=dd03c98b2080112ceea281f42783512db86f3ef5a940679c6c60514c87de8dd6
 Component.1.0.0-rc3-dev_darwin_amd64.org.graalvm.ruby-Bundle-Symbolic-Name=org.graalvm.ruby
 Component.1.0.0-rc3-dev_darwin_amd64.org.graalvm.ruby-Bundle-RequireCapability=org.graalvm; filter:="(&(graalvm_version=1.0.0-rc3-dev)(os_name=darwin)(os_arch=amd64))"
@@ -9,7 +9,7 @@ Component.1.0.0-rc3-dev_darwin_amd64.org.graalvm.ruby-Bundle-Name=TruffleRuby
 Component.1.0.0-rc3-dev_darwin_amd64.org.graalvm.ruby-Bundle-Version=1.0.0-rc3-dev
 Component.1.0.0-rc3-dev_darwin_amd64.org.graalvm.ruby-x-GraalVM-Polyglot-Part=True
 Component.1.0.0-rc3-dev_darwin_amd64.org.graalvm.ruby-x-GraalVM-Working-Directories=jre/languages/ruby
-Component.1.0.0-rc3-dev_darwin_amd64.org.graalvm.r=http://graal.us.oracle.com/slavefiles/tmp/rc3//darwin-amd64/ce/b1/r-installable.jar
+Component.1.0.0-rc3-dev_darwin_amd64.org.graalvm.r=http://acme.org/graal/components/darwin-amd64/ce/r-installable.jar
 Component.1.0.0-rc3-dev_darwin_amd64.org.graalvm.r-hash=13f37bd01e7f8f40c9f64dc15f027c53863f8c4cd319564855a25b3bdd1c0b9a
 Component.1.0.0-rc3-dev_darwin_amd64.org.graalvm.r-Bundle-Symbolic-Name=org.graalvm.R
 Component.1.0.0-rc3-dev_darwin_amd64.org.graalvm.r-Bundle-RequireCapability=org.graalvm; filter:="(&(graalvm_version=1.0.0-rc3-dev)(os_name=darwin)(os_arch=amd64))"
@@ -17,7 +17,7 @@ Component.1.0.0-rc3-dev_darwin_amd64.org.graalvm.r-Bundle-Name=FastR
 Component.1.0.0-rc3-dev_darwin_amd64.org.graalvm.r-Bundle-Version=1.0.0-rc3-dev
 Component.1.0.0-rc3-dev_darwin_amd64.org.graalvm.r-x-GraalVM-Polyglot-Part=False
 Component.1.0.0-rc3-dev_darwin_amd64.org.graalvm.r-x-GraalVM-Working-Directories=jre/languages/R
-Component.1.0.0-rc3-dev_darwin_amd64.org.graalvm.python=http://graal.us.oracle.com/slavefiles/tmp/rc3//darwin-amd64/ce/b1/python-installable.jar
+Component.1.0.0-rc3-dev_darwin_amd64.org.graalvm.python=http://acme.org/graal/components/darwin-amd64/ce/python-installable.jar
 Component.1.0.0-rc3-dev_darwin_amd64.org.graalvm.python-hash=278bff9dbfcd73bc0cc2cddf81545feed9bae4e5ead00d3763dfe003da7e4f66
 Component.1.0.0-rc3-dev_darwin_amd64.org.graalvm.python-Bundle-Symbolic-Name=org.graalvm.python
 Component.1.0.0-rc3-dev_darwin_amd64.org.graalvm.python-Bundle-RequireCapability=org.graalvm; filter:="(&(graalvm_version=1.0.0-rc3-dev)(os_name=darwin)(os_arch=amd64))"
@@ -25,7 +25,7 @@ Component.1.0.0-rc3-dev_darwin_amd64.org.graalvm.python-Bundle-Name=Graal.Python
 Component.1.0.0-rc3-dev_darwin_amd64.org.graalvm.python-Bundle-Version=1.0.0-rc3-dev
 Component.1.0.0-rc3-dev_darwin_amd64.org.graalvm.python-x-GraalVM-Polyglot-Part=True
 Component.1.0.0-rc3-dev_darwin_amd64.org.graalvm.python-x-GraalVM-Working-Directories=jre/languages/python
-Component.1.0.0-rc3-dev_linux_amd64.org.graalvm.ruby=http://graal.us.oracle.com/slavefiles/tmp/rc3//linux-amd64/ce/b1/ruby-installable.jar
+Component.1.0.0-rc3-dev_linux_amd64.org.graalvm.ruby=http://acme.org/graal/components/linux-amd64/ce/ruby-installable.jar
 Component.1.0.0-rc3-dev_linux_amd64.org.graalvm.ruby-hash=dfa678d17e1506dd41d051e991cd00b6d0085920db02382e5ca44cda532795bb
 Component.1.0.0-rc3-dev_linux_amd64.org.graalvm.ruby-Bundle-Symbolic-Name=org.graalvm.ruby
 Component.1.0.0-rc3-dev_linux_amd64.org.graalvm.ruby-Bundle-RequireCapability=org.graalvm; filter:="(&(graalvm_version=1.0.0-rc3-dev)(os_name=linux)(os_arch=amd64))"
@@ -33,7 +33,7 @@ Component.1.0.0-rc3-dev_linux_amd64.org.graalvm.ruby-Bundle-Name=TruffleRuby
 Component.1.0.0-rc3-dev_linux_amd64.org.graalvm.ruby-Bundle-Version=1.0.0-rc3-dev
 Component.1.0.0-rc3-dev_linux_amd64.org.graalvm.ruby-x-GraalVM-Polyglot-Part=True
 Component.1.0.0-rc3-dev_linux_amd64.org.graalvm.ruby-x-GraalVM-Working-Directories=jre/languages/ruby
-Component.1.0.0-rc3-dev_linux_amd64.org.graalvm.r=http://graal.us.oracle.com/slavefiles/tmp/rc3//linux-amd64/ce/b1/r-installable.jar
+Component.1.0.0-rc3-dev_linux_amd64.org.graalvm.r=http://acme.org/graal/components/linux-amd64/ce/r-installable.jar
 Component.1.0.0-rc3-dev_linux_amd64.org.graalvm.r-hash=72c7a4e78bc05c41a15ee5ccfc1e8955cffc4962ca646856d27c1893c2722287
 Component.1.0.0-rc3-dev_linux_amd64.org.graalvm.r-Bundle-Symbolic-Name=org.graalvm.R
 Component.1.0.0-rc3-dev_linux_amd64.org.graalvm.r-Bundle-RequireCapability=org.graalvm; filter:="(&(graalvm_version=1.0.0-rc3-dev)(os_name=linux)(os_arch=amd64))"
@@ -41,7 +41,7 @@ Component.1.0.0-rc3-dev_linux_amd64.org.graalvm.r-Bundle-Name=FastR
 Component.1.0.0-rc3-dev_linux_amd64.org.graalvm.r-Bundle-Version=1.0.0-rc3-dev
 Component.1.0.0-rc3-dev_linux_amd64.org.graalvm.r-x-GraalVM-Polyglot-Part=False
 Component.1.0.0-rc3-dev_linux_amd64.org.graalvm.r-x-GraalVM-Working-Directories=jre/languages/R
-Component.1.0.0-rc3-dev_linux_amd64.org.graalvm.python=http://graal.us.oracle.com/slavefiles/tmp/rc3//linux-amd64/ce/b1/python-installable.jar
+Component.1.0.0-rc3-dev_linux_amd64.org.graalvm.python=http://acme.org/graal/components/linux-amd64/ce/python-installable.jar
 Component.1.0.0-rc3-dev_linux_amd64.org.graalvm.python-hash=4965fd622b18f62ff635421f05a307d5bb7ce5930c0204ea49b276b7368226c7
 Component.1.0.0-rc3-dev_linux_amd64.org.graalvm.python-Bundle-Symbolic-Name=org.graalvm.python
 Component.1.0.0-rc3-dev_linux_amd64.org.graalvm.python-Bundle-RequireCapability=org.graalvm; filter:="(&(graalvm_version=1.0.0-rc3-dev)(os_name=linux)(os_arch=amd64))"
