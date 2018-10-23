@@ -43,6 +43,7 @@ package com.oracle.truffle.nfi.impl;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -55,14 +56,11 @@ import com.oracle.truffle.nfi.impl.TypeConversionFactory.AsStringNodeGen;
 
 abstract class TypeConversion extends Node {
 
-    protected static Node createIsNull() {
-        return Message.IS_NULL.createNode();
-    }
-
     protected static boolean checkNull(Node isNull, TruffleObject object) {
         return ForeignAccess.sendIsNull(isNull, object);
     }
 
+    @ImportStatic(Message.class)
     abstract static class AsPointerNode extends TypeConversion {
 
         abstract NativePointer execute(TruffleObject arg);
@@ -70,8 +68,8 @@ abstract class TypeConversion extends Node {
         @Specialization(guards = "checkIsPointer(isPointer, arg)")
         @SuppressWarnings("unused")
         protected NativePointer serializePointer(TruffleObject arg,
-                        @Cached("createIsPointer()") Node isPointer,
-                        @Cached("createAsPointer()") Node asPointer) {
+                        @Cached("IS_POINTER.createNode()") Node isPointer,
+                        @Cached("AS_POINTER.createNode()") Node asPointer) {
             try {
                 long pointer = ForeignAccess.sendAsPointer(asPointer, arg);
                 return new NativePointer(pointer);
@@ -83,16 +81,16 @@ abstract class TypeConversion extends Node {
 
         @Specialization(guards = "checkNull(isNull, arg)")
         @SuppressWarnings("unused")
-        NativePointer nullAsPointer(TruffleObject arg, @Cached("createIsNull()") Node isNull) {
+        NativePointer nullAsPointer(TruffleObject arg, @Cached("IS_NULL.createNode()") Node isNull) {
             return new NativePointer(0);
         }
 
         @Specialization(guards = "!checkNull(isNull, arg)", replaces = "serializePointer")
         @SuppressWarnings("unused")
         protected NativePointer transitionToNative(TruffleObject arg,
-                        @Cached("createIsNull()") Node isNull,
-                        @Cached("createToNative()") Node toNative,
-                        @Cached("createAsPointer()") Node asPointer) {
+                        @Cached("IS_NULL.createNode()") Node isNull,
+                        @Cached("TO_NATIVE.createNode()") Node toNative,
+                        @Cached("AS_POINTER.createNode()") Node asPointer) {
             try {
                 Object nativeObj = ForeignAccess.sendToNative(toNative, arg);
                 long pointer = ForeignAccess.sendAsPointer(asPointer, (TruffleObject) nativeObj);
@@ -107,23 +105,12 @@ abstract class TypeConversion extends Node {
             return ForeignAccess.sendIsPointer(isPointer, object);
         }
 
-        static Node createIsPointer() {
-            return Message.IS_POINTER.createNode();
-        }
-
-        static Node createAsPointer() {
-            return Message.AS_POINTER.createNode();
-        }
-
-        static Node createToNative() {
-            return Message.TO_NATIVE.createNode();
-        }
-
         static AsPointerNode createRecursive() {
             return AsPointerNodeGen.create();
         }
     }
 
+    @ImportStatic(Message.class)
     abstract static class AsStringNode extends TypeConversion {
 
         final boolean acceptAnything;
@@ -142,15 +129,15 @@ abstract class TypeConversion extends Node {
         @Specialization(guards = "checkNull(isNull, arg)")
         @SuppressWarnings("unused")
         String nullAsString(TruffleObject arg,
-                        @Cached("createIsNull()") Node isNull) {
+                        @Cached("IS_NULL.createNode()") Node isNull) {
             return null;
         }
 
         @Specialization(guards = "checkIsBoxed(isBoxed, arg)")
         @SuppressWarnings("unused")
         String boxedAsString(TruffleObject arg,
-                        @Cached("createIsBoxed()") Node isBoxed,
-                        @Cached("createUnbox()") Node unbox,
+                        @Cached("IS_BOXED.createNode()") Node isBoxed,
+                        @Cached("UNBOX.createNode()") Node unbox,
                         @Cached("createRecursive()") AsStringNode asString) {
             try {
                 Object unboxed = ForeignAccess.sendUnbox(unbox, arg);
@@ -165,14 +152,6 @@ abstract class TypeConversion extends Node {
         @TruffleBoundary
         String otherAsString(Object arg) {
             return arg.toString();
-        }
-
-        protected static Node createIsBoxed() {
-            return Message.IS_BOXED.createNode();
-        }
-
-        protected static Node createUnbox() {
-            return Message.UNBOX.createNode();
         }
 
         protected static boolean checkIsBoxed(Node isBoxed, TruffleObject arg) {
