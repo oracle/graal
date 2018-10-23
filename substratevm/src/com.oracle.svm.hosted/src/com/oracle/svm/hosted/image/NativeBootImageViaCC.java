@@ -183,7 +183,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
         for (String libraryPath : nativeLibs.getLibraryPaths()) {
             inv.addLibPath(libraryPath);
         }
-        for (String rPath : SubstrateOptions.LinkerRPath.getValue().split(",")) {
+        for (String rPath : SubstrateOptions.LinkerRPath.getValue()) {
             inv.addRPath(rPath);
         }
 

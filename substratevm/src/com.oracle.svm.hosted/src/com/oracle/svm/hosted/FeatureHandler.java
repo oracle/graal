@@ -50,7 +50,7 @@ public class FeatureHandler {
     public static class Options {
         @APIOption(name = "features") //
         @Option(help = "A comma-separated list of fully qualified Feature implementation classes")//
-        public static final HostedOptionKey<String> Features = new HostedOptionKey<>("");
+        public static final HostedOptionKey<String[]> Features = new HostedOptionKey<>(new String[0]);
     }
 
     private final ArrayList<Feature> featureInstances = new ArrayList<>();
@@ -77,8 +77,7 @@ public class FeatureHandler {
             registerFeature(automaticFeature, access);
         }
 
-        String[] featureNames = Options.Features.getValue().split(",");
-        for (String featureName : featureNames) {
+        for (String featureName : Options.Features.getValue()) {
             if (!featureName.isEmpty()) {
                 try {
                     registerFeature(Class.forName(featureName, true, loader.getClassLoader()), access);

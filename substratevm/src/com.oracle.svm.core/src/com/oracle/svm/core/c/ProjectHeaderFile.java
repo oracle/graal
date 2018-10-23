@@ -175,7 +175,7 @@ public final class ProjectHeaderFile {
         @Override
         public HeaderSearchResult resolveHeader(String projectName, String headerFile) {
             List<String> locations = new ArrayList<>();
-            String[] clibPathComponents = SubstrateOptions.CLibraryPath.getValue().split(",");
+            String[] clibPathComponents = SubstrateOptions.CLibraryPath.getValue();
             for (int i = 0; i < clibPathComponents.length; ++i) {
                 Path clibPathHeaderFile = Paths.get(clibPathComponents[i]).resolve(headerFile).normalize().toAbsolutePath();
                 locations.add(clibPathHeaderFile.toString());

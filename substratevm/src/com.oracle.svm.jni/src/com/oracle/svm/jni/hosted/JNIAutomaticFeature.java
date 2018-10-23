@@ -39,7 +39,7 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 public class JNIAutomaticFeature implements Feature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.JNI.getValue() || !SubstrateOptions.JNIConfigurationFiles.getValue().isEmpty() || !SubstrateOptions.JNIConfigurationResources.getValue().isEmpty();
+        return SubstrateOptions.JNI.getValue() || SubstrateOptions.JNIConfigurationFiles.getValue().length > 0 || SubstrateOptions.JNIConfigurationResources.getValue().length > 0;
     }
 
     @Override

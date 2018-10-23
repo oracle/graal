@@ -46,7 +46,7 @@ public class LocalizationSupport {
 
     public static class Options {
         @Option(help = "Comma separated list of bundles to be included into the image.", type = OptionType.User)//
-        public static final HostedOptionKey<String> IncludeResourceBundles = new HostedOptionKey<>("");
+        public static final HostedOptionKey<String[]> IncludeResourceBundles = new HostedOptionKey<>(new String[0]);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -82,8 +82,7 @@ public class LocalizationSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     void includeResourceBundles() {
-        String[] bundles = Options.IncludeResourceBundles.getValue().split(",");
-        for (String bundle : bundles) {
+        for (String bundle : Options.IncludeResourceBundles.getValue()) {
             addBundleToCache(bundle);
         }
     }

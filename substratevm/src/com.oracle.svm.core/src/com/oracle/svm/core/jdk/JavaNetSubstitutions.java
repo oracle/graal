@@ -75,13 +75,7 @@ class JavaNetFeature implements Feature {
             VMError.guarantee(registered, "The URL protocol " + protocol + " is not available.");
         });
 
-        String optionValue = SubstrateOptions.EnableURLProtocols.getValue();
-        if (optionValue.isEmpty()) {
-            return;
-        }
-
-        String[] protocols = optionValue.split(",");
-        for (String protocol : protocols) {
+        for (String protocol : SubstrateOptions.EnableURLProtocols.getValue()) {
             if (JavaNetSubstitutions.defaultProtocols.contains(protocol)) {
                 printWarning("The URL protocol " + protocol + " is enabled by default. " +
                                 "The option " + JavaNetSubstitutions.enableProtocolsOption + protocol + " is not needed.");

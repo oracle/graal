@@ -63,7 +63,7 @@ public final class ReflectionConfigurationParser extends ConfigurationParser {
     }
 
     @Override
-    protected void parseAndRegister(Reader reader, String featureName, Object location, HostedOptionKey<String> option) {
+    protected void parseAndRegister(Reader reader, String featureName, Object location, HostedOptionKey<String[]> option) {
         try {
             JSONParser parser = new JSONParser(reader);
             Object json = parser.parse();
