@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.runtime;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.espresso.impl.FieldInfo;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -141,6 +142,7 @@ public class StaticObjectImpl implements StaticObject {
         this.isStatic = isStatic;
     }
 
+    @CompilerDirectives.TruffleBoundary
     public Object getField(FieldInfo field) {
         // TODO(peterssen): Klass check
         return fields.get(field.getName());
@@ -150,16 +152,19 @@ public class StaticObjectImpl implements StaticObject {
         fields.put(name, value);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public void setField(FieldInfo field, Object value) {
         // TODO(peterssen): Klass check
         assert fields.containsKey(field.getName());
         fields.put(field.getName(), value);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public void setHiddenField(String name, Object value) {
         fields.putIfAbsent(name, value);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public Object getHiddenField(String name) {
         return fields.get(name);
     }

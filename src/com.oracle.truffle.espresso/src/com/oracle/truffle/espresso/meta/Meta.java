@@ -419,6 +419,7 @@ public final class Meta {
          * the type represented by the specified parameter. This method is identical to
          * {@link Class#isAssignableFrom(Class)} in terms of the value return for this type.
          */
+        @CompilerDirectives.TruffleBoundary
         public boolean isAssignableFrom(Meta.Klass other) {
             if (this.rawKlass() == other.rawKlass()) {
                 return true;
@@ -484,7 +485,6 @@ public final class Meta {
             return getInterfacesStream(includeSuperclasses).collect(collectingAndThen(toList(), Collections::unmodifiableList));
         }
 
-        @CompilerDirectives.TruffleBoundary
         public StaticObject allocateInstance() {
             assert !klass.isArray();
             return klass.getContext().getVm().newObject(klass);
@@ -522,6 +522,7 @@ public final class Meta {
             });
         }
 
+        @CompilerDirectives.TruffleBoundary
         public Meta.Method method(String name, Class<?> returnType, Class<?>... parameterTypes) {
             SignatureDescriptor target = klass.getContext().getSignatureDescriptors().create(returnType, parameterTypes);
             MethodInfo found = Arrays.stream(klass.getDeclaredMethods()).filter(m -> m.getName().equals(name) && m.getSignature().equals(target)).findFirst().orElse(null);
