@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 
 public interface NameAndTypeConstant extends PoolConstant {
@@ -76,10 +77,12 @@ public interface NameAndTypeConstant extends PoolConstant {
         }
 
         public Utf8Constant getName(ConstantPool pool, int thisIndex) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             return replace(pool, thisIndex).getName(pool, thisIndex);
         }
 
         public Utf8Constant getType(ConstantPool pool, int thisIndex) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             return replace(pool, thisIndex).getType(pool, thisIndex);
         }
     }

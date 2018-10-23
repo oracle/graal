@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.MethodInfo;
@@ -63,6 +64,7 @@ public interface InterfaceMethodRefConstant extends MethodRefConstant {
 
         @Override
         public MethodInfo resolve(ConstantPool pool, int index) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             Klass declaringInterface = pool.getContext().getRegistries().resolve(getDeclaringClass(pool, -1), pool.getClassLoader());
             assert declaringInterface.isInterface();
             String name = getName(pool, index);

@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.impl.MethodInfo;
 import com.oracle.truffle.espresso.types.SignatureDescriptor;
 import com.oracle.truffle.espresso.types.TypeDescriptor;
@@ -96,6 +97,7 @@ public interface MethodRefConstant extends MemberRefConstant {
         }
 
         public MethodInfo resolve(ConstantPool pool, int index) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             return replace(pool, index).resolve(pool, index);
         }
 

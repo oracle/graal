@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.types.TypeDescriptor;
@@ -87,6 +88,7 @@ public interface ClassConstant extends PoolConstant {
         }
 
         public Klass resolve(ConstantPool pool, int index) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             try {
                 try {
                     Klass klass = pool.getContext().getRegistries().resolve(type, pool.getClassLoader());
@@ -133,10 +135,12 @@ public interface ClassConstant extends PoolConstant {
         }
 
         public TypeDescriptor getTypeDescriptor(ConstantPool pool, int index) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             return replace(pool, index).getTypeDescriptor(pool, index);
         }
 
         public Klass resolve(ConstantPool pool, int index) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             return replace(pool, index).resolve(pool, index);
         }
     }
