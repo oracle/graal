@@ -1329,9 +1329,6 @@ public final class DebuggerSession implements Closeable {
         @Override
         public void onReturnExceptional(VirtualFrame frame, Throwable exception) {
             if (stepping.get()) {
-                if (hasRootElement) {
-                    doStepAfter(frame.materialize(), exception);
-                }
                 doReturn();
             }
         }
