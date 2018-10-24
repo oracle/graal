@@ -4,6 +4,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 ## Version 1.0.0 RC8
 
+* Added support for setting the `ThreadGroup` and `stackSize` on truffle thread creation in `TruffleLanguage.Env.createThread`.
 * Added `SuspendedEvent.setReturnValue` to change the return value of the currently executed source location.
 * Deprecated `FrameSlot#getIndex` without replacement.
 * Added `TruffleInstrument.Env.startServer()` to get a virtual message-based server provided via `MessageTransport` service.

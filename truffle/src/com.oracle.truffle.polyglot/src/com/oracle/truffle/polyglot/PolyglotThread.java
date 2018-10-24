@@ -48,18 +48,18 @@ final class PolyglotThread extends Thread {
 
     Object context;
 
-    PolyglotThread(PolyglotLanguageContext languageContext, ThreadGroup group, Runnable runnable, long stackSize) {
+    PolyglotThread(PolyglotLanguageContext languageContext, Runnable runnable, ThreadGroup group, long stackSize) {
         super(group, runnable, createDefaultName(languageContext), stackSize);
         this.languageContext = languageContext;
         setUncaughtExceptionHandler(languageContext.getPolyglotExceptionHandler());
     }
 
-    PolyglotThread(PolyglotLanguageContext languageContext, ThreadGroup group, Runnable runnable) {
-        this(languageContext, group, runnable, 0);
+    PolyglotThread(PolyglotLanguageContext languageContext, Runnable runnable, ThreadGroup group) {
+        this(languageContext, runnable, group, 0);
     }
 
     PolyglotThread(PolyglotLanguageContext languageContext, Runnable runnable) {
-        this(languageContext, null, runnable, 0);
+        this(languageContext, runnable, null, 0);
     }
 
     private static String createDefaultName(PolyglotLanguageContext creator) {

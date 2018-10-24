@@ -1455,7 +1455,7 @@ public abstract class TruffleLanguage<C> {
          */
         @TruffleBoundary
         public Thread createThread(Runnable runnable, @SuppressWarnings("hiding") TruffleContext context) {
-            return createThread(null, runnable, 0, context);
+            return createThread(runnable, context, null, 0);
         }
 
         /**
@@ -1478,9 +1478,9 @@ public abstract class TruffleLanguage<C> {
          * {@link #newContextBuilder()}.{@link TruffleContext.Builder#build() build()}, or the
          * context associated with this environment obtained from {@link #getContext()}.
          *
-         * @param group the thread group, passed on to the underlying {@link Thread}.
          * @param runnable the runnable to run on this thread.
          * @param context the context to enter and leave when the thread is started.
+         * @param group the thread group, passed on to the underlying {@link Thread}.
          * @throws IllegalStateException if thread creation is not {@link #isCreateThreadAllowed()
          *             allowed}.
          * @see #getContext()
@@ -1488,8 +1488,8 @@ public abstract class TruffleLanguage<C> {
          * @since 0.28
          */
         @TruffleBoundary
-        public Thread createThread(ThreadGroup group, Runnable runnable, @SuppressWarnings("hiding") TruffleContext context) {
-            return createThread(group, runnable, 0, context);
+        public Thread createThread(Runnable runnable, @SuppressWarnings("hiding") TruffleContext context, ThreadGroup group) {
+            return createThread(runnable, context, group, 0);
         }
 
         /**
@@ -1512,11 +1512,11 @@ public abstract class TruffleLanguage<C> {
          * {@link #newContextBuilder()}.{@link TruffleContext.Builder#build() build()}, or the
          * context associated with this environment obtained from {@link #getContext()}.
          *
-         * @param group the thread group, passed on to the underlying {@link Thread}.
          * @param runnable the runnable to run on this thread.
+         * @param context the context to enter and leave when the thread is started.
+         * @param group the thread group, passed on to the underlying {@link Thread}.
          * @param stackSize the desired stack size for the new thread, or zero if this parameter is
          *            to be ignored.
-         * @param context the context to enter and leave when the thread is started.
          * @throws IllegalStateException if thread creation is not {@link #isCreateThreadAllowed()
          *             allowed}.
          * @see #getContext()
@@ -1524,8 +1524,8 @@ public abstract class TruffleLanguage<C> {
          * @since 0.28
          */
         @TruffleBoundary
-        public Thread createThread(ThreadGroup group, Runnable runnable, long stackSize, @SuppressWarnings("hiding") TruffleContext context) {
-            return AccessAPI.engineAccess().createThread(vmObject, group, runnable, stackSize, context != null ? context.impl : null);
+        public Thread createThread(Runnable runnable, @SuppressWarnings("hiding") TruffleContext context, ThreadGroup group, long stackSize) {
+            return AccessAPI.engineAccess().createThread(vmObject, runnable, context != null ? context.impl : null, group, stackSize);
         }
 
         /**
