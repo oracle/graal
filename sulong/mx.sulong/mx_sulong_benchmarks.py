@@ -28,6 +28,7 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 import re
+import sys
 import tempfile
 from abc import ABCMeta, abstractmethod
 
@@ -99,18 +100,18 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
                 if os.path.exists(native_out):
                     os.remove(native_out)
 
-                with tempfile.TemporaryFile(mode="w+") as f:
-                    try:
-                        env = vm.prepare_env(os.environ)
-                        cmdline = ['make', '-f', '../Makefile']
-                        mx.run(cmdline, out=f, err=f, env=env)
-                        opt_out = vm.post_process_executable(native_out, f)
-                        self.bench_to_exec[bench] = os.path.abspath(opt_out)
-                    except BaseException as e:
-                        f.flush()
-                        f.seek(0)
-                        mx.logv(f.read())
-                        raise e
+                env = os.environ.copy()
+                env['VPATH'] = '..'
+
+                env = vm.prepare_env(env)
+                cmdline = ['make', '-f', '../Makefile']
+                if mx._opts.verbose:
+                    # The Makefiles should have logic to disable the @ sign
+                    # so that all executed commands are visible.
+                    cmdline += ["MX_VERBOSE=y"]
+                mx.run(cmdline, env=env)
+                opt_out = vm.post_process_executable(native_out)
+                self.bench_to_exec[bench] = os.path.abspath(opt_out)
             finally:
                 # reset current Directory
                 os.chdir(currentDir)
@@ -162,7 +163,7 @@ class CExecutionEnvironmentMixin(object):
     def prepare_env(self, env):
         return env
 
-    def post_process_executable(self, exe, f):
+    def post_process_executable(self, exe, *args, **kwargs):
         return exe
 
 
@@ -200,10 +201,8 @@ class GccLikeVm(CExecutionEnvironmentMixin, Vm):
         return [retCode, myStdOut.data]
 
     def prepare_env(self, env):
-        env = env.copy()
         env['CFLAGS'] = ' '.join(self.options + _env_flags + ['-lm', '-lgmp'])
         env['CC'] = self.c_compiler_exe()
-        env['VPATH'] = '..'
         return env
 
 
@@ -254,24 +253,22 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
         return result
 
     def prepare_env(self, env):
-        env = env.copy()
         env['CFLAGS'] = ' '.join(_env_flags + ['-lm', '-lgmp'])
         env['LLVM_COMPILER'] = mx_buildtools.ClangCompiler.CLANG
         env['CC'] = 'wllvm'
-        env['VPATH'] = '..'
         return env
 
-    def post_process_executable(self, exe, f):
-        bc_out = self.extract_bitcode(exe, f)
-        return self.optimize_bitcode(bc_out, f)
+    def post_process_executable(self, exe, *args, **kwargs):
+        bc_out = self.extract_bitcode(exe, *args, **kwargs)
+        return self.optimize_bitcode(bc_out, *args, **kwargs)
 
-    def extract_bitcode(self, native_out, f):
+    def extract_bitcode(self, native_out, *args, **kwargs):
         bc_out = 'bench.bc'
-        mx.run(['extract-bc', native_out, '--output', bc_out], out=f, err=f)
+        mx.run(['extract-bc', native_out, '--output', bc_out], *args, **kwargs)
         return bc_out
 
-    def optimize_bitcode(self, bc_out, f):
-        mx_sulong.opt(['-o', bc_out, bc_out] + self.opt_phases(), out=f, err=f)
+    def optimize_bitcode(self, bc_out, *args, **kwargs):
+        mx_sulong.opt(['-o', bc_out, bc_out] + self.opt_phases(), *args, **kwargs)
         return bc_out
 
     def opt_phases(self):
