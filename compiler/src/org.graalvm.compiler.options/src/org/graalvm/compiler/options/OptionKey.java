@@ -180,7 +180,10 @@ public class OptionKey<T> {
     }
 
     /**
-     * Allows customization of Options where the value describes multiple values.
+     * If the OptionKey value type is an array-type this method allows to modify the interpretation
+     * of a single-value. The returned value is used to split up the string that is passed as option
+     * argument and the individual split results are added as array members. If null is returned
+     * multiple elements for the value array can only be specified by subsequent use of the option.
      *
      * @return provides the delimiting regular expression
      */
