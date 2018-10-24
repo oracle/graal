@@ -9,6 +9,7 @@ x52.c2 : ${labsjdk8} {
     MACHINE_NAME: "x52"
     BENCH_SERVER_EXTRAS : "target:weekly-jfr"
   }
+  targets: [bench, weekly]
 }
 
 x52.c2-tmpfs10g : ${x52.c2} {

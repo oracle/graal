@@ -17,6 +17,7 @@ perf_tag : {
   environment : {
     BENCH_SERVER_EXTRAS : "target:weekly-perf"
   }
+  targets: [bench, weekly]
 }
 
 builds += [
