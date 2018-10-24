@@ -52,6 +52,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -243,8 +244,14 @@ public class CachedTest {
         private int increment = 1;
 
         public int execute(int value) {
-            replace(new NodeSubClass()).increment = increment + 1;
+            final NodeSubClass replaced = doReplace();
+            replaced.increment = increment + 1;
             return value + increment;
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        private NodeSubClass doReplace() {
+            return replace(new NodeSubClass());
         }
 
     }

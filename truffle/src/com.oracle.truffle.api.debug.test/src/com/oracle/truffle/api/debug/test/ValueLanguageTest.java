@@ -63,6 +63,7 @@ import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -447,6 +448,11 @@ public class ValueLanguageTest extends AbstractDebugTest {
             }
 
             public Object execute(VirtualFrame frame) {
+                return doExec(frame.materialize());
+            }
+
+            @CompilerDirectives.TruffleBoundary
+            private Object doExec(MaterializedFrame frame) {
                 for (VarNode ch : children) {
                     ch.execute(frame);
                 }

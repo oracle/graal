@@ -41,11 +41,13 @@
 package com.oracle.truffle.api.debug.test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -143,6 +145,12 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
 
         @Override
         public Object execute(VirtualFrame frame) {
+            boundary(frame.materialize());
+            return statement.execute(frame);
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        private void boundary(MaterializedFrame frame) {
             FrameSlot slot = frame.getFrameDescriptor().findOrAddFrameSlot("a", FrameSlotKind.Int);
             String text = statementSection.getCharacters().toString();
             int index = 0;
@@ -154,7 +162,6 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
             TruffleObject obj = new ErrorObject(text.substring(0, index).trim(), errNum);
             slot = frame.getFrameDescriptor().findOrAddFrameSlot("o", FrameSlotKind.Object);
             frame.setObject(slot, obj);
-            return statement.execute(frame);
         }
 
         @Override
