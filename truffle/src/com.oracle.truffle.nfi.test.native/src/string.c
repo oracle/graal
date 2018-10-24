@@ -76,8 +76,14 @@ int free_dynamic_string(char *str) {
 int string_callback(int (*str_arg)(const char *), char *(*str_ret)()) {
     int ret;
     char *str = str_ret();
-    if (str != NULL && strcmp(str, "Hello, Native!") == 0) {
-        ret = str_arg("Hello, Truffle!");
+    if (str != NULL) {
+        if (strcmp(str, "Hello, Native!") == 0) {
+            ret = str_arg("Hello, Truffle!");
+        } else if (strcmp(str, "Hello, UTF-8 äéç!") == 0) {
+            ret = str_arg("UTF-8 seems to work €¢");
+        } else {
+            ret = -1;
+        }
     } else {
         ret = 0;
     }
