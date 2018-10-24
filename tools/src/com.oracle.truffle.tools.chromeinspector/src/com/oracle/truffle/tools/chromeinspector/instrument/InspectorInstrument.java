@@ -261,7 +261,7 @@ public final class InspectorInstrument extends TruffleInstrument {
                     throw new IOException(ex);
                 }
                 InspectServerSession iss = InspectServerSession.create(executionContext, debugBreak, connectionWatcher);
-                WSInterceptorServer interceptor = new WSInterceptorServer(wsuri, iss);
+                WSInterceptorServer interceptor = new WSInterceptorServer(wsuri, iss, connectionWatcher);
                 MessageEndpoint serverEndpoint;
                 try {
                     serverEndpoint = env.startServer(wsuri, iss);
@@ -277,7 +277,7 @@ public final class InspectorInstrument extends TruffleInstrument {
                     info.println("    " + address);
                     info.flush();
                 } else {
-                    interceptor.opened(serverEndpoint, connectionWatcher);
+                    interceptor.opened(serverEndpoint);
                     wss = interceptor;
                 }
             }
