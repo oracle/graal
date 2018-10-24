@@ -186,6 +186,9 @@ class SulongVm(GuestVm):
     def name(self):
         return "sulong"
 
+    def bin_dir(self):
+        return '{}-{}'.format(self.name(), self.config_name())
+
     def run(self, cwd, args):
         # save current Directory
         self.currentDir = os.getcwd()
@@ -198,29 +201,21 @@ class SulongVm(GuestVm):
         os.chdir(benchmarkDir)
 
         # create directory for executable of this vm
-        if not os.path.exists(self.name()):
-            os.makedirs(self.name())
-        os.chdir(self.name())
+        if not os.path.exists(self.bin_dir()):
+            os.makedirs(self.bin_dir())
+        os.chdir(self.bin_dir())
 
         if os.path.exists('bench'):
             os.remove('bench')
 
-        env = os.environ.copy()
-        env['CFLAGS'] = ' '.join(_env_flags + ['-lm', '-lgmp'])
-        env['LLVM_COMPILER'] = mx_buildtools.ClangCompiler.CLANG
-        env['CC'] = 'wllvm'
-        env['VPATH'] = '..'
-
-        cmdline = ['make', '-f', '../Makefile']
-
         with tempfile.TemporaryFile(mode="w+") as f:
             try:
+                env = self.prepare_env()
+                native_out = 'bench'
+                cmdline = ['make', '-f', '../Makefile']
                 mx.run(cmdline, out=f, err=f, env=env)
-                mx.run(['extract-bc', 'bench'], out=f, err=f)
-                mx_sulong.opt(['-o', 'bench.bc', 'bench.bc'] + ['-mem2reg', '-globalopt', '-simplifycfg', '-constprop',
-                                                                '-instcombine', '-dse', '-loop-simplify',
-                                                                '-reassociate',
-                                                                '-licm', '-gvn'], out=f, err=f)
+                bc_out = self.extract_bitcode(native_out, f)
+                bc_opt_out = self.optimize_bitcode(bc_out, f)
             except BaseException as e:
                 f.flush()
                 f.seek(0)
@@ -229,7 +224,7 @@ class SulongVm(GuestVm):
 
         launcher_args = self.launcher_args()
 
-        args = ['bench.bc']
+        args = [bc_opt_out]
         if hasattr(self.host_vm(), 'run_lang'):
             result = self.host_vm().run_lang('lli', launcher_args + args, cwd)
         else:
@@ -241,6 +236,37 @@ class SulongVm(GuestVm):
         os.chdir(self.currentDir)
 
         return result
+
+    def prepare_env(self):
+        env = os.environ.copy()
+        env['CFLAGS'] = ' '.join(_env_flags + ['-lm', '-lgmp'])
+        env['LLVM_COMPILER'] = mx_buildtools.ClangCompiler.CLANG
+        env['CC'] = 'wllvm'
+        env['VPATH'] = '..'
+        return env
+
+    def extract_bitcode(self, native_out, f):
+        bc_out = 'bench.bc'
+        mx.run(['extract-bc', native_out, '--output', bc_out], out=f, err=f)
+        return bc_out
+
+    def optimize_bitcode(self, bc_out, f):
+        mx_sulong.opt(['-o', bc_out, bc_out] + self.opt_phases(), out=f, err=f)
+        return bc_out
+
+    def opt_phases(self):
+        return [
+            '-mem2reg',
+            '-globalopt',
+            '-simplifycfg',
+            '-constprop',
+            '-instcombine',
+            '-dse',
+            '-loop-simplify',
+            '-reassociate',
+            '-licm',
+            '-gvn',
+        ]
 
     def launcher_args(self):
         launcher_args = [
