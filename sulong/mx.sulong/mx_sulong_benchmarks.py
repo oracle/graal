@@ -44,6 +44,25 @@ _env_flags = []
 if 'CPPFLAGS' in os.environ:
     _env_flags = os.environ['CPPFLAGS'].split(' ')
 
+
+class SulongBenchmarkRule(mx_benchmark.StdOutRule):
+    def __init__(self, replacement):
+        super(SulongBenchmarkRule, self).__init__(
+            pattern=r'^last 10 iterations (?P<benchmark>[\S]+):(?P<line>([ ,]+(?:\d+(?:\.\d+)?))+)',
+            replacement=replacement)
+
+    def parseResults(self, text):
+        def _parse_results_gen():
+            for d in super(SulongBenchmarkRule, self).parseResults(text):
+                line = d.pop('line')
+                for value in line.split(','):
+                    r = d.copy()
+                    r['score'] = value.strip()
+                    yield r
+
+        return (x for x in _parse_results_gen())
+
+
 class SulongBenchmarkSuite(VmBenchmarkSuite):
     def group(self):
         return 'Graal'
@@ -60,9 +79,6 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
             mx.abort('Benchmarks directory {} is missing'.format(benchDir))
         return [f for f in os.listdir(benchDir) if os.path.isdir(join(benchDir, f)) and os.path.isfile(join(join(benchDir, f), 'Makefile'))]
 
-    def benchHigherScoreRegex(self):
-        return r'^(### )?(?P<benchmark>[a-zA-Z0-9\.\-_]+): +(?P<score>[0-9]+(?:\.[0-9]+)?)'
-
     def failurePatterns(self):
         return [
             re.compile(r'error:'),
@@ -74,7 +90,7 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
 
     def rules(self, out, benchmarks, bmSuiteArgs):
         return [
-            mx_benchmark.StdOutRule(self.benchHigherScoreRegex(), {
+            SulongBenchmarkRule({
                 "benchmark": ("<benchmark>", str),
                 "metric.name": "time",
                 "metric.type": "numeric",
