@@ -29,6 +29,7 @@
 #
 import re
 import tempfile
+from abc import ABCMeta, abstractmethod
 
 import mx, mx_benchmark, mx_sulong, mx_buildtools
 import os
@@ -64,6 +65,10 @@ class SulongBenchmarkRule(mx_benchmark.StdOutRule):
 
 
 class SulongBenchmarkSuite(VmBenchmarkSuite):
+    def __init__(self, *args, **kwargs):
+        super(SulongBenchmarkSuite, self).__init__(*args, **kwargs)
+        self.bench_to_exec = {}
+
     def group(self):
         return 'Graal'
 
@@ -72,6 +77,45 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
 
     def name(self):
         return 'csuite'
+
+    def run(self, benchnames, bmSuiteArgs):
+        vm = self.get_vm_registry().get_vm_from_suite_args(bmSuiteArgs)
+        assert isinstance(vm, CExecutionEnvironmentMixin)
+
+        # compile benchmarks
+
+        # save current Directory
+        currentDir = os.getcwd()
+        for bench in benchnames:
+            try:
+                # benchmark dir
+                path = join(_benchmarksDirectory(), bench, vm.bin_dir())
+                # create directory for executable of this vm
+                if not os.path.exists(path):
+                    os.makedirs(path)
+                os.chdir(path)
+
+                native_out = 'bench'
+                if os.path.exists(native_out):
+                    os.remove(native_out)
+
+                with tempfile.TemporaryFile(mode="w+") as f:
+                    try:
+                        env = vm.prepare_env(os.environ)
+                        cmdline = ['make', '-f', '../Makefile']
+                        mx.run(cmdline, out=f, err=f, env=env)
+                        opt_out = vm.post_process_executable(native_out, f)
+                        self.bench_to_exec[bench] = os.path.abspath(opt_out)
+                    except BaseException as e:
+                        f.flush()
+                        f.seek(0)
+                        mx.logv(f.read())
+                        raise e
+            finally:
+                # reset current Directory
+                os.chdir(currentDir)
+
+        return super(SulongBenchmarkSuite, self).run(benchnames, bmSuiteArgs)
 
     def benchmarkList(self, bmSuiteArgs):
         benchDir = _benchmarksDirectory()
@@ -104,13 +148,25 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
     def createCommandLineArgs(self, benchmarks, runArgs):
         if len(benchmarks) != 1:
             mx.abort("Please run a specific benchmark (mx benchmark csuite:<benchmark-name>) or all the benchmarks (mx benchmark csuite:*)")
-        return [benchmarks[0]] + runArgs
+        return [self.bench_to_exec[benchmarks[0]]]
 
     def get_vm_registry(self):
         return native_vm_registry
 
 
-class GccLikeVm(Vm):
+class CExecutionEnvironmentMixin(object):
+
+    def bin_dir(self):
+        return '{}-{}'.format(self.name(), self.config_name())
+
+    def prepare_env(self, env):
+        return env
+
+    def post_process_executable(self, exe, f):
+        return exe
+
+
+class GccLikeVm(CExecutionEnvironmentMixin, Vm):
     def __init__(self, config_name, options):
         self._config_name = config_name
         self.options = options
@@ -124,52 +180,31 @@ class GccLikeVm(Vm):
     def cpp_compiler(self):
         return self.compiler_name() + "++"
 
+    def compiler_name(self):
+        mx.nyi()
+
+    def c_compiler_exe(self):
+        mx.nyi()
+
     def run(self, cwd, args):
-        # save current Directory
-        self.currentDir = os.getcwd()
-        os.chdir(_benchmarksDirectory())
-
-        benchmarkDir = args[0]
-
-        # enter benchmark dir
-        os.chdir(benchmarkDir)
-
-        # create directory for executable of this vm
-        if not os.path.exists(self.name()):
-            os.makedirs(self.name())
-        os.chdir(self.name())
-
-        if os.path.exists('bench'):
-            os.remove('bench')
-
-        env = os.environ.copy()
-        env['CFLAGS'] = ' '.join(self.options + _env_flags + ['-lm', '-lgmp'])
-        env['CC'] = mx_buildtools.ClangCompiler.CLANG
-        env['VPATH'] = '..'
-        cmdline = ['make', '-f', '../Makefile']
-
-        print env
-        print os.getcwd()
-        print cmdline
-
         with tempfile.TemporaryFile(mode="w+") as f:
             try:
-                mx.run(cmdline, out=f, err=f, env=env)
-
                 myStdOut = mx.OutputCapture()
-                retCode = mx.run(['./bench'], out=myStdOut, err=f)
+                retCode = mx.run(args, out=myStdOut, err=f)
             except BaseException as e:
                 f.flush()
-            f.seek(0)
-            mx.logv(f.read())
-            raise e
-
-        print myStdOut.data
-
-        # reset current Directory
-        os.chdir(self.currentDir)
+                f.seek(0)
+                mx.logv(f.read())
+                raise e
 
         return [retCode, myStdOut.data]
+
+    def prepare_env(self, env):
+        env = env.copy()
+        env['CFLAGS'] = ' '.join(self.options + _env_flags + ['-lm', '-lgmp'])
+        env['CC'] = self.c_compiler_exe()
+        env['VPATH'] = '..'
+        return env
 
 
 class GccVm(GccLikeVm):
@@ -180,6 +215,9 @@ class GccVm(GccLikeVm):
         return "gcc"
 
     def compiler_name(self):
+        return "gcc"
+
+    def c_compiler_exe(self):
         return "gcc"
 
 
@@ -194,72 +232,38 @@ class ClangVm(GccLikeVm):
         mx_sulong.ensureLLVMBinariesExist()
         return mx_sulong.findLLVMProgram(mx_buildtools.ClangCompiler.CLANG)
 
+    def c_compiler_exe(self):
+        return mx_buildtools.ClangCompiler.CLANG
 
-class SulongVm(GuestVm):
+
+class SulongVm(CExecutionEnvironmentMixin, GuestVm):
     def config_name(self):
         return "default"
 
     def name(self):
         return "sulong"
 
-    def bin_dir(self):
-        return '{}-{}'.format(self.name(), self.config_name())
-
     def run(self, cwd, args):
-        # save current Directory
-        self.currentDir = os.getcwd()
-        os.chdir(_benchmarksDirectory())
-
-        mx_sulong.ensureLLVMBinariesExist()
-        benchmarkDir = args[0]
-
-        # enter benchmark dir
-        os.chdir(benchmarkDir)
-
-        # create directory for executable of this vm
-        if not os.path.exists(self.bin_dir()):
-            os.makedirs(self.bin_dir())
-        os.chdir(self.bin_dir())
-
-        if os.path.exists('bench'):
-            os.remove('bench')
-
-        with tempfile.TemporaryFile(mode="w+") as f:
-            try:
-                env = self.prepare_env()
-                native_out = 'bench'
-                cmdline = ['make', '-f', '../Makefile']
-                mx.run(cmdline, out=f, err=f, env=env)
-                bc_out = self.extract_bitcode(native_out, f)
-                bc_opt_out = self.optimize_bitcode(bc_out, f)
-            except BaseException as e:
-                f.flush()
-                f.seek(0)
-                mx.logv(f.read())
-                raise e
-
         launcher_args = self.launcher_args()
-
-        args = [bc_opt_out]
         if hasattr(self.host_vm(), 'run_lang'):
             result = self.host_vm().run_lang('lli', launcher_args + args, cwd)
         else:
             sulongCmdLine = mx_sulong.getClasspathOptions() + \
                             ['-XX:-UseJVMCIClassLoader', "com.oracle.truffle.llvm.launcher.LLVMLauncher"]
             result = self.host_vm().run(cwd, sulongCmdLine + launcher_args + args)
-
-        # reset current Directory
-        os.chdir(self.currentDir)
-
         return result
 
-    def prepare_env(self):
-        env = os.environ.copy()
+    def prepare_env(self, env):
+        env = env.copy()
         env['CFLAGS'] = ' '.join(_env_flags + ['-lm', '-lgmp'])
         env['LLVM_COMPILER'] = mx_buildtools.ClangCompiler.CLANG
         env['CC'] = 'wllvm'
         env['VPATH'] = '..'
         return env
+
+    def post_process_executable(self, exe, f):
+        bc_out = self.extract_bitcode(exe, f)
+        return self.optimize_bitcode(bc_out, f)
 
     def extract_bitcode(self, native_out, f):
         bc_out = 'bench.bc'
