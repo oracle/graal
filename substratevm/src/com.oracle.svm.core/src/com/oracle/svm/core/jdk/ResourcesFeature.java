@@ -52,7 +52,21 @@ public final class ResourcesFeature implements Feature {
 
     public static class Options {
         @Option(help = "Regexp to match names of resources to be included in the image.", type = OptionType.User)//
-        public static final HostedOptionKey<String[]> IncludeResources = new HostedOptionKey<>(new String[0]);
+        public static final HostedOptionKey<String[]> IncludeResources = new HostedOptionKey<String[]>(new String[0]) {
+            @Override
+            public String getDelimiterRegex() {
+                /*
+                 * Since IncludeResources takes regular expressions it's safer to disallow passing
+                 * more than one regex with a single IncludeResources option. Note that it's still
+                 * possible pass multiple IncludeResources regular expressions by passing each as
+                 * its own IncludeResources option. E.g.
+                 * @formatter:off
+                 * -H:IncludeResources=/nobel/prizes.json -H:IncludeResources=/fields/prizes.json
+                 * @formatter:on
+                 */
+                return null;
+            }
+        };
     }
 
     @Override

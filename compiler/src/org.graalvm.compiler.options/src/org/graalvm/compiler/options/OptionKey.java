@@ -178,4 +178,13 @@ public class OptionKey<T> {
      */
     protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, T oldValue, T newValue) {
     }
+
+    /**
+     * Allows customization of Options where the value describes multiple values.
+     *
+     * @return provides the delimiting regular expression
+     */
+    public String getDelimiterRegex() {
+        return ",";
+    }
 }

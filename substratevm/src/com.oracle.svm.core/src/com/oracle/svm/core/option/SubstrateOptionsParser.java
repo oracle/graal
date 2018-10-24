@@ -193,11 +193,16 @@ public class SubstrateOptionsParser {
             }
             try {
                 if (optionType.isArray()) {
+                    OptionKey<?> optionKey = desc.getOptionKey();
                     List<Object> valueList = new ArrayList<>();
-                    for (String elemValueString : valueString.split(",")) {
-                        valueList.add(parseValue(optionType.getComponentType(), optionName, elemValueString));
+                    if (optionKey.getDelimiterRegex() != null) {
+                        for (String elemValueString : valueString.split(optionKey.getDelimiterRegex())) {
+                            valueList.add(parseValue(optionType.getComponentType(), optionName, elemValueString));
+                        }
+                    } else {
+                        valueList.add(parseValue(optionType.getComponentType(), optionName, valueString));
                     }
-                    Object previous = valuesMap.get(desc.getOptionKey());
+                    Object previous = valuesMap.get(optionKey);
                     if (previous == null) {
                         value = Array.newInstance(optionType.getComponentType(), valueList.size());
                         System.arraycopy(valueList.toArray(), 0, value, 0, valueList.size());
