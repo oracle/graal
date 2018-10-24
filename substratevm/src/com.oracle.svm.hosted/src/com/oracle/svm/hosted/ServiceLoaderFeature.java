@@ -39,6 +39,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.nativeimage.Feature;
@@ -108,6 +109,7 @@ public class ServiceLoaderFeature implements Feature {
         }
     }
 
+    @SuppressWarnings("try")
     private void handleType(AnalysisType type, DuringAnalysisAccessImpl access) {
         if (!type.isInTypeCheck() || type.isArray()) {
             /*
@@ -198,6 +200,10 @@ public class ServiceLoaderFeature implements Feature {
             newResourceValue.append('\n');
         }
 
+        DebugContext debugContext = access.getDebugContext();
+        try (DebugContext.Scope s = debugContext.scope("registerResource")) {
+            debugContext.log("registerResource: " + serviceResourceLocation);
+        }
         Resources.registerResource(serviceResourceLocation, new ByteArrayInputStream(newResourceValue.toString().getBytes(StandardCharsets.UTF_8)));
 
         /* Ensure that the static analysis runs again for the new implementation classes. */

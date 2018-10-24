@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.function.Consumer;
 
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -70,8 +71,8 @@ public class FeatureHandler {
         }
     }
 
-    public void registerFeatures(ImageClassLoader loader) {
-        IsInConfigurationAccessImpl access = new IsInConfigurationAccessImpl(this, loader);
+    public void registerFeatures(ImageClassLoader loader, DebugContext debug) {
+        IsInConfigurationAccessImpl access = new IsInConfigurationAccessImpl(this, loader, debug);
 
         for (Class<?> automaticFeature : loader.findAnnotatedClasses(AutomaticFeature.class)) {
             registerFeature(automaticFeature, access);

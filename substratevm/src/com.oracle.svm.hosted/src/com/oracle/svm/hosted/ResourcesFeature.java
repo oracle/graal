@@ -23,7 +23,7 @@
  * questions.
  */
 
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.hosted;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -39,11 +39,13 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.regex.Pattern;
 
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.nativeimage.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
 
@@ -94,10 +96,11 @@ public final class ResourcesFeature implements Feature {
             // Checkstyle: resume
             for (File element : todo) {
                 try {
+                    DebugContext debugContext = ((FeatureImpl.BeforeAnalysisAccessImpl) access).getDebugContext();
                     if (element.isDirectory()) {
-                        scanDirectory(element, "", pattern);
+                        scanDirectory(debugContext, element, "", pattern);
                     } else {
-                        scanJar(element, pattern);
+                        scanJar(debugContext, element, pattern);
                     }
                 } catch (IOException ex) {
                     throw UserError.abort("Unable to handle classpath element '" + element + "'. Make sure that all classpath entries are either directories or valid jar files.");
@@ -106,21 +109,26 @@ public final class ResourcesFeature implements Feature {
         }
     }
 
-    private void scanDirectory(File f, String relativePath, Pattern... patterns) throws IOException {
+    @SuppressWarnings("try")
+    private void scanDirectory(DebugContext debugContext, File f, String relativePath, Pattern... patterns) throws IOException {
         if (f.isDirectory()) {
             for (File ch : f.listFiles()) {
-                scanDirectory(ch, relativePath + "/" + ch.getName(), patterns);
+                scanDirectory(debugContext, ch, relativePath + "/" + ch.getName(), patterns);
             }
         } else {
             if (matches(patterns, relativePath)) {
                 try (FileInputStream is = new FileInputStream(f)) {
+                    try (DebugContext.Scope s = debugContext.scope("registerResource")) {
+                        debugContext.log("registerResource: " + relativePath.substring(1));
+                    }
                     Resources.registerResource(relativePath.substring(1), is);
                 }
             }
         }
     }
 
-    private static void scanJar(File element, Pattern... patterns) throws IOException {
+    @SuppressWarnings("try")
+    private static void scanJar(DebugContext debugContext, File element, Pattern... patterns) throws IOException {
         JarFile jf = new JarFile(element);
         Enumeration<JarEntry> en = jf.entries();
         while (en.hasMoreElements()) {
@@ -130,6 +138,9 @@ public final class ResourcesFeature implements Feature {
             }
             if (matches(patterns, e.getName())) {
                 try (InputStream is = jf.getInputStream(e)) {
+                    try (DebugContext.Scope s = debugContext.scope("registerResource")) {
+                        debugContext.log("registerResource: " + e.getName());
+                    }
                     Resources.registerResource(e.getName(), is);
                 }
             }

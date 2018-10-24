@@ -10,7 +10,8 @@ specified with the following option
 -H:IncludeResources=<Java regexp that matches resources to be included in the image>
 ```
 You can pass -H:IncludeResources several times to define more than one regexp
-to match resources.
+to match resources. To see which resources are included into the image can
+enable the related logging info with `-H:Log=registerResource:`.
 
 # Resource Bundles on Substrate VM
 
