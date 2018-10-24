@@ -39,18 +39,18 @@ import com.oracle.truffle.tools.chromeinspector.instrument.InspectorWSConnection
 public final class WSInterceptorServer implements InspectorWSConnection, MessageEndpoint {
 
     private final URI uri;
+    private final ConnectionWatcher connectionWatcher;
     private MessageEndpoint inspectEndpoint;
-    private ConnectionWatcher connectionWatcher;
 
-    public WSInterceptorServer(URI uri, InspectServerSession iss) {
+    public WSInterceptorServer(URI uri, InspectServerSession iss, ConnectionWatcher connectionWatcher) {
         this.uri = uri;
+        this.connectionWatcher = connectionWatcher;
         iss.setMessageListener(this);
     }
 
-    public void opened(MessageEndpoint endpoint, ConnectionWatcher cw) {
+    public void opened(MessageEndpoint endpoint) {
         this.inspectEndpoint = endpoint;
-        this.connectionWatcher = cw;
-        cw.notifyOpen();
+        this.connectionWatcher.notifyOpen();
     }
 
     @Override

@@ -87,9 +87,19 @@ public class InspectorMessageTransportTest {
         inspectorEndpointTest("/some/complex/path");
     }
 
+    @Test
+    public void inspectorEndpointRaceTest() {
+        RaceControl rc = new RaceControl();
+        inspectorEndpointTest(null, rc);
+    }
+
     private static void inspectorEndpointTest(String path) {
-        Session session = new Session();
-        DebuggerEndpoint endpoint = new DebuggerEndpoint(path);
+        inspectorEndpointTest(path, null);
+    }
+
+    private static void inspectorEndpointTest(String path, RaceControl rc) {
+        Session session = new Session(rc);
+        DebuggerEndpoint endpoint = new DebuggerEndpoint(path, rc);
         Engine engine = endpoint.onOpen(session);
 
         Context context = Context.newBuilder().engine(engine).build();
@@ -124,9 +134,14 @@ public class InspectorMessageTransportTest {
 
     private static final class Session {
 
+        private final RaceControl rc;
         final List<String> messages = new ArrayList<>(MESSAGES.length);
         private final BasicRemote remote = new BasicRemote(messages);
         private boolean opened = true;
+
+        Session(RaceControl rc) {
+            this.rc = rc;
+        }
 
         BasicRemote getBasicRemote() {
             return remote;
@@ -139,6 +154,9 @@ public class InspectorMessageTransportTest {
         void addMessageHandler(MsgHandler handler) throws IOException {
             remote.handler = handler;
             sendInitialMessages(handler);
+            if (rc != null) {
+                rc.clientMessagesSent();
+            }
         }
 
         private static void sendInitialMessages(final MsgHandler handler) throws IOException {
@@ -179,9 +197,11 @@ public class InspectorMessageTransportTest {
     private static final class DebuggerEndpoint {
 
         private final String path;
+        private final RaceControl rc;
 
-        DebuggerEndpoint(String path) {
+        DebuggerEndpoint(String path, RaceControl rc) {
             this.path = path;
+            this.rc = rc;
         }
 
         public Engine onOpen(final Session session) {
@@ -198,7 +218,11 @@ public class InspectorMessageTransportTest {
                         String absolutePath = path.startsWith("/") ? path : "/" + path;
                         Assert.assertTrue(uriStr, uriStr.endsWith(":" + PORT + absolutePath));
                     }
-                    return new ChromeDebuggingProtocolMessageHandler(session, requestURI, peerEndpoint);
+                    MessageEndpoint ourEndpoint = new ChromeDebuggingProtocolMessageHandler(session, requestURI, peerEndpoint);
+                    if (rc != null) {
+                        rc.waitTillClientDataAreSent();
+                    }
+                    return ourEndpoint;
                 }
             }).option("inspect", PORT);
             if (path != null) {
@@ -260,4 +284,29 @@ public class InspectorMessageTransportTest {
 
     }
 
+    // Test a possible race between data sent and transport open.
+    // The WSInterceptorServer needs to be able to deal with sendText() being called before opened()
+    private static final class RaceControl {
+
+        private boolean clientSent = false;
+
+        private synchronized void clientMessagesSent() {
+            clientSent = true;
+            notifyAll();
+        }
+
+        private synchronized void waitTillClientDataAreSent() {
+            try {
+                while (!clientSent) {
+                    wait();
+                }
+                // The data were sent, but it takes a while to process them till
+                // WSInterceptorServer#sendText gets called.
+                Thread.sleep(100);
+            } catch (InterruptedException ex) {
+                throw new IllegalStateException(ex);
+            }
+        }
+
+    }
 }
