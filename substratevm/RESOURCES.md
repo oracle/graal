@@ -9,6 +9,8 @@ specified with the following option
 ```bash
 -H:IncludeResources=<Java regexp that matches resources to be included in the image>
 ```
+You can pass -H:IncludeResources several times to define more than one regexp
+to match resources.
 
 # Resource Bundles on Substrate VM
 
