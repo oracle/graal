@@ -42,7 +42,6 @@ package com.oracle.truffle.dsl.processor.interop;
 
 import java.io.IOException;
 import java.io.Writer;
-import java.util.Collection;
 import java.util.List;
 
 import javax.annotation.processing.ProcessingEnvironment;
@@ -80,12 +79,6 @@ final class ExecuteGenerator extends MessageGenerator {
     }
 
     @Override
-    public void addImports(Collection<String> imports) {
-        super.addImports(imports);
-        imports.add("java.util.List");
-    }
-
-    @Override
     int getParameterCount() {
         return numberOfArguments;
     }
@@ -107,23 +100,26 @@ final class ExecuteGenerator extends MessageGenerator {
         appendGetName(w);
         w.append(indent).append("        @Override\n");
         w.append(indent).append("        public Object execute(VirtualFrame frame) {\n");
-        w.append(indent).append("            try {\n");
-        w.append(indent).append("              Object receiver = ForeignAccess.getReceiver(frame);\n");
-        if (Message.INVOKE.toString().equalsIgnoreCase(messageName)) {
-            w.append(indent).append("              List<Object> arguments = ForeignAccess.getArguments(frame);\n");
-            w.append(indent).append("              Object identifier = arguments.get(0);\n");
-            w.append(indent).append("              Object[] args = new Object[arguments.size() - 1];\n");
-            w.append(indent).append("              for (int i = 0; i < arguments.size() - 1; i++) {\n");
-            w.append(indent).append("                args[i] = arguments.get(i + 1);\n");
-            w.append(indent).append("              }\n");
-            w.append(indent).append("              return node.executeWithTarget(frame, receiver, identifier, args);\n");
+        w.append(indent).append("            Object receiver = ForeignAccess.getReceiver(frame);\n");
+        w.append(indent).append("            Object[] arguments = frame.getArguments();\n");
+        boolean isInvoke = Message.INVOKE.toString().equalsIgnoreCase(messageName);
+        if (isInvoke) {
+            w.append(indent).append("            Object identifier = arguments[1];\n");
+            w.append(indent).append("            Object[] args = new Object[arguments.length - 2];\n");
+            w.append(indent).append("            for (int i = 0; i < arguments.length - 2; i++) {\n");
+            w.append(indent).append("                args[i] = arguments[i + 2];\n");
+            w.append(indent).append("            }\n");
         } else {
-            w.append(indent).append("              List<Object> arguments = ForeignAccess.getArguments(frame);\n");
-            w.append(indent).append("              Object[] args = new Object[arguments.size()];\n");
-            w.append(indent).append("              for (int i = 0; i < arguments.size(); i++) {\n");
-            w.append(indent).append("                args[i] = arguments.get(i);\n");
-            w.append(indent).append("              }\n");
-            w.append(indent).append("              return node.executeWithTarget(frame, receiver, args);\n");
+            w.append(indent).append("            Object[] args = new Object[arguments.length - 1];\n");
+            w.append(indent).append("            for (int i = 0; i < arguments.length - 1; i++) {\n");
+            w.append(indent).append("                args[i] = arguments[i + 1];\n");
+            w.append(indent).append("            }\n");
+        }
+        w.append(indent).append("            try {\n");
+        if (isInvoke) {
+            w.append(indent).append("                return node.executeWithTarget(frame, receiver, identifier, args);\n");
+        } else {
+            w.append(indent).append("                return node.executeWithTarget(frame, receiver, args);\n");
         }
         w.append(indent).append("            } catch (UnsupportedSpecializationException e) {\n");
         appendHandleUnsupportedTypeException(w);

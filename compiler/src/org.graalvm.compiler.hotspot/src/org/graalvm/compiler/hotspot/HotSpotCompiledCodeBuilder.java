@@ -270,22 +270,20 @@ public class HotSpotCompiledCodeBuilder {
                         }
                     }
                 }
-
-                assert site == null || site.pcOffset >= source.getStartOffset();
-                if (site != null && site.pcOffset <= source.getEndOffset()) {
+                assert !siteListIterator.hasNext() || site.pcOffset >= source.getStartOffset();
+                if (site != null && source.getStartOffset() <= site.pcOffset && site.pcOffset <= source.getEndOffset()) {
                     // Conflicting source mapping, skip it.
                     continue;
                 } else {
                     // Since the sites are sorted there can not be any more sites in this interval.
                 }
-
-                assert site == null || site.pcOffset > source.getEndOffset();
+                assert !siteListIterator.hasNext() || site.pcOffset > source.getEndOffset();
                 // Good source mapping. Create an infopoint and add it to the list.
                 NodeSourcePosition sourcePosition = source.getSourcePosition();
                 assert sourcePosition.verify();
                 sourcePosition = sourcePosition.trim();
                 if (sourcePosition != null) {
-                    assert !anyMatch(sites, s -> source.contains(s.pcOffset));
+                    assert !anyMatch(sites, s -> source.getStartOffset() <= s.pcOffset && s.pcOffset <= source.getEndOffset());
                     sourcePositionSites.add(new Infopoint(source.getEndOffset(), new DebugInfo(sourcePosition), InfopointReason.BYTECODE_POSITION));
                 }
             }

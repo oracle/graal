@@ -41,7 +41,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -72,13 +71,13 @@ public final class ICU4JFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         registerShimClass(access, "com.ibm.icu.text.NumberFormatServiceShim");
+        registerShimClass(access, "com.ibm.icu.text.CollatorServiceShim");
     }
 
     private static void registerShimClass(BeforeAnalysisAccess access, String shimClassName) {
-        Class<?> numberFormatServiceShim = access.findClassByName(shimClassName);
-        if (numberFormatServiceShim != null) {
-            RuntimeReflection.register(numberFormatServiceShim.getDeclaredConstructors());
-            ClassForNameSupport.registerClass(numberFormatServiceShim);
+        Class<?> shimClass = access.findClassByName(shimClassName);
+        if (shimClass != null) {
+            RuntimeReflection.registerForReflectiveInstantiation(shimClass);
         } else {
             throw VMError.shouldNotReachHere(shimClassName + " not found");
         }
