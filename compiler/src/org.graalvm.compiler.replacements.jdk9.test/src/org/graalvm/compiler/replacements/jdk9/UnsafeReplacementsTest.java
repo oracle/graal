@@ -49,7 +49,6 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
         public volatile long longField = 0xdedababafafaL;
         public volatile float floatField = 0.125f;
         public volatile double doubleField = 0.125;
-        public volatile Object objectField = dummyValue;
     }
 
     static jdk.internal.misc.Unsafe unsafe = jdk.internal.misc.Unsafe.getUnsafe();
@@ -63,7 +62,6 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
     static long longOffset;
     static long floatOffset;
     static long doubleOffset;
-    static long objectOffset;
 
     static {
         try {
@@ -75,7 +73,6 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
             longOffset = unsafe.objectFieldOffset(Container.class.getDeclaredField("longField"));
             floatOffset = unsafe.objectFieldOffset(Container.class.getDeclaredField("floatField"));
             doubleOffset = unsafe.objectFieldOffset(Container.class.getDeclaredField("doubleField"));
-            objectOffset = unsafe.objectFieldOffset(Container.class.getDeclaredField("objectField"));
         } catch (NoSuchFieldException e) {
             throw new RuntimeException(e);
         }
@@ -121,11 +118,6 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
         return unsafe.compareAndSetDouble(container, doubleOffset, 0.125, 0.25);
     }
 
-    public static boolean unsafeCompareAndSetObject() {
-        Container container = new Container();
-        return unsafe.compareAndSetObject(container, objectOffset, dummyValue, newDummyValue);
-    }
-
     public static boolean unsafeCompareAndExchangeBoolean() {
         Container container = new Container();
         return unsafe.compareAndExchangeBoolean(container, booleanOffset, false, true);
@@ -166,11 +158,6 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
         return unsafe.compareAndExchangeDouble(container, doubleOffset, 0.125, 0.25);
     }
 
-    public static Object unsafeCompareAndExchangeObject() {
-        Container container = new Container();
-        return unsafe.compareAndExchangeObject(container, objectOffset, dummyValue, newDummyValue);
-    }
-
     @Test
     public void testCompareAndSet() {
         TargetDescription target = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getTarget();
@@ -183,7 +170,6 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
             testGraph("unsafeCompareAndSetLong");
             testGraph("unsafeCompareAndSetFloat");
             testGraph("unsafeCompareAndSetDouble");
-            testGraph("unsafeCompareAndSetObject");
             testGraph("unsafeCompareAndExchangeBoolean");
             testGraph("unsafeCompareAndExchangeByte");
             testGraph("unsafeCompareAndExchangeChar");
@@ -192,7 +178,6 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
             testGraph("unsafeCompareAndExchangeLong");
             testGraph("unsafeCompareAndExchangeFloat");
             testGraph("unsafeCompareAndExchangeDouble");
-            testGraph("unsafeCompareAndExchangeObject");
         }
         test("unsafeCompareAndSetBoolean");
         test("unsafeCompareAndSetByte");
@@ -202,7 +187,6 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
         test("unsafeCompareAndSetLong");
         test("unsafeCompareAndSetFloat");
         test("unsafeCompareAndSetDouble");
-        test("unsafeCompareAndSetObject");
         test("unsafeCompareAndExchangeBoolean");
         test("unsafeCompareAndExchangeByte");
         test("unsafeCompareAndExchangeChar");
@@ -211,7 +195,6 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
         test("unsafeCompareAndExchangeLong");
         test("unsafeCompareAndExchangeFloat");
         test("unsafeCompareAndExchangeDouble");
-        test("unsafeCompareAndExchangeObject");
     }
 
     public static int unsafeGetAndAddByte() {
@@ -288,13 +271,6 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
         return unsafe.getAndSetLong(container, longOffset, 0x12345678abL);
     }
 
-    public static Object unsafeGetAndSetObject() {
-        Container container = new Container();
-        container.objectField = null;
-        Container other = new Container();
-        return unsafe.getAndSetObject(container, objectOffset, other);
-    }
-
     @Test
     public void testGetAndSet() {
         TargetDescription target = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getTarget();
@@ -307,7 +283,6 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
         if (target.arch instanceof AMD64 || target.arch instanceof AArch64) {
             testGraph("unsafeGetAndSetInt");
             testGraph("unsafeGetAndSetLong");
-            testGraph("unsafeGetAndSetObject");
         }
         test("unsafeGetAndSetBoolean");
         test("unsafeGetAndSetByte");
@@ -315,7 +290,6 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
         test("unsafeGetAndSetShort");
         test("unsafeGetAndSetInt");
         test("unsafeGetAndSetLong");
-        test("unsafeGetAndSetObject");
     }
 
     public static void fieldInstance() {
@@ -562,12 +536,6 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
         return unsafe.getDouble(container, doubleOffset);
     }
 
-    public static Object unsafeGetPutObject() {
-        Container container = new Container();
-        unsafe.putObject(container, objectOffset, "Hello there");
-        return unsafe.getObject(container, objectOffset);
-    }
-
     public static boolean unsafeGetPutBooleanOpaque() {
         Container container = new Container();
         unsafe.putBooleanOpaque(container, booleanOffset, true);
@@ -614,12 +582,6 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
         Container container = new Container();
         unsafe.putDoubleOpaque(container, doubleOffset, 1.23456789);
         return unsafe.getDoubleOpaque(container, doubleOffset);
-    }
-
-    public static Object unsafeGetPutObjectOpaque() {
-        Container container = new Container();
-        unsafe.putObjectOpaque(container, objectOffset, "Hello there");
-        return unsafe.getObjectOpaque(container, objectOffset);
     }
 
     public static boolean unsafeGetPutBooleanRA() {
@@ -670,12 +632,6 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
         return unsafe.getDoubleAcquire(container, doubleOffset);
     }
 
-    public static Object unsafeGetPutObjectRA() {
-        Container container = new Container();
-        unsafe.putObjectRelease(container, objectOffset, "Hello there");
-        return unsafe.getObjectAcquire(container, objectOffset);
-    }
-
     public static boolean unsafeGetPutBooleanVolatile() {
         Container container = new Container();
         unsafe.putBooleanVolatile(container, booleanOffset, true);
@@ -724,12 +680,6 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
         return unsafe.getDoubleVolatile(container, doubleOffset);
     }
 
-    public static Object unsafeGetPutObjectVolatile() {
-        Container container = new Container();
-        unsafe.putObjectVolatile(container, objectOffset, "Hello there");
-        return unsafe.getObjectVolatile(container, objectOffset);
-    }
-
     @Test
     public void testUnsafeGetPutPlain() {
         testGraph("unsafeGetPutBoolean");
@@ -740,7 +690,6 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
         testGraph("unsafeGetPutLong");
         testGraph("unsafeGetPutFloat");
         testGraph("unsafeGetPutDouble");
-        testGraph("unsafeGetPutObject");
 
         test("unsafeGetPutBoolean");
         test("unsafeGetPutByte");
@@ -750,7 +699,6 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
         test("unsafeGetPutLong");
         test("unsafeGetPutFloat");
         test("unsafeGetPutDouble");
-        test("unsafeGetPutObject");
     }
 
     @Test
@@ -763,7 +711,6 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
         testGraph("unsafeGetPutLongOpaque");
         testGraph("unsafeGetPutFloatOpaque");
         testGraph("unsafeGetPutDoubleOpaque");
-        testGraph("unsafeGetPutObjectOpaque");
 
         test("unsafeGetPutBooleanOpaque");
         test("unsafeGetPutByteOpaque");
@@ -773,7 +720,6 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
         test("unsafeGetPutLongOpaque");
         test("unsafeGetPutFloatOpaque");
         test("unsafeGetPutDoubleOpaque");
-        test("unsafeGetPutObjectOpaque");
     }
 
     @Test
@@ -786,7 +732,6 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
         testGraph("unsafeGetPutLongRA");
         testGraph("unsafeGetPutFloatRA");
         testGraph("unsafeGetPutDoubleRA");
-        testGraph("unsafeGetPutObjectRA");
 
         test("unsafeGetPutBooleanRA");
         test("unsafeGetPutByteRA");
@@ -796,7 +741,6 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
         test("unsafeGetPutLongRA");
         test("unsafeGetPutFloatRA");
         test("unsafeGetPutDoubleRA");
-        test("unsafeGetPutObjectRA");
     }
 
     @Test
@@ -809,7 +753,6 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
         testGraph("unsafeGetPutLongVolatile");
         testGraph("unsafeGetPutFloatVolatile");
         testGraph("unsafeGetPutDoubleVolatile");
-        testGraph("unsafeGetPutObjectVolatile");
 
         test("unsafeGetPutBooleanVolatile");
         test("unsafeGetPutByteVolatile");
@@ -819,6 +762,5 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
         test("unsafeGetPutLongVolatile");
         test("unsafeGetPutFloatVolatile");
         test("unsafeGetPutDoubleVolatile");
-        test("unsafeGetPutObjectVolatile");
     }
 }
