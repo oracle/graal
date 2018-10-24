@@ -1527,8 +1527,8 @@ public class NativeImageGenerator {
         }
     }
 
-    private static <T extends Enum<T>> Set<T> parseCSVtoEnum(Class<T> enumType, String csvEnumValues) {
-        return Arrays.stream(csvEnumValues.split(",")).map(String::trim).filter(v -> !Objects.equals(v, "")).map(enumValue -> {
+    private static <T extends Enum<T>> Set<T> parseCSVtoEnum(Class<T> enumType, String[] csvEnumValues) {
+        return Arrays.stream(csvEnumValues).map(String::trim).filter(v -> !Objects.equals(v, "")).map(enumValue -> {
             try {
                 return Enum.valueOf(enumType, enumValue);
             } catch (IllegalArgumentException iae) {
