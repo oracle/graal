@@ -36,6 +36,7 @@ import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -64,6 +65,7 @@ public class TransferToInterpreterTest {
 
     @Test
     public void test() {
+        Assume.assumeTrue(TruffleCompilerOptions.getValue(TruffleCompilerOptions.TruffleCompileImmediately));
         RootNode rootNode = new TestRootNode();
         GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
