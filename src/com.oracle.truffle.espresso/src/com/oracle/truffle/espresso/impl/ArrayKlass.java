@@ -172,7 +172,7 @@ public final class ArrayKlass extends Klass {
 
     @Override
     public MethodInfo[] getDeclaredConstructors() {
-        throw EspressoError.unimplemented();
+        return MethodInfo.EMPTY_ARRAY;
     }
 
     @Override
