@@ -29,6 +29,7 @@ import java.lang.reflect.Constructor;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.MethodInfo;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
@@ -43,13 +44,13 @@ public class Target_sun_reflect_NativeConstructorAccessorImpl {
 
         assert parameters == StaticObject.NULL || (((StaticObjectArray) parameters)).getWrapped().length == 0;
 
-        StaticObjectClass clazz = (StaticObjectClass) meta(constructor).field("clazz").get();
-        clazz.getMirror().initialize();
-        String className = clazz.getMirror().getName();
-
-        StaticObject instance = Utils.getVm().newObject(EspressoLanguage.getCurrentContext().getRegistries().resolve(EspressoLanguage.getCurrentContext().getTypeDescriptors().make(className), null));
-        MethodInfo emptyConstructor = instance.getKlass().findDeclaredConcreteMethod("<init>", EspressoLanguage.getCurrentContext().getSignatureDescriptors().make("()V"));
-        emptyConstructor.getCallTarget().call(instance);
-        return instance;
+        Meta.Klass klass = meta(((StaticObjectClass) meta(constructor).field("clazz").get()).getMirror());
+        klass.rawKlass().initialize();
+        if (klass.isArray() || klass.isPrimitive() || klass.isInterface() || klass.isAbstract()) {
+            throw klass.getMeta().throwEx(InstantiationException.class);
+        }
+        Meta.Klass.WithInstance instance = klass.metaNew();
+        instance.method("<init>", void.class).invokeDirect();
+        return instance.getInstance();
     }
 }
