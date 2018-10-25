@@ -2,6 +2,10 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 1.0.0 RC9
+
+* Added support for setting the `ThreadGroup` and `stackSize` on truffle thread creation in `TruffleLanguage.Env.createThread`.
+
 ## Version 1.0.0 RC8
 
 * Added `SuspendedEvent.setReturnValue` to change the return value of the currently executed source location.
@@ -10,6 +14,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added `TruffleFile.relativize`, `TruffleFile.startsWith`, `TruffleFile.endsWith`, `TruffleFile.createLink`,  `TruffleFile.createSymbolicLink`, `TruffleFile.getOwner`, `TruffleFile.getGroup`, `TruffleFile.newDirectoryStream`, `TruffleFile.visit`, `TruffleFile.copy` methods.
 
 ## Version 1.0.0 RC7
+
 * Truffle was relicensed from GPLv2 with CPE to Universal Permissive License (UPL).
 * Made all Truffle DSL annotations retention policy CLASS instead of RUNTIME. Reflecting DSL annotations at runtime is no longer possible. It is recommended to use `@Introspectable` instead. 
 
