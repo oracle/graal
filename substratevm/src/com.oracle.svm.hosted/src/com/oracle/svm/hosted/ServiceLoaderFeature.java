@@ -49,6 +49,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 
@@ -104,24 +105,34 @@ public class ServiceLoaderFeature implements Feature {
     public void duringAnalysis(DuringAnalysisAccess a) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
 
+        boolean workDone = false;
         for (AnalysisType type : access.getUniverse().getTypes()) {
-            handleType(type, access);
+            if (handleType(type, access)) {
+                workDone = true;
+            }
+        }
+        if (workDone) {
+            DebugContext debugContext = access.getDebugContext();
+            try (DebugContext.Scope s = debugContext.scope("registerResource")) {
+                debugContext.log("Resources have been added by ServiceLoaderFeature. Automatic registration can be disabled with " +
+                                SubstrateOptionsParser.commandArgument(Options.UseServiceLoaderFeature, "-"));
+            }
         }
     }
 
     @SuppressWarnings("try")
-    private void handleType(AnalysisType type, DuringAnalysisAccessImpl access) {
+    private boolean handleType(AnalysisType type, DuringAnalysisAccessImpl access) {
         if (!type.isInTypeCheck() || type.isArray()) {
             /*
              * Type is not seen as used yet by the static analysis. Note that a constant class
              * literal is enough to register a type as "in type check". Arrays are also never
              * services.
              */
-            return;
+            return false;
         }
         if (processedTypes.putIfAbsent(type, Boolean.TRUE) != null) {
             /* Type already processed. */
-            return;
+            return false;
         }
 
         String serviceClassName = type.toClassName();
@@ -158,7 +169,7 @@ public class ServiceLoaderFeature implements Feature {
              * No service implementations registered in the resources. Since we check all classes
              * that the static analysis finds, this case is very likely.
              */
-            return;
+            return false;
         }
 
         if (trace) {
@@ -202,12 +213,13 @@ public class ServiceLoaderFeature implements Feature {
 
         DebugContext debugContext = access.getDebugContext();
         try (DebugContext.Scope s = debugContext.scope("registerResource")) {
-            debugContext.log("registerResource: " + serviceResourceLocation);
+            debugContext.log("ServiceLoaderFeature: registerResource: " + serviceResourceLocation);
         }
         Resources.registerResource(serviceResourceLocation, new ByteArrayInputStream(newResourceValue.toString().getBytes(StandardCharsets.UTF_8)));
 
         /* Ensure that the static analysis runs again for the new implementation classes. */
         access.requireAnalysisIteration();
+        return true;
     }
 
     /**
