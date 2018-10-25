@@ -48,7 +48,6 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
@@ -180,6 +179,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.LocalizationFeature;
 import com.oracle.svm.core.option.HostedOptionValues;
+import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.snippets.SnippetRuntime;
@@ -1528,12 +1528,14 @@ public class NativeImageGenerator {
     }
 
     private static <T extends Enum<T>> Set<T> parseCSVtoEnum(Class<T> enumType, String[] csvEnumValues) {
-        return Arrays.stream(csvEnumValues).map(String::trim).filter(v -> !Objects.equals(v, "")).map(enumValue -> {
+        EnumSet<T> result = EnumSet.noneOf(enumType);
+        for (String enumValue : OptionUtils.flatten(",", csvEnumValues)) {
             try {
-                return Enum.valueOf(enumType, enumValue);
+                result.add(Enum.valueOf(enumType, enumValue));
             } catch (IllegalArgumentException iae) {
                 throw VMError.shouldNotReachHere("Value '" + enumValue + "' does not exist. Available values are:\n" + Arrays.toString(AMD64.CPUFeature.values()));
             }
-        }).collect(Collectors.toSet());
+        }
+        return result;
     }
 }

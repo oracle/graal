@@ -30,6 +30,7 @@ import java.io.PrintStream;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map.Entry;
@@ -194,24 +195,15 @@ public class SubstrateOptionsParser {
             try {
                 if (optionType.isArray()) {
                     OptionKey<?> optionKey = desc.getOptionKey();
-                    List<Object> valueList = new ArrayList<>();
-                    if (optionKey.getDelimiterRegex() != null) {
-                        for (String elemValueString : valueString.split(optionKey.getDelimiterRegex())) {
-                            valueList.add(parseValue(optionType.getComponentType(), optionName, elemValueString));
-                        }
-                    } else {
-                        valueList.add(parseValue(optionType.getComponentType(), optionName, valueString));
-                    }
+                    Object addValue = parseValue(optionType.getComponentType(), optionName, valueString);
                     Object previous = valuesMap.get(optionKey);
                     if (previous == null) {
-                        value = Array.newInstance(optionType.getComponentType(), valueList.size());
-                        System.arraycopy(valueList.toArray(), 0, value, 0, valueList.size());
+                        value = Array.newInstance(optionType.getComponentType(), 1);
+                        ((Object[]) value)[0] = addValue;
                     } else {
-                        assert previous instanceof Object[];
                         Object[] previousValues = (Object[]) previous;
-                        value = Array.newInstance(optionType.getComponentType(), previousValues.length + valueList.size());
-                        System.arraycopy(previousValues, 0, value, 0, previousValues.length);
-                        System.arraycopy(valueList.toArray(), 0, value, previousValues.length, valueList.size());
+                        value = Arrays.copyOf(previousValues, previousValues.length + 1);
+                        ((Object[]) value)[previousValues.length] = addValue;
                     }
                 } else {
                     value = parseValue(optionType, optionName, valueString);

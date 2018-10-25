@@ -45,10 +45,10 @@ public final class ReflectionFeature implements GraalFeature {
 
     public static class Options {
         @Option(help = "file:doc-files/ReflectionConfigurationFilesHelp.txt", type = OptionType.User)//
-        public static final HostedOptionKey<String[]> ReflectionConfigurationFiles = new HostedOptionKey<>(new String[0]);
+        public static final HostedOptionKey<String[]> ReflectionConfigurationFiles = new HostedOptionKey<>(null);
 
         @Option(help = "Resources describing program elements to be made available for reflection (see ReflectionConfigurationFiles).", type = OptionType.User)//
-        public static final HostedOptionKey<String[]> ReflectionConfigurationResources = new HostedOptionKey<>(new String[0]);
+        public static final HostedOptionKey<String[]> ReflectionConfigurationResources = new HostedOptionKey<>(null);
     }
 
     private ReflectionDataBuilder reflectionData;
