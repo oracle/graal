@@ -298,7 +298,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
     @TruffleBoundary
     public PythonFlavorProcessor(RegexSource source, PythonREMode mode) {
         this.inPattern = source.getPattern();
-        this.inFlags = source.getGeneralFlags();
+        this.inFlags = source.getFlags();
         this.mode = mode;
         this.position = 0;
         this.outPattern = new StringBuilder(inPattern.length());
