@@ -58,12 +58,4 @@ public abstract class RegexExecRootNode extends RegexBodyNode {
     }
 
     protected abstract RegexResult execute(VirtualFrame frame, RegexObject regex, Object input, int fromIndex);
-
-    // Compatibility for Graal.js. To be dropped once Graal.js loses the override in
-    // JoniRegexExecRootNode.
-    @Deprecated
-    @SuppressWarnings("unused")
-    protected boolean sourceIsUnicode(RegexObject regex) {
-        return getSource().getFlags().isUnicode();
-    }
 }

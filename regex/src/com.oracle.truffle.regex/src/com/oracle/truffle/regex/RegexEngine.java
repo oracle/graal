@@ -57,12 +57,6 @@ public class RegexEngine implements RegexLanguageObject {
     private final RegexCompiler compiler;
     private final RegexOptions options;
 
-    @Deprecated
-    public RegexEngine(RegexCompiler compiler, boolean eagerCompilation) {
-        this.compiler = compiler;
-        this.options = eagerCompilation ? RegexOptions.parse("RegressionTestMode=true") : RegexOptions.DEFAULT;
-    }
-
     public RegexEngine(RegexCompiler compiler, RegexOptions options) {
         this.compiler = compiler;
         this.options = options;
