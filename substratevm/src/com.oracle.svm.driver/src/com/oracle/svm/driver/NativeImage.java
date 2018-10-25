@@ -629,33 +629,31 @@ public class NativeImage {
         }
     }
 
-    private void processClasspathNativeImageProperties(Collection<Path> paths) {
-        for (Path classpathEntry : paths) {
-            try {
-                if (Files.isDirectory(classpathEntry)) {
-                    Path nativeImageMetaInfBase = classpathEntry.resolve(Paths.get(nativeImagePropertiesMetaInf));
-                    processNativeImageProperties(nativeImageMetaInfBase);
+    private void processClasspathNativeImageProperties(Path classpathEntry) {
+        try {
+            if (Files.isDirectory(classpathEntry)) {
+                Path nativeImageMetaInfBase = classpathEntry.resolve(Paths.get(nativeImagePropertiesMetaInf));
+                processNativeImageProperties(nativeImageMetaInfBase);
+            } else {
+                List<Path> jarFileMatches;
+                if (classpathEntry.endsWith("*")) {
+                    jarFileMatches = Files.list(classpathEntry.getParent())
+                                    .filter(p -> p.getFileName().toString().toLowerCase().endsWith(".jar"))
+                                    .collect(Collectors.toList());
                 } else {
-                    List<Path> jarFileMatches;
-                    if (classpathEntry.endsWith("*")) {
-                        jarFileMatches = Files.list(classpathEntry.getParent())
-                                        .filter(p -> p.getFileName().toString().toLowerCase().endsWith(".jar"))
-                                        .collect(Collectors.toList());
-                    } else {
-                        jarFileMatches = Collections.singletonList(classpathEntry);
-                    }
+                    jarFileMatches = Collections.singletonList(classpathEntry);
+                }
 
-                    for (Path jarFile : jarFileMatches) {
-                        URI jarFileURI = URI.create("jar:" + jarFile.toUri());
-                        try (FileSystem jarFS = FileSystems.newFileSystem(jarFileURI, Collections.emptyMap())) {
-                            Path nativeImageMetaInfBase = jarFS.getPath("/" + nativeImagePropertiesMetaInf);
-                            processNativeImageProperties(nativeImageMetaInfBase);
-                        }
+                for (Path jarFile : jarFileMatches) {
+                    URI jarFileURI = URI.create("jar:" + jarFile.toUri());
+                    try (FileSystem jarFS = FileSystems.newFileSystem(jarFileURI, Collections.emptyMap())) {
+                        Path nativeImageMetaInfBase = jarFS.getPath("/" + nativeImagePropertiesMetaInf);
+                        processNativeImageProperties(nativeImageMetaInfBase);
                     }
                 }
-            } catch (IOException e) {
-                throw showError("Invalid classpath entry " + classpathEntry, e);
             }
+        } catch (IOException e) {
+            throw showError("Invalid classpath entry " + classpathEntry, e);
         }
     }
 
@@ -686,7 +684,7 @@ public class NativeImage {
     private void processNativeImageProperties(Map<String, String> properties, Function<String, String> resolver) {
         String imageName = properties.get("ImageName");
         if (imageName != null) {
-            addPlainImageBuilderArg(NativeImage.oHName + resolver.apply(imageName));
+            addCustomImageBuilderArgs(NativeImage.oHName + resolver.apply(imageName));
         }
         forEachPropertyValue(properties.get("JavaArgs"), this::addImageBuilderJavaArgs, resolver);
         forEachPropertyValue(properties.get("Args"), this::addImageBuilderArg, resolver);
@@ -708,10 +706,6 @@ public class NativeImage {
         } else {
             imageClasspath.addAll(customImageClasspath);
         }
-
-        // Process all META-INF/*/native-image.properties found on the imageClasspath
-        processClasspathNativeImageProperties(imageProvidedClasspath);
-        processClasspathNativeImageProperties(imageClasspath);
 
         /* Perform JavaArgs consolidation - take the maximum of -Xmx, minimum of -Xms */
         Long xmxValue = consolidateArgs(imageBuilderJavaArgs, oXmx, SubstrateOptionsParser::parseLong, String::valueOf, () -> 0L, Math::max);
@@ -954,7 +948,9 @@ public class NativeImage {
     }
 
     void addImageClasspath(Path classpath) {
-        imageClasspath.add(canonicalize(classpath));
+        Path classpathEntry = canonicalize(classpath);
+        processClasspathNativeImageProperties(classpathEntry);
+        imageClasspath.add(classpathEntry);
     }
 
     /**
@@ -962,12 +958,16 @@ public class NativeImage {
      * jars, truffle jars etc.
      */
     void addImageProvidedClasspath(Path classpath) {
-        imageProvidedClasspath.add(canonicalize(classpath));
+        Path classpathEntry = canonicalize(classpath);
+        processClasspathNativeImageProperties(classpathEntry);
+        imageProvidedClasspath.add(classpathEntry);
     }
 
     void addCustomImageClasspath(Path classpath) {
         try {
-            customImageClasspath.add(canonicalize(classpath));
+            Path classpathEntry = canonicalize(classpath);
+            processClasspathNativeImageProperties(classpathEntry);
+            customImageClasspath.add(classpathEntry);
         } catch (NativeImageError e) {
             showWarning("Invalid classpath entry: " + classpath);
         }
