@@ -7,6 +7,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added support for setting the `ThreadGroup` and `stackSize` on truffle thread creation in `TruffleLanguage.Env.createThread`.
 * Added `Instrumenter.lookupExecutionEventNode()` to find an execution event node inserted at the node's location by an event binding.
 * Added `SourceElement.ROOT` and `StepConfig.suspendAnchors()` to tune debugger stepping.
+* Added `KeyInfo.READ_SIDE_EFFECTS` and `KeyInfo.WRITE_SIDE_EFFECTS` to inform about side-effects of READ/WRITE messages.
+* Added `DebugValue.hasReadSideEffects()` and `DebugValue.hasWriteSideEffects()` to test for side-effects of reading or writing the value.
 
 ## Version 1.0.0 RC8
 

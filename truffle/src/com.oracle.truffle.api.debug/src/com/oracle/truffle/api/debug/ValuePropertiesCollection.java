@@ -81,6 +81,9 @@ final class ValuePropertiesCollection extends AbstractCollection<DebugValue> {
     }
 
     DebugValue get(String name) {
+        if (!map.containsKey(name)) {
+            return null;
+        }
         Object value = map.get(name);
         if (value == null) {
             return null;
