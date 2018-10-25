@@ -40,12 +40,6 @@ public class CachingRegexEngine extends RegexEngine {
         super(compiler, options);
     }
 
-    // Compatibility for Graal.js. To be dropped once Graal.js switches to the other constructor.
-    @Deprecated
-    public CachingRegexEngine(RegexCompiler compiler, boolean eagerCompilation) {
-        this(compiler, RegexOptions.newBuilder().regressionTestMode(eagerCompilation).build());
-    }
-
     @Override
     public RegexObject compile(RegexSource regexSource) throws RegexSyntaxException, UnsupportedRegexException {
         CompilationResult<RegexObject> result = cacheGet(regexSource);

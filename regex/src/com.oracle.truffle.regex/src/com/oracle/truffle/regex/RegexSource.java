@@ -48,33 +48,21 @@ public final class RegexSource implements JsonConvertible {
         this(pattern, "");
     }
 
-    // Compatibility for Graal.js. To be dropped once Graal.js switches to the first constructor.
-    @Deprecated
-    public RegexSource(String pattern, RegexFlags flags) {
-        this(pattern, flags.getSource());
-    }
-
     public String getPattern() {
         return pattern;
     }
 
-    public RegexFlags getFlags() {
-        return RegexFlags.parseFlags(flags);
+    public String getFlags() {
+        return flags;
     }
 
     /**
-     * The return type of getFlags will be changed to String in order to support flags of other
-     * regular expression dialects. However, this would break the current usage in Graal.js.
-     * Therefore, getFlags() still returns the parsed ECMAScript flags as a RegexFlags object and a
-     * new method is introduced for accessing the flag source as a String.
-     *
-     * Once Graal.js migrates to this new method, the return type of getFlags can be changed, and
-     * once everyone migrates to using that, this method can be dropped.
-     *
-     * TODO: Remove this once the return type of getFlags has been changed to String.
+     * Deprecated.
+     * <p>
+     * TODO: Remove this once it is no longer used by Graal.js.
      */
     public String getGeneralFlags() {
-        return flags;
+        return getFlags();
     }
 
     public Source getSource() {
