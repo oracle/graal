@@ -28,6 +28,7 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 import re
+import shutil
 import tempfile
 
 import mx, mx_benchmark, mx_sulong, mx_buildtools
@@ -90,26 +91,23 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
                 # benchmark dir
                 path = self.workingDirectory(benchnames, bmSuiteArgs)
                 # create directory for executable of this vm
-                if not os.path.exists(path):
-                    os.makedirs(path)
+                if os.path.exists(path):
+                    shutil.rmtree(path)
+                os.makedirs(path)
                 os.chdir(path)
-
-                native_out = 'bench'
-                if os.path.exists(native_out):
-                    os.remove(native_out)
 
                 env = os.environ.copy()
                 env['VPATH'] = '..'
 
                 env = vm.prepare_env(env)
-                cmdline = ['make', '-f', '../Makefile']
+                out = vm.out_file()
+                cmdline = ['make', '-f', '../Makefile', out]
                 if mx._opts.verbose:
                     # The Makefiles should have logic to disable the @ sign
                     # so that all executed commands are visible.
                     cmdline += ["MX_VERBOSE=y"]
                 mx.run(cmdline, env=env)
-                opt_out = vm.post_process_executable(native_out)
-                self.bench_to_exec[bench] = os.path.abspath(opt_out)
+                self.bench_to_exec[bench] = os.path.abspath(out)
             finally:
                 # reset current Directory
                 os.chdir(currentDir)
@@ -163,14 +161,14 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
 
 class CExecutionEnvironmentMixin(object):
 
+    def out_file(self):
+        return 'bench'
+
     def bin_dir(self):
         return '{}-{}'.format(self.name(), self.config_name())
 
     def prepare_env(self, env):
         return env
-
-    def post_process_executable(self, exe, *args, **kwargs):
-        return exe
 
 
 class GccLikeVm(CExecutionEnvironmentMixin, Vm):
@@ -261,21 +259,12 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
     def prepare_env(self, env):
         env['CFLAGS'] = ' '.join(_env_flags + ['-lm', '-lgmp'])
         env['LLVM_COMPILER'] = mx_buildtools.ClangCompiler.CLANG
-        env['CC'] = 'wllvm'
+        env['CLANG'] = mx_buildtools.ClangCompiler.CLANG
+        env['OPT_FLAGS'] = ' '.join(self.opt_phases())
         return env
 
-    def post_process_executable(self, exe, *args, **kwargs):
-        bc_out = self.extract_bitcode(exe, *args, **kwargs)
-        return self.optimize_bitcode(bc_out, *args, **kwargs)
-
-    def extract_bitcode(self, native_out, *args, **kwargs):
-        bc_out = 'bench.bc'
-        mx.run(['extract-bc', native_out, '--output', bc_out], *args, **kwargs)
-        return bc_out
-
-    def optimize_bitcode(self, bc_out, *args, **kwargs):
-        mx_sulong.opt(['-o', bc_out, bc_out] + self.opt_phases(), *args, **kwargs)
-        return bc_out
+    def out_file(self):
+        return 'bench.opt.bc'
 
     def opt_phases(self):
         return [
