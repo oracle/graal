@@ -183,7 +183,6 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             if (mainClass == null) {
                 NativeImage.showError("No main manifest attribute, in " + filePath);
             }
-            nativeImage.addImageClasspath(filePath);
             nativeImage.addPlainImageBuilderArg(NativeImage.oHClass + mainClass);
             String jarFileName = filePath.getFileName().toString();
             String jarSuffix = ".jar";
@@ -208,6 +207,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                     nativeImage.addImageProvidedClasspath(manifestClassPath);
                 }
             }
+            nativeImage.addImageClasspath(filePath);
         } catch (NativeImage.NativeImageError ex) {
             throw ex;
         } catch (Throwable ex) {
