@@ -805,6 +805,6 @@ public final class RegexLexer {
     }
 
     private RegexSyntaxException syntaxError(String msg) {
-        return new RegexSyntaxException(pattern, source.getGeneralFlags(), msg);
+        return new RegexSyntaxException(pattern, source.getFlags(), msg);
     }
 }

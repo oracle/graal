@@ -117,7 +117,7 @@ public final class RegexParser {
     @TruffleBoundary
     public RegexParser(RegexSource source, RegexOptions options) throws RegexSyntaxException {
         this.source = source;
-        this.flags = RegexFlags.parseFlags(source.getGeneralFlags());
+        this.flags = RegexFlags.parseFlags(source.getFlags());
         this.lexer = new RegexLexer(source, flags, options);
         this.ast = new RegexAST(source, flags, options);
         this.properties = ast.getProperties();
@@ -635,7 +635,7 @@ public final class RegexParser {
     }
 
     private RegexSyntaxException syntaxError(String msg) {
-        return new RegexSyntaxException(source.getPattern(), source.getGeneralFlags(), msg);
+        return new RegexSyntaxException(source.getPattern(), source.getFlags(), msg);
     }
 
     /**

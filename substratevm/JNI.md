@@ -88,6 +88,8 @@ Native code can access a Java field by obtaining its `jfieldID` and then using o
 
 For a field that is accessible via JNI, its offset within an object (or within the static field area) is stored in the reflection metadata and is used as its `jfieldID`. The image build generates accessor methods for for fields of all primitive types and for object fields. These accessor methods perform the transition to Java code and back, and use unsafe loads or stores to directly manipulate the field value. Because the analysis cannot observe assignments of object fields via JNI, it assumes that any subtype of the field's declared type can occur in a field that is accessible via JNI.
 
+JNI also permits writing fields that are declared `final`, which must be enabled for individual fields in the configuration file (see above). However, code accessing final fields might not observe changes of final field values in the same way as for non-final fields because of optimizations.
+
 ## Exceptions
 JNI specifies that exceptions in Java code that are the result of a call from native code must be caught and retained. In Substrate VM, this is done in the native-to-Java call wrappers and in the implementation JNI functions. Native code can then query and clear a pending exception with the `ExceptionCheck`, `ExceptionOccurred`, `ExceptionDescribe` and `ExceptionClear` functions. Native code can also throw exceptions with `Throw`, `ThrowNew` or `FatalError`. When an exception remains unhandled in native code or the native code itself throws an exception, the Java-to-native call wrapper rethrows that exception upon reentering Java code.
 

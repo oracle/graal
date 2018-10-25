@@ -334,7 +334,7 @@ final class TRegexCompilationRequest {
     private void logAutomatonSizes(CompiledRegex result) {
         logSizes(Json.obj(
                         Json.prop("pattern", source.getPattern()),
-                        Json.prop("flags", source.getGeneralFlags()),
+                        Json.prop("flags", source.getFlags()),
                         Json.prop("props", ast == null ? new RegexProperties() : ast.getProperties()),
                         Json.prop("astNodes", ast == null ? 0 : ast.getNumberOfNodes()),
                         Json.prop("nfaStates", nfa == null ? 0 : nfa.getStates().length),
