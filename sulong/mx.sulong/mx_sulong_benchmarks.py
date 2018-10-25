@@ -28,9 +28,7 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 import re
-import sys
 import tempfile
-from abc import ABCMeta, abstractmethod
 
 import mx, mx_benchmark, mx_sulong, mx_buildtools
 import os
@@ -90,7 +88,7 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
         for bench in benchnames:
             try:
                 # benchmark dir
-                path = join(_benchmarksDirectory(), bench, vm.bin_dir())
+                path = self.workingDirectory(benchnames, bmSuiteArgs)
                 # create directory for executable of this vm
                 if not os.path.exists(path):
                     os.makedirs(path)
@@ -145,6 +143,14 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
                 "metric.iteration": 0,
             }),
         ]
+
+    def workingDirectory(self, benchmarks, bmSuiteArgs):
+        if len(benchmarks) != 1:
+            mx.abort(
+                "Please run a specific benchmark (mx benchmark csuite:<benchmark-name>) or all the benchmarks (mx benchmark csuite:*)")
+        vm = self.get_vm_registry().get_vm_from_suite_args(bmSuiteArgs)
+        assert isinstance(vm, CExecutionEnvironmentMixin)
+        return join(_benchmarksDirectory(), benchmarks[0], vm.bin_dir())
 
     def createCommandLineArgs(self, benchmarks, runArgs):
         if len(benchmarks) != 1:
