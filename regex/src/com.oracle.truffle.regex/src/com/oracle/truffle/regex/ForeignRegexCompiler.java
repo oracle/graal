@@ -58,7 +58,7 @@ public class ForeignRegexCompiler extends RegexCompiler {
     @Override
     public TruffleObject compile(RegexSource source) throws RegexSyntaxException, UnsupportedRegexException {
         try {
-            return (TruffleObject) ForeignAccess.sendExecute(executeNode, foreignCompiler, source.getPattern(), source.getGeneralFlags());
+            return (TruffleObject) ForeignAccess.sendExecute(executeNode, foreignCompiler, source.getPattern(), source.getFlags());
         } catch (InteropException ex) {
             throw ex.raise();
         }

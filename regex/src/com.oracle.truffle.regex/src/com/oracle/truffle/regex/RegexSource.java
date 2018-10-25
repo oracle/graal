@@ -56,15 +56,6 @@ public final class RegexSource implements JsonConvertible {
         return flags;
     }
 
-    /**
-     * Deprecated.
-     * <p>
-     * TODO: Remove this once it is no longer used by Graal.js.
-     */
-    public String getGeneralFlags() {
-        return getFlags();
-    }
-
     public Source getSource() {
         if (source == null) {
             String text = toString();

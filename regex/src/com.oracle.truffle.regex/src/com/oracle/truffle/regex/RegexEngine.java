@@ -71,7 +71,7 @@ public class RegexEngine implements RegexLanguageObject {
             flavorProcessor.validate();
             regexObject = new RegexObject(compiler, regexSource, flavorProcessor.getFlags(), flavorProcessor.isUnicodePattern(), flavorProcessor.getNamedCaptureGroups());
         } else {
-            RegexFlags flags = RegexFlags.parseFlags(regexSource.getGeneralFlags());
+            RegexFlags flags = RegexFlags.parseFlags(regexSource.getFlags());
             RegexParser regexParser = new RegexParser(regexSource, options);
             regexParser.validate();
             regexObject = new RegexObject(compiler, regexSource, flags, regexParser.getFlags().isUnicode(), regexParser.getNamedCaptureGroups());

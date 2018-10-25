@@ -69,7 +69,7 @@ public class UnsupportedRegexException extends RuntimeException {
             sb.append(" /");
             sb.append(regexSrc.getPattern());
             sb.append("/");
-            sb.append(regexSrc.getGeneralFlags());
+            sb.append(regexSrc.getFlags());
         }
         if (reason != null) {
             sb.append(": ");
