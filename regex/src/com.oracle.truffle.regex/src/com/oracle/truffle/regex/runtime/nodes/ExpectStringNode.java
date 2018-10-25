@@ -22,45 +22,75 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.regex.tregex.nodes.input;
+package com.oracle.truffle.regex.runtime.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.regex.tregex.util.ForeignAccessUtil;
+import com.oracle.truffle.regex.tregex.nodes.input.InputToStringNode;
 
-@ImportStatic(ForeignAccessUtil.class)
-public abstract class InputLengthNode extends Node {
+public abstract class ExpectStringNode extends Node {
 
-    public static InputLengthNode create() {
-        return InputLengthNodeGen.create();
-    }
+    @Child private InputToStringNode fromArrayNode;
 
-    public abstract int execute(Object input);
+    public abstract String execute(Object arg);
 
     @Specialization
-    public int getLength(String input) {
-        return input.length();
+    String doString(String arg) {
+        return arg;
     }
 
     @Specialization
-    public int getLength(TruffleObject input, @Cached("createGetSizeMessageNode()") Node readNode) {
+    String doTruffleObject(TruffleObject arg,
+                    @Cached("createIsBoxedNode()") Node isBoxed,
+                    @Cached("createUnboxNode()") Node unbox) {
         try {
-            Object length = ForeignAccess.sendGetSize(readNode, input);
-            if (length instanceof Number && ((Number) length).longValue() <= Integer.MAX_VALUE) {
-                return ((Number) length).intValue();
+            if (ForeignAccess.sendIsBoxed(isBoxed, arg)) {
+                Object unboxedObject = ForeignAccess.sendUnbox(unbox, arg);
+                if (unboxedObject instanceof String) {
+                    return (String) unboxedObject;
+                } else {
+                    CompilerDirectives.transferToInterpreter();
+                    throw UnsupportedTypeException.raise(new Object[]{arg});
+                }
+            } else {
+                return getFromArrayNode().execute(arg);
             }
-            CompilerDirectives.transferToInterpreter();
-            throw UnsupportedTypeException.raise(new Object[]{length});
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
-            throw new RuntimeException(e);
+            throw UnsupportedTypeException.raise(new Object[]{arg});
         }
+    }
+
+    @Fallback
+    String doPrimitive(Object arg) {
+        throw UnsupportedTypeException.raise(new Object[]{arg});
+    }
+
+    private InputToStringNode getFromArrayNode() {
+        if (fromArrayNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            fromArrayNode = insert(InputToStringNode.create());
+        }
+        return fromArrayNode;
+    }
+
+    static Node createIsBoxedNode() {
+        return Message.IS_BOXED.createNode();
+    }
+
+    static Node createUnboxNode() {
+        return Message.UNBOX.createNode();
+    }
+
+    public static ExpectStringNode create() {
+        return ExpectStringNodeGen.create();
     }
 }

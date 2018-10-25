@@ -35,15 +35,22 @@
 (require '[clojure.set :as set]
          '[clojure.string :as str])
 
+(defn pairwise
+  "Given a sequence `x_1`, `x_2`, `x_3`..., returns the sequence of pairs `[x_1 x_2]`, `[x_2 x_3]`..."
+  [xs]
+  (map vector xs (rest xs)))
+
 (defn parse-relation-file
   "Parses a binary relation from the file at `path` and returns it as a sorted
   set."
   [path]
   (into (sorted-set)
-        (for [line (str/split-lines (slurp path))]
-          (let [[from-str to-str] (str/split line #"; ")
-                parse-hex         #(Long/parseLong % 16)]
-            [(parse-hex from-str) (parse-hex to-str)]))))
+        (apply concat
+          (for [line (str/split-lines (slurp path))]
+            (let [codepoints-str (str/split line #";")
+                  parse-hex      #(Long/parseLong % 16)
+                  codepoints     (map parse-hex codepoints-str)]
+              (pairwise codepoints))))))
 
 (defn maps-to
   "Given a binary relation `rel`, represented as a sorted set, finds the set of
@@ -56,36 +63,38 @@
   [[a b]]
   [b a])
 
+(defn remove-reflexive-entries
+  "Remove pairs of the form [x x] from a given set of pairs."
+  [rel]
+  (set/select #(not= (first %) (second %)) rel))
+
 (defn symmetric-closure
   "Calculates the symmetric closure of the binary relation `rel`."
   [rel]
   (let [symmetric-rel (into (sorted-set) (map swap rel))]
     (set/union rel symmetric-rel)))
 
-(defn transitive-closure
-  "Calculates the transitive closure of the binary relation `rel` via a
-  fix-point approach."
-  [rel]
-  (let [fixpoint   (fn [f x]
-                     (let [y (f x)]
-                       (if (= x y)
-                         x
-                         (recur f y))))
-        extend-rel (fn [rel]
-                     (into rel (for [[start midpoint] rel
-                                     end              (maps-to rel midpoint)
-                                     :when            (not= start end)]
-                                 [start end])))]
-    (fixpoint extend-rel rel)))
-
 (defn load-relation
-  "Loads an equivalence relation from a file and makes it symmetric and
-  transitive (we do not care for reflexivity in our application)."
+  "Loads an equivalence relation from a file and makes it symmetric.
+
+  We do not want a reflexive closure because we want the entries in the relation
+  to correspond to equivalent pairs that still need to be encoded in the case
+  fold table (and we do not want to include reflexive entries in the case fold
+  table). We do not need transitivity because we handle all equivalence classes
+  of size larger than 3 in the first step, `extract-large-classes`, and in that
+  step we traverse the relation graph recursively."
   [path]
   (-> path
       parse-relation-file
-      symmetric-closure
-      transitive-closure))
+      remove-reflexive-entries
+      symmetric-closure))
+
+(def python-ascii-relation
+  "The case-folding equivalence relation for Python ascii regular expressions."
+  (->> (map vector (range (int \a) (inc (int \z)))
+                   (range (int \A) (inc (int \Z))))
+       (into (sorted-set))
+       symmetric-closure))
 
 (defn collect-eq-classes
   "Given some equivalence relation `rel`, finds the equivalence classes.
@@ -135,7 +144,10 @@
                                 (conj ranges cur-range)
                                 ranges))))
         encode-class    (fn [class]
-                          (if (= 2 (count class))
+                          (cond
+                            (<= (count class) 1)
+                            []
+                            (= (count class) 2)
                             (let [lower  (first class)
                                   higher (second class)]
                               [{:lo    lower
@@ -146,6 +158,7 @@
                                 :hi    higher
                                 :delta (- lower higher)
                                 :kind  :delta}])
+                            :otherwise
                             (let [class-ranges (class-as-ranges class)]
                               (for [range class-ranges]
                                 {:lo    (:lo range)
@@ -321,18 +334,25 @@
   NB: The CHARACTER_SET_TABLE is shared among the two case fold tables because
   there is significant overlap between the two."
   []
-  (let [non-unicode-relation (load-relation "NonUnicodeFoldTable.txt")
-        unicode-relation     (load-relation "UnicodeFoldTable.txt")
-        num-classes          (atom 0)
-        class-ids            (atom {})
-        non-unicode-entries  (identify-classes (generate-entries non-unicode-relation) num-classes class-ids)
-        unicode-entries      (identify-classes (generate-entries unicode-relation) num-classes class-ids)
-        classes              (map second (sort (map swap @class-ids)))]
+  (let [non-unicode-relation    (load-relation "NonUnicodeFoldTable.txt")
+        unicode-relation        (load-relation "UnicodeFoldTable.txt")
+        python-unicode-relation (load-relation "PythonFoldTable.txt")
+        num-classes             (atom 0)
+        class-ids               (atom {})
+        non-unicode-entries     (identify-classes (generate-entries non-unicode-relation) num-classes class-ids)
+        unicode-entries         (identify-classes (generate-entries unicode-relation) num-classes class-ids)
+        python-ascii-entries    (identify-classes (generate-entries python-ascii-relation) num-classes class-ids)
+        python-unicode-entries  (identify-classes (generate-entries python-unicode-relation) num-classes class-ids)
+        classes                 (map second (sort (map swap @class-ids)))]
     (str (show-classes classes)
          "\n"
          (show-entries non-unicode-entries "NON_UNICODE_TABLE_ENTRIES")
          "\n"
-         (show-entries unicode-entries "UNICODE_TABLE_ENTRIES"))))
+         (show-entries unicode-entries "UNICODE_TABLE_ENTRIES")
+         "\n"
+         (show-entries python-ascii-entries "PYTHON_ASCII_TABLE_ENTRIES")
+         "\n"
+         (show-entries python-unicode-entries "PYTHON_UNICODE_TABLE_ENTRIES"))))
 
 (defn -main
   "This gets evaluated when we run the script."
