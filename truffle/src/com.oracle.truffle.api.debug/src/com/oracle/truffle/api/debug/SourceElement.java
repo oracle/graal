@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.debug;
 
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
+import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.Tag;
 
@@ -67,7 +68,15 @@ public enum SourceElement {
      *
      * @since 0.33
      */
-    EXPRESSION(ExpressionTag.class);
+    EXPRESSION(ExpressionTag.class),
+
+    /**
+     * Denotes program locations that represent a function of a guest language. The appropriate
+     * nodes are tagged with {@link RootTag}.
+     *
+     * @since 1.0
+     */
+    ROOT(RootTag.class);
 
     private final Class<? extends Tag> tag;
 

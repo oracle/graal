@@ -56,6 +56,9 @@ import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.DebuggerSession;
+import com.oracle.truffle.api.debug.SourceElement;
+import com.oracle.truffle.api.debug.StepConfig;
+import com.oracle.truffle.api.debug.SuspendAnchor;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.debug.SuspensionFilter;
@@ -84,6 +87,8 @@ import com.oracle.truffle.tools.chromeinspector.types.Script;
 import org.graalvm.collections.Pair;
 
 public final class TruffleDebugger extends DebuggerDomain {
+
+    private static final StepConfig STEP_CONFIG = StepConfig.newBuilder().suspendAnchors(SourceElement.ROOT, SuspendAnchor.AFTER).build();
 
     private final TruffleExecutionContext context;
     private final Object suspendLock = new Object();
@@ -130,7 +135,7 @@ public final class TruffleDebugger extends DebuggerDomain {
 
     private void doEnable() {
         Debugger tdbg = context.getEnv().lookup(context.getEnv().getInstruments().get("debugger"), Debugger.class);
-        ds = tdbg.startSession(new SuspendedCallbackImpl());
+        ds = tdbg.startSession(new SuspendedCallbackImpl(), SourceElement.ROOT, SourceElement.STATEMENT);
         ds.setSteppingFilter(SuspensionFilter.newBuilder().ignoreLanguageContextInitialization(!context.isInspectInitialization()).includeInternal(context.isInspectInternal()).build());
         slh = context.acquireScriptsHandler();
         bph = new BreakpointsHandler(ds, slh, () -> eventHandler);
@@ -268,7 +273,7 @@ public final class TruffleDebugger extends DebuggerDomain {
     public void stepInto(CommandPostProcessor postProcessor) {
         DebuggerSuspendedInfo susp = suspendedInfo;
         if (susp != null) {
-            susp.getSuspendedEvent().prepareStepInto(1);
+            susp.getSuspendedEvent().prepareStepInto(STEP_CONFIG);
             delayUnlock.set(true);
             postProcessor.setPostProcessJob(() -> doResume());
         }
@@ -278,7 +283,7 @@ public final class TruffleDebugger extends DebuggerDomain {
     public void stepOver(CommandPostProcessor postProcessor) {
         DebuggerSuspendedInfo susp = suspendedInfo;
         if (susp != null) {
-            susp.getSuspendedEvent().prepareStepOver(1);
+            susp.getSuspendedEvent().prepareStepOver(STEP_CONFIG);
             delayUnlock.set(true);
             postProcessor.setPostProcessJob(() -> doResume());
         }
@@ -288,7 +293,7 @@ public final class TruffleDebugger extends DebuggerDomain {
     public void stepOut(CommandPostProcessor postProcessor) {
         DebuggerSuspendedInfo susp = suspendedInfo;
         if (susp != null) {
-            susp.getSuspendedEvent().prepareStepOut(1);
+            susp.getSuspendedEvent().prepareStepOut(STEP_CONFIG);
             delayUnlock.set(true);
             postProcessor.setPostProcessJob(() -> doResume());
         }
@@ -308,7 +313,7 @@ public final class TruffleDebugger extends DebuggerDomain {
         }
     }
 
-    private CallFrame[] createCallFrames(Iterable<DebugStackFrame> frames, DebugValue returnValue) {
+    private CallFrame[] createCallFrames(Iterable<DebugStackFrame> frames, SuspendAnchor topAnchor, DebugValue returnValue) {
         List<CallFrame> cfs = new ArrayList<>();
         int depth = 0;
         int depthAll = -1;
@@ -380,7 +385,8 @@ public final class TruffleDebugger extends DebuggerDomain {
             if (depthAll == 0 && returnValue != null) {
                 returnObj = context.getRemoteObjectsHandler().getRemote(returnValue);
             }
-            CallFrame cf = new CallFrame(frame, depth++, script, sourceSection, functionSourceSection,
+            SuspendAnchor anchor = (depthAll == 0) ? topAnchor : SuspendAnchor.BEFORE;
+            CallFrame cf = new CallFrame(frame, depth++, script, sourceSection, anchor, functionSourceSection,
                             null, returnObj, scopes.toArray(new Scope[scopes.size()]));
             cfs.add(cf);
         }
@@ -776,6 +782,11 @@ public final class TruffleDebugger extends DebuggerDomain {
 
         @Override
         public void onSuspend(SuspendedEvent se) {
+            if (!se.hasSourceElement(SourceElement.STATEMENT) && se.getSuspendAnchor() == SuspendAnchor.BEFORE) {
+                // Suspend requested and we're at the begining of a ROOT.
+                ds.suspendNextExecution();
+                return;
+            }
             try {
                 context.waitForRunPermission();
             } catch (InterruptedException ex) {
@@ -798,7 +809,13 @@ public final class TruffleDebugger extends DebuggerDomain {
                     runningUnwind = false;
                 }
                 JSONObject jsonParams = new JSONObject();
-                CallFrame[] callFrames = createCallFrames(se.getStackFrames(), se.getReturnValue());
+                DebugValue returnValue = se.getReturnValue();
+                if (!se.hasSourceElement(SourceElement.ROOT)) {
+                    // It is misleading to see return values on call exit,
+                    // when we show it at function exit
+                    returnValue = null;
+                }
+                CallFrame[] callFrames = createCallFrames(se.getStackFrames(), se.getSuspendAnchor(), returnValue);
                 suspendedInfo = new DebuggerSuspendedInfo(se, callFrames);
                 context.setSuspendedInfo(suspendedInfo);
                 Event paused;

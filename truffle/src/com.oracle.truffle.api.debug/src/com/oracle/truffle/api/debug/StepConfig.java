@@ -41,8 +41,12 @@
 package com.oracle.truffle.api.debug;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.HashSet;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import com.oracle.truffle.api.instrumentation.EventContext;
@@ -68,13 +72,27 @@ import com.oracle.truffle.api.instrumentation.EventContext;
  */
 public final class StepConfig {
 
-    private static final StepConfig EMPTY = new StepConfig(null, 0);
+    private static final StepConfig EMPTY = new StepConfig(null, null, 0);
+    private static final Collection<SourceElement> allElements = Arrays.asList(SourceElement.values());
+    private static final Map<SourceElement, Set<SuspendAnchor>> defaultAnchors;
 
     private final Set<SourceElement> sourceElements;
+    private final Map<SourceElement, Set<SuspendAnchor>> preferredAnchors;
     private final int stepCount;
 
-    StepConfig(Set<SourceElement> sourceElements, int count) {
+    static {
+        Map<SourceElement, Set<SuspendAnchor>> anchors = new EnumMap<>(SourceElement.class);
+        anchors.put(SourceElement.ROOT, DebuggerSession.ANCHOR_SET_ALL);
+        anchors.put(SourceElement.STATEMENT, DebuggerSession.ANCHOR_SET_BEFORE);
+        anchors.put(SourceElement.EXPRESSION, DebuggerSession.ANCHOR_SET_ALL);
+        // Assert that we've filled everything.
+        assert anchors.keySet().containsAll(allElements);
+        defaultAnchors = Collections.unmodifiableMap(anchors);
+    }
+
+    StepConfig(Set<SourceElement> sourceElements, Map<SourceElement, Set<SuspendAnchor>> preferredAnchors, int count) {
         this.sourceElements = sourceElements;
+        this.preferredAnchors = preferredAnchors;
         this.stepCount = count;
     }
 
@@ -99,24 +117,13 @@ public final class StepConfig {
         return sourceElements;
     }
 
-    private static boolean preferredAnchorMatches(SourceElement element, SuspendAnchor anchor) {
-        switch (element) {
-            case STATEMENT:
-                return SuspendAnchor.BEFORE == anchor;
-            case EXPRESSION:
-                return true;
-            default:
-                throw new IllegalStateException(element.name());
-        }
-    }
-
     boolean matches(DebuggerSession session, EventContext context, SuspendAnchor anchor) {
         Set<SourceElement> elements = sourceElements;
         if (elements == null) {
             elements = session.getSourceElements();
         }
         for (SourceElement se : elements) {
-            if (context.hasTag(se.getTag()) && preferredAnchorMatches(se, anchor)) {
+            if (context.hasTag(se.getTag()) && preferredAnchors.get(se).contains(anchor)) {
                 return true;
             }
         }
@@ -148,6 +155,7 @@ public final class StepConfig {
     public final class Builder {
 
         private Set<SourceElement> stepElements;
+        private Map<SourceElement, Set<SuspendAnchor>> preferredAnchors;
         private int stepCount = -1;
 
         private Builder() {
@@ -179,6 +187,53 @@ public final class StepConfig {
         }
 
         /**
+         * Provide a list of {@link SuspendAnchor}s for individual {@link SourceElement}s. By
+         * default, following suspend anchors are applied:
+         * <table>
+         * <tr>
+         * <th>{@link SourceElement}</th>
+         * <th>{@link SuspendAnchor}s</th>
+         * </tr>
+         * <tr>
+         * <td>{@link SourceElement#ROOT ROOT}</td>
+         * <td>{@link SuspendAnchor#BEFORE BEFORE}, {@link SuspendAnchor#AFTER AFTER}</td>
+         * </tr>
+         * <tr>
+         * <td>{@link SourceElement#STATEMENT STATEMENT}</td>
+         * <td>{@link SuspendAnchor#BEFORE BEFORE}</td>
+         * </tr>
+         * <tr>
+         * <td>{@link SourceElement#EXPRESSION EXPRESSION}</td>
+         * <td>{@link SuspendAnchor#BEFORE BEFORE}, {@link SuspendAnchor#AFTER AFTER}</td>
+         * </tr>
+         * </table>
+         * This method can be called repeatedly to override the defaults.
+         *
+         * @param element the element to set the suspend anchor for
+         * @param anchors a list of suspend anchors
+         * @since 1.0
+         */
+        public Builder suspendAnchors(SourceElement element, SuspendAnchor... anchors) {
+            if (anchors.length == 0) {
+                throw new IllegalArgumentException("At least one anchor needs to be provided.");
+            }
+            Objects.requireNonNull(element, "SourceElement must not be null.");
+            if (preferredAnchors == null) {
+                preferredAnchors = new EnumMap<>(SourceElement.class);
+            }
+            if (anchors.length == 1) {
+                if (anchors[0] == SuspendAnchor.BEFORE) {
+                    preferredAnchors.put(element, DebuggerSession.ANCHOR_SET_BEFORE);
+                } else {
+                    preferredAnchors.put(element, DebuggerSession.ANCHOR_SET_AFTER);
+                }
+            } else {
+                preferredAnchors.put(element, DebuggerSession.ANCHOR_SET_ALL);
+            }
+            return this;
+        }
+
+        /**
          * Provide the step count. It specifies the number of times the step repeats itself before
          * it suspends the execution. Can only be invoked once per builder.
          *
@@ -205,7 +260,19 @@ public final class StepConfig {
             if (stepCount < 0) {
                 stepCount = 1;
             }
-            return new StepConfig(stepElements, stepCount);
+            if (preferredAnchors == null) {
+                preferredAnchors = defaultAnchors;
+            } else {
+                Collection<SourceElement> possibleElements = (stepElements != null) ? stepElements : allElements;
+                if (!preferredAnchors.keySet().containsAll(possibleElements)) {
+                    for (SourceElement elem : possibleElements) {
+                        if (!preferredAnchors.containsKey(elem)) {
+                            preferredAnchors.put(elem, defaultAnchors.get(elem));
+                        }
+                    }
+                }
+            }
+            return new StepConfig(stepElements, preferredAnchors, stepCount);
         }
     }
 }
