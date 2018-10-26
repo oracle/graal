@@ -53,7 +53,7 @@ public class CompletionTest extends TruffleLSPTest {
         {
             int line = 0;
             int column = 0;
-            Future<CompletionList> futureCompletions = truffleAdapter.completion(uri, line, column);
+            Future<CompletionList> futureCompletions = truffleAdapter.completion(uri, line, column, null);
             CompletionList completionList = futureCompletions.get();
             assertFalse(completionList.isIncomplete());
 
@@ -73,7 +73,7 @@ public class CompletionTest extends TruffleLSPTest {
         {
             int line = 1;
             int column = 12;
-            Future<CompletionList> futureCompletions = truffleAdapter.completion(uri, line, column);
+            Future<CompletionList> futureCompletions = truffleAdapter.completion(uri, line, column, null);
             CompletionList completionList = futureCompletions.get();
             assertFalse(completionList.isIncomplete());
 
@@ -92,7 +92,7 @@ public class CompletionTest extends TruffleLSPTest {
         {
             int line = 5;
             int column = 0;
-            Future<CompletionList> futureCompletions = truffleAdapter.completion(uri, line, column);
+            Future<CompletionList> futureCompletions = truffleAdapter.completion(uri, line, column, null);
             CompletionList completionList = futureCompletions.get();
             assertFalse(completionList.isIncomplete());
 
@@ -113,7 +113,7 @@ public class CompletionTest extends TruffleLSPTest {
         {
             int line = 7;
             int column = 2;
-            Future<CompletionList> futureCompletions = truffleAdapter.completion(uri, line, column);
+            Future<CompletionList> futureCompletions = truffleAdapter.completion(uri, line, column, null);
             CompletionList completionList = futureCompletions.get();
             assertFalse(completionList.isIncomplete());
 
@@ -134,7 +134,7 @@ public class CompletionTest extends TruffleLSPTest {
         {
             int line = 9;
             int column = 0;
-            Future<CompletionList> futureCompletions = truffleAdapter.completion(uri, line, column);
+            Future<CompletionList> futureCompletions = truffleAdapter.completion(uri, line, column, null);
             CompletionList completionList = futureCompletions.get();
             assertFalse(completionList.isIncomplete());
 
@@ -151,43 +151,27 @@ public class CompletionTest extends TruffleLSPTest {
         }
 
         {
-            // if line is out of range only globals are provided
+            // if line is out of range -> show nothing
             int line = 100;
             int column = 0;
-            Future<CompletionList> futureCompletions = truffleAdapter.completion(uri, line, column);
+            Future<CompletionList> futureCompletions = truffleAdapter.completion(uri, line, column, null);
             CompletionList completionList = futureCompletions.get();
             assertFalse(completionList.isIncomplete());
 
             List<CompletionItem> items = completionList.getItems();
-            assertFalse(items.isEmpty());
-
-            NodeInfo nodeInfo = SLContext.lookupNodeInfo(SLHelloEqualsWorldBuiltin.class);
-            assertNotNull(nodeInfo);
-
-            String shortName = nodeInfo.shortName();
-            assertTrue("Built-in function " + shortName + " not found.", items.stream().anyMatch(item -> item.getLabel().startsWith(shortName)));
-            assertTrue("p1 should not be found in main-function scope", items.stream().noneMatch(item -> item.getLabel().startsWith("p1")));
-            assertEquals(numberOfGlobalsItems, items.size());
+            assertTrue(items.isEmpty());
         }
 
         {
-            // if column is out of range only globals are provided
+            // if column is out of range -> show nothing
             int line = 8;
             int column = 5;
-            Future<CompletionList> futureCompletions = truffleAdapter.completion(uri, line, column);
+            Future<CompletionList> futureCompletions = truffleAdapter.completion(uri, line, column, null);
             CompletionList completionList = futureCompletions.get();
             assertFalse(completionList.isIncomplete());
 
             List<CompletionItem> items = completionList.getItems();
-            assertFalse(items.isEmpty());
-
-            NodeInfo nodeInfo = SLContext.lookupNodeInfo(SLHelloEqualsWorldBuiltin.class);
-            assertNotNull(nodeInfo);
-
-            String shortName = nodeInfo.shortName();
-            assertTrue("Built-in function " + shortName + " not found.", items.stream().anyMatch(item -> item.getLabel().startsWith(shortName)));
-            assertTrue("p1 should not be found in main-function scope", items.stream().noneMatch(item -> item.getLabel().startsWith("p1")));
-            assertEquals(numberOfGlobalsItems, items.size());
+            assertTrue(items.isEmpty());
         }
     }
 
@@ -231,7 +215,7 @@ public class CompletionTest extends TruffleLSPTest {
             }
             assertTrue(thrown);
 
-            Future<CompletionList> future3 = truffleAdapter.completion(uri, 2, 8);
+            Future<CompletionList> future3 = truffleAdapter.completion(uri, 2, 8, null);
             CompletionList completionList = future3.get();
             assertEquals(1, completionList.getItems().size());
             CompletionItem item = completionList.getItems().get(0);
@@ -262,7 +246,7 @@ public class CompletionTest extends TruffleLSPTest {
 
             thrown = false;
             try {
-                Future<CompletionList> future4 = truffleAdapter.completion(uri, 12, 8);
+                Future<CompletionList> future4 = truffleAdapter.completion(uri, 12, 8, null);
                 CompletionList completionList = future4.get();
                 assertEquals(0, completionList.getItems().size());
             } catch (RuntimeException e) {

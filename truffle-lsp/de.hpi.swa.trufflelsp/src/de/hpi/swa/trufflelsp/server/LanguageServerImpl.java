@@ -158,7 +158,7 @@ public class LanguageServerImpl implements LanguageServer, LanguageClientAware, 
     @Override
     public CompletableFuture<Either<List<CompletionItem>, CompletionList>> completion(CompletionParams position) {
         Future<CompletionList> futureCompletionList = truffleAdapter.completion(URI.create(position.getTextDocument().getUri()), position.getPosition().getLine(),
-                        position.getPosition().getCharacter());
+                        position.getPosition().getCharacter(), position.getContext());
         return CompletableFuture.supplyAsync(() -> Either.forRight(waitForResultAndHandleExceptions(futureCompletionList, new CompletionList())));
     }
 

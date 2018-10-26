@@ -11,9 +11,11 @@ import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
+import org.eclipse.lsp4j.CompletionContext;
 import org.eclipse.lsp4j.CompletionItem;
 import org.eclipse.lsp4j.CompletionItemKind;
 import org.eclipse.lsp4j.CompletionList;
+import org.eclipse.lsp4j.CompletionTriggerKind;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.MarkupContent;
@@ -100,10 +102,17 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
         return env.getCompletionTriggerCharacters(langId);
     }
 
-    public CompletionList completionWithEnteredContext(final URI uri, int line, int originalCharacter) throws DiagnosticsNotification {
+    public CompletionList completionWithEnteredContext(final URI uri, int line, int originalCharacter, CompletionContext completionContext) throws DiagnosticsNotification {
         TextDocumentSurrogate surrogate = surrogateMap.get(uri);
         Source source = surrogate.getSource();
-        CompletionKind completionKind = getCompletionKind(source, SourceUtils.zeroBasedLineToOneBasedLine(line, source), originalCharacter, surrogate.getCompletionTriggerCharacters());
+
+        if (!SourceUtils.isLineValid(line, source) || !SourceUtils.isColumnValid(line, originalCharacter, source)) {
+            err.println("line or column is out of range, line=" + line + ", column=" + originalCharacter);
+            return new CompletionList();
+        }
+
+        CompletionKind completionKind = getCompletionKind(source, SourceUtils.zeroBasedLineToOneBasedLine(line, source), originalCharacter, surrogate.getCompletionTriggerCharacters(),
+                        completionContext);
         if (surrogate.isSourceCodeReadyForCodeCompletion() && !completionKind.equals(CompletionKind.OBJECT_PROPERTY)) {
             return createCompletions(surrogate, line, originalCharacter, completionKind);
         } else {
@@ -128,9 +137,9 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
             }
             fixedSurrogate.notifyParsingSuccessful(callTarget);
 
-            // We need to replace the original surrogate with the fixed one so that when a test
-            // wants to import this fixed source, it will find the fixed surrogate via the custom
-            // file system callback
+            // We need to replace the original surrogate with the fixed one so that when a run
+            // script wants to import this fixed source, it will find the fixed surrogate via the
+            // custom file system callback
             surrogateMap.put(uri, fixedSurrogate);
             try {
                 return createCompletions(fixedSurrogate, line, sourceFix.characterIdx, getCompletionKind(sourceFix.removedCharacters, surrogate.getCompletionTriggerCharacters()));
@@ -196,19 +205,12 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
     }
 
     private Node findNearestNode(SourceWrapper sourceWrapper, int line, int character) {
-        if (sourceWrapper.isParsingSuccessful() && SourceUtils.isLineValid(line, sourceWrapper.getSource())) {
-            NearestNodeHolder nearestNodeHolder = NearestSectionsFinder.findNearestNode(sourceWrapper.getSource(), line, character, env);
-            return nearestNodeHolder.getNearestNode();
-        }
-        return null;
+        NearestNodeHolder nearestNodeHolder = NearestSectionsFinder.findNearestNode(sourceWrapper.getSource(), line, character, env);
+        return nearestNodeHolder.getNearestNode();
     }
 
     private void fillCompletionsWithObjectProperties(TextDocumentSurrogate surrogate, int line, int character, CompletionList completions) throws DiagnosticsNotification {
         SourceWrapper sourceWrapper = surrogate.getSourceWrapper();
-        if (!sourceWrapper.isParsingSuccessful() || !SourceUtils.isLineValid(line, sourceWrapper.getSource())) {
-            return;
-        }
-
         Source source = sourceWrapper.getSource();
         NearestNodeHolder nearestNodeHolder = NearestSectionsFinder.findNearestNode(source, line, character, env, StandardTags.ExpressionTag.class);
         Node nearestNode = nearestNodeHolder.getNearestNode();
@@ -252,21 +254,18 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
         return isObjectPropertyCompletionCharacter(text, completionTriggerCharacters) ? CompletionKind.OBJECT_PROPERTY : CompletionKind.GLOBALS_AND_LOCALS;
     }
 
-    public static CompletionKind getCompletionKind(Source source, int oneBasedLineNumber, int character, List<String> completionTriggerCharacters) {
-        int lineStartOffset;
-        try {
-            lineStartOffset = source.getLineStartOffset(oneBasedLineNumber);
-        } catch (IllegalArgumentException e) {
-            return CompletionKind.GLOBALS_AND_LOCALS;
+    public static CompletionKind getCompletionKind(Source source, int oneBasedLineNumber, int character, List<String> completionTriggerCharacters, CompletionContext completionContext) {
+        if (completionContext != null && completionContext.getTriggerKind() == CompletionTriggerKind.TriggerCharacter && completionContext.getTriggerCharacter() != null) {
+            return getCompletionKind(completionContext.getTriggerCharacter(), completionTriggerCharacters);
         }
 
-        String text = source.getCharacters().toString();
-        try {
-            char charAtOffset = text.charAt(lineStartOffset + character - 1);
-            return getCompletionKind(String.valueOf(charAtOffset), completionTriggerCharacters);
-        } catch (StringIndexOutOfBoundsException e) {
+        int lineStartOffset = SourceUtils.getLineStartOffset(source, oneBasedLineNumber);
+        if (lineStartOffset + character == 0) {
             return CompletionKind.GLOBALS_AND_LOCALS;
         }
+        String text = source.getCharacters().toString();
+        char charAtOffset = text.charAt(lineStartOffset + character - 1);
+        return getCompletionKind(String.valueOf(charAtOffset), completionTriggerCharacters);
     }
 
     private void fillCompletionsWithLocals(final TextDocumentSurrogate surrogate, Node nearestNode, CompletionList completions, VirtualFrame frame) {

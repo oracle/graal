@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
+import org.eclipse.lsp4j.CompletionContext;
 import org.eclipse.lsp4j.CompletionList;
 import org.eclipse.lsp4j.DocumentHighlight;
 import org.eclipse.lsp4j.Hover;
@@ -295,11 +296,12 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
      * @param uri
      * @param line 0-based line number
      * @param column 0-based column number (character offset)
+     * @param completionContext has kind and completion character if client supports it
      * @return a {@link Future} of {@link CompletionList} containing all completions for the cursor
      *         position
      */
-    public Future<CompletionList> completion(final URI uri, int line, int column) {
-        return contextAwareExecutor.executeWithDefaultContext(() -> completionHandler.completionWithEnteredContext(uri, line, column));
+    public Future<CompletionList> completion(final URI uri, int line, int column, CompletionContext completionContext) {
+        return contextAwareExecutor.executeWithDefaultContext(() -> completionHandler.completionWithEnteredContext(uri, line, column, completionContext));
     }
 
     public Future<List<? extends Location>> definition(URI uri, int line, int character) {

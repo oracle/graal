@@ -38,42 +38,34 @@ public final class NearestSectionsFinder {
     }
 
     protected static NearestNodeHolder findNearestNodeOneBased(int oneBasedLineNumber, int column, Source source, Env env, Class<?>... tag) {
-        NearestSections nearestSections = getNearestSections(source, env, oneBasedLineNumber, column, tag);
+        NearestSections nearestSections = findNearestSections(source, env, oneBasedLineNumber, column, false, tag);
         SourceSection containsSection = nearestSections.getContainsSourceSection();
 
         Node nearestNode;
         NodeLocationType locationType;
         if (containsSection == null) {
-            // We are not in a valid local scope, try to find any node near us
-            Node nextOrPreviousNode = nearestSections.getNextNode() != null ? (Node) nearestSections.getNextNode() : (Node) nearestSections.getPreviousNode();
-            if (nextOrPreviousNode != null) {
-                // Use the root as reference for local scoping
-                nearestNode = nextOrPreviousNode.getRootNode();
-                locationType = NodeLocationType.ROOT;
-            } else {
-                // Empty source, no nodes found
-                nearestNode = null;
-                locationType = null;
-            }
+            // The caret position is not contained in a source section of any valid node. This means
+            // that there is no global root node in this language which wraps the whole file.
+            nearestNode = null;
+            locationType = null;
         } else if (isEndOfSectionMatchingCaretPosition(oneBasedLineNumber, column, containsSection)) {
-            // Our caret is directly behind the containing section, so we can simply use that one to
-            // find local scope objects
-            nearestNode = (Node) nearestSections.getContainsNode();
+            // Our caret is directly behind the containing section, so we can simply use that one
+            nearestNode = nearestSections.getContainsNode();
             locationType = NodeLocationType.CONTAINS_END;
-        } else if (nodeIsInChildHirarchyOf((Node) nearestSections.getNextNode(), (Node) nearestSections.getContainsNode())) {
+        } else if (nodeIsInChildHierarchyOf(nearestSections.getNextNode(), nearestSections.getContainsNode())) {
             // Great, the nextNode is a (indirect) sibling of our containing node, so it is in the
             // same scope as we are and we can use it to get local scope objects
-            nearestNode = (Node) nearestSections.getNextNode();
+            nearestNode = nearestSections.getNextNode();
             locationType = NodeLocationType.NEXT;
-        } else if (nodeIsInChildHirarchyOf((Node) nearestSections.getPreviousNode(), (Node) nearestSections.getContainsNode())) {
-            // In this case we want call findLocalScopes() with BEHIND-flag, i.e. give me the local
-            // scope objects which are valid behind that node
-            nearestNode = (Node) nearestSections.getPreviousNode();
+        } else if (nodeIsInChildHierarchyOf(nearestSections.getPreviousNode(), nearestSections.getContainsNode())) {
+            // In this case we actually want call findLocalScopes() with BEHIND-flag, i.e. give me
+            // the local scope objects which are valid behind that node
+            nearestNode = nearestSections.getPreviousNode();
             locationType = NodeLocationType.PREVIOUS;
         } else {
             // No next or previous node is in the same scope like us, so we can only take our
-            // containing node to get local scope objects
-            nearestNode = (Node) nearestSections.getContainsNode();
+            // containing node is the "nearest"
+            nearestNode = nearestSections.getContainsNode();
             locationType = NodeLocationType.CONTAINS;
         }
 
@@ -84,7 +76,7 @@ public final class NearestSectionsFinder {
         return section.getEndLine() == line && section.getEndColumn() == character;
     }
 
-    private static boolean nodeIsInChildHirarchyOf(Node node, Node potentialParent) {
+    private static boolean nodeIsInChildHierarchyOf(Node node, Node potentialParent) {
         if (node == null) {
             return false;
         }
@@ -98,12 +90,12 @@ public final class NearestSectionsFinder {
         return false;
     }
 
-    public static NearestSections getNearestSections(Source source, TruffleInstrument.Env env, int line, int column, Class<?>... tag) {
-        return getNearestSections(source, env, SourceUtils.convertLineAndColumnToOffset(source, line, column), tag);
+    public static NearestSections findNearestSections(Source source, TruffleInstrument.Env env, int oneBasedLineNumber, int column, boolean instrumentableNodesOnly, Class<?>... tags) {
+        return findNearestSections(source, env, SourceUtils.convertLineAndColumnToOffset(source, oneBasedLineNumber, column), instrumentableNodesOnly, tags);
     }
 
-    protected static NearestSections getNearestSections(Source source, TruffleInstrument.Env env, int offset, Class<?>... tags) {
-        NearestSections sectionsCollector = new NearestSections(offset);
+    protected static NearestSections findNearestSections(Source source, TruffleInstrument.Env env, int offset, boolean instrumentableNodesOnly, Class<?>... tags) {
+        NearestSections sectionsCollector = new NearestSections(offset, instrumentableNodesOnly);
         Builder filter = SourceSectionFilter.newBuilder().sourceIs(source);
         if (tags.length > 0) {
             filter.tagIs(tags);
@@ -118,24 +110,25 @@ public final class NearestSectionsFinder {
     public static class NearestSections implements LoadSourceSectionListener {
 
         private final int offset;
+        private final boolean checkInstrumentable;
         private SourceSection containsMatch;
-        private InstrumentableNode containsNode;
+        private Node containsNode;
         private SourceSection previousMatch;
-        private InstrumentableNode previousNode;
+        private Node previousNode;
         private SourceSection nextMatch;
-        private InstrumentableNode nextNode;
+        private Node nextNode;
 
-        NearestSections(int offset) {
+        NearestSections(int offset, boolean checkInstrumentable) {
             this.offset = offset;
+            this.checkInstrumentable = checkInstrumentable;
         }
 
         @Override
         public void onLoad(LoadSourceSectionEvent event) {
             Node eventNode = event.getNode();
-            if (!(eventNode instanceof InstrumentableNode && ((InstrumentableNode) eventNode).isInstrumentable())) {
+            if (checkInstrumentable && !(eventNode instanceof InstrumentableNode && ((InstrumentableNode) eventNode).isInstrumentable())) {
                 return;
             }
-            InstrumentableNode node = (InstrumentableNode) eventNode;
             SourceSection sourceSection = event.getSourceSection();
 
             int o1 = sourceSection.getCharIndex();
@@ -146,10 +139,10 @@ public final class NearestSectionsFinder {
                 o2 = sourceSection.getCharIndex();
             }
             // Offset approximation
-            findOffsetApproximation(node, sourceSection, o1, o2);
+            findOffsetApproximation(eventNode, sourceSection, o1, o2);
         }
 
-        private void findOffsetApproximation(InstrumentableNode node, SourceSection sourceSection, int o1, int o2) {
+        private void findOffsetApproximation(Node node, SourceSection sourceSection, int o1, int o2) {
             if (o1 <= offset && offset <= o2) {
                 // Exact match. There can be more of these, find the smallest one:
                 if (containsMatch == null || containsMatch.getCharLength() > sourceSection.getCharLength()) {
@@ -176,28 +169,40 @@ public final class NearestSectionsFinder {
             }
         }
 
-        public InstrumentableNode getContainsNode() {
+        public Node getContainsNode() {
             return containsNode;
         }
 
-        public InstrumentableNode getPreviousNode() {
+        public Node getPreviousNode() {
             return previousNode;
         }
 
-        public InstrumentableNode getNextNode() {
+        public Node getNextNode() {
             return nextNode;
         }
 
+        public InstrumentableNode getInstrumentableContainsNode() {
+            return (InstrumentableNode) containsNode;
+        }
+
+        public InstrumentableNode getInstrumentablePreviousNode() {
+            return (InstrumentableNode) previousNode;
+        }
+
+        public InstrumentableNode getInstrumentableNextNode() {
+            return (InstrumentableNode) nextNode;
+        }
+
         public SourceSection getContainsSourceSection() {
-            return containsNode instanceof Node ? ((Node) containsNode).getSourceSection() : null;
+            return containsNode != null ? containsNode.getSourceSection() : null;
         }
 
         public SourceSection getPreviousSourceSection() {
-            return previousNode instanceof Node ? ((Node) previousNode).getSourceSection() : null;
+            return previousNode != null ? previousNode.getSourceSection() : null;
         }
 
         public SourceSection getNextSourceSection() {
-            return nextNode instanceof Node ? ((Node) nextNode).getSourceSection() : null;
+            return nextNode != null ? nextNode.getSourceSection() : null;
         }
     }
 

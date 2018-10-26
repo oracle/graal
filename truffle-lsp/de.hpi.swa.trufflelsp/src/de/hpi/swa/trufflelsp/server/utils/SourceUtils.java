@@ -32,26 +32,29 @@ public class SourceUtils {
         }
     }
 
-    public static boolean isLineValid(int line, Source source) {
-        // line is zero-based, source line is one-based
-        return line >= 0 && (line < source.getLineCount() || (line == source.getLineCount() && endsWithNewline(source)));
+    public static boolean isLineValid(int zeroBasedLine, Source source) {
+        // Source line is one-based
+        return zeroBasedLine >= 0 &&
+                        (zeroBasedLine < source.getLineCount() ||
+                                        (zeroBasedLine == source.getLineCount() && endsWithNewline(source)) ||
+                                        (zeroBasedLine == 0 && source.getLineCount() == 0));
+    }
+
+    public static boolean isColumnValid(int line, int column, Source source) {
+        return column <= source.getLineLength(zeroBasedLineToOneBasedLine(line, source));
     }
 
     public static int zeroBasedLineToOneBasedLine(int line, Source source) {
-        if (line + 1 <= source.getLineCount()) {
-            return line + 1;
+        if (source.getLineCount() < line) {
+            System.err.println("Warning: Line is out of range: " + line);
         }
 
-        if (endsWithNewline(source)) {
-            return line;
-        }
-
-        throw new IllegalStateException("Mismatch in line numbers. Source line count (one-based): " + source.getLineCount() + ", zero-based line count: " + line);
+        return line + 1;
     }
 
     private static boolean endsWithNewline(Source source) {
         String text = source.getCharacters().toString();
-        boolean isNewlineEnd = text.charAt(text.length() - 1) == '\n';
+        boolean isNewlineEnd = !text.isEmpty() && text.charAt(text.length() - 1) == '\n';
         return isNewlineEnd;
     }
 
@@ -173,12 +176,17 @@ public class SourceUtils {
         return range;
     }
 
+    public static int getLineStartOffset(Source source, int oneBasedLineNumber) {
+        if (oneBasedLineNumber == source.getLineCount()) {
+            return source.getLength();
+        }
+        return source.getLineStartOffset(oneBasedLineNumber);
+    }
+
     public static int convertLineAndColumnToOffset(Source source, int oneBasedLineNumber, int column) {
-        int boundLine = fixLine(source, oneBasedLineNumber);
-        int boundColumn = fixColumn(source, column, boundLine);
-        int offset = source.getLineStartOffset(boundLine);
-        if (boundColumn > 0) {
-            offset += boundColumn - 1;
+        int offset = source.getLineStartOffset(oneBasedLineNumber);
+        if (column > 0) {
+            offset += column - 1;
         }
         return offset;
     }
@@ -194,24 +202,6 @@ public class SourceUtils {
         } else {
             throw new IllegalStateException("Source has an URI with unknown schema: " + source.getURI());
         }
-    }
-
-    private static int fixColumn(Source source, int column, int boundLine) {
-        int boundColumn = column;
-        int maxColumn = source.getLineLength(boundLine) + 1;
-        if (boundColumn > maxColumn) {
-            boundColumn = maxColumn;
-        }
-        return boundColumn;
-    }
-
-    private static int fixLine(Source source, int line) {
-        int boundLine = line;
-        int maxLine = source.getLineCount();
-        if (boundLine > maxLine) {
-            boundLine = maxLine;
-        }
-        return boundLine;
     }
 
     public static boolean isValidSourceSection(SourceSection sourceSection, OptionValues options) {

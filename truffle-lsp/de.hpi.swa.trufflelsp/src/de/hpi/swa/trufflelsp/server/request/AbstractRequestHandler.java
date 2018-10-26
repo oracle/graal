@@ -45,15 +45,15 @@ public class AbstractRequestHandler {
             Source source = sourceWrapper.getSource();
             if (SourceUtils.isLineValid(line, source)) {
                 int oneBasedLineNumber = SourceUtils.zeroBasedLineToOneBasedLine(line, source);
-                NearestSections nearestSections = NearestSectionsFinder.getNearestSections(source, env, oneBasedLineNumber, character, tag);
+                NearestSections nearestSections = NearestSectionsFinder.findNearestSections(source, env, oneBasedLineNumber, character, true, tag);
                 if (nearestSections.getNextSourceSection() != null) {
                     SourceSection nextNodeSection = nearestSections.getNextSourceSection();
                     if (nextNodeSection.getStartLine() == oneBasedLineNumber && nextNodeSection.getStartColumn() == character + 1) {
                         // nextNodeSection is directly before the caret, so we use that one
-                        return nearestSections.getNextNode();
+                        return nearestSections.getInstrumentableNextNode();
                     }
                 }
-                return nearestSections.getContainsNode();
+                return nearestSections.getInstrumentableContainsNode();
             }
         }
         return null;
