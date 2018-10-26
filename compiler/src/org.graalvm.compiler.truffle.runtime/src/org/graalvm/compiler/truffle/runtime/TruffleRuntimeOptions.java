@@ -138,7 +138,9 @@ public final class TruffleRuntimeOptions {
     public static TruffleRuntimeOptionsOverrideScope overrideOptions(OptionKey<?> key1, Object value1, Object... extraOverrides) {
         final EconomicMap<OptionKey<?>, Object> map = EconomicMap.create();
         map.put(key1, value1);
-        assert extraOverrides.length == 0 || (extraOverrides.length & 1) == 0 : "ExtraOverrides.length must be even.";
+        if ((extraOverrides.length & 1) == 1) {
+            throw new IllegalArgumentException("extraOverrides.length must be even: " + extraOverrides.length);
+        }
         for (int i = 0; i < extraOverrides.length; i += 2) {
             map.put((OptionKey<?>) extraOverrides[i], extraOverrides[i + 1]);
         }
