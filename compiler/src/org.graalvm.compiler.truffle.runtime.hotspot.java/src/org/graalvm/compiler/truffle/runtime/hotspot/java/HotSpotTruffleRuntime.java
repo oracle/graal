@@ -24,14 +24,11 @@
  */
 package org.graalvm.compiler.truffle.runtime.hotspot.java;
 
-import java.io.IOException;
-import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableMapCursor;
-import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.hotspot.CompilerConfigurationFactory;
 import org.graalvm.compiler.hotspot.HotSpotGraalOptionValues;
@@ -99,11 +96,6 @@ final class HotSpotTruffleRuntime extends AbstractHotSpotTruffleRuntime {
     @Override
     public TruffleCompiler newTruffleCompiler() {
         return HotSpotTruffleCompilerImpl.create(this);
-    }
-
-    @Override
-    protected Path getGraphDumpDirectory() throws IOException {
-        return DebugOptions.getDumpDirectory(HotSpotGraalOptionValues.HOTSPOT_OPTIONS);
     }
 
     @Override

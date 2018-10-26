@@ -38,11 +38,11 @@ import com.oracle.truffle.api.Option;
 
 import jdk.vm.ci.common.NativeImageReinitialize;
 
-final class IgvOptions {
+final class TruffleDebugOptions {
 
     @NativeImageReinitialize private static volatile OptionValuesImpl optionValues;
 
-    private IgvOptions() {
+    private TruffleDebugOptions() {
         throw new IllegalStateException("No instance allowed.");
     }
 
@@ -58,7 +58,7 @@ final class IgvOptions {
         OptionValuesImpl result = optionValues;
         if (result == null) {
             final EconomicMap<OptionKey<?>, Object> valuesMap = EconomicMap.create();
-            final OptionDescriptors descriptors = new IgvOptionsOptionDescriptors();
+            final OptionDescriptors descriptors = new TruffleDebugOptionsOptionDescriptors();
             for (Map.Entry<String, Object> e : TruffleCompilerRuntime.getRuntime().getOptions().entrySet()) {
                 final OptionDescriptor descriptor = descriptors.get(e.getKey());
                 final OptionKey<?> k = descriptor != null ? descriptor.getKey() : null;
@@ -73,12 +73,6 @@ final class IgvOptions {
     }
 
     // Initialized by the options of the same name in org.graalvm.compiler.debug.DebugOptions
-
-    @Option(help = "", category = OptionCategory.DEBUG) public static final OptionKey<Boolean> PrintGraphFile = new OptionKey<>(false);
-    @Option(help = "", category = OptionCategory.DEBUG) public static final OptionKey<Integer> PrintBinaryGraphPort = new OptionKey<>(4445);
-    @Option(help = "", category = OptionCategory.DEBUG) public static final OptionKey<String> PrintGraphHost = new OptionKey<>("127.0.0.1");
-    @Option(help = "", category = OptionCategory.DEBUG) public static final OptionKey<String> DumpPath = new OptionKey<>("dumps");
-    @Option(help = "", category = OptionCategory.DEBUG) public static final OptionKey<Boolean> ShowDumpFiles = new OptionKey<>(false);
     @Option(help = "", category = OptionCategory.DEBUG) public static final OptionKey<Boolean> PrintGraph = new OptionKey<>(true);
     @Option(help = "", category = OptionCategory.DEBUG) public static final OptionKey<Boolean> PrintTruffleTrees = new OptionKey<>(true);
 }

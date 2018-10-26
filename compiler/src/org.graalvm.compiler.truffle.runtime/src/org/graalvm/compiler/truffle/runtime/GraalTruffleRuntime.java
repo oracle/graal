@@ -34,12 +34,9 @@ import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.T
 import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleUseFrameWithoutBoxing;
 
 import java.io.CharArrayWriter;
-import java.io.Closeable;
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -69,7 +66,6 @@ import org.graalvm.compiler.truffle.runtime.debug.TraceCompilationPolymorphismLi
 import org.graalvm.compiler.truffle.runtime.debug.TraceInliningListener;
 import org.graalvm.compiler.truffle.runtime.debug.TraceSplittingListener;
 import org.graalvm.compiler.truffle.runtime.serviceprovider.TruffleRuntimeServices;
-import org.graalvm.graphio.GraphOutput;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.Assumption;
@@ -119,6 +115,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
+import org.graalvm.compiler.truffle.common.TruffleOutputGroup;
 
 /**
  * Implementation of the Truffle runtime when running on top of Graal.
@@ -249,8 +246,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     protected abstract JavaConstant forObject(Object object);
 
     protected abstract <T> T asObject(Class<T> type, JavaConstant constant);
-
-    protected abstract Path getGraphDumpDirectory() throws IOException;
 
     protected abstract Map<String, Object> createInitialOptions();
 
@@ -678,47 +673,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         }
     }
 
-    /**
-     * Helper class that adds a "Truffle::method_name" group around all graph dumps of a single
-     * Truffle compilation, and makes sure the group is properly closed at the end of the
-     * compilation.
-     */
-    static final class OutputGroup implements Closeable {
-
-        private final GraphOutput<Void, ?> output;
-
-        private OutputGroup(TruffleDebugContext debug, CallTarget callTarget) {
-            String name = "Truffle::" + callTarget.toString();
-            GraphOutput<Void, ?> out = null;
-            try {
-                out = debug.buildOutput(GraphOutput.newBuilder(VoidGraphStructure.INSTANCE).protocolVersion(6, 0));
-                out.beginGroup(null, name, name, null, 0, debug.getVersionProperties());
-            } catch (Throwable e) {
-                if (out != null) {
-                    out.close();
-                    out = null;
-                }
-            }
-            this.output = out;
-        }
-
-        @Override
-        public void close() throws IOException {
-            try {
-                output.endGroup();
-            } finally {
-                output.close();
-            }
-        }
-
-        static OutputGroup open(TruffleDebugContext debug, OptimizedCallTarget callTarget) {
-            if (debug != null && debug.isDumpEnabled()) {
-                return new OutputGroup(debug, callTarget);
-            }
-            return null;
-        }
-    }
-
     @SuppressWarnings("try")
     protected void doCompile(TruffleDebugContext debug, String compilationId, OptionValues options, OptimizedCallTarget callTarget, TruffleCompilationTask task) {
         listeners.onCompilationStarted(callTarget);
@@ -727,7 +681,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         final Map<String, Object> optionsMap = TruffleRuntimeOptions.asMap(options);
         try (AutoCloseable s = debug != null ? debug.scope("Truffle", new TruffleDebugJavaMethod(callTarget)) : null) {
             // Open the "Truffle::methodName" dump group if dumping is enabled.
-            try (OutputGroup o = OutputGroup.open(debug, callTarget)) {
+            try (TruffleOutputGroup o = TruffleOutputGroup.open(debug, callTarget)) {
                 // Create "AST" and "Call Tree" groups if dumping is enabled.
                 maybeDumpTruffleTree(debug, callTarget, inlining);
                 // Compile the method (puts dumps in "Graal Graphs" group if dumping is enabled).
@@ -764,11 +718,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     @SuppressWarnings("try")
-    private static void maybeDumpTruffleTree(TruffleDebugContext inDebug, OptimizedCallTarget callTarget, TruffleInlining inlining) throws Exception {
-        TruffleDebugContext debug = inDebug;
-        if (debug == null) {
-            debug = IgvSupport.create(callTarget, "TruffleTree:" + callTarget.getName());
-        }
+    private static void maybeDumpTruffleTree(TruffleDebugContext debug, OptimizedCallTarget callTarget, TruffleInlining inlining) throws Exception {
         try (AutoCloseable c = debug.scope("TruffleTree")) {
             if (debug.isDumpEnabled()) {
                 TruffleTreeDumper.dump(debug, callTarget, inlining);

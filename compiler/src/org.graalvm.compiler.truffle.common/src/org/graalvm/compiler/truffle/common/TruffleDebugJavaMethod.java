@@ -97,6 +97,10 @@ public class TruffleDebugJavaMethod implements JavaMethod {
         this.compilable = compilable;
     }
 
+    public CompilableTruffleAST getCompilable() {
+        return compilable;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (obj instanceof TruffleDebugJavaMethod) {
