@@ -1036,6 +1036,10 @@ public abstract class TruffleLanguage<C> {
         return AccessAPI.engineAccess().createDefaultLexicalScope(node, frame);
     }
 
+    protected List<String> getCompletionTriggerCharacters() {
+        return Collections.emptyList();
+    }
+
     /**
      * Find a hierarchy of top-most scopes of the language, if any. The scopes should be returned
      * from the inner-most to the outer-most scope order. The language may return an empty iterable
@@ -2089,6 +2093,10 @@ public abstract class TruffleLanguage<C> {
             return getSpi().findLocalScopes(context, node, frame);
         }
 
+        List<String> getCompletionTriggerCharacters() {
+            return getSpi().getCompletionTriggerCharacters();
+        }
+
         Iterable<Scope> findTopScopes() {
             return getSpi().findTopScopes(context);
         }
@@ -2550,6 +2558,11 @@ public abstract class TruffleLanguage<C> {
         @Override
         public Iterable<Scope> findTopScopes(Env env) {
             return env.findTopScopes();
+        }
+
+        @Override
+        public List<String> getCompletionTriggerCharacters(Env env) {
+            return env.getCompletionTriggerCharacters();
         }
 
         @Override
