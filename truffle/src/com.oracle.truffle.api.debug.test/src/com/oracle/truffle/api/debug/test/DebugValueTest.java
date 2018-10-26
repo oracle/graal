@@ -130,6 +130,10 @@ public class DebugValueTest extends AbstractDebugTest {
             assertTrue(attributesTOValue.isWritable());
             // Property is not internal by default
             assertFalse(attributesTOValue.isInternal());
+            // Property does not have read side-effects by default
+            assertFalse(attributesTOValue.hasReadSideEffects());
+            // Property does not have write side-effects by default
+            assertFalse(attributesTOValue.hasWriteSideEffects());
             // Test canExecute
             assertFalse(attributesTOValue.canExecute());
             DebugValue fvalue = event.getSession().getTopScope(InstrumentationTestLanguage.ID).getDeclaredValue("function");
@@ -155,6 +159,8 @@ public class DebugValueTest extends AbstractDebugTest {
             assertFalse(attributesTOValue.isReadable());
             assertFalse(attributesTOValue.isWritable());
             assertFalse(attributesTOValue.isInternal());
+            assertFalse(attributesTOValue.hasReadSideEffects());
+            assertFalse(attributesTOValue.hasWriteSideEffects());
             mao.setIsReadable(true);
             attributesTOValue = value.getProperties().iterator().next();
             assertTrue(attributesTOValue.isReadable());
@@ -164,6 +170,11 @@ public class DebugValueTest extends AbstractDebugTest {
             mao.setIsInternal(true);
             attributesTOValue = value.getProperties().iterator().next();
             assertTrue(attributesTOValue.isInternal());
+            mao.setHasReadSideEffects(true);
+            mao.setHasWriteSideEffects(true);
+            attributesTOValue = value.getProperties().iterator().next();
+            assertTrue(attributesTOValue.hasReadSideEffects());
+            assertTrue(attributesTOValue.hasWriteSideEffects());
             event.prepareContinue();
             suspended[0] = true;
         });
@@ -219,7 +230,9 @@ public class DebugValueTest extends AbstractDebugTest {
     static final class ModifiableAttributesTruffleObject implements TruffleObject {
 
         private boolean isReadable;
+        private boolean hasReadSideEffects;
         private boolean isWritable;
+        private boolean hasWriteSideEffects;
         private boolean isInternal;
 
         @Override
@@ -231,8 +244,16 @@ public class DebugValueTest extends AbstractDebugTest {
             this.isReadable = isReadable;
         }
 
+        public void setHasReadSideEffects(boolean hasSideEffects) {
+            this.hasReadSideEffects = hasSideEffects;
+        }
+
         public void setIsWritable(boolean isWritable) {
             this.isWritable = isWritable;
+        }
+
+        public void setHasWriteSideEffects(boolean hasSideEffects) {
+            this.hasWriteSideEffects = hasSideEffects;
         }
 
         public void setIsInternal(boolean isInternal) {
@@ -283,7 +304,9 @@ public class DebugValueTest extends AbstractDebugTest {
                 public int access(ModifiableAttributesTruffleObject ato, String propName) {
                     return (ato.isReadable ? KeyInfo.READABLE : 0) |
                                     (ato.isWritable ? KeyInfo.MODIFIABLE : 0) |
-                                    (ato.isInternal ? KeyInfo.INTERNAL : 0);
+                                    (ato.isInternal ? KeyInfo.INTERNAL : 0) |
+                                    (ato.hasReadSideEffects ? KeyInfo.READ_SIDE_EFFECTS : 0) |
+                                    (ato.hasWriteSideEffects ? KeyInfo.WRITE_SIDE_EFFECTS : 0);
                 }
             }
         }

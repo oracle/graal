@@ -31,8 +31,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 import com.oracle.truffle.tools.utils.json.JSONArray;
 import com.oracle.truffle.tools.utils.json.JSONObject;
@@ -59,11 +61,25 @@ import com.oracle.truffle.tools.chromeinspector.types.InternalPropertyDescriptor
 import com.oracle.truffle.tools.chromeinspector.types.Location;
 import com.oracle.truffle.tools.chromeinspector.types.PropertyDescriptor;
 import com.oracle.truffle.tools.chromeinspector.types.RemoteObject;
-import java.util.Iterator;
 
 import org.graalvm.collections.Pair;
 
 public final class TruffleRuntime extends RuntimeDomain {
+
+    private static final Pattern WHITESPACES_PATTERN = Pattern.compile("\\s+");
+    private static final String FUNCTION_COMPLETION = eliminateWhiteSpaces("function getCompletions(");
+    private static final String FUNCTION_SET_PROPERTY = eliminateWhiteSpaces("function(a, b) { this[a] = b; }");
+    // Generic matcher of following function:
+    // function invokeGetter(arrayStr){let result=this;const properties=JSON.parse(arrayStr);
+    // for(let i=0,n=properties.length;i<n;++i)
+    // result=result[properties[i]];return result;}
+    private static final Pattern FUNCTION_GETTER_PATTERN1 = Pattern.compile(
+                    "function\\s+(?<invokeGetter>\\w+)\\((?<arrayStr>\\w+)\\)\\s*\\{\\s*\\w+\\s+(?<result>\\w+)=this;\\s*\\w*\\s*(?<properties>\\w+)=JSON.parse\\(\\k<arrayStr>\\);" +
+                                    "\\s*for\\(\\w+\\s+(?<i>\\w+)=.*(\\+\\+\\k<i>|\\k<i>\\+\\+|\\-\\-\\k<i>|\\k<i>\\-\\-)\\)\\s*\\{?\\s*\\k<result>=\\k<result>\\[\\k<properties>\\[\\k<i>\\]\\];\\s*\\}?\\s*return\\s+\\k<result>;\\}");
+    // Generic matcher of following function:
+    // function remoteFunction(propName) { return this[propName]; }
+    private static final Pattern FUNCTION_GETTER_PATTERN2 = Pattern.compile(
+                    "function\\s+(?<invokeGetter>\\w+)\\((?<propName>\\w+)\\)\\s*\\{\\s*return\\s+this\\[\\k<propName>\\];\\s*\\}");
 
     private final TruffleExecutionContext context;
     private TruffleExecutionContext.Listener contextListener;
@@ -396,13 +412,14 @@ public final class TruffleRuntime extends RuntimeDomain {
             DebuggerSuspendedInfo suspendedInfo = context.getSuspendedInfo();
             if (suspendedInfo != null) {
                 try {
+                    String function = eliminateWhiteSpaces(functionDeclaration);
                     context.executeInSuspendThread(new SuspendThreadExecutable<Void>() {
                         @Override
                         public Void executeCommand() throws CommandProcessException {
                             JSONObject result;
-                            if (functionDeclaration.startsWith("function getCompletions(")) {
+                            if (function.startsWith(FUNCTION_COMPLETION)) {
                                 result = createCodecompletion(value);
-                            } else if (functionDeclaration.equals("function(a, b) { this[a] = b; }")) {
+                            } else if (function.equals(FUNCTION_SET_PROPERTY)) {
                                 // Set of an array element, or object property
                                 if (arguments.length() < 2) {
                                     throw new CommandProcessException("Insufficient number of arguments: " + arguments.length() + ", expecting: 2");
@@ -411,16 +428,29 @@ public final class TruffleRuntime extends RuntimeDomain {
                                 CallArgument newValue = CallArgument.get((JSONObject) arguments.get(1));
                                 setPropertyValue(value, property, newValue, suspendedInfo.lastEvaluatedValue.getAndSet(null));
                                 result = new JSONObject();
+                            } else if (FUNCTION_GETTER_PATTERN1.matcher(functionDeclaration).matches()) {
+                                if (arguments.length() < 1) {
+                                    throw new CommandProcessException("Expecting an argument to invokeGetter function.");
+                                }
+                                String propertyNames = ((JSONObject) arguments.get(0)).getString("value");
+                                JSONArray properties = new JSONArray(propertyNames);
+                                DebugValue v = value;
+                                for (int i = 0; i < properties.length() && v != null; i++) {
+                                    String propertyName = properties.getString(i);
+                                    v = v.getProperty(propertyName);
+                                }
+                                result = asResult(v);
+                            } else if (FUNCTION_GETTER_PATTERN2.matcher(functionDeclaration).matches()) {
+                                if (arguments.length() < 1) {
+                                    throw new CommandProcessException("Expecting an argument to invokeGetter function.");
+                                }
+                                String propertyName = ((JSONObject) arguments.get(0)).getString("value");
+                                DebugValue p = value.getProperty(propertyName);
+                                result = asResult(p);
                             } else {
                                 String code = "(" + functionDeclaration + ")(" + value.getName() + ")";
                                 DebugValue eval = suspendedInfo.getSuspendedEvent().getTopStackFrame().eval(code);
-                                if (!returnByValue) {
-                                    RemoteObject ro = new RemoteObject(eval, context.getErr());
-                                    context.getRemoteObjectsHandler().register(ro);
-                                    result = ro.toJSON();
-                                } else {
-                                    result = RemoteObject.createJSONResultValue(eval, context.getErr());
-                                }
+                                result = asResult(eval);
                             }
                             json.put("result", result);
                             return null;
@@ -430,6 +460,22 @@ public final class TruffleRuntime extends RuntimeDomain {
                         public Void processException(DebugException ex) {
                             fillExceptionDetails(json, ex);
                             return null;
+                        }
+
+                        private JSONObject asResult(DebugValue v) {
+                            JSONObject result;
+                            if (v == null) {
+                                result = RemoteObject.createNullObject().toJSON();
+                            } else {
+                                if (!returnByValue) {
+                                    RemoteObject ro = new RemoteObject(v, true, context.getErr());
+                                    context.getRemoteObjectsHandler().register(ro);
+                                    result = ro.toJSON();
+                                } else {
+                                    result = RemoteObject.createJSONResultValue(v, context.getErr());
+                                }
+                            }
+                            return result;
                         }
                     });
                 } catch (NoSuspendedThreadException ex) {
@@ -536,12 +582,32 @@ public final class TruffleRuntime extends RuntimeDomain {
             name = defaultName;
         }
         if (!v.isInternal()) {
-            pd = new PropertyDescriptor(name, rv, v.isWritable(), null, null, true, true, null, true, null);
+            RemoteObject getter = findGetter(v);
+            RemoteObject setter = findSetter(v);
+            pd = new PropertyDescriptor(name, rv, v.isWritable(), getter, setter, true, true, null, true, null);
             return pd.toJSON();
         } else {
             InternalPropertyDescriptor ipd = new InternalPropertyDescriptor(name, rv);
             return ipd.toJSON();
         }
+    }
+
+    private static RemoteObject findGetter(DebugValue v) {
+        if (!v.hasReadSideEffects()) {
+            return null;
+        }
+        return RemoteObject.createSimpleObject("function", "Function", "");
+    }
+
+    private static RemoteObject findSetter(DebugValue v) {
+        if (!v.hasWriteSideEffects()) {
+            return null;
+        }
+        return RemoteObject.createSimpleObject("function", "Function", "");
+    }
+
+    private static String eliminateWhiteSpaces(String str) {
+        return WHITESPACES_PATTERN.matcher(str).replaceAll("");
     }
 
     private class ContextListener implements TruffleExecutionContext.Listener {
