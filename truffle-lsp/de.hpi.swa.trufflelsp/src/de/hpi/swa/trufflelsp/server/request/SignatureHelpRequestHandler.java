@@ -56,6 +56,9 @@ public class SignatureHelpRequestHandler extends AbstractRequestHandler {
                 if (result instanceof TruffleObject) {
                     try {
                         Object signature = ForeignAccess.send(GET_SIGNATURE, (TruffleObject) result);
+                        if (signature == null) {
+                            return new SignatureHelp();
+                        }
                         String formattedSignature = ForeignAccess.sendInvoke(INVOKE, (TruffleObject) signature, "format").toString();
                         List<Object> params = ObjectStructures.asList(new ObjectStructures.MessageNodes(), (TruffleObject) signature);
                         SignatureInformation info = new SignatureInformation(formattedSignature);
