@@ -63,7 +63,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValueNode;
 
-class PolyglotList<T> extends AbstractList<T> {
+class PolyglotList<T> extends AbstractList<T> implements HostWrapper {
 
     final TruffleObject guestObject;
     final PolyglotLanguageContext languageContext;
@@ -73,6 +73,16 @@ class PolyglotList<T> extends AbstractList<T> {
         this.guestObject = array;
         this.languageContext = languageContext;
         this.cache = Cache.lookup(languageContext, array.getClass(), elementClass, elementType);
+    }
+
+    @Override
+    public Object getGuestObject() {
+        return guestObject;
+    }
+
+    @Override
+    public PolyglotLanguageContext getLanguageContext() {
+        return languageContext;
     }
 
     @TruffleBoundary

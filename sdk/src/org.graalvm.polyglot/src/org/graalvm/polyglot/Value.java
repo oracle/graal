@@ -964,14 +964,12 @@ public final class Value {
     }
 
     /**
-     * Converts a Java host value to a polyglot value representation using
-     * {@link Context#asValue(Object)} with the {@link Context#getCurrent() current} context. This
-     * method is a short-cut for <code>Context.getCurrent().asValue(o)</code>.
+     * Converts a Java host value to a polyglot value. Returns a value for any host or guest value.
+     * If there is a context available use {@link Context#asValue(Object)} for efficiency instead.
      *
      * @param o the object to convert
      * @throws IllegalStateException if no context is currently entered.
      * @see Context#asValue(Object) Conversion rules.
-     * @see Context#getCurrent() Looking up the current context.
      * @since 1.0
      */
     public static Value asValue(Object o) {

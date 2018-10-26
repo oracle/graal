@@ -117,6 +117,10 @@ final class HostObject implements TruffleObject {
         return object instanceof HostObject && ((HostObject) object).isStaticClass();
     }
 
+    HostObject withContext(PolyglotLanguageContext context) {
+        return new HostObject(this.obj, context, this.staticClass);
+    }
+
     static boolean isJavaInstance(Class<?> targetType, Object javaObject) {
         if (javaObject instanceof HostObject) {
             final Object value = valueOf((HostObject) javaObject);
@@ -337,7 +341,14 @@ class HostObjectMR {
             if (TruffleOptions.AOT) {
                 return false;
             }
-            return receiver.isClass() && lookupConstructor().execute(receiver.asClass()) != null;
+            if (receiver.isClass()) {
+                Class<?> javaClass = receiver.asClass();
+                if (javaClass.isArray()) {
+                    return true;
+                }
+                return lookupConstructor().execute(javaClass) != null;
+            }
+            return false;
         }
 
         private LookupConstructorNode lookupConstructor() {

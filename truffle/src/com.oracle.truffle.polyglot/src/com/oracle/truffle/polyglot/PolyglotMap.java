@@ -72,7 +72,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValueNode;
 
-class PolyglotMap<K, V> extends AbstractMap<K, V> {
+class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
 
     final PolyglotLanguageContext languageContext;
     final TruffleObject guestObject;
@@ -90,6 +90,16 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> {
         } else {
             return new PolyglotMap<>(languageContext, foreignObject, keyClass, valueClass, valueType);
         }
+    }
+
+    @Override
+    public Object getGuestObject() {
+        return guestObject;
+    }
+
+    @Override
+    public PolyglotLanguageContext getLanguageContext() {
+        return languageContext;
     }
 
     @Override

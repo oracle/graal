@@ -90,6 +90,11 @@ abstract class PolyglotValue extends AbstractValueImpl {
         this.languageContext = languageContext;
     }
 
+    PolyglotValue(PolyglotImpl polyglot, PolyglotLanguageContext languageContext) {
+        super(polyglot);
+        this.languageContext = languageContext;
+    }
+
     @Override
     public Value getArrayElement(Object receiver, long index) {
         return getArrayElementUnsupported(languageContext, receiver);
@@ -589,16 +594,20 @@ abstract class PolyglotValue extends AbstractValueImpl {
         return new InteropValue(languageContext, cache);
     }
 
-    static void createDefaultValues(PolyglotLanguageContext context, Map<Class<?>, PolyglotValue> valueCache) {
-        valueCache.put(Boolean.class, new BooleanValue(context));
-        valueCache.put(Byte.class, new ByteValue(context));
-        valueCache.put(Short.class, new ShortValue(context));
-        valueCache.put(Integer.class, new IntValue(context));
-        valueCache.put(Long.class, new LongValue(context));
-        valueCache.put(Float.class, new FloatValue(context));
-        valueCache.put(Double.class, new DoubleValue(context));
-        valueCache.put(String.class, new StringValue(context));
-        valueCache.put(Character.class, new CharacterValue(context));
+    static PolyglotValue createHostNull(PolyglotImpl polyglot) {
+        return new HostNull(polyglot);
+    }
+
+    static void createDefaultValues(PolyglotImpl polyglot, PolyglotLanguageContext context, Map<Class<?>, PolyglotValue> valueCache) {
+        valueCache.put(Boolean.class, new BooleanValue(polyglot, context));
+        valueCache.put(Byte.class, new ByteValue(polyglot, context));
+        valueCache.put(Short.class, new ShortValue(polyglot, context));
+        valueCache.put(Integer.class, new IntValue(polyglot, context));
+        valueCache.put(Long.class, new LongValue(polyglot, context));
+        valueCache.put(Float.class, new FloatValue(polyglot, context));
+        valueCache.put(Double.class, new DoubleValue(polyglot, context));
+        valueCache.put(String.class, new StringValue(polyglot, context));
+        valueCache.put(Character.class, new CharacterValue(polyglot, context));
     }
 
     private static boolean inSafeIntegerRange(double d) {
@@ -1609,8 +1618,8 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     abstract static class PrimitiveValue extends PolyglotValue {
 
-        PrimitiveValue(PolyglotLanguageContext context) {
-            super(context);
+        PrimitiveValue(PolyglotImpl polyglot, PolyglotLanguageContext context) {
+            super(polyglot, context);
         }
 
         @SuppressWarnings("unchecked")
@@ -1632,6 +1641,36 @@ abstract class PolyglotValue extends AbstractValueImpl {
         @Override
         public final <T> T as(Object receiver, TypeLiteral<T> targetType) {
             return as(receiver, targetType.getRawType());
+        }
+
+    }
+
+    private final static class HostNull extends PolyglotValue {
+
+        private final PolyglotImpl polyglot;
+
+        HostNull(PolyglotImpl polyglot) {
+            super(polyglot, null);
+            this.polyglot = polyglot;
+        }
+
+        @Override
+        public boolean isNull(Object receiver) {
+            return true;
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public <T> T as(Object receiver, Class<T> targetType) {
+            if (targetType == Value.class) {
+                return (T) polyglot.hostNull;
+            }
+            return null;
+        }
+
+        @Override
+        public <T> T as(Object receiver, TypeLiteral<T> targetType) {
+            return as(receiver, targetType);
         }
 
     }
@@ -1667,8 +1706,8 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     private static final class StringValue extends PrimitiveValue {
 
-        StringValue(PolyglotLanguageContext context) {
-            super(context);
+        StringValue(PolyglotImpl polyglot, PolyglotLanguageContext context) {
+            super(polyglot, context);
         }
 
         @Override
@@ -1685,8 +1724,8 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     private static final class BooleanValue extends PrimitiveValue {
 
-        BooleanValue(PolyglotLanguageContext context) {
-            super(context);
+        BooleanValue(PolyglotImpl polyglot, PolyglotLanguageContext context) {
+            super(polyglot, context);
         }
 
         @Override
@@ -1702,9 +1741,8 @@ abstract class PolyglotValue extends AbstractValueImpl {
     }
 
     private static final class ByteValue extends PrimitiveValue {
-
-        ByteValue(PolyglotLanguageContext context) {
-            super(context);
+        ByteValue(PolyglotImpl polyglot, PolyglotLanguageContext context) {
+            super(polyglot, context);
         }
 
         @Override
@@ -1776,8 +1814,8 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     private static final class ShortValue extends PrimitiveValue {
 
-        ShortValue(PolyglotLanguageContext context) {
-            super(context);
+        ShortValue(PolyglotImpl polyglot, PolyglotLanguageContext context) {
+            super(polyglot, context);
         }
 
         @Override
@@ -1857,8 +1895,8 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     private static final class CharacterValue extends PrimitiveValue {
 
-        CharacterValue(PolyglotLanguageContext context) {
-            super(context);
+        CharacterValue(PolyglotImpl polyglot, PolyglotLanguageContext context) {
+            super(polyglot, context);
         }
 
         @Override
@@ -1874,8 +1912,8 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     private static final class LongValue extends PrimitiveValue {
 
-        LongValue(PolyglotLanguageContext context) {
-            super(context);
+        LongValue(PolyglotImpl polyglot, PolyglotLanguageContext context) {
+            super(polyglot, context);
         }
 
         @Override
@@ -1984,8 +2022,8 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     private static final class FloatValue extends PrimitiveValue {
 
-        FloatValue(PolyglotLanguageContext context) {
-            super(context);
+        FloatValue(PolyglotImpl polyglot, PolyglotLanguageContext context) {
+            super(polyglot, context);
         }
 
         @Override
@@ -2096,8 +2134,8 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     private static final class DoubleValue extends PrimitiveValue {
 
-        DoubleValue(PolyglotLanguageContext context) {
-            super(context);
+        DoubleValue(PolyglotImpl polyglot, PolyglotLanguageContext context) {
+            super(polyglot, context);
         }
 
         @Override
@@ -2208,8 +2246,8 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     private static final class IntValue extends PrimitiveValue {
 
-        IntValue(PolyglotLanguageContext context) {
-            super(context);
+        IntValue(PolyglotImpl polyglot, PolyglotLanguageContext context) {
+            super(polyglot, context);
         }
 
         @Override
@@ -2301,10 +2339,49 @@ abstract class PolyglotValue extends AbstractValueImpl {
         }
     }
 
-    static final class DefaultValue extends PrimitiveValue {
+    static final class DefaultValue extends PolyglotValue {
 
-        DefaultValue(PolyglotLanguageContext context) {
-            super(context);
+        DefaultValue(PolyglotImpl polyglot, PolyglotLanguageContext context) {
+            super(polyglot, context);
+        }
+
+        @Override
+        public boolean isHostObject(Object receiver) {
+            return HostObject.isInstance(receiver);
+        }
+
+        @Override
+        public Object asHostObject(Object receiver) {
+            return ((HostObject) receiver).obj;
+        }
+
+        @Override
+        public boolean isProxyObject(Object receiver) {
+            return PolyglotProxy.isProxyGuestObject(receiver);
+        }
+
+        @Override
+        public Object asProxyObject(Object receiver) {
+            return PolyglotProxy.toProxyHostObject((TruffleObject) receiver);
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public <T> T as(Object receiver, Class<T> targetType) {
+            Object hostValue;
+            if (isProxyObject(receiver)) {
+                hostValue = asProxyObject(receiver);
+            } else if (isHostObject(receiver)) {
+                hostValue = asHostObject(receiver);
+            } else {
+                throw new ClassCastException();
+            }
+            return targetType.cast(hostValue);
+        }
+
+        @Override
+        public <T> T as(Object receiver, TypeLiteral<T> targetType) {
+            return as(receiver, targetType.getRawType());
         }
 
     }

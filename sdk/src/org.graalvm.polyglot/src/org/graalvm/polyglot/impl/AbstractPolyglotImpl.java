@@ -151,6 +151,7 @@ public abstract class AbstractPolyglotImpl {
 
     public final void setConstructors(APIAccess constructors) {
         this.api = constructors;
+        initialize();
     }
 
     public APIAccess getAPIAccess() {
@@ -159,6 +160,9 @@ public abstract class AbstractPolyglotImpl {
 
     public MonitoringAccess getMonitoring() {
         return monitoring;
+    }
+
+    protected void initialize() {
     }
 
     public abstract Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
