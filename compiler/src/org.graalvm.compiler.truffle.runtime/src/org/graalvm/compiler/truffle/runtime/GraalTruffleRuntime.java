@@ -682,8 +682,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         try (AutoCloseable s = debug != null ? debug.scope("Truffle", new TruffleDebugJavaMethod(callTarget)) : null) {
             // Open the "Truffle::methodName" dump group if dumping is enabled.
             try (TruffleOutputGroup o = TruffleOutputGroup.open(debug, callTarget)) {
-                // Create "AST" and "Call Tree" groups if dumping is enabled.
-                maybeDumpTruffleTree(debug, callTarget, inlining);
+                if (debug != null) {
+                    // Create "AST" and "Call Tree" groups if dumping is enabled.
+                    maybeDumpTruffleTree(debug, callTarget, inlining);
+                }
                 // Compile the method (puts dumps in "Graal Graphs" group if dumping is enabled).
                 compiler.doCompile(debug, compilationId, optionsMap, callTarget, inlining, task, listeners.isEmpty() ? null : listeners);
             }
