@@ -29,6 +29,7 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import java.util.EnumMap;
 import java.util.function.Function;
 
+import com.oracle.svm.core.SubstrateOptions;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
@@ -95,7 +96,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
 
         EnumMap<ConfigKind, Backend> backends = new EnumMap<>(ConfigKind.class);
         for (ConfigKind config : ConfigKind.values()) {
-            RegisterConfig registerConfig = new SubstrateAMD64RegisterConfig(config, metaAccess, ConfigurationValues.getTarget());
+            RegisterConfig registerConfig = new SubstrateAMD64RegisterConfig(config, metaAccess, ConfigurationValues.getTarget(), SubstrateOptions.UseStackBasePointer.getValue());
             CodeCacheProvider codeCacheProvider = createCodeCacheProvider(registerConfig);
 
             Providers newProviders = createProviders(codeCacheProvider, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider,

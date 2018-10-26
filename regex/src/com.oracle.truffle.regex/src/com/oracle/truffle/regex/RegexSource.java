@@ -34,21 +34,25 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 public final class RegexSource implements JsonConvertible {
 
     private final String pattern;
-    private final RegexFlags flags;
+    private final String flags;
     private Source source;
     private boolean hashComputed = false;
     private int cachedHash;
 
-    public RegexSource(String pattern, RegexFlags flags) {
+    public RegexSource(String pattern, String flags) {
         this.pattern = pattern;
         this.flags = flags;
+    }
+
+    public RegexSource(String pattern) {
+        this(pattern, "");
     }
 
     public String getPattern() {
         return pattern;
     }
 
-    public RegexFlags getFlags() {
+    public String getFlags() {
         return flags;
     }
 
@@ -100,7 +104,7 @@ public final class RegexSource implements JsonConvertible {
                 i++;
             }
         }
-        if (!flags.isNone()) {
+        if (!flags.isEmpty()) {
             sb.append('_').append(flags);
         }
         return sb.toString();

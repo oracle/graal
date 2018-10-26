@@ -122,11 +122,11 @@ public final class ReflectionConfigurationParser extends ConfigurationParser {
                 }
             } else if (name.equals("allDeclaredFields")) {
                 if (asBoolean(value, "allDeclaredFields")) {
-                    registry.register(clazz.getDeclaredFields());
+                    registry.register(false, clazz.getDeclaredFields());
                 }
             } else if (name.equals("allPublicFields")) {
                 if (asBoolean(value, "allPublicFields")) {
-                    registry.register(clazz.getFields());
+                    registry.register(false, clazz.getFields());
                 }
             } else if (name.equals("methods")) {
                 parseMethods(asList(value, "Attribute 'methods' must be an array of method descriptors"), clazz);
@@ -148,10 +148,13 @@ public final class ReflectionConfigurationParser extends ConfigurationParser {
 
     private void parseField(Map<String, Object> data, Class<?> clazz) {
         String fieldName = null;
+        boolean allowWrite = false;
         for (Map.Entry<String, Object> entry : data.entrySet()) {
             String propertyName = entry.getKey();
             if (propertyName.equals("name")) {
                 fieldName = asString(entry.getValue(), "name");
+            } else if (propertyName.equals("allowWrite")) {
+                allowWrite = asBoolean(entry.getValue(), "allowWrite");
             } else {
                 throw new JSONParserException("Unknown attribute '" + propertyName + "' (supported attributes: 'name') in definition of field for class '" + clazz.getTypeName() + "'");
             }
@@ -162,7 +165,7 @@ public final class ReflectionConfigurationParser extends ConfigurationParser {
         }
 
         try {
-            registry.register(clazz.getDeclaredField(fieldName));
+            registry.register(allowWrite, clazz.getDeclaredField(fieldName));
         } catch (NoSuchFieldException e) {
             throw new JSONParserException("Field " + clazz.getTypeName() + "." + fieldName + " not found");
         }

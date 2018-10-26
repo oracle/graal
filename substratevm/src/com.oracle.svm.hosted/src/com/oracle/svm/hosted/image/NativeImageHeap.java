@@ -79,6 +79,7 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.MethodPointer;
+import com.oracle.svm.hosted.meta.MaterializedConstantFields;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -163,7 +164,8 @@ public final class NativeImageHeap {
          * fields manually.
          */
         for (HostedField field : getUniverse().getFields()) {
-            if (Modifier.isStatic(field.getModifiers()) && field.isWritten() && field.isAccessed() && field.getType().getStorageKind() == JavaKind.Object) {
+            if (Modifier.isStatic(field.getModifiers()) && field.hasLocation() && field.getType().getStorageKind() == JavaKind.Object) {
+                assert field.isWritten() || MaterializedConstantFields.singleton().contains(field.wrapped);
                 addObject(readObjectField(field, null), false, field);
             }
         }
@@ -520,7 +522,8 @@ public final class NativeImageHeap {
         ObjectInfo primitiveFields = objects.get(StaticFieldsSupport.getStaticPrimitiveFields());
         ObjectInfo objectFields = objects.get(StaticFieldsSupport.getStaticObjectFields());
         for (HostedField field : getUniverse().getFields()) {
-            if (Modifier.isStatic(field.getModifiers()) && field.isWritten() && field.isAccessed()) {
+            if (Modifier.isStatic(field.getModifiers()) && field.hasLocation()) {
+                assert field.isWritten() || MaterializedConstantFields.singleton().contains(field.wrapped);
                 ObjectInfo fields = (field.getStorageKind() == JavaKind.Object) ? objectFields : primitiveFields;
                 writeField(buffer, fields, field, null, null);
             }

@@ -36,8 +36,8 @@ public class CachingRegexEngine extends RegexEngine {
 
     private final Map<RegexSource, CompilationResult<RegexObject>> cache = Collections.synchronizedMap(new LRUCache<>(TRegexOptions.RegexMaxCacheSize));
 
-    public CachingRegexEngine(RegexCompiler compiler, boolean eagerCompilation) {
-        super(compiler, eagerCompilation);
+    public CachingRegexEngine(RegexCompiler compiler, RegexOptions options) {
+        super(compiler, options);
     }
 
     @Override

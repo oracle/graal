@@ -30,6 +30,7 @@ import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.regex.CompiledRegex;
 import com.oracle.truffle.regex.CompiledRegexObject;
+import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.dead.DeadRegexExecRootNode;
@@ -49,6 +50,8 @@ import com.oracle.truffle.regex.tregex.parser.RegexProperties;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.ASTLaTexExportVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.PreCalcResultVisitor;
+import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
+import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavorProcessor;
 import com.oracle.truffle.regex.tregex.util.DFAExport;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.NFAExport;
@@ -151,6 +154,7 @@ final class TRegexCompilationRequest {
                         tRegexCompiler.getLanguage(),
                         tRegexCompiler,
                         source,
+                        ast.getFlags(),
                         tRegexCompiler.getOptions().isRegressionTestMode(),
                         preCalculatedResults,
                         executorNodeForward,
@@ -197,8 +201,17 @@ final class TRegexCompilationRequest {
     }
 
     private void createAST() {
+        RegexOptions options = tRegexCompiler.getOptions();
+        RegexFlavor flavor = options.getFlavor();
+        RegexSource ecmascriptSource = source;
+        if (flavor != null) {
+            phaseStart("Flavor");
+            RegexFlavorProcessor flavorProcessor = flavor.forRegex(source);
+            ecmascriptSource = flavorProcessor.toECMAScriptRegex();
+            phaseEnd("Flavor");
+        }
         phaseStart("Parser");
-        ast = new RegexParser(source, tRegexCompiler.getOptions()).parse();
+        ast = new RegexParser(ecmascriptSource, options).parse();
         phaseEnd("Parser");
         debugAST();
     }

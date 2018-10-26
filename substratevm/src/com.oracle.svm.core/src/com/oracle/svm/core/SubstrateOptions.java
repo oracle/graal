@@ -115,7 +115,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> UseOnlyWritableBootImageHeap = new HostedOptionKey<>(false);
 
     @Option(help = "Support multiple isolates. ")//
-    public static final HostedOptionKey<Boolean> SpawnIsolates = new HostedOptionKey<>(false);
+    public static final HostedOptionKey<Boolean> SpawnIsolates = new HostedOptionKey<>(true);
 
     @Option(help = "Trace VMOperation execution.")//
     public static final RuntimeOptionKey<Boolean> TraceVMOperations = new RuntimeOptionKey<>(false);
@@ -236,6 +236,9 @@ public class SubstrateOptions {
 
     @Option(help = "Maximum number of nodes in a method so that it is considered trivial, if it does not have any invokes.")//
     public static final HostedOptionKey<Integer> MaxNodesInTrivialLeafMethod = new HostedOptionKey<>(40);
+
+    @Option(help = "Saves stack base pointer on the stack on method entry.")//
+    public static final HostedOptionKey<Boolean> UseStackBasePointer = new HostedOptionKey<>(false);
 
     public static FoldedPredicate makeFilter(String definedFilter) {
         if (definedFilter != null) {

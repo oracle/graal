@@ -54,7 +54,7 @@ public final class LiteralRegexEngine {
         final boolean caret = ast.getRoot().startsWithCaret();
         final boolean dollar = ast.getRoot().endsWithDollar();
         if ((p.hasAlternations() || p.hasCharClasses() || p.hasLookAroundAssertions() || p.hasLoops()) ||
-                        ((caret || dollar) && ast.getSource().getFlags().isMultiline())) {
+                        ((caret || dollar) && ast.getFlags().isMultiline())) {
             return null;
         }
         return createLiteralNode(language, ast, caret, dollar);
@@ -84,7 +84,7 @@ public final class LiteralRegexEngine {
         if (dollar) {
             return new EndsWith(language, source, preCalcResultVisitor);
         }
-        if (source.getFlags().isSticky()) {
+        if (ast.getFlags().isSticky()) {
             return new RegionMatches(language, source, preCalcResultVisitor);
         }
         if (preCalcResultVisitor.getLiteral().length() == 1) {

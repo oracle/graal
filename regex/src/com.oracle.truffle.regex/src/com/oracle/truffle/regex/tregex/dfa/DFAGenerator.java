@@ -262,7 +262,7 @@ public final class DFAGenerator implements JsonConvertible {
     private void createInitialStatesForward() {
         final int numberOfEntryPoints = nfa.getAnchoredEntry().length;
         entryStates = new DFAStateNodeBuilder[numberOfEntryPoints * 2];
-        nfa.setInitialLoopBack(executorProps.isSearching() && !nfa.getAst().getSource().getFlags().isSticky());
+        nfa.setInitialLoopBack(executorProps.isSearching() && !nfa.getAst().getFlags().isSticky());
         for (int i = 0; i < numberOfEntryPoints; i++) {
             NFATransitionSet anchoredEntryStateSet = createNFATransitionSet(nfa.getAnchoredEntry()[i]);
             if (nfa.getUnAnchoredEntry()[i].getTarget().getNext().isEmpty()) {
@@ -693,7 +693,7 @@ public final class DFAGenerator implements JsonConvertible {
     @Override
     public JsonValue toJson() {
         if (forward) {
-            nfa.setInitialLoopBack(executorProps.isSearching() && !nfa.getAst().getSource().getFlags().isSticky());
+            nfa.setInitialLoopBack(executorProps.isSearching() && !nfa.getAst().getFlags().isSticky());
         }
         DFAStateTransitionBuilder[] transitionList = new DFAStateTransitionBuilder[transitionIDCounter.getCount()];
         for (DFAStateNodeBuilder s : getStateIndexMap()) {
