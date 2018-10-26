@@ -46,6 +46,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URL;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
@@ -403,6 +404,8 @@ public abstract class Accessor {
         public abstract void finalizeContext(Env localEnv);
 
         public abstract Iterable<Scope> findLocalScopes(Env env, Node node, Frame frame);
+
+        public abstract List<String> getCompletionTriggerCharacters(Env env);
 
         public abstract Iterable<Scope> findTopScopes(Env env);
 

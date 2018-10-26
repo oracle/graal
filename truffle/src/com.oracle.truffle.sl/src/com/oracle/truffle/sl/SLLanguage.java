@@ -41,6 +41,7 @@
 package com.oracle.truffle.sl;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -358,6 +359,11 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     @Override
     protected Iterable<Scope> findTopScopes(SLContext context) {
         return context.getTopScopes();
+    }
+
+    @Override
+    protected List<String> getCompletionTriggerCharacters() {
+        return Arrays.asList(".");
     }
 
     public static SLContext getCurrentContext() {
