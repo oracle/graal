@@ -58,7 +58,7 @@ public final class StandardTags {
         /* No instances */
     }
 
-    @SuppressWarnings({"rawtypes"}) static final Class[] ALL_TAGS = new Class[]{StatementTag.class, CallTag.class, RootTag.class, ExpressionTag.class, DeclarationTag.class};
+    @SuppressWarnings({"rawtypes"}) static final Class[] ALL_TAGS = new Class[]{StatementTag.class, CallTag.class, RootTag.class, ExpressionTag.class, DeclarationTag.class, ReadVariableTag.class, WriteVariableTag.class};
 
     /**
      * Marks program locations that represent a statement of a language.
@@ -270,7 +270,7 @@ public final class StandardTags {
 
     }
 
-    @Tag.Identifier("ReadVariable")
+    @Tag.Identifier("READ_VARIABLE")
     public static final class ReadVariableTag extends Tag {
 
         private ReadVariableTag() {
@@ -279,7 +279,7 @@ public final class StandardTags {
 
     }
 
-    @Tag.Identifier("WriteVariable")
+    @Tag.Identifier("WRITE_VARIABLE")
     public static final class WriteVariableTag extends Tag {
 
         private WriteVariableTag() {
