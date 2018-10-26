@@ -69,15 +69,12 @@ import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.jdk.LocalizationSupport;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.driver.MacroOption.EnabledOption;
 import com.oracle.svm.driver.MacroOption.MacroOptionKind;
 import com.oracle.svm.driver.MacroOption.Registry;
 import com.oracle.svm.graal.hosted.GraalFeature;
-import com.oracle.svm.hosted.ClassInitializationFeature;
-import com.oracle.svm.hosted.FeatureHandler;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.image.AbstractBootImage.NativeImageKind;
 import com.oracle.svm.hosted.substitute.DeclarativeSubstitutionProcessor;
@@ -138,20 +135,10 @@ public class NativeImage {
     static final String oHOptimize = oH(SubstrateOptions.Optimize);
 
     /* List arguments */
-    static final String oHFeatures = oH(FeatureHandler.Options.Features);
     static final String oHSubstitutionFiles = oH(DeclarativeSubstitutionProcessor.Options.SubstitutionFiles);
-    static final String oHSubstitutionResources = oH(DeclarativeSubstitutionProcessor.Options.SubstitutionResources);
-    static final String oHEnableUrlProtocols = oH(SubstrateOptions.EnableURLProtocols);
-    static final String oHIncludeResourceBundles = oH(LocalizationSupport.Options.IncludeResourceBundles);
     static final String oHReflectionConfigurationFiles = oH(ReflectionFeature.Options.ReflectionConfigurationFiles);
-    static final String oHReflectionConfigurationResources = oH(ReflectionFeature.Options.ReflectionConfigurationResources);
     static final String oHDynamicProxyConfigurationFiles = oH(DynamicProxyFeature.Options.DynamicProxyConfigurationFiles);
-    static final String oHDynamicProxyConfigurationResources = oH(DynamicProxyFeature.Options.DynamicProxyConfigurationResources);
     static final String oHJNIConfigurationFiles = oH(SubstrateOptions.JNIConfigurationFiles);
-    static final String oHJNIConfigurationResources = oH(SubstrateOptions.JNIConfigurationResources);
-    static final String oHDelayClassInitialization = oH(ClassInitializationFeature.Options.DelayClassInitialization);
-    static final String oHRerunClassInitialization = oH(ClassInitializationFeature.Options.RerunClassInitialization);
-    static final String oHInterfacesForJNR = oH + "InterfacesForJNR=";
 
     static final String oHMaxRuntimeCompileMethods = oH(GraalFeature.Options.MaxRuntimeCompileMethods);
     static final String oHInspectServerContentPath = oH(PointstoOptions.InspectServerContentPath);
@@ -722,19 +709,9 @@ public class NativeImage {
         consolidateArgs(imageBuilderArgs, oHMaxRuntimeCompileMethods, Integer::parseInt, String::valueOf, () -> 0, Integer::sum);
         consolidateListArgs(imageBuilderArgs, oHCLibraryPath, ",", canonicalizedPathStr);
         consolidateListArgs(imageBuilderArgs, oHSubstitutionFiles, ",", canonicalizedPathStr);
-        consolidateListArgs(imageBuilderArgs, oHSubstitutionResources, ",", Function.identity());
-        consolidateListArgs(imageBuilderArgs, oHEnableUrlProtocols, ",", Function.identity());
-        consolidateListArgs(imageBuilderArgs, oHIncludeResourceBundles, ",", Function.identity());
-        consolidateListArgs(imageBuilderArgs, oHInterfacesForJNR, ",", Function.identity());
         consolidateListArgs(imageBuilderArgs, oHReflectionConfigurationFiles, ",", canonicalizedPathStr);
-        consolidateListArgs(imageBuilderArgs, oHReflectionConfigurationResources, ",", Function.identity());
         consolidateListArgs(imageBuilderArgs, oHDynamicProxyConfigurationFiles, ",", canonicalizedPathStr);
-        consolidateListArgs(imageBuilderArgs, oHDynamicProxyConfigurationResources, ",", Function.identity());
         consolidateListArgs(imageBuilderArgs, oHJNIConfigurationFiles, ",", canonicalizedPathStr);
-        consolidateListArgs(imageBuilderArgs, oHJNIConfigurationResources, ",", Function.identity());
-        consolidateListArgs(imageBuilderArgs, oHFeatures, ",", Function.identity());
-        consolidateListArgs(imageBuilderArgs, oHDelayClassInitialization, ",", Function.identity());
-        consolidateListArgs(imageBuilderArgs, oHRerunClassInitialization, ",", Function.identity());
 
         BiFunction<String, String, String> takeLast = (a, b) -> b;
         consolidateArgs(imageBuilderArgs, oHPath, Function.identity(), canonicalizedPathStr, () -> null, takeLast);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,28 +22,38 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.jni.hosted;
+package com.oracle.svm.core.option;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import com.oracle.svm.core.SubstrateOptions;
-import org.graalvm.nativeimage.Feature;
-
-import com.oracle.svm.core.annotate.AutomaticFeature;
-
 /**
- * Automatically enables {@link JNIFeature} when specific options are set.
+ * This class contains static helper methods related to options.
  */
-@AutomaticFeature
-public class JNIAutomaticFeature implements Feature {
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.JNI.getValue() || SubstrateOptions.JNIConfigurationFiles.getValue() != null || SubstrateOptions.JNIConfigurationResources.getValue() != null;
-    }
+public class OptionUtils {
 
-    @Override
-    public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Collections.singletonList(JNIFeature.class);
+    /**
+     * Utility for string option values that are a, e.g., comma-separated list, but can also be
+     * provided multiple times on the command line (so the option type is String[]). The returned
+     * list contains all {@link String#trim() trimmed} string parts, with empty strings filtered
+     * out.
+     */
+    public static List<String> flatten(String delimiter, String[] values) {
+        if (values == null) {
+            return Collections.emptyList();
+        }
+        List<String> result = new ArrayList<>();
+        for (String value : values) {
+            if (value != null && !value.isEmpty()) {
+                for (String component : value.split(delimiter)) {
+                    String trimmed = component.trim();
+                    if (!trimmed.isEmpty()) {
+                        result.add(trimmed);
+                    }
+                }
+            }
+        }
+        return result;
     }
 }
