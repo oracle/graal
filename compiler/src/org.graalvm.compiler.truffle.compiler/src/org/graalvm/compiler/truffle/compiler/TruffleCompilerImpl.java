@@ -46,9 +46,9 @@ import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
 import java.util.AbstractMap;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -60,6 +60,7 @@ import org.graalvm.compiler.core.CompilationWrapper.ExceptionAction;
 import org.graalvm.compiler.core.GraalCompiler;
 import org.graalvm.compiler.core.common.CancellationBailoutException;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.core.common.CompilationIdentifier.Verbosity;
 import org.graalvm.compiler.core.common.RetryableBailoutException;
 import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.core.target.Backend;
@@ -162,7 +163,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
         this.firstTierProviders = firstTierProviders;
         this.firstTierSuites = firstTierSuites;
         this.firstTierLirSuites = firstTierLirSuites;
-        this.identifiers = new HashMap<>();
+        this.identifiers = new ConcurrentHashMap<>();
     }
 
     private ResolvedJavaType[] getSkippedExceptionTypes(TruffleCompilerRuntime runtime) {
