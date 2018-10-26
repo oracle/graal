@@ -269,4 +269,22 @@ public final class StandardTags {
         }
 
     }
+
+    @Tag.Identifier("ReadVariable")
+    public static final class ReadVariableTag extends Tag {
+
+        private ReadVariableTag() {
+            /* No instances */
+        }
+
+    }
+
+    @Tag.Identifier("WriteVariable")
+    public static final class WriteVariableTag extends Tag {
+
+        private WriteVariableTag() {
+            /* No instances */
+        }
+
+    }
 }
