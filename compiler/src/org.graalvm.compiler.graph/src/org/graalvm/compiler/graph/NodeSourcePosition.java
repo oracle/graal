@@ -53,7 +53,6 @@ public class NodeSourcePosition extends BytecodePosition {
      * Remove marker frames.
      */
     public NodeSourcePosition trim() {
-        assert marker == None : "must start a real method";
         NodeSourcePosition lastMarker = null;
         for (NodeSourcePosition current = this; current != null; current = current.getCaller()) {
             if (current.marker != None) {
