@@ -565,9 +565,7 @@ public class SubstrateAMD64Backend extends Backend {
                 asm.incrementq(rsp, frameSize);
             }
 
-            if (frameSize != 0) {
-                tasm.recordMark(MARK_EPILOGUE_INCD_RSP);
-            }
+            tasm.recordMark(MARK_EPILOGUE_INCD_RSP);
             tasm.recordMark(MARK_EPILOGUE_END);
         }
 
@@ -605,6 +603,24 @@ public class SubstrateAMD64Backend extends Backend {
      * method.
      */
     protected static class DeoptExitStubContext extends SubstrateAMD64FrameContext {
+        @Override
+        public void enter(CompilationResultBuilder tasm) {
+            AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
+
+            /* The new stack pointer is passed in as the first method parameter. */
+            Register firstParameter = tasm.frameMap.getRegisterConfig().getCallingConventionRegisters(SubstrateCallingConventionType.JavaCall, tasm.target.wordJavaKind).get(0);
+            asm.movq(rsp, firstParameter);
+            /*
+             * Compensate that we set the stack pointer after the return address was pushed. Note
+             * that the "new" frame location does not have a valid return address at this point.
+             * That is OK because the return address for the deoptimization target frame will be
+             * patched into this location.
+             */
+            asm.subq(rsp, FrameAccess.returnAddressSize());
+
+            super.enter(tasm);
+        }
+
         @Override
         public void leave(CompilationResultBuilder tasm) {
             AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
