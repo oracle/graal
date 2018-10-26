@@ -60,7 +60,7 @@ public final class PropertyDescriptor {
                     boolean enumerable, Boolean wasThrown, Boolean isOwn, RemoteObject symbol) {
         JSONObject json = new JSONObject();
         json.put("name", name);
-        if (value != null) {
+        if (value != null && get == null) {
             json.put("value", value.toJSON());
         }
         json.putOpt("writable", writable);

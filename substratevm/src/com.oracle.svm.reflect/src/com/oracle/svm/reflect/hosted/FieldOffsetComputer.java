@@ -42,17 +42,18 @@ public class FieldOffsetComputer implements CustomFieldValueComputer {
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
         VMError.guarantee(metaAccess instanceof HostedMetaAccess, "Field offset computation must be done during compilation.");
 
-        Field reflectionField = (Field) receiver;
-        HostedField hostedField = ((HostedMetaAccess) metaAccess).lookupJavaField(reflectionField);
-
-        if (hostedField.wrapped.isUnsafeAccessed()) {
+        /*
+         * We have to use `optionalLookupJavaField` as fields are omitted when there is no
+         * reflective access in an image.
+         */
+        HostedField hostedField = ((HostedMetaAccess) metaAccess).optionalLookupJavaField((Field) receiver);
+        if (hostedField != null && hostedField.wrapped.isUnsafeAccessed()) {
             int location = hostedField.getLocation();
-            if (location <= 0) {
-                VMError.shouldNotReachHere("Incorrect field location: " + location + " for " + hostedField.format("%H.%n"));
-            }
+            VMError.guarantee(location > 0, "Incorrect field location: " + location + " for " + hostedField.format("%H.%n"));
             return location;
+        } else {
+            /* A value of -1 signals that the field was not marked as unsafe accessed. */
+            return -1;
         }
-        // a value of -1 signals that the field was not marked as unsafe accessed
-        return -1;
     }
 }
