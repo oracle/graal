@@ -46,6 +46,55 @@ import jdk.vm.ci.common.NativeImageReinitialize;
 @SharedTruffleOptions(name = "SharedTruffleCompilerOptions", runtime = false)
 public final class TruffleCompilerOptions {
 
+    // @formatter:off
+    // configuration
+
+    @Option(help = "Exclude assertion code from Truffle compilations", type = OptionType.Debug)
+    public static final OptionKey<Boolean> TruffleExcludeAssertions = new OptionKey<>(true);
+
+    @Option(help = "Enable inlining across Truffle boundary", type = OptionType.Expert)
+    public static final OptionKey<Boolean> TruffleInlineAcrossTruffleBoundary = new OptionKey<>(false);
+
+    @Option(help = "Print potential performance problems", type = OptionType.Debug)
+    public static final OptionKey<Boolean> TraceTrufflePerformanceWarnings = new OptionKey<>(false);
+
+    @Option(help = "Prints a histogram of all expanded Java methods.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> PrintTruffleExpansionHistogram = new OptionKey<>(false);
+
+    @Option(help = "Enable support for simple infopoints in truffle partial evaluations.", type = OptionType.Expert)
+    public static final OptionKey<Boolean> TruffleEnableInfopoints = new OptionKey<>(false);
+
+    @Option(help = "Run the partial escape analysis iteratively in Truffle compilation.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> TruffleIterativePartialEscape = new OptionKey<>(false);
+
+    @Option(help = "Instrument branches and output profiling information to the standard output.")
+    public static final OptionKey<Boolean> TruffleInstrumentBranches = new OptionKey<>(false);
+
+    @Option(help = "Instrument branches by considering different inlining sites as different branches.")
+    public static final OptionKey<Boolean> TruffleInstrumentBranchesPerInlineSite = new OptionKey<>(false);
+
+    @Option(help = "Method filter for methods in which to add branch instrumentation.")
+    public static final OptionKey<String> TruffleInstrumentBranchesFilter = new OptionKey<>(null);
+
+    @Option(help = "Prettify stack traces for branch-instrumented callsites.")
+    public static final OptionKey<Boolean> TruffleInstrumentBranchesPretty = new OptionKey<>(true);
+
+    @Option(help = "Maximum number of instrumentation counters available.")
+    public static final OptionKey<Integer> TruffleInstrumentBranchesCount = new OptionKey<>(10000);
+
+    @Option(help = "Instrument Truffle boundaries and output profiling information to the standard output.")
+    public static final OptionKey<Boolean> TruffleInstrumentBoundaries = new OptionKey<>(false);
+
+    @Option(help = "Instrument Truffle boundaries by considering different inlining sites as different branches.")
+    public static final OptionKey<Boolean> TruffleInstrumentBoundariesPerInlineSite = new OptionKey<>(false);
+
+    @Option(help = "Method filter for host methods in which to add instrumentation.")
+    public static final OptionKey<String> TruffleInstrumentFilter = new OptionKey<>("*.*.*");
+
+    @Option(help = "Maximum number of instrumentation counters available.")
+    public static final OptionKey<Integer> TruffleInstrumentationTableSize = new OptionKey<>(10000);
+    // @formatter:on
+
     private TruffleCompilerOptions() {
         throw new IllegalStateException("No instance allowed.");
     }
@@ -154,53 +203,4 @@ public final class TruffleCompilerOptions {
     public static <T> T getValue(OptionKey<T> key) {
         return key.getValue(getOptions());
     }
-
-    // @formatter:off
-    // configuration
-
-    @Option(help = "Exclude assertion code from Truffle compilations", type = OptionType.Debug)
-    public static final OptionKey<Boolean> TruffleExcludeAssertions = new OptionKey<>(true);
-
-    @Option(help = "Enable inlining across Truffle boundary", type = OptionType.Expert)
-    public static final OptionKey<Boolean> TruffleInlineAcrossTruffleBoundary = new OptionKey<>(false);
-
-    @Option(help = "Print potential performance problems", type = OptionType.Debug)
-    public static final OptionKey<Boolean> TraceTrufflePerformanceWarnings = new OptionKey<>(false);
-
-    @Option(help = "Prints a histogram of all expanded Java methods.", type = OptionType.Debug)
-    public static final OptionKey<Boolean> PrintTruffleExpansionHistogram = new OptionKey<>(false);
-
-    @Option(help = "Enable support for simple infopoints in truffle partial evaluations.", type = OptionType.Expert)
-    public static final OptionKey<Boolean> TruffleEnableInfopoints = new OptionKey<>(false);
-
-    @Option(help = "Run the partial escape analysis iteratively in Truffle compilation.", type = OptionType.Debug)
-    public static final OptionKey<Boolean> TruffleIterativePartialEscape = new OptionKey<>(false);
-
-    @Option(help = "Instrument branches and output profiling information to the standard output.")
-    public static final OptionKey<Boolean> TruffleInstrumentBranches = new OptionKey<>(false);
-
-    @Option(help = "Instrument branches by considering different inlining sites as different branches.")
-    public static final OptionKey<Boolean> TruffleInstrumentBranchesPerInlineSite = new OptionKey<>(false);
-
-    @Option(help = "Method filter for methods in which to add branch instrumentation.")
-    public static final OptionKey<String> TruffleInstrumentBranchesFilter = new OptionKey<>(null);
-
-    @Option(help = "Prettify stack traces for branch-instrumented callsites.")
-    public static final OptionKey<Boolean> TruffleInstrumentBranchesPretty = new OptionKey<>(true);
-
-    @Option(help = "Maximum number of instrumentation counters available.")
-    public static final OptionKey<Integer> TruffleInstrumentBranchesCount = new OptionKey<>(10000);
-
-    @Option(help = "Instrument Truffle boundaries and output profiling information to the standard output.")
-    public static final OptionKey<Boolean> TruffleInstrumentBoundaries = new OptionKey<>(false);
-
-    @Option(help = "Instrument Truffle boundaries by considering different inlining sites as different branches.")
-    public static final OptionKey<Boolean> TruffleInstrumentBoundariesPerInlineSite = new OptionKey<>(false);
-
-    @Option(help = "Method filter for host methods in which to add instrumentation.")
-    public static final OptionKey<String> TruffleInstrumentFilter = new OptionKey<>("*.*.*");
-
-    @Option(help = "Maximum number of instrumentation counters available.")
-    public static final OptionKey<Integer> TruffleInstrumentationTableSize = new OptionKey<>(10000);
-    // @formatter:on
 }
