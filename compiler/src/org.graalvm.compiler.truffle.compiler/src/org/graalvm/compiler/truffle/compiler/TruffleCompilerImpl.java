@@ -207,6 +207,12 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
     public static final MemUseTrackerKey CompilationMemUse = DebugContext.memUseTracker("TruffleCompilationMemUse");
     public static final MemUseTrackerKey CodeInstallationMemUse = DebugContext.memUseTracker("TruffleCodeInstallationMemUse");
 
+    /**
+     * Creates a new {@link CompilationIdentifier} for {@code compilable}.
+     *
+     * Implementations of this method must guarantee that the {@link Verbosity#ID} for each returned
+     * value is unique.
+     */
     public abstract CompilationIdentifier createCompilationIdentifier(CompilableTruffleAST compilable);
 
     protected abstract DebugContext createDebugContext(OptionValues options, CompilationIdentifier compilationId, CompilableTruffleAST compilable);
@@ -215,7 +221,9 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
     public final String getCompilationIdentifier(CompilableTruffleAST compilable) {
         final CompilationIdentifier ident = createCompilationIdentifier(compilable);
         final String id = ident.toString(CompilationIdentifier.Verbosity.ID);
-        identifiers.put(id, ident);
+        CompilationIdentifier oldValue = identifiers.put(id, ident);
+        assert oldValue != ident : id;
+        assert oldValue == null : ident;
         return id;
     }
 
