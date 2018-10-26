@@ -92,7 +92,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             this.polyglotGuestBindings = new PolyglotBindings(PolyglotLanguageContext.this, context.polyglotBindings);
             this.uncaughtExceptionHandler = new PolyglotUncaughtExceptionHandler();
             this.valueCache = new ConcurrentHashMap<>();
-            this.defaultValueCache = new PolyglotValue.DefaultValue(PolyglotLanguageContext.this);
+            this.defaultValueCache = new PolyglotValue.DefaultValue(getImpl(), PolyglotLanguageContext.this);
         }
     }
 
@@ -296,7 +296,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                                         envConfig.getApplicationArguments(language),
                                         envConfig.fileSystem);
                         Lazy localLazy = new Lazy(lang);
-                        PolyglotValue.createDefaultValues(PolyglotLanguageContext.this, localLazy.valueCache);
+                        PolyglotValue.createDefaultValues(getImpl(), PolyglotLanguageContext.this, localLazy.valueCache);
                         checkThreadAccess(localEnv);
 
                         // no more errors after this line
@@ -649,13 +649,19 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         if (receiver instanceof Value) {
             Value receiverValue = (Value) receiver;
             PolyglotValue valueImpl = (PolyglotValue) getAPIAccess().getImpl(receiverValue);
-            if (valueImpl.languageContext.context != context) {
+            PolyglotLanguageContext valueLanguageContext = valueImpl.languageContext;
+            Object valueReceiver = getAPIAccess().getReceiver(receiverValue);
+            if (valueLanguageContext == null) {
+                if (HostObject.isInstance(valueReceiver)) {
+                    valueReceiver = ((HostObject) valueReceiver).withContext(this);
+                }
+            } else if (valueLanguageContext.context != context) {
                 CompilerDirectives.transferToInterpreter();
                 throw PolyglotImpl.engineError(new IllegalArgumentException(String.format("Values cannot be passed from one context to another. " +
                                 "The current value originates from context 0x%s and the argument originates from context 0x%s.",
                                 Integer.toHexString(context.hashCode()), Integer.toHexString(valueImpl.languageContext.context.hashCode()))));
             }
-            return getAPIAccess().getReceiver(receiverValue);
+            return valueReceiver;
         } else if (PolyglotImpl.isGuestPrimitive(receiver)) {
             return receiver;
         } else if (receiver instanceof Proxy) {
@@ -668,12 +674,8 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             return HostObject.NULL;
         } else if (receiver.getClass().isArray()) {
             return HostObject.forObject(receiver, this);
-        } else if (receiver instanceof PolyglotList) {
-            return ((PolyglotList<?>) receiver).guestObject;
-        } else if (receiver instanceof PolyglotMap) {
-            return ((PolyglotMap<?, ?>) receiver).guestObject;
-        } else if (receiver instanceof PolyglotFunction) {
-            return ((PolyglotFunction<?, ?>) receiver).guestObject;
+        } else if (receiver instanceof HostWrapper) {
+            return ((HostWrapper) receiver).getGuestObject();
         } else if (TruffleOptions.AOT) {
             return HostObject.forObject(receiver, this);
         } else {

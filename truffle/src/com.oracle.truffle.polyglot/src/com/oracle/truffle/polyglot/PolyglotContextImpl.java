@@ -783,24 +783,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         if (hostValue instanceof Value) {
             return (Value) hostValue;
         }
-        PolyglotLanguageContext context = null;
-        Object guestValue = null;
-        if (hostValue instanceof PolyglotList) {
-            context = ((PolyglotList<?>) hostValue).languageContext;
-            guestValue = ((PolyglotList<?>) hostValue).guestObject;
-        } else if (hostValue instanceof PolyglotMap) {
-            context = ((PolyglotMap<?, ?>) hostValue).languageContext;
-            guestValue = ((PolyglotMap<?, ?>) hostValue).guestObject;
-        } else if (hostValue instanceof PolyglotFunction) {
-            context = ((PolyglotFunction<?, ?>) hostValue).languageContext;
-            guestValue = ((PolyglotFunction<?, ?>) hostValue).guestObject;
-        }
-        if (context == null) {
-            context = getHostContext();
-            return context.asValue(context.toGuestValue(hostValue));
-        } else {
-            return context.asValue(guestValue);
-        }
+        return getImpl().asValueImpl(this, hostValue);
     }
 
     void waitForClose() {

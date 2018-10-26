@@ -270,7 +270,7 @@ public class ProxyAPITest {
         proxy.getSize = null;
     }
 
-    private void assertProxyPrimitive(ProxyPrimitiveTest proxy, Value value, Object primitiveValue, Class<?> primitiveType, Trait... traits) {
+    private static void assertProxyPrimitive(ProxyPrimitiveTest proxy, Value value, Object primitiveValue, Class<?> primitiveType, Trait... traits) {
         proxy.primitive = primitiveValue;
         proxy.invocationCounter = 0;
         assertEquals(0, proxy.invocationCounter);
@@ -278,7 +278,7 @@ public class ProxyAPITest {
         assertEquals(proxy.primitive, value.as(Object.class));
         assertEquals(2, proxy.invocationCounter);
         proxy.invocationCounter = 0;
-        assertValue(context, value, traits);
+        assertValue(value, traits);
     }
 
     static class ProxyExecutableTest implements ProxyExecutable {
@@ -307,7 +307,7 @@ public class ProxyAPITest {
             assertEquals(2, args.length);
             assertEquals("a", args[0].asString());
             assertEquals('a', args[0].as(Object.class));
-            ValueAssert.assertValue(context, args[0], Trait.STRING);
+            assertValue(args[0], Trait.STRING);
 
             assertTrue(args[1].isNumber());
             assertEquals((byte) 42, args[1].asByte());
@@ -315,7 +315,7 @@ public class ProxyAPITest {
             assertEquals(42, args[1].asInt());
             assertEquals(42L, args[1].asLong());
             assertEquals(42, args[1].as(Object.class));
-            ValueAssert.assertValue(context, args[1], Trait.NUMBER);
+            assertValue(args[1], Trait.NUMBER);
             return 42;
         };
 
@@ -335,7 +335,7 @@ public class ProxyAPITest {
             assertSame(ex, e.asHostException());
             assertEquals(2, proxy.executeCounter);
         }
-        assertValue(context, value, Trait.PROXY_OBJECT, Trait.EXECUTABLE);
+        assertValue(value, Trait.PROXY_OBJECT, Trait.EXECUTABLE);
     }
 
     static class ProxyInstantiableTest implements ProxyInstantiable {
@@ -365,7 +365,7 @@ public class ProxyAPITest {
             assertEquals(2, args.length);
             assertEquals("a", args[0].asString());
             assertEquals('a', args[0].as(Object.class));
-            ValueAssert.assertValue(context, args[0], Trait.STRING);
+            assertValue(args[0], Trait.STRING);
 
             assertTrue(args[1].isNumber());
             assertEquals((byte) 42, args[1].asByte());
@@ -373,7 +373,7 @@ public class ProxyAPITest {
             assertEquals(42, args[1].asInt());
             assertEquals(42L, args[1].asLong());
             assertEquals(42, args[1].as(Object.class));
-            ValueAssert.assertValue(context, args[1], Trait.NUMBER);
+            assertValue(args[1], Trait.NUMBER);
             return 42;
         };
 
@@ -393,7 +393,7 @@ public class ProxyAPITest {
             assertSame(ex, e.asHostException());
             assertEquals(2, proxy.newInstanceCounter);
         }
-        assertValue(context, value, Trait.PROXY_OBJECT, Trait.INSTANTIABLE);
+        assertValue(value, Trait.PROXY_OBJECT, Trait.INSTANTIABLE);
     }
 
     static class ProxyObjectTest implements ProxyObject {
@@ -443,7 +443,7 @@ public class ProxyAPITest {
         proxy.putMember = (key, v) -> {
             assertEquals("foo", key);
             assertEquals(42, v.asInt());
-            ValueAssert.assertValue(context, v, Trait.NUMBER);
+            assertValue(v, Trait.NUMBER);
             return null;
         };
         value.putMember("foo", 42);
@@ -531,7 +531,7 @@ public class ProxyAPITest {
         proxy.putMember = (key, v) -> {
             return null;
         };
-        assertValue(context, value, Trait.PROXY_OBJECT, Trait.MEMBERS);
+        assertValue(value, Trait.PROXY_OBJECT, Trait.MEMBERS);
     }
 
     @Test

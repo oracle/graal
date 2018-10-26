@@ -400,7 +400,7 @@ class FunctionProxyNode extends HostRootNode<TruffleObject> {
     }
 }
 
-final class FunctionProxyHandler implements InvocationHandler {
+final class FunctionProxyHandler implements InvocationHandler, HostWrapper {
     final TruffleObject functionObj;
     final PolyglotLanguageContext languageContext;
     private final Method functionMethod;
@@ -411,6 +411,14 @@ final class FunctionProxyHandler implements InvocationHandler {
         this.languageContext = languageContext;
         this.functionMethod = functionMethod;
         this.target = FunctionProxyNode.lookup(languageContext, obj.getClass(), functionMethod);
+    }
+
+    public Object getGuestObject() {
+        return functionObj;
+    }
+
+    public PolyglotLanguageContext getLanguageContext() {
+        return languageContext;
     }
 
     @Override
@@ -622,7 +630,7 @@ abstract class ProxyInvokeNode extends Node {
 
 }
 
-final class ObjectProxyHandler implements InvocationHandler {
+final class ObjectProxyHandler implements InvocationHandler, HostWrapper {
 
     final TruffleObject obj;
     final PolyglotLanguageContext languageContext;
@@ -632,6 +640,14 @@ final class ObjectProxyHandler implements InvocationHandler {
         this.obj = obj;
         this.languageContext = languageContext;
         this.invoke = ObjectProxyNode.lookup(languageContext, obj.getClass(), interfaceClass);
+    }
+
+    public Object getGuestObject() {
+        return obj;
+    }
+
+    public PolyglotLanguageContext getLanguageContext() {
+        return languageContext;
     }
 
     @Override

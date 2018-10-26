@@ -49,7 +49,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.TruffleObject;
 
-final class PolyglotFunction<T, R> implements Function<T, R> {
+final class PolyglotFunction<T, R> implements Function<T, R>, HostWrapper {
 
     final TruffleObject guestObject;
     final PolyglotLanguageContext languageContext;
@@ -64,6 +64,16 @@ final class PolyglotFunction<T, R> implements Function<T, R> {
     @SuppressWarnings("unchecked")
     public R apply(T t) {
         return (R) apply.call(languageContext, guestObject, t);
+    }
+
+    @Override
+    public Object getGuestObject() {
+        return guestObject;
+    }
+
+    @Override
+    public PolyglotLanguageContext getLanguageContext() {
+        return languageContext;
     }
 
     @Override

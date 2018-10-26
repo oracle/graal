@@ -101,6 +101,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.polyglot.ValueAssert.Trait;
 
 public class ValueAPITest {
 
@@ -137,8 +138,8 @@ public class ValueAPITest {
     @Test
     public void testString() {
         for (Object string : STRINGS) {
-            assertValue(context, context.asValue(string), STRING);
-            assertValue(context, context.asValue((org.graalvm.polyglot.proxy.ProxyPrimitive) () -> string), STRING, PROXY_OBJECT);
+            assertValue(context.asValue(string), STRING);
+            assertValue(context.asValue((org.graalvm.polyglot.proxy.ProxyPrimitive) () -> string), STRING, PROXY_OBJECT);
         }
     }
 
@@ -155,8 +156,8 @@ public class ValueAPITest {
     @Test
     public void testNumbers() {
         for (Object number : NUMBERS) {
-            assertValue(context, context.asValue(number), NUMBER);
-            assertValue(context, context.asValue((org.graalvm.polyglot.proxy.ProxyPrimitive) () -> number), NUMBER, PROXY_OBJECT);
+            assertValue(context.asValue(number), NUMBER);
+            assertValue(context.asValue((org.graalvm.polyglot.proxy.ProxyPrimitive) () -> number), NUMBER, PROXY_OBJECT);
         }
     }
 
@@ -168,14 +169,14 @@ public class ValueAPITest {
     @Test
     public void testBooleans() {
         for (Object bool : BOOLEANS) {
-            assertValue(context, context.asValue(bool), BOOLEAN);
-            assertValue(context, context.asValue((org.graalvm.polyglot.proxy.ProxyPrimitive) () -> bool), BOOLEAN, PROXY_OBJECT);
+            assertValue(context.asValue(bool), BOOLEAN);
+            assertValue(context.asValue((org.graalvm.polyglot.proxy.ProxyPrimitive) () -> bool), BOOLEAN, PROXY_OBJECT);
         }
     }
 
     @Test
     public void testNull() {
-        assertValue(context, context.asValue(null), HOST_OBJECT, NULL);
+        assertValue(context.asValue(null), HOST_OBJECT, NULL);
     }
 
     private static final Object[] HOST_OBJECTS = new Object[]{
@@ -222,13 +223,13 @@ public class ValueAPITest {
             boolean functionalInterface = value instanceof Supplier || value instanceof Function;
             boolean instantiable = value instanceof Class && value != Class.class;
             if (functionalInterface) {
-                assertValue(context, context.asValue(value), MEMBERS, HOST_OBJECT, EXECUTABLE);
+                assertValue(context.asValue(value), MEMBERS, HOST_OBJECT, EXECUTABLE);
             } else if (value instanceof List) {
-                assertValue(context, context.asValue(value), MEMBERS, HOST_OBJECT, ARRAY_ELEMENTS);
+                assertValue(context.asValue(value), MEMBERS, HOST_OBJECT, ARRAY_ELEMENTS);
             } else if (instantiable) {
-                assertValue(context, context.asValue(value), MEMBERS, HOST_OBJECT, INSTANTIABLE);
+                assertValue(context.asValue(value), MEMBERS, HOST_OBJECT, INSTANTIABLE);
             } else {
-                assertValue(context, context.asValue(value), MEMBERS, HOST_OBJECT);
+                assertValue(context.asValue(value), MEMBERS, HOST_OBJECT);
             }
         }
     }
@@ -261,7 +262,7 @@ public class ValueAPITest {
     @Test
     public void testArrays() {
         for (Object array : ARRAYS) {
-            assertValue(context, context.asValue(array), ARRAY_ELEMENTS, HOST_OBJECT, MEMBERS);
+            assertValue(context.asValue(array), ARRAY_ELEMENTS, HOST_OBJECT, MEMBERS);
         }
     }
 
@@ -540,8 +541,8 @@ public class ValueAPITest {
         }
 
         if (valueTest) {
-            assertValue(context, context.asValue(value));
-            assertValue(context, context.asValue(result));
+            assertValue(context.asValue(value));
+            assertValue(context.asValue(result));
         }
     }
 
@@ -1427,8 +1428,8 @@ public class ValueAPITest {
         assertEquals(v1, v1);
         assertEquals(v2, v2);
 
-        ValueAssert.assertValue(context, v1);
-        ValueAssert.assertValue(context, v2);
+        ValueAssert.assertValue(v1);
+        ValueAssert.assertValue(v2);
     }
 
     public static class RecursiveObject {
@@ -1454,8 +1455,8 @@ public class ValueAPITest {
         assertEquals(v1, v1);
         assertEquals(v2, v2);
 
-        ValueAssert.assertValue(context, v1);
-        ValueAssert.assertValue(context, v2);
+        ValueAssert.assertValue(v1);
+        ValueAssert.assertValue(v2);
     }
 
     public interface EmptyInterface {
@@ -1532,7 +1533,35 @@ public class ValueAPITest {
         assertNotEquals(v.as(Map.class), v.as(List.class));
         assertNotEquals(v.as(List.class), v.as(Function.class));
         assertNotEquals(v.as(List.class), v.as(Map.class));
+    }
 
+    @Test
+    public void testAsValue() {
+        for (Object number : NUMBERS) {
+            ValueAssert.assertValue(Value.asValue(number), Trait.NUMBER);
+        }
+        for (Object string : STRINGS) {
+            ValueAssert.assertValue(Value.asValue(string), Trait.STRING);
+        }
+        for (Object b : BOOLEANS) {
+            ValueAssert.assertValue(Value.asValue(b), Trait.BOOLEAN);
+        }
+        for (Object b : HOST_OBJECTS) {
+            Value v = Value.asValue(b);
+            assertTrue(v.isHostObject());
+            ValueAssert.assertValue(v);
+        }
+        Object o = new Object();
+        Value v = Value.asValue(o);
+        ProxyExecutable executable = new ProxyExecutable() {
+            public Object execute(Value... arguments) {
+                return arguments[0].invokeMember("hashCode");
+            }
+        };
+        assertEquals(o.hashCode(), context.asValue(executable).execute(v).asInt());
+
+        Function<Object, Object> f = (a) -> Value.asValue(a).invokeMember("hashCode");
+        assertEquals(o.hashCode(), context.asValue(f).execute(v).asInt());
     }
 
 }

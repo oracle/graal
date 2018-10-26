@@ -49,6 +49,7 @@ import java.io.OutputStream;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -113,10 +114,21 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     private final PolyglotExecutionListener executionListenerImpl = new PolyglotExecutionListener(this);
     private final AtomicReference<PolyglotEngineImpl> preInitializedEngineRef = new AtomicReference<>();
 
+    final Map<Class<?>, PolyglotValue> primitiveValues = new HashMap<>();
+    Value hostNull; // effectively final
+    PolyglotValue defaultValue;
+
     /**
      * Internal method do not use.
      */
     public PolyglotImpl() {
+    }
+
+    @Override
+    protected void initialize() {
+        this.hostNull = getAPIAccess().newValue(HostObject.NULL, PolyglotValue.createHostNull(this));
+        PolyglotValue.createDefaultValues(this, null, primitiveValues);
+        defaultValue = new PolyglotValue.DefaultValue(this, null);
     }
 
     /**
@@ -243,29 +255,47 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         return homeFinder == null ? null : homeFinder.getHomeFolder();
     }
 
+    Value asValueImpl(PolyglotContextImpl enteredContext, Object hostValue) {
+        PolyglotLanguageContext valueContext = null;
+        Object guestValue = null;
+        if (hostValue instanceof HostWrapper) {
+            guestValue = ((HostWrapper) hostValue).getGuestObject();
+            valueContext = ((HostWrapper) hostValue).getLanguageContext();
+        }
+        if (valueContext == null) {
+            assert guestValue == null;
+            PolyglotContextImpl context = enteredContext;
+            if (context == null) {
+                if (hostValue == null) {
+                    return hostNull;
+                }
+                PolyglotValue primitiveValue = primitiveValues.get(hostValue.getClass());
+                if (primitiveValue != null) {
+                    return getAPIAccess().newValue(hostValue, primitiveValue);
+                } else {
+                    context = PolyglotContextImpl.current();
+                    if (context == null) {
+                        // don't fail but return a value that does nothing
+                        if (hostValue instanceof Class) {
+                            guestValue = HostObject.forClass((Class<?>) hostValue, null);
+                        } else {
+                            guestValue = HostObject.forObject(hostValue, null);
+                        }
+
+                        return getAPIAccess().newValue(guestValue, defaultValue);
+                    }
+                }
+            }
+            valueContext = context.getHostContext();
+            guestValue = valueContext.toGuestValue(hostValue);
+        }
+        return valueContext.asValue(guestValue);
+    }
+
     @Override
     @TruffleBoundary
     public Value asValue(Object hostValue) {
-        assert !(hostValue instanceof Value);
-        PolyglotLanguageContext languageContext = null;
-        Object guestValue = null;
-        if (hostValue instanceof PolyglotList) {
-            languageContext = ((PolyglotList<?>) hostValue).languageContext;
-            guestValue = ((PolyglotList<?>) hostValue).guestObject;
-        } else if (hostValue instanceof PolyglotMap) {
-            languageContext = ((PolyglotMap<?, ?>) hostValue).languageContext;
-            guestValue = ((PolyglotMap<?, ?>) hostValue).guestObject;
-        } else if (hostValue instanceof PolyglotFunction) {
-            languageContext = ((PolyglotFunction<?, ?>) hostValue).languageContext;
-            guestValue = ((PolyglotFunction<?, ?>) hostValue).guestObject;
-        }
-        if (languageContext == null) {
-            PolyglotContextImpl context = PolyglotContextImpl.current();
-            languageContext = context.getHostContext();
-            return languageContext.asValue(languageContext.toGuestValue(hostValue));
-        } else {
-            return languageContext.asValue(guestValue);
-        }
+        return asValueImpl(null, hostValue);
     }
 
     org.graalvm.polyglot.Source getPolyglotSource(Source source) {

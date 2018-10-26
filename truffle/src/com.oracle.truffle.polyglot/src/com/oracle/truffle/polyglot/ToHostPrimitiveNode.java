@@ -84,6 +84,11 @@ final class ToHostPrimitiveNode extends Node {
     static Object toPrimitive(Object value, Class<?> requestedType) {
         Object attr = value;
 
+        if (requestedType == Number.class) {
+            if (value instanceof Number) {
+                return value;
+            }
+        }
         if (requestedType == boolean.class || requestedType == Boolean.class) {
             if (attr instanceof Boolean) {
                 Boolean z = (Boolean) attr;

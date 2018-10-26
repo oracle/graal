@@ -4,6 +4,7 @@ This changelog summarizes major changes between Graal SDK versions. The main foc
 
 ## Version 1.0 RC9
 * Added a [Context.Builder.logHandler](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#logHandler-java.io.OutputStream-) and [Engine.Builder.logHandler](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Engine.Builder.html#logHandler-java.io.OutputStream-) methods to install a logging handler writing into a given `OutputStream`
+* `Value.asValue(Object)` now also works if no currently entered context is available.
 
 ## Version 1.0 RC8
 * Added `MessageTransport` and `MessageEndpoint` to virtualize transport of messages to a peer URI.
