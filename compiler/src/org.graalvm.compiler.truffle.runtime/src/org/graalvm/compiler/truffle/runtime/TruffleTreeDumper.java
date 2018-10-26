@@ -60,7 +60,7 @@ public final class TruffleTreeDumper {
     private static final String AFTER_INLINING = "After Inlining";
 
     public static void dump(TruffleDebugContext debug, OptimizedCallTarget callTarget, TruffleInlining inliningDecision) {
-        if (IgvOptions.getValue(IgvOptions.PrintGraph) && IgvOptions.getValue(IgvOptions.PrintTruffleTrees)) {
+        if (TruffleDebugOptions.getValue(TruffleDebugOptions.PrintGraph) && TruffleDebugOptions.getValue(TruffleDebugOptions.PrintTruffleTrees)) {
             try {
                 dumpASTAndCallTrees(debug, callTarget, inliningDecision);
             } catch (IOException ex) {

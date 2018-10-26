@@ -47,16 +47,14 @@ public interface TruffleCompiler {
      *            {@code compilable == null}.
      * @param compilable the Truffle AST to be compiled or {@code null} if the returned context will
      *            be used for multiple Truffle compilations
-     * @return {@code null} if a debug context cannot be shared across the Truffle runtime/compiler
-     *         boundary represented by this object
+     * @return the new {@link TruffleDebugContext}
      */
     TruffleDebugContext openDebugContext(Map<String, Object> options, String compilationId, CompilableTruffleAST compilable);
 
     /**
      * Compiles {@code compilable} to machine code.
      *
-     * @param debug a debug context to use or {@code null} if it cannot cross the Truffle
-     *            runtime/compiler boundary represented by this object
+     * @param debug a debug context to use
      * @param compilationId an unique identifier to be used for the compilation
      * @param options option values relevant to compilation
      * @param compilable the Truffle AST to be compiled

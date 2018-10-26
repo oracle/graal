@@ -36,6 +36,7 @@ import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.impl.TVMCI;
 import com.oracle.truffle.api.nodes.RootNode;
+import org.graalvm.compiler.truffle.common.VoidGraphStructure;
 
 final class GraalTestTVMCI extends TVMCI.Test<GraalTestContext, OptimizedCallTarget> {
 

@@ -27,8 +27,6 @@ package com.oracle.svm.truffle.api;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.graal.SubstrateGraalUtils.updateGraalArchitectureWithHostCPUFeatures;
 
-import java.io.IOException;
-import java.nio.file.Path;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -372,10 +370,5 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     @Override
     public void log(String message) {
         TTY.println(message);
-    }
-
-    @Override
-    protected Path getGraphDumpDirectory() throws IOException {
-        throw new IllegalStateException("Should never be called.");
     }
 }

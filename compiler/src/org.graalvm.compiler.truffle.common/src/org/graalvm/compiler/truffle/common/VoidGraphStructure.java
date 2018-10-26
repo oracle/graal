@@ -22,14 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.runtime;
+package org.graalvm.compiler.truffle.common;
 
 import java.util.Collection;
 import java.util.Map;
 import org.graalvm.graphio.GraphStructure;
 
-final class VoidGraphStructure implements GraphStructure<Void, Void, Void, Void> {
-    static final GraphStructure<Void, Void, Void, Void> INSTANCE = new VoidGraphStructure();
+public final class VoidGraphStructure implements GraphStructure<Void, Void, Void, Void> {
+
+    public static final GraphStructure<Void, Void, Void, Void> INSTANCE = new VoidGraphStructure();
 
     private VoidGraphStructure() {
     }
