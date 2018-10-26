@@ -6,7 +6,7 @@ bench-dacapo-jfr: ${bench-common} ${jfr-bench-notifications} {
     ${bench-jvmci.mx-dacapo} ${bench-arguments} ${JFR.jvm-opts}
   ]
   setup: ${bench-common.setup} ${JFR.setup}
-  teardown: ${JFR.teardown} # NOTE : Do not include bench-common teardown in order not to pollute bench server with slower runs
+  teardown: ${JFR.teardown} # NOTE : Exclude branch-common to avoid polluting bench server with slower runs
 }
 
 bench-scala-dacapo-jfr: ${bench-common} ${jfr-bench-notifications} {
@@ -17,7 +17,7 @@ bench-scala-dacapo-jfr: ${bench-common} ${jfr-bench-notifications} {
     ${bench-jvmci.mx-scala-dacapo} ${bench-arguments} ${JFR.jvm-opts}
   ]
   setup: ${bench-common.setup} ${JFR.setup}
-  teardown: ${JFR.teardown}
+  teardown: ${JFR.teardown} # NOTE : Exclude branch-common to avoid polluting bench server with slower runs
 }
 
 bench-specjvm2008-Single-jfr: ${bench-specjvm2008} ${jfr-bench-notifications} {
@@ -30,7 +30,9 @@ bench-specjvm2008-Single-jfr: ${bench-specjvm2008} ${jfr-bench-notifications} {
     ]
   ]
   setup: ${bench-specjvm2008.setup} ${JFR.setup}
-  teardown: ${bench-specjvm2008.teardown} ${JFR.teardown}
+  teardown: [
+    [rm, "-r", "${SPECJVM2008}/results"]
+  ] ${JFR.teardown} # NOTE : Exclude branch-common to avoid polluting bench server with slower runs
   timelimit: "3:30:00"
 }
 
@@ -42,7 +44,7 @@ bench-specjbb2015-jfr: ${bench-common} ${jfr-bench-notifications} {
     ${bench-jvmci.mx-specjbb2015} ${bench-arguments} ${JFR.jvm-opts}
   ]
   setup: ${bench-common.setup} ${JFR.setup}
-  teardown: ${JFR.teardown}
+  teardown: ${JFR.teardown} # NOTE : Exclude branch-common to avoid polluting bench server with slower runs
   downloads: {
     SPECJBB2015: { name: specjbb2015, version: "1.00" }
   }
@@ -57,7 +59,7 @@ bench-renaissance-jfr: ${bench-common} ${jfr-bench-notifications} {
     ${bench-jvmci.mx-renaissance} ${bench-arguments} ${JFR.jvm-opts}
   ]
   setup: ${bench-common.setup} ${JFR.setup}
-  teardown: ${JFR.teardown}
+  teardown: ${JFR.teardown} # NOTE : Exclude branch-common to avoid polluting bench server with slower runs
   downloads: {
     RENAISSANCE: { name: renaissance, version: "0.1" }
   }
@@ -72,7 +74,7 @@ bench-spark-sql-perf-jfr: ${bench-common} ${jfr-bench-notifications} {
     ${bench-jvmci.mx-spark-sql-perf} ${bench-arguments} ${JFR.jvm-opts}
   ]
   setup: ${bench-common.setup} ${JFR.setup}
-  teardown: ${JFR.teardown}
+  teardown: ${JFR.teardown} # NOTE : Exclude branch-common to avoid polluting bench server with slower runs
   downloads: {
     SPARK_SQL_PERF: { name: spark-sql-perf, version: "0.1" }
   }
