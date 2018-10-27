@@ -679,13 +679,11 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         TruffleCompiler compiler = getTruffleCompiler();
         TruffleInlining inlining = createInliningPlan(callTarget, task);
         final Map<String, Object> optionsMap = TruffleRuntimeOptions.asMap(options);
-        try (AutoCloseable s = debug != null ? debug.scope("Truffle", new TruffleDebugJavaMethod(callTarget)) : null) {
+        try (AutoCloseable s = debug.scope("Truffle", new TruffleDebugJavaMethod(callTarget))) {
             // Open the "Truffle::methodName" dump group if dumping is enabled.
             try (TruffleOutputGroup o = TruffleOutputGroup.open(debug, callTarget)) {
-                if (debug != null) {
-                    // Create "AST" and "Call Tree" groups if dumping is enabled.
-                    maybeDumpTruffleTree(debug, callTarget, inlining);
-                }
+                // Create "AST" and "Call Tree" groups if dumping is enabled.
+                maybeDumpTruffleTree(debug, callTarget, inlining);
                 // Compile the method (puts dumps in "Graal Graphs" group if dumping is enabled).
                 compiler.doCompile(debug, compilationId, optionsMap, callTarget, inlining, task, listeners.isEmpty() ? null : listeners);
             }
@@ -710,7 +708,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         TruffleCompiler compiler = getTruffleCompiler();
         String compilationId = compiler.getCompilationIdentifier(callTarget);
         final Map<String, Object> optionsMap = TruffleRuntimeOptions.asMap(options);
-        try (TruffleDebugContext debug = compilationId != null ? compiler.openDebugContext(optionsMap, compilationId, callTarget) : null) {
+        try (TruffleDebugContext debug = compiler.openDebugContext(optionsMap, compilationId, callTarget)) {
             doCompile(debug, compilationId, options, callTarget, task);
         } catch (RuntimeException | Error e) {
             throw e;
