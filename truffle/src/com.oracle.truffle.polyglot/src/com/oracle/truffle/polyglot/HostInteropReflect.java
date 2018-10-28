@@ -413,10 +413,17 @@ final class FunctionProxyHandler implements InvocationHandler, HostWrapper {
         this.target = FunctionProxyNode.lookup(languageContext, obj.getClass(), functionMethod);
     }
 
+    @Override
     public Object getGuestObject() {
         return functionObj;
     }
 
+    @Override
+    public PolyglotContextImpl getContext() {
+        return languageContext.context;
+    }
+
+    @Override
     public PolyglotLanguageContext getLanguageContext() {
         return languageContext;
     }
@@ -427,7 +434,7 @@ final class FunctionProxyHandler implements InvocationHandler, HostWrapper {
         if (method.equals(functionMethod)) {
             return target.call(languageContext, functionObj, spreadVarArgsArray(arguments));
         } else {
-            return invokeDefault(proxy, method, arguments);
+            return invokeDefault(this, proxy, method, arguments);
         }
     }
 
@@ -447,15 +454,15 @@ final class FunctionProxyHandler implements InvocationHandler, HostWrapper {
         }
     }
 
-    private static Object invokeDefault(Object proxy, Method method, Object[] arguments) throws Throwable {
+    static Object invokeDefault(HostWrapper host, Object proxy, Method method, Object[] arguments) throws Throwable {
         if (method.getDeclaringClass() == Object.class) {
             switch (method.getName()) {
                 case "equals":
-                    return proxy == arguments[0];
+                    return HostWrapper.equalsProxy(host, arguments[0]);
                 case "hashCode":
-                    return System.identityHashCode(proxy);
+                    return HostWrapper.hashCode(host);
                 case "toString":
-                    return proxy.getClass().getName() + "@" + Integer.toHexString(System.identityHashCode(proxy));
+                    return HostWrapper.toString(host);
                 default:
                     throw new UnsupportedOperationException(method.getName());
             }
@@ -642,18 +649,29 @@ final class ObjectProxyHandler implements InvocationHandler, HostWrapper {
         this.invoke = ObjectProxyNode.lookup(languageContext, obj.getClass(), interfaceClass);
     }
 
+    @Override
     public Object getGuestObject() {
         return obj;
     }
 
+    @Override
     public PolyglotLanguageContext getLanguageContext() {
         return languageContext;
     }
 
     @Override
+    public PolyglotContextImpl getContext() {
+        return languageContext.context;
+    }
+
+    @Override
     public Object invoke(Object proxy, Method method, Object[] arguments) throws Throwable {
         CompilerAsserts.neverPartOfCompilation();
-        return invoke.call(languageContext, obj, method, arguments == null ? HostInteropReflect.EMPTY : arguments);
+        try {
+            return invoke.call(languageContext, obj, method, arguments == null ? HostInteropReflect.EMPTY : arguments);
+        } catch (UnsupportedOperationException e) {
+            return FunctionProxyHandler.invokeDefault(this, proxy, method, arguments);
+        }
     }
 
 }

@@ -317,7 +317,7 @@ public class SplittingStrategyTest extends AbstractSplittingStrategyTest {
     @Test
     @SuppressWarnings("try")
     public void testHardSplitLimitInContext() {
-        final int expectedSplittingIncrease = 20;
+        final int expectedSplittingIncrease = DUMMYROOTNODECOUNT * 2;
         try (TruffleCompilerOptions.TruffleOptionsOverrideScope s = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleSplittingMaxNumberOfSplitNodes, expectedSplittingIncrease)) {
             Context c = Context.create();
             for (int i = 0; i < 100; i++) {

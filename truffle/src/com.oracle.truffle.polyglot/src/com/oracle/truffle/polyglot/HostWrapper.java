@@ -40,10 +40,77 @@
  */
 package com.oracle.truffle.polyglot;
 
+import java.lang.reflect.Proxy;
+import java.util.Objects;
+
+import com.oracle.truffle.api.TruffleOptions;
+
 interface HostWrapper {
 
     Object getGuestObject();
 
+    PolyglotContextImpl getContext();
+
     PolyglotLanguageContext getLanguageContext();
+
+    static boolean isInstance(Object v) {
+        if (v == null) {
+            return false;
+        } else if (!TruffleOptions.AOT && Proxy.isProxyClass(v.getClass())) {
+            return Proxy.getInvocationHandler(v) instanceof HostWrapper;
+        } else {
+            return v instanceof HostWrapper;
+        }
+    }
+
+    static HostWrapper asInstance(Object v) {
+        if (!TruffleOptions.AOT && Proxy.isProxyClass(v.getClass())) {
+            return (HostWrapper) Proxy.getInvocationHandler(v);
+        } else {
+            return (HostWrapper) v;
+        }
+    }
+
+    static boolean equals(HostWrapper wrapper, Object other) {
+        if (other == null) {
+            return false;
+        } else if (wrapper == other) {
+            return true;
+        } else if (wrapper.getClass() == other.getClass()) {
+            PolyglotContextImpl thisContext = wrapper.getContext();
+            Object thisGuestObject = wrapper.getGuestObject();
+            PolyglotContextImpl otherContext = ((HostWrapper) other).getContext();
+            Object otherGuestObject = ((HostWrapper) other).getGuestObject();
+            return thisContext == otherContext && Objects.equals(thisGuestObject, otherGuestObject);
+        } else {
+            return false;
+        }
+    }
+
+    static boolean equalsProxy(HostWrapper wrapper, Object other) {
+        if (other == null) {
+            return false;
+        } else if (Proxy.isProxyClass(other.getClass())) {
+            return equals(wrapper, Proxy.getInvocationHandler(other));
+        } else {
+            return false;
+        }
+    }
+
+    static int hashCode(HostWrapper thisObj) {
+        return thisObj.getGuestObject().hashCode();
+    }
+
+    static String toString(HostWrapper thisObj) {
+        PolyglotLanguageContext thisContext = thisObj.getLanguageContext();
+        Object thisGuestObject = thisObj.getGuestObject();
+        if (thisContext != null) {
+            try {
+                return thisContext.asValue(thisGuestObject).toString();
+            } catch (Exception e) {
+            }
+        }
+        return "Error in toString()";
+    }
 
 }

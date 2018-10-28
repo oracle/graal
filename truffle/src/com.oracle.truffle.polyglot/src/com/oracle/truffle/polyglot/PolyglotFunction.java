@@ -67,38 +67,33 @@ final class PolyglotFunction<T, R> implements Function<T, R>, HostWrapper {
     }
 
     @Override
-    public Object getGuestObject() {
-        return guestObject;
-    }
-
-    @Override
     public PolyglotLanguageContext getLanguageContext() {
         return languageContext;
     }
 
     @Override
-    public int hashCode() {
-        return guestObject.hashCode();
+    public Object getGuestObject() {
+        return guestObject;
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (o == this) {
-            return true;
-        } else if (o instanceof PolyglotFunction) {
-            return languageContext.context == ((PolyglotFunction<?, ?>) o).languageContext.context && guestObject.equals(((PolyglotFunction<?, ?>) o).guestObject);
-        } else {
-            return false;
-        }
+    public PolyglotContextImpl getContext() {
+        return languageContext.context;
     }
 
     @Override
     public String toString() {
-        try {
-            return languageContext.asValue(guestObject).toString();
-        } catch (UnsupportedOperationException e) {
-            return super.toString();
-        }
+        return HostWrapper.toString(this);
+    }
+
+    @Override
+    public int hashCode() {
+        return HostWrapper.hashCode(this);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        return HostWrapper.equals(this, o);
     }
 
     @TruffleBoundary
