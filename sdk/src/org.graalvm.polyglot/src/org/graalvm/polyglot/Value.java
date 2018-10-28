@@ -928,10 +928,12 @@ public final class Value {
      * <pre>
      * static final TypeLiteral<List<String>> STRING_LIST = new TypeLiteral<List<String>>() {
      * };
-     *
-     * Context context = Context.create();
-     * List<String> javaList = context.eval("js", "['foo', 'bar', 'bazz']").as(STRING_LIST);
-     * assert javaList.get(0).equals("foo");
+     * 
+     * public static void main(String[] args) {
+     *     Context context = Context.create();
+     *     List<String> javaList = context.eval("js", "['foo', 'bar', 'bazz']").as(STRING_LIST);
+     *     assert javaList.get(0).equals("foo");
+     * }
      * </pre>
      *
      * @throws NullPointerException if the target type is null.
