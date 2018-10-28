@@ -443,6 +443,8 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
         assertEquals(50, f.call((Object) 13, (Object) 37));
         f.hashCode();
         f.equals(null);
+        assertTrue(f.equals(f));
+        assertEquals(f, context.asValue(executable).as(FunctionalWithDefaults.class));
         f.toString();
     }
 
@@ -453,6 +455,8 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
         assertEquals(50, f.call(13, 37));
         f.hashCode();
         f.equals(null);
+        assertTrue(f.equals(f));
+        assertEquals(f, context.asValue(executable).as(FunctionalWithObjectMethodOverrides.class));
         f.toString();
     }
 

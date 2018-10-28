@@ -53,10 +53,10 @@ import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.PROXY_OBJEC
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.STRING;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -208,6 +208,10 @@ public class ValueAPITest {
                                     return args[0];
                                 case "toString":
                                     return "Proxy";
+                                case "equals":
+                                    return proxy == args[0];
+                                case "hashCode":
+                                    return System.identityHashCode(proxy);
                                 default:
                                     throw new UnsupportedOperationException(method.getName());
                             }
@@ -1562,6 +1566,174 @@ public class ValueAPITest {
 
         Function<Object, Object> f = (a) -> Value.asValue(a).invokeMember("hashCode");
         assertEquals(o.hashCode(), context.asValue(f).execute(v).asInt());
+
+        assertTrue(Value.asValue(null).isNull());
+        assertNull(Value.asValue(null).as(Object.class));
+        assertNull(Value.asValue(null).as(String.class));
+        assertNull(Value.asValue(null).as(Integer.class));
+
+        ProxyExecutable executableProxy = new ProxyExecutable() {
+            public Object execute(Value... arguments) {
+                return null;
+            }
+        };
+        assertTrue(Value.asValue(executableProxy).isProxyObject());
+        assertSame(executableProxy, Value.asValue(executableProxy).asProxyObject());
+        assertFalse(Value.asValue(executableProxy).isHostObject());
+        // proxy executables (and others) created without a context cannot normally function
+        assertFalse(Value.asValue(executableProxy).canExecute());
+
+        Object hostWrapper = context.asValue(executableProxy).as(Function.class);
+        assertTrue(Value.asValue(hostWrapper).canExecute());
+
+        ProxyObject objectProxy = ProxyObject.fromMap(new HashMap<>());
+        hostWrapper = context.asValue(objectProxy).as(Map.class);
+        assertTrue(Value.asValue(hostWrapper).hasMembers());
+
+        ProxyArray arrayProxy = ProxyArray.fromArray("");
+        hostWrapper = context.asValue(arrayProxy).as(List.class);
+        assertTrue(Value.asValue(hostWrapper).hasArrayElements());
+
+        // but when migrated they can
+        assertTrue(context.asValue(Value.asValue(executableProxy)).canExecute());
+        context.asValue(new ProxyExecutable() {
+            public Object execute(Value... arguments) {
+                assertTrue(arguments[0].canExecute());
+                return null;
+            }
+        }).execute(Value.asValue(executableProxy));
+
+    }
+
+    @Test
+    public void testHostObjectsAndPrimitivesNonSharable() {
+        Context context1 = Context.create();
+        Context context2 = Context.create();
+        List<Object> nonSharables = new ArrayList<>();
+        ProxyInteropObject interopObject = new ProxyInteropObject() {
+
+            @Override
+            public boolean isExecutable() {
+                return true;
+            }
+
+            @Override
+            public boolean hasKeys() {
+                return true;
+            }
+
+            @Override
+            public boolean hasSize() {
+                return true;
+            }
+
+        };
+        nonSharables.add(interopObject);
+        Value v = context1.asValue(interopObject);
+        nonSharables.add(v.as(Map.class));
+        nonSharables.add(v.as(EmptyInterface.class));
+        nonSharables.add(v.as(List.class));
+        nonSharables.add(v.as(Function.class));
+        nonSharables.add(v.as(EmptyFunctionalInterface.class));
+        nonSharables.add(v);
+        nonSharables.add(Value.asValue(v));
+
+        for (Object object : nonSharables) {
+            Object nonSharableObject = object;
+            if (nonSharableObject instanceof TruffleObject) {
+                nonSharableObject = context1.asValue(nonSharableObject);
+            }
+            try {
+                context2.getPolyglotBindings().putMember("foo", nonSharableObject);
+                fail();
+            } catch (IllegalArgumentException e) {
+            }
+            ProxyExecutable executable = new ProxyExecutable() {
+                public Object execute(Value... arguments) {
+                    return 42;
+                }
+            };
+            // supported
+            assertEquals(42, context1.asValue(executable).execute(nonSharableObject).asInt());
+            try {
+                context2.asValue(executable).execute(nonSharableObject);
+                fail();
+            } catch (IllegalArgumentException e) {
+            }
+            nonSharableObject.toString(); // does not fails
+            assertTrue(nonSharableObject.equals(nonSharableObject));
+            assertTrue(nonSharableObject.hashCode() == nonSharableObject.hashCode());
+        }
+        context1.close();
+        context2.close();
+    }
+
+    @Test
+    public void testHostObjectsAndPrimitivesSharable() {
+        Context context1 = Context.create();
+        Context context2 = Context.create();
+
+        List<Object> sharableObjects = new ArrayList<>();
+        sharableObjects.addAll(Arrays.asList(HOST_OBJECTS));
+        sharableObjects.addAll(Arrays.asList(NUMBERS));
+        sharableObjects.addAll(Arrays.asList(BOOLEANS));
+        sharableObjects.addAll(Arrays.asList(STRINGS));
+        sharableObjects.addAll(Arrays.asList(ARRAYS));
+
+        expandObjectVariants(context1, sharableObjects);
+        for (Object object : sharableObjects) {
+            List<Object> variants = new ArrayList<>();
+            variants.add(context1.asValue(object));
+            variants.add(object);
+            variants.add(Value.asValue(object));
+
+            ProxyExecutable executable = new ProxyExecutable() {
+                public Object execute(Value... arguments) {
+                    return 42;
+                }
+            };
+
+            for (Object variant : sharableObjects) {
+                context2.getPolyglotBindings().putMember("foo", variant);
+                assertEquals(42, context2.asValue(executable).execute(variant).asInt());
+            }
+            object.toString(); // does not fail
+            assertTrue(object.equals(object));
+            assertTrue(object.hashCode() == object.hashCode());
+        }
+
+        // special case for context less TruffleObject
+        Value contextLessValue = Value.asValue(new ProxyInteropObject() {
+        });
+        context1.getPolyglotBindings().putMember("foo", contextLessValue);
+        context2.getPolyglotBindings().putMember("foo", contextLessValue);
+
+        context1.close();
+        context2.close();
+
+    }
+
+    private static void expandObjectVariants(Context sourceContext, List<Object> objects) {
+        for (Object object : objects.toArray()) {
+            Value v = sourceContext.asValue(object);
+            if (v.hasMembers()) {
+                objects.add(v.as(Map.class));
+                objects.add(v.as(EmptyInterface.class));
+            }
+            if (v.hasArrayElements()) {
+                objects.add(v.as(List.class));
+                objects.add(v.as(Object[].class));
+            }
+            if (v.canExecute()) {
+                objects.add(v.as(Function.class));
+                objects.add(v.as(EmptyFunctionalInterface.class));
+            }
+
+            // add the value itself
+            objects.add(v);
+            objects.add(Value.asValue(v)); // migrate from Value
+            objects.add(Value.asValue(object)); // directly from object
+        }
     }
 
 }

@@ -1645,7 +1645,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     }
 
-    private final static class HostNull extends PolyglotValue {
+    private static final class HostNull extends PolyglotValue {
 
         private final PolyglotImpl polyglot;
 
@@ -1668,9 +1668,10 @@ abstract class PolyglotValue extends AbstractValueImpl {
             return null;
         }
 
+        @SuppressWarnings("cast")
         @Override
         public <T> T as(Object receiver, TypeLiteral<T> targetType) {
-            return as(receiver, targetType);
+            return as(receiver, (Class<T>) targetType.getRawType());
         }
 
     }
@@ -2339,10 +2340,14 @@ abstract class PolyglotValue extends AbstractValueImpl {
         }
     }
 
-    static final class DefaultValue extends PolyglotValue {
+    /**
+     * Host value implementation used when a Value needs to be created but not context is available.
+     * If a context is available the normal interop value implementation is used.
+     */
+    static final class HostValue extends PolyglotValue {
 
-        DefaultValue(PolyglotImpl polyglot, PolyglotLanguageContext context) {
-            super(polyglot, context);
+        HostValue(PolyglotImpl polyglot) {
+            super(polyglot, null);
         }
 
         @Override
@@ -2365,9 +2370,18 @@ abstract class PolyglotValue extends AbstractValueImpl {
             return PolyglotProxy.toProxyHostObject((TruffleObject) receiver);
         }
 
-        @SuppressWarnings("unchecked")
         @Override
         public <T> T as(Object receiver, Class<T> targetType) {
+            return asImpl(receiver, targetType);
+        }
+
+        @SuppressWarnings("cast")
+        @Override
+        public <T> T as(Object receiver, TypeLiteral<T> targetType) {
+            return asImpl(receiver, (Class<T>) targetType.getRawType());
+        }
+
+        <T> T asImpl(Object receiver, Class<T> targetType) {
             Object hostValue;
             if (isProxyObject(receiver)) {
                 hostValue = asProxyObject(receiver);
@@ -2377,11 +2391,6 @@ abstract class PolyglotValue extends AbstractValueImpl {
                 throw new ClassCastException();
             }
             return targetType.cast(hostValue);
-        }
-
-        @Override
-        public <T> T as(Object receiver, TypeLiteral<T> targetType) {
-            return as(receiver, targetType.getRawType());
         }
 
     }
@@ -2397,13 +2406,13 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         @SuppressWarnings("unchecked")
         @Override
-        public final <T> T as(Object receiver, Class<T> targetType) {
+        public <T> T as(Object receiver, Class<T> targetType) {
             return (T) VMAccessor.SPI.callProfiled(cache.asClassLiteral, languageContext, receiver, targetType);
         }
 
         @SuppressWarnings("unchecked")
         @Override
-        public final <T> T as(Object receiver, TypeLiteral<T> targetType) {
+        public <T> T as(Object receiver, TypeLiteral<T> targetType) {
             return (T) VMAccessor.SPI.callProfiled(cache.asTypeLiteral, languageContext, receiver, targetType);
         }
 
@@ -2578,7 +2587,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
             assert primitive != null;
             PolyglotValue primitiveCache = languageContext.getValueCache().get(primitive.getClass());
             if (primitiveCache == null) {
-                primitiveCache = languageContext.getDefaultValueCache();
+                throw new AssertionError("Boxing contract violation.");
             }
             return primitiveCache;
         }

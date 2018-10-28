@@ -85,6 +85,11 @@ class PolyglotList<T> extends AbstractList<T> implements HostWrapper {
         return languageContext;
     }
 
+    @Override
+    public PolyglotContextImpl getContext() {
+        return languageContext.context;
+    }
+
     @TruffleBoundary
     public static <T> List<T> create(PolyglotLanguageContext languageContext, TruffleObject array, boolean implementFunction, Class<T> elementClass, Type elementType) {
         if (implementFunction) {
@@ -119,28 +124,18 @@ class PolyglotList<T> extends AbstractList<T> implements HostWrapper {
     }
 
     @Override
+    public String toString() {
+        return HostWrapper.toString(this);
+    }
+
+    @Override
     public int hashCode() {
-        return guestObject.hashCode();
+        return HostWrapper.hashCode(this);
     }
 
     @Override
     public boolean equals(Object o) {
-        if (o == this) {
-            return true;
-        } else if (o instanceof PolyglotList) {
-            return languageContext.context == ((PolyglotList<?>) o).languageContext.context && guestObject.equals(((PolyglotList<?>) o).guestObject);
-        } else {
-            return false;
-        }
-    }
-
-    @Override
-    public String toString() {
-        try {
-            return languageContext.asValue(guestObject).toString();
-        } catch (UnsupportedOperationException e) {
-            return super.toString();
-        }
+        return HostWrapper.equals(this, o);
     }
 
     static final class Cache {

@@ -93,13 +93,18 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
     }
 
     @Override
+    public PolyglotLanguageContext getLanguageContext() {
+        return languageContext;
+    }
+
+    @Override
     public Object getGuestObject() {
         return guestObject;
     }
 
     @Override
-    public PolyglotLanguageContext getLanguageContext() {
-        return languageContext;
+    public PolyglotContextImpl getContext() {
+        return languageContext.context;
     }
 
     @Override
@@ -133,27 +138,17 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
 
     @Override
     public String toString() {
-        try {
-            return languageContext.asValue(guestObject).toString();
-        } catch (UnsupportedOperationException e) {
-            return super.toString();
-        }
+        return HostWrapper.toString(this);
     }
 
     @Override
     public int hashCode() {
-        return guestObject.hashCode();
+        return HostWrapper.hashCode(this);
     }
 
     @Override
     public boolean equals(Object o) {
-        if (o == this) {
-            return true;
-        } else if (o instanceof PolyglotMap) {
-            return languageContext.context == ((PolyglotMap<?, ?>) o).languageContext.context && guestObject.equals(((PolyglotMap<?, ?>) o).guestObject);
-        } else {
-            return false;
-        }
+        return HostWrapper.equals(this, o);
     }
 
     private final class LazyEntries extends AbstractSet<Entry<K, V>> {

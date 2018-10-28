@@ -780,10 +780,30 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
     @Override
     public Value asValue(Object hostValue) {
-        if (hostValue instanceof Value) {
-            return (Value) hostValue;
+        try {
+            PolyglotLanguageContext targetLanguageContext;
+            if (hostValue instanceof Value) {
+                // fast path for when no context migration is necessary
+                PolyglotValue value = (PolyglotValue) getAPIAccess().getImpl((Value) hostValue);
+                if (value.languageContext != null && value.languageContext.context == this) {
+                    return (Value) hostValue;
+                }
+                targetLanguageContext = getHostContext();
+            } else if (HostWrapper.isInstance(hostValue)) {
+                // host wrappers can nicely reuse the associated context
+                targetLanguageContext = HostWrapper.asInstance(hostValue).getLanguageContext();
+                if (this != targetLanguageContext.context) {
+                    // this will fail later in toGuestValue when migrating
+                    // or succeed in case of host languages.
+                    targetLanguageContext = getHostContext();
+                }
+            } else {
+                targetLanguageContext = getHostContext();
+            }
+            return targetLanguageContext.asValue(targetLanguageContext.toGuestValue(hostValue));
+        } catch (Throwable e) {
+            throw PolyglotImpl.wrapGuestException(this.getHostContext(), e);
         }
-        return getImpl().asValueImpl(this, hostValue);
     }
 
     void waitForClose() {
