@@ -113,7 +113,7 @@ public final class SLFunctionBodyNode extends SLExpressionNode {
         String functionName = getRootNode().getName();
         if (functionName != null) {
             descriptor.addProperty(DeclarationTag.NAME, functionName);
-            descriptor.addProperty(DeclarationTag.KIND, DeclarationTag.Kind.Function.getValue());
+            descriptor.addProperty(DeclarationTag.KIND, "function");
         }
         return descriptor;
     }
