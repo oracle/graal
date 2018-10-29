@@ -557,6 +557,14 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         return 4096;
     }
 
+    /**
+     * Return the maximum size of vector registers used in SSE/AVX instructions.
+     */
+    protected int getMaxVectorSize() {
+        // default for "unlimited"
+        return -1;
+    }
+
     @Override
     public Variable emitStringIndexOf(Value source, Value sourceCount, Value target, Value targetCount, int constantTargetCount) {
         Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
@@ -571,7 +579,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public Variable emitArrayIndexOf(JavaKind kind, Value arrayPointer, Value arrayLength, Value charValue) {
         Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
-        append(new AMD64ArrayIndexOfOp(kind, getVMPageSize(), this, result, asAllocatable(arrayPointer), asAllocatable(arrayLength), asAllocatable(charValue)));
+        append(new AMD64ArrayIndexOfOp(kind, getVMPageSize(), getMaxVectorSize(), this, result, asAllocatable(arrayPointer), asAllocatable(arrayLength), asAllocatable(charValue)));
         return result;
     }
 
