@@ -612,8 +612,8 @@ public class ValueAssert {
     public interface NonFunctionalInterface {
         void foobarbaz();
 
-        // make it a non functional interface
-        void ___asdf___();
+        // rare name that has no conflicts
+        void oldmacdonaldhadafarm();
     }
 
     @FunctionalInterface
