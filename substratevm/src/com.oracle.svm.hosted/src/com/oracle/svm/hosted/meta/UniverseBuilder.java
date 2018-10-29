@@ -145,7 +145,7 @@ public class UniverseBuilder {
             buildVTables();
             buildHubs();
 
-            setConstantFieldValues();
+            processFieldLocations();
 
             hUniverse.orderedMethods = new ArrayList<>(hUniverse.methods.values());
             Collections.sort(hUniverse.orderedMethods);
@@ -1202,7 +1202,7 @@ public class UniverseBuilder {
         return referenceMap;
     }
 
-    private void setConstantFieldValues() {
+    private void processFieldLocations() {
         for (HostedField hField : hUniverse.fields.values()) {
             AnalysisField aField = hField.wrapped;
             if (aField.wrapped instanceof ComputedValueField) {
@@ -1210,7 +1210,7 @@ public class UniverseBuilder {
             }
 
             if (!hField.hasLocation() && Modifier.isStatic(hField.getModifiers()) && !aField.isWritten()) {
-                hField.setConstantValue();
+                hField.setUnmaterializedStaticConstant();
             }
         }
     }
