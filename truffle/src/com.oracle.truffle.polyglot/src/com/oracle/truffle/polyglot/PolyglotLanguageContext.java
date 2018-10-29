@@ -591,6 +591,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         final APIAccess apiAccess;
         @CompilationFinal volatile Class<?> cachedClass;
         @CompilationFinal volatile PolyglotValue cachedValue;
+        @CompilationFinal volatile PolyglotLanguageContext cachedContext;
 
         private ToHostValueNode(PolyglotImpl polyglot) {
             this.apiAccess = polyglot.getAPIAccess();
@@ -599,6 +600,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         Value execute(PolyglotLanguageContext languageContext, Object value) {
             Object receiver = value;
             Class<?> cachedClassLocal = cachedClass;
+            PolyglotLanguageContext cachedContextLocal = cachedContext;
             PolyglotValue cache;
             if (cachedClassLocal != Generic.class) {
                 if (cachedClassLocal == null) {
@@ -608,9 +610,10 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                     if (cache == null) {
                         cache = languageContext.lookupValueCache(receiver);
                     }
+                    cachedContext = languageContext;
                     cachedValue = cache;
                     return apiAccess.newValue(receiver, cache);
-                } else if (value.getClass() == cachedClassLocal) {
+                } else if (value.getClass() == cachedClassLocal && cachedContextLocal == languageContext) {
                     receiver = CompilerDirectives.inInterpreter() ? receiver : CompilerDirectives.castExact(receiver, cachedClassLocal);
                     cache = cachedValue;
                     if (cache == null) {
@@ -622,6 +625,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                 } else {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     cachedClass = Generic.class; // switch to generic
+                    cachedContext = null;
                     cachedValue = null;
                     // fall through to generic
                 }
