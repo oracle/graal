@@ -246,7 +246,7 @@ public final class PolyglotLauncher extends Launcher {
         if (isAOT()) {
             launcherClass = AOT_LAUNCHER_CLASSES.get(launcherName);
             if (launcherClass == null) {
-                throw abort("Could not find launcher '" + launcherName + "'");
+                throw abort("Could not find class '" + launcherName + "'.\nYou might need to rebuild the polyglot launcher.");
             }
         } else {
             launcherClass = getLauncherClass(launcherName);
