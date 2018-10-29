@@ -732,7 +732,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             @Override
             protected Object executeImpl(PolyglotLanguageContext context, Object receiver, Object[] args) {
-                return toHost.execute(receiver, (Class<?>) args[OFFSET], null, context);
+                return toHost.execute(receiver, (Class<?>) args[ARGUMENT_OFFSET], null, context);
             }
 
         }
@@ -757,7 +757,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             @Override
             protected Object executeImpl(PolyglotLanguageContext context, Object receiver, Object[] args) {
-                TypeLiteral<?> typeLiteral = (TypeLiteral<?>) args[OFFSET];
+                TypeLiteral<?> typeLiteral = (TypeLiteral<?>) args[ARGUMENT_OFFSET];
                 return toHost.execute(receiver, typeLiteral.getRawType(), typeLiteral.getType(), context);
             }
         }
@@ -864,7 +864,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             @Override
             protected Object executeImpl(PolyglotLanguageContext context, Object receiver, Object[] args) {
-                long index = (long) args[OFFSET];
+                long index = (long) args[ARGUMENT_OFFSET];
                 try {
                     return toHostValue.execute(context, ForeignAccess.sendRead(readArrayNode, (TruffleObject) receiver, index));
                 } catch (UnsupportedMessageException e) {
@@ -900,8 +900,8 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             @Override
             protected Object executeImpl(PolyglotLanguageContext context, Object receiver, Object[] args) {
-                long index = (long) args[OFFSET];
-                Object value = toGuestValue.apply(context, args[OFFSET + 1]);
+                long index = (long) args[ARGUMENT_OFFSET];
+                Object value = toGuestValue.apply(context, args[ARGUMENT_OFFSET + 1]);
                 try {
                     ForeignAccess.sendWrite(writeArrayNode, (TruffleObject) receiver, index, value);
                 } catch (UnsupportedMessageException e) {
@@ -942,7 +942,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             @Override
             protected Object executeImpl(PolyglotLanguageContext context, Object receiver, Object[] args) {
-                long index = (long) args[OFFSET];
+                long index = (long) args[ARGUMENT_OFFSET];
                 TruffleObject truffleReceiver = (TruffleObject) receiver;
                 try {
                     if (optimistic) {
@@ -1030,7 +1030,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             @Override
             protected Object executeImpl(PolyglotLanguageContext context, Object receiver, Object[] args) {
-                String key = (String) args[OFFSET];
+                String key = (String) args[ARGUMENT_OFFSET];
                 Object value;
                 TruffleObject truffleReceiver = (TruffleObject) receiver;
                 try {
@@ -1087,8 +1087,8 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             @Override
             protected Object executeImpl(PolyglotLanguageContext context, Object receiver, Object[] args) {
-                String key = (String) args[OFFSET];
-                Object originalValue = args[OFFSET + 1];
+                String key = (String) args[ARGUMENT_OFFSET];
+                Object originalValue = args[ARGUMENT_OFFSET + 1];
                 Object value = toGuestValue.apply(context, originalValue);
                 try {
                     ForeignAccess.sendWrite(writeMemberNode, (TruffleObject) receiver, key, value);
@@ -1131,7 +1131,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             @Override
             protected Object executeImpl(PolyglotLanguageContext context, Object receiver, Object[] args) {
-                String key = (String) args[OFFSET];
+                String key = (String) args[ARGUMENT_OFFSET];
                 TruffleObject truffleReceiver = (TruffleObject) receiver;
                 try {
                     if (optimistic) {
@@ -1229,7 +1229,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             @Override
             protected final Object executeImpl(PolyglotLanguageContext context, Object receiver, Object[] args) {
-                String key = (String) args[OFFSET];
+                String key = (String) args[ARGUMENT_OFFSET];
                 int keyInfo = ForeignAccess.sendKeyInfo(keyInfoNode, (TruffleObject) receiver, key);
                 return executeImpl(keyInfo);
             }
@@ -1397,7 +1397,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             @Override
             protected Object executeImpl(PolyglotLanguageContext context, Object receiver, Object[] args) {
-                executeShared(context, receiver, (Object[]) args[OFFSET]);
+                executeShared(context, receiver, (Object[]) args[ARGUMENT_OFFSET]);
                 return null;
             }
 
@@ -1450,7 +1450,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             @Override
             protected Object executeImpl(PolyglotLanguageContext context, Object receiver, Object[] args) {
-                return toHostValue.execute(context, executeShared(context, receiver, (Object[]) args[OFFSET]));
+                return toHostValue.execute(context, executeShared(context, receiver, (Object[]) args[ARGUMENT_OFFSET]));
             }
 
             @Override
@@ -1504,7 +1504,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             @Override
             protected Object executeImpl(PolyglotLanguageContext context, Object receiver, Object[] args) {
-                Object[] instantiateArguments = toGuestValues.apply(context, (Object[]) args[OFFSET]);
+                Object[] instantiateArguments = toGuestValues.apply(context, (Object[]) args[ARGUMENT_OFFSET]);
                 try {
                     return toHostValue.execute(context, ForeignAccess.sendNew(newInstanceNode, (TruffleObject) receiver, instantiateArguments));
                 } catch (UnsupportedTypeException e) {
@@ -1579,8 +1579,8 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             @Override
             protected Object executeImpl(PolyglotLanguageContext context, Object receiver, Object[] args) {
-                String key = (String) args[OFFSET];
-                Object[] guestArguments = toGuestValues.apply(context, (Object[]) args[OFFSET + 1]);
+                String key = (String) args[ARGUMENT_OFFSET];
+                Object[] guestArguments = toGuestValues.apply(context, (Object[]) args[ARGUMENT_OFFSET + 1]);
                 return toHostValue.execute(context, executeShared(context, receiver, key, guestArguments));
             }
 
@@ -1608,7 +1608,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
             @Override
             protected Object executeImpl(PolyglotLanguageContext context, Object receiver, Object[] args) {
-                String key = (String) args[OFFSET];
+                String key = (String) args[ARGUMENT_OFFSET];
                 return toHostValue.execute(context, executeShared(context, receiver, key, ExecuteVoidNoArgsNode.NO_ARGS));
             }
 

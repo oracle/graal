@@ -132,7 +132,7 @@ final class PolyglotFunction<T, R> implements Function<T, R>, HostWrapper {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 apply = insert(new PolyglotExecuteNode());
             }
-            return apply.execute(languageContext, function, args[OFFSET], returnClass, returnType);
+            return apply.execute(languageContext, function, args[ARGUMENT_OFFSET], returnClass, returnType);
         }
 
         @Override

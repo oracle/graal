@@ -471,7 +471,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
 
             @Override
             protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args) {
-                Object key = args[OFFSET];
+                Object key = args[ARGUMENT_OFFSET];
                 if (isValidKey(receiver, key)) {
                     return KeyInfo.isReadable(sendKeyInfo(keyInfo, receiver, key));
                 }
@@ -500,7 +500,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                 List<?> keys = null;
                 int keysSize = 0;
                 int elemSize = 0;
-                PolyglotMap<Object, Object> originalMap = (PolyglotMap<Object, Object>) args[OFFSET];
+                PolyglotMap<Object, Object> originalMap = (PolyglotMap<Object, Object>) args[ARGUMENT_OFFSET];
 
                 if (cache.memberKey && sendHasKeys(hasKeys, receiver)) {
                     TruffleObject truffleKeys;
@@ -547,7 +547,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
 
             @Override
             protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args) {
-                Object key = args[OFFSET];
+                Object key = args[ARGUMENT_OFFSET];
                 Object result = null;
                 if (isValidKey(receiver, key) && KeyInfo.isReadable(sendKeyInfo(keyInfo, receiver, key))) {
                     try {
@@ -587,11 +587,11 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
 
             @Override
             protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args) {
-                Object key = args[OFFSET];
+                Object key = args[ARGUMENT_OFFSET];
                 Object result = null;
 
                 if (isValidKey(receiver, key)) {
-                    Object value = args[OFFSET + 1];
+                    Object value = args[ARGUMENT_OFFSET + 1];
                     int info = sendKeyInfo(keyInfo, receiver, key);
                     if (!KeyInfo.isExisting(info) || (KeyInfo.isWritable(info) && KeyInfo.isReadable(info))) {
                         if (KeyInfo.isExisting(info)) {
@@ -645,7 +645,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
 
             @Override
             protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args) {
-                Object key = args[OFFSET];
+                Object key = args[ARGUMENT_OFFSET];
                 Object result = null;
 
                 if (isValidKey(receiver, key)) {
@@ -698,11 +698,11 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
 
             @Override
             protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args) {
-                Object key = args[OFFSET];
+                Object key = args[ARGUMENT_OFFSET];
 
                 if (isValidKey(receiver, key)) {
-                    if (args.length > OFFSET + 1) {
-                        Object value = args[OFFSET + 1];
+                    if (args.length > ARGUMENT_OFFSET + 1) {
+                        Object value = args[ARGUMENT_OFFSET + 1];
                         Object result = null;
                         int info = sendKeyInfo(keyInfo, receiver, key);
                         if (KeyInfo.isReadable(info)) {
@@ -750,7 +750,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
 
             @Override
             protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject function, Object[] args) {
-                return apply.execute(languageContext, function, args[OFFSET], Object.class, Object.class);
+                return apply.execute(languageContext, function, args[ARGUMENT_OFFSET], Object.class, Object.class);
             }
         }
 
