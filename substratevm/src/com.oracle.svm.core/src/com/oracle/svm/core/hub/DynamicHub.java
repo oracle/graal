@@ -58,7 +58,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
-import com.oracle.svm.core.HostedIdentityHashCodeProvider;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Hybrid;
 import com.oracle.svm.core.annotate.KeepOriginal;
@@ -85,7 +84,7 @@ import sun.security.util.SecurityConstants;
 @TargetClass(java.lang.Class.class)
 @SuppressWarnings({"static-method", "serial"})
 @SuppressFBWarnings(value = "Se", justification = "DynamicHub must implement Serializable for compatibility with java.lang.Class, not because of actual serialization")
-public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedElement, HostedIdentityHashCodeProvider, java.lang.reflect.Type, GenericDeclaration, Serializable {
+public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedElement, java.lang.reflect.Type, GenericDeclaration, Serializable {
 
     /* Value copied from java.lang.Class. */
     private static final int SYNTHETIC = 0x00001000;
@@ -255,8 +254,6 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Hybrid.Array private CFunctionPointer[] vtable;
 
-    @Platforms(Platform.HOSTED_ONLY.class) private int hostedIdentityHashCode;
-
     private GenericInfo genericInfo;
     private AnnotatedSuperInfo annotatedSuperInfo;
 
@@ -361,18 +358,6 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setMetaType(SharedType metaType) {
         this.metaType = metaType;
-    }
-
-    @Override
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public int hostedIdentityHashCode() {
-        return hostedIdentityHashCode;
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void setHostedIdentityHashCode(int newHostedIdentityHashCode) {
-        assert this.hostedIdentityHashCode == 0 || this.hostedIdentityHashCode == newHostedIdentityHashCode;
-        this.hostedIdentityHashCode = newHostedIdentityHashCode;
     }
 
     public boolean hasDefaultMethods() {
