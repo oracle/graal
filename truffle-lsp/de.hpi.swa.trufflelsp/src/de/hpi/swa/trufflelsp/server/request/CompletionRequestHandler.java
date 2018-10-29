@@ -259,7 +259,7 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
             return getCompletionKind(completionContext.getTriggerCharacter(), completionTriggerCharacters);
         }
 
-        int lineStartOffset = SourceUtils.getLineStartOffset(source, oneBasedLineNumber);
+        int lineStartOffset = source.getLineStartOffset(oneBasedLineNumber);
         if (lineStartOffset + character == 0) {
             return CompletionKind.GLOBALS_AND_LOCALS;
         }

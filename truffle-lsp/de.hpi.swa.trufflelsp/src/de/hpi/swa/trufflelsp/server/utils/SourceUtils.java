@@ -176,13 +176,6 @@ public class SourceUtils {
         return range;
     }
 
-    public static int getLineStartOffset(Source source, int oneBasedLineNumber) {
-        if (oneBasedLineNumber == source.getLineCount()) {
-            return source.getLength();
-        }
-        return source.getLineStartOffset(oneBasedLineNumber);
-    }
-
     public static int convertLineAndColumnToOffset(Source source, int oneBasedLineNumber, int column) {
         int offset = source.getLineStartOffset(oneBasedLineNumber);
         if (column > 0) {
