@@ -51,7 +51,9 @@ import com.oracle.truffle.polyglot.PolyglotLanguage.ContextProfile;
 
 abstract class HostRootNode<T> extends RootNode {
 
-    protected static final int OFFSET = 2;
+    // offset used to indicate where the argument start.
+    // first two arguments are language context and receiver.
+    protected static final int ARGUMENT_OFFSET = 2;
 
     @CompilationFinal private boolean seenEnter;
     @CompilationFinal private boolean seenNonEnter;

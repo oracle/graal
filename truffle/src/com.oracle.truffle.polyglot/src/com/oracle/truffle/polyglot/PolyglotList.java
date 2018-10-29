@@ -277,7 +277,7 @@ class PolyglotList<T> extends AbstractList<T> implements HostWrapper {
 
             @Override
             protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args) {
-                Object key = args[OFFSET];
+                Object key = args[ARGUMENT_OFFSET];
                 Object result = null;
                 assert key instanceof Integer;
                 if (sendHasSize(hasSize, receiver)) {
@@ -323,10 +323,10 @@ class PolyglotList<T> extends AbstractList<T> implements HostWrapper {
 
             @Override
             protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args) {
-                Object key = args[OFFSET];
+                Object key = args[ARGUMENT_OFFSET];
                 Object result = null;
                 assert key instanceof Integer;
-                Object originalValue = args[OFFSET + 1];
+                Object originalValue = args[ARGUMENT_OFFSET + 1];
                 Object value = toGuest.apply(languageContext, originalValue);
                 if (sendHasSize(hasSize, receiver)) {
                     if (KeyInfo.isWritable(sendKeyInfo(keyInfo, receiver, key))) {
@@ -370,7 +370,7 @@ class PolyglotList<T> extends AbstractList<T> implements HostWrapper {
 
             @Override
             protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args) {
-                Object key = args[OFFSET];
+                Object key = args[ARGUMENT_OFFSET];
                 Object result = null;
                 assert key instanceof Integer;
                 if (sendHasSize(hasSize, receiver)) {
@@ -413,7 +413,7 @@ class PolyglotList<T> extends AbstractList<T> implements HostWrapper {
 
             @Override
             protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject function, Object[] args) {
-                return apply.execute(languageContext, function, args[OFFSET], Object.class, Object.class);
+                return apply.execute(languageContext, function, args[ARGUMENT_OFFSET], Object.class, Object.class);
             }
         }
     }

@@ -370,7 +370,7 @@ class FunctionProxyNode extends HostRootNode<TruffleObject> {
             this.returnType = HostInteropReflect.getMethodGenericReturnType(method);
             this.executeNode = insert(new PolyglotExecuteNode());
         }
-        return executeNode.execute(languageContext, function, args[OFFSET], returnClass, returnType);
+        return executeNode.execute(languageContext, function, args[ARGUMENT_OFFSET], returnClass, returnType);
     }
 
     @Override
@@ -511,8 +511,8 @@ class ObjectProxyNode extends HostRootNode<TruffleObject> {
             toGuests = ToGuestValuesNode.create();
             proxyInvoke = ProxyInvokeNodeGen.create();
         }
-        Method method = (Method) args[OFFSET];
-        Object[] arguments = toGuests.apply(languageContext, (Object[]) args[OFFSET + 1]);
+        Method method = (Method) args[ARGUMENT_OFFSET];
+        Object[] arguments = toGuests.apply(languageContext, (Object[]) args[ARGUMENT_OFFSET + 1]);
         return proxyInvoke.execute(languageContext, receiver, method, arguments);
     }
 
