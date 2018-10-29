@@ -667,10 +667,11 @@ final class ObjectProxyHandler implements InvocationHandler, HostWrapper {
     @Override
     public Object invoke(Object proxy, Method method, Object[] arguments) throws Throwable {
         CompilerAsserts.neverPartOfCompilation();
+        Object[] resolvedArguments = arguments == null ? HostInteropReflect.EMPTY : arguments;
         try {
-            return invoke.call(languageContext, obj, method, arguments == null ? HostInteropReflect.EMPTY : arguments);
+            return invoke.call(languageContext, obj, method, resolvedArguments);
         } catch (UnsupportedOperationException e) {
-            return FunctionProxyHandler.invokeDefault(this, proxy, method, arguments);
+            return FunctionProxyHandler.invokeDefault(this, proxy, method, resolvedArguments);
         }
     }
 
