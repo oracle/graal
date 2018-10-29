@@ -274,9 +274,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         try {
             return getRootNode().execute(frame);
         } catch (ControlFlowException t) {
-            throw rethrow(compilationProfile.profileExceptionType(t));
+            throw rethrow(getCompilationProfile().profileExceptionType(t));
         } catch (Throwable t) {
-            Throwable profiledT = compilationProfile.profileExceptionType(t);
+            Throwable profiledT = getCompilationProfile().profileExceptionType(t);
             runtime().getTvmci().onThrowable(null, this, profiledT, frame);
             throw rethrow(profiledT);
         } finally {
