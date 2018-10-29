@@ -233,7 +233,6 @@ public class PropertyImpl extends Property {
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result + getClass().hashCode();
         result = prime * result + key.hashCode();
         result = prime * result + location.hashCode();
         result = prime * result + flags;

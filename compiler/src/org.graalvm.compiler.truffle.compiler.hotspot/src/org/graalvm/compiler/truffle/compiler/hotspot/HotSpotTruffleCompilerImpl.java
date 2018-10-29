@@ -220,7 +220,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
                 CompilationResult compResult = compileTruffleCallBoundaryMethod(method, compilationId, debug);
                 CodeCacheProvider codeCache = lastTierProviders.getCodeCache();
                 try (DebugContext.Scope s = debug.scope("CodeInstall", codeCache, method, compResult)) {
-                    CompiledCode compiledCode = HotSpotCompiledCodeBuilder.createCompiledCode(codeCache, method, compilationId.getRequest(), compResult);
+                    CompiledCode compiledCode = HotSpotCompiledCodeBuilder.createCompiledCode(codeCache, method, compilationId.getRequest(), compResult, getOptions());
                     codeCache.setDefaultCode(method, compiledCode);
                 } catch (Throwable e) {
                     throw debug.handle(e);

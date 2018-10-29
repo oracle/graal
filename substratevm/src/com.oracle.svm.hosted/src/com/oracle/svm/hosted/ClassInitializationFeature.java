@@ -47,6 +47,7 @@ import com.oracle.svm.core.hub.ClassInitializationInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
@@ -68,11 +69,11 @@ public final class ClassInitializationFeature implements Feature, RuntimeClassIn
     public static class Options {
         @APIOption(name = "delay-class-initialization-to-runtime")//
         @Option(help = "A comma-separated list of classes (and implicitly all of their subclasses) that are initialized at runtime and not during image building", type = OptionType.User)//
-        public static final HostedOptionKey<String> DelayClassInitialization = new HostedOptionKey<>("");
+        public static final HostedOptionKey<String[]> DelayClassInitialization = new HostedOptionKey<>(null);
 
         @APIOption(name = "rerun-class-initialization-at-runtime") //
         @Option(help = "A comma-separated list of classes (and implicitly all of their subclasses) that are initialized both at runtime and during image building", type = OptionType.User)//
-        public static final HostedOptionKey<String> RerunClassInitialization = new HostedOptionKey<>("");
+        public static final HostedOptionKey<String[]> RerunClassInitialization = new HostedOptionKey<>(null);
     }
 
     /**
@@ -158,8 +159,8 @@ public final class ClassInitializationFeature implements Feature, RuntimeClassIn
         processOption(access, Options.RerunClassInitialization, this::rerunClassInitialization);
     }
 
-    private static void processOption(AfterRegistrationAccess access, HostedOptionKey<String> option, Consumer<Class<?>[]> handler) {
-        for (String className : option.getValue().split(",")) {
+    private static void processOption(AfterRegistrationAccess access, HostedOptionKey<String[]> option, Consumer<Class<?>[]> handler) {
+        for (String className : OptionUtils.flatten(",", option.getValue())) {
             if (className.length() > 0) {
                 Class<?> clazz = access.findClassByName(className);
                 if (clazz == null) {
