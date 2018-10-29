@@ -44,6 +44,7 @@ import java.lang.reflect.Proxy;
 import java.util.Objects;
 
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 interface HostWrapper {
 
@@ -56,19 +57,33 @@ interface HostWrapper {
     static boolean isInstance(Object v) {
         if (v == null) {
             return false;
-        } else if (!TruffleOptions.AOT && Proxy.isProxyClass(v.getClass())) {
-            return Proxy.getInvocationHandler(v) instanceof HostWrapper;
+        } else if (!TruffleOptions.AOT && v instanceof Proxy) {
+            return isHostProxy(v);
         } else {
             return v instanceof HostWrapper;
         }
     }
 
+    @TruffleBoundary
+    static boolean isHostProxy(Object v) {
+        if (Proxy.isProxyClass(v.getClass())) {
+            return Proxy.getInvocationHandler(v) instanceof HostWrapper;
+        } else {
+            return false;
+        }
+    }
+
     static HostWrapper asInstance(Object v) {
-        if (!TruffleOptions.AOT && Proxy.isProxyClass(v.getClass())) {
-            return (HostWrapper) Proxy.getInvocationHandler(v);
+        if (!TruffleOptions.AOT && v instanceof Proxy) {
+            return getHostProxy(v);
         } else {
             return (HostWrapper) v;
         }
+    }
+
+    @TruffleBoundary
+    static HostWrapper getHostProxy(Object v) {
+        return (HostWrapper) Proxy.getInvocationHandler(v);
     }
 
     static boolean equals(HostWrapper wrapper, Object other) {
