@@ -44,8 +44,10 @@ import static com.oracle.truffle.polyglot.VMAccessor.LANGUAGE;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.lang.ref.WeakReference;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -127,6 +129,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     final Value polyglotHostBindings; // for accesses from the polyglot api
     final PolyglotLanguage creator; // creator for internal contexts
     final Map<String, Object> creatorArguments; // special arguments for internal contexts
+    final ContextWeakReference weakReference;
 
     @CompilationFinal PolyglotContextConfig config; // effectively final
 
@@ -147,12 +150,12 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         this.polyglotBindings = null;
         this.creator = null;
         this.creatorArguments = null;
+        this.weakReference = null;
     }
 
     /*
      * Constructor for outer contexts.
      */
-
     PolyglotContextImpl(PolyglotEngineImpl engine, PolyglotContextConfig config) {
         super(engine.impl);
         this.parent = null;
@@ -162,6 +165,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         this.creatorArguments = Collections.emptyMap();
         this.truffleContext = VMAccessor.LANGUAGE.createTruffleContext(this);
         this.polyglotBindings = new ConcurrentHashMap<>();
+        this.weakReference = new ContextWeakReference(this);
         this.contexts = createContextArray();
         if (!config.logLevels.isEmpty()) {
             VMAccessor.LANGUAGE.configureLoggers(this, config.logLevels);
@@ -184,6 +188,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         this.engine = parent.engine;
         this.creator = creator.language;
         this.creatorArguments = langConfig;
+        this.weakReference = new ContextWeakReference(this);
         this.parent.addChildContext(this);
         this.truffleContext = spiContext;
         this.polyglotBindings = new ConcurrentHashMap<>();
@@ -764,7 +769,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         checkCreatorAccess(sourceContext, "closed");
         boolean closeCompleted = closeImpl(cancelIfExecuting, cancelIfExecuting);
         if (cancelIfExecuting) {
-            engine.getCancelHandler().waitForClosing(this);
+            engine.getCancelHandler().waitForClosing(Arrays.asList(this));
         } else if (!closeCompleted) {
             throw new PolyglotIllegalStateException(String.format("The context is currently executing on another thread. " +
                             "Set cancelIfExecuting to true to stop the execution on this thread."));
@@ -1099,6 +1104,17 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         context.constantCurrentThreadInfo = PolyglotThreadInfo.NULL;
         disposeStaticContext(context);
         return context;
+    }
+
+    static class ContextWeakReference extends WeakReference<PolyglotContextImpl> {
+
+        volatile boolean removed = false;
+        final List<PolyglotLanguageInstance> freeInstances = new ArrayList<>();
+
+        public ContextWeakReference(PolyglotContextImpl referent) {
+            super(referent, referent.engine.contextsReferenceQueue);
+        }
+
     }
 
 }
