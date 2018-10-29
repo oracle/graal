@@ -58,7 +58,7 @@ public class Constants {
     // class. The WORD_CHARS (\w) character class is the only one of the basic classes (\w, \d, \s)
     // that is affected by case-folding and only so when both the Unicode and IgnoreCase flags are
     // set.
-    public static final CodePointSet WORD_CHARS_UNICODE_IGNORE_CASE = CaseFoldTable.applyCaseFold(WORD_CHARS, true).freeze();
+    public static final CodePointSet WORD_CHARS_UNICODE_IGNORE_CASE = CaseFoldTable.applyCaseFold(WORD_CHARS, CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptUnicode).freeze();
     public static final CodePointSet NON_WORD_CHARS_UNICODE_IGNORE_CASE = WORD_CHARS_UNICODE_IGNORE_CASE.createInverse().freeze();
 
     // WhiteSpace defined in ECMA-262 2018 11.2

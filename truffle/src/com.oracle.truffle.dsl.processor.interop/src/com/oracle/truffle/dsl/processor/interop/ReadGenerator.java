@@ -79,7 +79,7 @@ final class ReadGenerator extends MessageGenerator {
         w.append(indent).append("        @Override\n");
         w.append(indent).append("        public Object execute(VirtualFrame frame) {\n");
         w.append(indent).append("            Object receiver = ForeignAccess.getReceiver(frame);\n");
-        w.append(indent).append("            Object identifier = ForeignAccess.getArguments(frame).get(0);\n");
+        w.append(indent).append("            Object identifier = frame.getArguments()[1];\n");
         w.append(indent).append("            try {\n");
         w.append(indent).append("                return node.executeWithTarget(frame, receiver, identifier);\n");
         w.append(indent).append("            } catch (UnsupportedSpecializationException e) {\n");

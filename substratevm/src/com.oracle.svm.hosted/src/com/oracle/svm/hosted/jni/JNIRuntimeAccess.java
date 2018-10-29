@@ -56,7 +56,11 @@ public final class JNIRuntimeAccess {
     }
 
     public static void register(Field... fields) {
-        getSupport().register(fields);
+        register(false, fields);
+    }
+
+    public static void register(boolean finalIsWritable, Field... fields) {
+        getSupport().register(finalIsWritable, fields);
     }
 
     private static JNIRuntimeAccessibilitySupport getSupport() {
@@ -71,6 +75,6 @@ public final class JNIRuntimeAccess {
 
         void register(Executable... methods);
 
-        void register(Field... fields);
+        void register(boolean forceWritable, Field... fields);
     }
 }

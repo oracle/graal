@@ -97,7 +97,7 @@ public class Signal {
         long read(int index);
     }
 
-    @Platforms(Platform.LINUX.class)
+    @Platforms(Platform.LINUX_AMD64.class)
     @CEnum
     @CContext(PosixDirectives.class)
     public enum GregEnum {
@@ -154,6 +154,7 @@ public class Signal {
             } mcontext_t;
          */
         @CFieldAddress("uc_mcontext.gregs")
+        @Platforms(Platform.LINUX_AMD64.class)
         GregsPointer uc_mcontext_gregs();
     }
 

@@ -128,6 +128,7 @@ public class ClassfileBytecodeProviderTest extends GraalCompilerTest {
 
     @Before
     public void checkJavaAgent() {
+        assumeManagementLibraryIsLoadable();
         Assume.assumeFalse("Java Agent found -> skipping", SubprocessUtil.isJavaAgentAttached());
     }
 

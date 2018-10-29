@@ -90,11 +90,7 @@ class DebuggerTagsSnippets {
         class DebuggerNode extends Node implements InstrumentableNode {
 
             public boolean hasTag(Class<? extends Tag> tag) {
-                if (tag == DebuggerTags.AlwaysHalt.class) {
-                    return true;
-                } else {
-                    return false;
-                }
+                return tag == DebuggerTags.AlwaysHalt.class;
             }
         }
         // END: com.oracle.truffle.api.debug.DebuggerTagsSnippets#debuggerNode

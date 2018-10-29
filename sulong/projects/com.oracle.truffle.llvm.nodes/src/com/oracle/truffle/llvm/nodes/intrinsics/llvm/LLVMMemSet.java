@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.nodes.intrinsics.llvm;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
@@ -39,8 +38,10 @@ import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-@NodeChildren({@NodeChild(type = LLVMExpressionNode.class, value = "address"), @NodeChild(type = LLVMExpressionNode.class, value = "value"),
-                @NodeChild(type = LLVMExpressionNode.class, value = "length"), @NodeChild(type = LLVMExpressionNode.class, value = "isVolatile")})
+@NodeChild(type = LLVMExpressionNode.class, value = "address")
+@NodeChild(type = LLVMExpressionNode.class, value = "value")
+@NodeChild(type = LLVMExpressionNode.class, value = "length")
+@NodeChild(type = LLVMExpressionNode.class, value = "isVolatile")
 public abstract class LLVMMemSet extends LLVMBuiltin {
 
     @Child private LLVMMemSetNode memSet;

@@ -65,17 +65,29 @@ public class RegexObject implements RegexLanguageObject {
 
     private final RegexCompiler compiler;
     private final RegexSource source;
+    private final TruffleObject flags;
+    private final boolean unicodePattern;
     private final TruffleObject namedCaptureGroups;
     private TruffleObject compiledRegexObject;
 
-    public RegexObject(RegexCompiler compiler, RegexSource source, Map<String, Integer> namedCaptureGroups) {
+    public RegexObject(RegexCompiler compiler, RegexSource source, TruffleObject flags, boolean unicodePattern, Map<String, Integer> namedCaptureGroups) {
         this.compiler = compiler;
         this.source = source;
+        this.flags = flags;
+        this.unicodePattern = unicodePattern;
         this.namedCaptureGroups = namedCaptureGroups != null ? new TruffleReadOnlyMap(namedCaptureGroups) : TruffleNull.INSTANCE;
     }
 
     public RegexSource getSource() {
         return source;
+    }
+
+    public TruffleObject getFlags() {
+        return flags;
+    }
+
+    public boolean isUnicodePattern() {
+        return unicodePattern;
     }
 
     public TruffleObject getNamedCaptureGroups() {

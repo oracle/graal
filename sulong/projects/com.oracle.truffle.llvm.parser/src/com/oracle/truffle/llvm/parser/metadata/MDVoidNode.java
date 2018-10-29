@@ -31,7 +31,7 @@ package com.oracle.truffle.llvm.parser.metadata;
 
 public final class MDVoidNode implements MDBaseNode {
 
-    public static MDVoidNode INSTANCE = new MDVoidNode();
+    public static final MDVoidNode INSTANCE = new MDVoidNode();
 
     private MDVoidNode() {
     }

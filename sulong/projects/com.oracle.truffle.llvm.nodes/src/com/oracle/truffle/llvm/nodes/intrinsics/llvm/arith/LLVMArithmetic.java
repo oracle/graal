@@ -31,14 +31,17 @@ package com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMBuiltin;
 import com.oracle.truffle.llvm.nodes.memory.LLVMGetElementPtrNode.LLVMIncrementPointerNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-public abstract class LLVMArithmetic extends LLVMBuiltin {
+public abstract class LLVMArithmetic {
+
+    private LLVMArithmetic() {
+        // private constructor
+    }
 
     public interface Arithmetic {
         boolean evalI8(byte left, byte right, Object addr, LLVMStoreNode store);
@@ -415,9 +418,10 @@ public abstract class LLVMArithmetic extends LLVMBuiltin {
         }
     };
 
-    @NodeChildren({@NodeChild(value = "left", type = LLVMExpressionNode.class), @NodeChild(value = "right", type = LLVMExpressionNode.class),
-                    @NodeChild(value = "target", type = LLVMExpressionNode.class)})
-    public abstract static class GCCArithmetic extends LLVMArithmetic {
+    @NodeChild(value = "left", type = LLVMExpressionNode.class)
+    @NodeChild(value = "right", type = LLVMExpressionNode.class)
+    @NodeChild(value = "target", type = LLVMExpressionNode.class)
+    public abstract static class GCCArithmetic extends LLVMBuiltin {
 
         private final Arithmetic arithmetic;
 
@@ -450,9 +454,10 @@ public abstract class LLVMArithmetic extends LLVMBuiltin {
         }
     }
 
-    @NodeChildren({@NodeChild(value = "left", type = LLVMExpressionNode.class), @NodeChild(value = "right", type = LLVMExpressionNode.class),
-                    @NodeChild(value = "target", type = LLVMExpressionNode.class)})
-    public abstract static class LLVMArithmeticWithOverflow extends LLVMArithmetic {
+    @NodeChild(value = "left", type = LLVMExpressionNode.class)
+    @NodeChild(value = "right", type = LLVMExpressionNode.class)
+    @NodeChild(value = "target", type = LLVMExpressionNode.class)
+    public abstract static class LLVMArithmeticWithOverflow extends LLVMBuiltin {
 
         private final long secondValueOffset;
         private final Arithmetic arithmetic;
@@ -500,9 +505,11 @@ public abstract class LLVMArithmetic extends LLVMBuiltin {
         }
     }
 
-    @NodeChildren({@NodeChild(value = "left", type = LLVMExpressionNode.class), @NodeChild(value = "right", type = LLVMExpressionNode.class),
-                    @NodeChild(value = "cin", type = LLVMExpressionNode.class), @NodeChild(value = "cout", type = LLVMExpressionNode.class)})
-    public abstract static class LLVMArithmeticWithOverflowAndCarry extends LLVMArithmetic {
+    @NodeChild(value = "left", type = LLVMExpressionNode.class)
+    @NodeChild(value = "right", type = LLVMExpressionNode.class)
+    @NodeChild(value = "cin", type = LLVMExpressionNode.class)
+    @NodeChild(value = "cout", type = LLVMExpressionNode.class)
+    public abstract static class LLVMArithmeticWithOverflowAndCarry extends LLVMBuiltin {
 
         private final CarryArithmetic arithmetic;
 

@@ -42,7 +42,6 @@ package com.oracle.truffle.dsl.processor.interop;
 
 import java.io.IOException;
 import java.io.Writer;
-import java.util.Collection;
 import java.util.List;
 
 import javax.annotation.processing.ProcessingEnvironment;
@@ -72,14 +71,6 @@ class KeysGenerator extends MessageGenerator {
     }
 
     @Override
-    public void addImports(Collection<String> imports) {
-        super.addImports(imports);
-        if (parameterCount == 2) {
-            imports.add("java.util.List");
-        }
-    }
-
-    @Override
     void appendRootNode(Writer w) throws IOException {
         w.append(indent).append("    private static final class ").append(rootNodeName).append(" extends RootNode {\n");
         w.append(indent).append("        protected ").append(rootNodeName).append("() {\n");
@@ -93,8 +84,8 @@ class KeysGenerator extends MessageGenerator {
         w.append(indent).append("        public Object execute(VirtualFrame frame) {\n");
         w.append(indent).append("            Object receiver = ForeignAccess.getReceiver(frame);\n");
         if (parameterCount == 2) {
-            w.append(indent).append("            List<Object> arguments = ForeignAccess.getArguments(frame);\n");
-            w.append(indent).append("            Object internal = (arguments.isEmpty()) ? false : arguments.get(0);\n");
+            w.append(indent).append("            Object[] arguments = frame.getArguments();\n");
+            w.append(indent).append("            Object internal = (arguments.length < 2) ? false : arguments[1];\n");
         }
         w.append(indent).append("            try {\n");
         if (parameterCount == 2) {

@@ -55,6 +55,7 @@ import java.util.ArrayList;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 
 import jdk.vm.ci.amd64.AMD64;
@@ -77,11 +78,6 @@ import jdk.vm.ci.meta.ValueKind;
 
 public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
 
-    public enum ConfigKind {
-        NORMAL,
-        NATIVE_TO_JAVA,
-    }
-
     private final TargetDescription target;
     private final int nativeParamsStackOffset;
     private final RegisterArray generalParameterRegs;
@@ -92,10 +88,12 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
     private final MetaAccessProvider metaAccess;
     private final Register threadRegister;
     private final Register heapBaseRegister;
+    private final boolean useBasePointer;
 
-    public SubstrateAMD64RegisterConfig(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target) {
+    public SubstrateAMD64RegisterConfig(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target, boolean useBasePointer) {
         this.target = target;
         this.metaAccess = metaAccess;
+        this.useBasePointer = useBasePointer;
 
         if (OS.getCurrent() == OS.WINDOWS) {
             // This is the Windows 64-bit ABI for parameters.
@@ -127,7 +125,9 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
 
             ArrayList<Register> regs = new ArrayList<>(valueRegistersSSE.asList());
             regs.remove(rsp);
-            regs.remove(rbp);
+            if (useBasePointer) {
+                regs.remove(rbp);
+            }
             regs.remove(heapBaseRegister);
             regs.remove(threadRegister);
             allocatableRegs = new RegisterArray(regs);
@@ -222,6 +222,10 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
     public RegisterArray getCallingConventionRegisters(Type type, JavaKind kind) {
         throw unimplemented();
         // return null;
+    }
+
+    public boolean shouldUseBasePointer() {
+        return this.useBasePointer;
     }
 
     @Override

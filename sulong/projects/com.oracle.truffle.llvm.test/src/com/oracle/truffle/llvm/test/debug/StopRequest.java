@@ -85,21 +85,7 @@ final class StopRequest implements Iterable<StopRequest.Scope> {
 
     @Override
     public Iterator<Scope> iterator() {
-
-        return new Iterator<Scope>() {
-
-            private int i = 0;
-
-            @Override
-            public boolean hasNext() {
-                return i != scopes.size();
-            }
-
-            @Override
-            public Scope next() {
-                return scopes.get(i++);
-            }
-        };
+        return scopes.iterator();
     }
 
     static final class Scope {

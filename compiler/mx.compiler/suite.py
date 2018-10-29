@@ -4,8 +4,8 @@ suite = {
   "sourceinprojectwhitelist" : [],
 
   "groupId" : "org.graalvm.compiler",
-  "version" : "1.0.0-rc8",
-  "release" : True,
+  "version" : "1.0.0-rc9",
+  "release" : False,
   "url" : "http://www.graalvm.org/",
   "developer" : {
     "name" : "Truffle and Graal developers",
@@ -951,6 +951,34 @@ suite = {
       ],
     },
 
+    "org.graalvm.compiler.replacements.jdk9_11.test" : {
+      "testProject" : True,
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.replacements.test"
+      ],
+      "checkstyle": "org.graalvm.compiler.graph",
+      "javaCompliance" : "9..11",
+      "imports" : [
+        "jdk.internal.misc",
+      ],
+    },
+
+    "org.graalvm.compiler.replacements.jdk12.test" : {
+      "testProject" : True,
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.replacements.test"
+      ],
+      "checkstyle": "org.graalvm.compiler.graph",
+      "javaCompliance" : "12+",
+      "imports" : [
+        "jdk.internal.misc",
+      ],
+    },
+
     "org.graalvm.compiler.replacements.processor" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -1712,6 +1740,8 @@ suite = {
         "org.graalvm.util.test",
         "org.graalvm.compiler.loop.test",
         "org.graalvm.compiler.replacements.jdk9.test",
+        "org.graalvm.compiler.replacements.jdk9_11.test",
+        "org.graalvm.compiler.replacements.jdk12.test",
         "org.graalvm.compiler.core.test.jdk9",
       ],
       "distDependencies" : [

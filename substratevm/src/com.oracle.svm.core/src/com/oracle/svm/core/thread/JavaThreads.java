@@ -277,9 +277,12 @@ public abstract class JavaThreads {
         if (!currentThread.compareAndSet(isolateThread, null, thread)) {
             return false;
         }
-        ThreadGroup group = thread.getThreadGroup();
-        toTarget(group).addUnstarted();
-        toTarget(group).add(thread);
+        /* If the thread was manually started, finish initializing it. */
+        if (manuallyStarted) {
+            final ThreadGroup group = thread.getThreadGroup();
+            toTarget(group).addUnstarted();
+            toTarget(group).add(thread);
+        }
         if (!thread.isDaemon() && manuallyStarted) {
             assert isolateThread.equal(CurrentIsolate.getCurrentThread()) : "Non-daemon threads must call this method themselves, or they can detach incompletely in a race";
             singleton().nonDaemonThreads.incrementAndGet();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,7 +46,6 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.amd64.FrameAccess;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -345,7 +344,7 @@ public class SubstrateUtil {
                     log.string("Found matching Anchor:").zhex(anchor.rawValue()).newline();
                     Pointer lastSp = anchor.getLastJavaSP();
                     log.string("LastJavaSP ").zhex(lastSp.rawValue()).newline();
-                    CodePointer lastIp = FrameAccess.readReturnAddress(lastSp);
+                    CodePointer lastIp = FrameAccess.singleton().readReturnAddress(lastSp);
                     log.string("LastJavaIP ").zhex(lastIp.rawValue()).newline();
                 }
             }

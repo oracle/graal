@@ -694,44 +694,66 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
 
     @Test
     public void keyInfo() {
-        TruffleObject ipobj = new InternalPropertiesObject(-1, -1, 0, 0);
+        TruffleObject ipobj = new InternalPropertiesObject(-1, -1, -1, -1, 0, 0);
         int keyInfo = getKeyInfo(ipobj, "p1");
         assertTrue(KeyInfo.isReadable(keyInfo));
         assertTrue(KeyInfo.isWritable(keyInfo));
+        assertTrue(KeyInfo.hasReadSideEffects(keyInfo));
+        assertTrue(KeyInfo.hasWriteSideEffects(keyInfo));
         assertFalse(KeyInfo.isInvocable(keyInfo));
         assertFalse(KeyInfo.isInternal(keyInfo));
         keyInfo = getKeyInfo(ipobj, "p6");
         assertTrue(KeyInfo.isReadable(keyInfo));
         assertTrue(KeyInfo.isWritable(keyInfo));
+        assertTrue(KeyInfo.hasReadSideEffects(keyInfo));
+        assertTrue(KeyInfo.hasWriteSideEffects(keyInfo));
         assertFalse(KeyInfo.isInvocable(keyInfo));
         assertFalse(KeyInfo.isInternal(keyInfo));
         keyInfo = getKeyInfo(ipobj, "p7");
         assertEquals(0, keyInfo);
+        assertFalse(KeyInfo.isReadable(keyInfo));
+        assertFalse(KeyInfo.isWritable(keyInfo));
+        assertFalse(KeyInfo.hasReadSideEffects(keyInfo));
+        assertFalse(KeyInfo.hasWriteSideEffects(keyInfo));
+        assertFalse(KeyInfo.isInvocable(keyInfo));
+        assertFalse(KeyInfo.isInternal(keyInfo));
 
-        ipobj = new InternalPropertiesObject(0b0100010, 0b0100100, 0b0011000, 0);
+        ipobj = new InternalPropertiesObject(0b0100010, 0b0100100, 0b0110000, 0b0100010, 0b0011000, 0);
         keyInfo = getKeyInfo(ipobj, "p1");
         assertTrue(KeyInfo.isReadable(keyInfo));
         assertFalse(KeyInfo.isWritable(keyInfo));
+        assertFalse(KeyInfo.hasReadSideEffects(keyInfo));
+        assertTrue(KeyInfo.hasWriteSideEffects(keyInfo));
         assertFalse(KeyInfo.isInvocable(keyInfo));
         keyInfo = getKeyInfo(ipobj, "p2");
         assertFalse(KeyInfo.isReadable(keyInfo));
         assertTrue(KeyInfo.isWritable(keyInfo));
+        assertFalse(KeyInfo.hasReadSideEffects(keyInfo));
+        assertFalse(KeyInfo.hasWriteSideEffects(keyInfo));
         assertFalse(KeyInfo.isInvocable(keyInfo));
         keyInfo = getKeyInfo(ipobj, "p3");
         assertFalse(KeyInfo.isReadable(keyInfo));
         assertFalse(KeyInfo.isWritable(keyInfo));
+        assertFalse(KeyInfo.hasReadSideEffects(keyInfo));
+        assertFalse(KeyInfo.hasWriteSideEffects(keyInfo));
         assertTrue(KeyInfo.isInvocable(keyInfo));
         keyInfo = getKeyInfo(ipobj, "p4");
         assertFalse(KeyInfo.isReadable(keyInfo));
         assertFalse(KeyInfo.isWritable(keyInfo));
+        assertTrue(KeyInfo.hasReadSideEffects(keyInfo));
+        assertFalse(KeyInfo.hasWriteSideEffects(keyInfo));
         assertTrue(KeyInfo.isInvocable(keyInfo));
         keyInfo = getKeyInfo(ipobj, "p5");
         assertTrue(KeyInfo.isReadable(keyInfo));
         assertTrue(KeyInfo.isWritable(keyInfo));
+        assertTrue(KeyInfo.hasReadSideEffects(keyInfo));
+        assertTrue(KeyInfo.hasWriteSideEffects(keyInfo));
         assertFalse(KeyInfo.isInvocable(keyInfo));
         keyInfo = getKeyInfo(ipobj, "p6");
         assertFalse(KeyInfo.isReadable(keyInfo));
         assertFalse(KeyInfo.isWritable(keyInfo));
+        assertFalse(KeyInfo.hasReadSideEffects(keyInfo));
+        assertFalse(KeyInfo.hasWriteSideEffects(keyInfo));
         assertFalse(KeyInfo.isInvocable(keyInfo));
         keyInfo = getKeyInfo(ipobj, "p7");
         assertEquals(0, keyInfo);
@@ -764,6 +786,8 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
             keyInfo = getKeyInfo(array, i);
             assertTrue(KeyInfo.isReadable(keyInfo));
             assertTrue(KeyInfo.isWritable(keyInfo));
+            assertFalse(KeyInfo.hasReadSideEffects(keyInfo));
+            assertFalse(KeyInfo.hasWriteSideEffects(keyInfo));
             assertFalse(KeyInfo.isInvocable(keyInfo));
             assertFalse(KeyInfo.isInternal(keyInfo));
             keyInfo = getKeyInfo(array, (long) i);
@@ -789,12 +813,16 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
         assertTrue(KeyInfo.isExisting(keyInfo));
         assertTrue(KeyInfo.isReadable(keyInfo));
         assertTrue(KeyInfo.isWritable(keyInfo));
+        assertFalse(KeyInfo.hasReadSideEffects(keyInfo));
+        assertFalse(KeyInfo.hasWriteSideEffects(keyInfo));
         assertFalse(KeyInfo.isInvocable(keyInfo));
         assertFalse(KeyInfo.isRemovable(keyInfo));
         keyInfo = getKeyInfo(d, "toString");
         assertTrue(KeyInfo.isExisting(keyInfo));
         assertTrue(KeyInfo.isReadable(keyInfo));
         assertFalse(KeyInfo.isWritable(keyInfo));
+        assertFalse(KeyInfo.hasReadSideEffects(keyInfo));
+        assertFalse(KeyInfo.hasWriteSideEffects(keyInfo));
         assertTrue(KeyInfo.isInvocable(keyInfo));
         assertFalse(KeyInfo.isRemovable(keyInfo));
     }
@@ -1422,6 +1450,8 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
 
         private final int rBits;    // readable
         private final int wBits;    // writable
+        private final int rsBits;   // read side-effects
+        private final int wsBits;   // write side-effects
         private final int iBits;    // invocable
         private final int nBits;    // internal
 
@@ -1430,12 +1460,14 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
          *            non-internal.
          */
         InternalPropertiesObject(int iBits) {
-            this(-1, -1, -1, iBits);
+            this(-1, -1, -1, -1, -1, iBits);
         }
 
-        InternalPropertiesObject(int rBits, int wBits, int iBits, int nBits) {
+        InternalPropertiesObject(int rBits, int wBits, int rsBits, int wsBits, int iBits, int nBits) {
             this.rBits = rBits;
             this.wBits = wBits;
+            this.rsBits = rsBits;
+            this.wsBits = wsBits;
             this.iBits = iBits;
             this.nBits = nBits;
         }
@@ -1493,6 +1525,8 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
                     }
                     boolean readable = (receiver.rBits & (1 << d)) > 0;
                     boolean writable = (receiver.wBits & (1 << d)) > 0;
+                    boolean readSideEffects = (receiver.rsBits & (1 << d)) > 0;
+                    boolean writeSideEffects = (receiver.wsBits & (1 << d)) > 0;
                     boolean invocable = (receiver.iBits & (1 << d)) > 0;
                     boolean internal = (receiver.nBits & (1 << d)) > 0;
                     int info = KeyInfo.NONE;
@@ -1501,6 +1535,12 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
                     }
                     if (writable) {
                         info |= KeyInfo.MODIFIABLE;
+                    }
+                    if (readSideEffects) {
+                        info |= KeyInfo.READ_SIDE_EFFECTS;
+                    }
+                    if (writeSideEffects) {
+                        info |= KeyInfo.WRITE_SIDE_EFFECTS;
                     }
                     if (invocable) {
                         info |= KeyInfo.INVOCABLE;

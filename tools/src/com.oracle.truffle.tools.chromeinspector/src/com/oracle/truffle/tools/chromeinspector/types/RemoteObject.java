@@ -67,21 +67,37 @@ public final class RemoteObject {
 
     private final DebugValue valueValue;
     private final DebugScope valueScope;
-    private final String type;
-    private final String subtype;
-    private final String className;
-    private final Object value;
-    private final boolean replicableValue;
-    private final boolean nullValue;
-    private final String unserializableValue;
     private final String objectId;
-    private final String description;
-    private final JSONObject jsonObject;
+    private PrintWriter err = null;
+    private String type;
+    private String subtype;
+    private String className;
+    private Object value;
+    private boolean replicableValue;
+    private boolean nullValue;
+    private String unserializableValue;
+    private String description;
+    private JSONObject jsonObject;
 
-    public RemoteObject(DebugValue originalDebugValue, PrintWriter err) {
-        DebugValue debugValue = originalDebugValue;
+    public RemoteObject(DebugValue debugValue, PrintWriter err) {
+        this(debugValue, false, err);
+    }
+
+    public RemoteObject(DebugValue debugValue, boolean readEagerly, PrintWriter err) {
         this.valueValue = debugValue;
         this.valueScope = null;
+        this.err = err;
+        if (!debugValue.hasReadSideEffects() || readEagerly) {
+            boolean isObject = initFromValue();
+            objectId = (isObject) ? Long.toString(LAST_ID.incrementAndGet()) : null;
+            jsonObject = createJSON();
+        } else {
+            objectId = Long.toString(LAST_ID.incrementAndGet());
+        }
+    }
+
+    private boolean initFromValue() {
+        DebugValue debugValue = valueValue;
         LanguageInfo originalLanguage = debugValue.getOriginalLanguage();
         // Setup the object with a language-specific value
         if (originalLanguage != null) {
@@ -205,8 +221,7 @@ public final class RemoteObject {
         } else {
             this.description = toString;
         }
-        this.objectId = (isObject) ? Long.toString(LAST_ID.incrementAndGet()) : null;
-        this.jsonObject = createJSON();
+        return isObject;
     }
 
     public RemoteObject(DebugScope scope) {
@@ -222,6 +237,29 @@ public final class RemoteObject {
         this.objectId = Long.toString(LAST_ID.incrementAndGet());
         this.description = scope.getName();
         this.jsonObject = createJSON();
+    }
+
+    private RemoteObject(String type, String className, String description, boolean isNullValue) {
+        this.valueValue = null;
+        this.valueScope = null;
+        this.type = type;
+        this.subtype = null;
+        this.className = className;
+        this.value = null;
+        this.replicableValue = false;
+        this.nullValue = isNullValue;
+        this.unserializableValue = null;
+        this.objectId = Long.toString(LAST_ID.incrementAndGet());
+        this.description = description;
+        this.jsonObject = createJSON();
+    }
+
+    public static RemoteObject createSimpleObject(String type, String className, String description) {
+        return new RemoteObject(type, className, description, false);
+    }
+
+    public static RemoteObject createNullObject() {
+        return new RemoteObject("null", null, "null", true);
     }
 
     private JSONObject createJSON() {
@@ -386,6 +424,10 @@ public final class RemoteObject {
     }
 
     public JSONObject toJSON() {
+        if (jsonObject == null) {
+            initFromValue();
+            jsonObject = createJSON();
+        }
         return jsonObject;
     }
 

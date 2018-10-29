@@ -69,15 +69,12 @@ import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.jdk.LocalizationSupport;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.driver.MacroOption.EnabledOption;
 import com.oracle.svm.driver.MacroOption.MacroOptionKind;
 import com.oracle.svm.driver.MacroOption.Registry;
 import com.oracle.svm.graal.hosted.GraalFeature;
-import com.oracle.svm.hosted.ClassInitializationFeature;
-import com.oracle.svm.hosted.FeatureHandler;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.image.AbstractBootImage.NativeImageKind;
 import com.oracle.svm.hosted.substitute.DeclarativeSubstitutionProcessor;
@@ -138,20 +135,10 @@ public class NativeImage {
     static final String oHOptimize = oH(SubstrateOptions.Optimize);
 
     /* List arguments */
-    static final String oHFeatures = oH(FeatureHandler.Options.Features);
     static final String oHSubstitutionFiles = oH(DeclarativeSubstitutionProcessor.Options.SubstitutionFiles);
-    static final String oHSubstitutionResources = oH(DeclarativeSubstitutionProcessor.Options.SubstitutionResources);
-    static final String oHEnableUrlProtocols = oH(SubstrateOptions.EnableURLProtocols);
-    static final String oHIncludeResourceBundles = oH(LocalizationSupport.Options.IncludeResourceBundles);
     static final String oHReflectionConfigurationFiles = oH(ReflectionFeature.Options.ReflectionConfigurationFiles);
-    static final String oHReflectionConfigurationResources = oH(ReflectionFeature.Options.ReflectionConfigurationResources);
     static final String oHDynamicProxyConfigurationFiles = oH(DynamicProxyFeature.Options.DynamicProxyConfigurationFiles);
-    static final String oHDynamicProxyConfigurationResources = oH(DynamicProxyFeature.Options.DynamicProxyConfigurationResources);
     static final String oHJNIConfigurationFiles = oH(SubstrateOptions.JNIConfigurationFiles);
-    static final String oHJNIConfigurationResources = oH(SubstrateOptions.JNIConfigurationResources);
-    static final String oHDelayClassInitialization = oH(ClassInitializationFeature.Options.DelayClassInitialization);
-    static final String oHRerunClassInitialization = oH(ClassInitializationFeature.Options.RerunClassInitialization);
-    static final String oHInterfacesForJNR = oH + "InterfacesForJNR=";
 
     static final String oHMaxRuntimeCompileMethods = oH(GraalFeature.Options.MaxRuntimeCompileMethods);
     static final String oHInspectServerContentPath = oH(PointstoOptions.InspectServerContentPath);
@@ -629,33 +616,31 @@ public class NativeImage {
         }
     }
 
-    private void processClasspathNativeImageProperties(Collection<Path> paths) {
-        for (Path classpathEntry : paths) {
-            try {
-                if (Files.isDirectory(classpathEntry)) {
-                    Path nativeImageMetaInfBase = classpathEntry.resolve(Paths.get(nativeImagePropertiesMetaInf));
-                    processNativeImageProperties(nativeImageMetaInfBase);
+    private void processClasspathNativeImageProperties(Path classpathEntry) {
+        try {
+            if (Files.isDirectory(classpathEntry)) {
+                Path nativeImageMetaInfBase = classpathEntry.resolve(Paths.get(nativeImagePropertiesMetaInf));
+                processNativeImageProperties(nativeImageMetaInfBase);
+            } else {
+                List<Path> jarFileMatches;
+                if (classpathEntry.endsWith("*")) {
+                    jarFileMatches = Files.list(classpathEntry.getParent())
+                                    .filter(p -> p.getFileName().toString().toLowerCase().endsWith(".jar"))
+                                    .collect(Collectors.toList());
                 } else {
-                    List<Path> jarFileMatches;
-                    if (classpathEntry.endsWith("*")) {
-                        jarFileMatches = Files.list(classpathEntry.getParent())
-                                        .filter(p -> p.getFileName().toString().toLowerCase().endsWith(".jar"))
-                                        .collect(Collectors.toList());
-                    } else {
-                        jarFileMatches = Collections.singletonList(classpathEntry);
-                    }
+                    jarFileMatches = Collections.singletonList(classpathEntry);
+                }
 
-                    for (Path jarFile : jarFileMatches) {
-                        URI jarFileURI = URI.create("jar:" + jarFile.toUri());
-                        try (FileSystem jarFS = FileSystems.newFileSystem(jarFileURI, Collections.emptyMap())) {
-                            Path nativeImageMetaInfBase = jarFS.getPath("/" + nativeImagePropertiesMetaInf);
-                            processNativeImageProperties(nativeImageMetaInfBase);
-                        }
+                for (Path jarFile : jarFileMatches) {
+                    URI jarFileURI = URI.create("jar:" + jarFile.toUri());
+                    try (FileSystem jarFS = FileSystems.newFileSystem(jarFileURI, Collections.emptyMap())) {
+                        Path nativeImageMetaInfBase = jarFS.getPath("/" + nativeImagePropertiesMetaInf);
+                        processNativeImageProperties(nativeImageMetaInfBase);
                     }
                 }
-            } catch (IOException e) {
-                throw showError("Invalid classpath entry " + classpathEntry, e);
             }
+        } catch (IOException e) {
+            throw showError("Invalid classpath entry " + classpathEntry, e);
         }
     }
 
@@ -686,7 +671,7 @@ public class NativeImage {
     private void processNativeImageProperties(Map<String, String> properties, Function<String, String> resolver) {
         String imageName = properties.get("ImageName");
         if (imageName != null) {
-            addPlainImageBuilderArg(NativeImage.oHName + resolver.apply(imageName));
+            addCustomImageBuilderArgs(NativeImage.oHName + resolver.apply(imageName));
         }
         forEachPropertyValue(properties.get("JavaArgs"), this::addImageBuilderJavaArgs, resolver);
         forEachPropertyValue(properties.get("Args"), this::addImageBuilderArg, resolver);
@@ -709,10 +694,6 @@ public class NativeImage {
             imageClasspath.addAll(customImageClasspath);
         }
 
-        // Process all META-INF/*/native-image.properties found on the imageClasspath
-        processClasspathNativeImageProperties(imageProvidedClasspath);
-        processClasspathNativeImageProperties(imageClasspath);
-
         /* Perform JavaArgs consolidation - take the maximum of -Xmx, minimum of -Xms */
         Long xmxValue = consolidateArgs(imageBuilderJavaArgs, oXmx, SubstrateOptionsParser::parseLong, String::valueOf, () -> 0L, Math::max);
         Long xmsValue = consolidateArgs(imageBuilderJavaArgs, oXms, SubstrateOptionsParser::parseLong, String::valueOf, () -> SubstrateOptionsParser.parseLong(getXmsValue()), Math::max);
@@ -728,19 +709,9 @@ public class NativeImage {
         consolidateArgs(imageBuilderArgs, oHMaxRuntimeCompileMethods, Integer::parseInt, String::valueOf, () -> 0, Integer::sum);
         consolidateListArgs(imageBuilderArgs, oHCLibraryPath, ",", canonicalizedPathStr);
         consolidateListArgs(imageBuilderArgs, oHSubstitutionFiles, ",", canonicalizedPathStr);
-        consolidateListArgs(imageBuilderArgs, oHSubstitutionResources, ",", Function.identity());
-        consolidateListArgs(imageBuilderArgs, oHEnableUrlProtocols, ",", Function.identity());
-        consolidateListArgs(imageBuilderArgs, oHIncludeResourceBundles, ",", Function.identity());
-        consolidateListArgs(imageBuilderArgs, oHInterfacesForJNR, ",", Function.identity());
         consolidateListArgs(imageBuilderArgs, oHReflectionConfigurationFiles, ",", canonicalizedPathStr);
-        consolidateListArgs(imageBuilderArgs, oHReflectionConfigurationResources, ",", Function.identity());
         consolidateListArgs(imageBuilderArgs, oHDynamicProxyConfigurationFiles, ",", canonicalizedPathStr);
-        consolidateListArgs(imageBuilderArgs, oHDynamicProxyConfigurationResources, ",", Function.identity());
         consolidateListArgs(imageBuilderArgs, oHJNIConfigurationFiles, ",", canonicalizedPathStr);
-        consolidateListArgs(imageBuilderArgs, oHJNIConfigurationResources, ",", Function.identity());
-        consolidateListArgs(imageBuilderArgs, oHFeatures, ",", Function.identity());
-        consolidateListArgs(imageBuilderArgs, oHDelayClassInitialization, ",", Function.identity());
-        consolidateListArgs(imageBuilderArgs, oHRerunClassInitialization, ",", Function.identity());
 
         BiFunction<String, String, String> takeLast = (a, b) -> b;
         consolidateArgs(imageBuilderArgs, oHPath, Function.identity(), canonicalizedPathStr, () -> null, takeLast);
@@ -750,7 +721,7 @@ public class NativeImage {
         boolean buildExecutable = !NativeImageKind.SHARED_LIBRARY.name().equals(imageKind);
         boolean printFlags = imageBuilderArgs.stream().anyMatch(arg -> arg.contains(enablePrintFlags));
 
-        if (buildExecutable && !printFlags) {
+        if (!printFlags) {
             List<String> extraImageArgs = new ArrayList<>();
             ListIterator<String> leftoverArgsItr = leftoverArgs.listIterator();
             while (leftoverArgsItr.hasNext()) {
@@ -761,35 +732,42 @@ public class NativeImage {
                 }
             }
 
-            /* Main-class from customImageBuilderArgs counts as explicitMainClass */
-            boolean explicitMainClass = customImageBuilderArgs.stream().anyMatch(arg -> arg.startsWith(oHClass));
+            if (buildExecutable) {
+                /* Main-class from customImageBuilderArgs counts as explicitMainClass */
+                boolean explicitMainClass = customImageBuilderArgs.stream().anyMatch(arg -> arg.startsWith(oHClass));
 
-            if (extraImageArgs.isEmpty()) {
-                if (mainClass == null || mainClass.isEmpty()) {
-                    showError("Please specify class containing the main entry point method. (see --help)");
-                }
-            } else {
-                /* extraImageArgs main-class overrules previous main-class specification */
-                explicitMainClass = true;
-                mainClass = extraImageArgs.remove(0);
-                replaceArg(imageBuilderArgs, oHClass, mainClass);
-            }
-
-            if (extraImageArgs.isEmpty()) {
-                /* No explicit image name, define image name by other means */
-                if (customImageBuilderArgs.stream().noneMatch(arg -> arg.startsWith(oHName))) {
-                    /* Also no explicit image name given as customImageBuilderArgs */
-                    if (explicitMainClass) {
-                        /* Use main-class lower case as image name */
-                        replaceArg(imageBuilderArgs, oHName, mainClass.toLowerCase());
-                    } else if (imageBuilderArgs.stream().noneMatch(arg -> arg.startsWith(oHName))) {
-                        /* Although very unlikely, report missing image-name if needed. */
-                        throw showError("Missing image-name. Use " + oHName + "<imagename> to provide one.");
+                if (extraImageArgs.isEmpty()) {
+                    if (mainClass == null || mainClass.isEmpty()) {
+                        showError("Please specify class containing the main entry point method. (see --help)");
                     }
+                } else {
+                    /* extraImageArgs main-class overrules previous main-class specification */
+                    explicitMainClass = true;
+                    mainClass = extraImageArgs.remove(0);
+                    replaceArg(imageBuilderArgs, oHClass, mainClass);
+                }
+
+                if (extraImageArgs.isEmpty()) {
+                    /* No explicit image name, define image name by other means */
+                    if (customImageBuilderArgs.stream().noneMatch(arg -> arg.startsWith(oHName))) {
+                        /* Also no explicit image name given as customImageBuilderArgs */
+                        if (explicitMainClass) {
+                            /* Use main-class lower case as image name */
+                            replaceArg(imageBuilderArgs, oHName, mainClass.toLowerCase());
+                        } else if (imageBuilderArgs.stream().noneMatch(arg -> arg.startsWith(oHName))) {
+                            /* Although very unlikely, report missing image-name if needed. */
+                            throw showError("Missing image-name. Use " + oHName + "<imagename> to provide one.");
+                        }
+                    }
+                } else {
+                    /* extraImageArgs executable name overrules previous specification */
+                    replaceArg(imageBuilderArgs, oHName, extraImageArgs.remove(0));
                 }
             } else {
-                /* extraImageArgs executable name overrules previous specification */
-                replaceArg(imageBuilderArgs, oHName, extraImageArgs.remove(0));
+                if (!extraImageArgs.isEmpty()) {
+                    /* extraImageArgs library name overrules previous specification */
+                    replaceArg(imageBuilderArgs, oHName, extraImageArgs.remove(0));
+                }
             }
         }
 
@@ -954,7 +932,9 @@ public class NativeImage {
     }
 
     void addImageClasspath(Path classpath) {
-        imageClasspath.add(canonicalize(classpath));
+        Path classpathEntry = canonicalize(classpath);
+        processClasspathNativeImageProperties(classpathEntry);
+        imageClasspath.add(classpathEntry);
     }
 
     /**
@@ -962,12 +942,16 @@ public class NativeImage {
      * jars, truffle jars etc.
      */
     void addImageProvidedClasspath(Path classpath) {
-        imageProvidedClasspath.add(canonicalize(classpath));
+        Path classpathEntry = canonicalize(classpath);
+        processClasspathNativeImageProperties(classpathEntry);
+        imageProvidedClasspath.add(classpathEntry);
     }
 
     void addCustomImageClasspath(Path classpath) {
         try {
-            customImageClasspath.add(canonicalize(classpath));
+            Path classpathEntry = canonicalize(classpath);
+            processClasspathNativeImageProperties(classpathEntry);
+            customImageClasspath.add(classpathEntry);
         } catch (NativeImageError e) {
             showWarning("Invalid classpath entry: " + classpath);
         }

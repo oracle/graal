@@ -88,7 +88,21 @@ public final class RuntimeReflection {
      * @since 1.0
      */
     public static void register(Field... fields) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(fields);
+        register(false, fields);
+    }
+
+    /**
+     * Makes the provided fields available for reflection at run time. The fields will be returned
+     * by {@link Class#getField}, {@link Class#getFields},and all the other methods on {@link Class}
+     * that return a single or a list of fields.
+     *
+     * @param finalIsWritable for all of the passed fields which are marked {@code final}, indicates
+     *            whether it should be possible to change their value using reflection.
+     *
+     * @since 1.0
+     */
+    public static void register(boolean finalIsWritable, Field... fields) {
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(finalIsWritable, fields);
     }
 
     /**

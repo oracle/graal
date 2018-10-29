@@ -160,13 +160,14 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      */
     @Override
     public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
-                    long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean boundEngine, MessageTransport messageInterceptor, Handler logHandler) {
+                    long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean boundEngine, MessageTransport messageInterceptor, Object logHandlerOrStream) {
         if (TruffleOptions.AOT) {
             VMAccessor.SPI.initializeNativeImageTruffleLocator();
         }
         OutputStream resolvedOut = out == null ? System.out : out;
         OutputStream resolvedErr = err == null ? System.err : err;
         InputStream resolvedIn = in == null ? System.in : in;
+        Handler logHandler = PolyglotLogHandler.asHandler(logHandlerOrStream);
 
         DispatchOutputStream dispatchOut = INSTRUMENT.createDispatchOutput(resolvedOut);
         DispatchOutputStream dispatchErr = INSTRUMENT.createDispatchOutput(resolvedErr);
@@ -781,7 +782,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
-        public Thread createThread(Object vmObject, Runnable runnable, Object innerContextImpl) {
+        public Thread createThread(Object vmObject, Runnable runnable, Object innerContextImpl, ThreadGroup group, long stackSize) {
             if (!isCreateThreadAllowed(vmObject)) {
                 throw new IllegalStateException("Creating threads is not allowed.");
             }
@@ -791,7 +792,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                 PolyglotContextImpl innerContext = (PolyglotContextImpl) innerContextImpl;
                 threadContext = innerContext.getContext(threadContext.language);
             }
-            return new PolyglotThread(threadContext, runnable);
+            return new PolyglotThread(threadContext, runnable, group, stackSize);
         }
 
         @Override
