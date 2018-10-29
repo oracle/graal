@@ -431,10 +431,11 @@ final class FunctionProxyHandler implements InvocationHandler, HostWrapper {
     @Override
     public Object invoke(Object proxy, Method method, Object[] arguments) throws Throwable {
         CompilerAsserts.neverPartOfCompilation();
+        Object[] resolvedArguments = arguments == null ? HostInteropReflect.EMPTY : arguments;
         if (method.equals(functionMethod)) {
-            return target.call(languageContext, functionObj, spreadVarArgsArray(arguments));
+            return target.call(languageContext, functionObj, spreadVarArgsArray(resolvedArguments));
         } else {
-            return invokeDefault(this, proxy, method, arguments);
+            return invokeDefault(this, proxy, method, resolvedArguments);
         }
     }
 
