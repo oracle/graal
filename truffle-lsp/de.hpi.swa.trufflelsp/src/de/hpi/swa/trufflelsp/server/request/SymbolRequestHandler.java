@@ -2,6 +2,7 @@ package de.hpi.swa.trufflelsp.server.request;
 
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -68,12 +69,12 @@ public class SymbolRequestHandler extends AbstractRequestHandler {
                                 symbolInformation.add(si);
                             }
 
-                            private SymbolKind declarationKindToSmybolKind(Object kind) {
-                                if (kind == null) {
+                            private SymbolKind declarationKindToSmybolKind(Object kindObj) {
+                                if (kindObj == null) {
                                     return null;
                                 }
-                                Integer kindValue = (Integer) kind;
-                                return SymbolKind.forValue(kindValue);
+                                String kind = kindObj.toString();
+                                return Arrays.stream(SymbolKind.values()).filter(sk -> sk.name().toLowerCase().equals(kind.toLowerCase())).findFirst().orElse(null);
                             }
                         }, true).dispose();
 
