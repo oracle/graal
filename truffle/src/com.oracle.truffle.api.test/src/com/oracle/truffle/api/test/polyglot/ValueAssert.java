@@ -610,8 +610,10 @@ public class ValueAssert {
     }
 
     public interface NonFunctionalInterface {
-        default void foobarbaz() {
-        }
+        void foobarbaz();
+
+        // make it a non functional interface
+        void ___asdf___();
     }
 
     @FunctionalInterface
