@@ -58,6 +58,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
 
     private final JavaKind kind;
     private final int vmPageSize;
+    private final AMD64Kind vectorKind;
 
     @Def({REG}) protected Value resultValue;
     @Alive({REG}) protected Value charArrayPtrValue;
@@ -76,7 +77,9 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
 
     public AMD64ArrayIndexOfOp(
                     JavaKind kind,
-                    int vmPageSize, LIRGeneratorTool tool,
+                    int vmPageSize,
+                    int maxVectorSize,
+                    LIRGeneratorTool tool,
                     Value result,
                     Value arrayPtr,
                     Value arrayLength,
@@ -96,7 +99,8 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
         this.comparisonResult2 = tool.newVariable(LIRKind.value(AMD64Kind.DWORD));
         this.comparisonResult3 = tool.newVariable(LIRKind.value(AMD64Kind.DWORD));
         this.comparisonResult4 = tool.newVariable(LIRKind.value(AMD64Kind.DWORD));
-        AMD64Kind vectorKind = byteMode() ? supportsAVX2(tool) ? AMD64Kind.V256_BYTE : AMD64Kind.V128_BYTE : supportsAVX2(tool) ? AMD64Kind.V256_WORD : AMD64Kind.V128_WORD;
+        vectorKind = supportsAVX2(tool) && (maxVectorSize < 0 || maxVectorSize >= 32) ? byteMode() ? AMD64Kind.V256_BYTE : AMD64Kind.V256_WORD
+                        : byteMode() ? AMD64Kind.V128_BYTE : AMD64Kind.V128_WORD;
         this.vectorCompareVal = tool.newVariable(LIRKind.value(vectorKind));
         this.vectorArray1 = tool.newVariable(LIRKind.value(vectorKind));
         this.vectorArray2 = tool.newVariable(LIRKind.value(vectorKind));
@@ -141,7 +145,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
         Label retNotFound = new Label();
         Label end = new Label();
 
-        AVXKind.AVXSize vectorSize = asm.supports(CPUFeature.AVX2) ? AVXKind.AVXSize.YMM : AVXKind.AVXSize.XMM;
+        AVXKind.AVXSize vectorSize = AVXKind.getDataSize(vectorKind);
         int nVectors = 4;
         int bytesPerVector = vectorSize.getBytes();
         int arraySlotsPerVector = vectorSize.getBytes() / kind.getByteCount();
