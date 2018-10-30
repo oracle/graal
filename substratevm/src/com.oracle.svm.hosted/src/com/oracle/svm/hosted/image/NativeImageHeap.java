@@ -54,7 +54,6 @@ import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.HostedIdentityHashCodeProvider;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -242,13 +241,18 @@ public final class NativeImageHeap {
             throw VMError.shouldNotReachHere("DynamicHub written to the image that has not been seen as reachable during static analysis: " + original);
         }
 
-        int identityHashCode = 0;
-        if (original instanceof HostedIdentityHashCodeProvider) {
-            identityHashCode = ((HostedIdentityHashCodeProvider) original).hostedIdentityHashCode();
-        }
-        if (identityHashCode == 0) {
+        int identityHashCode;
+        if (original instanceof DynamicHub) {
+            /*
+             * We need to use the identity hash code of the original java.lang.Class object and not
+             * of the DynamicHub, so that hash maps that are filled during image generation and use
+             * Class keys still work at run time.
+             */
+            identityHashCode = System.identityHashCode(universe.hostVM().lookupType((DynamicHub) original).getJavaClass());
+        } else {
             identityHashCode = System.identityHashCode(original);
         }
+        VMError.guarantee(identityHashCode != 0, "0 is used as a marker value for 'hash code not yet computed'");
 
         if (original instanceof String) {
             handleImageString((String) original);
