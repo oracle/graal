@@ -885,12 +885,13 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
                     PrintStream out = System.out;
                     out.println("Missing close on vm shutdown: ");
                     out.print(" InitializedLanguages:");
-                    for (WeakReference<PolyglotContextImpl> ref : engine.contexts) {
-                        PolyglotContextImpl context = ref.get();
-                        for (PolyglotLanguageContext langContext : context.contexts) {
-                            if (langContext.env != null) {
-                                out.print(langContext.language.getId());
-                                out.print(", ");
+                    synchronized (engine) {
+                        for (PolyglotContextImpl context : engine.collectAliveContexts()) {
+                            for (PolyglotLanguageContext langContext : context.contexts) {
+                                if (langContext.env != null) {
+                                    out.print(langContext.language.getId());
+                                    out.print(", ");
+                                }
                             }
                         }
                     }
