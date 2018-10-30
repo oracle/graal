@@ -48,7 +48,6 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
-import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -68,6 +67,8 @@ import java.util.function.Predicate;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Equivalence;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -138,7 +139,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     boolean boundEngine;    // effectively final
     Handler logHandler;     // effectively final
     final Exception createdLocation = DEBUG_MISSING_CLOSE ? new Exception() : null;
-    private final Set<ContextWeakReference> contexts = new LinkedHashSet<>();
+    private final EconomicSet<ContextWeakReference> contexts = EconomicSet.create(Equivalence.IDENTITY);
     final ReferenceQueue<PolyglotContextImpl> contextsReferenceQueue = new ReferenceQueue<>();
     private PolyglotContextImpl preInitializedContext;
 
@@ -785,9 +786,8 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
 
     private List<PolyglotContextImpl> collectAliveContexts() {
         Thread.holdsLock(this);
-        ContextWeakReference[] localContextsRefs = contexts.toArray(new ContextWeakReference[0]);
         List<PolyglotContextImpl> localContexts = new ArrayList<>(contexts.size());
-        for (ContextWeakReference ref : localContextsRefs) {
+        for (ContextWeakReference ref : contexts) {
             PolyglotContextImpl context = ref.get();
             if (context != null) {
                 localContexts.add(context);
