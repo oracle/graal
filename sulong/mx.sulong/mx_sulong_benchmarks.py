@@ -150,10 +150,12 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
         assert isinstance(vm, CExecutionEnvironmentMixin)
         return join(_benchmarksDirectory(), benchmarks[0], vm.bin_dir())
 
-    def createCommandLineArgs(self, benchmarks, runArgs):
+    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         if len(benchmarks) != 1:
             mx.abort("Please run a specific benchmark (mx benchmark csuite:<benchmark-name>) or all the benchmarks (mx benchmark csuite:*)")
-        return [self.bench_to_exec[benchmarks[0]]]
+        vmArgs = self.vmArgs(bmSuiteArgs)
+        runArgs = self.runArgs(bmSuiteArgs)
+        return vmArgs + [self.bench_to_exec[benchmarks[0]]] + runArgs
 
     def get_vm_registry(self):
         return native_vm_registry
@@ -247,13 +249,13 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
         return "sulong"
 
     def run(self, cwd, args):
-        launcher_args = self.launcher_args()
+        launcher_args = self.launcher_args(args)
         if hasattr(self.host_vm(), 'run_lang'):
-            result = self.host_vm().run_lang('lli', launcher_args + args, cwd)
+            result = self.host_vm().run_lang('lli', launcher_args, cwd)
         else:
             sulongCmdLine = mx_sulong.getClasspathOptions() + \
                             ['-XX:-UseJVMCIClassLoader', "com.oracle.truffle.llvm.launcher.LLVMLauncher"]
-            result = self.host_vm().run(cwd, sulongCmdLine + launcher_args + args)
+            result = self.host_vm().run(cwd, sulongCmdLine + launcher_args)
         return result
 
     def prepare_env(self, env):
@@ -280,13 +282,13 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
             '-gvn',
         ]
 
-    def launcher_args(self):
+    def launcher_args(self, args):
         launcher_args = [
             '--jvm.Dgraal.TruffleBackgroundCompilation=false',
             '--jvm.Dgraal.TruffleInliningMaxCallerSize=10000',
             '--jvm.Dgraal.TruffleCompilationExceptionsAreFatal=true',
             mx_subst.path_substitutions.substitute('--llvm.libraryPath=<path:SULONG_LIBS>'),
-            '--llvm.libraries=libgmp.so.10']
+            '--llvm.libraries=libgmp.so.10'] + args
         # FIXME: currently we do we do not support a common option prefix for jvm and native mode (GR-11165)
         if self.host_vm().config_name() == "native":
             def _convert_arg(arg):
