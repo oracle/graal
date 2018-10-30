@@ -70,7 +70,7 @@ public abstract class AbstractPolyglotTest {
     protected TruffleLanguage.Env languageEnv;
     protected TruffleLanguage<?> language;
     protected TruffleInstrument.Env instrumentEnv;
-    protected boolean cleanupOnSetup;
+    protected boolean cleanupOnSetup = true;
 
     protected final void setupEnv(Context newContext, ProxyInstrument instrument) {
         setupEnv(newContext, null, instrument);

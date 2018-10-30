@@ -910,10 +910,11 @@ public final class Value {
      * @throws NullPointerException if the target type is null.
      * @since 1.0
      */
+    @SuppressWarnings("unchecked")
     public <T> T as(Class<T> targetType) throws ClassCastException, IllegalStateException, PolyglotException {
         Objects.requireNonNull(targetType, "targetType");
         if (targetType == Value.class) {
-            return targetType.cast(this);
+            return (T) this;
         }
         return impl.as(receiver, targetType);
     }
@@ -927,10 +928,12 @@ public final class Value {
      * <pre>
      * static final TypeLiteral<List<String>> STRING_LIST = new TypeLiteral<List<String>>() {
      * };
-     *
-     * Context context = Context.create();
-     * List<String> javaList = context.eval("js", "['foo', 'bar', 'bazz']").as(STRING_LIST);
-     * assert javaList.get(0).equals("foo");
+     * 
+     * public static void main(String[] args) {
+     *     Context context = Context.create();
+     *     List<String> javaList = context.eval("js", "['foo', 'bar', 'bazz']").as(STRING_LIST);
+     *     assert javaList.get(0).equals("foo");
+     * }
      * </pre>
      *
      * @throws NullPointerException if the target type is null.
@@ -963,18 +966,19 @@ public final class Value {
     }
 
     /**
-     * Converts a Java host value to a polyglot value representation using
-     * {@link Context#asValue(Object)} with the {@link Context#getCurrent() current} context. This
-     * method is a short-cut for <code>Context.getCurrent().asValue(o)</code>.
+     * Converts a Java host value to a polyglot value. Returns a value for any host or guest value.
+     * If there is a context available use {@link Context#asValue(Object)} for efficiency instead.
      *
      * @param o the object to convert
      * @throws IllegalStateException if no context is currently entered.
      * @see Context#asValue(Object) Conversion rules.
-     * @see Context#getCurrent() Looking up the current context.
      * @since 1.0
      */
     public static Value asValue(Object o) {
-        return Context.getCurrent().asValue(o);
+        if (o instanceof Value) {
+            return (Value) o;
+        }
+        return Engine.getImpl().asValue(o);
     }
 
 }

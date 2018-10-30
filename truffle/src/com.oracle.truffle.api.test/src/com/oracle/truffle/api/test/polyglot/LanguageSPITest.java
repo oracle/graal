@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import static com.oracle.truffle.api.test.polyglot.ValueAssert.assertFails;
+import static com.oracle.truffle.api.test.polyglot.ValueAssert.assertValue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -1477,7 +1479,7 @@ public class LanguageSPITest {
         assertNull(bindings.getMember(""));
         ValueAssert.assertFails(() -> bindings.putMember("", ""), UnsupportedOperationException.class);
         assertFalse(bindings.removeMember(""));
-        ValueAssert.assertValue(c, bindings);
+        assertValue(bindings);
 
         c.close();
     }
@@ -1503,25 +1505,25 @@ public class LanguageSPITest {
         ValueAssert.assertFails(() -> bindings.putMember("", ""), UnsupportedOperationException.class);
         assertFalse(bindings.removeMember(""));
         ValueAssert.assertFails(() -> bindings.removeMember("foobar"), UnsupportedOperationException.class);
-        ValueAssert.assertValue(c, bindings, ValueAssert.Trait.MEMBERS);
+        assertValue(bindings, ValueAssert.Trait.MEMBERS);
 
         scope.insertable = true;
         bindings.putMember("baz", "42");
         assertEquals("42", scope.values.get("baz"));
         assertEquals("42", bindings.getMember("baz").asString());
-        ValueAssert.assertFails(() -> bindings.putMember("foobar", "42"), UnsupportedOperationException.class);
-        ValueAssert.assertValue(c, bindings, ValueAssert.Trait.MEMBERS);
+        assertFails(() -> bindings.putMember("foobar", "42"), UnsupportedOperationException.class);
+        assertValue(bindings, ValueAssert.Trait.MEMBERS);
 
         scope.modifiable = true;
         bindings.putMember("foobar", "42");
         assertEquals("42", scope.values.get("foobar"));
         assertEquals("42", bindings.getMember("foobar").asString());
-        ValueAssert.assertValue(c, bindings, ValueAssert.Trait.MEMBERS);
+        assertValue(bindings, ValueAssert.Trait.MEMBERS);
 
         scope.removable = true;
         assertFalse(bindings.removeMember(""));
         assertTrue(bindings.removeMember("foobar"));
-        ValueAssert.assertValue(c, bindings, ValueAssert.Trait.MEMBERS);
+        assertValue(bindings, ValueAssert.Trait.MEMBERS);
 
         assertEquals(1, findScopeInvokes);
 
@@ -1557,7 +1559,7 @@ public class LanguageSPITest {
         assertEquals("bar", scopes[1].values.get("foo"));
         assertNull(scopes[0].values.get("foo"));
         assertNull(scopes[2].values.get("foo"));
-        ValueAssert.assertValue(c, bindings, ValueAssert.Trait.MEMBERS);
+        ValueAssert.assertValue(bindings, ValueAssert.Trait.MEMBERS);
 
         // test check for existing keys for remove
         scopes[2].removable = true;
@@ -1571,7 +1573,7 @@ public class LanguageSPITest {
         assertNotNull(scopes[2].values.get("foo"));
         assertNull(scopes[2].values.get("bar"));
         assertEquals("42", bindings.getMember("bar").asString());
-        ValueAssert.assertValue(c, bindings, ValueAssert.Trait.MEMBERS);
+        assertValue(bindings, ValueAssert.Trait.MEMBERS);
 
         c.close();
     }
@@ -1602,8 +1604,8 @@ public class LanguageSPITest {
         assertEquals("42", polyglotBindings.getMember("baz").asString());
         assertEquals("42", languageBindings.getMember("baz").asString());
 
-        ValueAssert.assertValue(c, polyglotBindings);
-        ValueAssert.assertValue(c, languageBindings);
+        assertValue(polyglotBindings);
+        assertValue(languageBindings);
 
         c.close();
     }

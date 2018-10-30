@@ -123,6 +123,7 @@ public class SourceAPITest {
         assertEquals(testString, charBuffer.toString());
 
         assertFalse(materialized.get());
+        context.close();
     }
 
     private static boolean equalsCharSequence(CharSequence seq1, CharSequence seq2) {

@@ -187,10 +187,6 @@ public abstract class Accessor {
 
         public abstract boolean isEvalRoot(RootNode target);
 
-        public abstract <T> T lookupJavaInteropCodeCache(Object languageContext, Object key, Class<T> expectedType);
-
-        public abstract <T> T installJavaInteropCodeCache(Object languageContext, Object key, T value, Class<T> expectedType);
-
         @SuppressWarnings("static-method")
         public final void attachOutputConsumer(DispatchOutputStream dos, OutputStream out) {
             dos.attach(out);

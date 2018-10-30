@@ -780,26 +780,29 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
     @Override
     public Value asValue(Object hostValue) {
-        if (hostValue instanceof Value) {
-            return (Value) hostValue;
-        }
-        PolyglotLanguageContext context = null;
-        Object guestValue = null;
-        if (hostValue instanceof PolyglotList) {
-            context = ((PolyglotList<?>) hostValue).languageContext;
-            guestValue = ((PolyglotList<?>) hostValue).guestObject;
-        } else if (hostValue instanceof PolyglotMap) {
-            context = ((PolyglotMap<?, ?>) hostValue).languageContext;
-            guestValue = ((PolyglotMap<?, ?>) hostValue).guestObject;
-        } else if (hostValue instanceof PolyglotFunction) {
-            context = ((PolyglotFunction<?, ?>) hostValue).languageContext;
-            guestValue = ((PolyglotFunction<?, ?>) hostValue).guestObject;
-        }
-        if (context == null) {
-            context = getHostContext();
-            return context.asValue(context.toGuestValue(hostValue));
-        } else {
-            return context.asValue(guestValue);
+        try {
+            PolyglotLanguageContext targetLanguageContext;
+            if (hostValue instanceof Value) {
+                // fast path for when no context migration is necessary
+                PolyglotValue value = (PolyglotValue) getAPIAccess().getImpl((Value) hostValue);
+                if (value.languageContext != null && value.languageContext.context == this) {
+                    return (Value) hostValue;
+                }
+                targetLanguageContext = getHostContext();
+            } else if (HostWrapper.isInstance(hostValue)) {
+                // host wrappers can nicely reuse the associated context
+                targetLanguageContext = HostWrapper.asInstance(hostValue).getLanguageContext();
+                if (this != targetLanguageContext.context) {
+                    // this will fail later in toGuestValue when migrating
+                    // or succeed in case of host languages.
+                    targetLanguageContext = getHostContext();
+                }
+            } else {
+                targetLanguageContext = getHostContext();
+            }
+            return targetLanguageContext.asValue(targetLanguageContext.toGuestValue(hostValue));
+        } catch (Throwable e) {
+            throw PolyglotImpl.wrapGuestException(this.getHostContext(), e);
         }
     }
 
