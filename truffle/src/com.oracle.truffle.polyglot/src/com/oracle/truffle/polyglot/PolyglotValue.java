@@ -2726,7 +2726,6 @@ abstract class PolyglotValue extends AbstractValueImpl {
             return getPrimitiveCache(primitive).asLong(primitive);
         }
 
-
         @Override
         public boolean fitsInShort(Object receiver) {
             Object primitive = asPrimitive(receiver);
