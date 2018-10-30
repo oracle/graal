@@ -234,49 +234,9 @@ public final class IntegerLessThanNode extends IntegerLowerThanNode {
                 assert forY.stamp(view) instanceof IntegerStamp;
                 int bits = ((IntegerStamp) forX.stamp(view)).getBits();
                 assert ((IntegerStamp) forY.stamp(view)).getBits() == bits;
-                long min = OP.minValue(bits);
-                long xResidue = 0;
-                ValueNode left = null;
-                JavaConstant leftCst = null;
-                if (forX instanceof AddNode) {
-                    AddNode xAdd = (AddNode) forX;
-                    if (xAdd.getY().isJavaConstant()) {
-                        long xCst = xAdd.getY().asJavaConstant().asLong();
-                        xResidue = xCst - min;
-                        left = xAdd.getX();
-                    }
-                } else if (forX.isJavaConstant()) {
-                    leftCst = forX.asJavaConstant();
-                }
-                if (left != null || leftCst != null) {
-                    long yResidue = 0;
-                    ValueNode right = null;
-                    JavaConstant rightCst = null;
-                    if (forY instanceof AddNode) {
-                        AddNode yAdd = (AddNode) forY;
-                        if (yAdd.getY().isJavaConstant()) {
-                            long yCst = yAdd.getY().asJavaConstant().asLong();
-                            yResidue = yCst - min;
-                            right = yAdd.getX();
-                        }
-                    } else if (forY.isJavaConstant()) {
-                        rightCst = forY.asJavaConstant();
-                    }
-                    if (right != null || rightCst != null) {
-                        if ((xResidue == 0 && left != null) || (yResidue == 0 && right != null)) {
-                            if (left == null) {
-                                left = ConstantNode.forIntegerBits(bits, leftCst.asLong() - min);
-                            } else if (xResidue != 0) {
-                                left = AddNode.create(left, ConstantNode.forIntegerBits(bits, xResidue), view);
-                            }
-                            if (right == null) {
-                                right = ConstantNode.forIntegerBits(bits, rightCst.asLong() - min);
-                            } else if (yResidue != 0) {
-                                right = AddNode.create(right, ConstantNode.forIntegerBits(bits, yResidue), view);
-                            }
-                            return new IntegerBelowNode(left, right);
-                        }
-                    }
+                LogicNode logic = canonicalizeRangeFlip(forX, forY, bits, true, view);
+                if (logic != null) {
+                    return logic;
                 }
             }
             return null;
