@@ -220,7 +220,7 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
         assertTrue(newInstance.getMetaObject().newInstance().asHostObject() instanceof JavaRecord);
         assertSame(JavaRecord.class, newInstance.getMetaObject().asHostObject());
 
-        assertValue(context, recordClass, Trait.INSTANTIABLE, Trait.MEMBERS, Trait.HOST_OBJECT);
+        assertValue(recordClass, Trait.INSTANTIABLE, Trait.MEMBERS, Trait.HOST_OBJECT);
     }
 
     @Test
@@ -245,7 +245,7 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
         assertTrue(newInstance.getMetaObject().newInstance().asHostObject() instanceof JavaRecord);
         assertSame(JavaRecord.class, newInstance.getMetaObject().asHostObject());
 
-        assertValue(context, recordClass, Trait.INSTANTIABLE, Trait.MEMBERS, Trait.HOST_OBJECT);
+        assertValue(recordClass, Trait.INSTANTIABLE, Trait.MEMBERS, Trait.HOST_OBJECT);
 
         Value bigIntegerStatic = getStaticClass(BigInteger.class);
         assertTrue(bigIntegerStatic.hasMember("ZERO"));
@@ -293,8 +293,8 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
         assertTrue(record.hasMember("wait"));
         assertTrue(record.hasMember("notifyAll"));
 
-        assertValue(context, record, Trait.MEMBERS, Trait.HOST_OBJECT);
-        assertValue(context, record.getMetaObject(), Trait.INSTANTIABLE, Trait.MEMBERS, Trait.HOST_OBJECT);
+        assertValue(record, Trait.MEMBERS, Trait.HOST_OBJECT);
+        assertValue(record.getMetaObject(), Trait.INSTANTIABLE, Trait.MEMBERS, Trait.HOST_OBJECT);
     }
 
     @Test

@@ -57,6 +57,20 @@ class HostInteropErrors {
     }
 
     @TruffleBoundary
+    static RuntimeException cannotConvertPrimitive(PolyglotLanguageContext languageContext, Object value, Class<?> targetType) {
+        String reason;
+        if (ToHostNode.isAssignableFromTrufflePrimitiveType(targetType)) {
+            reason = "Invalid or lossy primitive coercion.";
+        } else {
+            reason = "Unsupported target type.";
+        }
+        return newClassCastException(String.format("Cannot convert %s to Java type '%s': %s",
+                        getValueInfo(languageContext, value),
+                        targetType.getTypeName(),
+                        reason));
+    }
+
+    @TruffleBoundary
     static RuntimeException cannotConvert(PolyglotLanguageContext languageContext, Object value, Type targetType, String reason) {
         return newClassCastException(String.format("Cannot convert %s to Java type '%s': %s",
                         getValueInfo(languageContext, value),

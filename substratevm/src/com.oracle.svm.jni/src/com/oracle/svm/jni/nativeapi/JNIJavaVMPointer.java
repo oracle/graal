@@ -32,5 +32,9 @@ public interface JNIJavaVMPointer extends PointerBase {
 
     JNIJavaVM read();
 
+    JNIJavaVM read(int index);
+
     void write(JNIJavaVM value);
+
+    void write(int index, JNIJavaVM value);
 }
