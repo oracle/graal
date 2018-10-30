@@ -59,6 +59,7 @@ import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.SafepointNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -279,7 +280,6 @@ public abstract class LoopTransformations {
         cleanupMerge(mainMergeNode, mainLandingNode);
 
         // Change the preLoop to execute one iteration for now
-        updateMainLoopLimit(preLimit, preIv, mainLoop);
         updatePreLoopLimit(preLimit, preIv, preCounted);
         preLoopBegin.setLoopFrequency(1);
         mainLoopBegin.setLoopFrequency(Math.max(0.0, mainLoopBegin.loopFrequency() - 2));
@@ -354,63 +354,27 @@ public abstract class LoopTransformations {
         return (EndNode) curNode;
     }
 
-    private static void updateMainLoopLimit(IfNode preLimit, InductionVariable preIv, LoopFragmentWhole mainLoop) {
-        // Update the main loops limit test to be different than the post loop
-        StructuredGraph graph = preLimit.graph();
-        IfNode mainLimit = mainLoop.getDuplicatedNode(preLimit);
-        LogicNode ifTest = mainLimit.condition();
-        CompareNode compareNode = (CompareNode) ifTest;
-        ValueNode prePhi = preIv.valueNode();
-        ValueNode mainPhi = mainLoop.getDuplicatedNode(prePhi);
-        ValueNode preStride = preIv.strideNode();
-        ValueNode mainStride;
-        if (preStride instanceof ConstantNode) {
-            mainStride = preStride;
-        } else {
-            mainStride = mainLoop.getDuplicatedNode(preStride);
-        }
-        // Fetch the bounds to pose lowering the range by one
-        ValueNode ub = null;
-        if (compareNode.getX() == mainPhi) {
-            ub = compareNode.getY();
-        } else if (compareNode.getY() == mainPhi) {
-            ub = compareNode.getX();
-        } else {
-            throw GraalError.shouldNotReachHere();
-        }
-
-        // Preloop always performs at least one iteration, so remove that from the main loop.
-        ValueNode newLimit = sub(graph, ub, mainStride);
-
-        // Re-wire the condition with the new limit
-        compareNode.replaceFirstInput(ub, newLimit);
-    }
-
     private static void updatePreLoopLimit(IfNode preLimit, InductionVariable preIv, CountedLoopInfo preCounted) {
         // Update the pre loops limit test
+        assert preLimit == preCounted.getLimitTest();
+        assert preIv == preCounted.getCounter();
         StructuredGraph graph = preLimit.graph();
         LogicNode ifTest = preLimit.condition();
         CompareNode compareNode = (CompareNode) ifTest;
-        ValueNode prePhi = preIv.valueNode();
         // Make new limit one iteration
         ValueNode initIv = preCounted.getStart();
         ValueNode newLimit = add(graph, initIv, preIv.strideNode());
 
         // Fetch the variable we are not replacing and configure the one we are
-        ValueNode ub;
-        if (compareNode.getX() == prePhi) {
-            ub = compareNode.getY();
-        } else if (compareNode.getY() == prePhi) {
-            ub = compareNode.getX();
-        } else {
-            throw GraalError.shouldNotReachHere();
-        }
+        ValueNode ub = preCounted.getLimit();
         // Re-wire the condition with the new limit
+        LogicNode entryCheck;
         if (preIv.direction() == Direction.Up) {
-            compareNode.replaceFirstInput(ub, graph.unique(new ConditionalNode(graph.unique(new IntegerLessThanNode(newLimit, ub)), newLimit, ub)));
+            entryCheck = IntegerLessThanNode.create(newLimit, ub, NodeView.DEFAULT);
         } else {
-            compareNode.replaceFirstInput(ub, graph.unique(new ConditionalNode(graph.unique(new IntegerLessThanNode(ub, newLimit)), newLimit, ub)));
+            entryCheck = IntegerLessThanNode.create(ub, newLimit, NodeView.DEFAULT);
         }
+        compareNode.replaceFirstInput(ub, graph.addOrUniqueWithInputs(ConditionalNode.create(entryCheck, newLimit, ub, NodeView.DEFAULT)));
     }
 
     public static List<ControlSplitNode> findUnswitchable(LoopEx loop) {
@@ -450,6 +414,7 @@ public abstract class LoopTransformations {
         if (!loop.isCounted() || !loop.counted().getCounter().isConstantStride() || !loop.loop().getChildren().isEmpty()) {
             return false;
         }
+        assert loop.counted().getDirection() != null;
         LoopBeginNode loopBegin = loop.loopBegin();
         LogicNode condition = loop.counted().getLimitTest().condition();
         if (!(condition instanceof CompareNode)) {

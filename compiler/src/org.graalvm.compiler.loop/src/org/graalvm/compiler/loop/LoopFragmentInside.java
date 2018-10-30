@@ -30,6 +30,7 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
@@ -62,11 +63,14 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.VirtualState.NodeClosure;
-import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
+import org.graalvm.compiler.nodes.calc.ConditionalNode;
+import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
 import org.graalvm.compiler.nodes.memory.MemoryPhiNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
+
+import jdk.vm.ci.code.CodeUtil;
 
 public class LoopFragmentInside extends LoopFragment {
 
@@ -201,32 +205,31 @@ public class LoopFragmentInside extends LoopFragment {
             graph().removeFixed(safepoint);
         }
 
-        int unrollFactor = mainLoopBegin.getUnrollFactor();
         StructuredGraph graph = mainLoopBegin.graph();
         if (updateLimit) {
-            // Now use the previous unrollFactor to update the exit condition to power of two
-            InductionVariable iv = loop.counted().getCounter();
-            CompareNode compareNode = (CompareNode) loop.counted().getLimitTest().condition();
-            ValueNode compareBound;
-            if (compareNode.getX() == iv.valueNode()) {
-                compareBound = compareNode.getY();
-            } else if (compareNode.getY() == iv.valueNode()) {
-                compareBound = compareNode.getX();
+            CountedLoopInfo counted = loop.counted();
+            ValueNode counterStride = counted.getCounter().strideNode();
+            CompareNode compareNode = (CompareNode) counted.getLimitTest().condition();
+            ValueNode limit = counted.getLimit();
+            int bits = ((IntegerStamp) limit.stamp(NodeView.DEFAULT)).getBits();
+            ValueNode newLimit = SubNode.create(limit, counterStride, NodeView.DEFAULT);
+            LogicNode overflowCheck;
+            ConstantNode extremum;
+            if (counted.getDirection() == InductionVariable.Direction.Up) {
+                // limit - counterStride could overflow negatively if limit - min < counterStride
+                extremum = ConstantNode.forIntegerBits(bits, CodeUtil.minValue(bits));
+                overflowCheck = IntegerBelowNode.create(SubNode.create(limit, extremum, NodeView.DEFAULT), counterStride, NodeView.DEFAULT);
             } else {
-                throw GraalError.shouldNotReachHere();
+                assert counted.getDirection() == InductionVariable.Direction.Down;
+                // limit - counterStride could overflow if max - limit < -counterStride
+                // i.e., counterStride < limit - max
+                extremum = ConstantNode.forIntegerBits(bits, CodeUtil.maxValue(bits));
+                overflowCheck = IntegerBelowNode.create(counterStride, SubNode.create(limit, extremum, NodeView.DEFAULT), NodeView.DEFAULT);
             }
-            long originalStride = unrollFactor == 1 ? iv.constantStride() : iv.constantStride() / unrollFactor;
-            if (iv.direction() == InductionVariable.Direction.Up) {
-                ConstantNode aboveVal = graph.unique(ConstantNode.forIntegerStamp(iv.initNode().stamp(NodeView.DEFAULT), unrollFactor * originalStride));
-                ValueNode newLimit = graph.addWithoutUnique(new SubNode(compareBound, aboveVal));
-                compareNode.replaceFirstInput(compareBound, newLimit);
-            } else if (iv.direction() == InductionVariable.Direction.Down) {
-                ConstantNode aboveVal = graph.unique(ConstantNode.forIntegerStamp(iv.initNode().stamp(NodeView.DEFAULT), unrollFactor * -originalStride));
-                ValueNode newLimit = graph.addWithoutUnique(new AddNode(compareBound, aboveVal));
-                compareNode.replaceFirstInput(compareBound, newLimit);
-            }
+            newLimit = ConditionalNode.create(overflowCheck, extremum, newLimit, NodeView.DEFAULT);
+            compareNode.replaceFirstInput(limit, graph.addOrUniqueWithInputs(newLimit));
         }
-        mainLoopBegin.setUnrollFactor(unrollFactor * 2);
+        mainLoopBegin.setUnrollFactor(mainLoopBegin.getUnrollFactor() * 2);
         mainLoopBegin.setLoopFrequency(mainLoopBegin.loopFrequency() / 2);
         graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "LoopPartialUnroll %s", loop);
 
