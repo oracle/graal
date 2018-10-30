@@ -24,24 +24,6 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.dsl.Introspection;
-import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeClass;
-import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.nodes.NodeUtil;
-import com.oracle.truffle.api.nodes.RootNode;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.DebugDumpHandler;
-import org.graalvm.compiler.debug.DebugOptions;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
-import org.graalvm.graphio.GraphBlocks;
-import org.graalvm.graphio.GraphOutput;
-import org.graalvm.graphio.GraphStructure;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -52,38 +34,24 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-public class TruffleTreeDumpHandler implements DebugDumpHandler {
+import org.graalvm.compiler.truffle.common.TruffleDebugContext;
+import org.graalvm.graphio.GraphBlocks;
+import org.graalvm.graphio.GraphOutput;
+import org.graalvm.graphio.GraphStructure;
 
-    private final OptionValues options;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.dsl.Introspection;
+import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeClass;
+import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.nodes.NodeUtil;
+import com.oracle.truffle.api.nodes.RootNode;
 
-    /**
-     * The {@link OptimizedCallTarget} is dumped multiple times during Graal compilation, because it
-     * is also a subclass of InstalledCode. To disambiguate dumping, we wrap the call target into
-     * this class when we want to dump the Truffle tree.
-     */
-    static class TruffleTreeDump {
-        final RootCallTarget callTarget;
-        final TruffleInlining inlining;
+public final class TruffleTreeDumper {
 
-        TruffleTreeDump(OptimizedCallTarget callTarget, TruffleInlining inliningDecision) {
-            this.callTarget = callTarget;
-            this.inlining = inliningDecision;
-        }
-    }
-
-    public TruffleTreeDumpHandler(OptionValues options) {
-        this.options = options;
-    }
-
-    @Override
-    public void dump(DebugContext debug, Object object, final String format, Object... arguments) {
-        if (object instanceof TruffleTreeDump && DebugOptions.PrintGraph.getValue(options) && TruffleCompilerOptions.getValue(DebugOptions.PrintTruffleTrees)) {
-            try {
-                dumpASTAndCallTrees(debug, (TruffleTreeDump) object);
-            } catch (IOException ex) {
-                throw rethrowSilently(RuntimeException.class, ex);
-            }
-        }
+    private TruffleTreeDumper() {
     }
 
     private static final ASTDumpStructure AST_DUMP_STRUCTURE = new ASTDumpStructure();
@@ -91,39 +59,47 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
     private static final String AFTER_PROFILING = "After Profiling";
     private static final String AFTER_INLINING = "After Inlining";
 
-    private static void dumpASTAndCallTrees(DebugContext debug, TruffleTreeDump truffleTreeDump) throws IOException {
-        final RootCallTarget callTarget = truffleTreeDump.callTarget;
-        if (callTarget.getRootNode() != null && callTarget instanceof OptimizedCallTarget) {
+    public static void dump(TruffleDebugContext debug, OptimizedCallTarget callTarget, TruffleInlining inliningDecision) {
+        if (TruffleDebugOptions.getValue(TruffleDebugOptions.PrintGraph) && TruffleDebugOptions.getValue(TruffleDebugOptions.PrintTruffleTrees)) {
+            try {
+                dumpASTAndCallTrees(debug, callTarget, inliningDecision);
+            } catch (IOException ex) {
+                throw rethrowSilently(RuntimeException.class, ex);
+            }
+        }
+    }
+
+    private static void dumpASTAndCallTrees(TruffleDebugContext debug, OptimizedCallTarget callTarget, TruffleInlining inlining) throws IOException {
+        if (callTarget.getRootNode() != null) {
             AST ast = new AST(callTarget);
             final GraphOutput<AST, ?> astOutput = debug.buildOutput(GraphOutput.newBuilder(AST_DUMP_STRUCTURE).blocks(AST_DUMP_STRUCTURE).protocolVersion(6, 0));
 
-            astOutput.beginGroup(ast, "AST", "AST", null, 0, DebugContext.addVersionProperties(null));
+            astOutput.beginGroup(ast, "AST", "AST", null, 0, debug.getVersionProperties());
 
             astOutput.print(ast, Collections.emptyMap(), 0, AFTER_PROFILING);
-            final TruffleInlining inlining = truffleTreeDump.inlining;
             if (inlining.countInlinedCalls() > 0) {
-                dumpInlinedTrees(astOutput, callTarget, inlining, new ArrayList<>());
-                ast.inline(truffleTreeDump.inlining);
+                dumpInlinedTrees(debug, astOutput, callTarget, inlining, new ArrayList<>());
+                ast.inline(inlining);
                 astOutput.print(ast, null, 1, AFTER_INLINING);
             }
             astOutput.endGroup(); // AST
             astOutput.close();
 
-            CallTree callTree = new CallTree(truffleTreeDump.callTarget, null);
+            CallTree callTree = new CallTree(callTarget, null);
             final GraphOutput<CallTree, ?> callTreeOutput = debug.buildOutput(GraphOutput.newBuilder(CALL_GRAPH_DUMP_STRUCTURE).blocks(CALL_GRAPH_DUMP_STRUCTURE).protocolVersion(6, 0));
-            callTreeOutput.beginGroup(null, "Call Tree", "Call Tree", null, 0, DebugContext.addVersionProperties(null));
+            callTreeOutput.beginGroup(null, "Call Tree", "Call Tree", null, 0, debug.getVersionProperties());
             callTreeOutput.print(callTree, null, 0, AFTER_PROFILING);
             if (inlining.countInlinedCalls() > 0) {
-                callTree = new CallTree(truffleTreeDump.callTarget, truffleTreeDump.inlining);
+                callTree = new CallTree(callTarget, inlining);
                 callTreeOutput.print(callTree, null, 0, AFTER_INLINING);
             }
             callTreeOutput.endGroup(); // Call Tree
             callTreeOutput.close();
-
         }
     }
 
-    private static void dumpInlinedTrees(GraphOutput<AST, ?> output, final RootCallTarget callTarget, TruffleInlining inlining, List<RootCallTarget> dumped) throws IOException {
+    private static void dumpInlinedTrees(TruffleDebugContext debug, GraphOutput<AST, ?> output, final RootCallTarget callTarget, TruffleInlining inlining, List<RootCallTarget> dumped)
+                    throws IOException {
         for (DirectCallNode callNode : NodeUtil.findAllNodeInstances(callTarget.getRootNode(), DirectCallNode.class)) {
             CallTarget inlinedCallTarget = callNode.getCurrentCallTarget();
             if (inlinedCallTarget instanceof RootCallTarget && callNode instanceof OptimizedDirectCallNode) {
@@ -132,20 +108,15 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
                     final RootCallTarget rootCallTarget = (RootCallTarget) inlinedCallTarget;
                     if (!dumped.contains(rootCallTarget)) {
                         AST ast = new AST(rootCallTarget);
-                        output.beginGroup(ast, inlinedCallTarget.toString(), rootCallTarget.getRootNode().getName(), null, 0, DebugContext.addVersionProperties(null));
+                        output.beginGroup(ast, inlinedCallTarget.toString(), rootCallTarget.getRootNode().getName(), null, 0, debug.getVersionProperties());
                         output.print(ast, Collections.emptyMap(), 0, AFTER_PROFILING);
                         output.endGroup();
                         dumped.add(rootCallTarget);
-                        dumpInlinedTrees(output, (OptimizedCallTarget) inlinedCallTarget, decision, dumped);
+                        dumpInlinedTrees(debug, output, (OptimizedCallTarget) inlinedCallTarget, decision, dumped);
                     }
                 }
             }
         }
-    }
-
-    @Override
-    public void close() {
-        // nothing to do
     }
 
     @SuppressWarnings({"unused", "unchecked"})

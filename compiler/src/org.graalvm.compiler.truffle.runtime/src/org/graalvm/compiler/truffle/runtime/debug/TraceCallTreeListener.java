@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime.debug;
 
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TraceTruffleCompilationCallTree;
+import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TraceTruffleCompilationCallTree;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -32,7 +32,6 @@ import java.util.Map;
 
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.AbstractGraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
@@ -42,6 +41,7 @@ import org.graalvm.compiler.truffle.runtime.OptimizedIndirectCallNode;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining.CallTreeNodeVisitor;
 import org.graalvm.compiler.truffle.runtime.TruffleInliningDecision;
+import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 
 import com.oracle.truffle.api.nodes.Node;
 
@@ -55,7 +55,7 @@ public final class TraceCallTreeListener extends AbstractGraalTruffleRuntimeList
     }
 
     public static void install(GraalTruffleRuntime runtime) {
-        if (TruffleCompilerOptions.getValue(TraceTruffleCompilationCallTree)) {
+        if (TruffleRuntimeOptions.getValue(TraceTruffleCompilationCallTree)) {
             runtime.addListener(new TraceCallTreeListener(runtime));
         }
     }

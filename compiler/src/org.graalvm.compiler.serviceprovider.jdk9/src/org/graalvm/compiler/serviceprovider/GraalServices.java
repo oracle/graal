@@ -76,7 +76,6 @@ public final class GraalServices {
      *             {@link JVMCIPermission}
      */
     public static <S> Iterable<S> load(Class<S> service) {
-        assert !service.getName().startsWith("jdk.vm.ci") : "JVMCI services must be loaded via " + Services.class.getName();
         Iterable<S> iterable = ServiceLoader.load(service);
         return new Iterable<>() {
             @Override

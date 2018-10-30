@@ -24,8 +24,8 @@
  */
 package org.graalvm.compiler.truffle.compiler.substitutions;
 
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleUseFrameWithoutBoxing;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getValue;
+import static org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions.TruffleUseFrameWithoutBoxing;
+import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.getValue;
 
 import java.lang.invoke.MethodHandle;
 import java.util.ArrayList;

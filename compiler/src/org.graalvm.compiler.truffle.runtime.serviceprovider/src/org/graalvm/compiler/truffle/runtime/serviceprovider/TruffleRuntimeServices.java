@@ -22,35 +22,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.common;
+package org.graalvm.compiler.truffle.runtime.serviceprovider;
 
-import java.lang.reflect.Method;
+import jdk.vm.ci.services.JVMCIPermission;
 
 /**
- * Initializes and stores the singleton {@code TruffleRuntime} instance. Separating this from
- * {@link TruffleCompilerRuntimeInstance} is necessary to support
- * {@link TruffleCompilerRuntime#getRuntimeIfAvailable()}.
+ * A subset of the methods defined in {@code org.graalvm.compiler.serviceprovider.GraalServices}.
  */
-final class TruffleRuntimeInstance {
-    /**
-     * The singleton instance.
-     */
-    static final Object INSTANCE = init();
+public final class TruffleRuntimeServices {
+
+    private static InternalError shouldNotReachHere() {
+        throw new InternalError("JDK specific overlay missing");
+    }
 
     /**
-     * Accesses the Truffle runtime via reflection to avoid a dependency on Truffle that will expose
-     * Truffle types to all classes depending on {@code org.graalvm.compiler.truffle.common}.
+     * Gets an {@link Iterable} of the providers available for a given service.
+     *
+     * @param service the service whose provider is being requested
+     * @throws SecurityException if on JDK8 and a security manager is present and it denies
+     *             {@link JVMCIPermission}
      */
-    private static Object init() {
-        try {
-            Class<?> truffleClass = Class.forName("com.oracle.truffle.api.Truffle");
-            Method getRuntime = truffleClass.getMethod("getRuntime");
-            Object truffleRuntime = getRuntime.invoke(null);
-            return truffleRuntime;
-        } catch (Error e) {
-            throw e;
-        } catch (Exception e) {
-            throw new ExceptionInInitializerError(e);
-        }
+    public static <S> Iterable<S> load(Class<S> service) {
+        throw shouldNotReachHere();
     }
 }

@@ -87,12 +87,12 @@ public class SubstrateTruffleCompiler extends TruffleCompilerImpl {
     }
 
     @Override
-    public CompilationIdentifier getCompilationIdentifier(CompilableTruffleAST optimizedCallTarget) {
+    public CompilationIdentifier createCompilationIdentifier(CompilableTruffleAST optimizedCallTarget) {
         return new SubstrateTruffleCompilationIdentifier((OptimizedCallTarget) optimizedCallTarget);
     }
 
     @Override
-    public DebugContext openDebugContext(OptionValues options, CompilationIdentifier compilationId, CompilableTruffleAST callTarget) {
+    public DebugContext createDebugContext(OptionValues options, CompilationIdentifier compilationId, CompilableTruffleAST callTarget) {
         return GraalSupport.get().openDebugContext(options, compilationId, callTarget);
     }
 

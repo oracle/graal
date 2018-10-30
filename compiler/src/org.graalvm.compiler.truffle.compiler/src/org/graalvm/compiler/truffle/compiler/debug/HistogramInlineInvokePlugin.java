@@ -41,7 +41,6 @@ import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class HistogramInlineInvokePlugin implements InlineInvokePlugin {

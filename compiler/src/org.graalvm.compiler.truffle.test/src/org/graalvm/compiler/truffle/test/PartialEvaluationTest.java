@@ -27,15 +27,10 @@ package org.graalvm.compiler.truffle.test;
 import static org.graalvm.compiler.core.common.CompilationIdentifier.INVALID_COMPILATION_ID;
 import static org.graalvm.compiler.core.common.CompilationRequestIdentifier.asCompilationRequest;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpScope;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
@@ -46,16 +41,17 @@ import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.CancellableCompileTask;
 import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
+import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
-import org.graalvm.compiler.truffle.runtime.TruffleTreeDebugHandlersFactory;
 import org.junit.Assert;
+import org.junit.Assume;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -71,7 +67,9 @@ public abstract class PartialEvaluationTest extends GraalCompilerTest {
 
     public PartialEvaluationTest() {
         beforeInitialization();
-        this.truffleCompiler = (TruffleCompilerImpl) TruffleCompilerRuntime.getRuntime().newTruffleCompiler();
+        TruffleCompiler compiler = GraalTruffleRuntime.getRuntime().newTruffleCompiler();
+        Assume.assumeTrue("cannot get whitebox interface to Truffle compiler", compiler instanceof TruffleCompilerImpl);
+        this.truffleCompiler = (TruffleCompilerImpl) compiler;
         this.suite = truffleCompiler.createGraphBuilderSuite();
     }
 
@@ -81,19 +79,12 @@ public abstract class PartialEvaluationTest extends GraalCompilerTest {
     protected void beforeInitialization() {
     }
 
-    @Override
-    protected Collection<DebugHandlersFactory> getDebugHandlersFactories() {
-        List<DebugHandlersFactory> c = new ArrayList<>(super.getDebugHandlersFactories());
-        c.add(new TruffleTreeDebugHandlersFactory());
-        return c;
-    }
-
     protected OptimizedCallTarget assertPartialEvalEquals(String methodName, RootNode root) {
         return assertPartialEvalEquals(methodName, root, new Object[0]);
     }
 
     private CompilationIdentifier getCompilationId(final OptimizedCallTarget compilable) {
-        return this.truffleCompiler.getCompilationIdentifier(compilable);
+        return this.truffleCompiler.createCompilationIdentifier(compilable);
     }
 
     protected OptimizedCallTarget compileHelper(String methodName, RootNode root, Object[] arguments) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,8 @@
  */
 package org.graalvm.compiler.truffle.runtime.hotspot;
 
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TraceTruffleStackTraceLimit;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TraceTruffleTransferToInterpreter;
+import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TraceTruffleStackTraceLimit;
+import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TraceTruffleTransferToInterpreter;
 import static org.graalvm.compiler.truffle.runtime.hotspot.UnsafeAccess.UNSAFE;
 
 import java.lang.reflect.InvocationTargetException;
@@ -35,29 +35,17 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import org.graalvm.compiler.api.runtime.GraalRuntime;
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.debug.TTY;
-import org.graalvm.compiler.hotspot.CompilerConfigurationFactory;
-import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
-import org.graalvm.compiler.hotspot.HotSpotGraalOptionValues;
-import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
-import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler.Factory;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleCallBoundary;
-import org.graalvm.compiler.truffle.runtime.hotspot.HotSpotTruffleRuntimeAccess.Options;
+import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -70,9 +58,12 @@ import com.oracle.truffle.api.source.SourceSection;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.stack.StackIntrospection;
+import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -81,25 +72,28 @@ import jdk.vm.ci.runtime.JVMCI;
 
 /**
  * HotSpot specific implementation of a Graal-enabled Truffle runtime.
+ *
+ * This class contains functionality for interfacing with a HotSpot-based Truffle compiler,
+ * independent of where the compiler resides (i.e., co-located in the HotSpot heap or running in a
+ * native-image shared library).
  */
-public final class HotSpotTruffleRuntime extends GraalTruffleRuntime implements HotSpotTruffleCompilerRuntime {
+public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime implements HotSpotTruffleCompilerRuntime {
 
+    /**
+     * Contains lazily computed data such as the compilation queue and helper for stack
+     * introspection.
+     */
     static class Lazy extends BackgroundCompileQueue {
         StackIntrospection stackIntrospection;
 
-        Lazy(HotSpotTruffleRuntime runtime) {
+        Lazy(AbstractHotSpotTruffleRuntime runtime) {
             runtime.installDefaultListeners();
         }
     }
 
-    public HotSpotTruffleRuntime(Supplier<GraalRuntime> graalRuntimeSupplier) {
-        super(graalRuntimeSupplier, Arrays.asList(HotSpotOptimizedCallTarget.class));
+    public AbstractHotSpotTruffleRuntime() {
+        super(Arrays.asList(HotSpotOptimizedCallTarget.class));
         setDontInlineCallBoundaryMethod();
-    }
-
-    @Override
-    public OptionValues getInitialOptions() {
-        return HotSpotGraalOptionValues.HOTSPOT_OPTIONS;
     }
 
     private volatile Lazy lazy;
@@ -162,17 +156,11 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime implements 
                     if (!reportedTruffleCompilerInitializationFailure) {
                         // This should never happen so report it (once)
                         reportedTruffleCompilerInitializationFailure = true;
-                        e.printStackTrace(TTY.out);
+                        log(printStackTraceToString(e));
                     }
                 }
             }
         }
-    }
-
-    @Override
-    public HotSpotTruffleCompiler newTruffleCompiler() {
-        final Factory factory = GraalServices.loadSingle(HotSpotTruffleCompiler.Factory.class, true);
-        return factory.create(this);
     }
 
     @Override
@@ -223,15 +211,13 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime implements 
                     m.invoke(method);
                     return;
                 } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-                    throw new GraalError(e);
+                    throw new InternalError(e);
                 }
             }
         }
-        throw new GraalError("Could not find setNotInlineable, setNotInlinableOrCompilable or setNotInlineableOrCompileable in %s", HotSpotResolvedJavaMethod.class);
-    }
-
-    private GraalHotSpotVMConfig getVMConfig() {
-        return ((HotSpotGraalRuntimeProvider) getGraalRuntime()).getVMConfig();
+        throw new InternalError(String.format(
+                        "Could not find setNotInlineable, setNotInlinableOrCompilable or setNotInlineableOrCompileable in %s",
+                        HotSpotResolvedJavaMethod.class));
     }
 
     @Override
@@ -263,20 +249,23 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime implements 
     }
 
     private String getLazyCompilerConfigurationName() {
-        String compilerConfig;
-        compilerConfig = this.lazyConfigurationName;
+        String compilerConfig = this.lazyConfigurationName;
         if (compilerConfig == null) {
             synchronized (this) {
                 compilerConfig = this.lazyConfigurationName;
                 if (compilerConfig == null) {
-                    OptionValues values = getInitialOptions();
-                    CompilerConfigurationFactory factory = CompilerConfigurationFactory.selectFactory(Options.TruffleCompilerConfiguration.getValue(values), values);
-                    this.lazyConfigurationName = compilerConfig = factory.getName();
+                    compilerConfig = initLazyCompilerConfigurationName();
+                    this.lazyConfigurationName = compilerConfig;
                 }
             }
         }
         return compilerConfig;
     }
+
+    /**
+     * Gets the compiler configuration name without requiring a compiler to be created.
+     */
+    protected abstract String initLazyCompilerConfigurationName();
 
     @Override
     public boolean cancelInstalledTask(OptimizedCallTarget optimizedCallTarget, Object source, CharSequence reason) {
@@ -305,9 +294,24 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime implements 
     @Override
     public void notifyTransferToInterpreter() {
         CompilerAsserts.neverPartOfCompilation();
-        if (TruffleCompilerOptions.getValue(TraceTruffleTransferToInterpreter)) {
-            TraceTransferToInterpreterHelper.traceTransferToInterpreter(this, getVMConfig());
+        if (TruffleRuntimeOptions.getValue(TraceTruffleTransferToInterpreter)) {
+            TraceTransferToInterpreterHelper.traceTransferToInterpreter(this, this.getTruffleCompiler());
         }
+    }
+
+    @Override
+    protected JavaConstant forObject(final Object object) {
+        final HotSpotConstantReflectionProvider constantReflection = (HotSpotConstantReflectionProvider) HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getConstantReflection();
+        return constantReflection.forObject(object);
+    }
+
+    @Override
+    protected <T> T asObject(final Class<T> type, final JavaConstant constant) {
+        if (constant.isNull()) {
+            return null;
+        }
+        final HotSpotObjectConstant hsConstant = (HotSpotObjectConstant) constant;
+        return hsConstant.asObject(type);
     }
 
     private static class TraceTransferToInterpreterHelper {
@@ -317,13 +321,13 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime implements 
             try {
                 THREAD_EETOP_OFFSET = UNSAFE.objectFieldOffset(Thread.class.getDeclaredField("eetop"));
             } catch (Exception e) {
-                throw new GraalError(e);
+                throw new InternalError(e);
             }
         }
 
-        static void traceTransferToInterpreter(HotSpotTruffleRuntime runtime, GraalHotSpotVMConfig config) {
+        static void traceTransferToInterpreter(AbstractHotSpotTruffleRuntime runtime, HotSpotTruffleCompiler compiler) {
             long thread = UNSAFE.getLong(Thread.currentThread(), THREAD_EETOP_OFFSET);
-            long pendingTransferToInterpreterAddress = thread + config.pendingTransferToInterpreterOffset;
+            long pendingTransferToInterpreterAddress = thread + compiler.pendingTransferToInterpreterOffset();
             boolean deoptimized = UNSAFE.getByte(pendingTransferToInterpreterAddress) != 0;
             if (deoptimized) {
                 logTransferToInterpreter(runtime);
@@ -386,8 +390,8 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime implements 
             return sourceSection.getSource().getName();
         }
 
-        private static void logTransferToInterpreter(final HotSpotTruffleRuntime runtime) {
-            final int limit = TruffleCompilerOptions.getValue(TraceTruffleStackTraceLimit);
+        private static void logTransferToInterpreter(final AbstractHotSpotTruffleRuntime runtime) {
+            final int limit = TruffleRuntimeOptions.getValue(TraceTruffleStackTraceLimit);
 
             runtime.log("[truffle] transferToInterpreter at");
             runtime.iterateFrames(new FrameInstanceVisitor<Object>() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,21 +22,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.runtime;
+package org.graalvm.compiler.truffle.common;
 
-import java.util.Collections;
-import java.util.List;
+import java.net.URI;
 
-import org.graalvm.compiler.debug.DebugHandler;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.serviceprovider.ServiceProvider;
+public interface TruffleSourceLanguagePosition {
 
-@ServiceProvider(DebugHandlersFactory.class)
-public class TruffleTreeDebugHandlersFactory implements DebugHandlersFactory {
+    String getDescription();
 
-    @Override
-    public List<DebugHandler> createHandlers(OptionValues options) {
-        return Collections.singletonList(new TruffleTreeDumpHandler(options));
-    }
+    int getOffsetEnd();
+
+    int getOffsetStart();
+
+    int getLineNumber();
+
+    URI getURI();
+
+    String getLanguage();
 }

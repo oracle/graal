@@ -22,18 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.compiler.hotspot;
+package org.graalvm.compiler.truffle.runtime.serviceprovider;
 
-import org.graalvm.compiler.serviceprovider.ServiceProvider;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
-import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
+import jdk.vm.ci.services.JVMCIPermission;
+import jdk.vm.ci.services.Services;
 
-@ServiceProvider(HotSpotTruffleCompiler.Factory.class)
-public class HotSpotTruffleCompilerFactory extends HotSpotTruffleCompiler.Factory {
-
-    @Override
-    public HotSpotTruffleCompiler create(TruffleCompilerRuntime runtime) {
-        return HotSpotTruffleCompilerImpl.create(runtime);
+/**
+ * JDK 8 version of {@link TruffleRuntimeServices}.
+ */
+public final class TruffleRuntimeServices {
+    /**
+     * Gets an {@link Iterable} of the providers available for a given service.
+     *
+     * @param service the service whose provider is being requested
+     * @throws SecurityException if a security manager is present and it denies
+     *             {@link JVMCIPermission}
+     */
+    public static <S> Iterable<S> load(Class<S> service) {
+        return Services.load(service);
     }
-
 }

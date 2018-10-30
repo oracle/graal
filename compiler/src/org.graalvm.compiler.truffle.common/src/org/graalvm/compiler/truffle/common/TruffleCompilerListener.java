@@ -24,12 +24,6 @@
  */
 package org.graalvm.compiler.truffle.common;
 
-import jdk.vm.ci.code.site.DataPatch;
-import jdk.vm.ci.code.site.ExceptionHandler;
-import jdk.vm.ci.code.site.Infopoint;
-import jdk.vm.ci.code.site.InfopointReason;
-import jdk.vm.ci.code.site.Mark;
-
 /**
  * A listener for events related to the compilation of a {@link CompilableTruffleAST}. The events
  * are described only in terms of types that can be easily serialized or proxied across a heap
@@ -71,27 +65,27 @@ public interface TruffleCompilerListener {
         int getTotalFrameSize();
 
         /**
-         * Gets the number of {@link ExceptionHandler}s in the compiled code.
+         * Gets the number of {@code ExceptionHandler}s in the compiled code.
          */
         int getExceptionHandlersCount();
 
         /**
-         * Gets the number of {@link Infopoint}s in the compiled code.
+         * Gets the number of {@code Infopoint}s in the compiled code.
          */
         int getInfopointsCount();
 
         /**
-         * Gets the infopoint {@linkplain InfopointReason reasons} in the compiled code.
+         * Gets the infopoint reasons in the compiled code.
          */
         String[] getInfopoints();
 
         /**
-         * Gets the number of {@link Mark}s in the compiled code.
+         * Gets the number of {@code Mark}s in the compiled code.
          */
         int getMarksCount();
 
         /**
-         * Gets the number of {@link DataPatch}es in the compiled code.
+         * Gets the number of {@code DataPatch}es in the compiled code.
          */
         int getDataPatchesCount();
     }
