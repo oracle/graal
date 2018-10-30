@@ -49,6 +49,7 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.GraalAccess;
+import com.oracle.svm.hosted.phases.NoClassInitializationPlugin;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -65,13 +66,18 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class LambdaProxyRenamingSubstitutionProcessor extends SubstitutionProcessor {
 
     private static final Pattern LAMBDA_PATTERN = Pattern.compile("\\$\\$Lambda\\$\\d+/\\d+");
-    private static final GraphBuilderConfiguration LAMBDA_PARSER_CONFIG = GraphBuilderConfiguration.getDefault(new Plugins(new InvocationPlugins())).withEagerResolving(true);
-    private static final GraphBuilderPhase LAMBDA_PARSER_PHASE = new GraphBuilderPhase(LAMBDA_PARSER_CONFIG);
+    private static final GraphBuilderPhase LAMBDA_PARSER_PHASE = new GraphBuilderPhase(buildLambdaParserConfig());
 
     private final BigBang bb;
 
     private final ConcurrentHashMap<ResolvedJavaType, LambdaSubstitutionType> typeSubstitutions;
     private final Set<String> uniqueLambdaProxyNames;
+
+    private static GraphBuilderConfiguration buildLambdaParserConfig() {
+        Plugins plugins = new Plugins(new InvocationPlugins());
+        plugins.setClassInitializationPlugin(new NoClassInitializationPlugin());
+        return GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true);
+    }
 
     static boolean isLambdaType(ResolvedJavaType type) {
         return type.isFinalFlagSet() &&
