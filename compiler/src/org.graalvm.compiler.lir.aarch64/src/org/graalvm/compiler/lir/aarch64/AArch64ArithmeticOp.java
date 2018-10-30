@@ -371,8 +371,8 @@ public enum AArch64ArithmeticOp {
         }
     }
 
-    public static class AddSubShiftOp extends AArch64LIRInstruction {
-        private static final LIRInstructionClass<AddSubShiftOp> TYPE = LIRInstructionClass.create(AddSubShiftOp.class);
+    public static class BinaryShiftOp extends AArch64LIRInstruction {
+        private static final LIRInstructionClass<BinaryShiftOp> TYPE = LIRInstructionClass.create(BinaryShiftOp.class);
 
         @Opcode private final AArch64ArithmeticOp op;
         @Def(REG) protected AllocatableValue result;
@@ -380,19 +380,24 @@ public enum AArch64ArithmeticOp {
         @Use(REG) protected AllocatableValue src2;
         private final AArch64MacroAssembler.ShiftType shiftType;
         private final int shiftAmt;
+        private final boolean isShiftNot;
 
         /**
-         * Computes <code>result = src1 <op> src2 <shiftType> <shiftAmt></code>.
+         * If shiftNot: Computes <code>result = src1 <op> ~(src2 <shiftType> <shiftAmt>)</code>
+         * (Only for logic ops). else: Computes
+         * <code>result = src1 <op> src2 <shiftType> <shiftAmt></code>.
          */
-        public AddSubShiftOp(AArch64ArithmeticOp op, AllocatableValue result, AllocatableValue src1, AllocatableValue src2, AArch64MacroAssembler.ShiftType shiftType, int shiftAmt) {
+        public BinaryShiftOp(AArch64ArithmeticOp op, AllocatableValue result, AllocatableValue src1, AllocatableValue src2,
+                        AArch64MacroAssembler.ShiftType shiftType, int shiftAmt, boolean isShiftNot) {
             super(TYPE);
-            assert op == ADD || op == SUB;
+            assert op == ADD || op == SUB || op == AND || op == OR || op == XOR;
             this.op = op;
             this.result = result;
             this.src1 = src1;
             this.src2 = src2;
             this.shiftType = shiftType;
             this.shiftAmt = shiftAmt;
+            this.isShiftNot = isShiftNot;
         }
 
         @Override
@@ -404,6 +409,27 @@ public enum AArch64ArithmeticOp {
                     break;
                 case SUB:
                     masm.sub(size, asRegister(result), asRegister(src1), asRegister(src2), shiftType, shiftAmt);
+                    break;
+                case AND:
+                    if (!isShiftNot) {
+                        masm.and(size, asRegister(result), asRegister(src1), asRegister(src2), shiftType, shiftAmt);
+                    } else {
+                        masm.bic(size, asRegister(result), asRegister(src1), asRegister(src2), shiftType, shiftAmt);
+                    }
+                    break;
+                case OR:
+                    if (!isShiftNot) {
+                        masm.or(size, asRegister(result), asRegister(src1), asRegister(src2), shiftType, shiftAmt);
+                    } else {
+                        masm.orn(size, asRegister(result), asRegister(src1), asRegister(src2), shiftType, shiftAmt);
+                    }
+                    break;
+                case XOR:
+                    if (!isShiftNot) {
+                        masm.eor(size, asRegister(result), asRegister(src1), asRegister(src2), shiftType, shiftAmt);
+                    } else {
+                        masm.eon(size, asRegister(result), asRegister(src1), asRegister(src2), shiftType, shiftAmt);
+                    }
                     break;
                 default:
                     throw GraalError.shouldNotReachHere();
