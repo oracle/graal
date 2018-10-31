@@ -34,7 +34,7 @@ import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.OpaqueNode;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
-import org.graalvm.compiler.phases.common.util.HashSetNodeEventListener;
+import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
 
 public class LoopPartialUnrollPhase extends LoopPhase<LoopPolicies> {
@@ -50,7 +50,7 @@ public class LoopPartialUnrollPhase extends LoopPhase<LoopPolicies> {
     @SuppressWarnings("try")
     protected void run(StructuredGraph graph, PhaseContext context) {
         if (graph.hasLoops()) {
-            HashSetNodeEventListener listener = new HashSetNodeEventListener();
+            EconomicSetNodeEventListener listener = new EconomicSetNodeEventListener();
             boolean changed = true;
             EconomicMap<LoopBeginNode, OpaqueNode> opaqueUnrolledStrides = null;
             while (changed) {
