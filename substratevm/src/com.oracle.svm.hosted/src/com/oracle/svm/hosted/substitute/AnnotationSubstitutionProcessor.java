@@ -60,6 +60,7 @@ import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.KeepOriginal;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
@@ -72,6 +73,7 @@ import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.annotation.AnnotationSubstitutionType;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
+import jdk.vm.ci.common.NativeImageReinitialize;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -140,7 +142,22 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         if (substitution != null) {
             return substitution;
         }
+        if (getAnnotation(NativeImageReinitialize.class, field) != null) {
+            synchronized (fieldSubstitutions) {
+                substitution = fieldSubstitutions.get(field);
+                if (substitution == null) {
+                    boolean isFinal = false;
+                    substitution = new ComputedValueField(field, null, Kind.Reset, null, "", isFinal);
+                    fieldSubstitutions.put(field, substitution);
+                }
+                return substitution;
+            }
+        }
         return field;
+    }
+
+    private static <T extends Annotation> T getAnnotation(Class<T> type, ResolvedJavaField field) {
+        return type.cast(field.getAnnotation(type));
     }
 
     public boolean isDeleted(ResolvedJavaField field) {
