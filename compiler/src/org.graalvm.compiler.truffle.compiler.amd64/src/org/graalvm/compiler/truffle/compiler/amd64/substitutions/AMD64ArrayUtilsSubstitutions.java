@@ -66,6 +66,7 @@ public class AMD64ArrayUtilsSubstitutions {
 
     @MethodSubstitution(optional = true)
     public static int runIndexOf(String str, int fromIndex, int maxIndex, char... chars) {
+        assert 0 < maxIndex && maxIndex <= str.length();
         if (chars.length <= 4) {
             int arrayLength = maxIndex - fromIndex;
             int result;
@@ -92,8 +93,10 @@ public class AMD64ArrayUtilsSubstitutions {
 
     @MethodSubstitution(optional = true)
     public static int runIndexOf(char[] array, int fromIndex, int maxIndex, char... chars) {
+        assert 0 < maxIndex && maxIndex <= array.length;
         if (chars.length <= 4) {
-            int result = indexOfChar(arrayToPointer(array, fromIndex), maxIndex - fromIndex, chars);
+            int arrayLength = maxIndex - fromIndex;
+            int result = indexOfChar(arrayToPointer(array, fromIndex), arrayLength, chars);
             if (result >= 0) {
                 return result + fromIndex;
             }
@@ -105,8 +108,10 @@ public class AMD64ArrayUtilsSubstitutions {
 
     @MethodSubstitution(optional = true)
     public static int runIndexOf(byte[] array, int fromIndex, int maxIndex, byte... bytes) {
+        assert 0 < maxIndex && maxIndex <= array.length;
         if (bytes.length <= 4) {
-            int result = indexOfByte(arrayToPointer(array, fromIndex), maxIndex - fromIndex, bytes);
+            int arrayLength = maxIndex - fromIndex;
+            int result = indexOfByte(arrayToPointer(array, fromIndex), arrayLength, bytes);
             if (result >= 0) {
                 return result + fromIndex;
             }
@@ -117,10 +122,12 @@ public class AMD64ArrayUtilsSubstitutions {
     }
 
     private static Word arrayToPointer(byte[] array, int fromIndex) {
+        assert 0 <= fromIndex && fromIndex < array.length;
         return Word.objectToTrackedPointer(array).add(byteArrayBaseOffset(INJECTED)).add(fromIndex * byteArrayIndexScale(INJECTED));
     }
 
     private static Word arrayToPointer(char[] array, int fromIndex) {
+        assert 0 <= fromIndex && fromIndex < array.length;
         return Word.objectToTrackedPointer(array).add(charArrayBaseOffset(INJECTED)).add(fromIndex * charArrayIndexScale(INJECTED));
     }
 

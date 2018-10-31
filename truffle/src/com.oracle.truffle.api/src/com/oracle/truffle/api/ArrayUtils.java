@@ -127,7 +127,7 @@ public final class ArrayUtils {
     }
 
     private static void checkArgs(int length, int fromIndex, int maxIndex, int nValues) {
-        if (fromIndex < 0) {
+        if (fromIndex < 0 || fromIndex >= length) {
             throw new IllegalArgumentException("fromIndex must be positive");
         }
         if (maxIndex > length || maxIndex < fromIndex) {

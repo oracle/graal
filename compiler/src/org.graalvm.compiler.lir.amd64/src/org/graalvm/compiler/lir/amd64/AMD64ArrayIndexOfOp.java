@@ -185,13 +185,15 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
 
         // return -1 (no match)
         asm.bind(retNotFound);
-        asm.movl(result, -1);
+        asm.movq(result, -1);
         asm.jmpb(end);
 
         asm.bind(retFound);
         // convert array pointer to offset
         asm.subq(result, arrayPtr);
-        emitBytesToArraySlots(asm, kind, result);
+        if (charMode(kind)) {
+            asm.shrq(result, 1);
+        }
         asm.bind(end);
     }
 
@@ -362,15 +364,9 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
 
         // compare remaining slots in the array one-by-one
         asm.bind(lessThanVectorSizeRemainingLoop);
-        if (findTwoCharPrefix) {
-            // check if less than two array slots remain
-            asm.cmpl(slotsRemaining, 2);
-            asm.jcc(AMD64Assembler.ConditionFlag.Less, retNotFound);
-        } else {
-            // check if any array slots remain
-            asm.testl(slotsRemaining, slotsRemaining);
-            asm.jcc(AMD64Assembler.ConditionFlag.Zero, retNotFound);
-        }
+        // check if enough array slots remain
+        asm.cmpl(slotsRemaining, findTwoCharPrefix ? 1 : 0);
+        asm.jcc(AMD64Assembler.ConditionFlag.LessEqual, retNotFound);
         // load char / byte
         if (byteMode(kind)) {
             if (findTwoCharPrefix) {
