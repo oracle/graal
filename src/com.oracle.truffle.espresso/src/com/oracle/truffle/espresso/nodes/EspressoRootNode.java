@@ -351,10 +351,7 @@ public class EspressoRootNode extends RootNode {
     @Override
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
     public Object execute(VirtualFrame frame) {
-        // TODO(peterssen): Inline this object.
         int curBCI = 0;
-
-        // slots = locals... + stack
         final OperandStack stack = new DualStack(method.getMaxStackSize());
         initArguments(frame);
 
@@ -974,7 +971,6 @@ public class EspressoRootNode extends RootNode {
                         CompilerDirectives.transferToInterpreter();
                         throw new EspressoException((StaticObject) nullCheck(stack.popObject()));
                     case CHECKCAST:
-                        // TODO(peterssen): Implement check cast for arrays and primitive arrays.
                         stack.pushObject(checkCast(stack.popObject(), resolveType(bs.currentBC(curBCI), bs.readCPI(curBCI))));
                         break;
                     case INSTANCEOF:
