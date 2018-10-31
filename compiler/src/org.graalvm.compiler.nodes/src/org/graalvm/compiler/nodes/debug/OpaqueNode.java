@@ -37,9 +37,10 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
 public final class OpaqueNode extends FloatingNode implements LIRLowerable {
-
     public static final NodeClass<OpaqueNode> TYPE = NodeClass.create(OpaqueNode.class);
+
     @Input protected ValueNode value;
+    protected Object noGVN = new Object();
 
     public OpaqueNode(ValueNode value) {
         super(TYPE, value.stamp(NodeView.DEFAULT).unrestricted());
@@ -48,6 +49,15 @@ public final class OpaqueNode extends FloatingNode implements LIRLowerable {
 
     public ValueNode getValue() {
         return value;
+    }
+
+    public void setValue(ValueNode value) {
+        this.updateUsages(this.value, value);
+        this.value = value;
+    }
+
+    public void remove() {
+        replaceAndDelete(getValue());
     }
 
     @Override

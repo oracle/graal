@@ -24,11 +24,15 @@
  */
 package org.graalvm.compiler.loop.phases;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.loop.LoopEx;
 import org.graalvm.compiler.loop.LoopPolicies;
 import org.graalvm.compiler.loop.LoopsData;
+import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.debug.OpaqueNode;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.util.HashSetNodeEventListener;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
@@ -48,6 +52,7 @@ public class LoopPartialUnrollPhase extends LoopPhase<LoopPolicies> {
         if (graph.hasLoops()) {
             HashSetNodeEventListener listener = new HashSetNodeEventListener();
             boolean changed = true;
+            EconomicMap<LoopBeginNode, OpaqueNode> opaqueUnrolledStrides = null;
             while (changed) {
                 changed = false;
                 try (Graph.NodeEventScope nes = graph.trackNodeEvents(listener)) {
@@ -66,7 +71,10 @@ public class LoopPartialUnrollPhase extends LoopPhase<LoopPolicies> {
                                 LoopTransformations.insertPrePostLoops(loop);
                                 prePostInserted = true;
                             } else {
-                                LoopTransformations.partialUnroll(loop);
+                                if (opaqueUnrolledStrides == null) {
+                                    opaqueUnrolledStrides = EconomicMap.create(Equivalence.IDENTITY);
+                                }
+                                LoopTransformations.partialUnroll(loop, opaqueUnrolledStrides);
                             }
                             changed = true;
                         }
@@ -79,6 +87,16 @@ public class LoopPartialUnrollPhase extends LoopPhase<LoopPolicies> {
                     }
 
                     assert !prePostInserted || checkCounted(graph, mark);
+                }
+            }
+            if (opaqueUnrolledStrides != null) {
+                try (Graph.NodeEventScope nes = graph.trackNodeEvents(listener)) {
+                    for (OpaqueNode opaque : opaqueUnrolledStrides.getValues()) {
+                        opaque.remove();
+                    }
+                    if (!listener.getNodes().isEmpty()) {
+                        canonicalizer.applyIncremental(graph, context, listener.getNodes());
+                    }
                 }
             }
         }

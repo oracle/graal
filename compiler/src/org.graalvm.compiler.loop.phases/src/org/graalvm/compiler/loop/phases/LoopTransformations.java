@@ -26,16 +26,15 @@ package org.graalvm.compiler.loop.phases;
 
 import static org.graalvm.compiler.core.common.GraalOptions.MaximumDesiredSize;
 import static org.graalvm.compiler.loop.MathUtil.add;
-import static org.graalvm.compiler.loop.MathUtil.sub;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.common.RetryableBailoutException;
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph.Mark;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Position;
@@ -50,7 +49,6 @@ import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractEndNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.BeginNode;
-import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedNode;
@@ -67,6 +65,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
+import org.graalvm.compiler.nodes.debug.OpaqueNode;
 import org.graalvm.compiler.nodes.extended.SwitchNode;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
@@ -151,12 +150,12 @@ public abstract class LoopTransformations {
         // TODO (gd) probabilities need some amount of fixup.. (probably also in other transforms)
     }
 
-    public static void partialUnroll(LoopEx loop) {
+    public static void partialUnroll(LoopEx loop, EconomicMap<LoopBeginNode, OpaqueNode> opaqueUnrolledStrides) {
         assert loop.loopBegin().isMainLoop();
         loop.loopBegin().graph().getDebug().log("LoopPartialUnroll %s", loop);
 
         LoopFragmentInside newSegment = loop.inside().duplicate();
-        newSegment.insertWithinAfter(loop);
+        newSegment.insertWithinAfter(loop, opaqueUnrolledStrides);
 
     }
 
@@ -422,6 +421,13 @@ public abstract class LoopTransformations {
         }
         if (((CompareNode) condition).condition() == CanonicalCondition.EQ) {
             condition.getDebug().log(DebugContext.VERBOSE_LEVEL, "isUnrollableLoop %s condition unsupported %s ", loopBegin, ((CompareNode) condition).condition());
+            return false;
+        }
+        long stride = loop.counted().getCounter().constantStride();
+        try {
+            Math.addExact(stride, stride);
+        } catch (ArithmeticException ae) {
+            condition.getDebug().log(DebugContext.VERBOSE_LEVEL, "isUnrollableLoop %s doubling the stride overflows %d", loopBegin, stride);
             return false;
         }
         if (loopBegin.isMainLoop() || loopBegin.isSimpleLoop()) {

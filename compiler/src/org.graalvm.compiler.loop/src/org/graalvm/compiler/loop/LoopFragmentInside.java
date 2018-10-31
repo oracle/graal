@@ -63,10 +63,12 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.VirtualState.NodeClosure;
+import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
+import org.graalvm.compiler.nodes.debug.OpaqueNode;
 import org.graalvm.compiler.nodes.memory.MemoryPhiNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 
@@ -154,20 +156,8 @@ public class LoopFragmentInside extends LoopFragment {
     /**
      * Duplicate the body within the loop after the current copy copy of the body, updating the
      * iteration limit to account for the duplication.
-     *
-     * @param loop
      */
-    public void insertWithinAfter(LoopEx loop) {
-        insertWithinAfter(loop, true);
-    }
-
-    /**
-     * Duplicate the body within the loop after the current copy copy of the body.
-     *
-     * @param loop
-     * @param updateLimit true if the iteration limit should be adjusted.
-     */
-    public void insertWithinAfter(LoopEx loop, boolean updateLimit) {
+    public void insertWithinAfter(LoopEx loop, EconomicMap<LoopBeginNode, OpaqueNode> opaqueUnrolledStrides) {
         assert isDuplicate() && original().loop() == loop;
 
         patchNodes(dataFixWithinAfter);
@@ -206,28 +196,40 @@ public class LoopFragmentInside extends LoopFragment {
         }
 
         StructuredGraph graph = mainLoopBegin.graph();
-        if (updateLimit) {
+        if (opaqueUnrolledStrides != null) {
+            OpaqueNode opaque = opaqueUnrolledStrides.get(loop.loopBegin());
             CountedLoopInfo counted = loop.counted();
             ValueNode counterStride = counted.getCounter().strideNode();
-            CompareNode compareNode = (CompareNode) counted.getLimitTest().condition();
-            ValueNode limit = counted.getLimit();
-            int bits = ((IntegerStamp) limit.stamp(NodeView.DEFAULT)).getBits();
-            ValueNode newLimit = SubNode.create(limit, counterStride, NodeView.DEFAULT);
-            LogicNode overflowCheck;
-            ConstantNode extremum;
-            if (counted.getDirection() == InductionVariable.Direction.Up) {
-                // limit - counterStride could overflow negatively if limit - min < counterStride
-                extremum = ConstantNode.forIntegerBits(bits, CodeUtil.minValue(bits));
-                overflowCheck = IntegerBelowNode.create(SubNode.create(limit, extremum, NodeView.DEFAULT), counterStride, NodeView.DEFAULT);
+            if (opaque == null) {
+                opaque = new OpaqueNode(AddNode.add(counterStride, counterStride, NodeView.DEFAULT));
+                ValueNode limit = counted.getLimit();
+                int bits = ((IntegerStamp) limit.stamp(NodeView.DEFAULT)).getBits();
+                ValueNode newLimit = SubNode.create(limit, opaque, NodeView.DEFAULT);
+                LogicNode overflowCheck;
+                ConstantNode extremum;
+                if (counted.getDirection() == InductionVariable.Direction.Up) {
+                    // limit - counterStride could overflow negatively if limit - min <
+                    // counterStride
+                    extremum = ConstantNode.forIntegerBits(bits, CodeUtil.minValue(bits));
+                    overflowCheck = IntegerBelowNode.create(SubNode.create(limit, extremum, NodeView.DEFAULT), opaque, NodeView.DEFAULT);
+                } else {
+                    assert counted.getDirection() == InductionVariable.Direction.Down;
+                    // limit - counterStride could overflow if max - limit < -counterStride
+                    // i.e., counterStride < limit - max
+                    extremum = ConstantNode.forIntegerBits(bits, CodeUtil.maxValue(bits));
+                    overflowCheck = IntegerBelowNode.create(opaque, SubNode.create(limit, extremum, NodeView.DEFAULT), NodeView.DEFAULT);
+                }
+                newLimit = ConditionalNode.create(overflowCheck, extremum, newLimit, NodeView.DEFAULT);
+                CompareNode compareNode = (CompareNode) counted.getLimitTest().condition();
+                compareNode.replaceFirstInput(limit, graph.addOrUniqueWithInputs(newLimit));
+                opaqueUnrolledStrides.put(loop.loopBegin(), opaque);
             } else {
-                assert counted.getDirection() == InductionVariable.Direction.Down;
-                // limit - counterStride could overflow if max - limit < -counterStride
-                // i.e., counterStride < limit - max
-                extremum = ConstantNode.forIntegerBits(bits, CodeUtil.maxValue(bits));
-                overflowCheck = IntegerBelowNode.create(counterStride, SubNode.create(limit, extremum, NodeView.DEFAULT), NodeView.DEFAULT);
+                assert counted.getCounter().isConstantStride();
+                assert Math.addExact(counted.getCounter().constantStride(), counted.getCounter().constantStride()) == counted.getCounter().constantStride() * 2;
+                ValueNode previousValue = opaque.getValue();
+                opaque.setValue(graph.addOrUniqueWithInputs(AddNode.add(counterStride, previousValue, NodeView.DEFAULT)));
+                GraphUtil.tryKillUnused(previousValue);
             }
-            newLimit = ConditionalNode.create(overflowCheck, extremum, newLimit, NodeView.DEFAULT);
-            compareNode.replaceFirstInput(limit, graph.addOrUniqueWithInputs(newLimit));
         }
         mainLoopBegin.setUnrollFactor(mainLoopBegin.getUnrollFactor() * 2);
         mainLoopBegin.setLoopFrequency(mainLoopBegin.loopFrequency() / 2);

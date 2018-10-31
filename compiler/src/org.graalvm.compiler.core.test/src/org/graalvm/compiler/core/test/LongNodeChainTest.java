@@ -71,7 +71,7 @@ public class LongNodeChainTest extends GraalCompilerTest {
                 addNode.setY(newAddNode);
                 addNode = newAddNode;
             }
-            opaque.replaceAndDelete(opaque.getValue());
+            opaque.remove();
         } else {
             value = constant;
             for (int i = 0; i < N; ++i) {

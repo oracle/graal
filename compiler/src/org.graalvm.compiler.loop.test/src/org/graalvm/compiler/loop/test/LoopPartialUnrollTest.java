@@ -271,7 +271,7 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
                 dataCounted.detectedCountedLoops();
                 for (LoopEx loop : dataCounted.countedLoops()) {
                     LoopFragmentInside newSegment = loop.inside().duplicate();
-                    newSegment.insertWithinAfter(loop, false);
+                    newSegment.insertWithinAfter(loop, null);
                 }
                 canonicalizer.apply(graph, getDefaultMidTierContext());
             }
