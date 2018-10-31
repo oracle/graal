@@ -46,7 +46,7 @@ interface ErrorMessages {
     String QUANTIFIER_ON_QUANTIFIER = "Quantifier on quantifier";
     String QUANTIFIER_OUT_OF_ORDER = "Numbers out of order in {} quantifier";
     String QUANTIFIER_WITHOUT_TARGET = "Quantifier without target";
-    String UNMATCHED_LEFT_BRACKET = "Unmatched '['";
+    String UNMATCHED_LEFT_BRACKET = "Unterminated character class";
     String UNMATCHED_RIGHT_BRACKET = "Unmatched ']'";
     String UNMATCHED_RIGHT_PARENTHESIS = "Unmatched ')'";
     String UNMATCHED_RIGHT_BRACE = "Unmatched '}'";
