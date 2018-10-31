@@ -441,7 +441,12 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     }
 
     @Override
-    public CompiledCode createCompiledCode(ResolvedJavaMethod method, CompilationRequest compilationRequest, CompilationResult compResult, OptionValues options) {
+    public CompiledCode createCompiledCode(ResolvedJavaMethod method,
+                    CompilationRequest compilationRequest,
+                    CompilationResult compResult,
+                    boolean isDefault,
+                    OptionValues options) {
+        assert !isDefault || compResult.getName() == null : "a default nmethod should have a null name since it is associated with a Method*";
         HotSpotCompilationRequest compRequest = compilationRequest instanceof HotSpotCompilationRequest ? (HotSpotCompilationRequest) compilationRequest : null;
         return HotSpotCompiledCodeBuilder.createCompiledCode(getCodeCache(), method, compRequest, compResult, options);
     }

@@ -154,7 +154,7 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
      * Turns a Graal {@link CompilationResult} into a {@link CompiledCode} object that can be passed
      * to the VM for code installation.
      */
-    protected abstract CompiledCode createCompiledCode(ResolvedJavaMethod method, CompilationRequest compilationRequest, CompilationResult compilationResult, OptionValues options);
+    protected abstract CompiledCode createCompiledCode(ResolvedJavaMethod method, CompilationRequest compilationRequest, CompilationResult compilationResult, boolean isDefault, OptionValues options);
 
     /**
      * @see #createInstalledCode(DebugContext, ResolvedJavaMethod, CompilationRequest,
@@ -214,7 +214,7 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
             InstalledCode installedCode;
             try {
                 preCodeInstallationTasks(tasks, compilationResult);
-                CompiledCode compiledCode = createCompiledCode(method, compilationRequest, compilationResult, debug.getOptions());
+                CompiledCode compiledCode = createCompiledCode(method, compilationRequest, compilationResult, isDefault, debug.getOptions());
                 installedCode = getProviders().getCodeCache().installCode(method, compiledCode, predefinedInstalledCode, speculationLog, isDefault);
                 assert predefinedInstalledCode == null || installedCode == predefinedInstalledCode;
             } catch (Throwable t) {
