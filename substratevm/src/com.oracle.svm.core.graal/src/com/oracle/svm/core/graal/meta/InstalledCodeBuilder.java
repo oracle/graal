@@ -37,6 +37,7 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -341,6 +342,8 @@ public class InstalledCodeBuilder {
                  * immediately. So all metadata must be registered at this point.
                  */
                 installedCode.setAddress(code.rawValue(), method);
+                int tier = compilation.getName().endsWith(TruffleCompiler.SECOND_TIER_COMPILATION_SUFFIX) ? 2 : 1;
+                installedCode.setTier(tier);
             } catch (Throwable e) {
                 errorBox[0] = e;
             }
