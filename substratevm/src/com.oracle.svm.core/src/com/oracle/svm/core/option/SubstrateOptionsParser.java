@@ -373,12 +373,26 @@ public class SubstrateOptionsParser {
                 if (defaultValues.length == 1) {
                     defaultValue = defaultValues[0];
                 } else {
-                    for (int i = 0; i < defaultValues.length; i++) {
-                        if (defaultValues[i] instanceof String) {
-                            defaultValues[i] = '"' + String.valueOf(defaultValues[i]) + '"';
+                    List<String> stringList = new ArrayList<>();
+                    String optionPrefix = prefix + entry.getKey() + "=";
+                    for (Object rawValue : defaultValues) {
+                        String value;
+                        if (rawValue instanceof String) {
+                            value = '"' + String.valueOf(rawValue) + '"';
+                        } else {
+                            value = String.valueOf(rawValue);
                         }
+                        stringList.add(optionPrefix + value);
                     }
-                    defaultValue = Arrays.toString(defaultValues);
+                    if (helpLen != 0) {
+                        helpMsg += ' ';
+                    }
+                    helpMsg += "Default: ";
+                    if (stringList.isEmpty()) {
+                        helpMsg += "None";
+                    } else {
+                        helpMsg += String.join(" ", stringList);
+                    }
                     stringifiedArrayValue = true;
                 }
             }
@@ -394,10 +408,20 @@ public class SubstrateOptionsParser {
                 }
                 printOption(out, prefix + "\u00b1" + entry.getKey(), helpMsg);
             } else {
-                if (!stringifiedArrayValue && defaultValue instanceof String) {
-                    defaultValue = '"' + String.valueOf(defaultValue) + '"';
+                if (defaultValue == null) {
+                    if (helpLen != 0) {
+                        helpMsg += ' ';
+                    }
+                    helpMsg += "Default: None";
                 }
-                printOption(out, prefix + entry.getKey() + "=" + defaultValue, helpMsg);
+                if (stringifiedArrayValue || defaultValue == null) {
+                    printOption(out, prefix + entry.getKey() + "=...", helpMsg);
+                } else {
+                    if (defaultValue instanceof String) {
+                        defaultValue = '"' + String.valueOf(defaultValue) + '"';
+                    }
+                    printOption(out, prefix + entry.getKey() + "=" + defaultValue, helpMsg);
+                }
             }
         }
     }
