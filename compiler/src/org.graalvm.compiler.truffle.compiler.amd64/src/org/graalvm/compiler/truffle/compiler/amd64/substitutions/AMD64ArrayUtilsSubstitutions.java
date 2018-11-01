@@ -67,6 +67,9 @@ public class AMD64ArrayUtilsSubstitutions {
     @MethodSubstitution(optional = true)
     public static int runIndexOf(String str, int fromIndex, int maxIndex, char... chars) {
         assert 0 < maxIndex && maxIndex <= str.length();
+        if (fromIndex >= str.length()) {
+            return -1;
+        }
         if (chars.length <= 4) {
             int arrayLength = maxIndex - fromIndex;
             int result;
@@ -94,6 +97,9 @@ public class AMD64ArrayUtilsSubstitutions {
     @MethodSubstitution(optional = true)
     public static int runIndexOf(char[] array, int fromIndex, int maxIndex, char... chars) {
         assert 0 < maxIndex && maxIndex <= array.length;
+        if (fromIndex >= array.length) {
+            return -1;
+        }
         if (chars.length <= 4) {
             int arrayLength = maxIndex - fromIndex;
             int result = indexOfChar(arrayToPointer(array, fromIndex), arrayLength, chars);
@@ -109,6 +115,9 @@ public class AMD64ArrayUtilsSubstitutions {
     @MethodSubstitution(optional = true)
     public static int runIndexOf(byte[] array, int fromIndex, int maxIndex, byte... bytes) {
         assert 0 < maxIndex && maxIndex <= array.length;
+        if (fromIndex >= array.length) {
+            return -1;
+        }
         if (bytes.length <= 4) {
             int arrayLength = maxIndex - fromIndex;
             int result = indexOfByte(arrayToPointer(array, fromIndex), arrayLength, bytes);
