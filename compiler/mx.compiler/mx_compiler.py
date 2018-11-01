@@ -1169,6 +1169,7 @@ def _find_version_base_project(versioned_project):
         mx.abort('Multi-release jar versioned project {} must extend package(s) from another project'.format(versioned_project))
     return base_project
 
+
 SuiteJDKInfo = namedtuple('SuiteJDKInfo', 'name includes excludes')
 GraalJDKModule = namedtuple('GraalJDKModule', 'name suites')
 
@@ -1185,24 +1186,36 @@ def updategraalinopenjdk(args):
         mx.abort('JAVA_HOME/--java-home must be Java version {} or greater: {}'.format(args.version, jdk))
 
     graal_modules = [
+        # JDK module jdk.internal.vm.compiler is composed of sources from:
         GraalJDKModule('jdk.internal.vm.compiler',
+            # 1. Classes in the compiler suite under the org.graalvm namespace except for packages
+            #    whose names include "truffle" or "management"
             [SuiteJDKInfo('compiler', ['org.graalvm'], ['truffle', 'management']),
+            # 2. Classes in the sdk suite under the org.graalvm.collections and org.graalvm.word namespaces
              SuiteJDKInfo('sdk', ['org.graalvm.collections', 'org.graalvm.word'], [])]),
+        # JDK module jdk.internal.vm.compiler.management is composed of sources from:
         GraalJDKModule('jdk.internal.vm.compiler.management',
+            # 1. Classes in the compiler suite under the org.graalvm.compiler.hotspot.management namespace
             [SuiteJDKInfo('compiler', ['org.graalvm.compiler.hotspot.management'], [])]),
+        # JDK module jdk.aot is composed of sources from:
         GraalJDKModule('jdk.aot',
+            # 1. Classes in the compiler suite under the jdk.tools.jaotc namespace
             [SuiteJDKInfo('compiler', ['jdk.tools.jaotc'], [])]),
     ]
 
+    # Packages in Graal that have different names in OpenJDK so that the original packages can be deployed
+    # as it on the class path and not clash with packages in the jdk.internal.vm.compiler module.
     package_renamings = {
         'org.graalvm.collections' : 'jdk.internal.vm.compiler.collections',
         'org.graalvm.word'        : 'jdk.internal.vm.compiler.word'
     }
 
+    # Strings to be replaced in files copied to OpenJDK.
     replacements = {
         'published by the Free Software Foundation.  Oracle designates this\n * particular file as subject to the "Classpath" exception as provided\n * by Oracle in the LICENSE file that accompanied this code.' : 'published by the Free Software Foundation.'
     }
 
+    # Strings that must not exist in OpenJDK source files. This is applied after replacements are made.
     blacklist = ['"Classpath" exception']
 
     jdkrepo = args.jdkrepo
@@ -1239,6 +1252,7 @@ def updategraalinopenjdk(args):
                         mx.log('  updated ' + filepath)
 
     copied_source_dirs = []
+    jdk_internal_vm_compiler_EXCLUDES = set(['org.graalvm.compiler.processor'])
     for m in graal_modules:
         classes_dir = join(jdkrepo, 'src', m.name, 'share', 'classes')
         for info in m.suites:
@@ -1251,6 +1265,7 @@ def updategraalinopenjdk(args):
             suite = mx.suite(info.name)
 
             worklist = []
+            
             for p in [e for e in suite.projects if e.isJavaProject()]:
                 if any(inc in p.name for inc in info.includes) and not any(ex in p.name for ex in info.excludes):
                     assert len(p.source_dirs()) == 1, p
@@ -1280,8 +1295,7 @@ def updategraalinopenjdk(args):
             worklist = sorted(worklist)
 
             for version, p, source_dir, target_dir in worklist:
-                mx.log('  copying: ' + source_dir)
-                mx.log('       to: ' + target_dir)
+                first_file = True
                 for dirpath, _, filenames in os.walk(source_dir):
                     for filename in filenames:
                         src_file = join(dirpath, filename)
@@ -1314,8 +1328,47 @@ def updategraalinopenjdk(args):
                         dst_dir = os.path.dirname(dst_file)
                         if not exists(dst_dir):
                             os.makedirs(dst_dir)
+                        if first_file:
+                            mx.log('  copying: ' + source_dir)
+                            mx.log('       to: ' + target_dir)
+                            if p.testProject or p.definedAnnotationProcessors:
+                                to_exclude = p.name
+                                for old_name, new_name in package_renamings.iteritems():
+                                    if to_exclude.startswith(old_name):
+                                        sfx = '' if to_exclude == old_name else to_exclude[len(old_name):]
+                                        to_exclude = new_name + sfx
+                                        break
+                                jdk_internal_vm_compiler_EXCLUDES.add(to_exclude)
+                            first_file = False
                         with open(dst_file, 'w') as fp:
                             fp.write(contents)
+
+    # Update jdk.internal.vm.compiler.EXCLUDES in make/CompileJavaModules.gmk
+    # to exclude all test, benchmark and annotation processor packages. 
+    CompileJavaModules_gmk = join(jdkrepo, 'make', 'CompileJavaModules.gmk')
+    new_lines = []
+    with open(CompileJavaModules_gmk) as fp:
+        line_in_def = False
+        for line in fp.readlines():
+            stripped_line = line.strip()
+            if line_in_def:
+                if stripped_line == '#':
+                    line_in_def = False
+                    new_lines.append(line)
+                else:
+                    parts = stripped_line.split()
+                    assert len(parts) == 2 and parts[1] == '\\', line
+            elif stripped_line == 'jdk.internal.vm.compiler_EXCLUDES += \\':
+                line_in_def = True
+                new_lines.append(line)
+                for pkg in sorted(jdk_internal_vm_compiler_EXCLUDES):
+                    new_lines.append('    ' + pkg + ' \\\n')
+            else:
+                new_lines.append(line)
+    with open(CompileJavaModules_gmk, 'w') as fp:
+        for line in new_lines:
+            fp.write(line)
+
     mx.log('Adding new files to HG...')
     overwritten = ''
     for m in graal_modules:
