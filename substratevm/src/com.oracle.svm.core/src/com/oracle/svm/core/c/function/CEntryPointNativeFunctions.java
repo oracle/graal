@@ -27,7 +27,6 @@ package com.oracle.svm.core.c.function;
 import java.nio.ByteBuffer;
 import java.util.function.Function;
 
-import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -81,12 +80,18 @@ public final class CEntryPointNativeFunctions {
                     "Create a new isolate, considering the passed parameters (which may be NULL).",
                     "Returns 0 on success, or a non-zero value on failure.",
                     "On success, the current thread is attached to the created isolate, and the",
-                    "address of the isolate structure is written to the passed pointer."})
+                    "address of the isolate and the isolate thread are written to the passed pointers",
+                    "if they are not NULL."})
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, nameTransformation = NameTransformation.class)
-    public static int createIsolate(CEntryPointCreateIsolateParameters params, IsolatePointer isolate) {
+    public static int createIsolate(CEntryPointCreateIsolateParameters params, IsolatePointer isolate, IsolateThreadPointer thread) {
         int result = CEntryPointActions.enterCreateIsolate(params);
         if (result == 0) {
-            isolate.write(CurrentIsolate.getIsolate());
+            if (isolate.isNonNull()) {
+                isolate.write(CurrentIsolate.getIsolate());
+            }
+            if (thread.isNonNull()) {
+                thread.write(CurrentIsolate.getCurrentThread());
+            }
             result = CEntryPointActions.leave();
         }
         return result;
@@ -110,7 +115,7 @@ public final class CEntryPointNativeFunctions {
     }
 
     @Uninterruptible(reason = UNINTERRUPTIBLE_REASON)
-    @CEntryPoint(name = "current_thread", documentation = {
+    @CEntryPoint(name = "get_current_thread", documentation = {
                     "Given an isolate to which the current thread is attached, returns the address of",
                     "the thread's associated isolate thread structure.  If the current thread is not",
                     "attached to the passed isolate or if another error occurs, returns NULL."})
@@ -128,12 +133,11 @@ public final class CEntryPointNativeFunctions {
     }
 
     @Uninterruptible(reason = UNINTERRUPTIBLE_REASON)
-    @CEntryPoint(name = "current_isolate", documentation = {
-                    "Given an isolate thread structure for the current thread, determines to which",
-                    "isolate it belongs and returns the address of its isolate structure.  If an",
-                    "error occurs, returns NULL instead."})
+    @CEntryPoint(name = "get_isolate", documentation = {
+                    "Given an isolate thread structure, determines to which isolate it belongs and returns",
+                    "the address of its isolate structure. If an error occurs, returns NULL instead."})
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, nameTransformation = NameTransformation.class)
-    public static Isolate getCurrentThreadIsolate(IsolateThread thread) {
+    public static Isolate getIsolate(IsolateThread thread) {
         Isolate isolate = WordFactory.nullPointer();
         if (thread.isNull()) {
             // proceed to return null
@@ -141,7 +145,7 @@ public final class CEntryPointNativeFunctions {
             long offset = ISOLATETHREAD_ISOLATE_OFFSET.get().read();
             isolate = ((Pointer) thread).readWord(WordFactory.unsigned(offset));
         } else if (SubstrateOptions.SpawnIsolates.getValue() || thread.equal(CEntryPointSetup.SINGLE_THREAD_SENTINEL)) {
-            isolate = (Isolate) ((Word) thread).subtract(CEntryPointSetup.SINGLE_ISOLATE_TO_SINGLE_THREAD_ADDEND);
+            isolate = (Isolate) ((Pointer) thread).subtract(CEntryPointSetup.SINGLE_ISOLATE_TO_SINGLE_THREAD_ADDEND);
         }
         return isolate;
     }
@@ -175,14 +179,13 @@ public final class CEntryPointNativeFunctions {
                     "that is associated with it.",
                     "Returns 0 on success, or a non-zero value on failure."})
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, nameTransformation = NameTransformation.class)
-    public static int tearDownIsolate(Isolate isolate) {
-        int result = CEntryPointActions.enterAttachThread(isolate);
+    public static int tearDownIsolate(IsolateThread isolateThread) {
+        int result = CEntryPointActions.enter(isolateThread);
         if (result != 0) {
             CEntryPointActions.leave();
             return result;
         }
-        result = CEntryPointActions.leaveTearDownIsolate();
-        return result;
+        return CEntryPointActions.leaveTearDownIsolate();
     }
 
     private CEntryPointNativeFunctions() {

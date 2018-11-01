@@ -32,10 +32,10 @@ import org.graalvm.nativeimage.Isolates.CreateIsolateParameters;
 import org.graalvm.nativeimage.Isolates.IsolateException;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.impl.IsolateSupport;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.c.function.CEntryPointNativeFunctions.IsolatePointer;
 import com.oracle.svm.core.c.function.CEntryPointNativeFunctions.IsolateThreadPointer;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 
@@ -60,10 +60,9 @@ public final class IsolateSupportImpl implements IsolateSupport {
         params.setReservedSpaceSize(parameters.getReservedAddressSpaceSize());
         params.setVersion(1);
 
-        IsolatePointer isolatePtr = StackValue.get(IsolatePointer.class);
-        throwOnError(CEntryPointNativeFunctions.createIsolate(params, isolatePtr));
-        Isolate isolate = isolatePtr.read();
-        return getCurrentThread(isolate);
+        IsolateThreadPointer isolateThreadPtr = StackValue.get(IsolateThreadPointer.class);
+        throwOnError(CEntryPointNativeFunctions.createIsolate(params, WordFactory.nullPointer(), isolateThreadPtr));
+        return isolateThreadPtr.read();
     }
 
     @Override
@@ -80,7 +79,7 @@ public final class IsolateSupportImpl implements IsolateSupport {
 
     @Override
     public Isolate getIsolate(IsolateThread thread) throws IsolateException {
-        return CEntryPointNativeFunctions.getCurrentThreadIsolate(thread);
+        return CEntryPointNativeFunctions.getIsolate(thread);
     }
 
     @Override
@@ -91,7 +90,7 @@ public final class IsolateSupportImpl implements IsolateSupport {
     @Override
     public void tearDownIsolate(IsolateThread thread) throws IsolateException {
         if (SubstrateOptions.SpawnIsolates.getValue()) {
-            throwOnError(CEntryPointNativeFunctions.tearDownIsolate(getIsolate(thread)));
+            throwOnError(CEntryPointNativeFunctions.tearDownIsolate(thread));
         } else {
             throw new IsolateException(ISOLATES_DISABLED_MESSAGE);
         }

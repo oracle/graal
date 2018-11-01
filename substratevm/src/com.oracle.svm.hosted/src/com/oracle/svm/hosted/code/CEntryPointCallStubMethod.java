@@ -68,6 +68,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointBuiltins;
+import com.oracle.svm.core.c.function.CEntryPointBuiltins.CEntryPointBuiltinImplementation;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
@@ -250,15 +251,16 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
 
         ExecutionContextParameters executionContext = findExecutionContextParameters(providers, universeTargetMethod.toParameterTypes(), universeTargetMethod.getParameterAnnotations());
 
-        String builtinName = entryPointData.getBuiltin().name().toLowerCase();
+        final CEntryPoint.Builtin builtin = entryPointData.getBuiltin();
         ResolvedJavaMethod builtinCallee = null;
         for (ResolvedJavaMethod candidate : metaAccess.lookupJavaType(CEntryPointBuiltins.class).getDeclaredMethods()) {
-            if (candidate.getName().toLowerCase().equals(builtinName)) {
-                VMError.guarantee(builtinCallee == null, "More than one candidate for @" + CEntryPoint.class.getSimpleName() + " built-in " + entryPointData.getBuiltin());
+            CEntryPointBuiltinImplementation annotation = candidate.getAnnotation(CEntryPointBuiltinImplementation.class);
+            if (annotation != null && annotation.builtin().equals(builtin)) {
+                VMError.guarantee(builtinCallee == null, "More than one candidate for @" + CEntryPoint.class.getSimpleName() + " built-in " + builtin);
                 builtinCallee = candidate;
             }
         }
-        VMError.guarantee(builtinCallee != null, "No candidate for @" + CEntryPoint.class.getSimpleName() + " built-in " + entryPointData.getBuiltin());
+        VMError.guarantee(builtinCallee != null, "No candidate for @" + CEntryPoint.class.getSimpleName() + " built-in " + builtin);
 
         ResolvedJavaType isolateType = providers.getMetaAccess().lookupJavaType(Isolate.class);
         ResolvedJavaType threadType = providers.getMetaAccess().lookupJavaType(IsolateThread.class);
@@ -380,28 +382,16 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
         // Automatically choose prologue from signature and annotations and call
         ExecutionContextParameters executionContext = findExecutionContextParameters(providers, parameterTypes, parameterAnnotations);
         int contextIndex = -1;
-        ResolvedJavaType contextType = null;
-        if (executionContext.designatedIsolateIndex != -1 && executionContext.designatedThreadIndex != -1) {
-            UserError.abort("@" + CEntryPoint.class.getSimpleName() + " has more than one designated execution context parameter: " + targetMethod.format("%H.%n(%p)"));
-        } else if (executionContext.designatedIsolateIndex != -1) {
-            contextIndex = executionContext.designatedIsolateIndex;
-            contextType = executionContext.designatedIsolateType;
-        } else if (executionContext.designatedThreadIndex != -1) {
+        if (executionContext.designatedThreadIndex != -1) {
             contextIndex = executionContext.designatedThreadIndex;
-            contextType = executionContext.designatedThreadType;
-        } else if (executionContext.isolateCount + executionContext.threadCount == 1) {
-            contextIndex = (executionContext.isolateCount == 1) ? executionContext.lastIsolateIndex : executionContext.lastThreadIndex;
-            contextType = (ResolvedJavaType) parameterTypes[contextIndex];
+        } else if (executionContext.threadCount == 1) {
+            contextIndex = executionContext.lastThreadIndex;
         } else {
             UserError.abort("@" + CEntryPoint.class.getSimpleName() + " requires exactly one execution context parameter of type " +
-                            IsolateThread.class.getSimpleName() + " or " + Isolate.class.getSimpleName() + ": " + targetMethod.format("%H.%n(%p)"));
+                            IsolateThread.class.getSimpleName() + ": " + targetMethod.format("%H.%n(%p)"));
         }
         ValueNode contextValue = args[contextIndex];
-        if (providers.getMetaAccess().lookupJavaType(IsolateThread.class).isAssignableFrom(contextType)) {
-            prologueClass = CEntryPointSetup.EnterPrologue.class;
-        } else {
-            prologueClass = CEntryPointSetup.EnterIsolatePrologue.class;
-        }
+        prologueClass = CEntryPointSetup.EnterPrologue.class;
         ResolvedJavaMethod[] prologueMethods = providers.getMetaAccess().lookupJavaType(prologueClass).getDeclaredMethods();
         assert prologueMethods.length == 1 && prologueMethods[0].isStatic() : "Prologue class must declare exactly one static method";
         return kit.createInvoke(prologueMethods[0], InvokeKind.Static, kit.getFrameState(), kit.bci(), contextValue);
@@ -411,12 +401,10 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
         int isolateCount = 0;
         int lastIsolateIndex = -1;
         int designatedIsolateIndex = -1;
-        ResolvedJavaType designatedIsolateType = null;
 
         int threadCount = 0;
         int lastThreadIndex = -1;
         int designatedThreadIndex = -1;
-        ResolvedJavaType designatedThreadType = null;
     }
 
     private ExecutionContextParameters findExecutionContextParameters(HostedProviders providers, JavaType[] parameterTypes, Annotation[][] parameterAnnotations) {
@@ -430,7 +418,6 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
             boolean isThread = threadType.isAssignableFrom(declaredType);
             boolean isLong = declaredType.getJavaKind() == JavaKind.Long;
             boolean designated = false;
-            ResolvedJavaType actualType = declaredType;
             for (Annotation ann : parameterAnnotations[i]) {
                 if (ann.annotationType() == IsolateContext.class) {
                     UserError.guarantee(isIsolate || isLong, "@" + CEntryPoint.class.getSimpleName() + " parameter " + i + " is annotated with @" +
@@ -438,14 +425,12 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
                                     Isolate.class.getSimpleName() + ": " + targetMethod.format("%H.%n(%p)"));
                     designated = true;
                     isIsolate = true;
-                    actualType = isLong ? isolateType : declaredType;
                 } else if (ann.annotationType() == IsolateThreadContext.class) {
                     UserError.guarantee(isThread || isLong, "@" + CEntryPoint.class.getSimpleName() + " parameter " + i + " is annotated with @" +
                                     CEntryPoint.IsolateThreadContext.class.getSimpleName() + ", but does not have type " +
                                     IsolateThread.class.getSimpleName() + ": " + targetMethod.format("%H.%n(%p)"));
                     designated = true;
                     isThread = true;
-                    actualType = isLong ? threadType : declaredType;
                 }
             }
             UserError.guarantee(!(isIsolate && isThread), "@" + CEntryPoint.class.getSimpleName() + " parameter" + i + " has a type as both an " +
@@ -457,7 +442,6 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
                     UserError.guarantee(result.designatedIsolateIndex == -1, "@" + CEntryPoint.class.getSimpleName() + " has more than one designated " +
                                     Isolate.class.getSimpleName() + " parameter: " + targetMethod.format("%H.%n(%p)"));
                     result.designatedIsolateIndex = i;
-                    result.designatedIsolateType = actualType;
                 }
             } else if (isThread) {
                 result.lastThreadIndex = i;
@@ -466,7 +450,6 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
                     UserError.guarantee(result.designatedThreadIndex == -1, "@" + CEntryPoint.class.getSimpleName() + " has more than one designated " +
                                     IsolateThread.class.getSimpleName() + " parameter: " + targetMethod.format("%H.%n(%p)"));
                     result.designatedThreadIndex = i;
-                    result.designatedThreadType = actualType;
                 }
             }
         }

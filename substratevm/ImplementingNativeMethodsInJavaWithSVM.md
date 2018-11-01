@@ -23,7 +23,7 @@ import org.graalvm.word.Pointer;
 
 public final class NativeImpl {
     @CEntryPoint(name = "Java_org_pkg_apinative_Native_add")
-    public static int add(Pointer jniEnv, Pointer clazz, @CEntryPoint.IsolateContext long isolateId, int a, int b) {
+    public static int add(Pointer jniEnv, Pointer clazz, @CEntryPoint.IsolateThreadContext long isolateId, int a, int b) {
         return a + b;
     }
 }
@@ -34,7 +34,7 @@ After being processed by the `native-image` command the code
 a SubstrateVM signature typical for JNI methods. The first parameter
 is a reference to `JNIEnv*` value, the second parameter is a reference
 to the `jclass` value for the class declaring the method. The third parameter is a
-portable (e.g. `long`) identifier of the [SubstrateVM isolate](C-API.md).
+portable (e.g. `long`) identifier of the [SubstrateVM isolatethread](C-API.md).
 The rest of the parameters are the actual parameters of the Java `Native.add`
 method described in the next section. Compile the code with shared option on:
 ```bash
@@ -50,13 +50,13 @@ Now we need another Java class to use the native library generated in the previo
 package org.pkg.apinative;
 
 public final class Native {
-    private static native int add(long isolateId, int a, int b);
+    private static native int add(long isolateThreadId, int a, int b);
 }
 ```
 the package name of the class as well as name of the method has to correspond
 (after the [JNI mangling](https://docs.oracle.com/javase/7/docs/technotes/guides/jni/spec/design.html))
 to the name of the `@CEntryPoint` introduced previously. The first argument is
-a portable (e.g. `long`) identifier of the SubstrateVM isolate. The rest of the arguments
+a portable (e.g. `long`) identifier of the SubstrateVM isolate thread. The rest of the arguments
 matches the parameters of the entry point.
 
 ## Loading the Native Library
@@ -89,7 +89,7 @@ SubstrateVM then generates default native implementation of the
 method into the final `.so` library.
 The method initializes the Substrate VM runtime and
 returns a portable identification - e.g. `long` to hold
-an instance of a [Substrate VM isolate](C-API.md). The isolate can then be used for
+an instance of a [Substrate VM isolatethread](C-API.md). The isolate thread can then be used for
 multiple invocations of the native part of our code:
 ```java
 package org.pkg.apinative;
@@ -98,20 +98,20 @@ public final class Native {
     public static void main(String[] args) {
         System.loadLibrary("nativeimpl");
 
-        long isolate = createIsolate();
+        long isolateThread = createIsolate();
 
-        System.out.println("2 + 40 = " + add(isolate, 2, 40));
-        System.out.println("12 + 30 = " + add(isolate, 12, 30));
-        System.out.println("20 + 22 = " + add(isolate, 20, 22));
+        System.out.println("2 + 40 = " + add(isolateThread, 2, 40));
+        System.out.println("12 + 30 = " + add(isolateThread, 12, 30));
+        System.out.println("20 + 22 = " + add(isolateThread, 20, 22));
     }
 
-    private static native int add(long isolate, int a, int b);
+    private static native int add(long isolateThread, int a, int b);
     private static native long createIsolate();
 }
 ```
-The standard JVM is started. It initializes a Substrate VM isolate and
-the universal answer `42` is then computed three times inside of
-the isolate.
+The standard JVM is started. It initializes a Substrate VM isolate,
+attaches current thread to the isolate and the universal answer `42` is
+then computed three times inside of the isolate.
 
 ## Calling JVM from Native Java
 
@@ -222,7 +222,7 @@ the sum of `a + b`:
 
 ```java
 @CEntryPoint(name = "Java_org_pkg_apinative_Native_add")
-static int add(JNIEnvironment env, JClass clazz, @CEntryPoint.IsolateContext long isolateId, int a, int b) {
+static int add(JNIEnvironment env, JClass clazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, int a, int b) {
     JNINativeInterface fn = env.getFunctions();
 
     try (
