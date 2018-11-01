@@ -9,6 +9,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added `SourceElement.ROOT` and `StepConfig.suspendAnchors()` to tune debugger stepping.
 * Added `KeyInfo.READ_SIDE_EFFECTS` and `KeyInfo.WRITE_SIDE_EFFECTS` to inform about side-effects of READ/WRITE messages.
 * Added `DebugValue.hasReadSideEffects()` and `DebugValue.hasWriteSideEffects()` to test for side-effects of reading or writing the value.
+* Added `ArrayUtils` API providing additional array and/or string operations that may be intrinsified by the compiler.
 
 ## Version 1.0.0 RC8
 

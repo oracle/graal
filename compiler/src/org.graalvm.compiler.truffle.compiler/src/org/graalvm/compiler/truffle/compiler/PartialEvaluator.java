@@ -502,9 +502,8 @@ public abstract class PartialEvaluator {
     protected void registerTruffleInvocationPlugins(InvocationPlugins invocationPlugins, boolean canDelayIntrinsification) {
         ConstantReflectionProvider constantReflection = providers.getConstantReflection();
         TruffleGraphBuilderPlugins.registerInvocationPlugins(invocationPlugins, canDelayIntrinsification, providers.getMetaAccess(), constantReflection, knownTruffleTypes);
-
         for (TruffleInvocationPluginProvider p : GraalServices.load(TruffleInvocationPluginProvider.class)) {
-            p.registerInvocationPlugins(providers.getMetaAccess(), invocationPlugins, canDelayIntrinsification, constantReflection);
+            p.registerInvocationPlugins(providers, architecture, invocationPlugins, canDelayIntrinsification);
         }
     }
 
