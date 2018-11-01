@@ -1336,7 +1336,7 @@ suite = {
       "jacoco" : "exclude",
     },
 
-    "org.graalvm.compiler.core.test.jdk9" : {
+    "org.graalvm.compiler.core.jdk9.test" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
@@ -1823,7 +1823,7 @@ suite = {
         "org.graalvm.compiler.replacements.jdk9.test",
         "org.graalvm.compiler.replacements.jdk9_11.test",
         "org.graalvm.compiler.replacements.jdk12.test",
-        "org.graalvm.compiler.core.test.jdk9",
+        "org.graalvm.compiler.core.jdk9.test",
       ],
       "distDependencies" : [
         "JVMCI_HOTSPOT",
