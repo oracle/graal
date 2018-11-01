@@ -33,7 +33,6 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.meta.ReadableJavaField;
 import com.oracle.svm.hosted.ClassInitializationFeature;
 import com.oracle.svm.hosted.SVMHost;
-import jdk.vm.ci.common.NativeImageReinitialize;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -61,10 +60,6 @@ public class AnalysisConstantFieldProvider extends JavaConstantFieldProvider {
         if (f.wrapped instanceof ReadableJavaField) {
             ReadableJavaField readableField = (ReadableJavaField) f.wrapped;
             if (readableField.allowConstantFolding()) {
-                if (f.getAnnotation(NativeImageReinitialize.class) != null) {
-                    return analysisTool.foldConstant(JavaConstant.defaultForKind(field.getJavaKind()));
-                }
-
                 JavaConstant fieldValue = readableField.readValue(universe.toHosted(analysisTool.getReceiver()));
                 if (fieldValue != null) {
                     return analysisTool.foldConstant(constantReflection.interceptValue(f, universe.lookup(fieldValue)));
