@@ -24,18 +24,15 @@
  */
 package org.graalvm.compiler.replacements.jdk9_11;
 
-import jdk.vm.ci.aarch64.AArch64;
-import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.code.TargetDescription;
 import org.graalvm.compiler.api.test.Graal;
-import org.graalvm.compiler.core.phases.HighTier;
-import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.test.MethodSubstitutionTest;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.graalvm.compiler.test.AddExports;
 import org.junit.Test;
 
-import java.lang.reflect.Field;
+import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.TargetDescription;
 
 @AddExports("java.base/jdk.internal.misc")
 public class UnsafeObjectReplacementsTest extends MethodSubstitutionTest {
