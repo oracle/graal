@@ -50,21 +50,6 @@ suite = {
       ],
       "sha1" : "2ab1825dc1f8bd5258204bab19e8fafad93fef26",
     },
-    "ANTLR4": {
-      "sha1" : "30b13b7efc55b7feea667691509cf59902375001",
-      "maven" : {
-        "groupId" : "org.antlr",
-        "artifactId" : "antlr4-runtime",
-        "version" : "4.7",
-      }
-    },
-    "ANTLR4_COMPLETE": {
-      "urls": [
-        "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/antlr-4.7-complete.jar",
-        "http://www.antlr.org/download/antlr-4.7-complete.jar"
-      ],
-      "sha1": "5b3a8824334069979a0862ce67ede796c3a4d1b1",
-    },
   },
 
   "projects" : {
@@ -221,7 +206,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.llvm.nodes",
-        "ANTLR4",
+        "truffle:ANTLR4",
       ],
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "javaCompliance" : "1.8",
@@ -625,6 +610,7 @@ suite = {
       "distDependencies" : [
         "truffle:TRUFFLE_API",
         "truffle:TRUFFLE_NFI",
+        "truffle:ANTLR4",
         "SULONG_LIBS",
       ],
       "javaProperties" : {
