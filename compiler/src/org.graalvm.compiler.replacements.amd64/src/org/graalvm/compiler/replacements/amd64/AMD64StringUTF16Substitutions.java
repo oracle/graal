@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.replacements.amd64;
 
+import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.compiler.api.replacements.ClassSubstitution;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
@@ -35,7 +36,6 @@ import org.graalvm.word.Pointer;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 // JaCoCo Exclude
@@ -96,7 +96,7 @@ public class AMD64StringUTF16Substitutions {
     @MethodSubstitution(optional = true)
     public static int indexOfCharUnsafe(byte[] value, int ch, int fromIndex, int max) {
         Pointer sourcePointer = Word.objectToTrackedPointer(value).add(byteArrayBaseOffset(INJECTED)).add(fromIndex * charArrayIndexScale(INJECTED));
-        int result = AMD64ArrayIndexOfNode.optimizedArrayIndexOf(sourcePointer, max - fromIndex, (char) ch, JavaKind.Char);
+        int result = AMD64ArrayIndexOf.indexOf1Char(sourcePointer, max - fromIndex, (char) ch);
         if (result != -1) {
             return result + fromIndex;
         }

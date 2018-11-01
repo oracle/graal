@@ -304,6 +304,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                             if (eventsEnabled) {
                                 VMAccessor.INSTRUMENT.notifyLanguageContextCreated(context.engine, context.truffleContext, language.info);
                             }
+                            context.weakReference.freeInstances.add(lang);
                             lang = null; // commit language use
                         } catch (Throwable e) {
                             PolyglotLanguageContext.this.env = null;

@@ -25,6 +25,7 @@
 package com.oracle.truffle.tools.chromeinspector.test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -47,6 +48,7 @@ import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.tck.DebuggerTester;
 import com.oracle.truffle.tools.chromeinspector.ScriptsHandler;
 import com.oracle.truffle.tools.chromeinspector.types.Script;
+import java.util.Collections;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.graalvm.polyglot.Source;
 import static org.junit.Assert.assertFalse;
@@ -91,27 +93,28 @@ public class LazyAccessInspectDebugTest {
         assertTrue(tester.compareReceivedMessages(
                         "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"other\",\"hitBreakpoints\":[]," +
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"TestRootNode\"," +
-                                                 "\"scopeChain\":[{\"name\":\"TestRootNode\",\"type\":\"local\",\"object\":{\"description\":\"TestRootNode\",\"type\":\"object\",\"objectId\":\"1\"}}]," +
+                                                 "\"scopeChain\":[{\"name\":\"TestRootNode\",\"type\":\"local\",\"object\":{\"description\":\"TestRootNode\",\"type\":\"object\",\"objectId\":\"1\"}}," +
+                                                                 "{\"name\":\"top\",\"type\":\"global\",\"object\":{\"description\":\"top\",\"type\":\"object\",\"objectId\":\"2\"}}]," +
                                                  "\"functionLocation\":{\"scriptId\":\"0\",\"columnNumber\":0,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"0\",\"columnNumber\":0,\"lineNumber\":0}}]}}\n"));
         // Ask for local variables
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"1\"}}");
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{\"result\":[{\"isOwn\":true,\"enumerable\":true," +
-                                "\"name\":\"o\",\"value\":{\"description\":\"Object LazyReadObject\",\"className\":\"Object\",\"type\":\"object\",\"objectId\":\"2\"},\"configurable\":true,\"writable\":true}]," +
+                                "\"name\":\"o\",\"value\":{\"description\":\"Object LazyReadObject\",\"className\":\"Object\",\"type\":\"object\",\"objectId\":\"3\"},\"configurable\":true,\"writable\":true}]," +
                                 "\"internalProperties\":[]},\"id\":1}\n"));
         // Ask for properties of 'o':
-        tester.sendMessage("{\"id\":2,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"2\"}}");
+        tester.sendMessage("{\"id\":2,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"3\"}}");
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{\"result\":[" +
                                 "{\"isOwn\":true,\"enumerable\":true,\"name\":\"readReady\",\"value\":{\"description\":\"42\",\"type\":\"number\",\"value\":42},\"configurable\":true,\"writable\":true}," +
-                                "{\"isOwn\":true,\"get\":{\"description\":\"\",\"className\":\"Function\",\"type\":\"function\",\"objectId\":\"4\"},\"enumerable\":true,\"name\":\"readLazy\",\"configurable\":true,\"writable\":true}]," +
+                                "{\"isOwn\":true,\"get\":{\"description\":\"\",\"className\":\"Function\",\"type\":\"function\",\"objectId\":\"5\"},\"enumerable\":true,\"name\":\"readLazy\",\"configurable\":true,\"writable\":true}]," +
                                 "\"internalProperties\":[]},\"id\":2}\n"));
         // The lazy value was not read yet:
         assertFalse(readLazyFlag.get());
         // Invoke the lazy read (getter):
         tester.sendMessage("{\"id\":10,\"method\":\"Runtime.callFunctionOn\",\"params\":" +
-                        "{\"objectId\":\"2\"," +
+                        "{\"objectId\":\"3\"," +
                          "\"functionDeclaration\":\"function invokeGetter(arrayStr){let result=this;const properties=JSON.parse(arrayStr);for(let i=0,n=properties.length;i<n;++i)\\nresult=result[properties[i]];return result;}\"," +
                          "\"arguments\":[{\"value\":\"[\\\"readLazy\\\"]\"}]," +
                          "\"silent\":true}}");
@@ -122,12 +125,31 @@ public class LazyAccessInspectDebugTest {
         readLazyFlag.set(false);
         // Test an alternate getter function:
         tester.sendMessage("{\"id\":11,\"method\":\"Runtime.callFunctionOn\",\"params\":" +
-                        "{\"objectId\":\"2\"," +
+                        "{\"objectId\":\"3\"," +
                          "\"functionDeclaration\":\"function remoteFunction(propName) { return this[propName]; }\"," +
                          "\"arguments\":[{\"value\":\"readLazy\"}]," +
                          "\"silent\":true}}");
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{\"result\":{\"description\":\"43\",\"type\":\"number\",\"value\":43}},\"id\":11}\n"));
+        assertTrue(readLazyFlag.get());
+
+        // Test lazy scope property:
+        readLazyFlag.set(false);
+        tester.sendMessage("{\"id\":20,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"2\"}}");
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"result\":{\"result\":[{\"isOwn\":true,\"enumerable\":true,\"name\":\"readReady\",\"value\":{\"description\":\"42\",\"type\":\"number\",\"value\":42},\"configurable\":true,\"writable\":true}," +
+                                                 "{\"isOwn\":true,\"get\":{\"description\":\"\",\"className\":\"Function\",\"type\":\"function\",\"objectId\":\"7\"},\"enumerable\":true,\"name\":\"readLazy\",\"configurable\":true,\"writable\":true}]," +
+                                "\"internalProperties\":[]},\"id\":20}\n"));
+        assertFalse(readLazyFlag.get());
+        // Invoke the lazy read (getter):
+        tester.sendMessage("{\"id\":21,\"method\":\"Runtime.callFunctionOn\",\"params\":" +
+                        "{\"objectId\":\"2\"," +
+                         "\"functionDeclaration\":\"function invokeGetter(arrayStr){let result=this;const properties=JSON.parse(arrayStr);for(let i=0,n=properties.length;i<n;++i)\\nresult=result[properties[i]];return result;}\"," +
+                         "\"arguments\":[{\"value\":\"[\\\"readLazy\\\"]\"}]," +
+                         "\"silent\":true}}");
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"result\":{\"result\":{\"description\":\"43\",\"type\":\"number\",\"value\":43}},\"id\":21}\n"));
+        // The lazy value was read now:
         assertTrue(readLazyFlag.get());
 
         tester.sendMessage("{\"id\":100,\"method\":\"Debugger.resume\"}");
@@ -167,6 +189,11 @@ public class LazyAccessInspectDebugTest {
                 return "Object";
             }
             return super.findMetaObject(context, value);
+        }
+
+        @Override
+        protected Iterable<Scope> findTopScopes(LanguageContext context) {
+            return Collections.singletonList(Scope.newBuilder("top", new LazyReadObject()).build());
         }
 
         final class TestRootNode extends RootNode {

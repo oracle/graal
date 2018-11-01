@@ -76,14 +76,14 @@ public class WrappedConstantPool implements ConstantPool {
         }
     }
 
-    @Override
-    public void loadReferencedType(int cpi, int opcode) {
+    public static void loadReferencedType(ConstantPool cp, int cpi, int opcode, boolean initialize) {
+        ConstantPool root = cp;
+        while (root instanceof WrappedConstantPool) {
+            root = ((WrappedConstantPool) root).wrapped;
+        }
+
         try {
-            if (wrapped instanceof WrappedConstantPool) {
-                wrapped.loadReferencedType(cpi, opcode);
-            } else {
-                hsLoadReferencedType.invoke(wrapped, cpi, opcode, false);
-            }
+            hsLoadReferencedType.invoke(root, cpi, opcode, initialize);
         } catch (Throwable ex) {
             Throwable cause = ex;
             if (ex instanceof ExceptionInInitializerError && ex.getCause() != null) {
@@ -91,6 +91,11 @@ public class WrappedConstantPool implements ConstantPool {
             }
             throw new UnsupportedFeatureException("Error loading a referenced type: " + cause.toString(), cause);
         }
+    }
+
+    @Override
+    public void loadReferencedType(int cpi, int opcode) {
+        loadReferencedType(wrapped, cpi, opcode, false);
     }
 
     @Override

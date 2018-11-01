@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.replacements.jdk9;
+package org.graalvm.compiler.replacements.jdk9.test;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;

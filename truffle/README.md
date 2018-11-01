@@ -26,14 +26,14 @@ The Truffle bits are uploaded to Maven central. You can use them from your
 
 ```xml
 <dependency>
-    <groupId>com.oracle.truffle</groupId>
+    <groupId>org.graalvm.truffle</groupId>
     <artifactId>truffle-api</artifactId>
-    <version>0.30</version> <!-- or any later version -->
+    <version>1.0.0-rc8</version> <!-- or any later version -->
 </dependency>
 <dependency>
-    <groupId>com.oracle.truffle</groupId>
+    <groupId>org.graalvm.truffle</groupId>
     <artifactId>truffle-dsl-processor</artifactId>
-    <version>0.30</version>
+    <version>1.0.0-rc8</version>
     <scope>provided</scope>
 </dependency>
 ```
@@ -109,14 +109,14 @@ and then it is possible to include the artifacts as dependencies to a `pom.xml`:
 
 ```xml
 <dependency>
-    <groupId>com.oracle.truffle</groupId>
+    <groupId>org.graalvm.truffle</groupId>
     <artifactId>truffle-api</artifactId>
-    <version>0.30-SNAPSHOT</version> <!-- or whether version got installed by mx maven-install -->
+    <version>1.0.0-rc8</version> <!-- or whether version got installed by mx maven-install -->
 </dependency>
 <dependency>
-    <groupId>com.oracle.truffle</groupId>
+    <groupId>org.graalvm.truffle</groupId>
     <artifactId>truffle-dsl-processor</artifactId>
-    <version>0.30-SNAPSHOT</version>
+    <version>1.0.0-rc8</version>
     <scope>provided</scope>
 </dependency>
 ```

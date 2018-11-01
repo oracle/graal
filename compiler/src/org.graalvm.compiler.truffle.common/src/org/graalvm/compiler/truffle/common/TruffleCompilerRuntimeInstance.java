@@ -26,8 +26,6 @@ package org.graalvm.compiler.truffle.common;
 
 import java.lang.reflect.Method;
 
-import jdk.vm.ci.common.NativeImageReinitialize;
-
 /**
  * Manages the singleton {@link TruffleCompilerRuntime} instance.
  */
@@ -35,9 +33,9 @@ public final class TruffleCompilerRuntimeInstance {
     /**
      * The singleton instance.
      */
-    @NativeImageReinitialize static TruffleCompilerRuntime truffleCompilerRuntime;
+    static TruffleCompilerRuntime truffleCompilerRuntime;
 
-    @NativeImageReinitialize static final Object TRUFFLE_RUNTIME = init();
+    static final Object TRUFFLE_RUNTIME = init();
 
     /**
      * Support for re-initializing the singleton in a native-image.

@@ -70,7 +70,7 @@ public final class ResourcesFeature implements Feature {
              * possible pass multiple IncludeResources regular expressions by passing each as
              * its own IncludeResources option. E.g.
              * @formatter:off
-             * -H:IncludeResources=/nobel/prizes.json -H:IncludeResources=/fields/prizes.json
+             * -H:IncludeResources=nobel/prizes.json -H:IncludeResources=fields/prizes.json
              * @formatter:on
              */
 
@@ -109,7 +109,7 @@ public final class ResourcesFeature implements Feature {
     private void scanDirectory(DebugContext debugContext, File f, String relativePath, Pattern... patterns) throws IOException {
         if (f.isDirectory()) {
             for (File ch : f.listFiles()) {
-                scanDirectory(debugContext, ch, relativePath + "/" + ch.getName(), patterns);
+                scanDirectory(debugContext, ch, relativePath.isEmpty() ? ch.getName() : relativePath + "/" + ch.getName(), patterns);
             }
         } else {
             if (matches(patterns, relativePath)) {
@@ -117,7 +117,7 @@ public final class ResourcesFeature implements Feature {
                     try (DebugContext.Scope s = debugContext.scope("registerResource")) {
                         debugContext.log("ResourcesFeature: registerResource: " + relativePath.substring(1));
                     }
-                    Resources.registerResource(relativePath.substring(1), is);
+                    Resources.registerResource(relativePath, is);
                 }
             }
         }
