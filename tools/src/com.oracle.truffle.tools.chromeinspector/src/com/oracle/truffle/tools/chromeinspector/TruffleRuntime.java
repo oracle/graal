@@ -84,6 +84,7 @@ public final class TruffleRuntime extends RuntimeDomain {
     private final TruffleExecutionContext context;
     private TruffleExecutionContext.Listener contextListener;
     private ScriptsHandler slh;
+    private Enabler enabler;
 
     public TruffleRuntime(TruffleExecutionContext context) {
         this.context = context;
@@ -96,7 +97,8 @@ public final class TruffleRuntime extends RuntimeDomain {
             contextListener = new ContextListener();
             context.addListener(contextListener);
             InstrumentInfo instrumentInfo = context.getEnv().getInstruments().get(OutputConsumerInstrument.ID);
-            context.getEnv().lookup(instrumentInfo, Enabler.class).enable();
+            enabler = context.getEnv().lookup(instrumentInfo, Enabler.class);
+            enabler.enable();
             OutputHandler oh = context.getEnv().lookup(instrumentInfo, OutputHandler.Provider.class).getOutputHandler();
             oh.setOutListener(new ConsoleOutputListener("log"));
             oh.setErrListener(new ConsoleOutputListener("error"));
@@ -106,10 +108,10 @@ public final class TruffleRuntime extends RuntimeDomain {
     @Override
     public void disable() {
         if (contextListener != null) {
-            InstrumentInfo instrumentInfo = context.getEnv().getInstruments().get(OutputConsumerInstrument.ID);
-            context.getEnv().lookup(instrumentInfo, Enabler.class).disable();
             context.removeListener(contextListener);
             contextListener = null;
+            enabler.disable();
+            enabler = null;
             slh = null;
             context.releaseScriptsHandler();
         }
