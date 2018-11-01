@@ -133,7 +133,7 @@ public @interface CEntryPoint {
      *
      * @since 1.0
      */
-    Builtin builtin() default Builtin.NO_BUILTIN;
+    Builtin builtin() default Builtin.NoBuiltin;
 
     /**
      * The built-in methods which can be {@linkplain #builtin() aliased}.
@@ -146,16 +146,16 @@ public @interface CEntryPoint {
          *
          * @since 1.0
          */
-        NO_BUILTIN,
+        NoBuiltin,
 
         /**
          * The annotated method creates an isolate. An alias for this built-in requires no
-         * arguments, and must have a return type of {@link IsolateThread}. In case of an error,
+         * arguments, and must have a return type of {@link Isolate}. In case of an error,
          * {@link WordFactory#nullPointer() NULL} is returned.
          *
          * @since 1.0
          */
-        CREATE_ISOLATE,
+        CreateIsolate,
 
         /**
          * The annotated method attaches the current thread to an isolate. It requires a parameter
@@ -165,7 +165,7 @@ public @interface CEntryPoint {
          *
          * @since 1.0
          */
-        ATTACH_THREAD,
+        AttachThread,
 
         /**
          * The annotated method returns the {@link IsolateThread} of the current thread in a
@@ -175,16 +175,17 @@ public @interface CEntryPoint {
          *
          * @since 1.0
          */
-        GET_CURRENT_THREAD,
+        CurrentThread,
 
         /**
-         * The annotated method returns the {@link Isolate} for an {@link IsolateThread}. It
-         * requires a parameter of type {@link IsolateThread}, and a return type of {@link Isolate}.
-         * In case of an error, {@link WordFactory#nullPointer() NULL} is returned.
+         * The annotated method returns the {@link Isolate} for an {@link IsolateThread} which
+         * represents the current thread. It requires a parameter of type {@link IsolateThread}, and
+         * a return type of {@link Isolate}. In case of an error, {@link WordFactory#nullPointer()
+         * NULL} is returned.
          *
          * @since 1.0
          */
-        GET_ISOLATE,
+        CurrentIsolate,
 
         /**
          * The annotated method detaches the current thread, given as an {@link IsolateThread}, from
@@ -194,17 +195,16 @@ public @interface CEntryPoint {
          *
          * @since 1.0
          */
-        DETACH_THREAD,
+        DetachThread,
 
         /**
          * The annotated method tears down the specified isolate. It requires a parameter of type
-         * {@link IsolateThread}, and a return type of {@code int} or {@code void}. With an
-         * {@code int} return type, zero is returned when successful, or non-zero in case of an
-         * error.
+         * {@link Isolate}, and a return type of {@code int} or {@code void}. With an {@code int}
+         * return type, zero is returned when successful, or non-zero in case of an error.
          *
          * @since 1.0
          */
-        TEAR_DOWN_ISOLATE,
+        TearDownIsolate,
     }
 
     /**

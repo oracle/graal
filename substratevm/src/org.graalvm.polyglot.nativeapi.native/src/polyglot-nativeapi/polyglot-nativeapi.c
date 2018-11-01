@@ -55,7 +55,7 @@ typedef struct __graal_create_isolate_params_t graal_create_isolate_params_t;
  * On success, the current thread is attached to the created isolate, and the
  * address of the isolate structure is written to the passed pointer.
  */
-extern int graal_create_isolate(graal_create_isolate_params_t* params, graal_isolate_t** isolate, graal_isolatethread_t** thread);
+extern int graal_create_isolate(graal_create_isolate_params_t* params, graal_isolate_t** isolate);
 
 /*
  * Attaches the current thread to the passed isolate.
@@ -71,14 +71,14 @@ extern int graal_attach_thread(graal_isolate_t* isolate, graal_isolatethread_t**
  * the thread's associated isolate thread structure.  If the current thread is not
  * attached to the passed isolate or if another error occurs, returns NULL.
  */
-extern graal_isolatethread_t* graal_get_current_thread(graal_isolate_t* isolate);
+extern graal_isolatethread_t* graal_current_thread(graal_isolate_t* isolate);
 
 /*
- * Given an isolate thread structure, determines to which isolate it belongs and
- * returns the address of its isolate structure.  If an error occurs, returns NULL
- * instead.
+ * Given an isolate thread structure for the current thread, determines to which
+ * isolate it belongs and returns the address of its isolate structure.  If an
+ * error occurs, returns NULL instead.
  */
-extern graal_isolate_t* graal_get_isolate(graal_isolatethread_t* thread);
+extern graal_isolate_t* graal_current_isolate(graal_isolatethread_t* thread);
 
 /*
  * Detaches the passed isolate thread from its isolate and discards any state or
@@ -94,12 +94,12 @@ extern int graal_detach_thread(graal_isolatethread_t* thread);
  * that is associated with it.
  * Returns 0 on success, or a non-zero value on failure.
  */
-extern int graal_tear_down_isolate(graal_isolatethread_t* isolate);
+extern int graal_tear_down_isolate(graal_isolate_t* isolate);
 
 #include <polyglot_types.h>
 
-poly_status poly_create_isolate(graal_create_isolate_params_t* params, graal_isolate_t** isolate, graal_isolatethread_t** thread) {
-  if (graal_create_isolate(params, isolate, thread)) {
+poly_status poly_create_isolate(graal_create_isolate_params_t* params, graal_isolate_t** isolate) {
+  if (graal_create_isolate(params, isolate)) {
     return poly_generic_failure;
   } else {
     return poly_ok;
@@ -114,12 +114,12 @@ poly_status poly_attach_thread(graal_isolate_t* isolate, graal_isolatethread_t**
   }
 };
 
-graal_isolatethread_t* poly_get_current_thread(graal_isolate_t* isolate) {
-  return graal_get_current_thread(isolate);
+graal_isolatethread_t* poly_current_thread(graal_isolate_t* isolate) {
+  return graal_current_thread(isolate);
 };
 
-graal_isolate_t* poly_get_isolate(graal_isolatethread_t* thread) {
-  return graal_get_isolate(thread);
+graal_isolate_t* poly_current_isolate(graal_isolatethread_t* thread) {
+  return graal_current_isolate(thread);
 };
 
 poly_status poly_detach_thread(graal_isolatethread_t* thread) {
@@ -130,8 +130,8 @@ poly_status poly_detach_thread(graal_isolatethread_t* thread) {
   }
 };
 
-poly_status poly_tear_down_isolate(graal_isolatethread_t* thread) {
-  if (graal_tear_down_isolate(thread)) {
+poly_status poly_tear_down_isolate(graal_isolate_t* isolate) {
+  if (graal_tear_down_isolate(isolate)) {
     return poly_generic_failure;
   } else {
     return poly_ok;

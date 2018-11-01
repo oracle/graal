@@ -38,7 +38,7 @@ extern "C" {
  * On success, the current thread is attached to the created isolate, and the
  * address of the isolate structure is written to the passed pointer.
  */
-poly_status poly_create_isolate(const poly_isolate_params* params, poly_isolate* isolate, poly_thread* thread);
+poly_status poly_create_isolate(const poly_isolate_params* params, poly_isolate* isolate);
 
 /*
  * Attaches the current thread to the passed isolate.
@@ -54,14 +54,14 @@ poly_status poly_attach_thread(poly_isolate isolate, poly_thread* thread);
  * the thread's associated isolate thread structure.  If the current thread is not
  * attached to the passed isolate or if another error occurs, returns NULL.
  */
-poly_thread poly_get_current_thread(poly_isolate isolate);
+poly_thread poly_current_thread(poly_isolate isolate);
 
 /*
- * Given an isolate thread structure, determines to which isolate it belongs and
- * returns the address of its isolate structure.  If an error occurs, returns NULL
- * instead.
+ * Given an isolate thread structure for the current thread, determines to which
+ * isolate it belongs and returns the address of its isolate structure.  If an
+ * error occurs, returns NULL instead.
  */
-poly_isolate poly_get_isolate(poly_thread thread);
+poly_isolate poly_current_isolate(poly_thread thread);
 
 /*
  * Detaches the passed isolate thread from its isolate and discards any state or
@@ -77,7 +77,7 @@ poly_status poly_detach_thread(poly_thread thread);
  * that is associated with it.
  * Returns poly_ok on success, or poly_generic_failure on failure.
  */
-poly_status poly_tear_down_isolate(poly_thread thread);
+poly_status poly_tear_down_isolate(poly_isolate isolate);
 
 
 #if defined(__cplusplus)
