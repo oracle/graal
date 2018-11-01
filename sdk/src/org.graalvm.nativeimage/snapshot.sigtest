@@ -392,13 +392,13 @@ meth public abstract !hasdefault org.graalvm.nativeimage.c.function.CEntryPoint$
 
 CLSS public final static !enum org.graalvm.nativeimage.c.function.CEntryPoint$Builtin
  outer org.graalvm.nativeimage.c.function.CEntryPoint
-fld public final static org.graalvm.nativeimage.c.function.CEntryPoint$Builtin ATTACH_THREAD
-fld public final static org.graalvm.nativeimage.c.function.CEntryPoint$Builtin CREATE_ISOLATE
-fld public final static org.graalvm.nativeimage.c.function.CEntryPoint$Builtin GET_ISOLATE
-fld public final static org.graalvm.nativeimage.c.function.CEntryPoint$Builtin GET_CURRENT_THREAD
-fld public final static org.graalvm.nativeimage.c.function.CEntryPoint$Builtin DETACH_THREAD
-fld public final static org.graalvm.nativeimage.c.function.CEntryPoint$Builtin NO_BUILTIN
-fld public final static org.graalvm.nativeimage.c.function.CEntryPoint$Builtin TEAR_DOWN_ISOLATE
+fld public final static org.graalvm.nativeimage.c.function.CEntryPoint$Builtin AttachThread
+fld public final static org.graalvm.nativeimage.c.function.CEntryPoint$Builtin CreateIsolate
+fld public final static org.graalvm.nativeimage.c.function.CEntryPoint$Builtin CurrentIsolate
+fld public final static org.graalvm.nativeimage.c.function.CEntryPoint$Builtin CurrentThread
+fld public final static org.graalvm.nativeimage.c.function.CEntryPoint$Builtin DetachThread
+fld public final static org.graalvm.nativeimage.c.function.CEntryPoint$Builtin NoBuiltin
+fld public final static org.graalvm.nativeimage.c.function.CEntryPoint$Builtin TearDownIsolate
 meth public static org.graalvm.nativeimage.c.function.CEntryPoint$Builtin valueOf(java.lang.String)
 meth public static org.graalvm.nativeimage.c.function.CEntryPoint$Builtin[] values()
 supr java.lang.Enum<org.graalvm.nativeimage.c.function.CEntryPoint$Builtin>
