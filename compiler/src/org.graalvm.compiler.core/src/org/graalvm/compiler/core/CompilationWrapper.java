@@ -285,9 +285,20 @@ public abstract class CompilationWrapper<T> {
 
                 try (DebugContext retryDebug = createRetryDebugContext(retryOptions); DebugCloseable s = retryDebug.disableIntercept()) {
                     T res = performCompilation(retryDebug);
+                    try (PrintStream ps = new PrintStream(new FileOutputStream(retryLogFile, true))) {
+                        ps.println("There was no exception during retry.");
+                    } catch (Throwable ignore) {
+                        // ignore failures
+                    }
                     maybeExitVM(action);
                     return res;
-                } catch (Throwable ignore) {
+                } catch (Throwable e) {
+                    try (PrintStream ps = new PrintStream(new FileOutputStream(retryLogFile, true))) {
+                        ps.println("Exception during retry:");
+                        e.printStackTrace(ps);
+                    } catch (Throwable ee) {
+                        TTY.printf("Error writing to %s: %s%n", retryLogFile, ee);
+                    }
                     // Failures during retry are silent
                     T res = handleException(cause);
                     maybeExitVM(action);
