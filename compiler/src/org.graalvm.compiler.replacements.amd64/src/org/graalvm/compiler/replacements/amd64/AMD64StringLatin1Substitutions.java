@@ -55,7 +55,7 @@ public class AMD64StringLatin1Substitutions {
 
     @Fold
     static int byteArrayIndexScale(@InjectedParameter MetaAccessProvider metaAccess) {
-        return metaAccess.getArrayBaseOffset(JavaKind.Byte);
+        return metaAccess.getArrayIndexScale(JavaKind.Byte);
     }
 
     @Fold
@@ -126,7 +126,7 @@ public class AMD64StringLatin1Substitutions {
         // Offset calc. outside of the actual intrinsic.
         Pointer srcptr = Word.objectToTrackedPointer(src).add(byteArrayBaseOffset(INJECTED)).add(sndx * byteArrayIndexScale(INJECTED));
         Pointer dstptr = Word.objectToTrackedPointer(dst).add(charArrayBaseOffset(INJECTED)).add(dndx * charArrayIndexScale(INJECTED));
-        AMD64StringLatin1InflateNode.inflate(srcptr, dstptr, len);
+        AMD64StringLatin1InflateNode.inflate(srcptr, dstptr, len, JavaKind.Char);
     }
 
     /*-
@@ -137,14 +137,14 @@ public class AMD64StringLatin1Substitutions {
      */
     @MethodSubstitution
     public static void inflate(byte[] src, int sndx, byte[] dst, int dndx, int len) {
-        if (len < 0 || sndx < 0 || (sndx + len > src.length) || dndx < 0 || (dndx + len * 2 > dst.length)) {
+        if (len < 0 || sndx < 0 || (sndx + len > src.length) || dndx < 0 || (dndx * 2 + len * 2 > dst.length)) {
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.BoundsCheckException);
         }
 
         // Offset calc. outside of the actual intrinsic.
         Pointer srcptr = Word.objectToTrackedPointer(src).add(byteArrayBaseOffset(INJECTED)).add(sndx * byteArrayIndexScale(INJECTED));
-        Pointer dstptr = Word.objectToTrackedPointer(dst).add(byteArrayBaseOffset(INJECTED)).add(dndx * 2 * byteArrayBaseOffset(INJECTED));
-        AMD64StringLatin1InflateNode.inflate(srcptr, dstptr, len);
+        Pointer dstptr = Word.objectToTrackedPointer(dst).add(byteArrayBaseOffset(INJECTED)).add(dndx * 2 * byteArrayIndexScale(INJECTED));
+        AMD64StringLatin1InflateNode.inflate(srcptr, dstptr, len, JavaKind.Byte);
     }
 
 }
