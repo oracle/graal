@@ -25,7 +25,6 @@
 package org.graalvm.compiler.loop.phases;
 
 import static org.graalvm.compiler.core.common.GraalOptions.MaximumDesiredSize;
-import static org.graalvm.compiler.loop.MathUtil.add;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -39,7 +38,6 @@ import org.graalvm.compiler.graph.Graph.Mark;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.loop.CountedLoopInfo;
-import org.graalvm.compiler.loop.InductionVariable;
 import org.graalvm.compiler.loop.InductionVariable.Direction;
 import org.graalvm.compiler.loop.LoopEx;
 import org.graalvm.compiler.loop.LoopFragmentInside;
@@ -62,6 +60,7 @@ import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.SafepointNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
@@ -235,7 +234,6 @@ public abstract class LoopTransformations {
         IfNode preLimit = preCounted.getLimitTest();
         assert preLimit != null;
         LoopBeginNode preLoopBegin = loop.loopBegin();
-        InductionVariable preIv = preCounted.getCounter();
         LoopExitNode preLoopExitNode = preLoopBegin.getSingleLoopExit();
         FixedNode continuationNode = preLoopExitNode.next();
 
@@ -279,7 +277,7 @@ public abstract class LoopTransformations {
         cleanupMerge(mainMergeNode, mainLandingNode);
 
         // Change the preLoop to execute one iteration for now
-        updatePreLoopLimit(preLimit, preIv, preCounted);
+        updatePreLoopLimit(preCounted);
         preLoopBegin.setLoopFrequency(1);
         mainLoopBegin.setLoopFrequency(Math.max(0.0, mainLoopBegin.loopFrequency() - 2));
         postLoopBegin.setLoopFrequency(Math.max(0.0, postLoopBegin.loopFrequency() - 1));
@@ -353,27 +351,22 @@ public abstract class LoopTransformations {
         return (EndNode) curNode;
     }
 
-    private static void updatePreLoopLimit(IfNode preLimit, InductionVariable preIv, CountedLoopInfo preCounted) {
+    private static void updatePreLoopLimit(CountedLoopInfo preCounted) {
         // Update the pre loops limit test
-        assert preLimit == preCounted.getLimitTest();
-        assert preIv == preCounted.getCounter();
-        StructuredGraph graph = preLimit.graph();
-        LogicNode ifTest = preLimit.condition();
-        CompareNode compareNode = (CompareNode) ifTest;
         // Make new limit one iteration
-        ValueNode initIv = preCounted.getStart();
-        ValueNode newLimit = add(graph, initIv, preIv.strideNode());
-
+        ValueNode newLimit = AddNode.add(preCounted.getStart(), preCounted.getCounter().strideNode(), NodeView.DEFAULT);
         // Fetch the variable we are not replacing and configure the one we are
         ValueNode ub = preCounted.getLimit();
-        // Re-wire the condition with the new limit
         LogicNode entryCheck;
-        if (preIv.direction() == Direction.Up) {
+        if (preCounted.getDirection() == Direction.Up) {
             entryCheck = IntegerLessThanNode.create(newLimit, ub, NodeView.DEFAULT);
         } else {
             entryCheck = IntegerLessThanNode.create(ub, newLimit, NodeView.DEFAULT);
         }
-        compareNode.replaceFirstInput(ub, graph.addOrUniqueWithInputs(ConditionalNode.create(entryCheck, newLimit, ub, NodeView.DEFAULT)));
+        newLimit = ConditionalNode.create(entryCheck, newLimit, ub, NodeView.DEFAULT);
+        // Re-wire the condition with the new limit
+        CompareNode compareNode = (CompareNode) preCounted.getLimitTest().condition();
+        compareNode.replaceFirstInput(ub, compareNode.graph().addOrUniqueWithInputs(newLimit));
     }
 
     public static List<ControlSplitNode> findUnswitchable(LoopEx loop) {
