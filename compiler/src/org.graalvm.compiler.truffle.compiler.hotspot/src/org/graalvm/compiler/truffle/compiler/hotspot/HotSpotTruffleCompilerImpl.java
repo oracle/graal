@@ -214,7 +214,8 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         for (ResolvedJavaMethod method : runtime.getTruffleCallBoundaryMethods()) {
             HotSpotCompilationIdentifier compilationId = (HotSpotCompilationIdentifier) backend.getCompilationIdentifier(method);
             OptionValues options = getOptions();
-            try (DebugContext debug = DebugStubsAndSnippets.getValue(options) ? hotspotGraalRuntime.openDebugContext(options, compilationId, method, getDebugHandlerFactories(), DebugContext.DEFAULT_LOG_STREAM)
+            try (DebugContext debug = DebugStubsAndSnippets.getValue(options)
+                            ? hotspotGraalRuntime.openDebugContext(options, compilationId, method, getDebugHandlerFactories(), DebugContext.DEFAULT_LOG_STREAM)
                             : DebugContext.DISABLED;
                             Activation a = debug.activate();
                             DebugContext.Scope d = debug.scope("InstallingTruffleStub")) {

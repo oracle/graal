@@ -404,7 +404,6 @@ public final class DebugContext implements AutoCloseable {
         return new DebugContext(NO_DESCRIPTION, NO_GLOBAL_METRIC_VALUES, DEFAULT_LOG_STREAM, Immutable.create(options), factories);
     }
 
-
     public static DebugContext create(OptionValues options, PrintStream logStream, DebugHandlersFactory factory) {
         return new DebugContext(NO_DESCRIPTION, NO_GLOBAL_METRIC_VALUES, logStream, Immutable.create(options), Collections.singletonList(factory));
     }
