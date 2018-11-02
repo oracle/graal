@@ -256,13 +256,20 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
 
     public static CompletionKind getCompletionKind(Source source, int oneBasedLineNumber, int character, List<String> completionTriggerCharacters, CompletionContext completionContext) {
         if (completionContext != null && completionContext.getTriggerKind() == CompletionTriggerKind.TriggerCharacter && completionContext.getTriggerCharacter() != null) {
-            return getCompletionKind(completionContext.getTriggerCharacter(), completionTriggerCharacters);
+            if (isObjectPropertyCompletionCharacter(completionContext.getTriggerCharacter(), completionTriggerCharacters)) {
+                return CompletionKind.OBJECT_PROPERTY;
+            }
+
+            // Completion was triggered by a character, which is a completion trigger character of
+            // another language. Therefore we have to skip the current completion request.
+            return CompletionKind.UNKOWN;
         }
 
         int lineStartOffset = source.getLineStartOffset(oneBasedLineNumber);
         if (lineStartOffset + character == 0) {
             return CompletionKind.GLOBALS_AND_LOCALS;
         }
+
         String text = source.getCharacters().toString();
         char charAtOffset = text.charAt(lineStartOffset + character - 1);
         return getCompletionKind(String.valueOf(charAtOffset), completionTriggerCharacters);
@@ -452,7 +459,7 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
         return detailText;
     }
 
-    private String getDocumentation(TruffleObject truffleObj) {
+    public String getDocumentation(TruffleObject truffleObj) {
         try {
             Object docu = ForeignAccess.send(GET_DOCUMENTATION, truffleObj);
             if (docu instanceof String && !((String) docu).isEmpty()) {
