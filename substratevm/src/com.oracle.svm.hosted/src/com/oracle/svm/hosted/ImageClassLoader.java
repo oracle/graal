@@ -387,7 +387,7 @@ public final class ImageClassLoader {
         return result;
     }
 
-    List<Field> findAnnotatedFields(Class<? extends Annotation> annotationClass) {
+    public List<Field> findAnnotatedFields(Class<? extends Annotation> annotationClass) {
         ArrayList<Field> result = new ArrayList<>();
         for (Field field : systemFields) {
             if (field.getAnnotation(annotationClass) != null) {
