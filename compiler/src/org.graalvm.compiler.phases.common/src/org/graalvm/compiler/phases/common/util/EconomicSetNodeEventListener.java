@@ -25,7 +25,6 @@
 package org.graalvm.compiler.phases.common.util;
 
 import java.util.EnumSet;
-import java.util.HashSet;
 import java.util.Set;
 
 import org.graalvm.collections.EconomicSet;
@@ -37,9 +36,9 @@ import org.graalvm.compiler.graph.Node.IndirectCanonicalization;
 
 /**
  * A simple {@link NodeEventListener} implementation that accumulates event nodes in a
- * {@link HashSet}.
+ * {@link EconomicSet}.
  */
-public class HashSetNodeEventListener extends NodeEventListener {
+public class EconomicSetNodeEventListener extends NodeEventListener {
 
     private final EconomicSet<Node> nodes;
     private final Set<NodeEvent> filter;
@@ -47,7 +46,7 @@ public class HashSetNodeEventListener extends NodeEventListener {
     /**
      * Creates a {@link NodeEventListener} that collects nodes from all events.
      */
-    public HashSetNodeEventListener() {
+    public EconomicSetNodeEventListener() {
         this.nodes = EconomicSet.create(Equivalence.IDENTITY);
         this.filter = EnumSet.allOf(NodeEvent.class);
     }
@@ -56,7 +55,7 @@ public class HashSetNodeEventListener extends NodeEventListener {
      * Creates a {@link NodeEventListener} that collects nodes from all events that match a given
      * filter.
      */
-    public HashSetNodeEventListener(Set<NodeEvent> filter) {
+    public EconomicSetNodeEventListener(Set<NodeEvent> filter) {
         this.nodes = EconomicSet.create(Equivalence.IDENTITY);
         this.filter = filter;
     }
@@ -64,7 +63,7 @@ public class HashSetNodeEventListener extends NodeEventListener {
     /**
      * Excludes a given event from those for which nodes are collected.
      */
-    public HashSetNodeEventListener exclude(NodeEvent e) {
+    public EconomicSetNodeEventListener exclude(NodeEvent e) {
         filter.remove(e);
         return this;
     }
