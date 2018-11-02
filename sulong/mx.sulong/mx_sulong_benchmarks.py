@@ -194,16 +194,8 @@ class GccLikeVm(CExecutionEnvironmentMixin, Vm):
         mx.nyi('c_compiler_exe', self)
 
     def run(self, cwd, args):
-        with tempfile.TemporaryFile(mode="w+") as f:
-            try:
-                myStdOut = mx.OutputCapture()
-                retCode = mx.run(args, out=myStdOut, err=f)
-            except BaseException as e:
-                f.flush()
-                f.seek(0)
-                mx.logv(f.read())
-                raise e
-
+        myStdOut = mx.OutputCapture()
+        retCode = mx.run(args, out=mx.TeeOutputCapture(myStdOut))
         return [retCode, myStdOut.data]
 
     def prepare_env(self, env):
