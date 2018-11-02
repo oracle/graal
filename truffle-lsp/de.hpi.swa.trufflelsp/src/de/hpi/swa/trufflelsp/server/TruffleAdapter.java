@@ -191,6 +191,10 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
     protected TextDocumentSurrogate processChangesAndParseWithContextEntered(List<? extends TextDocumentContentChangeEvent> list, URI uri) throws DiagnosticsNotification {
         TextDocumentSurrogate surrogate = surrogateMap.get(uri);
 
+        if (surrogate == null) {
+            throw new IllegalStateException("No internal mapping for uri=" + uri.toString() + " found.");
+        }
+
         if (list.isEmpty()) {
             return surrogate;
         }

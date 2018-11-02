@@ -277,6 +277,12 @@ public class LanguageServerImpl implements LanguageServer, LanguageClientAware, 
     @Override
     public void didOpen(DidOpenTextDocumentParams params) {
         URI uri = URI.create(params.getTextDocument().getUri());
+
+        if (!uri.getScheme().equals("file")) {
+            client.showMessage(new MessageParams(MessageType.Error, "URI with schema other than 'file' are not supported yet. uri=" + uri.toString()));
+            return;
+        }
+
         openedFileUri2LangId.put(uri, params.getTextDocument().getLanguageId());
 
         Future<?> future = truffleAdapter.parse(params.getTextDocument().getText(), params.getTextDocument().getLanguageId(), uri);
