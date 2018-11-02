@@ -111,40 +111,48 @@ public class AMD64StringLatin1Substitutions {
         return result;
     }
 
-    /*-
-     * java.lang.StringLatin1.inflate([BI[CII)V
+    /**
+     * Intrinsic for {@code java.lang.StringLatin1.inflate([BI[CII)V}.
      *
-     * @HotSpotIntrinsicCandidate
+     * <pre>
+     * &#64;HotSpotIntrinsicCandidate
      * public static void inflate(byte[] src, int src_indx, char[] dst, int dst_indx, int len)
+     * </pre>
      */
     @MethodSubstitution
-    public static void inflate(byte[] src, int sndx, char[] dst, int dndx, int len) {
-        if (len < 0 || sndx < 0 || (sndx + len > src.length) || dndx < 0 || (dndx + len > dst.length)) {
+    public static void inflate(byte[] src, int srcIndex, char[] dst, int destIndex, int len) {
+        if (len < 0 || srcIndex < 0 || (srcIndex + len > src.length) || destIndex < 0 || (destIndex + len > dst.length)) {
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.BoundsCheckException);
         }
 
         // Offset calc. outside of the actual intrinsic.
-        Pointer srcptr = Word.objectToTrackedPointer(src).add(byteArrayBaseOffset(INJECTED)).add(sndx * byteArrayIndexScale(INJECTED));
-        Pointer dstptr = Word.objectToTrackedPointer(dst).add(charArrayBaseOffset(INJECTED)).add(dndx * charArrayIndexScale(INJECTED));
-        AMD64StringLatin1InflateNode.inflate(srcptr, dstptr, len, JavaKind.Char);
+        Pointer srcPointer = Word.objectToTrackedPointer(src).add(byteArrayBaseOffset(INJECTED)).add(srcIndex * byteArrayIndexScale(INJECTED));
+        Pointer destPointer = Word.objectToTrackedPointer(dst).add(charArrayBaseOffset(INJECTED)).add(destIndex * charArrayIndexScale(INJECTED));
+        AMD64StringLatin1InflateNode.inflate(srcPointer, destPointer, len, JavaKind.Char);
     }
 
-    /*-
-     * java.lang.StringLatin1.inflate([BI[BII)V
+    /**
+     * Intrinsic for {@code }java.lang.StringLatin1.inflate([BI[BII)V}.
      *
-     * @HotSpotIntrinsicCandidate
+     * <pre>
+     * &#64;HotSpotIntrinsicCandidate
      * public static void inflate(byte[] src, int src_indx, byte[] dst, int dst_indx, int len)
+     * </pre>
+     *
+     * In this variant {@code dest} refers to a byte array containing 2 byte per char so
+     * {@code destIndex} and {@code len} are in terms of char elements and have to be scaled by 2
+     * when referring to {@code dest}
      */
     @MethodSubstitution
-    public static void inflate(byte[] src, int sndx, byte[] dst, int dndx, int len) {
-        if (len < 0 || sndx < 0 || (sndx + len > src.length) || dndx < 0 || (dndx * 2 + len * 2 > dst.length)) {
+    public static void inflate(byte[] src, int srcIndex, byte[] dest, int destIndex, int len) {
+        if (len < 0 || srcIndex < 0 || (srcIndex + len > src.length) || destIndex < 0 || (destIndex * 2 + len * 2 > dest.length)) {
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.BoundsCheckException);
         }
 
         // Offset calc. outside of the actual intrinsic.
-        Pointer srcptr = Word.objectToTrackedPointer(src).add(byteArrayBaseOffset(INJECTED)).add(sndx * byteArrayIndexScale(INJECTED));
-        Pointer dstptr = Word.objectToTrackedPointer(dst).add(byteArrayBaseOffset(INJECTED)).add(dndx * 2 * byteArrayIndexScale(INJECTED));
-        AMD64StringLatin1InflateNode.inflate(srcptr, dstptr, len, JavaKind.Byte);
+        Pointer srcPointer = Word.objectToTrackedPointer(src).add(byteArrayBaseOffset(INJECTED)).add(srcIndex * byteArrayIndexScale(INJECTED));
+        Pointer destPointer = Word.objectToTrackedPointer(dest).add(byteArrayBaseOffset(INJECTED)).add(destIndex * 2 * byteArrayIndexScale(INJECTED));
+        AMD64StringLatin1InflateNode.inflate(srcPointer, destPointer, len, JavaKind.Byte);
     }
 
 }
