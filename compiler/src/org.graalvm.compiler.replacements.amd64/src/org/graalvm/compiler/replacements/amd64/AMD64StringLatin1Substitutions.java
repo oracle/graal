@@ -120,14 +120,14 @@ public class AMD64StringLatin1Substitutions {
      * </pre>
      */
     @MethodSubstitution
-    public static void inflate(byte[] src, int srcIndex, char[] dst, int destIndex, int len) {
-        if (len < 0 || srcIndex < 0 || (srcIndex + len > src.length) || destIndex < 0 || (destIndex + len > dst.length)) {
+    public static void inflate(byte[] src, int srcIndex, char[] dest, int destIndex, int len) {
+        if (len < 0 || srcIndex < 0 || (srcIndex + len > src.length) || destIndex < 0 || (destIndex + len > dest.length)) {
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.BoundsCheckException);
         }
 
         // Offset calc. outside of the actual intrinsic.
         Pointer srcPointer = Word.objectToTrackedPointer(src).add(byteArrayBaseOffset(INJECTED)).add(srcIndex * byteArrayIndexScale(INJECTED));
-        Pointer destPointer = Word.objectToTrackedPointer(dst).add(charArrayBaseOffset(INJECTED)).add(destIndex * charArrayIndexScale(INJECTED));
+        Pointer destPointer = Word.objectToTrackedPointer(dest).add(charArrayBaseOffset(INJECTED)).add(destIndex * charArrayIndexScale(INJECTED));
         AMD64StringLatin1InflateNode.inflate(srcPointer, destPointer, len, JavaKind.Char);
     }
 

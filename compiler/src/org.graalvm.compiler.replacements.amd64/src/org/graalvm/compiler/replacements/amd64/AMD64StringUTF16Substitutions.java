@@ -112,13 +112,13 @@ public class AMD64StringUTF16Substitutions {
      * </pre>
      */
     @MethodSubstitution
-    public static int compress(char[] src, int srcIndex, byte[] dst, int destIndex, int len) {
-        if (len < 0 || srcIndex < 0 || (srcIndex + len > src.length) || destIndex < 0 || (destIndex + len > dst.length)) {
+    public static int compress(char[] src, int srcIndex, byte[] dest, int destIndex, int len) {
+        if (len < 0 || srcIndex < 0 || (srcIndex + len > src.length) || destIndex < 0 || (destIndex + len > dest.length)) {
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.BoundsCheckException);
         }
 
         Pointer srcPointer = Word.objectToTrackedPointer(src).add(charArrayBaseOffset(INJECTED)).add(srcIndex * charArrayIndexScale(INJECTED));
-        Pointer destPointer = Word.objectToTrackedPointer(dst).add(byteArrayBaseOffset(INJECTED)).add(destIndex * byteArrayIndexScale(INJECTED));
+        Pointer destPointer = Word.objectToTrackedPointer(dest).add(byteArrayBaseOffset(INJECTED)).add(destIndex * byteArrayIndexScale(INJECTED));
         return AMD64StringUTF16CompressNode.compress(srcPointer, destPointer, len, JavaKind.Char);
     }
 
