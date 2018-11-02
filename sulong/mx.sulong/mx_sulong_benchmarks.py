@@ -188,10 +188,10 @@ class GccLikeVm(CExecutionEnvironmentMixin, Vm):
         return self.compiler_name() + "++"
 
     def compiler_name(self):
-        mx.nyi()
+        mx.nyi('compiler_name', self)
 
     def c_compiler_exe(self):
-        mx.nyi()
+        mx.nyi('c_compiler_exe', self)
 
     def run(self, cwd, args):
         with tempfile.TemporaryFile(mode="w+") as f:
@@ -289,7 +289,7 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
             '--jvm.Dgraal.TruffleCompilationExceptionsAreFatal=true',
             mx_subst.path_substitutions.substitute('--llvm.libraryPath=<path:SULONG_LIBS>'),
             '--llvm.libraries=libgmp.so.10'] + args
-        # FIXME: currently we do we do not support a common option prefix for jvm and native mode (GR-11165)
+        # FIXME: currently, we do not support a common option prefix for jvm and native mode (GR-11165) #pylint: disable=fixme
         if self.host_vm().config_name() == "native":
             def _convert_arg(arg):
                 jvm_prefix = "--jvm."
