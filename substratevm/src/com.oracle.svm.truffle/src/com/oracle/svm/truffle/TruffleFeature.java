@@ -135,8 +135,6 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.truffle.runtime.OptionValuesImpl;
 
 public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
 
@@ -791,24 +789,4 @@ final class Target_com_oracle_truffle_api_interop_java_FunctionProxyHandler {
 @Delete
 @TargetClass(className = "com.oracle.truffle.polyglot.ObjectProxyHandler", onlyWith = TruffleFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_api_interop_java_ObjectProxyHandler {
-}
-
-@TargetClass(className = "org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions", onlyWith = TruffleFeature.IsEnabled.class)
-final class Target_org_graalvm_compiler_truffle_compiler_TruffleCompilerOptions {
-    @Alias @RecomputeFieldValue(kind = Kind.Reset) private static volatile OptionValues optionValues;
-}
-
-@TargetClass(className = "org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime", onlyWith = TruffleFeature.IsEnabled.class)
-final class Target_org_graalvm_compiler_truffle_runtime_GraalTruffleRuntime {
-    @Alias @RecomputeFieldValue(kind = Kind.Reset) private volatile Map<String, Object> initialOptions;
-}
-
-@TargetClass(className = "org.graalvm.compiler.truffle.runtime.TruffleDebugOptions", onlyWith = TruffleFeature.IsEnabled.class)
-final class Target_org_graalvm_compiler_truffle_runtime_TruffleDebugOptions {
-    @Alias @RecomputeFieldValue(kind = Kind.Reset) private static volatile OptionValuesImpl optionValues;
-}
-
-@TargetClass(className = "org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions", onlyWith = TruffleFeature.IsEnabled.class)
-final class Target_org_graalvm_compiler_truffle_runtime_TruffleRuntimeOptions {
-    @Alias @RecomputeFieldValue(kind = Kind.Reset) private static volatile OptionValuesImpl optionValues;
 }
