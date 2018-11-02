@@ -24,14 +24,16 @@
  */
 package com.oracle.svm.graal;
 
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.graal.code.amd64.SubstrateAMD64Backend;
-import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
-import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
-import com.oracle.svm.core.option.RuntimeOptionValues;
-import com.oracle.svm.graal.meta.SubstrateMethod;
-import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
+import java.io.PrintStream;
+import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.api.replacements.Snippet;
@@ -65,16 +67,14 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
-
-import static org.graalvm.compiler.debug.DebugContext.DEFAULT_LOG_STREAM;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.graal.code.amd64.SubstrateAMD64Backend;
+import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
+import com.oracle.svm.core.option.RuntimeOptionValues;
+import com.oracle.svm.graal.meta.SubstrateMethod;
+import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 
 /**
  * Holds data that is pre-computed during native image generation and accessed at run time during a
@@ -106,9 +106,9 @@ public class GraalSupport {
     protected final DiagnosticsOutputDirectory outputDirectory = new DiagnosticsOutputDirectory(RuntimeOptionValues.singleton());
     protected final Map<ExceptionAction, Integer> compilationProblemsPerAction = new EnumMap<>(ExceptionAction.class);
 
-    public DebugContext openDebugContext(OptionValues options, CompilationIdentifier compilationId, Object compilable) {
+    public DebugContext openDebugContext(OptionValues options, CompilationIdentifier compilationId, Object compilable, PrintStream logStream) {
         Description description = new Description(compilable, compilationId.toString(CompilationIdentifier.Verbosity.ID));
-        return DebugContext.create(options, description, metricValues, DEFAULT_LOG_STREAM, runtimeConfig.getDebugHandlersFactories());
+        return DebugContext.create(options, description, metricValues, logStream, runtimeConfig.getDebugHandlersFactories());
     }
 
     public DiagnosticsOutputDirectory getDebugOutputDirectory() {
