@@ -245,8 +245,7 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
         if hasattr(self.host_vm(), 'run_lang'):
             result = self.host_vm().run_lang('lli', launcher_args, cwd)
         else:
-            sulongCmdLine = mx_sulong.getClasspathOptions() + \
-                            ['-XX:-UseJVMCIClassLoader', "com.oracle.truffle.llvm.launcher.LLVMLauncher"]
+            sulongCmdLine = mx_sulong.getClasspathOptions() + ["com.oracle.truffle.llvm.launcher.LLVMLauncher"]
             result = self.host_vm().run(cwd, sulongCmdLine + launcher_args)
         return result
 
