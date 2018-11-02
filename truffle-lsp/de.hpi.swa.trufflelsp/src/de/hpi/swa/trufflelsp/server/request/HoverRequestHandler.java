@@ -150,8 +150,14 @@ public class HoverRequestHandler extends AbstractRequestHandler {
         if (formattedSignature != null) {
             List<Either<String, MarkedString>> contents = new ArrayList<>();
             contents.add(Either.forRight(new MarkedString(langId, formattedSignature)));
+
+            String documentation = completionHandler.getDocumentation(evalResult);
+            if (documentation != null) {
+                contents.add(Either.forLeft(documentation));
+            }
             return new Hover(contents, SourceUtils.sourceSectionToRange(hoverSection));
         }
+
         return null;
     }
 
@@ -174,6 +180,13 @@ public class HoverRequestHandler extends AbstractRequestHandler {
         }
         String detailText = completionHandler.createCompletionDetail(textAtHoverPosition, evalResultObject, langId);
         contents.add(Either.forLeft("meta-object: " + detailText));
+
+        if (evalResultObject instanceof TruffleObject) {
+            String documentation = completionHandler.getDocumentation((TruffleObject) evalResultObject);
+            if (documentation != null) {
+                contents.add(Either.forLeft(documentation));
+            }
+        }
         return contents;
     }
 }
