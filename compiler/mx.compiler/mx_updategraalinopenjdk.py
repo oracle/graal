@@ -138,7 +138,7 @@ def updategraalinopenjdk(args):
                         mx.log('  updated ' + filepath)
 
     copied_source_dirs = []
-    jdk_internal_vm_compiler_EXCLUDES = set(['org.graalvm.compiler.processor'])
+    jdk_internal_vm_compiler_EXCLUDES = set() # pylint: disable=invalid-name
     for m in graal_modules:
         classes_dir = join(jdkrepo, 'src', m.name, 'share', 'classes')
         for info in m.suites:
@@ -151,7 +151,7 @@ def updategraalinopenjdk(args):
             suite = mx.suite(info.name)
 
             worklist = []
-            
+
             for p in [e for e in suite.projects if e.isJavaProject()]:
                 if any(inc in p.name for inc in info.includes) and not any(ex in p.name for ex in info.excludes):
                     assert len(p.source_dirs()) == 1, p
@@ -230,8 +230,8 @@ def updategraalinopenjdk(args):
                             fp.write(contents)
 
     # Update jdk.internal.vm.compiler.EXCLUDES in make/CompileJavaModules.gmk
-    # to exclude all test, benchmark and annotation processor packages. 
-    CompileJavaModules_gmk = join(jdkrepo, 'make', 'CompileJavaModules.gmk')
+    # to exclude all test, benchmark and annotation processor packages.
+    CompileJavaModules_gmk = join(jdkrepo, 'make', 'CompileJavaModules.gmk') # pylint: disable=invalid-name
     new_lines = []
     with open(CompileJavaModules_gmk) as fp:
         line_in_def = False
@@ -247,6 +247,12 @@ def updategraalinopenjdk(args):
             elif stripped_line == 'jdk.internal.vm.compiler_EXCLUDES += \\':
                 line_in_def = True
                 new_lines.append(line)
+
+                # Add org.graalvm.compiler.processor since it is only a dependency
+                # for (most) Graal annotation processors and is not needed to
+                # run Graal.
+                jdk_internal_vm_compiler_EXCLUDES.add('org.graalvm.compiler.processor')
+
                 for pkg in sorted(jdk_internal_vm_compiler_EXCLUDES):
                     new_lines.append('    ' + pkg + ' \\\n')
             else:
