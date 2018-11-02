@@ -148,13 +148,15 @@ final class GraalTVMCI extends TVMCI {
         int splitCount;
     }
 
+    private static final Supplier<EngineData> engineDataConstructor = new Supplier<EngineData>() {
+        @Override
+        public EngineData get() {
+            return new EngineData();
+        }
+    };
+
     EngineData getEngineData(RootNode rootNode) {
-        return getOrCreateRuntimeData(rootNode, new Supplier<EngineData>() {
-            @Override
-            public EngineData get() {
-                return new EngineData();
-            }
-        });
+        return getOrCreateRuntimeData(rootNode, engineDataConstructor);
     }
 
     @Override
