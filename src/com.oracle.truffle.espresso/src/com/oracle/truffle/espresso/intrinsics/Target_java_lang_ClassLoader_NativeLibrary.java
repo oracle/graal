@@ -22,9 +22,7 @@ interface NativeLibrary {
 public class Target_java_lang_ClassLoader_NativeLibrary {
 
     private static TruffleObject loadLibrary(String lib) {
-        Source source = Source.newBuilder("nfi", String.format("load(RTLD_LAZY) '%s'", lib), "loadLibrary").build();
-        CallTarget target = EspressoLanguage.getCurrentContext().getEnv().parse(source);
-        return (TruffleObject) target.call();
+        return com.oracle.truffle.espresso.jni.NativeLibrary.loadLibrary(lib);
     }
 
     @Intrinsic(hasReceiver = true)

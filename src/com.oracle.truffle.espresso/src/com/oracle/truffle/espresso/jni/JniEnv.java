@@ -46,9 +46,13 @@ import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
 
 public class JniEnv {
+    private static final TruffleObject mokapotLibrary = NativeLibrary.loadLibrary(System.getProperty("mokapot.library", "mokapot"));
+
+    public static void touch() {}
 
     // Load native library nespresso.dll (Windows) or libnespresso.so (Unixes) at runtime.
     private static final TruffleObject nespressoLibrary = NativeLibrary.loadLibrary(System.getProperty("nespresso.library", "nespresso"));
+    private static final TruffleObject javaLibrary = NativeLibrary.loadLibrary(System.getProperty("java.library", "java"));
 
     private static final TruffleObject initializeNativeContext = NativeLibrary.lookupAndBind(nespressoLibrary,
                     "initializeNativeContext", "(env, (string): pointer): pointer");
@@ -157,7 +161,7 @@ public class JniEnv {
 
     private Callback jniMethodWrapper(Method m) {
         return new Callback(m.getParameterCount() + 1, args -> {
-            assert unwrapPointer(args[0]) == getNativePointer() : "Calling " + m + "from alien JniEnv";
+            assert unwrapPointer(args[0]) == getNativePointer() : "Calling " + m + " from alien JniEnv";
             Object[] shiftedArgs = Arrays.copyOfRange(args, 1, args.length);
             assert args.length - 1 == shiftedArgs.length;
             try {
