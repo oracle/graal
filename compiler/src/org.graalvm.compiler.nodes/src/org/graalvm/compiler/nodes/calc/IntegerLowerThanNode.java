@@ -247,7 +247,11 @@ public abstract class IntegerLowerThanNode extends CompareNode {
          * Exploit the fact that adding the (signed) MIN_VALUE on both side flips signed and
          * unsigned comparison.
          *
-         * e.g., {@code x + MIN_VALUE < y + MIN_VALUE <=> x |<| y}
+         * In particular:
+         * <ul>
+         * <li>{@code x + MIN_VALUE < y + MIN_VALUE <=> x |<| y}</li>
+         * <li>{@code x + MIN_VALUE |<| y + MIN_VALUE <=> x < y}</li>
+         * </ul>
          */
         protected static LogicNode canonicalizeRangeFlip(ValueNode forX, ValueNode forY, int bits, boolean signed, NodeView view) {
             long min = CodeUtil.minValue(bits);
