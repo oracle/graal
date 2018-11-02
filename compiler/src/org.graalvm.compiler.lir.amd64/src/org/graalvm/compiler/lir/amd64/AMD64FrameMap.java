@@ -93,17 +93,19 @@ public class AMD64FrameMap extends FrameMap {
 
     @Override
     public int totalFrameSize() {
-        return frameSize() + initialSpillSize;
+        int result = frameSize() + initialSpillSize;
+        assert result % getTarget().stackAlignment == 0 : "Total frame size not aligned: " + result;
+        return result;
     }
 
     @Override
     public int currentFrameSize() {
-        return alignFrameSize(outgoingSize + spillSize - returnAddressSize());
+        return alignFrameSize(outgoingSize + spillSize - initialSpillSize);
     }
 
     @Override
     protected int alignFrameSize(int size) {
-        return NumUtil.roundUp(size + returnAddressSize(), getTarget().stackAlignment) - returnAddressSize();
+        return NumUtil.roundUp(size + initialSpillSize, getTarget().stackAlignment) - initialSpillSize;
     }
 
     @Override
