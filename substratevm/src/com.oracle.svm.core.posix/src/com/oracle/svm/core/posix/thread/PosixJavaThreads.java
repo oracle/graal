@@ -24,10 +24,6 @@
  */
 package com.oracle.svm.core.posix.thread;
 
-import static com.oracle.svm.core.posix.headers.Pthread.PTHREAD_STACK_MIN;
-import static com.oracle.svm.core.posix.headers.Pthread.pthread_attr_destroy;
-import static com.oracle.svm.core.posix.headers.Pthread.pthread_mutex_init;
-
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -119,7 +115,7 @@ public final class PosixJavaThreads extends JavaThreads {
                         Pthread.pthread_create(newThread, attributes, PosixJavaThreads.pthreadStartRoutine.getFunctionPointer(), startData),
                         "PosixJavaThreads.start0: pthread_create");
         setPthreadIdentifier(thread, newThread.read());
-        pthread_attr_destroy(attributes);
+        Pthread.pthread_attr_destroy(attributes);
     }
 
     private static void setPthreadIdentifier(Thread thread, Pthread.pthread_t pthread) {
@@ -235,7 +231,7 @@ class PosixParkEvent extends ParkEvent {
         VMError.guarantee(mutex.isNonNull(), "mutex allocation");
         /* The attributes for the mutex. Can be null. */
         final Pthread.pthread_mutexattr_t mutexAttr = WordFactory.nullPointer();
-        PosixUtils.checkStatusIs0(pthread_mutex_init(mutex, mutexAttr), "mutex initialization");
+        PosixUtils.checkStatusIs0(Pthread.pthread_mutex_init(mutex, mutexAttr), "mutex initialization");
 
         /* Create a condition variable. */
         cond = LibC.malloc(SizeOf.unsigned(Pthread.pthread_cond_t.class));
