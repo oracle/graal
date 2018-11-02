@@ -41,7 +41,6 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.util.Map;
 
-import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DiagnosticsOutputDirectory;
 import org.graalvm.compiler.debug.PathUtilities;
@@ -163,8 +162,9 @@ public abstract class CompilationWrapper<T> {
      * Creates the {@link DebugContext} to use when retrying a compilation.
      *
      * @param options the options for configuring the debug context
+     * @param logStream the log stream to use in the debug context
      */
-    protected abstract DebugContext createRetryDebugContext(OptionValues options);
+    protected abstract DebugContext createRetryDebugContext(OptionValues options, PrintStream logStream);
 
     @SuppressWarnings("try")
     public final T run(DebugContext initialDebug) {
@@ -247,7 +247,7 @@ public abstract class CompilationWrapper<T> {
                 String message;
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
                 try (PrintStream ps = new PrintStream(baos)) {
-                    ps.printf("%s: Compilation of %s failed: ", Thread.currentThread(), this);
+                    ps.printf("%s: Compilation of %s failed:%n", Thread.currentThread(), this);
                     cause.printStackTrace(ps);
                     ps.printf("To disable compilation %s notifications, set %s to %s (e.g., -Dgraal.%s=%s).%n",
                                     causeType,
@@ -283,15 +283,27 @@ public abstract class CompilationWrapper<T> {
                                 MethodFilter, null,
                                 DumpPath, dumpPath.getPath());
 
-                try (DebugContext retryDebug = createRetryDebugContext(retryOptions); DebugCloseable s = retryDebug.disableIntercept()) {
+                ByteArrayOutputStream logBaos = new ByteArrayOutputStream();
+                PrintStream ps = new PrintStream(logBaos);
+                try (DebugContext retryDebug = createRetryDebugContext(retryOptions, ps)) {
                     T res = performCompilation(retryDebug);
+                    ps.println("There was no exception during retry.");
                     maybeExitVM(action);
                     return res;
-                } catch (Throwable ignore) {
+                } catch (Throwable e) {
+                    ps.println("Exception during retry:");
+                    e.printStackTrace(ps);
                     // Failures during retry are silent
                     T res = handleException(cause);
                     maybeExitVM(action);
                     return res;
+                } finally {
+                    ps.close();
+                    try (FileOutputStream fos = new FileOutputStream(retryLogFile, true)) {
+                        fos.write(logBaos.toByteArray());
+                    } catch (Throwable e) {
+                        TTY.printf("Error writing to %s: %s%n", retryLogFile, e);
+                    }
                 }
             }
         }
