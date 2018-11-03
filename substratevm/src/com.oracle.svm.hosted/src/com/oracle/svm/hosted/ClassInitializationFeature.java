@@ -235,7 +235,7 @@ public final class ClassInitializationFeature implements Feature, RuntimeClassIn
          */
         for (Map.Entry<Class<?>, InitKind> entry : classInitKinds.entrySet()) {
             if (entry.getValue() == InitKind.DELAY && !UnsafeAccess.UNSAFE.shouldBeInitialized(entry.getKey())) {
-                throw UserError.abort("Class that is marked for delaying initialization to runtime got initialized during image building: " + entry.getKey().getTypeName());
+                throw UserError.abort("Class that is marked for delaying initialization to run time got initialized during image building: " + entry.getKey().getTypeName());
             }
         }
     }
@@ -353,10 +353,11 @@ public final class ClassInitializationFeature implements Feature, RuntimeClassIn
             return InitKind.EAGER;
 
         } catch (Throwable ex) {
-            if (NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
+            if (NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue() || NativeImageOptions.AllowIncompleteClasspath.getValue()) {
                 System.out.println("Warning: class initialization of class " + clazz.getTypeName() + " failed with exception " +
-                                ex.getClass().getTypeName() + (ex.getMessage() == null ? "" : ": " + ex.getMessage()) + ". This class will be initialized at runtime because option " +
-                                SubstrateOptionsParser.commandArgument(NativeImageOptions.ReportUnsupportedElementsAtRuntime, "+") + " is used for image building. " +
+                                ex.getClass().getTypeName() + (ex.getMessage() == null ? "" : ": " + ex.getMessage()) + ". This class will be initialized at run time because either option " +
+                                SubstrateOptionsParser.commandArgument(NativeImageOptions.ReportUnsupportedElementsAtRuntime, "+") + " or option " +
+                                SubstrateOptionsParser.commandArgument(NativeImageOptions.AllowIncompleteClasspath, "+") + " is used for image building. " +
                                 "Use the option " + SubstrateOptionsParser.commandArgument(Options.DelayClassInitialization, clazz.getTypeName()) +
                                 " to explicitly request delayed initialization of this class.");
 
@@ -437,7 +438,7 @@ public final class ClassInitializationFeature implements Feature, RuntimeClassIn
     private static void checkEagerInitialization(Class<?> clazz) {
         if (clazz.isPrimitive() || clazz.isArray()) {
             throw UserError.abort("Primitive types and array classes are initialized eagerly because initialization is side-effect free. " +
-                            "It is not possible (and also not useful) to register them for runtime initialization: " + clazz.getTypeName());
+                            "It is not possible (and also not useful) to register them for run time initialization: " + clazz.getTypeName());
         }
     }
 }
