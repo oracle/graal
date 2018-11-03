@@ -77,8 +77,8 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
-import com.oracle.svm.hosted.meta.MethodPointer;
 import com.oracle.svm.hosted.meta.MaterializedConstantFields;
+import com.oracle.svm.hosted.meta.MethodPointer;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -142,12 +142,20 @@ public final class NativeImageHeap {
         assert addObjectWorklist.isEmpty();
     }
 
+    /**
+     * This code assumes that the read-only primitive partition is the first thing in the read-only
+     * section of the image heap, and that the read-only relocatable partition is the last thing in
+     * the read-only section.
+     *
+     * Compare to {@link NativeImageHeap#setReadOnlySection(String, long)} that sets the ordering or
+     * partitions within the read-only section.
+     */
     void alignRelocatablePartition(long alignment) {
         long relocatablePartitionOffset = readOnlyPrimitive.getSize() + readOnlyReference.getSize();
         long beforeRelocPadding = NumUtil.roundUp(relocatablePartitionOffset, alignment) - relocatablePartitionOffset;
-        readOnlyPrimitive.incrementSize(beforeRelocPadding);
+        readOnlyPrimitive.addPrePad(beforeRelocPadding);
         long afterRelocPadding = NumUtil.roundUp(readOnlyRelocatable.getSize(), alignment) - readOnlyRelocatable.getSize();
-        readOnlyRelocatable.incrementSize(afterRelocPadding);
+        readOnlyRelocatable.addPostPad(afterRelocPadding);
     }
 
     private static Object readObjectField(HostedField field, JavaConstant receiver) {
@@ -895,9 +903,12 @@ public final class NativeImageHeap {
         if (useHeapBase()) {
             /*
              * Zero designates null, so add some padding at the heap base to make object offsets
-             * strictly positive
+             * strictly positive.
+             *
+             * This code assumes that the read-only primitive partition is the first partition in
+             * the image heap.
              */
-            readOnlyPrimitive.incrementSize(layout.getAlignment());
+            readOnlyPrimitive.addPrePad(layout.getAlignment());
         }
     }
 
@@ -1074,12 +1085,33 @@ public final class NativeImageHeap {
             return size;
         }
 
+        long getPrePad() {
+            return prePadding;
+        }
+
+        long getPostPad() {
+            return postPadding;
+        }
+
         long getCount() {
             return count;
         }
 
         void incrementSize(final long increment) {
             size += increment;
+        }
+
+        void addPrePad(long padSize) {
+            prePadding += padSize;
+            incrementSize(padSize);
+        }
+
+        void addPostPad(long padSize) {
+            postPadding += padSize;
+            incrementSize(padSize);
+        }
+
+        void incrementCount() {
             count += 1L;
         }
 
@@ -1092,6 +1124,7 @@ public final class NativeImageHeap {
 
             long position = size;
             incrementSize(info.getSize());
+            incrementCount();
             return position;
         }
 
@@ -1143,8 +1176,10 @@ public final class NativeImageHeap {
                     }
                 }
             }
-            assert (getCount() == uniqueCount) : String.format("Incorrect counting: getCount(): %d  uniqueCount: %d", getCount(), uniqueCount);
-            assert (getSize() == uniqueSize) : String.format("Incorrect sizing: getSize(): %d  uniqueSize: %d", getCount(), uniqueCount);
+            assert (getCount() == uniqueCount) : String.format("Incorrect counting:  partition: %s  getCount(): %d  uniqueCount: %d", name, getCount(), uniqueCount);
+            final long paddedSize = uniqueSize + getPrePad() + getPostPad();
+            assert (getSize() == paddedSize) : String.format("Incorrect sizing: partition: %s getSize(): %d uniqueSize: %d prePad: %d postPad: %d",
+                            name, getSize(), uniqueSize, getPrePad(), getPostPad());
             final long nonuniqueCount = uniqueCount + canonicalizedCount;
             final long nonuniqueSize = uniqueSize + canonicalizedSize;
             final double countPercent = 100.0D * ((double) uniqueCount / (double) nonuniqueCount);
@@ -1165,6 +1200,8 @@ public final class NativeImageHeap {
             this.heap = heap;
             this.writable = writable;
             this.size = 0L;
+            this.prePadding = 0L;
+            this.postPadding = 0L;
             this.count = 0L;
             this.firstAllocatedObject = null;
             this.lastAllocatedObject = null;
@@ -1180,6 +1217,10 @@ public final class NativeImageHeap {
         private final boolean writable;
         /** The total size of the objects in this partition. */
         private long size;
+        /** The size of any padding at the beginning of the partition. */
+        private long prePadding;
+        /** The size of any padding at the end of the partition. */
+        private long postPadding;
         /** The number of objects in this partition. */
         private long count;
 
