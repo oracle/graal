@@ -366,8 +366,38 @@ public class SubstrateOptionsParser {
             if (helpLen > 0 && helpMsg.charAt(helpLen - 1) != '.') {
                 helpMsg += '.';
             }
+            boolean stringifiedArrayValue = false;
+            Object defaultValue = descriptor.getOptionKey().getDefaultValue();
+            if (defaultValue != null && defaultValue.getClass().isArray()) {
+                Object[] defaultValues = (Object[]) defaultValue;
+                if (defaultValues.length == 1) {
+                    defaultValue = defaultValues[0];
+                } else {
+                    List<String> stringList = new ArrayList<>();
+                    String optionPrefix = prefix + entry.getKey() + "=";
+                    for (Object rawValue : defaultValues) {
+                        String value;
+                        if (rawValue instanceof String) {
+                            value = '"' + String.valueOf(rawValue) + '"';
+                        } else {
+                            value = String.valueOf(rawValue);
+                        }
+                        stringList.add(optionPrefix + value);
+                    }
+                    if (helpLen != 0) {
+                        helpMsg += ' ';
+                    }
+                    helpMsg += "Default: ";
+                    if (stringList.isEmpty()) {
+                        helpMsg += "None";
+                    } else {
+                        helpMsg += String.join(" ", stringList);
+                    }
+                    stringifiedArrayValue = true;
+                }
+            }
             if (descriptor.getOptionValueType() == Boolean.class) {
-                Boolean val = (Boolean) descriptor.getOptionKey().getDefaultValue();
+                Boolean val = (Boolean) defaultValue;
                 if (helpLen != 0) {
                     helpMsg += ' ';
                 }
@@ -378,11 +408,20 @@ public class SubstrateOptionsParser {
                 }
                 printOption(out, prefix + "\u00b1" + entry.getKey(), helpMsg);
             } else {
-                Object def = descriptor.getOptionKey().getDefaultValue();
-                if (def instanceof String) {
-                    def = '"' + String.valueOf(def) + '"';
+                if (defaultValue == null) {
+                    if (helpLen != 0) {
+                        helpMsg += ' ';
+                    }
+                    helpMsg += "Default: None";
                 }
-                printOption(out, prefix + entry.getKey() + "=" + def, helpMsg);
+                if (stringifiedArrayValue || defaultValue == null) {
+                    printOption(out, prefix + entry.getKey() + "=...", helpMsg);
+                } else {
+                    if (defaultValue instanceof String) {
+                        defaultValue = '"' + String.valueOf(defaultValue) + '"';
+                    }
+                    printOption(out, prefix + entry.getKey() + "=" + defaultValue, helpMsg);
+                }
             }
         }
     }
