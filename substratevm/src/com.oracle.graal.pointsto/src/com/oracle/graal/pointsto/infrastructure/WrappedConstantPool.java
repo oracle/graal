@@ -26,6 +26,7 @@ package com.oracle.graal.pointsto.infrastructure;
 
 import static jdk.vm.ci.common.JVMCIError.unimplemented;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 import org.graalvm.compiler.debug.GraalError;
@@ -84,6 +85,16 @@ public class WrappedConstantPool implements ConstantPool {
 
         try {
             hsLoadReferencedType.invoke(root, cpi, opcode, initialize);
+        } catch (InvocationTargetException ex) {
+            if (ex.getCause() instanceof java.lang.BootstrapMethodError) {
+                /*
+                 * This can happen when JVMCI tries to resolve a invoke dyanmic target on a ghost
+                 * type. We ignore the exception. JVMCI should just swallow this exception at this
+                 * point and return an UnresolvedJavaMethod at a later stage.
+                 */
+            } else {
+                throw new UnsupportedFeatureException("Error loading a referenced type: " + ex.toString(), ex);
+            }
         } catch (Throwable ex) {
             Throwable cause = ex;
             if (ex instanceof ExceptionInInitializerError && ex.getCause() != null) {
