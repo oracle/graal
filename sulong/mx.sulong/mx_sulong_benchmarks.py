@@ -195,7 +195,7 @@ class GccLikeVm(CExecutionEnvironmentMixin, Vm):
 
     def run(self, cwd, args):
         myStdOut = mx.OutputCapture()
-        retCode = mx.run(args, out=mx.TeeOutputCapture(myStdOut))
+        retCode = mx.run(args, out=mx.TeeOutputCapture(myStdOut), cwd=cwd)
         return [retCode, myStdOut.data]
 
     def prepare_env(self, env):
