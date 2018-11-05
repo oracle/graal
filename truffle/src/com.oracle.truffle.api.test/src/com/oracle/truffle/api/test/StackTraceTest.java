@@ -51,6 +51,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -62,6 +63,7 @@ import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
@@ -69,6 +71,16 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
 public class StackTraceTest {
+
+    private static boolean isCompileImmediately() {
+        CallTarget target = Truffle.getRuntime().createCallTarget(new RootNode(null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return CompilerDirectives.inCompiledCode();
+            }
+        });
+        return (boolean) target.call();
+    }
 
     @Test
     public void testFirstFrameIsCurrentFrame() {
@@ -242,6 +254,8 @@ public class StackTraceTest {
 
     @Test
     public void testAsynchronousFrameAccess() throws InterruptedException, ExecutionException, TimeoutException {
+        // Takes too long with immediate compilation
+        Assume.assumeFalse(isCompileImmediately());
         final ExecutorService exec = Executors.newFixedThreadPool(50);
         try {
             List<Callable<Void>> callables = new ArrayList<>();
@@ -448,8 +462,13 @@ public class StackTraceTest {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            frame.setObject(getFrameDescriptor().findFrameSlot("demo"), 42);
+            prepareFrame(frame.materialize());
             return callNode.execute(frame);
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        private void prepareFrame(MaterializedFrame frame) {
+            frame.setObject(getFrameDescriptor().findFrameSlot("demo"), 42);
         }
 
     }
