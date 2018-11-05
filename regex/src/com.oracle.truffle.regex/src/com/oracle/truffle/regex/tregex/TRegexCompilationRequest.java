@@ -125,8 +125,7 @@ final class TRegexCompilationRequest {
             preCalculatedResults = new PreCalculatedResultFactory[]{PreCalcResultVisitor.createResultFactory(ast)};
         }
         createNFA();
-        if (preCalculatedResults == null && TRegexOptions.TRegexEnableTraceFinder &&
-                        (properties.hasCaptureGroups() || properties.hasLookAroundAssertions()) && !properties.hasLoops()) {
+        if (preCalculatedResults == null && TRegexOptions.TRegexEnableTraceFinder && !properties.hasLoops()) {
             try {
                 phaseStart("TraceFinder NFA");
                 traceFinderNFA = NFATraceFinderGenerator.generateTraceFinder(nfa);
