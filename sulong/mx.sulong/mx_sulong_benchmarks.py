@@ -29,7 +29,6 @@
 #
 import re
 import shutil
-import tempfile
 
 import mx, mx_benchmark, mx_sulong, mx_buildtools
 import os
