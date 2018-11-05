@@ -244,7 +244,7 @@ public class GraalTest {
         try {
             /* Trigger loading of the management library using the bootstrap class loader. */
             GraalServices.getCurrentThreadAllocatedBytes();
-        } catch (UnsatisfiedLinkError | NoClassDefFoundError e) {
+        } catch (UnsatisfiedLinkError | NoClassDefFoundError | UnsupportedOperationException e) {
             throw new AssumptionViolatedException("Management interface is unavailable: " + e);
         }
     }
