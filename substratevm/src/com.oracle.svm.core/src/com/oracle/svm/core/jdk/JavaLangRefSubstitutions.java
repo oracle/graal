@@ -141,6 +141,25 @@ final class Target_java_lang_ref_Reference {
     }
 
     @Substitute
+    public boolean enqueue() {
+        if (feeble != null) {
+            final FeebleReferenceList<?> frList = feeble.getList();
+            if (frList != null) {
+                return frList.push(feeble);
+            }
+        }
+        return false;
+    }
+
+    @Substitute
+    public boolean isEnqueued() {
+        if (feeble != null) {
+            return feeble.isEnlisted();
+        }
+        return false;
+    }
+
+    @Substitute
     @TargetElement(onlyWith = JDK8OrEarlier.class)
     @SuppressWarnings("unused")
     private static boolean tryHandlePending(boolean waitForNotify) {
