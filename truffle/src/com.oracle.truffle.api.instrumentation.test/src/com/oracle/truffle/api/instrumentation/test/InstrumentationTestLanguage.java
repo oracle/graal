@@ -1428,7 +1428,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         private final String name;
         private final Object value;
-        private final ContextReference<InstrumentContext> contextRef;
 
         @CompilationFinal private FrameSlot slot;
         final AllocationReporter allocationReporter;
@@ -1437,7 +1436,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             super(children);
             this.name = name;
             this.value = parseIdent(identifier);
-            this.contextRef = contextRef;
             this.allocationReporter = contextRef.get().allocationReporter;
         }
 
