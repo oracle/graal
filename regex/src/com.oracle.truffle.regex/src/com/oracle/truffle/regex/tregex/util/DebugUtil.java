@@ -35,9 +35,6 @@ import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 public class DebugUtil {
 
-    public static final boolean DEBUG = false;
-    public static final boolean DEBUG_STEP_EXECUTION = false;
-    public static final boolean DEBUG_ALWAYS_EAGER = false;
     public static final boolean LOG_SWITCH_TO_EAGER = false;
     public static final boolean LOG_TOTAL_COMPILATION_TIME = false;
     public static final boolean LOG_PHASES = false;
