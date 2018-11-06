@@ -55,9 +55,10 @@ class SulongBenchmarkRule(mx_benchmark.StdOutRule):
         def _parse_results_gen():
             for d in super(SulongBenchmarkRule, self).parseResults(text):
                 line = d.pop('line')
-                for value in line.split(','):
+                for iteration, value in enumerate(line.split(',')):
                     r = d.copy()
                     r['score'] = value.strip()
+                    r['iteration'] = str(iteration)
                     yield r
 
         return (x for x in _parse_results_gen())
@@ -137,7 +138,7 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
                 "metric.value": ("<score>", float),
                 "metric.score-function": "id",
                 "metric.better": "lower",
-                "metric.iteration": 0,
+                "metric.iteration": ("<iteration>", int),
             }),
         ]
 
