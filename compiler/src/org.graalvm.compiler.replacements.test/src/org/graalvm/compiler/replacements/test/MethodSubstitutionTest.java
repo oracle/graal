@@ -116,7 +116,8 @@ public abstract class MethodSubstitutionTest extends GraalCompilerTest {
         return graph;
     }
 
-    protected void testSubstitution(String testMethodName, Class<?> intrinsicClass, Class<?> holder, String methodName, Class<?>[] parameterTypes, boolean optional, Object[] args1, Object[] args2) {
+    protected void testSubstitution(String testMethodName, Class<?> intrinsicClass, Class<?> holder, String methodName, Class<?>[] parameterTypes, boolean optional, boolean forceCompilation,
+                    Object[] args1, Object[] args2) {
         ResolvedJavaMethod realMethod = getResolvedJavaMethod(holder, methodName, parameterTypes);
         ResolvedJavaMethod testMethod = getResolvedJavaMethod(testMethodName);
         StructuredGraph graph = testGraph(testMethodName);
@@ -128,7 +129,7 @@ public abstract class MethodSubstitutionTest extends GraalCompilerTest {
         }
 
         // Force compilation
-        InstalledCode code = getCode(testMethod);
+        InstalledCode code = getCode(testMethod, null, forceCompilation);
         assert optional || code != null;
 
         for (int i = 0; i < args1.length; i++) {
