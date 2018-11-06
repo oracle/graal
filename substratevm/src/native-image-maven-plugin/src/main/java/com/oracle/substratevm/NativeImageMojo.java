@@ -400,11 +400,6 @@ public class NativeImageMojo extends AbstractMojo {
         }
 
         @Override
-        public List<String> getBuilderJavaArgs() {
-            return Collections.emptyList();
-        }
-
-        @Override
         public List<Path> getImageClasspath() {
             return classpath;
         }
@@ -412,23 +407,6 @@ public class NativeImageMojo extends AbstractMojo {
         @Override
         public List<String> getBuildArgs() {
             return NativeImageMojo.this.getBuildArgs();
-        }
-
-        /* Launcher usage currently unsupported in maven plugin */
-
-        @Override
-        public List<Path> getLauncherCommonClasspath() {
-            return Collections.emptyList();
-        }
-
-        @Override
-        public String getLauncherClasspathPropertyValue(LinkedHashSet<Path> imageClasspath) {
-            return null;
-        }
-
-        @Override
-        public Stream<Path> getAbsoluteLauncherClassPath(Stream<String> relativeLauncherClassPath) {
-            return Stream.empty();
         }
     }
 }

@@ -63,6 +63,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
@@ -92,6 +93,8 @@ public class NativeImage {
     }
 
     static final String graalvmVersion = System.getProperty("org.graalvm.version", System.getProperty("graalvm.version", "dev"));
+
+    static final String[] graalCompilerFlags = System.getProperty("native-image.graal-compiler-flags", "").split(" ");
 
     static String getResource(String resourceName) {
         try (InputStream input = NativeImage.class.getResourceAsStream(resourceName)) {
@@ -189,6 +192,13 @@ public class NativeImage {
         Path getJavaExecutable();
 
         /**
+         * @return true if Java modules system should be used
+         */
+        default boolean useJavaModules() {
+            return !GraalServices.Java8OrEarlier;
+        }
+
+        /**
          * @return classpath for SubstrateVM image builder components
          */
         List<Path> getBuilderClasspath();
@@ -226,7 +236,9 @@ public class NativeImage {
         /**
          * @return additional arguments for JVM that runs image builder
          */
-        List<String> getBuilderJavaArgs();
+        default List<String> getBuilderJavaArgs() {
+            return Arrays.asList(graalCompilerFlags);
+        }
 
         /**
          * @return classpath for image (the classes the user wants to build an image from)
@@ -244,19 +256,25 @@ public class NativeImage {
          * @return extra classpath entries for common GraalVM launcher components
          *         (launcher-common.jar)
          */
-        List<Path> getLauncherCommonClasspath();
+        default List<Path> getLauncherCommonClasspath() {
+            return Collections.emptyList();
+        }
 
         /**
          * TODO Remove GraalVM Lanucher specific code.
          *
          * @return launcher classpath system property argument for image builder
          */
-        String getLauncherClasspathPropertyValue(LinkedHashSet<Path> imageClasspath);
+        default String getLauncherClasspathPropertyValue(LinkedHashSet<Path> imageClasspath) {
+            return null;
+        }
 
         /**
          * TODO Remove GraalVM Lanucher specific code.
          */
-        Stream<Path> getAbsoluteLauncherClassPath(Stream<String> relativeLauncherClassPath);
+        default Stream<Path> getAbsoluteLauncherClassPath(Stream<String> relativeLauncherClassPath) {
+            return Stream.empty();
+        }
     }
 
     private static class DefaultBuildConfiguration implements BuildConfiguration {
@@ -356,11 +374,6 @@ public class NativeImage {
         }
 
         @Override
-        public List<String> getBuilderJavaArgs() {
-            return Collections.emptyList();
-        }
-
-        @Override
         public List<Path> getImageClasspath() {
             return Collections.emptyList();
         }
@@ -413,32 +426,6 @@ public class NativeImage {
             }
         }
 
-        // Default javaArgs needed for image building
-        addImageBuilderJavaArgs("-server", "-d64", "-noverify");
-        addImageBuilderJavaArgs("-XX:+UnlockExperimentalVMOptions", "-XX:+EnableJVMCI");
-
-        /*
-         * GR-8656: Do not run with Graal as JIT compiler until libgraal is available. Note that we
-         * really need to explicitly disable UseJVMCICompiler, otherwise it is implicitly enabled
-         * when a "lib/jvmci/compiler-name" file is present in the JDK.
-         */
-        addImageBuilderJavaArgs("-XX:-UseJVMCICompiler");
-
-        addImageBuilderJavaArgs("-XX:-UseJVMCIClassLoader");
-
-        addImageBuilderJavaArgs("-Dgraal.EagerSnippets=true");
-
-        addImageBuilderJavaArgs("-Xss10m");
-        addImageBuilderJavaArgs(oXms + getXmsValue());
-        addImageBuilderJavaArgs(oXmx + getXmxValue(1));
-
-        addImageBuilderJavaArgs("-Duser.country=US", "-Duser.language=en");
-
-        addImageBuilderJavaArgs("-Dgraalvm.version=" + graalvmVersion);
-        addImageBuilderJavaArgs("-Dorg.graalvm.version=" + graalvmVersion);
-
-        addImageBuilderJavaArgs("-Dcom.oracle.graalvm.isaot=true");
-
         // Generate images into the current directory
         addPlainImageBuilderArg(oHPath + config.getWorkingDirectory());
 
@@ -488,6 +475,15 @@ public class NativeImage {
     }
 
     private void prepareImageBuildArgs() {
+        config.getBuilderJavaArgs().forEach(this::addImageBuilderJavaArgs);
+        addImageBuilderJavaArgs("-Xss10m");
+        addImageBuilderJavaArgs(oXms + getXmsValue());
+        addImageBuilderJavaArgs(oXmx + getXmxValue(1));
+        addImageBuilderJavaArgs("-Duser.country=US", "-Duser.language=en");
+        addImageBuilderJavaArgs("-Dgraalvm.version=" + graalvmVersion);
+        addImageBuilderJavaArgs("-Dorg.graalvm.version=" + graalvmVersion);
+        addImageBuilderJavaArgs("-Dcom.oracle.graalvm.isaot=true");
+
         config.getBuilderClasspath().forEach(this::addImageBuilderClasspath);
         config.getImageProvidedClasspath().forEach(this::addImageProvidedClasspath);
         String clibrariesBuilderArg = config.getBuilderCLibrariesPaths()
@@ -509,7 +505,6 @@ public class NativeImage {
 
         config.getBuilderBootClasspath().forEach((Consumer<? super Path>) this::addImageBuilderBootClasspath);
 
-        config.getBuilderJavaArgs().forEach(this::addImageBuilderJavaArgs);
         config.getImageClasspath().forEach(this::addCustomImageClasspath);
     }
 
@@ -819,13 +814,12 @@ public class NativeImage {
         ProcessBuilder pb = new ProcessBuilder();
         List<String> command = pb.command();
         command.add(canonicalize(config.getJavaExecutable()).toString());
+        command.addAll(javaArgs);
         if (!bcp.isEmpty()) {
             command.add(bcp.stream().map(Path::toString).collect(Collectors.joining(":", "-Xbootclasspath/a:", "")));
         }
         command.addAll(Arrays.asList("-cp", cp.stream().map(Path::toString).collect(Collectors.joining(":"))));
-        command.addAll(javaArgs);
         command.add("com.oracle.svm.hosted.NativeImageGeneratorRunner");
-        command.addAll(Arrays.asList("-imagecp", imagecp.stream().map(Path::toString).collect(Collectors.joining(":"))));
         if (IS_AOT && OS.getCurrent().hasProcFS) {
             /*
              * GR-8254: Ensure image-building VM shuts down even if native-image dies unexpected
@@ -834,6 +828,7 @@ public class NativeImage {
             command.addAll(Arrays.asList("-watchpid", "" + ProcessProperties.getProcessID()));
         }
         command.addAll(imageArgs);
+        command.addAll(Arrays.asList("-imagecp", imagecp.stream().map(Path::toString).collect(Collectors.joining(":"))));
 
         showVerboseMessage(verbose || dryRun, "Executing [");
         showVerboseMessage(verbose || dryRun, command.stream().collect(Collectors.joining(" \\\n")));

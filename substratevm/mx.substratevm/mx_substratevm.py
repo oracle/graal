@@ -61,7 +61,11 @@ GRAAL_COMPILER_FLAGS = [
     '-Dtruffle.TrustAllTruffleRuntimeProviders=true', # GR-7046
 ]
 
-if mx.get_jdk(tag='default').javaCompliance <= mx.JavaCompliance('1.8'):
+def svm_java_compliance():
+    return mx.get_jdk(tag='default').javaCompliance
+
+if svm_java_compliance() <= mx.JavaCompliance('1.8'):
+    GRAAL_COMPILER_FLAGS += ['-d64']
     GRAAL_COMPILER_FLAGS += ['-XX:-UseJVMCIClassLoader']
 else:
     # Disable the check for JDK-8 graal version.
@@ -167,7 +171,7 @@ def svmbuild_dir(suite=None):
 def suite_native_image_root(suite=None):
     if not suite:
         suite = svm_suite()
-    root_dir = join(svmbuild_dir(suite), 'native-image-root')
+    root_dir = join(svmbuild_dir(suite), 'native-image-root-' + str(svm_java_compliance()))
     rev_file_name = join(root_dir, 'rev')
     rev_value = suite.vc.parent(suite.vc_dir)
     def write_rev_file():
@@ -918,8 +922,12 @@ def native_image_on_jvm(args, **kwargs):
     driver_cp = list(itertools.chain.from_iterable(glob.glob(cp) for cp in driver_cp))
 
     svm_version = suite.release_version(snapshotSuffix='SNAPSHOT')
-    run_java(['-Dorg.graalvm.version=' + svm_version, '-Dnative-image.root=' + suite_native_image_root(), '-cp', os.pathsep.join(driver_cp),
-              mx.dependency('substratevm:SVM_DRIVER').mainClass] + save_args, **kwargs)
+    run_java([
+        '-Dorg.graalvm.version=' + svm_version,
+        '-Dnative-image.root=' + suite_native_image_root(),
+        '-Dnative-image.graal-compiler-flags=' + ' '.join(GRAAL_COMPILER_FLAGS),
+        '-cp', os.pathsep.join(driver_cp),
+        mx.dependency('substratevm:SVM_DRIVER').mainClass] + save_args, **kwargs)
 
 
 @mx.command(suite.name, 'native-unittest')
