@@ -154,7 +154,7 @@ public final class InspectServerSession implements MessageEndpoint {
                                 json.optBoolean("awaitPromise"));
                 break;
             case "Runtime.runIfWaitingForDebugger":
-                runtime.runIfWaitingForDebugger();
+                runtime.runIfWaitingForDebugger(postProcessor);
                 break;
             case "Runtime.getProperties":
                 json = cmd.getParams().getJSONObject();
