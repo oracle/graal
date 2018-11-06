@@ -80,7 +80,7 @@ public final class LLVMBoxedPrimitive implements LLVMObjectNativeLibrary.Provide
         }
 
         @Override
-        public boolean isNull(Object obj) {
+        public boolean isNullPointer(Object obj) {
             return false;
         }
 

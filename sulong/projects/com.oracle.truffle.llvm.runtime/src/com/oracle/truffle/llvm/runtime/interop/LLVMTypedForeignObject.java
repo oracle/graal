@@ -230,7 +230,7 @@ public final class LLVMTypedForeignObject implements LLVMObjectAccess, LLVMInter
         }
 
         @Override
-        public boolean isNull(Object obj) {
+        public boolean isNullPointer(Object obj) {
             LLVMTypedForeignObject receiver = (LLVMTypedForeignObject) obj;
             return ForeignAccess.sendIsNull(isNull, receiver.getForeign());
         }

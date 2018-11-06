@@ -219,7 +219,7 @@ public final class LLVMGlobalContainer implements LLVMObjectAccess, LLVMInternal
         }
 
         @Override
-        public boolean isNull(Object obj) {
+        public boolean isNullPointer(Object obj) {
             return false;
         }
 

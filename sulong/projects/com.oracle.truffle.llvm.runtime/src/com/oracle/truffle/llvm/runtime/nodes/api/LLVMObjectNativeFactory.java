@@ -86,7 +86,7 @@ abstract class LLVMObjectNativeFactory {
         }
 
         @Override
-        public boolean isNull(Object obj) {
+        public boolean isNullPointer(Object obj) {
             return ((long) obj) == 0;
         }
 
@@ -130,7 +130,7 @@ abstract class LLVMObjectNativeFactory {
         }
 
         @Override
-        public boolean isNull(Object obj) {
+        public boolean isNullPointer(Object obj) {
             if (isNull == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 isNull = insert(Message.IS_NULL.createNode());
@@ -170,7 +170,7 @@ abstract class LLVMObjectNativeFactory {
         }
 
         @Override
-        public boolean isNull(Object obj) {
+        public boolean isNullPointer(Object obj) {
             return false;
         }
 
@@ -207,7 +207,7 @@ abstract class LLVMObjectNativeFactory {
         }
 
         @Override
-        public boolean isNull(Object obj) {
+        public boolean isNullPointer(Object obj) {
             if (isNull == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 isNull = insert(CachedIsNullNodeGen.create());
@@ -262,7 +262,7 @@ abstract class LLVMObjectNativeFactory {
         @Specialization(limit = "TYPE_LIMIT", guards = "lib.guard(obj)")
         protected boolean isNull(Object obj,
                         @Cached("createCached(obj)") LLVMObjectNativeLibrary lib) {
-            return lib.isNull(obj);
+            return lib.isNullPointer(obj);
         }
 
         @Specialization(replaces = "isNull")

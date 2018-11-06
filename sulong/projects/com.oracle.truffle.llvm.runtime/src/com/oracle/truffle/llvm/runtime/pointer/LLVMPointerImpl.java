@@ -175,20 +175,20 @@ class LLVMPointerImpl implements LLVMManagedPointer, LLVMNativePointer, LLVMObje
             if (lib.isPointer(pointer.getObject())) {
                 return true;
             } else {
-                return lib.isNull(pointer.getObject());
+                return lib.isNullPointer(pointer.getObject());
             }
         }
 
         @Override
-        public boolean isNull(Object obj) {
+        public boolean isNullPointer(Object obj) {
             LLVMManagedPointer pointer = LLVMManagedPointer.cast(obj);
-            return lib.isNull(pointer.getObject());
+            return lib.isNullPointer(pointer.getObject());
         }
 
         @Override
         public long asPointer(Object obj) throws InteropException {
             LLVMManagedPointer pointer = LLVMManagedPointer.cast(obj);
-            if (lib.isNull(pointer.getObject())) {
+            if (lib.isNullPointer(pointer.getObject())) {
                 return pointer.getOffset();
             } else {
                 long base = lib.asPointer(pointer.getObject());
@@ -221,7 +221,7 @@ class LLVMPointerImpl implements LLVMManagedPointer, LLVMNativePointer, LLVMObje
         }
 
         @Override
-        public boolean isNull(Object obj) {
+        public boolean isNullPointer(Object obj) {
             return LLVMPointer.cast(obj).isNull();
         }
 
