@@ -38,6 +38,7 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -55,6 +56,8 @@ public abstract class ForeignToLLVM extends LLVMNode {
     public abstract Object executeWithTarget(Object value);
 
     public abstract Object executeWithType(Object value, LLVMInteropType.Structured type);
+
+    public abstract Object executeWithForeignToLLVMType(Object value, LLVMInteropType.Structured type, ForeignToLLVMType ftlType);
 
     @Child protected Node isPointer = Message.IS_POINTER.createNode();
     @Child protected Node asPointer = Message.AS_POINTER.createNode();
@@ -229,25 +232,27 @@ public abstract class ForeignToLLVM extends LLVMNode {
         }
     }
 
-    public static SlowPathForeignToLLVM createSlowPathNode() {
-        return new SlowPathForeignToLLVM();
+    public static SlowPathForeignToLLVM getUncached() {
+        return SlowPathForeignToLLVM.INSTANCE;
     }
 
     public static final class SlowPathForeignToLLVM extends ForeignToLLVM {
+
+        private static final SlowPathForeignToLLVM INSTANCE = new SlowPathForeignToLLVM();
+
         @CompilationFinal private LLVMMemory memory;
 
         @TruffleBoundary
-        public Object convert(Type type, Object value, LLVMInteropType.Value interopType) {
+        public Object convert(Type type, Object value, LLVMInteropType.Structured interopType) {
             return convert(ForeignToLLVM.convert(type), value, interopType);
         }
 
         @TruffleBoundary
-        public Object convert(ForeignToLLVMType type, Object value, LLVMInteropType.Value interopType) {
+        public Object convert(ForeignToLLVMType type, Object value, LLVMInteropType.Structured interopType) {
             if (type == ForeignToLLVMType.ANY) {
                 return ToAnyLLVM.slowPathPrimitiveConvert(value);
             } else if (type == ForeignToLLVMType.POINTER) {
-                LLVMInteropType.Structured interopPointerType = interopType.getKind() == LLVMInteropType.ValueKind.POINTER ? interopType.getBaseType() : null;
-                return ToPointer.slowPathPrimitiveConvert(value, interopPointerType);
+                return ToPointer.slowPathPrimitiveConvert(value, interopType);
             } else {
                 if (memory == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -284,6 +289,16 @@ public abstract class ForeignToLLVM extends LLVMNode {
         public Object executeWithType(Object value, LLVMInteropType.Structured type) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Use convert method.");
+        }
+
+        @Override
+        public Object executeWithForeignToLLVMType(Object value, LLVMInteropType.Structured type, ForeignToLLVMType ftlType) {
+            return convert(ftlType, value, type);
+        }
+
+        @Override
+        public NodeCost getCost() {
+            return NodeCost.MEGAMORPHIC;
         }
     }
 }

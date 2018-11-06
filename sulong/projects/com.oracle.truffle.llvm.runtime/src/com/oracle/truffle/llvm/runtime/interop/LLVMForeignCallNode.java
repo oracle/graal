@@ -110,7 +110,7 @@ public abstract class LLVMForeignCallNode extends LLVMNode {
     }
 
     protected static class SlowPackForeignArgumentsNode extends LLVMNode {
-        @Child private SlowPathForeignToLLVM slowConvert = ForeignToLLVM.createSlowPathNode();
+        @Child private SlowPathForeignToLLVM slowConvert = ForeignToLLVM.getUncached();
 
         Object[] pack(LLVMFunctionDescriptor function, Object[] arguments, StackPointer stackPointer) {
             Type[] argumentTypes = function.getType().getArgumentTypes();
@@ -124,7 +124,9 @@ public abstract class LLVMForeignCallNode extends LLVMNode {
                 for (int i = 0; i < argumentTypes.length; i++) {
                     LLVMInteropType interopParameterType = interopFunctionType.getParameter(i);
                     if (interopParameterType instanceof LLVMInteropType.Value) {
-                        packedArguments[i + 1] = slowConvert.convert(argumentTypes[i], arguments[i], (LLVMInteropType.Value) interopParameterType);
+                        LLVMInteropType.Value interopValueType = (LLVMInteropType.Value) interopParameterType;
+                        LLVMInteropType.Structured interopPointerType = interopValueType.getKind() == LLVMInteropType.ValueKind.POINTER ? interopValueType.getBaseType() : null;
+                        packedArguments[i + 1] = slowConvert.convert(argumentTypes[i], arguments[i], interopPointerType);
                     } else {
                         // interop only supported for value types
                         packedArguments[i + 1] = slowConvert.convert(argumentTypes[i], arguments[i], null);
