@@ -341,7 +341,6 @@ gcc-5.2.0/gcc/testsuite/g++.dg/init/init-ref2.C
 gcc-5.2.0/gcc/testsuite/g++.dg/init/init-ref3.C
 gcc-5.2.0/gcc/testsuite/g++.dg/init/init-ref4.C
 gcc-5.2.0/gcc/testsuite/g++.dg/init/lifetime1.C
-gcc-5.2.0/gcc/testsuite/g++.dg/init/lifetime2.C
 gcc-5.2.0/gcc/testsuite/g++.dg/init/lifetime3.C
 gcc-5.2.0/gcc/testsuite/g++.dg/init/new15.C
 gcc-5.2.0/gcc/testsuite/g++.dg/init/new16.C
