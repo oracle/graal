@@ -28,13 +28,17 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 
+import java.util.logging.Level;
+
+import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_BAILOUT_MESSAGES;
+import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_TOTAL_COMPILATION_TIME;
+
 public class RegexCompilerWithFallback extends RegexCompiler {
 
     private final RegexCompiler mainCompiler;
     private final RegexCompiler fallbackCompiler;
 
-    private final DebugUtil.DebugLogger logBailout = new DebugUtil.DebugLogger("Bailout: ", DebugUtil.LOG_BAILOUT_MESSAGES);
-    private final DebugUtil.Timer timer = DebugUtil.LOG_TOTAL_COMPILATION_TIME ? new DebugUtil.Timer() : null;
+    private final DebugUtil.Timer timer = shouldLogCompilationTime() ? new DebugUtil.Timer() : null;
 
     public RegexCompilerWithFallback(TruffleObject mainCompiler, TruffleObject fallbackCompiler) {
         this.mainCompiler = ForeignRegexCompiler.importRegexCompiler(mainCompiler);
@@ -47,22 +51,23 @@ public class RegexCompilerWithFallback extends RegexCompiler {
         TruffleObject regex;
         long elapsedTimeMain = 0;
         long elapsedTimeFallback = 0;
+        final boolean shouldLog = shouldLogCompilationTime();
         try {
-            if (DebugUtil.LOG_TOTAL_COMPILATION_TIME) {
+            if (shouldLog) {
                 timer.start();
             }
             regex = mainCompiler.compile(regexSource);
-            if (DebugUtil.LOG_TOTAL_COMPILATION_TIME) {
+            if (shouldLog) {
                 elapsedTimeMain = timer.getElapsed();
             }
         } catch (UnsupportedRegexException mainBailout) {
-            logBailout.log(mainBailout.getMessage() + ": " + regexSource);
+            LOG_BAILOUT_MESSAGES.info(() -> mainBailout.getMessage() + ": " + regexSource);
             try {
-                if (DebugUtil.LOG_TOTAL_COMPILATION_TIME) {
+                if (shouldLog) {
                     timer.start();
                 }
                 regex = fallbackCompiler.compile(regexSource);
-                if (DebugUtil.LOG_TOTAL_COMPILATION_TIME) {
+                if (shouldLog) {
                     elapsedTimeFallback = timer.getElapsed();
                 }
             } catch (UnsupportedRegexException fallbackBailout) {
@@ -70,17 +75,22 @@ public class RegexCompilerWithFallback extends RegexCompiler {
                 throw new UnsupportedRegexException(bailoutReasons, regexSource);
             }
         }
-        if (DebugUtil.LOG_TOTAL_COMPILATION_TIME) {
+        if (shouldLog) {
             logCompilationTime(regexSource, elapsedTimeMain, elapsedTimeFallback);
         }
         return regex;
     }
 
+    private static boolean shouldLogCompilationTime() {
+        return LOG_TOTAL_COMPILATION_TIME.isLoggable(Level.INFO);
+    }
+
     private static void logCompilationTime(RegexSource regexSource, long elapsedTimeMain, long elapsedTimeFallback) {
-        System.out.println(String.format("%s, %s, %s, %s",
+        LOG_TOTAL_COMPILATION_TIME.log(Level.INFO, "{0}, {1}, {2}, {3}", new Object[]{
                         DebugUtil.Timer.elapsedToString(elapsedTimeMain + elapsedTimeFallback),
                         DebugUtil.Timer.elapsedToString(elapsedTimeMain),
                         DebugUtil.Timer.elapsedToString(elapsedTimeFallback),
-                        DebugUtil.jsStringEscape(regexSource.toString())));
+                        DebugUtil.jsStringEscape(regexSource.toString())
+        });
     }
 }

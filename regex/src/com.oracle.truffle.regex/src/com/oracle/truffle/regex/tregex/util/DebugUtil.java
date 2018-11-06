@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.regex.tregex.util;
 
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.regex.chardata.Constants;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
@@ -35,11 +36,11 @@ import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 public class DebugUtil {
 
-    public static final boolean LOG_SWITCH_TO_EAGER = false;
-    public static final boolean LOG_TOTAL_COMPILATION_TIME = false;
-    public static final boolean LOG_PHASES = false;
-    public static final boolean LOG_BAILOUT_MESSAGES = false;
-    public static final boolean LOG_AUTOMATON_SIZES = false;
+    public static final TruffleLogger LOG_SWITCH_TO_EAGER = TruffleLogger.getLogger("regex", "SwitchToEager");
+    public static final TruffleLogger LOG_TOTAL_COMPILATION_TIME = TruffleLogger.getLogger("regex", "TotalCompilationTime");
+    public static final TruffleLogger LOG_PHASES = TruffleLogger.getLogger("regex", "Phases");
+    public static final TruffleLogger LOG_BAILOUT_MESSAGES = TruffleLogger.getLogger("regex", "BailoutMessages");
+    public static final TruffleLogger LOG_AUTOMATON_SIZES = TruffleLogger.getLogger("regex", "AutomatonSizes");
 
     private static final CompilationFinalBitSet validSpecialCharsForFileNames = CompilationFinalBitSet.valueOf(
                     '^', '$', '.', '*', '+', '-', '?', '(', ')', '[', ']', '{', '}', '|');
@@ -143,23 +144,6 @@ public class DebugUtil {
 
         public static String elapsedToString(long elapsed) {
             return String.format("%fms", elapsed / 1e6);
-        }
-    }
-
-    public static class DebugLogger {
-
-        private final String prefix;
-        private final boolean enable;
-
-        public DebugLogger(String prefix, boolean enable) {
-            this.prefix = prefix;
-            this.enable = enable;
-        }
-
-        public void log(String msg) {
-            if (enable) {
-                System.out.println(prefix + msg);
-            }
         }
     }
 
