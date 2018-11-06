@@ -1,5 +1,5 @@
 
-x52.c2 : ${labsjdk8} {
+x52.c2-perftag : ${labsjdk8} {
   capabilities: [linux, x52, no_frequency_scaling]
   environment : {
     XMX          : "64g"
@@ -11,16 +11,16 @@ x52.c2 : ${labsjdk8} {
     }
 }
 
-x52.c2-tmpfs10g : ${x52.c2} {
+x52.c2-tmpfs10g-perftag : ${x52.c2-perftag} {
   capabilities: [linux, x52, no_frequency_scaling, tmpfs10g]
 }
 
 builds += [
-  ${x52.c2-tmpfs10g} ${bench-dacapo-hwloc}        { targets: [bench, weekly], name: "bench-compiler-dacapo-linux-x52-c2" }
-  ${x52.c2-tmpfs10g} ${bench-scala-dacapo-hwloc}  { targets: [bench, weekly], name: "bench-compiler-scala-dacapo-linux-x52-c2" }
-  ${x52.c2} ${bench-specjvm2008-Single}           { targets: [bench, weekly], name: "bench-compiler-specjvm2008-Single-linux-x52-c2" }
-  ${x52.c2} ${bench-specjvm2008-OneVM}            { targets: [bench, weekly], name: "bench-compiler-specjvm2008-OneVM-linux-x52-c2" }
-  ${x52.c2} ${bench-specjbb2015}                  { targets: [bench, weekly], name: "bench-compiler-specjbb2015-linux-x52-c2" }
-  ${x52.c2} ${bench-renaissance-hwloc}            { targets: [bench, weekly], name: "bench-compiler-renaissance-linux-x52-c2" }
-#  ${x52.c2} ${bench-micros-graal-dist}            { targets: [bench, weekly], name: "bench-compiler-jmh-micros-graal-dist-linux-x52-c2" }
+  ${x52.c2-tmpfs10g-perftag} ${bench-dacapo-hwloc}        { targets: [bench, weekly], name: "bench-compiler-dacapo-linux-x52-c2" }
+  ${x52.c2-tmpfs10g-perftag} ${bench-scala-dacapo-hwloc}  { targets: [bench, weekly], name: "bench-compiler-scala-dacapo-linux-x52-c2" }
+  ${x52.c2-perftag} ${bench-specjvm2008-Single}           { targets: [bench, weekly], name: "bench-compiler-specjvm2008-Single-linux-x52-c2" }
+  ${x52.c2-perftag} ${bench-specjvm2008-OneVM}            { targets: [bench, weekly], name: "bench-compiler-specjvm2008-OneVM-linux-x52-c2" }
+  ${x52.c2-perftag} ${bench-specjbb2015}                  { targets: [bench, weekly], name: "bench-compiler-specjbb2015-linux-x52-c2" }
+  ${x52.c2-perftag} ${bench-renaissance-hwloc}            { targets: [bench, weekly], name: "bench-compiler-renaissance-linux-x52-c2" }
+#  ${x52.c2-perftag} ${bench-micros-graal-dist}            { targets: [bench, weekly], name: "bench-compiler-jmh-micros-graal-dist-linux-x52-c2" }
 ]
