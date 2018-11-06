@@ -241,7 +241,8 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
         return "sulong"
 
     def run(self, cwd, args):
-        launcher_args = self.launcher_args(args)
+        bench_file = args[-1]
+        launcher_args = self.launcher_args(args[:-1]) + [bench_file]
         if hasattr(self.host_vm(), 'run_lang'):
             result = self.host_vm().run_lang('lli', launcher_args, cwd)
         else:
