@@ -73,7 +73,7 @@ import java.util.Collections;
  * </pre>
  */
 
-@TruffleLanguage.Registration(name = RegexLanguage.NAME, id = RegexLanguage.ID, characterMimeTypes = RegexLanguage.MIME_TYPE, version = "0.1", internal = true, contextPolicy = TruffleLanguage.ContextPolicy.EXCLUSIVE)
+@TruffleLanguage.Registration(name = RegexLanguage.NAME, id = RegexLanguage.ID, characterMimeTypes = RegexLanguage.MIME_TYPE, version = "0.1", contextPolicy = TruffleLanguage.ContextPolicy.EXCLUSIVE)
 @ProvidedTags(StandardTags.RootTag.class)
 public final class RegexLanguage extends TruffleLanguage<Void> {
 
