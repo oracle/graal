@@ -295,9 +295,14 @@ public class SourceCodeEvaluator extends AbstractRequestHandler {
     }
 
     private EvaluationResult evalInGlobalScope(String langId, Node nearestNode) {
+        SourceSection section = nearestNode.getSourceSection();
+        if (section == null || !section.isAvailable()) {
+            return EvaluationResult.createUnknownExecutionTarget();
+        }
+
         try {
             CallTarget callTarget = env.parse(
-                            Source.newBuilder(langId, nearestNode.getEncapsulatingSourceSection().getCharacters(), "eval in global scope").cached(false).build());
+                            Source.newBuilder(langId, section.getCharacters(), "eval in global scope").cached(false).build());
             Object result = callTarget.call();
             return EvaluationResult.createResult(result);
         } catch (Exception e) {
