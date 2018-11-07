@@ -34,6 +34,7 @@ import com.oracle.truffle.regex.RegexLanguageOptions;
 import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.UnsupportedRegexException;
+import com.oracle.truffle.regex.analysis.RegexUnifier;
 import com.oracle.truffle.regex.dead.DeadRegexExecRootNode;
 import com.oracle.truffle.regex.literal.LiteralRegexEngine;
 import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode;
@@ -64,6 +65,7 @@ import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_AUTOMATON_SIZES;
 import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_BAILOUT_MESSAGES;
 import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_PHASES;
+import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_TREGEX_COMPILATIONS;
 
 /**
  * This class is responsible for compiling a single regex pattern. The compilation process is
@@ -108,9 +110,7 @@ final class TRegexCompilationRequest {
 
     @TruffleBoundary
     private CompiledRegex compileInternal() {
-        // System.out.println("TRegex compiling " +
-        // DebugUtil.jsStringEscape(source.toString()));
-        // System.out.println(new RegexUnifier(pattern, flags).getUnifiedPattern());
+        LOG_TREGEX_COMPILATIONS.finer(() -> String.format("TRegex compiling %s\n%s", DebugUtil.jsStringEscape(source.toString()), new RegexUnifier(source).getUnifiedPattern()));
         createAST();
         RegexProperties properties = ast.getProperties();
         checkFeatureSupport(properties);
