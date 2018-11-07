@@ -32,12 +32,12 @@ import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 /**
  * Character range matcher using a left-balanced tree of ranges.
  */
-public final class RangeTreeMatcher extends ProfiledCharMatcher {
+public final class RangeTreeMatcher extends InvertibleCharMatcher {
 
     /**
      * Constructs a new {@link RangeTreeMatcher}.
      * 
-     * @param invert see {@link ProfiledCharMatcher}.
+     * @param invert see {@link InvertibleCharMatcher}.
      * @param ranges a sorted array of character ranges in the form [lower inclusive bound of range
      *            0, higher inclusive bound of range 0, lower inclusive bound of range 1, higher
      *            inclusive bound of range 1, ...]. The array contents are not modified by this
