@@ -935,7 +935,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         @Override
         public boolean isDefaultFileSystem(FileSystem fs) {
-            return FileSystems.getDefaultFileSystem() == fs;
+            return FileSystems.isDefaultFileSystem(fs);
         }
 
         @Override

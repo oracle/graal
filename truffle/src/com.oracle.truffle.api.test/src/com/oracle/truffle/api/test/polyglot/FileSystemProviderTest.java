@@ -50,7 +50,6 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.FileTime;
 import java.util.EnumSet;
@@ -68,7 +67,6 @@ public class FileSystemProviderTest {
     private Path invalidWorkDir;
     private Path existingAbsolute;
     private Path existingRelative;
-    private Path originalCwd;
     private FileSystem fs;
 
     @Before
@@ -80,22 +78,15 @@ public class FileSystemProviderTest {
         // Use FileSystem.setCurrentWorkingDirectory to verify that all FileSystem operations are
         // correctly using current working directory
         fs = newFullIOFileSystem();
-        originalCwd = fs.toAbsolutePath(Paths.get(""));
         fs.setCurrentWorkingDirectory(workDir);
     }
 
     @After
     public void tearDown() throws IOException {
         try {
-            if (originalCwd != null) {
-                fs.setCurrentWorkingDirectory(originalCwd);
-            }
+            delete(workDir);
         } finally {
-            try {
-                delete(workDir);
-            } finally {
-                delete(invalidWorkDir);
-            }
+            delete(invalidWorkDir);
         }
     }
 
@@ -251,7 +242,7 @@ public class FileSystemProviderTest {
     static FileSystem newFullIOFileSystem(final Path workDir) {
         try {
             final Class<?> clz = Class.forName("com.oracle.truffle.polyglot.FileSystems");
-            final Method m = clz.getDeclaredMethod("newFullIOFileSystem", Path.class);
+            final Method m = clz.getDeclaredMethod("newDefaultFileSystem", Path.class);
             m.setAccessible(true);
             return (FileSystem) m.invoke(null, workDir);
         } catch (ReflectiveOperationException e) {
@@ -262,7 +253,7 @@ public class FileSystemProviderTest {
     static FileSystem newFullIOFileSystem() {
         try {
             final Class<?> clz = Class.forName("com.oracle.truffle.polyglot.FileSystems");
-            final Method m = clz.getDeclaredMethod("getDefaultFileSystem");
+            final Method m = clz.getDeclaredMethod("newDefaultFileSystem");
             m.setAccessible(true);
             return (FileSystem) m.invoke(null);
         } catch (ReflectiveOperationException e) {

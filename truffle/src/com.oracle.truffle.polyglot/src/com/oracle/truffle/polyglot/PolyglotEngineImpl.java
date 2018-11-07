@@ -1037,7 +1037,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         }
         final FileSystem fs;
         if (allowHostIO) {
-            fs = fileSystem != null ? fileSystem : FileSystems.getDefaultFileSystem();
+            fs = fileSystem != null ? fileSystem : FileSystems.newDefaultFileSystem();
         } else {
             fs = FileSystems.newNoIOFileSystem();
         }
