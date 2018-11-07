@@ -36,6 +36,10 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public abstract class LLVMExpect {
 
+    private LLVMExpect() {
+        // private constructor
+    }
+
     @NodeChild(type = LLVMExpressionNode.class, value = "val")
     public abstract static class LLVMExpectI1 extends LLVMBuiltin {
 

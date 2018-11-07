@@ -56,6 +56,9 @@ import java.nio.file.AccessMode;
 import java.nio.file.CopyOption;
 import java.nio.file.DirectoryStream;
 import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.FileVisitOption;
+import java.nio.file.FileVisitResult;
+import java.nio.file.FileVisitor;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
@@ -63,13 +66,17 @@ import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileTime;
+import java.nio.file.attribute.GroupPrincipal;
+import java.nio.file.attribute.UserPrincipal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -96,13 +103,6 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.nodes.RootNode;
-import java.nio.file.FileVisitOption;
-import java.nio.file.FileVisitResult;
-import java.nio.file.FileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.nio.file.attribute.GroupPrincipal;
-import java.nio.file.attribute.UserPrincipal;
-import java.util.HashSet;
 
 @RunWith(Parameterized.class)
 public class VirtualizedFileSystemTest {
@@ -134,6 +134,7 @@ public class VirtualizedFileSystemTest {
 
     @Parameterized.Parameters(name = "{0}")
     public static Collection<Configuration> createParameters() throws IOException {
+        assert cfgs == null;
         final List<Configuration> result = new ArrayList<>();
         final FileSystem fullIO = FileSystemProviderTest.newFullIOFileSystem();
         final Path cwd = Paths.get("").toAbsolutePath();
@@ -194,6 +195,7 @@ public class VirtualizedFileSystemTest {
         createContent(memDir, fileSystem);
         ctx = Context.newBuilder(LANGAUGE_ID).allowIO(true).fileSystem(fileSystem).build();
         result.add(new Configuration("Memory FileSystem", ctx, memDir, fileSystem, false, true, true, true));
+        cfgs = result;
         return result;
     }
 

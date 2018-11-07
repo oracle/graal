@@ -197,7 +197,7 @@ public final class DwarfOpcode {
     public static final long DEREF_TYPE = 0xa6;
     public static final long XDEREF_TYPE = 0xa7;
     public static final long CONVERT = 0xa8;
-    public static final long RElongERPRET = 0xa9;
+    public static final long REINTERPRET = 0xa9;
     public static final long GNU_PUSH_TLS_ADDRESS = 0xe0;
     public static final long GNU_ADDR_INDEX = 0xfb;
     public static final long GNU_CONST_INDEX = 0xfc;

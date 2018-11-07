@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.nodes.asm;
 
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64Flags;
@@ -43,8 +42,11 @@ public abstract class LLVMAMD64LoadFlags extends LLVMExpressionNode {
     protected final ConditionProfile profileZF = ConditionProfile.createCountingProfile();
     protected final ConditionProfile profileSF = ConditionProfile.createCountingProfile();
 
-    @NodeChildren({@NodeChild(value = "cf", type = LLVMExpressionNode.class), @NodeChild(value = "pf", type = LLVMExpressionNode.class), @NodeChild(value = "af", type = LLVMExpressionNode.class),
-                    @NodeChild(value = "zf", type = LLVMExpressionNode.class), @NodeChild(value = "sf", type = LLVMExpressionNode.class)})
+    @NodeChild(value = "cf", type = LLVMExpressionNode.class)
+    @NodeChild(value = "pf", type = LLVMExpressionNode.class)
+    @NodeChild(value = "af", type = LLVMExpressionNode.class)
+    @NodeChild(value = "zf", type = LLVMExpressionNode.class)
+    @NodeChild(value = "sf", type = LLVMExpressionNode.class)
     public abstract static class LLVMAMD64LahfNode extends LLVMAMD64LoadFlags {
         @Specialization
         protected byte doI8(boolean cf, boolean pf, boolean af, boolean zf, boolean sf) {
@@ -68,8 +70,12 @@ public abstract class LLVMAMD64LoadFlags extends LLVMExpressionNode {
         }
     }
 
-    @NodeChildren({@NodeChild(value = "cf", type = LLVMExpressionNode.class), @NodeChild(value = "pf", type = LLVMExpressionNode.class), @NodeChild(value = "af", type = LLVMExpressionNode.class),
-                    @NodeChild(value = "zf", type = LLVMExpressionNode.class), @NodeChild(value = "sf", type = LLVMExpressionNode.class), @NodeChild(value = "of", type = LLVMExpressionNode.class)})
+    @NodeChild(value = "cf", type = LLVMExpressionNode.class)
+    @NodeChild(value = "pf", type = LLVMExpressionNode.class)
+    @NodeChild(value = "af", type = LLVMExpressionNode.class)
+    @NodeChild(value = "zf", type = LLVMExpressionNode.class)
+    @NodeChild(value = "sf", type = LLVMExpressionNode.class)
+    @NodeChild(value = "of", type = LLVMExpressionNode.class)
     public abstract static class LLVMAMD64ReadFlagswNode extends LLVMAMD64LoadFlags {
         private final ConditionProfile profileOF = ConditionProfile.createCountingProfile();
 

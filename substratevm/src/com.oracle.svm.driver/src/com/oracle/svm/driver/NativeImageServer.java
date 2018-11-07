@@ -29,6 +29,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.net.URI;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.charset.StandardCharsets;
@@ -146,7 +147,7 @@ final class NativeImageServer extends NativeImage {
         private LinkedHashSet<Path> readClasspath(String rawClasspathString) {
             LinkedHashSet<Path> result = new LinkedHashSet<>();
             for (String pathStr : rawClasspathString.split(" ")) {
-                result.add(Paths.get(pathStr));
+                result.add(stringToPath(pathStr));
             }
             return result;
         }
@@ -159,7 +160,7 @@ final class NativeImageServer extends NativeImage {
                 showVerboseMessage(verboseServer, String.join(" \\\n", argList));
             }
             showVerboseMessage(verboseServer, "]");
-            int exitCode = NativeImageBuildClient.sendRequest(serverCommand, String.join(" ", argList).getBytes(), port, out, err);
+            int exitCode = NativeImageBuildClient.sendRequest(serverCommand, String.join("\n", argList).getBytes(), port, out, err);
             showVerboseMessage(verboseServer, "Server returns: " + exitCode);
             return exitCode;
         }
@@ -621,13 +622,21 @@ final class NativeImageServer extends NativeImage {
         return null;
     }
 
+    private static String pathToString(Path p) {
+        return p.toUri().toString();
+    }
+
+    private static Path stringToPath(String s) {
+        return Paths.get(URI.create(s));
+    }
+
     private static void writeServerFile(Path serverDir, int port, long pid, LinkedHashSet<Path> classpath, LinkedHashSet<Path> bootClasspath, LinkedHashSet<String> javaArgs) throws Exception {
         Properties sp = new Properties();
         sp.setProperty(Server.pKeyPort, String.valueOf(port));
         sp.setProperty(Server.pKeyPID, String.valueOf(pid));
         sp.setProperty(Server.pKeyJavaArgs, String.join(" ", javaArgs));
-        sp.setProperty(Server.pKeyBCP, bootClasspath.stream().map(String::valueOf).collect(Collectors.joining(" ")));
-        sp.setProperty(Server.pKeyCP, classpath.stream().map(String::valueOf).collect(Collectors.joining(" ")));
+        sp.setProperty(Server.pKeyBCP, bootClasspath.stream().map(NativeImageServer::pathToString).collect(Collectors.joining(" ")));
+        sp.setProperty(Server.pKeyCP, classpath.stream().map(NativeImageServer::pathToString).collect(Collectors.joining(" ")));
         Path serverPropertiesPath = serverDir.resolve(Server.serverProperties);
         try (OutputStream os = Files.newOutputStream(serverPropertiesPath)) {
             sp.store(os, "");

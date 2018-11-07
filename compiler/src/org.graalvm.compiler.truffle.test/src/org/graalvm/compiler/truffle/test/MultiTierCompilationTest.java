@@ -24,21 +24,26 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleBackgroundCompilation;
+import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleCompilationThreshold;
+import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleMultiTier;
+import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleSplitting;
+import static org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.overrideOptions;
+
+import org.graalvm.compiler.truffle.runtime.GraalCompilerDirectives;
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions;
+import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
+import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope;
+import org.junit.Assert;
+import org.junit.Test;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
-import org.graalvm.compiler.truffle.runtime.GraalCompilerDirectives;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions;
-import org.junit.Assert;
-import org.junit.Test;
-
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilationThreshold;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.overrideOptions;
 
 public class MultiTierCompilationTest extends PartialEvaluationTest {
     public static class MultiTierCalleeNode extends RootNode {
@@ -87,10 +92,12 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
     @SuppressWarnings("try")
     @Test
     public void testCompilationTiers() {
-        try (TruffleCompilerOptions.TruffleOptionsOverrideScope scope = overrideOptions(TruffleCompilerOptions.TruffleBackgroundCompilation, false, TruffleCompilerOptions.TruffleMultiTier, true,
-                        TruffleCompilerOptions.TruffleSplitting, false)) {
+        try (TruffleRuntimeOptionsOverrideScope scope = overrideOptions(
+                        TruffleBackgroundCompilation, false,
+                        TruffleMultiTier, true,
+                        TruffleSplitting, false)) {
             final int firstTierCompilationThreshold = PolyglotCompilerOptions.FirstTierCompilationThreshold.getDefaultValue();
-            final int compilationThreshold = TruffleCompilerOptions.getValue(TruffleCompilationThreshold);
+            final int compilationThreshold = TruffleRuntimeOptions.getValue(TruffleCompilationThreshold);
             OptimizedCallTarget calleeTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(new MultiTierCalleeNode());
             OptimizedCallTarget multiTierTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(new MultiTierRootNode(calleeTarget));
             for (int i = 0; i < firstTierCompilationThreshold; i++) {

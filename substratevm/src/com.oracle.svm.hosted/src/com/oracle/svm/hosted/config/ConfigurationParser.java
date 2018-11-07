@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.json.JSONParserException;
@@ -53,38 +54,32 @@ public abstract class ConfigurationParser {
      *
      * @param featureName name of the feature using the configuration (e.g., "JNI")
      */
-    public void parseAndRegisterConfigurations(String featureName, HostedOptionKey<String> configFilesOption, HostedOptionKey<String> configResourcesOption) {
-        String configFiles = configFilesOption.getValue();
-        if (!configFiles.isEmpty()) {
-            for (String path : configFiles.split(",")) {
-                File file = new File(path).getAbsoluteFile();
-                if (!file.exists()) {
-                    throw UserError.abort("The " + featureName + " configuration file \"" + file + "\" does not exist.");
-                }
-                try (Reader reader = new FileReader(file)) {
-                    parseAndRegister(reader, featureName, file, configFilesOption);
-                } catch (IOException e) {
-                    throw UserError.abort("Could not open " + file + ": " + e.getMessage());
-                }
+    public void parseAndRegisterConfigurations(String featureName, HostedOptionKey<String[]> configFilesOption, HostedOptionKey<String[]> configResourcesOption) {
+        for (String path : OptionUtils.flatten(",", configFilesOption.getValue())) {
+            File file = new File(path).getAbsoluteFile();
+            if (!file.exists()) {
+                throw UserError.abort("The " + featureName + " configuration file \"" + file + "\" does not exist.");
+            }
+            try (Reader reader = new FileReader(file)) {
+                parseAndRegister(reader, featureName, file, configFilesOption);
+            } catch (IOException e) {
+                throw UserError.abort("Could not open " + file + ": " + e.getMessage());
             }
         }
-        String configResources = configResourcesOption.getValue();
-        if (!configResources.isEmpty()) {
-            for (String resource : configResources.split(",")) {
-                URL url = classLoader.findResourceByName(resource);
-                if (url == null) {
-                    throw UserError.abort("Could not find " + featureName + " configuration resource \"" + resource + "\".");
-                }
-                try (Reader reader = new InputStreamReader(url.openStream())) {
-                    parseAndRegister(reader, featureName, url, configResourcesOption);
-                } catch (IOException e) {
-                    throw UserError.abort("Could not open " + url + ": " + e.getMessage());
-                }
+        for (String resource : OptionUtils.flatten(",", configResourcesOption.getValue())) {
+            URL url = classLoader.findResourceByName(resource);
+            if (url == null) {
+                throw UserError.abort("Could not find " + featureName + " configuration resource \"" + resource + "\".");
+            }
+            try (Reader reader = new InputStreamReader(url.openStream())) {
+                parseAndRegister(reader, featureName, url, configResourcesOption);
+            } catch (IOException e) {
+                throw UserError.abort("Could not open " + url + ": " + e.getMessage());
             }
         }
     }
 
-    protected abstract void parseAndRegister(Reader reader, String featureName, Object location, HostedOptionKey<String> configFilesOption);
+    protected abstract void parseAndRegister(Reader reader, String featureName, Object location, HostedOptionKey<String[]> configFilesOption);
 
     @SuppressWarnings("unchecked")
     static List<Object> asList(Object data, String errorMessage) {

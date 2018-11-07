@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMBuiltin;
@@ -42,7 +41,7 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 
 public abstract class LLVMX86_ConversionNode {
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMX86_ConversionFloatToIntNode extends LLVMBuiltin { // implements
                                                                                         // cvtss2si
 
@@ -57,7 +56,7 @@ public abstract class LLVMX86_ConversionNode {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMX86_ConversionDoubleToIntNode extends LLVMBuiltin { // implements
                                                                                          // cvtsd2si
 
@@ -74,7 +73,7 @@ public abstract class LLVMX86_ConversionNode {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMX86_Pmovmskb128 extends LLVMBuiltin {
 
         @Specialization
@@ -95,7 +94,7 @@ public abstract class LLVMX86_ConversionNode {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMX86_Movmskpd extends LLVMBuiltin {
 
         @Specialization

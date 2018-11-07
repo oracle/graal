@@ -65,7 +65,7 @@ where `reflectconfig` is a JSON file in the following format (use `--expert-opti
 	  {
 	    "name" : "java.lang.String",
 	    "fields" : [
-	      { "name" : "value" },
+	      { "name" : "value", "allowWrite" : true },
 	      { "name" : "hash" }
 	    ],
 	    "methods" : [
@@ -83,7 +83,9 @@ where `reflectconfig` is a JSON file in the following format (use `--expert-opti
       }
 	]
 
-The image build generates reflection metadata for all classes, methods and fields referenced in that file. The `allPublicConstructors`, `allPublicMethods`, `allPublicFields`, `allDeclaredConstructors`, `allDeclaredMethods` and `allDeclaredFields` attributes can be used to automatically include an entire set of members of a class. More than one configuration can be used by specifying multiple paths for `ReflectionConfigurationFiles` and separating them with `,`. Also, `-H:ReflectionConfigurationResources` can be specified to load one or several configuration files from the native image build's class path, such as from a JAR file.
+The image build generates reflection metadata for all classes, methods and fields referenced in that file. The `allPublicConstructors`, `allPublicMethods`, `allPublicFields`, `allDeclaredConstructors`, `allDeclaredMethods` and `allDeclaredFields` attributes can be used to automatically include an entire set of members of a class. In order to write a field that is declared `final`, the `allowWrite` attribute must be specified for that field (but is not required for non-final fields). However, code accessing final fields might not observe changes of final field values in the same way as for non-final fields because of optimizations.
+
+More than one configuration can be used by specifying multiple paths for `ReflectionConfigurationFiles` and separating them with `,`. Also, `-H:ReflectionConfigurationResources` can be specified to load one or several configuration files from the native image build's class path, such as from a JAR file.
 
 Alternatively, a custom `Feature` implementation can register program elements before and during the analysis phase of the native image build using the `RuntimeReflection` class. For example:
 
@@ -92,7 +94,7 @@ Alternatively, a custom `Feature` implementation can register program elements b
       public void beforeAnalysis(BeforeAnalysisAccess access) {
         try {
           RuntimeReflection.register(String.class);
-          RuntimeReflection.register(String.class.getDeclaredField("value"));
+          RuntimeReflection.register(/* finalIsWritable: */ true, String.class.getDeclaredField("value"));
           RuntimeReflection.register(String.class.getDeclaredField("hash"));
           RuntimeReflection.register(String.class.getDeclaredConstructor(char[].class));
           RuntimeReflection.register(String.class.getDeclaredMethod("charAt", int.class));

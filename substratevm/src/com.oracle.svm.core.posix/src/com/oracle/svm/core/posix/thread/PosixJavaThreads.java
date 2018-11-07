@@ -24,10 +24,6 @@
  */
 package com.oracle.svm.core.posix.thread;
 
-import static com.oracle.svm.core.posix.headers.Pthread.PTHREAD_STACK_MIN;
-import static com.oracle.svm.core.posix.headers.Pthread.pthread_attr_destroy;
-import static com.oracle.svm.core.posix.headers.Pthread.pthread_mutex_init;
-
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -44,6 +40,7 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
+import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
@@ -67,12 +64,14 @@ import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.posix.headers.Pthread.pthread_attr_t;
 import com.oracle.svm.core.posix.headers.Sched;
 import com.oracle.svm.core.posix.headers.Time;
+import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posix.headers.darwin.DarwinPthread;
 import com.oracle.svm.core.posix.headers.linux.LinuxPthread;
 import com.oracle.svm.core.posix.pthread.PthreadConditionUtils;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.ParkEvent;
 import com.oracle.svm.core.thread.ParkEvent.ParkEventFactory;
+import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
 public final class PosixJavaThreads extends JavaThreads {
@@ -95,15 +94,15 @@ public final class PosixJavaThreads extends JavaThreads {
         PosixUtils.checkStatusIs0(
                         Pthread.pthread_attr_setdetachstate(attributes, Pthread.PTHREAD_CREATE_DETACHED()),
                         "PosixJavaThreads.start0: pthread_attr_init");
-        long threadStackSize = stackSize;
+        UnsignedWord threadStackSize = WordFactory.unsigned(stackSize);
         /* If there is a chosen stack size, use it as the stack size. */
-        if (threadStackSize != 0) {
+        if (threadStackSize.notEqual(WordFactory.zero())) {
             /* Make sure the chosen stack size is large enough. */
-            if ((threadStackSize < 0) || (threadStackSize < PTHREAD_STACK_MIN())) {
-                threadStackSize = PTHREAD_STACK_MIN();
-            }
+            threadStackSize = UnsignedUtils.max(threadStackSize, Pthread.PTHREAD_STACK_MIN());
+            /* Make sure the chosen stack size is a multiple of the system page size. */
+            threadStackSize = UnsignedUtils.roundUp(threadStackSize, WordFactory.unsigned(Unistd.getpagesize()));
             PosixUtils.checkStatusIs0(
-                            Pthread.pthread_attr_setstacksize(attributes, WordFactory.unsigned(threadStackSize)),
+                            Pthread.pthread_attr_setstacksize(attributes, threadStackSize),
                             "PosixJavaThreads.start0: pthread_attr_setstacksize");
         }
 
@@ -119,7 +118,7 @@ public final class PosixJavaThreads extends JavaThreads {
                         Pthread.pthread_create(newThread, attributes, PosixJavaThreads.pthreadStartRoutine.getFunctionPointer(), startData),
                         "PosixJavaThreads.start0: pthread_create");
         setPthreadIdentifier(thread, newThread.read());
-        pthread_attr_destroy(attributes);
+        Pthread.pthread_attr_destroy(attributes);
     }
 
     private static void setPthreadIdentifier(Thread thread, Pthread.pthread_t pthread) {
@@ -235,7 +234,7 @@ class PosixParkEvent extends ParkEvent {
         VMError.guarantee(mutex.isNonNull(), "mutex allocation");
         /* The attributes for the mutex. Can be null. */
         final Pthread.pthread_mutexattr_t mutexAttr = WordFactory.nullPointer();
-        PosixUtils.checkStatusIs0(pthread_mutex_init(mutex, mutexAttr), "mutex initialization");
+        PosixUtils.checkStatusIs0(Pthread.pthread_mutex_init(mutex, mutexAttr), "mutex initialization");
 
         /* Create a condition variable. */
         cond = LibC.malloc(SizeOf.unsigned(Pthread.pthread_cond_t.class));

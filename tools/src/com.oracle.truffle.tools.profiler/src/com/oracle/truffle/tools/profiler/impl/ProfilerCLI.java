@@ -85,7 +85,7 @@ abstract class ProfilerCLI {
                 public boolean test(Source source) {
                     boolean internal = (internals || !source.isInternal());
                     boolean file = testWildcardExpressions(source.getPath(), filterFile);
-                    boolean mimeType = filterLanguage.equals("") || source.getMimeType().equals(filterLanguage);
+                    boolean mimeType = filterLanguage.equals("") || filterLanguage.equals(source.getMimeType());
                     return internal && file && mimeType;
                 }
             });

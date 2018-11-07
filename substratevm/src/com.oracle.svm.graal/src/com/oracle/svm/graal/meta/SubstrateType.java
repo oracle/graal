@@ -35,8 +35,8 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordBase;
 
+import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.UnsafeAccess;
-import com.oracle.svm.core.amd64.FrameAccess;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.annotate.UnknownPrimitiveField;
 import com.oracle.svm.core.hub.DynamicHub;

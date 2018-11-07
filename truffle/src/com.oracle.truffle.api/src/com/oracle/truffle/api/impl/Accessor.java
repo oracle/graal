@@ -187,10 +187,6 @@ public abstract class Accessor {
 
         public abstract boolean isEvalRoot(RootNode target);
 
-        public abstract <T> T lookupJavaInteropCodeCache(Object languageContext, Object key, Class<T> expectedType);
-
-        public abstract <T> T installJavaInteropCodeCache(Object languageContext, Object key, T value, Class<T> expectedType);
-
         @SuppressWarnings("static-method")
         public final void attachOutputConsumer(DispatchOutputStream dos, OutputStream out) {
             dos.attach(out);
@@ -265,7 +261,15 @@ public abstract class Accessor {
 
         public abstract boolean isCreateThreadAllowed(Object vmObject);
 
-        public abstract Thread createThread(Object vmObject, Runnable runnable, Object context);
+        public Thread createThread(Object vmObject, Runnable runnable, Object innerContextImpl, ThreadGroup group) {
+            return createThread(vmObject, runnable, innerContextImpl, group, 0);
+        }
+
+        public Thread createThread(Object vmObject, Runnable runnable, Object innerContextImpl) {
+            return createThread(vmObject, runnable, innerContextImpl, null, 0);
+        }
+
+        public abstract Thread createThread(Object vmObject, Runnable runnable, Object innerContextImpl, ThreadGroup group, long stackSize);
 
         public abstract Iterable<Scope> createDefaultLexicalScope(Node node, Frame frame);
 

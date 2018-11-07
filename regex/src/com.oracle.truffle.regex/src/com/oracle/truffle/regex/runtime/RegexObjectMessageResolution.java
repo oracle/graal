@@ -54,7 +54,7 @@ public class RegexObjectMessageResolution {
 
         @Override
         Object execute(RegexObject receiver) {
-            return receiver.getSource().getFlags();
+            return receiver.getFlags();
         }
     }
 

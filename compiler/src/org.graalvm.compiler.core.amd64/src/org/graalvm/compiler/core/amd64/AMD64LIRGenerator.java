@@ -87,7 +87,6 @@ import org.graalvm.compiler.lir.amd64.AMD64Move.CompareAndSwapOp;
 import org.graalvm.compiler.lir.amd64.AMD64Move.MembarOp;
 import org.graalvm.compiler.lir.amd64.AMD64Move.StackLeaOp;
 import org.graalvm.compiler.lir.amd64.AMD64PauseOp;
-import org.graalvm.compiler.lir.amd64.AMD64StringIndexOfOp;
 import org.graalvm.compiler.lir.amd64.AMD64StringLatin1InflateOp;
 import org.graalvm.compiler.lir.amd64.AMD64StringUTF16CompressOp;
 import org.graalvm.compiler.lir.amd64.AMD64ZapRegistersOp;
@@ -264,8 +263,8 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     public void emitCompareAndSwapBranch(ValueKind<?> kind, AMD64AddressValue address, Value expectedValue, Value newValue, Condition condition, LabelRef trueLabel, LabelRef falseLabel,
                     double trueLabelProbability) {
-        assert kind.equals(expectedValue.getValueKind());
-        assert kind.equals(newValue.getValueKind());
+        assert kind.getPlatformKind().getSizeInBytes() <= expectedValue.getValueKind().getPlatformKind().getSizeInBytes();
+        assert kind.getPlatformKind().getSizeInBytes() <= newValue.getValueKind().getPlatformKind().getSizeInBytes();
         assert condition == Condition.EQ || condition == Condition.NE;
         AMD64Kind memKind = (AMD64Kind) kind.getPlatformKind();
         RegisterValue raxValue = AMD64.rax.asValue(kind);
@@ -544,9 +543,9 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitArrayEquals(JavaKind kind, Value array1, Value array2, Value length) {
+    public Variable emitArrayEquals(JavaKind kind, Value array1, Value array2, Value length, int constantLength, boolean directPointers) {
         Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
-        append(new AMD64ArrayEqualsOp(this, kind, result, array1, array2, asAllocatable(length)));
+        append(new AMD64ArrayEqualsOp(this, kind, result, array1, array2, asAllocatable(length), constantLength, directPointers));
         return result;
     }
 
@@ -557,21 +556,22 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         return 4096;
     }
 
-    @Override
-    public Variable emitStringIndexOf(Value source, Value sourceCount, Value target, Value targetCount, int constantTargetCount) {
-        Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
-        RegisterValue cnt1 = AMD64.rdx.asValue(sourceCount.getValueKind());
-        emitMove(cnt1, sourceCount);
-        RegisterValue cnt2 = AMD64.rax.asValue(targetCount.getValueKind());
-        emitMove(cnt2, targetCount);
-        append(new AMD64StringIndexOfOp(this, result, source, target, cnt1, cnt2, AMD64.rcx.asValue(), AMD64.xmm0.asValue(), constantTargetCount, getVMPageSize()));
-        return result;
+    /**
+     * Return the maximum size of vector registers used in SSE/AVX instructions.
+     */
+    protected int getMaxVectorSize() {
+        // default for "unlimited"
+        return -1;
     }
 
     @Override
-    public Variable emitArrayIndexOf(JavaKind kind, Value arrayPointer, Value arrayLength, Value charValue) {
-        Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
-        append(new AMD64ArrayIndexOfOp(kind, getVMPageSize(), this, result, asAllocatable(arrayPointer), asAllocatable(arrayLength), asAllocatable(charValue)));
+    public Variable emitArrayIndexOf(JavaKind kind, boolean findTwoConsecutive, Value arrayPointer, Value arrayLength, Value... searchValues) {
+        Variable result = newVariable(LIRKind.value(AMD64Kind.QWORD));
+        Value[] allocatableSearchValues = new Value[searchValues.length];
+        for (int i = 0; i < searchValues.length; i++) {
+            allocatableSearchValues[i] = asAllocatable(searchValues[i]);
+        }
+        append(new AMD64ArrayIndexOfOp(kind, findTwoConsecutive, getVMPageSize(), getMaxVectorSize(), this, result, asAllocatable(arrayPointer), asAllocatable(arrayLength), allocatableSearchValues));
         return result;
     }
 

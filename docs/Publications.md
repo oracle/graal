@@ -57,11 +57,28 @@ SPLASH 2012, October 19-26, Tucson, AZ
 
 ### 2018
 
+- Kevin Menard, Chris Seaton, Benoit Daloze [**Specializing Ropes for Ruby**](https://chrisseaton.com/truffleruby/ropes-manlang.pdf)
+In _Proceedings of the 15th International Conference on Managed Languages & Runtimes (ManLang'18)_
+
+- B. Daloze, A. Tal, S. Marr, H. Mössenböck, E. Petrank [**Parallelization of Dynamic Languages: Synchronizing Built-in Collections**](http://ssw.jku.at/General/Staff/Daloze/thread-safe-collections.pdf)
+In _Proceedings of the Conference on Object-Oriented Programming, Systems, Languages, and Applications (OOPSLA 2018)_
+
+- David Leopoldseder, Roland Schatz, Lukas Stadler, Manuel Rigger, Thomas Wuerthinger, Hanspeter Moessenboeck [**Fast-Path Loop Unrolling of Non-Counted Loops to Enable Subsequent Compiler Optimizations**](https://dl.acm.org/citation.cfm?id=3237013)
+In _Proceedings of the 15th International Conference on Managed Languages & Runtimes, Article No. 2 (ManLang'18)_
+
+- David Leopoldseder, Lukas Stadler, Thomas Würthinger,	Josef Eisl, Doug Simon, Hanspeter Mössenböck [**Dominance-based duplication simulation (DBDS): code duplication to enable compiler optimizations**](https://dl.acm.org/citation.cfm?id=3168811)
+In _Proceedings of the 2018 International Symposium on Code Generation and Optimization (CGO 2018)_
+
+- Matthias Grimmer, Roland Schatz, Chris Seaton, Thomas Wuerthinger, Mikel Lujan [**Cross-Language Interoperability in a Multi-Language Runtime**](https://chrisseaton.com/truffleruby/cross-language-interop.pdf)
+In _ACM Transactions on Programming Languages and Systems (TOPLAS), Vol. 40, No. 2, 2018_
+
+- Manuel Rigger, Roland Schatz, Jacob Kreindl, Christian Haeubl, Hanspeter Moessenboeck [**Sulong, and Thanks for All the Fish**](http://ssw.jku.at/General/Staff/ManuelRigger/MoreVMs18.pdf)
+_MoreVMs Workshop on Modern Language Runtimes, Ecosystems, and VMs (MoreVMs 2018)_
+
 - Michael Van De Vanter, Chris Seaton, Michael Haupt, Christian Humer, and Thomas Würthinger  
 [**Fast, Flexible, Polyglot Instrumentation Support for Debuggers and other Tools**](https://arxiv.org/pdf/1803.10201v1.pdf)  
 In _The Art, Science, and Engineering of Programming, vol. 2, no. 3, 2018, article 14 (<Programming 2018>, Nice, France, April 12, 2018)_  
 [DOI](https://doi.org/10.22152/programming-journal.org/2018/2/14)  
-
 
 ### 2017
 

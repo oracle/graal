@@ -202,7 +202,7 @@ public abstract class Stub {
                         assert destroyedCallerRegisters != null;
                         // Add a GeneratePIC check here later, we don't want to install
                         // code if we don't have a corresponding VM global symbol.
-                        HotSpotCompiledCode compiledCode = HotSpotCompiledCodeBuilder.createCompiledCode(codeCache, null, null, compResult);
+                        HotSpotCompiledCode compiledCode = HotSpotCompiledCodeBuilder.createCompiledCode(codeCache, null, null, compResult, options);
                         code = codeCache.installCode(null, compiledCode, null, null, false);
                     } catch (Throwable e) {
                         throw debug.handle(e);

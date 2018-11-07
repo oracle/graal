@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.nodes.asm.support;
 
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -41,6 +40,11 @@ public abstract class LLVMAMD64AddressComputationNode extends LLVMExpressionNode
 
     public LLVMAMD64AddressComputationNode(int displacement) {
         this.displacement = displacement;
+    }
+
+    protected static long toLong(int value) {
+        // TODO: find out if signed cast is always correct
+        return value;
     }
 
     @NodeChild(value = "base", type = LLVMExpressionNode.class)
@@ -55,8 +59,8 @@ public abstract class LLVMAMD64AddressComputationNode extends LLVMExpressionNode
         }
 
         @Specialization
-        protected int doInt(int base) {
-            return base + displacement;
+        protected long doInt(int base) {
+            return toLong(base) + displacement;
         }
 
         @Specialization
@@ -65,7 +69,8 @@ public abstract class LLVMAMD64AddressComputationNode extends LLVMExpressionNode
         }
     }
 
-    @NodeChildren({@NodeChild(value = "base", type = LLVMExpressionNode.class), @NodeChild(value = "offset", type = LLVMExpressionNode.class)})
+    @NodeChild(value = "base", type = LLVMExpressionNode.class)
+    @NodeChild(value = "offset", type = LLVMExpressionNode.class)
     public abstract static class LLVMAMD64AddressOffsetComputationNode extends LLVMAMD64AddressComputationNode {
         private final int shift;
 
@@ -75,13 +80,13 @@ public abstract class LLVMAMD64AddressComputationNode extends LLVMExpressionNode
         }
 
         @Specialization
-        protected int doI64(int base, int offset) {
-            return base + displacement + (offset << shift);
+        protected long doI64(int base, int offset) {
+            return toLong(base) + displacement + (toLong(offset) << shift);
         }
 
         @Specialization
         protected long doI64(long base, int offset) {
-            return base + displacement + (offset << shift);
+            return base + displacement + (toLong(offset) << shift);
         }
 
         @Specialization
@@ -91,7 +96,7 @@ public abstract class LLVMAMD64AddressComputationNode extends LLVMExpressionNode
 
         @Specialization
         protected LLVMPointer doLLVMPointer(LLVMPointer base, int offset) {
-            return base.increment(displacement + (offset << shift));
+            return base.increment(displacement + (toLong(offset) << shift));
         }
 
         @Specialization
@@ -111,7 +116,7 @@ public abstract class LLVMAMD64AddressComputationNode extends LLVMExpressionNode
 
         @Specialization
         protected LLVMNativePointer doInt(int offset) {
-            return LLVMNativePointer.create(displacement + (offset << shift));
+            return LLVMNativePointer.create(displacement + (toLong(offset) << shift));
         }
 
         @Specialization
@@ -125,7 +130,8 @@ public abstract class LLVMAMD64AddressComputationNode extends LLVMExpressionNode
         }
     }
 
-    @NodeChildren({@NodeChild(value = "base", type = LLVMExpressionNode.class), @NodeChild(value = "offset", type = LLVMExpressionNode.class)})
+    @NodeChild(value = "base", type = LLVMExpressionNode.class)
+    @NodeChild(value = "offset", type = LLVMExpressionNode.class)
     public abstract static class LLVMAMD64AddressSegmentComputationNode extends LLVMAMD64AddressComputationNode {
         public LLVMAMD64AddressSegmentComputationNode() {
             super(0);

@@ -24,21 +24,22 @@
  */
 package org.graalvm.compiler.truffle.runtime.debug;
 
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TraceTruffleCompilation;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TraceTruffleCompilationDetails;
+import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TraceTruffleCompilation;
+import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TraceTruffleCompilationDetails;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.AbstractGraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
+import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
+import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.Node;
@@ -57,21 +58,21 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
     }
 
     public static void install(GraalTruffleRuntime runtime) {
-        if (TruffleCompilerOptions.getValue(TraceTruffleCompilation) || TruffleCompilerOptions.getValue(TraceTruffleCompilationDetails)) {
+        if (TruffleRuntimeOptions.getValue(TraceTruffleCompilation) || TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TraceTruffleCompilationDetails)) {
             runtime.addListener(new TraceCompilationListener(runtime));
         }
     }
 
     @Override
     public void onCompilationQueued(OptimizedCallTarget target) {
-        if (TruffleCompilerOptions.getValue(TraceTruffleCompilationDetails)) {
+        if (TruffleRuntimeOptions.getValue(TraceTruffleCompilationDetails)) {
             runtime.logEvent(0, "opt queued", target.toString(), target.getDebugProperties(null));
         }
     }
 
     @Override
     public void onCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason) {
-        if (TruffleCompilerOptions.getValue(TraceTruffleCompilationDetails)) {
+        if (TruffleRuntimeOptions.getValue(TraceTruffleCompilationDetails)) {
             Map<String, Object> properties = new LinkedHashMap<>();
             addSourceInfo(properties, source);
             properties.put("Reason", reason);
@@ -81,16 +82,15 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
 
     @Override
     public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout) {
-        if (!TraceCompilationFailureListener.isPermanentFailure(bailout, permanentBailout)) {
+        if (!isPermanentFailure(bailout, permanentBailout)) {
             onCompilationDequeued(target, null, "Non permanent bailout: " + reason);
         }
         currentCompilation.set(null);
-
     }
 
     @Override
     public void onCompilationStarted(OptimizedCallTarget target) {
-        if (TruffleCompilerOptions.getValue(TraceTruffleCompilationDetails)) {
+        if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TraceTruffleCompilationDetails)) {
             runtime.logEvent(0, "opt start", target.toString(), target.getDebugProperties(null));
         }
         currentCompilation.set(new Times());
@@ -168,6 +168,16 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
             properties.put("SourceClass", source.getClass().getSimpleName());
             properties.put("Source", source);
         }
+    }
+
+    /**
+     * Determines if a failure is permanent.
+     *
+     * @see GraalTruffleRuntimeListener#onCompilationFailed(OptimizedCallTarget, String, boolean,
+     *      boolean)
+     */
+    private static boolean isPermanentFailure(boolean bailout, boolean permanentBailout) {
+        return !bailout || permanentBailout;
     }
 
     private static final class Times {

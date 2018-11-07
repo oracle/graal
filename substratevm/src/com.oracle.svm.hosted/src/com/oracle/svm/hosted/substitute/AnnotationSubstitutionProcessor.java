@@ -60,6 +60,7 @@ import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.KeepOriginal;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
@@ -72,6 +73,7 @@ import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.annotation.AnnotationSubstitutionType;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
+import jdk.vm.ci.common.NativeImageReinitialize;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -221,6 +223,11 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
 
         for (Class<?> annotatedClass : annotatedClasses) {
             handleClass(annotatedClass);
+        }
+
+        List<Field> annotatedFields = imageClassLoader.findAnnotatedFields(NativeImageReinitialize.class);
+        for (Field annotatedField : annotatedFields) {
+            reinitializeField(annotatedField);
         }
     }
 
@@ -705,6 +712,12 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         }
 
         return new ComputedValueField(original, annotated, kind, targetClass, targetName, isFinal);
+    }
+
+    private void reinitializeField(Field annotatedField) {
+        ResolvedJavaField annotated = metaAccess.lookupJavaField(annotatedField);
+        ComputedValueField alias = new ComputedValueField(annotated, annotated, Kind.Reset, annotatedField.getDeclaringClass(), "", false);
+        register(fieldSubstitutions, annotated, annotated, alias);
     }
 
     public Class<?> getTargetClass(Class<?> annotatedClass) {

@@ -42,6 +42,7 @@ import itertools
 import glob
 from xml.dom.minidom import parse
 from argparse import ArgumentParser
+import fnmatch
 
 import mx
 import mx_compiler
@@ -592,7 +593,7 @@ def javac_image_command(javac_path):
             join(mx_compiler.jdk.home, "jre", "lib", "rt.jar")]
 
 
-def native_junit(native_image, unittest_args=None, build_args=None, run_args=None):
+def native_junit(native_image, unittest_args=None, build_args=None, run_args=None, blacklist=None, whitelist=None):
     unittest_args = unittest_args or ['com.oracle.svm.test']
     build_args = build_args or []
     run_args = run_args or ['--verbose']
@@ -604,7 +605,7 @@ def native_junit(native_image, unittest_args=None, build_args=None, run_args=Non
         def dummy_harness(test_deps, vm_launcher, vm_args):
             unittest_deps.extend(test_deps)
         unittest_file = join(junit_tmp_dir, 'svmjunit.tests')
-        _run_tests(unittest_args, dummy_harness, _VMLauncher('dummy_launcher', None, mx_compiler.jdk), ['@Test', '@Parameters'], unittest_file, None, None, None, None)
+        _run_tests(unittest_args, dummy_harness, _VMLauncher('dummy_launcher', None, mx_compiler.jdk), ['@Test', '@Parameters'], unittest_file, blacklist, whitelist, None, None)
         if not exists(unittest_file):
             mx.abort('No matching unit tests found. Skip image build and execution.')
         with open(unittest_file, 'r') as f:
@@ -619,18 +620,34 @@ def native_unittest(native_image, cmdline_args):
     parser = ArgumentParser(prog='mx native-unittest', description='Run unittests as native image')
     mask_str = '#'
     def mask(arg):
-        if arg in ['--', '--build-args', '--run-args', '-h', '--help']:
+        if arg in ['--', '--build-args', '--run-args', '--blacklist', '--whitelist', '-h', '--help']:
             return arg
         else:
             return arg.replace('-', mask_str)
     cmdline_args = [mask(arg) for arg in cmdline_args]
+    parser.add_argument('--blacklist', help='run all testcases not specified in <file>', metavar='<file>')
+    parser.add_argument('--whitelist', help='run testcases specified in <file> only', metavar='<file>')
     parser.add_argument('--build-args', metavar='ARG', nargs='*', default=[])
     parser.add_argument('--run-args', metavar='ARG', nargs='*', default=[])
     parser.add_argument('unittest_args', metavar='TEST_ARG', nargs='*')
     pargs = parser.parse_args(cmdline_args)
     def unmask(args):
         return [arg.replace(mask_str, '-') for arg in args]
-    native_junit(native_image, unmask(pargs.unittest_args), unmask(pargs.build_args), unmask(pargs.run_args))
+    blacklist = unmask([pargs.blacklist])[0] if pargs.blacklist else None
+    whitelist = unmask([pargs.whitelist])[0] if pargs.whitelist else None
+    if whitelist:
+        try:
+            with open(whitelist) as fp:
+                whitelist = [re.compile(fnmatch.translate(l.rstrip())) for l in fp.readlines() if not l.startswith('#')]
+        except IOError:
+            mx.log('warning: could not read whitelist: ' + whitelist)
+    if blacklist:
+        try:
+            with open(blacklist) as fp:
+                blacklist = [re.compile(fnmatch.translate(l.rstrip())) for l in fp.readlines() if not l.startswith('#')]
+        except IOError:
+            mx.log('warning: could not read blacklist: ' + blacklist)
+    native_junit(native_image, unmask(pargs.unittest_args), unmask(pargs.build_args), unmask(pargs.run_args), blacklist, whitelist)
 
 def js_image_test(binary, bench_location, name, warmup_iterations, iterations, timeout=None, bin_args=None):
     bin_args = bin_args if bin_args is not None else []
@@ -756,7 +773,7 @@ def javac_image(native_image, path, args=None):
     # Build an image for the javac compiler, so that we test and gate-check javac all the time.
     # Dynamic class loading code is reachable (used by the annotation processor), so -H:+ReportUnsupportedElementsAtRuntime is a necessary option
     native_image(["-H:Path=" + path, '-cp', mx_compiler.jdk.toolsjar, "com.sun.tools.javac.Main", "javac",
-                  "-H:+ReportUnsupportedElementsAtRuntime",
+                  "-H:+ReportUnsupportedElementsAtRuntime", "-H:+AllowIncompleteClasspath",
                   "-H:IncludeResourceBundles=com.sun.tools.javac.resources.compiler,com.sun.tools.javac.resources.javac,com.sun.tools.javac.resources.version"] + args)
 
 orig_command_benchmark = mx.command_function('benchmark')
@@ -917,7 +934,10 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     license_files=[],
     third_party_license_files=[],
     jar_distributions=['substratevm:POLYGLOT_NATIVE_API'],
-    support_distributions=['substratevm:POLYGLOT_NATIVE_API_SUPPORT'],
+    support_distributions=[
+        "substratevm:POLYGLOT_NATIVE_API_SUPPORT",
+        "substratevm:POLYGLOT_NATIVE_API_HEADERS",
+    ],
     polyglot_lib_build_args=[
         "-H:Features=org.graalvm.polyglot.nativeapi.PolyglotNativeAPIFeature",
         "-Dorg.graalvm.polyglot.nativeapi.libraryPath=<path:POLYGLOT_NATIVE_API_HEADERS>",

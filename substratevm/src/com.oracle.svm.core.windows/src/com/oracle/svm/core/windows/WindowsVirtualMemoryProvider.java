@@ -50,10 +50,7 @@ import com.oracle.svm.core.os.VirtualMemoryProvider;
 class WindowsVirtualMemoryProviderFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (!ImageSingletons.contains(VirtualMemoryProvider.class)) {
-            VirtualMemoryProvider provider = new WindowsVirtualMemoryProvider();
-            ImageSingletons.add(VirtualMemoryProvider.class, provider);
-        }
+        ImageSingletons.add(VirtualMemoryProvider.class, new WindowsVirtualMemoryProvider());
     }
 }
 

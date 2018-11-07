@@ -18,8 +18,8 @@ jdk:
 
 env:
   global:
-    - JVMCI_VERSION="jvmci-0.48"
-    - JDK8_UPDATE_VERSION="172"
+    - JVMCI_VERSION="jvmci-0.50"
+    - JDK8_UPDATE_VERSION="192"
 
 matrix:
   include:

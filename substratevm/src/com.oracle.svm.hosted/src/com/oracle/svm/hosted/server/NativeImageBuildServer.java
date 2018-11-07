@@ -315,7 +315,7 @@ public final class NativeImageBuildServer {
                         sendExitStatus(output, -1);
                     } else {
                         log("Starting compilation for request:\n%s\n", serverCommand.payloadString());
-                        final ArrayList<String> arguments = new ArrayList<>(Arrays.asList(serverCommand.payloadString().split("\\s+?")));
+                        final ArrayList<String> arguments = new ArrayList<>(Arrays.asList(serverCommand.payloadString().split("\n")));
 
                         errorJSONStream.writingInterrupted(false);
                         errorJSONStream.setOriginal(socket.getOutputStream());

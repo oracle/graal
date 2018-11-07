@@ -72,6 +72,14 @@ final class PolyglotProxy {
         return value instanceof EngineProxy;
     }
 
+    public static boolean isProxyGuestObject(Object value) {
+        return value instanceof EngineProxy;
+    }
+
+    public static Object withContext(PolyglotLanguageContext context, Object valueReceiver) {
+        return new EngineProxy(context, ((EngineProxy) valueReceiver).proxy);
+    }
+
     public static Proxy toProxyHostObject(TruffleObject value) {
         return ((EngineProxy) value).proxy;
     }

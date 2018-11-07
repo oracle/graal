@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.graal.code.amd64;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-import static com.oracle.svm.core.util.VMError.unimplemented;
 import static jdk.vm.ci.amd64.AMD64.rax;
 import static jdk.vm.ci.amd64.AMD64.rbx;
 import static jdk.vm.ci.amd64.AMD64.rcx;
@@ -55,7 +53,9 @@ import java.util.ArrayList;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.CallingConvention;
@@ -77,11 +77,6 @@ import jdk.vm.ci.meta.ValueKind;
 
 public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
 
-    public enum ConfigKind {
-        NORMAL,
-        NATIVE_TO_JAVA,
-    }
-
     private final TargetDescription target;
     private final int nativeParamsStackOffset;
     private final RegisterArray generalParameterRegs;
@@ -92,10 +87,12 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
     private final MetaAccessProvider metaAccess;
     private final Register threadRegister;
     private final Register heapBaseRegister;
+    private final boolean useBasePointer;
 
-    public SubstrateAMD64RegisterConfig(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target) {
+    public SubstrateAMD64RegisterConfig(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target, boolean useBasePointer) {
         this.target = target;
         this.metaAccess = metaAccess;
+        this.useBasePointer = useBasePointer;
 
         if (OS.getCurrent() == OS.WINDOWS) {
             // This is the Windows 64-bit ABI for parameters.
@@ -127,7 +124,9 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
 
             ArrayList<Register> regs = new ArrayList<>(valueRegistersSSE.asList());
             regs.remove(rsp);
-            regs.remove(rbp);
+            if (useBasePointer) {
+                regs.remove(rbp);
+            }
             regs.remove(heapBaseRegister);
             regs.remove(threadRegister);
             allocatableRegs = new RegisterArray(regs);
@@ -151,7 +150,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
                 break;
 
             default:
-                throw shouldNotReachHere();
+                throw VMError.shouldNotReachHere();
 
         }
         attributesMap = RegisterAttributes.createMap(this, AMD64.allRegisters);
@@ -174,7 +173,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
             case Void:
                 return null;
             default:
-                throw shouldNotReachHere();
+                throw VMError.shouldNotReachHere();
         }
     }
 
@@ -220,8 +219,25 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
 
     @Override
     public RegisterArray getCallingConventionRegisters(Type type, JavaKind kind) {
-        throw unimplemented();
-        // return null;
+        switch (kind) {
+            case Boolean:
+            case Byte:
+            case Short:
+            case Char:
+            case Int:
+            case Long:
+            case Object:
+                return generalParameterRegs;
+            case Float:
+            case Double:
+                return xmmParameterRegs;
+            default:
+                throw VMError.shouldNotReachHere();
+        }
+    }
+
+    public boolean shouldUseBasePointer() {
+        return this.useBasePointer;
     }
 
     @Override
@@ -266,7 +282,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
                     }
                     break;
                 default:
-                    throw shouldNotReachHere();
+                    throw VMError.shouldNotReachHere();
             }
 
             if (locations[i] == null) {

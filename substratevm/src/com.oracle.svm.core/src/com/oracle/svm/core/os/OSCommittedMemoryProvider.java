@@ -24,11 +24,9 @@
  */
 package com.oracle.svm.core.os;
 
-import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_BEGIN;
-import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_END;
 import static org.graalvm.word.WordFactory.nullPointer;
+import static org.graalvm.word.WordFactory.zero;
 
-import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -39,7 +37,6 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Isolates;
-import com.oracle.svm.core.MemoryUtil;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -58,6 +55,7 @@ class OSCommittedMemoryProviderFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         if (!ImageSingletons.contains(CommittedMemoryProvider.class)) {
+            ImageSingletons.add(ImageHeapProvider.class, new CopyingImageHeapProvider());
             ImageSingletons.add(CommittedMemoryProvider.class, new OSCommittedMemoryProvider());
         }
     }
@@ -71,35 +69,7 @@ public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
             isolatePointer.write(CEntryPointSetup.SINGLE_ISOLATE_SENTINEL);
             return CEntryPointErrors.NO_ERROR;
         }
-
-        Word begin = Isolates.IMAGE_HEAP_BEGIN.get();
-        Word size = Isolates.IMAGE_HEAP_END.get().subtract(begin);
-
-        Pointer heap = VirtualMemoryProvider.get().commit(nullPointer(), size, Access.READ | Access.WRITE);
-        if (heap.isNull()) {
-            return CEntryPointErrors.MAP_HEAP_FAILED;
-        }
-
-        MemoryUtil.copyConjointMemoryAtomic(begin, heap, size);
-
-        UnsignedWord pageSize = getGranularity();
-        UnsignedWord writableBeginPageOffset = UnsignedUtils.roundDown(IMAGE_HEAP_WRITABLE_BEGIN.get().subtract(begin), pageSize);
-        if (writableBeginPageOffset.aboveThan(0)) {
-            if (VirtualMemoryProvider.get().protect(heap, writableBeginPageOffset, Access.READ) != 0) {
-                return CEntryPointErrors.PROTECT_HEAP_FAILED;
-            }
-        }
-        UnsignedWord writableEndPageOffset = UnsignedUtils.roundUp(IMAGE_HEAP_WRITABLE_END.get().subtract(begin), pageSize);
-        if (writableEndPageOffset.belowThan(size)) {
-            Pointer afterWritableBoundary = heap.add(writableEndPageOffset);
-            Word afterWritableSize = size.subtract(writableEndPageOffset);
-            if (VirtualMemoryProvider.get().protect(afterWritableBoundary, afterWritableSize, Access.READ) != 0) {
-                return CEntryPointErrors.PROTECT_HEAP_FAILED;
-            }
-        }
-
-        isolatePointer.write(heap);
-        return CEntryPointErrors.NO_ERROR;
+        return ImageHeapProvider.get().initialize(nullPointer(), zero(), isolatePointer, nullPointer());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -118,11 +88,7 @@ public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
         tearDownVirtualMemoryConsumers();
 
         PointerBase heapBase = Isolates.getHeapBase(CurrentIsolate.getIsolate());
-        Word size = Isolates.IMAGE_HEAP_END.get().subtract(Isolates.IMAGE_HEAP_BEGIN.get());
-        if (VirtualMemoryProvider.get().free(heapBase, size) != 0) {
-            return CEntryPointErrors.MAP_HEAP_FAILED;
-        }
-        return CEntryPointErrors.NO_ERROR;
+        return ImageHeapProvider.get().tearDown(heapBase);
     }
 
     /**

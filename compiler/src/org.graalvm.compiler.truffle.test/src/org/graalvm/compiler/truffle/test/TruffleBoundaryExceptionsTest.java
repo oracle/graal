@@ -24,12 +24,11 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilationThreshold;
-
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
+import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
+import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -44,7 +43,7 @@ public class TruffleBoundaryExceptionsTest extends TestWithSynchronousCompiling 
 
     @Test
     public void testExceptionOnTruffleBoundaryDoesNotDeop() {
-        final int compilationThreshold = TruffleCompilerOptions.getValue(TruffleCompilationThreshold);
+        final int compilationThreshold = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompilationThreshold);
         class DeoptCountingExceptionOverBoundaryRootNode extends RootNode {
 
             protected DeoptCountingExceptionOverBoundaryRootNode() {
@@ -111,7 +110,7 @@ public class TruffleBoundaryExceptionsTest extends TestWithSynchronousCompiling 
 
     @Test
     public void testExceptionOnTruffleBoundaryWithNoTransferToInterpreter() {
-        final int compilationThreshold = TruffleCompilerOptions.getValue(TruffleCompilationThreshold);
+        final int compilationThreshold = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompilationThreshold);
         class DeoptCountingExceptionOverBoundaryRootNode extends RootNode {
 
             protected DeoptCountingExceptionOverBoundaryRootNode() {
@@ -164,7 +163,7 @@ public class TruffleBoundaryExceptionsTest extends TestWithSynchronousCompiling 
 
     @Test
     public void testExceptionOnTruffleBoundaryWithNoCatch() {
-        final int compilationThreshold = TruffleCompilerOptions.getValue(TruffleCompilationThreshold);
+        final int compilationThreshold = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompilationThreshold);
         class DeoptCountingExceptionOverBoundaryRootNode extends RootNode {
 
             protected DeoptCountingExceptionOverBoundaryRootNode() {
@@ -216,7 +215,7 @@ public class TruffleBoundaryExceptionsTest extends TestWithSynchronousCompiling 
 
     @Test
     public void testExceptionOnTruffleBoundaryWithNoCatchTransferFalse() {
-        final int compilationThreshold = TruffleCompilerOptions.getValue(TruffleCompilationThreshold);
+        final int compilationThreshold = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompilationThreshold);
         class DeoptCountingExceptionOverBoundaryRootNode extends RootNode {
 
             protected DeoptCountingExceptionOverBoundaryRootNode() {

@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.nodes.asm;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.asm.support.LongDivision;
@@ -44,7 +43,8 @@ public abstract class LLVMAMD64DivNode extends LLVMStatementNode {
     private static final String DIV_BY_ZERO = "division by zero";
     private static final String QUOTIENT_TOO_LARGE = "quotient too large";
 
-    @NodeChildren({@NodeChild(value = "left", type = LLVMExpressionNode.class), @NodeChild(value = "right", type = LLVMExpressionNode.class)})
+    @NodeChild(value = "left", type = LLVMExpressionNode.class)
+    @NodeChild(value = "right", type = LLVMExpressionNode.class)
     public abstract static class LLVMAMD64DivbNode extends LLVMAMD64DivNode {
         @Child private LLVMAMD64WriteValueNode out;
 
@@ -68,8 +68,9 @@ public abstract class LLVMAMD64DivNode extends LLVMStatementNode {
         }
     }
 
-    @NodeChildren({@NodeChild(value = "high", type = LLVMExpressionNode.class), @NodeChild(value = "left", type = LLVMExpressionNode.class),
-                    @NodeChild(value = "right", type = LLVMExpressionNode.class)})
+    @NodeChild(value = "high", type = LLVMExpressionNode.class)
+    @NodeChild(value = "left", type = LLVMExpressionNode.class)
+    @NodeChild(value = "right", type = LLVMExpressionNode.class)
     public abstract static class LLVMAMD64DivwNode extends LLVMAMD64DivNode {
         @Child private LLVMAMD64WriteTupelNode out;
 
@@ -94,8 +95,9 @@ public abstract class LLVMAMD64DivNode extends LLVMStatementNode {
         }
     }
 
-    @NodeChildren({@NodeChild(value = "high", type = LLVMExpressionNode.class), @NodeChild(value = "left", type = LLVMExpressionNode.class),
-                    @NodeChild(value = "right", type = LLVMExpressionNode.class)})
+    @NodeChild(value = "high", type = LLVMExpressionNode.class)
+    @NodeChild(value = "left", type = LLVMExpressionNode.class)
+    @NodeChild(value = "right", type = LLVMExpressionNode.class)
     public abstract static class LLVMAMD64DivlNode extends LLVMAMD64DivNode {
         @Child private LLVMAMD64WriteTupelNode out;
 
@@ -120,8 +122,9 @@ public abstract class LLVMAMD64DivNode extends LLVMStatementNode {
         }
     }
 
-    @NodeChildren({@NodeChild(value = "high", type = LLVMExpressionNode.class), @NodeChild(value = "left", type = LLVMExpressionNode.class),
-                    @NodeChild(value = "right", type = LLVMExpressionNode.class)})
+    @NodeChild(value = "high", type = LLVMExpressionNode.class)
+    @NodeChild(value = "left", type = LLVMExpressionNode.class)
+    @NodeChild(value = "right", type = LLVMExpressionNode.class)
     public abstract static class LLVMAMD64DivqNode extends LLVMAMD64DivNode {
         @Child private LLVMAMD64WriteTupelNode out;
 

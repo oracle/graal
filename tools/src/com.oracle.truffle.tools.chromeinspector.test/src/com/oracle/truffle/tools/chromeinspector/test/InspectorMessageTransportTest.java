@@ -29,6 +29,7 @@ import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -46,6 +47,7 @@ import org.graalvm.polyglot.io.MessageTransport;
 public class InspectorMessageTransportTest {
 
     private static final String PORT = "54367";
+    private static final Pattern URI_PATTERN = Pattern.compile("ws://.*:" + PORT + "/[\\dA-Fa-f\\-]+");
     private static final String[] INITIAL_MESSAGES = {
                     "{\"id\":5,\"method\":\"Runtime.enable\"}",
                     "{\"id\":6,\"method\":\"Debugger.enable\"}",
@@ -75,9 +77,29 @@ public class InspectorMessageTransportTest {
     }
 
     @Test
-    public void inspectorEndpointTest() {
-        Session session = new Session();
-        DebuggerEndpoint endpoint = new DebuggerEndpoint();
+    public void inspectorEndpointDefaultPathTest() {
+        inspectorEndpointTest(null);
+    }
+
+    @Test
+    public void inspectorEndpointExplicitPathTest() {
+        inspectorEndpointTest("simplePath");
+        inspectorEndpointTest("/some/complex/path");
+    }
+
+    @Test
+    public void inspectorEndpointRaceTest() {
+        RaceControl rc = new RaceControl();
+        inspectorEndpointTest(null, rc);
+    }
+
+    private static void inspectorEndpointTest(String path) {
+        inspectorEndpointTest(path, null);
+    }
+
+    private static void inspectorEndpointTest(String path, RaceControl rc) {
+        Session session = new Session(rc);
+        DebuggerEndpoint endpoint = new DebuggerEndpoint(path, rc);
         Engine engine = endpoint.onOpen(session);
 
         Context context = Context.newBuilder().engine(engine).build();
@@ -112,9 +134,14 @@ public class InspectorMessageTransportTest {
 
     private static final class Session {
 
+        private final RaceControl rc;
         final List<String> messages = new ArrayList<>(MESSAGES.length);
         private final BasicRemote remote = new BasicRemote(messages);
         private boolean opened = true;
+
+        Session(RaceControl rc) {
+            this.rc = rc;
+        }
 
         BasicRemote getBasicRemote() {
             return remote;
@@ -127,6 +154,9 @@ public class InspectorMessageTransportTest {
         void addMessageHandler(MsgHandler handler) throws IOException {
             remote.handler = handler;
             sendInitialMessages(handler);
+            if (rc != null) {
+                rc.clientMessagesSent();
+            }
         }
 
         private static void sendInitialMessages(final MsgHandler handler) throws IOException {
@@ -166,18 +196,39 @@ public class InspectorMessageTransportTest {
 
     private static final class DebuggerEndpoint {
 
+        private final String path;
+        private final RaceControl rc;
+
+        DebuggerEndpoint(String path, RaceControl rc) {
+            this.path = path;
+            this.rc = rc;
+        }
+
         public Engine onOpen(final Session session) {
             assert this != null;
-            Engine engine = Engine.newBuilder().serverTransport(new MessageTransport() {
+            Engine.Builder engineBuilder = Engine.newBuilder().serverTransport(new MessageTransport() {
                 @Override
                 public MessageEndpoint open(URI requestURI, MessageEndpoint peerEndpoint) throws IOException, MessageTransport.VetoException {
                     Assert.assertEquals("Invalid protocol", "ws", requestURI.getScheme());
                     String uriStr = requestURI.toString();
-                    Assert.assertTrue(uriStr, uriStr.startsWith("ws://"));
-                    Assert.assertTrue(uriStr, uriStr.endsWith(":" + PORT));
-                    return new ChromeDebuggingProtocolMessageHandler(session, requestURI, peerEndpoint);
+                    if (path == null) {
+                        Assert.assertTrue(uriStr, URI_PATTERN.matcher(uriStr).matches());
+                    } else {
+                        Assert.assertTrue(uriStr, uriStr.startsWith("ws://"));
+                        String absolutePath = path.startsWith("/") ? path : "/" + path;
+                        Assert.assertTrue(uriStr, uriStr.endsWith(":" + PORT + absolutePath));
+                    }
+                    MessageEndpoint ourEndpoint = new ChromeDebuggingProtocolMessageHandler(session, requestURI, peerEndpoint);
+                    if (rc != null) {
+                        rc.waitTillClientDataAreSent();
+                    }
+                    return ourEndpoint;
                 }
-            }).option("inspect", PORT).build();
+            }).option("inspect", PORT);
+            if (path != null) {
+                engineBuilder.option("inspect.Path", path);
+            }
+            Engine engine = engineBuilder.build();
             return engine;
         }
 
@@ -233,4 +284,29 @@ public class InspectorMessageTransportTest {
 
     }
 
+    // Test a possible race between data sent and transport open.
+    // The WSInterceptorServer needs to be able to deal with sendText() being called before opened()
+    private static final class RaceControl {
+
+        private boolean clientSent = false;
+
+        private synchronized void clientMessagesSent() {
+            clientSent = true;
+            notifyAll();
+        }
+
+        private synchronized void waitTillClientDataAreSent() {
+            try {
+                while (!clientSent) {
+                    wait();
+                }
+                // The data were sent, but it takes a while to process them till
+                // WSInterceptorServer#sendText gets called.
+                Thread.sleep(100);
+            } catch (InterruptedException ex) {
+                throw new IllegalStateException(ex);
+            }
+        }
+
+    }
 }

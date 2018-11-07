@@ -49,7 +49,7 @@ jvm_args=()
 launcher_args=()
 
 # Unfortunately, parsing of `--jvm.*` arguments has to be done blind:
-# Maybe some of those arguments where not really intended for the launcher but where application arguments
+# Maybe some of those arguments where not really intended for the launcher but were application arguments
 
 for o in "$@"; do
     if [[ "$o" == --jvm.* ]]; then

@@ -33,7 +33,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -68,8 +67,9 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 
-@NodeChildren({@NodeChild(type = LLVMExpressionNode.class, value = "address"), @NodeChild(type = LLVMExpressionNode.class, value = "comparisonValue"),
-                @NodeChild(type = LLVMExpressionNode.class, value = "newValue")})
+@NodeChild(type = LLVMExpressionNode.class, value = "address")
+@NodeChild(type = LLVMExpressionNode.class, value = "comparisonValue")
+@NodeChild(type = LLVMExpressionNode.class, value = "newValue")
 public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
 
     @Child private LLVMCMPXCHInternalNode cmpxch;

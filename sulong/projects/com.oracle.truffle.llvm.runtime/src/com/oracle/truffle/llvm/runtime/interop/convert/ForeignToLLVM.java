@@ -119,6 +119,8 @@ public abstract class ForeignToLLVM extends LLVMNode {
 
         public static ForeignToLLVMType getIntegerType(int bitWidth) {
             switch (bitWidth) {
+                case 1:
+                    return ForeignToLLVMType.I1;
                 case 8:
                     return ForeignToLLVMType.I8;
                 case 16:

@@ -30,15 +30,15 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.c;
 
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public abstract class LLVMMemIntrinsic extends LLVMExpressionNode {
-    @NodeChildren({@NodeChild(value = "dst", type = LLVMExpressionNode.class), @NodeChild(value = "value", type = LLVMExpressionNode.class),
-                    @NodeChild(value = "len", type = LLVMExpressionNode.class)})
+    @NodeChild(value = "dst", type = LLVMExpressionNode.class)
+    @NodeChild(value = "value", type = LLVMExpressionNode.class)
+    @NodeChild(value = "len", type = LLVMExpressionNode.class)
     public abstract static class LLVMLibcMemset extends LLVMMemIntrinsic {
         @Child private LLVMMemSetNode memset;
 
@@ -71,7 +71,9 @@ public abstract class LLVMMemIntrinsic extends LLVMExpressionNode {
         }
     }
 
-    @NodeChildren({@NodeChild(value = "dst", type = LLVMExpressionNode.class), @NodeChild(value = "src", type = LLVMExpressionNode.class), @NodeChild(value = "len", type = LLVMExpressionNode.class)})
+    @NodeChild(value = "dst", type = LLVMExpressionNode.class)
+    @NodeChild(value = "src", type = LLVMExpressionNode.class)
+    @NodeChild(value = "len", type = LLVMExpressionNode.class)
     public abstract static class LLVMLibcMemcpy extends LLVMMemIntrinsic {
         @Child private LLVMMemMoveNode memcpy;
 

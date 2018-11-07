@@ -378,4 +378,16 @@ public abstract class Instrumenter {
      */
     public abstract Set<Class<?>> queryTags(Node node);
 
+    /**
+     * Returns the execution event node that was inserted at the node's location given an event
+     * binding, if any. This is useful to identify and find information from nodes that were created
+     * for a specific instrumentation.
+     *
+     * @param node an instrumentable node specifying the location
+     * @param binding the binding to lookup the execution nodes of
+     * @return the {@link ExecutionEventNode}, or <code>null</code>.
+     * @since 1.0
+     */
+    public abstract ExecutionEventNode lookupExecutionEventNode(Node node, EventBinding<?> binding);
+
 }

@@ -27,8 +27,10 @@ package com.oracle.svm.core.option;
 // Checkstyle: allow reflection
 
 import java.io.PrintStream;
+import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map.Entry;
@@ -190,36 +192,26 @@ public class SubstrateOptionsParser {
             if (valueString == null) {
                 return OptionParseResult.error("Missing value for option '" + optionName + "'");
             }
-
             try {
-                if (optionType == Integer.class) {
-                    long longValue = parseLong(valueString);
-                    if ((int) longValue != longValue) {
-                        return OptionParseResult.error("Wrong value for option '" + optionName + "': '" + valueString + "' is not a valid number");
-                    }
-                    value = (int) longValue;
-                } else if (optionType == Long.class) {
-                    value = parseLong(valueString);
-                } else if (optionType == String.class) {
-                    value = valueString;
-                } else if (optionType == Double.class) {
-                    value = Double.parseDouble(valueString);
-                } else if (optionType == Boolean.class) {
-                    if (valueString.equals("true")) {
-                        value = true;
-                    } else if (valueString.equals("false")) {
-                        value = false;
+                if (optionType.isArray()) {
+                    OptionKey<?> optionKey = desc.getOptionKey();
+                    Object addValue = parseValue(optionType.getComponentType(), optionName, valueString);
+                    Object previous = valuesMap.get(optionKey);
+                    if (previous == null) {
+                        value = Array.newInstance(optionType.getComponentType(), 1);
+                        ((Object[]) value)[0] = addValue;
                     } else {
-                        return OptionParseResult.error("Boolean option '" + optionName + "' must have value 'true' or 'false'");
+                        Object[] previousValues = (Object[]) previous;
+                        value = Arrays.copyOf(previousValues, previousValues.length + 1);
+                        ((Object[]) value)[previousValues.length] = addValue;
                     }
-                } else if (optionType == CompilationWrapper.ExceptionAction.class) {
-                    value = CompilationWrapper.ExceptionAction.valueOf(valueString);
                 } else {
-                    throw VMError.shouldNotReachHere("Unsupported option value class: " + optionType.getSimpleName());
+                    value = parseValue(optionType, optionName, valueString);
                 }
             } catch (NumberFormatException ex) {
                 return OptionParseResult.error("Invalid value for option '" + optionName + "': '" + valueString + "' is not a valid number");
             }
+
         } else {
             if (optionType != Boolean.class) {
                 return OptionParseResult.error("Non-boolean option '" + optionName + "' can not use +/- prefix. Use '" + optionName + "=<value>' format");
@@ -261,6 +253,36 @@ public class SubstrateOptionsParser {
         }
 
         return OptionParseResult.correct();
+    }
+
+    static Object parseValue(Class<?> optionType, String optionName, String valueString) throws NumberFormatException {
+        Object value;
+        if (optionType == Integer.class) {
+            long longValue = parseLong(valueString);
+            if ((int) longValue != longValue) {
+                return OptionParseResult.error("Wrong value for option '" + optionName + "': '" + valueString + "' is not a valid number");
+            }
+            value = (int) longValue;
+        } else if (optionType == Long.class) {
+            value = parseLong(valueString);
+        } else if (optionType == String.class) {
+            value = valueString;
+        } else if (optionType == Double.class) {
+            value = Double.parseDouble(valueString);
+        } else if (optionType == Boolean.class) {
+            if (valueString.equals("true")) {
+                value = true;
+            } else if (valueString.equals("false")) {
+                value = false;
+            } else {
+                return OptionParseResult.error("Boolean option '" + optionName + "' must have value 'true' or 'false'");
+            }
+        } else if (optionType == CompilationWrapper.ExceptionAction.class) {
+            value = CompilationWrapper.ExceptionAction.valueOf(valueString);
+        } else {
+            throw VMError.shouldNotReachHere("Unsupported option value class: " + optionType.getSimpleName());
+        }
+        return value;
     }
 
     /**
@@ -344,8 +366,38 @@ public class SubstrateOptionsParser {
             if (helpLen > 0 && helpMsg.charAt(helpLen - 1) != '.') {
                 helpMsg += '.';
             }
+            boolean stringifiedArrayValue = false;
+            Object defaultValue = descriptor.getOptionKey().getDefaultValue();
+            if (defaultValue != null && defaultValue.getClass().isArray()) {
+                Object[] defaultValues = (Object[]) defaultValue;
+                if (defaultValues.length == 1) {
+                    defaultValue = defaultValues[0];
+                } else {
+                    List<String> stringList = new ArrayList<>();
+                    String optionPrefix = prefix + entry.getKey() + "=";
+                    for (Object rawValue : defaultValues) {
+                        String value;
+                        if (rawValue instanceof String) {
+                            value = '"' + String.valueOf(rawValue) + '"';
+                        } else {
+                            value = String.valueOf(rawValue);
+                        }
+                        stringList.add(optionPrefix + value);
+                    }
+                    if (helpLen != 0) {
+                        helpMsg += ' ';
+                    }
+                    helpMsg += "Default: ";
+                    if (stringList.isEmpty()) {
+                        helpMsg += "None";
+                    } else {
+                        helpMsg += String.join(" ", stringList);
+                    }
+                    stringifiedArrayValue = true;
+                }
+            }
             if (descriptor.getOptionValueType() == Boolean.class) {
-                Boolean val = (Boolean) descriptor.getOptionKey().getDefaultValue();
+                Boolean val = (Boolean) defaultValue;
                 if (helpLen != 0) {
                     helpMsg += ' ';
                 }
@@ -356,11 +408,20 @@ public class SubstrateOptionsParser {
                 }
                 printOption(out, prefix + "\u00b1" + entry.getKey(), helpMsg);
             } else {
-                Object def = descriptor.getOptionKey().getDefaultValue();
-                if (def instanceof String) {
-                    def = '"' + String.valueOf(def) + '"';
+                if (defaultValue == null) {
+                    if (helpLen != 0) {
+                        helpMsg += ' ';
+                    }
+                    helpMsg += "Default: None";
                 }
-                printOption(out, prefix + entry.getKey() + "=" + def, helpMsg);
+                if (stringifiedArrayValue || defaultValue == null) {
+                    printOption(out, prefix + entry.getKey() + "=...", helpMsg);
+                } else {
+                    if (defaultValue instanceof String) {
+                        defaultValue = '"' + String.valueOf(defaultValue) + '"';
+                    }
+                    printOption(out, prefix + entry.getKey() + "=" + defaultValue, helpMsg);
+                }
             }
         }
     }

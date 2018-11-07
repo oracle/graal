@@ -128,16 +128,17 @@ public class CodeInfoEncoder {
 
     public void addMethod(SharedMethod method, CompilationResult compilation, int compilationOffset) {
         int totalFrameSize = compilation.getTotalFrameSize();
+        int encodedFrameSize = method.isEntryPoint() ? CodeInfoQueryResult.ENTRY_POINT_FRAME_SIZE : totalFrameSize;
 
         /* Mark the method start and register the frame size. */
         IPData startEntry = makeEntry(compilationOffset);
-        startEntry.frameSizeEncoding = encodeFrameSize(totalFrameSize, true);
+        startEntry.frameSizeEncoding = encodeFrameSize(encodedFrameSize, true);
 
         /* Register the frame size for all entries that are starting points for the index. */
         long entryIP = CodeInfoDecoder.lookupEntryIP(CodeInfoDecoder.indexGranularity() + compilationOffset);
         while (entryIP <= CodeInfoDecoder.lookupEntryIP(compilation.getTargetCodeSize() + compilationOffset)) {
             IPData entry = makeEntry(entryIP);
-            entry.frameSizeEncoding = encodeFrameSize(totalFrameSize, false);
+            entry.frameSizeEncoding = encodeFrameSize(encodedFrameSize, false);
             entryIP += CodeInfoDecoder.indexGranularity();
         }
 
@@ -398,9 +399,9 @@ class CodeInfoVerifier extends CodeInfoDecoder {
             int totalIP = relativeIP + compilationOffset;
             CodeInfoQueryResult codeInfo = new CodeInfoQueryResult();
             lookupCodeInfo(totalIP, codeInfo);
-            assert codeInfo.getTotalFrameSize() == compilation.getTotalFrameSize();
+            assert codeInfo.isEntryPoint() || codeInfo.getTotalFrameSize() == compilation.getTotalFrameSize();
 
-            assert lookupTotalFrameSize(totalIP) == codeInfo.getTotalFrameSize();
+            assert codeInfo.isEntryPoint() || lookupTotalFrameSize(totalIP) == codeInfo.getTotalFrameSize();
             assert lookupExceptionOffset(totalIP) == codeInfo.getExceptionOffset();
             assert lookupReferenceMapIndex(totalIP) == codeInfo.getReferenceMapIndex();
             assert getReferenceMapEncoding() == codeInfo.getReferenceMapEncoding();

@@ -38,7 +38,6 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Scanner;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -178,12 +177,13 @@ public class NativeImageMojo extends AbstractMojo {
             }
 
             if (!nativeImageExecutableVersion.equals(plugin.getVersion())) {
-                getLog().warn("Mismatch between " + plugin.getArtifactId() + " version (" + plugin.getVersion() + ") and native-image executable version (" + nativeImageExecutableVersion + ")");
+                getLog().warn("Version mismatch between " + plugin.getArtifactId() + " (" + plugin.getVersion() + ") and native-image executable (" + nativeImageExecutableVersion + ")");
             }
 
             try {
                 ProcessBuilder processBuilder = new ProcessBuilder(nativeImageExecutable.toString(), "-cp", classpathStr);
                 processBuilder.command().addAll(getBuildArgs());
+                processBuilder.directory(getWorkingDirectory().toFile());
                 processBuilder.inheritIO();
 
                 String commandString = String.join(" ", processBuilder.command());
@@ -228,10 +228,14 @@ public class NativeImageMojo extends AbstractMojo {
     }
 
     private void addClasspath(Artifact artifact) throws MojoExecutionException {
-        Path jarFilePath = artifact.getFile().toPath();
+        File artifactFile = artifact.getFile();
+        if (artifactFile == null) {
+            throw new MojoExecutionException("Missing jar-file for " + artifact + ". Ensure " + plugin.getArtifactId() + " runs in package phase.");
+        }
+        Path jarFilePath = artifactFile.toPath();
         getLog().info("ImageClasspath Entry: " + artifact + " (" + jarFilePath.toUri() + ")");
 
-        URI jarFileURI = URI.create("jar:file:" + jarFilePath);
+        URI jarFileURI = URI.create("jar:" + jarFilePath.toUri());
         try (FileSystem jarFS = FileSystems.newFileSystem(jarFileURI, Collections.emptyMap())) {
             Path nativeImageMetaInfBase = jarFS.getPath("/" + NativeImage.nativeImagePropertiesMetaInf);
             if (Files.isDirectory(nativeImageMetaInfBase)) {
@@ -246,7 +250,7 @@ public class NativeImageMojo extends AbstractMojo {
                     valid = valid && relativeSubDir.getName(1).toString().equals(artifact.getArtifactId());
                     if (!valid) {
                         String example = NativeImage.nativeImagePropertiesMetaInf + "/${groupId}/${artifactId}/" + NativeImage.nativeImagePropertiesFilename;
-                        getLog().warn(nativeImageProperty.toUri() + " does not conform with " + example);
+                        getLog().warn(nativeImageProperty.toUri() + " does not match recommended " + example + " layout.");
                     }
                 }
             }
@@ -265,63 +269,62 @@ public class NativeImageMojo extends AbstractMojo {
         return outputDirectory.toPath();
     }
 
-    private boolean consumeConfigurationNodeValue(Consumer<String> consumer, String pluginKey, String... nodeNames) {
+    private String consumeConfigurationNodeValue(String pluginKey, String... nodeNames) {
         Plugin selectedPlugin = project.getPlugin(pluginKey);
         if (selectedPlugin == null) {
-            return false;
+            return null;
         }
-        return consumeConfigurationNodeValue(consumer, selectedPlugin, nodeNames);
+        return getConfigurationNodeValue(selectedPlugin, nodeNames);
     }
 
-    private boolean consumeExecutionsNodeValue(Consumer<String> consumer, String pluginKey, String... nodeNames) {
+    private String consumeExecutionsNodeValue(String pluginKey, String... nodeNames) {
         Plugin selectedPlugin = project.getPlugin(pluginKey);
         if (selectedPlugin == null) {
-            return false;
+            return null;
         }
         for (PluginExecution execution : selectedPlugin.getExecutions()) {
-            if (consumeConfigurationNodeValue(consumer, execution, nodeNames)) {
-                return true;
+            String value = getConfigurationNodeValue(execution, nodeNames);
+            if (value != null) {
+                return value;
             }
         }
-        return false;
+        return null;
     }
 
-    private boolean consumeConfigurationNodeValue(Consumer<String> consumer, ConfigurationContainer container, String... nodeNames) {
+    private String getConfigurationNodeValue(ConfigurationContainer container, String... nodeNames) {
         if (container != null && container.getConfiguration() instanceof Xpp3Dom) {
             Xpp3Dom node = (Xpp3Dom) container.getConfiguration();
             for (String nodeName : nodeNames) {
                 node = node.getChild(nodeName);
                 if (node == null) {
-                    return false;
+                    return null;
                 }
             }
-            consumer.accept(node.getValue());
-            return true;
+            return node.getValue();
         }
-        return false;
+        return null;
     }
 
     private List<String> getBuildArgs() {
+        if (mainClass != null && mainClass.isEmpty()) {
+            mainClass = null;
+        }
+        if (mainClass == null) {
+            mainClass = consumeExecutionsNodeValue("org.apache.maven.plugins:maven-shade-plugin", "transformers", "transformer", "mainClass");
+        }
+        if (mainClass == null) {
+            mainClass = consumeConfigurationNodeValue("org.apache.maven.plugins:maven-assembly-plugin", "archive", "manifest", "mainClass");
+        }
+        if (mainClass == null) {
+            mainClass = consumeConfigurationNodeValue("org.apache.maven.plugins:maven-jar-plugin", "archive", "manifest", "mainClass");
+        }
+
         List<String> list = new ArrayList<>();
+        if (mainClass != null) {
+            list.add("-H:Class=" + mainClass);
+        }
         if (buildArgs != null && !buildArgs.isEmpty()) {
             list.addAll(Arrays.asList(buildArgs.split(" ")));
-        }
-        if (mainClass != null && !mainClass.isEmpty()) {
-            list.add(mainClass);
-        } else {
-            boolean consumed = false;
-            if (!consumed) {
-                consumed = consumeExecutionsNodeValue(list::add, "org.apache.maven.plugins:maven-shade-plugin", "transformers", "transformer", "mainClass");
-            }
-            if (!consumed) {
-                consumed = consumeConfigurationNodeValue(list::add, "org.apache.maven.plugins:maven-assembly-plugin", "archive", "manifest", "mainClass");
-            }
-            if (!consumed) {
-                consumed = consumeConfigurationNodeValue(list::add, "org.apache.maven.plugins:maven-jar-plugin", "archive", "manifest", "mainClass");
-            }
-            if (!consumed && !list.contains("--shared")) {
-                getLog().warn("Building executable native image requires mainClass to be specified (via maven-{assembly,jar}-plugin) or explicitly");
-            }
         }
         return list;
     }
