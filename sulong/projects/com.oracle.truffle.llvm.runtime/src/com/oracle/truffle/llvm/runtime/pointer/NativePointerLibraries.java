@@ -29,5 +29,29 @@
  */
 package com.oracle.truffle.llvm.runtime.pointer;
 
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.llvm.runtime.library.LLVMNativeLibrary;
+
+@ExportLibrary(value = LLVMNativeLibrary.class, receiverType = LLVMPointerImpl.class)
+@ExportLibrary(value = InteropLibrary.class, receiverType = LLVMPointerImpl.class)
 abstract class NativePointerLibraries extends CommonPointerLibraries {
+
+    @ExportMessage(library = LLVMNativeLibrary.class)
+    @ExportMessage(library = InteropLibrary.class, limit = "5")
+    static boolean isPointer(LLVMPointerImpl receiver) {
+        return true;
+    }
+
+    @ExportMessage(library = LLVMNativeLibrary.class)
+    @ExportMessage(library = InteropLibrary.class, limit = "5")
+    static long asPointer(LLVMPointerImpl receiver) {
+        return receiver.asNative();
+    }
+
+    @ExportMessage
+    static LLVMNativePointer toNativePointer(LLVMPointerImpl receiver) {
+        return receiver;
+    }
 }

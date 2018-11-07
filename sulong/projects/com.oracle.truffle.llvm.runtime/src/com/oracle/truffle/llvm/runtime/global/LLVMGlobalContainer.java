@@ -31,11 +31,16 @@ package com.oracle.truffle.llvm.runtime.global;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.CanResolve;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
@@ -46,6 +51,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
+@ExportLibrary(InteropLibrary.class)
 public final class LLVMGlobalContainer implements LLVMObjectAccess, LLVMInternalTruffleObject, LLVMObjectNativeLibrary.Provider {
 
     private long address;
@@ -63,8 +69,18 @@ public final class LLVMGlobalContainer implements LLVMObjectAccess, LLVMInternal
         contents = value;
     }
 
-    public boolean isInNative() {
+    @ExportMessage
+    public boolean isPointer() {
         return address != 0;
+    }
+
+    @ExportMessage
+    public long asPointer() throws UnsupportedMessageException {
+        if (isPointer()) {
+            return address;
+        } else {
+            throw UnsupportedMessageException.create();
+        }
     }
 
     public long getAddress() {
@@ -77,7 +93,8 @@ public final class LLVMGlobalContainer implements LLVMObjectAccess, LLVMInternal
     }
 
     @TruffleBoundary
-    public void transformToNative(LLVMToNativeNode toNative) {
+    @ExportMessage
+    public void toNative(@Cached LLVMToNativeNode toNative) {
         if (address == 0) {
             LLVMMemory memory = LLVMLanguage.getLanguage().getCapability(LLVMMemory.class);
             LLVMNativePointer pointer = memory.allocateMemory(8);
@@ -187,7 +204,7 @@ public final class LLVMGlobalContainer implements LLVMObjectAccess, LLVMInternal
                         CompilerDirectives.transferToInterpreterAndInvalidate();
                         toNative = insert(LLVMToNativeNode.createToNativeWithTarget());
                     }
-                    receiver.transformToNative(toNative);
+                    receiver.toNative(toNative);
                 }
                 return receiver;
             }
@@ -236,7 +253,7 @@ public final class LLVMGlobalContainer implements LLVMObjectAccess, LLVMInternal
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     toNative = insert(LLVMToNativeNode.createToNativeWithTarget());
                 }
-                receiver.transformToNative(toNative);
+                receiver.toNative(toNative);
             }
             return receiver;
         }

@@ -29,5 +29,50 @@
  */
 package com.oracle.truffle.llvm.runtime.pointer;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.library.DynamicDispatchLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.llvm.runtime.library.LLVMNativeLibrary;
+
+@ExportLibrary(value = LLVMNativeLibrary.class, receiverType = LLVMPointerImpl.class)
+@ExportLibrary(value = InteropLibrary.class, receiverType = LLVMPointerImpl.class)
 abstract class ManagedPointerLibraries extends CommonPointerLibraries {
+
+    @ExportMessage(library = LLVMNativeLibrary.class, limit = "1")
+    static boolean accepts(LLVMPointerImpl receiver,
+                    @CachedLibrary("receiver.getObject()") DynamicDispatchLibrary dispatch,
+                    @Cached(value = "dispatch.dispatch(receiver.getObject())", allowUncached = true) Class<?> dispatchClass) {
+        // TODO better solution?
+        return dispatchClass == dispatch.dispatch(receiver.getObject());
+    }
+
+    @ExportMessage(library = LLVMNativeLibrary.class, limit = "1")
+    @ExportMessage(library = InteropLibrary.class, limit = "5")
+    static boolean isPointer(LLVMPointerImpl receiver,
+                    @CachedLibrary("receiver.getObject()") LLVMNativeLibrary natives) {
+        return natives.isPointer(receiver.getObject());
+    }
+
+    @ExportMessage(library = LLVMNativeLibrary.class, limit = "1")
+    @ExportMessage(library = InteropLibrary.class, limit = "5")
+    static long asPointer(LLVMPointerImpl receiver,
+                    @CachedLibrary("receiver.getObject()") LLVMNativeLibrary natives) throws UnsupportedMessageException {
+        return natives.asPointer(receiver.getObject()) + receiver.getOffset();
+    }
+
+    @ExportMessage(limit = "5")
+    static void toNative(LLVMPointerImpl receiver,
+                    @CachedLibrary("receiver.getObject()") InteropLibrary interop) {
+        interop.toNative(receiver.getObject());
+    }
+
+    @ExportMessage(limit = "1")
+    static LLVMNativePointer toNativePointer(LLVMPointerImpl receiver,
+                    @CachedLibrary("receiver.getObject()") LLVMNativeLibrary natives) {
+        return natives.toNativePointer(receiver.getObject()).increment(receiver.getOffset());
+    }
 }

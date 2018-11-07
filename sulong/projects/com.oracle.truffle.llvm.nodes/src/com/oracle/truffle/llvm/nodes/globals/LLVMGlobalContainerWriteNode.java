@@ -65,7 +65,7 @@ public final class LLVMGlobalContainerWriteNode extends LLVMNode implements LLVM
             CompilerDirectives.transferToInterpreterAndInvalidate();
             toNative = insert(LLVMToNativeNode.createToNativeWithTarget());
         }
-        container.transformToNative(toNative);
+        container.toNative(toNative);
     }
 
     private void writeToNative(LLVMGlobalContainer container, long offset, Object value, ForeignToLLVMType type) {

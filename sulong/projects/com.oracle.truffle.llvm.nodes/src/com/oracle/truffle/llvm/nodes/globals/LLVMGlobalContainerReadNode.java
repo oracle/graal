@@ -93,7 +93,7 @@ public final class LLVMGlobalContainerReadNode extends LLVMNode implements LLVMO
             CompilerDirectives.transferToInterpreterAndInvalidate();
             toNative = insert(LLVMToNativeNode.createToNativeWithTarget());
         }
-        container.transformToNative(toNative);
+        container.toNative(toNative);
     }
 
     private Object readFromNative(LLVMGlobalContainer container, long offset, ForeignToLLVMType type) {

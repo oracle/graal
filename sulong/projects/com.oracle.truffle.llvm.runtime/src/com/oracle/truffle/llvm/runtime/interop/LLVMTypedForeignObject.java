@@ -33,13 +33,20 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.library.DynamicDispatchLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObjectFactory.ForeignGetTypeNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObjectFactory.TypeCacheNodeGen;
@@ -53,6 +60,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
 import com.oracle.truffle.llvm.spi.GetDynamicType;
 
 @ValueType
+@ExportLibrary(InteropLibrary.class)
 public final class LLVMTypedForeignObject implements LLVMObjectAccess, LLVMInternalTruffleObject, LLVMObjectNativeLibrary.Provider {
 
     private final TruffleObject foreign;
@@ -209,6 +217,35 @@ public final class LLVMTypedForeignObject implements LLVMObjectAccess, LLVMInter
         public boolean canAccess(Object obj) {
             return obj instanceof LLVMTypedForeignObject;
         }
+    }
+
+    @ExportMessage(limit = "1")
+    boolean accepts(@CachedLibrary("this.getForeign()") DynamicDispatchLibrary dispatch,
+                    @Cached(value = "dispatch.dispatch(this.getForeign())", allowUncached = true) Class<?> dispatchClass) {
+        // FIXME
+        return dispatchClass == dispatch.dispatch(this.getForeign());
+    }
+
+    @ExportMessage(limit = "1")
+    final boolean isNull(@Shared("interop") @CachedLibrary("this.getForeign()") InteropLibrary interop) {
+        return interop.isNull(getForeign());
+    }
+
+    @ExportMessage(limit = "1")
+    final boolean isPointer(@Shared("interop") @CachedLibrary("this.getForeign()") InteropLibrary interop) {
+        return interop.isPointer(getForeign());
+    }
+
+    @ExportMessage(limit = "1")
+    final long asPointer(@Shared("interop") @CachedLibrary("this.getForeign()") InteropLibrary interop) throws UnsupportedMessageException {
+        return interop.asPointer(getForeign());
+    }
+
+    @ExportMessage(limit = "1")
+    final void toNative(
+                    @Cached BranchProfile allocProfile,
+                    @Shared("interop") @CachedLibrary("this.getForeign()") InteropLibrary interop) {
+        interop.toNative(getForeign());
     }
 
     private static final class LLVMTypedForeignObjectNativeLibrary extends LLVMObjectNativeLibrary {

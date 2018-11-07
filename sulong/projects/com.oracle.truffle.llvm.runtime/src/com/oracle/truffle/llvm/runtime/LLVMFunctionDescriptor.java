@@ -41,9 +41,12 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension.NativeLookupResult;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
@@ -61,6 +64,7 @@ import com.oracle.truffle.llvm.runtime.types.FunctionType;
  * Our implementation assumes that there is a 1:1 relationship between callable functions and
  * {@link LLVMFunctionDescriptor}s.
  */
+@ExportLibrary(InteropLibrary.class)
 public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTruffleObject, Comparable<LLVMFunctionDescriptor>, LLVMObjectNativeLibrary.Provider {
     private static final long SULONG_FUNCTION_POINTER_TAG = 0xDEAD_FACE_0000_0000L;
 
@@ -465,22 +469,25 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
         }
     }
 
-    private long asPointer() {
+    @ExportMessage
+    long asPointer() throws UnsupportedMessageException {
         if (isPointer()) {
             return nativePointer;
         }
         CompilerDirectives.transferToInterpreter();
-        throw UnsupportedMessageException.raise(Message.AS_POINTER);
+        throw UnsupportedMessageException.create();
     }
 
-    private boolean isPointer() {
+    @ExportMessage
+    boolean isPointer() {
         return nativeWrapper != null;
     }
 
     /**
      * Gets a pointer to this function that can be stored in native memory.
      */
-    private LLVMFunctionDescriptor toNative() {
+    @ExportMessage
+    LLVMFunctionDescriptor toNative() {
         if (nativeWrapper == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             nativeWrapper = getFunction().createNativeWrapper(this);

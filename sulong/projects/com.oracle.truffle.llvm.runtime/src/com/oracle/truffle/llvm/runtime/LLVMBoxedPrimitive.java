@@ -31,10 +31,18 @@ package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
+import com.oracle.truffle.llvm.runtime.interop.convert.ToLLVM;
+import com.oracle.truffle.llvm.runtime.library.LLVMNativeLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 /**
  * This object is used to wrap primitive values that enter LLVM code via interop at points where a
@@ -42,6 +50,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
  * can not be dereferenced, and in pointer comparisons, the same primitive value will result in the
  * same pointer value.
  */
+@ExportLibrary(LLVMNativeLibrary.class)
 public final class LLVMBoxedPrimitive implements LLVMObjectNativeLibrary.Provider {
 
     private final Object value;
@@ -58,6 +67,21 @@ public final class LLVMBoxedPrimitive implements LLVMObjectNativeLibrary.Provide
     @TruffleBoundary
     public String toString() {
         return "<boxed value: " + getValue() + ">";
+    }
+
+    @ExportMessage
+    final boolean isPointer() {
+        return true;
+    }
+
+    @ExportMessage
+    final long asPointer(@Shared("toLLVM") @Cached ToLLVM toLLVM) {
+        return (long) toLLVM.executeWithType(getValue(), null, ForeignToLLVMType.I64);
+    }
+
+    @ExportMessage
+    final LLVMNativePointer toNativePointer(@Shared("toLLVM") @Cached ToLLVM toLLVM) {
+        return LLVMNativePointer.create(asPointer(toLLVM));
     }
 
     @Override

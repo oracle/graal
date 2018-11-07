@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -199,7 +199,7 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
 
     @Specialization
     protected LLVMDebugValue fromGlobalContainer(LLVMGlobalContainer value) {
-        if (value.isInNative()) {
+        if (value.isPointer()) {
             return executeWithTarget(LLVMNativePointer.create(value.getAddress()));
         } else {
             return executeWithTarget(value.get());
