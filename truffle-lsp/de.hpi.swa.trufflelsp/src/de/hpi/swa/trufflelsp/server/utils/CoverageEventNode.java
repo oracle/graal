@@ -47,6 +47,8 @@ public class CoverageEventNode extends ExecutionEventNode {
     @Override
     protected void onEnter(VirtualFrame frame) {
         if (entered || creatorThreadId != Thread.currentThread().getId()) {
+            // We had problems with a finalizer thread, so we filter only for the thread which
+            // created the node
             return;
         }
         CompilerDirectives.transferToInterpreterAndInvalidate();

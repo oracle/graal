@@ -340,10 +340,7 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
     }
 
     protected boolean fillCompletionsFromTruffleObject(CompletionList completions, String langId, Object object) {
-        return fillCompletionsFromTruffleObject(completions, langId, object, getMetaObject(langId, object));
-    }
-
-    protected boolean fillCompletionsFromTruffleObject(CompletionList completions, String langId, Object object, Object metaObject) {
+        Object metaObject = getMetaObject(langId, object);
         if (metaObject == null) {
             return false;
         }
