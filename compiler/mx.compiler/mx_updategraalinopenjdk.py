@@ -145,6 +145,10 @@ def updategraalinopenjdk(args):
 
     copied_source_dirs = []
     jdk_internal_vm_compiler_EXCLUDES = set() # pylint: disable=invalid-name
+    # Add org.graalvm.compiler.processor since it is only a dependency
+    # for (most) Graal annotation processors and is not needed to
+    # run Graal.
+    jdk_internal_vm_compiler_EXCLUDES.add('org.graalvm.compiler.processor')
     for m in graal_modules:
         classes_dir = join(jdkrepo, 'src', m.name, 'share', 'classes')
         for info in m.suites:
@@ -235,37 +239,46 @@ def updategraalinopenjdk(args):
                         with open(dst_file, 'w') as fp:
                             fp.write(contents)
 
+    def replace_lines(filename, begin_line, end_line, replace_lines, old_line_check):
+        old_lines = []
+        new_lines = []
+        with open(filename) as fp:
+            line_in_def = False
+            for line in fp.readlines():
+                stripped_line = line.strip()
+                if line_in_def:
+                    if stripped_line == end_line:
+                        line_in_def = False
+                        new_lines.append(line)
+                    else:
+                        old_line_check(line)
+                elif stripped_line == begin_line:
+                    line_in_def = True
+                    new_lines.append(line)
+
+                    for replace in replace_lines:
+                        new_lines.append(replace)
+                else:
+                    new_lines.append(line)
+        with open(filename, 'w') as fp:
+            for line in new_lines:
+                fp.write(line)
+        return old_lines
+
+    def single_column_with_continuation(line):
+        parts = line.split()
+        assert len(parts) == 2 and parts[1] == '\\', line
+
     # Update jdk.internal.vm.compiler.EXCLUDES in make/CompileJavaModules.gmk
     # to exclude all test, benchmark and annotation processor packages.
     CompileJavaModules_gmk = join(jdkrepo, 'make', 'CompileJavaModules.gmk') # pylint: disable=invalid-name
     new_lines = []
-    with open(CompileJavaModules_gmk) as fp:
-        line_in_def = False
-        for line in fp.readlines():
-            stripped_line = line.strip()
-            if line_in_def:
-                if stripped_line == '#':
-                    line_in_def = False
-                    new_lines.append(line)
-                else:
-                    parts = stripped_line.split()
-                    assert len(parts) == 2 and parts[1] == '\\', line
-            elif stripped_line == 'jdk.internal.vm.compiler_EXCLUDES += \\':
-                line_in_def = True
-                new_lines.append(line)
-
-                # Add org.graalvm.compiler.processor since it is only a dependency
-                # for (most) Graal annotation processors and is not needed to
-                # run Graal.
-                jdk_internal_vm_compiler_EXCLUDES.add('org.graalvm.compiler.processor')
-
-                for pkg in sorted(jdk_internal_vm_compiler_EXCLUDES):
-                    new_lines.append('    ' + pkg + ' \\\n')
-            else:
-                new_lines.append(line)
-    with open(CompileJavaModules_gmk, 'w') as fp:
-        for line in new_lines:
-            fp.write(line)
+    for pkg in sorted(jdk_internal_vm_compiler_EXCLUDES):
+        new_lines.append('    ' + pkg + ' \\\n')
+    begin_line ='jdk.internal.vm.compiler_EXCLUDES += \\'
+    end_line = '#'
+    old_line_check = single_column_with_continuation
+    replace_lines(CompileJavaModules_gmk, begin_line, end_line, new_lines, old_line_check)
 
     mx.log('Adding new files to HG...')
     overwritten = ''
