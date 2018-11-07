@@ -55,6 +55,7 @@ import com.oracle.truffle.tools.chromeinspector.events.Event;
 import com.oracle.truffle.tools.chromeinspector.instrument.Enabler;
 import com.oracle.truffle.tools.chromeinspector.instrument.OutputConsumerInstrument;
 import com.oracle.truffle.tools.chromeinspector.server.CommandProcessException;
+import com.oracle.truffle.tools.chromeinspector.server.InspectServerSession.CommandPostProcessor;
 import com.oracle.truffle.tools.chromeinspector.types.CallArgument;
 import com.oracle.truffle.tools.chromeinspector.types.ExceptionDetails;
 import com.oracle.truffle.tools.chromeinspector.types.InternalPropertyDescriptor;
@@ -583,8 +584,8 @@ public final class TruffleRuntime extends RuntimeDomain {
     }
 
     @Override
-    public void runIfWaitingForDebugger() {
-        context.doRunIfWaitingForDebugger();
+    public void runIfWaitingForDebugger(CommandPostProcessor postProcessor) {
+        postProcessor.setPostProcessJob(() -> context.doRunIfWaitingForDebugger());
     }
 
     private JSONObject createPropertyJSON(DebugValue v) {

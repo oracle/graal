@@ -29,6 +29,7 @@ import com.oracle.truffle.tools.utils.json.JSONArray;
 import com.oracle.truffle.tools.chromeinspector.commands.Params;
 import com.oracle.truffle.tools.chromeinspector.events.Event;
 import com.oracle.truffle.tools.chromeinspector.server.CommandProcessException;
+import com.oracle.truffle.tools.chromeinspector.server.InspectServerSession.CommandPostProcessor;
 
 public abstract class RuntimeDomain extends Domain {
 
@@ -49,7 +50,7 @@ public abstract class RuntimeDomain extends Domain {
     public abstract Params callFunctionOn(String objectId, String functionDeclaration, JSONArray arguments, boolean silent, boolean returnByValue, boolean awaitPromise)
                     throws CommandProcessException;
 
-    public abstract void runIfWaitingForDebugger();
+    public abstract void runIfWaitingForDebugger(CommandPostProcessor postProcessor);
 
     protected void executionContextCreated(long id, String name) {
         eventHandler.event(new Event("Runtime.executionContextCreated", Params.createContext(id, name)));
