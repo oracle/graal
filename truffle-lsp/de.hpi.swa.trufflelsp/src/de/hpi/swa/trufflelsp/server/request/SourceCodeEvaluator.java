@@ -228,13 +228,6 @@ public class SourceCodeEvaluator extends AbstractRequestHandler {
                                                         env.findMetaObject(inputContext.getInstrumentedNode().getRootNode().getLanguageInfo(),
                                                                         inputValue));
                                         indent.append("  ");
-// if (inputContext.getInstrumentedSourceSection().equals(context.getInstrumentedSourceSection())) {
-// // This is a fix for GraalJS, because
-// // GraalJS provides the result of a previous execution
-// // again as input value which we are not interested in
-// // here. See class JSTaggedTargetableExecutionNode.
-// return;
-// }
 
                                         throw new EvaluationResultException(inputValue);
                                     }
