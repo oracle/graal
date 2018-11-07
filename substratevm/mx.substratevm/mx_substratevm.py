@@ -57,6 +57,8 @@ from mx_substratevm_benchmark import run_js, host_vm_tuple, output_processors, r
 from mx_unittest import _run_tests, _VMLauncher
 
 GRAAL_COMPILER_FLAGS = [
+    '-XX:+UnlockExperimentalVMOptions',
+    '-XX:+EnableJVMCI',
     '-XX:-UseJVMCICompiler', # GR-8656: Do not run with Graal as JIT compiler until libgraal is available.
     '-Dtruffle.TrustAllTruffleRuntimeProviders=true', # GR-7046
 ]
@@ -64,7 +66,10 @@ GRAAL_COMPILER_FLAGS = [
 def svm_java_compliance():
     return mx.get_jdk(tag='default').javaCompliance
 
-if svm_java_compliance() <= mx.JavaCompliance('1.8'):
+def svm_java80():
+    return svm_java_compliance() <= mx.JavaCompliance('1.8')
+
+if svm_java80():
     GRAAL_COMPILER_FLAGS += ['-d64']
     GRAAL_COMPILER_FLAGS += ['-XX:-UseJVMCIClassLoader']
 else:
@@ -348,17 +353,24 @@ def layout_native_image_root(native_image_root):
     def native_image_extract_dists(subdir, dist_names):
         native_image_extract(names_to_dists(dist_names), subdir, native_image_root)
 
-    # Create native-image layout for sdk parts
-    native_image_layout_dists(join('lib', 'boot'), ['sdk:GRAAL_SDK'])
     native_image_layout_dists(join('lib', 'graalvm'), ['substratevm:SVM_DRIVER', 'sdk:LAUNCHER_COMMON'])
 
+    # Create native-image layout for sdk parts
+    graal_sdk_dists = ['sdk:GRAAL_SDK']
+    if svm_java80():
+        native_image_layout_dists(join('lib', 'boot'), graal_sdk_dists)
+        jvmci_dists = graalDistribution
+    else:
+        jvmci_dists = ['compiler:GRAAL_MANAGEMENT'] + graalDistribution + graal_sdk_dists
+
     # Create native-image layout for compiler & jvmci parts
-    native_image_layout_dists(join('lib', 'jvmci'), graalDistribution)
-    jdk_config = mx.get_jdk()
-    jvmci_path = join(jdk_config.home, 'jre', 'lib', 'jvmci')
-    if os.path.isdir(jvmci_path):
-        for symlink_name in os.listdir(jvmci_path):
-            symlink_or_copy(join(jvmci_path, symlink_name), join(native_image_root, 'lib', 'jvmci', symlink_name))
+    native_image_layout_dists(join('lib', 'jvmci'), jvmci_dists)
+    if svm_java80():
+        jdk_config = mx.get_jdk()
+        jvmci_path = join(jdk_config.home, 'jre', 'lib', 'jvmci')
+        if os.path.isdir(jvmci_path):
+            for symlink_name in os.listdir(jvmci_path):
+                symlink_or_copy(join(jvmci_path, symlink_name), join(native_image_root, 'lib', 'jvmci', symlink_name))
 
     # Create native-image layout for truffle parts
     native_image_layout_dists(join('lib', 'truffle'), ['truffle:TRUFFLE_API', 'truffle:TRUFFLE_NFI'])

@@ -156,7 +156,7 @@ public class NativeImage {
     private final LinkedHashSet<String> imageBuilderArgs = new LinkedHashSet<>();
     private final LinkedHashSet<Path> imageBuilderClasspath = new LinkedHashSet<>();
     private final LinkedHashSet<Path> imageBuilderBootClasspath = new LinkedHashSet<>();
-    private final LinkedHashSet<String> imageBuilderJavaArgs = new LinkedHashSet<>();
+    private final ArrayList<String> imageBuilderJavaArgs = new ArrayList<>();
     private final LinkedHashSet<Path> imageClasspath = new LinkedHashSet<>();
     private final LinkedHashSet<Path> imageProvidedClasspath = new LinkedHashSet<>();
     private final LinkedHashSet<String> customJavaArgs = new LinkedHashSet<>();
@@ -239,6 +239,16 @@ public class NativeImage {
         default List<String> getBuilderJavaArgs() {
             return Arrays.asList(graalCompilerFlags);
         }
+
+        /**
+         * @return entries for the --module-path of the image builder
+         */
+        List<Path> getBuilderModulePath();
+
+        /**
+         * @return entries for the --upgrade-module-path of the image builder
+         */
+        List<Path> getBuilderUpgradeModulePath();
 
         /**
          * @return classpath for image (the classes the user wants to build an image from)
@@ -334,7 +344,12 @@ public class NativeImage {
 
         @Override
         public List<Path> getBuilderClasspath() {
-            return getJars(rootDir.resolve(Paths.get("lib", "svm", "builder")));
+            List<Path> result = new ArrayList<>();
+            if (useJavaModules()) {
+                result.addAll(getJars(rootDir.resolve(Paths.get("lib", "jvmci")), "graal-sdk", "graal", "enterprise-graal"));
+            }
+            result.addAll(getJars(rootDir.resolve(Paths.get("lib", "svm", "builder"))));
+            return result;
         }
 
         @Override
@@ -371,6 +386,19 @@ public class NativeImage {
         @Override
         public List<Path> getBuilderBootClasspath() {
             return getJars(rootDir.resolve(Paths.get("lib", "boot")));
+        }
+
+        @Override
+        public List<Path> getBuilderModulePath() {
+            List<Path> result = new ArrayList<>();
+            result.addAll(getJars(rootDir.resolve(Paths.get("lib", "jvmci")), "graal-sdk", "enterprise-graal"));
+            result.addAll(getJars(rootDir.resolve(Paths.get("lib", "truffle")), "truffle-api"));
+            return result;
+        }
+
+        @Override
+        public List<Path> getBuilderUpgradeModulePath() {
+            return getJars(rootDir.resolve(Paths.get("lib", "jvmci")), "graal-management", "graal");
         }
 
         @Override
@@ -495,15 +523,26 @@ public class NativeImage {
             addPlainImageBuilderArg(oHInspectServerContentPath + config.getBuilderInspectServerPath());
         }
 
-        config.getBuilderJVMCIClasspath().forEach((Consumer<? super Path>) this::addImageBuilderClasspath);
-        if (!config.getBuilderJVMCIClasspathAppend().isEmpty()) {
-            String builderJavaArg = config.getBuilderJVMCIClasspathAppend()
-                            .stream().map(path -> canonicalize(path).toString())
-                            .collect(Collectors.joining(":", "-Djvmci.class.path.append=", ""));
-            addImageBuilderJavaArgs(builderJavaArg);
-        }
+        if (config.useJavaModules()) {
+            String modulePath = config.getBuilderModulePath().stream()
+                    .map(p -> canonicalize(p).toString())
+                    .collect(Collectors.joining(File.pathSeparator));
+            addImageBuilderJavaArgs(Arrays.asList("--module-path", modulePath));
+            String upgradeModulePath = config.getBuilderUpgradeModulePath().stream()
+                    .map(p -> canonicalize(p).toString())
+                    .collect(Collectors.joining(File.pathSeparator));
+            addImageBuilderJavaArgs(Arrays.asList("--upgrade-module-path", upgradeModulePath));
+        } else {
+            config.getBuilderJVMCIClasspath().forEach((Consumer<? super Path>) this::addImageBuilderClasspath);
+            if (!config.getBuilderJVMCIClasspathAppend().isEmpty()) {
+                String builderJavaArg = config.getBuilderJVMCIClasspathAppend()
+                        .stream().map(path -> canonicalize(path).toString())
+                        .collect(Collectors.joining(":", "-Djvmci.class.path.append=", ""));
+                addImageBuilderJavaArgs(builderJavaArg);
+            }
 
-        config.getBuilderBootClasspath().forEach((Consumer<? super Path>) this::addImageBuilderBootClasspath);
+            config.getBuilderBootClasspath().forEach((Consumer<? super Path>) this::addImageBuilderBootClasspath);
+        }
 
         config.getImageClasspath().forEach(this::addCustomImageClasspath);
     }
@@ -809,7 +848,7 @@ public class NativeImage {
         buildImage(imageBuilderJavaArgs, imageBuilderBootClasspath, imageBuilderClasspath, imageBuilderArgs, finalImageClasspath);
     }
 
-    protected void buildImage(LinkedHashSet<String> javaArgs, LinkedHashSet<Path> bcp, LinkedHashSet<Path> cp, LinkedHashSet<String> imageArgs, LinkedHashSet<Path> imagecp) {
+    protected void buildImage(List<String> javaArgs, LinkedHashSet<Path> bcp, LinkedHashSet<Path> cp, LinkedHashSet<String> imageArgs, LinkedHashSet<Path> imagecp) {
         /* Construct ProcessBuilder command from final arguments */
         ProcessBuilder pb = new ProcessBuilder();
         List<String> command = pb.command();
@@ -1029,9 +1068,23 @@ public class NativeImage {
         printFunc.accept(message);
     }
 
-    static List<Path> getJars(Path dir) {
+    static List<Path> getJars(Path dir, String... jarBaseNames) {
         try {
-            return Files.list(dir).filter(f -> f.getFileName().toString().toLowerCase().endsWith(".jar")).collect(Collectors.toList());
+            return Files.list(dir)
+                    .filter(p -> {
+                        String jarFileName = p.getFileName().toString();
+                        String jarSuffix = ".jar";
+                        if (!jarFileName.toLowerCase().endsWith(jarSuffix)) {
+                            return false;
+                        }
+                        List<String> baseNameList = Arrays.asList(jarBaseNames);
+                        if (baseNameList.isEmpty()) {
+                            return true;
+                        }
+                        String jarBaseName = jarFileName.substring(0, jarFileName.length() - jarSuffix.length());
+                        return baseNameList.contains(jarBaseName);
+                    })
+                    .collect(Collectors.toList());
         } catch (IOException e) {
             throw showError("Unable to use jar-files from directory " + dir, e);
         }
