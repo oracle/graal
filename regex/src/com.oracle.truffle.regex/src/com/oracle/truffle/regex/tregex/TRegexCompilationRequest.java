@@ -136,7 +136,7 @@ final class TRegexCompilationRequest {
                 debugTraceFinder();
             } catch (UnsupportedRegexException e) {
                 phaseEnd("TraceFinder NFA Bailout");
-                LOG_BAILOUT_MESSAGES.fine(() -> "TraceFinder: " + e.getMessage() + ": " + source);
+                LOG_BAILOUT_MESSAGES.fine(() -> "TraceFinder: " + e.getReason() + ": " + source);
                 // handle with capture group aware DFA, bailout will always happen before
                 // assigning preCalculatedResults
             }

@@ -63,7 +63,7 @@ public class RegexCompilerWithFallback extends RegexCompiler {
             }
             LOG_COMPILER_FALLBACK.finer(() -> "Primary compiler used: " + regexSource);
         } catch (UnsupportedRegexException mainBailout) {
-            LOG_BAILOUT_MESSAGES.fine(() -> mainBailout.getMessage() + ": " + regexSource);
+            LOG_BAILOUT_MESSAGES.fine(() -> mainBailout.getReason() + ": " + regexSource);
             try {
                 if (shouldLog) {
                     timer.start();

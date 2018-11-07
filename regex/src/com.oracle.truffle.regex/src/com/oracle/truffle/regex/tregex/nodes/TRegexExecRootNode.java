@@ -134,7 +134,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
                 TRegexDFAExecutorNode executorNode = tRegexCompiler.compileEagerDFAExecutor(getSource());
                 eagerSearchNode = new EagerCaptureGroupRegexSearchNode(executorNode);
             } catch (UnsupportedRegexException e) {
-                LOG_BAILOUT_MESSAGES.fine(() -> e.getMessage() + ": " + source);
+                LOG_BAILOUT_MESSAGES.fine(() -> e.getReason() + ": " + source);
                 eagerSearchNode = EAGER_SEARCH_BAILED_OUT;
             }
         }
