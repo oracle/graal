@@ -40,16 +40,19 @@ public final class WSInterceptorServer implements InspectorWSConnection, Message
 
     private final URI uri;
     private final ConnectionWatcher connectionWatcher;
+    private final InspectServerSession iss;
     private MessageEndpoint inspectEndpoint;
 
     public WSInterceptorServer(URI uri, InspectServerSession iss, ConnectionWatcher connectionWatcher) {
         this.uri = uri;
         this.connectionWatcher = connectionWatcher;
+        this.iss = iss;
         iss.setMessageListener(this);
     }
 
     public void opened(MessageEndpoint endpoint) {
         this.inspectEndpoint = endpoint;
+        iss.setMessageListener(this);
         this.connectionWatcher.notifyOpen();
     }
 
@@ -60,6 +63,7 @@ public final class WSInterceptorServer implements InspectorWSConnection, Message
 
     @Override
     public void close(String path) throws IOException {
+        iss.setMessageListener(null);
         if (inspectEndpoint != null) {
             if (path.equals(uri.getPath())) {
                 inspectEndpoint.sendClose();

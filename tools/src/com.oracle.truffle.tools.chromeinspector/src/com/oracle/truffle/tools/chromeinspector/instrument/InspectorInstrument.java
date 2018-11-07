@@ -153,10 +153,10 @@ public final class InspectorInstrument extends TruffleInstrument {
             info.println("Waiting for the debugger to disconnect...");
             info.flush();
             connectionWatcher.waitForClose();
-            try {
-                server.close();
-            } catch (IOException ioex) {
-            }
+        }
+        try {
+            server.close();
+        } catch (IOException ioex) {
         }
     }
 
