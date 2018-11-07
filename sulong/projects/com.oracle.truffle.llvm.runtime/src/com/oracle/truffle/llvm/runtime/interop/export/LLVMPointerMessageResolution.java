@@ -37,7 +37,6 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.CanResolve;
 import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.MessageResolution;
@@ -51,13 +50,9 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.interop.LLVMForeignCallNode;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
-import com.oracle.truffle.llvm.runtime.interop.export.LLVMPointerMessageResolutionFactory.AsPointerCachedNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMPointerMessageResolutionFactory.CanExecuteHelperNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMPointerMessageResolutionFactory.ExecuteCachedNodeGen;
-import com.oracle.truffle.llvm.runtime.interop.export.LLVMPointerMessageResolutionFactory.IsPointerCachedNodeGen;
-import com.oracle.truffle.llvm.runtime.interop.export.LLVMPointerMessageResolutionFactory.ToNativeCachedNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -78,103 +73,6 @@ public class LLVMPointerMessageResolution {
 
         protected boolean access(LLVMPointer receiver) {
             return receiver.isNull();
-        }
-    }
-
-    @Resolve(message = "IS_POINTER")
-    public abstract static class IsPointer extends Node {
-
-        @Child IsPointerCached isPointer = IsPointerCachedNodeGen.create();
-
-        protected boolean access(LLVMPointer receiver) {
-            return isPointer.execute(receiver);
-        }
-    }
-
-    abstract static class IsPointerCached extends Node {
-
-        protected abstract boolean execute(Object receiver);
-
-        @Specialization(guards = "lib.guard(receiver)")
-        boolean doCached(Object receiver,
-                        @Cached("createCached(receiver)") LLVMObjectNativeLibrary lib) {
-            return lib.isPointer(receiver);
-        }
-
-        @Specialization(replaces = "doCached")
-        boolean doGeneric(Object receiver,
-                        @Cached("createGeneric()") LLVMObjectNativeLibrary lib) {
-            return lib.isPointer(receiver);
-        }
-    }
-
-    @Resolve(message = "AS_POINTER")
-    public abstract static class AsPointer extends Node {
-
-        @Child AsPointerCached asPointer = AsPointerCachedNodeGen.create();
-
-        protected long access(LLVMPointer receiver) {
-            return asPointer.execute(receiver);
-        }
-    }
-
-    abstract static class AsPointerCached extends Node {
-
-        protected abstract long execute(Object receiver);
-
-        @Specialization(guards = "lib.guard(receiver)")
-        long doCached(Object receiver,
-                        @Cached("createCached(receiver)") LLVMObjectNativeLibrary lib) {
-            try {
-                return lib.asPointer(receiver);
-            } catch (InteropException ex) {
-                throw ex.raise();
-            }
-        }
-
-        @Specialization(replaces = "doCached")
-        long doGeneric(Object receiver,
-                        @Cached("createGeneric()") LLVMObjectNativeLibrary lib) {
-            try {
-                return lib.asPointer(receiver);
-            } catch (InteropException ex) {
-                throw ex.raise();
-            }
-        }
-    }
-
-    @Resolve(message = "TO_NATIVE")
-    public abstract static class ToNative extends Node {
-
-        @Child ToNativeCached toNative = ToNativeCachedNodeGen.create();
-
-        protected Object access(LLVMPointer receiver) {
-            return toNative.execute(receiver);
-        }
-    }
-
-    abstract static class ToNativeCached extends Node {
-
-        protected abstract Object execute(Object receiver);
-
-        @Specialization(guards = "lib.guard(receiver)")
-        Object doCached(Object receiver,
-                        @Cached("createCached(receiver)") LLVMObjectNativeLibrary lib) {
-            try {
-                return lib.toNative(receiver);
-            } catch (InteropException ex) {
-                throw ex.raise();
-            }
-        }
-
-        @Specialization(replaces = "doCached")
-        Object doGeneric(Object receiver,
-                        @Cached("createGeneric()") LLVMObjectNativeLibrary lib) {
-            try {
-                return lib.toNative(receiver);
-            } catch (InteropException ex) {
-                throw ex.raise();
-            }
         }
     }
 

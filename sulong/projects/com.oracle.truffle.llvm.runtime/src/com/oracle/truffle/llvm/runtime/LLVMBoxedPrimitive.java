@@ -29,19 +29,14 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.Node.Child;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ToLLVM;
 import com.oracle.truffle.llvm.runtime.library.LLVMNativeLibrary;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 /**
@@ -51,7 +46,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
  * same pointer value.
  */
 @ExportLibrary(LLVMNativeLibrary.class)
-public final class LLVMBoxedPrimitive implements LLVMObjectNativeLibrary.Provider {
+public final class LLVMBoxedPrimitive {
 
     private final Object value;
 
@@ -82,45 +77,5 @@ public final class LLVMBoxedPrimitive implements LLVMObjectNativeLibrary.Provide
     @ExportMessage
     final LLVMNativePointer toNativePointer(@Shared("toLLVM") @Cached ToLLVM toLLVM) {
         return LLVMNativePointer.create(asPointer(toLLVM));
-    }
-
-    @Override
-    public LLVMObjectNativeLibrary createLLVMObjectNativeLibrary() {
-        return new LLVMBoxedPrimitiveNativeLibrary();
-    }
-
-    private static final class LLVMBoxedPrimitiveNativeLibrary extends LLVMObjectNativeLibrary {
-
-        @Child private ForeignToLLVM toLLVM;
-
-        @Override
-        public boolean guard(Object obj) {
-            return obj instanceof LLVMBoxedPrimitive;
-        }
-
-        @Override
-        public boolean isPointer(Object obj) {
-            return true;
-        }
-
-        @Override
-        public boolean isNullPointer(Object obj) {
-            return false;
-        }
-
-        @Override
-        public long asPointer(Object obj) throws InteropException {
-            if (toLLVM == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toLLVM = insert(getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I64));
-            }
-            LLVMBoxedPrimitive boxed = (LLVMBoxedPrimitive) obj;
-            return (long) toLLVM.executeWithTarget(boxed.getValue());
-        }
-
-        @Override
-        public LLVMBoxedPrimitive toNative(Object obj) throws InteropException {
-            return (LLVMBoxedPrimitive) obj;
-        }
     }
 }

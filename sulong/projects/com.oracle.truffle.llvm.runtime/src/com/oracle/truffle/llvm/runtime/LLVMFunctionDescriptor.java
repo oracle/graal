@@ -40,7 +40,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -56,7 +55,6 @@ import com.oracle.truffle.llvm.runtime.interop.LLVMFunctionMessageResolutionFore
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
@@ -65,7 +63,7 @@ import com.oracle.truffle.llvm.runtime.types.FunctionType;
  * {@link LLVMFunctionDescriptor}s.
  */
 @ExportLibrary(InteropLibrary.class)
-public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTruffleObject, Comparable<LLVMFunctionDescriptor>, LLVMObjectNativeLibrary.Provider {
+public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTruffleObject, Comparable<LLVMFunctionDescriptor> {
     private static final long SULONG_FUNCTION_POINTER_TAG = 0xDEAD_FACE_0000_0000L;
 
     private final FunctionType type;
@@ -431,42 +429,6 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
     @Override
     public ForeignAccess getForeignAccess() {
         return LLVMFunctionMessageResolutionForeign.ACCESS;
-    }
-
-    @Override
-    public LLVMObjectNativeLibrary createLLVMObjectNativeLibrary() {
-        return new LLVMFunctionDescriptorNativeLibrary();
-    }
-
-    private static final class LLVMFunctionDescriptorNativeLibrary extends LLVMObjectNativeLibrary {
-
-        @Override
-        public boolean guard(Object obj) {
-            return obj instanceof LLVMFunctionDescriptor;
-        }
-
-        @Override
-        public boolean isPointer(Object obj) {
-            LLVMFunctionDescriptor fd = (LLVMFunctionDescriptor) obj;
-            return fd.isPointer();
-        }
-
-        @Override
-        public long asPointer(Object obj) throws InteropException {
-            LLVMFunctionDescriptor fd = (LLVMFunctionDescriptor) obj;
-            return fd.asPointer();
-        }
-
-        @Override
-        public LLVMFunctionDescriptor toNative(Object obj) throws InteropException {
-            LLVMFunctionDescriptor fd = (LLVMFunctionDescriptor) obj;
-            return fd.toNative();
-        }
-
-        @Override
-        public boolean isNullPointer(Object obj) {
-            return false;
-        }
     }
 
     @ExportMessage

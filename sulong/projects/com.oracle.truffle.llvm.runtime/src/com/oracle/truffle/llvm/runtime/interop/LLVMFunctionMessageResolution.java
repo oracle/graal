@@ -31,14 +31,12 @@ package com.oracle.truffle.llvm.runtime.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
 
 @MessageResolution(receiverType = LLVMFunctionDescriptor.class)
 public class LLVMFunctionMessageResolution {
@@ -87,44 +85,6 @@ public class LLVMFunctionMessageResolution {
             } else {
                 CompilerDirectives.transferToInterpreter();
                 return UnsupportedMessageException.raise(Message.INVOKE);
-            }
-        }
-    }
-
-    @Resolve(message = "IS_POINTER")
-    public abstract static class ForeignIsPointerNode extends Node {
-
-        @Child LLVMObjectNativeLibrary objectNative = LLVMObjectNativeLibrary.createGeneric();
-
-        protected boolean access(@SuppressWarnings("unused") VirtualFrame frame, LLVMFunctionDescriptor object) {
-            return objectNative.isPointer(object);
-        }
-    }
-
-    @Resolve(message = "AS_POINTER")
-    public abstract static class ForeignAsPointerNode extends Node {
-
-        @Child LLVMObjectNativeLibrary objectNative = LLVMObjectNativeLibrary.createGeneric();
-
-        protected long access(@SuppressWarnings("unused") VirtualFrame frame, LLVMFunctionDescriptor object) {
-            try {
-                return objectNative.asPointer(object);
-            } catch (InteropException e) {
-                throw e.raise();
-            }
-        }
-    }
-
-    @Resolve(message = "TO_NATIVE")
-    public abstract static class ForeignToNativeNode extends Node {
-
-        @Child LLVMObjectNativeLibrary objectNative = LLVMObjectNativeLibrary.createGeneric();
-
-        protected Object access(@SuppressWarnings("unused") VirtualFrame frame, LLVMFunctionDescriptor object) {
-            try {
-                return objectNative.toNative(object);
-            } catch (InteropException e) {
-                throw e.raise();
             }
         }
     }
