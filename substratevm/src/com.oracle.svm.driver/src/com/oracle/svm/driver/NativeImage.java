@@ -275,14 +275,14 @@ public class NativeImage {
          *
          * @return launcher classpath system property argument for image builder
          */
-        default String getLauncherClasspathPropertyValue(LinkedHashSet<Path> imageClasspath) {
+        default String getLauncherClasspathPropertyValue(@SuppressWarnings("unused") LinkedHashSet<Path> imageClasspath) {
             return null;
         }
 
         /**
          * TODO Remove GraalVM Lanucher specific code.
          */
-        default Stream<Path> getAbsoluteLauncherClassPath(Stream<String> relativeLauncherClassPath) {
+        default Stream<Path> getAbsoluteLauncherClassPath(@SuppressWarnings("unused") Stream<String> relativeLauncherClassPath) {
             return Stream.empty();
         }
     }
