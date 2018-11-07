@@ -166,7 +166,6 @@ import com.oracle.svm.core.graal.phases.RemoveUnwindPhase;
 import com.oracle.svm.core.graal.phases.TrustedInterfaceTypePlugin;
 import com.oracle.svm.core.graal.snippets.ArithmeticSnippets;
 import com.oracle.svm.core.graal.snippets.DeoptRuntimeSnippets;
-import com.oracle.svm.core.graal.snippets.DeoptTestSnippets;
 import com.oracle.svm.core.graal.snippets.ExceptionSnippets;
 import com.oracle.svm.core.graal.snippets.MonitorSnippets;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
@@ -644,10 +643,6 @@ public class NativeImageGenerator {
                             bigbang.addRootMethod(ArraycopySnippets.class.getDeclaredMethod("doArraycopy", Object.class, int.class, Object.class, int.class, int.class));
 
                             bigbang.addRootMethod(Object.class.getDeclaredMethod("getClass"));
-
-                            if (NativeImageOptions.DeoptimizeAll.getValue()) {
-                                bigbang.addRootMethod(DeoptTester.class.getMethod("deoptTest"));
-                            }
                         } catch (NoSuchMethodException ex) {
                             throw VMError.shouldNotReachHere(ex);
                         }
@@ -861,7 +856,7 @@ public class NativeImageGenerator {
             NativeImageCodeCache codeCache;
             CompileQueue compileQueue;
             try (StopTimer t = new Timer(imageName, "compile").start()) {
-                compileQueue = HostedConfiguration.instance().createCompileQueue(debug, featureHandler, hUniverse, runtime, NativeImageOptions.DeoptimizeAll.getValue(), aSnippetReflection,
+                compileQueue = HostedConfiguration.instance().createCompileQueue(debug, featureHandler, hUniverse, runtime, DeoptTester.enabled(), aSnippetReflection,
                                 compilationExecutor);
                 compileQueue.finish(debug);
 
@@ -1095,10 +1090,6 @@ public class NativeImageGenerator {
                 DeoptHostedSnippets.registerLowerings(options, factories, providers, snippetReflection, lowerings);
             } else {
                 DeoptRuntimeSnippets.registerLowerings(options, factories, providers, snippetReflection, lowerings);
-            }
-
-            if (NativeImageOptions.DeoptimizeAll.getValue()) {
-                DeoptTestSnippets.registerLowerings(options, factories, providers, snippetReflection, lowerings);
             }
 
             featureHandler.forEachGraalFeature(feature -> feature.registerLowerings(runtimeConfig, options, factories, providers, snippetReflection, lowerings, hosted));

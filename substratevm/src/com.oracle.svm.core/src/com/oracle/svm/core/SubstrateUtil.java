@@ -27,6 +27,7 @@ package com.oracle.svm.core;
 import java.io.FileDescriptor;
 import java.io.FileOutputStream;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
 
 import org.graalvm.compiler.api.replacements.Fold;
@@ -313,7 +314,9 @@ public class SubstrateUtil {
 
     @NeverInline("catch implicit exceptions")
     private static void dumpDeoptStubPointer(Log log) {
-        log.string("DeoptStubPointer address: ").zhex(DeoptimizationSupport.getDeoptStubPointer().rawValue()).newline().newline();
+        if (DeoptimizationSupport.enabled()) {
+            log.string("DeoptStubPointer address: ").zhex(DeoptimizationSupport.getDeoptStubPointer().rawValue()).newline().newline();
+        }
     }
 
     @NeverInline("catch implicit exceptions")
@@ -380,25 +383,27 @@ public class SubstrateUtil {
     }
 
     static void dumpRuntimeCompilation(Log log) {
-        log.newline().string("RuntimeCodeCache dump:").newline();
-        log.indent(true);
-        try {
-            dumpRecentRuntimeCodeCacheOperations(log);
-        } catch (Exception e) {
-            dumpException(log, "dumpRecentRuntimeCodeCacheOperations", e);
-        }
-        log.newline();
-        try {
-            dumpRuntimeCodeCacheTable(log);
-        } catch (Exception e) {
-            dumpException(log, "dumpRuntimeCodeCacheTable", e);
-        }
-        log.indent(false);
+        if (DeoptimizationSupport.enabled()) {
+            log.newline().string("RuntimeCodeCache dump:").newline();
+            log.indent(true);
+            try {
+                dumpRecentRuntimeCodeCacheOperations(log);
+            } catch (Exception e) {
+                dumpException(log, "dumpRecentRuntimeCodeCacheOperations", e);
+            }
+            log.newline();
+            try {
+                dumpRuntimeCodeCacheTable(log);
+            } catch (Exception e) {
+                dumpException(log, "dumpRuntimeCodeCacheTable", e);
+            }
+            log.indent(false);
 
-        try {
-            dumpRecentDeopts(log);
-        } catch (Exception e) {
-            dumpException(log, "dumpRecentDeopts", e);
+            try {
+                dumpRecentDeopts(log);
+            } catch (Exception e) {
+                dumpException(log, "dumpRecentDeopts", e);
+            }
         }
     }
 

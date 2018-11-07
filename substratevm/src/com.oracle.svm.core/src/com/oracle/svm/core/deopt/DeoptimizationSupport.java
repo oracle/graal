@@ -24,18 +24,13 @@
  */
 package com.oracle.svm.core.deopt;
 
-import java.util.Arrays;
-import java.util.List;
-
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.UnknownPrimitiveField;
-import com.oracle.svm.core.util.CounterFeature;
 
 public class DeoptimizationSupport {
 
@@ -43,6 +38,17 @@ public class DeoptimizationSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public DeoptimizationSupport() {
+    }
+
+    /**
+     * Returns true if the image build was configured with support for deoptimization. In most
+     * cases, that happens when support for runtime compilation using Graal is used. However, we
+     * also have a few low-level unit tests that test deoptimization in isolation, without Graal
+     * compilation.
+     */
+    @Fold
+    public static boolean enabled() {
+        return ImageSingletons.contains(DeoptimizationSupport.class);
     }
 
     private static DeoptimizationSupport get() {
@@ -63,26 +69,5 @@ public class DeoptimizationSupport {
      */
     public static CFunctionPointer getDeoptStubPointer() {
         return get().deoptStubPointer;
-    }
-}
-
-@AutomaticFeature
-class DeoptimizationFeature implements Feature {
-    @Override
-    public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Arrays.asList(CounterFeature.class);
-    }
-
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        /*
-         * We register the DeoptimizationSupport object even if deoptimization is not used for the
-         * current image. In that case, the deoptStubPointer just remains 0.
-         */
-        ImageSingletons.add(DeoptimizationSupport.class, new DeoptimizationSupport());
-        /*
-         * Counters for deoptimization.
-         */
-        ImageSingletons.add(DeoptimizationCounters.class, new DeoptimizationCounters());
     }
 }
