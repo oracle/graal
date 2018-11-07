@@ -136,7 +136,7 @@ final class TRegexCompilationRequest {
                 debugTraceFinder();
             } catch (UnsupportedRegexException e) {
                 phaseEnd("TraceFinder NFA Bailout");
-                LOG_BAILOUT_MESSAGES.info(() -> "TraceFinder: " + e.getMessage() + ": " + source);
+                LOG_BAILOUT_MESSAGES.fine(() -> "TraceFinder: " + e.getMessage() + ": " + source);
                 // handle with capture group aware DFA, bailout will always happen before
                 // assigning preCalculatedResults
             }
@@ -299,24 +299,24 @@ final class TRegexCompilationRequest {
     }
 
     private static boolean shouldLogPhases() {
-        return LOG_PHASES.isLoggable(Level.INFO);
+        return LOG_PHASES.isLoggable(Level.FINER);
     }
 
     private void phaseStart(String phase) {
         if (shouldLogPhases()) {
-            LOG_PHASES.info(phase + " Start");
+            LOG_PHASES.finer(phase + " Start");
             timer.start();
         }
     }
 
     private void phaseEnd(String phase) {
         if (shouldLogPhases()) {
-            LOG_PHASES.info(phase + " End, elapsed: " + timer.elapsedToString());
+            LOG_PHASES.finer(phase + " End, elapsed: " + timer.elapsedToString());
         }
     }
 
     private void logAutomatonSizes(CompiledRegex result) {
-        LOG_AUTOMATON_SIZES.info(() -> Json.obj(
+        LOG_AUTOMATON_SIZES.finer(() -> Json.obj(
                         Json.prop("pattern", source.getPattern()),
                         Json.prop("flags", source.getFlags()),
                         Json.prop("props", ast == null ? new RegexProperties() : ast.getProperties()),

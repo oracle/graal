@@ -61,9 +61,9 @@ public class RegexCompilerWithFallback extends RegexCompiler {
             if (shouldLog) {
                 elapsedTimeMain = timer.getElapsed();
             }
-            LOG_COMPILER_FALLBACK.info(() -> "Primary compiler used: " + regexSource);
+            LOG_COMPILER_FALLBACK.finer(() -> "Primary compiler used: " + regexSource);
         } catch (UnsupportedRegexException mainBailout) {
-            LOG_BAILOUT_MESSAGES.info(() -> mainBailout.getMessage() + ": " + regexSource);
+            LOG_BAILOUT_MESSAGES.fine(() -> mainBailout.getMessage() + ": " + regexSource);
             try {
                 if (shouldLog) {
                     timer.start();
@@ -72,9 +72,9 @@ public class RegexCompilerWithFallback extends RegexCompiler {
                 if (shouldLog) {
                     elapsedTimeFallback = timer.getElapsed();
                 }
-                LOG_COMPILER_FALLBACK.warning(() -> String.format("Secondary compiler used (primary bailout due to '%s'): %s", mainBailout.getReason(), regexSource));
+                LOG_COMPILER_FALLBACK.fine(() -> String.format("Secondary compiler used (primary bailout due to '%s'): %s", mainBailout.getReason(), regexSource));
             } catch (UnsupportedRegexException fallbackBailout) {
-                LOG_COMPILER_FALLBACK.severe(() -> String.format("No compiler handled following regex (primary bailout: '%s'; secondary bailout: '%s'): %s", mainBailout.getReason(),
+                LOG_COMPILER_FALLBACK.fine(() -> String.format("No compiler handled following regex (primary bailout: '%s'; secondary bailout: '%s'): %s", mainBailout.getReason(),
                                 fallbackBailout.getReason(), regexSource));
                 String bailoutReasons = String.format("%s; %s", mainBailout.getReason(), fallbackBailout.getReason());
                 throw new UnsupportedRegexException(bailoutReasons, regexSource);
@@ -87,11 +87,11 @@ public class RegexCompilerWithFallback extends RegexCompiler {
     }
 
     private static boolean shouldLogCompilationTime() {
-        return LOG_TOTAL_COMPILATION_TIME.isLoggable(Level.INFO);
+        return LOG_TOTAL_COMPILATION_TIME.isLoggable(Level.FINE);
     }
 
     private static void logCompilationTime(RegexSource regexSource, long elapsedTimeMain, long elapsedTimeFallback) {
-        LOG_TOTAL_COMPILATION_TIME.log(Level.INFO, "{0}, {1}, {2}, {3}", new Object[]{
+        LOG_TOTAL_COMPILATION_TIME.log(Level.FINE, "{0}, {1}, {2}, {3}", new Object[]{
                         DebugUtil.Timer.elapsedToString(elapsedTimeMain + elapsedTimeFallback),
                         DebugUtil.Timer.elapsedToString(elapsedTimeMain),
                         DebugUtil.Timer.elapsedToString(elapsedTimeFallback),

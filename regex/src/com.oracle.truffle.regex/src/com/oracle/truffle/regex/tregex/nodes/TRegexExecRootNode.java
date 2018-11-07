@@ -123,7 +123,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
     private void switchToEagerSearch(RegexProfile profile) {
         compileEagerSearchNode();
         if (eagerSearchNode != EAGER_SEARCH_BAILED_OUT) {
-            LOG_SWITCH_TO_EAGER.info(() -> "regex " + getSource() + ": switching to eager matching." + (profile == null ? "" : " profile: " + profile));
+            LOG_SWITCH_TO_EAGER.fine(() -> "regex " + getSource() + ": switching to eager matching." + (profile == null ? "" : " profile: " + profile));
             runRegexSearchNode = insert(eagerSearchNode);
         }
     }
@@ -134,7 +134,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
                 TRegexDFAExecutorNode executorNode = tRegexCompiler.compileEagerDFAExecutor(getSource());
                 eagerSearchNode = new EagerCaptureGroupRegexSearchNode(executorNode);
             } catch (UnsupportedRegexException e) {
-                LOG_BAILOUT_MESSAGES.info(() -> e.getMessage() + ": " + source);
+                LOG_BAILOUT_MESSAGES.fine(() -> e.getMessage() + ": " + source);
                 eagerSearchNode = EAGER_SEARCH_BAILED_OUT;
             }
         }
