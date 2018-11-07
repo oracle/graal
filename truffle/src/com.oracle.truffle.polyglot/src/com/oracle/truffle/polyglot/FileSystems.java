@@ -219,13 +219,18 @@ final class FileSystems {
         public Path readSymbolicLink(Path link) throws IOException {
             return delegate.readSymbolicLink(link);
         }
+
+        @Override
+        public void setCurrentWorkingDirectory(Path currentWorkingDirectory) {
+            delegate.setCurrentWorkingDirectory(currentWorkingDirectory);
+        }
     }
 
     private static final class NIOFileSystem implements FileSystem {
 
         private final FileSystemProvider delegate;
         private final boolean explicitUserDir;
-        private final Path userDir;
+        private volatile Path userDir;
 
         NIOFileSystem(final FileSystemProvider fileSystemProvider) {
             this(fileSystemProvider, false, null);
@@ -331,14 +336,24 @@ final class FileSystems {
             if (path.isAbsolute()) {
                 return path;
             }
-            if (explicitUserDir) {
-                if (userDir == null) {
+            Path cwd = userDir;
+            if (cwd == null) {
+                if (explicitUserDir) {  // Forbidden read of current working directory
                     throw new SecurityException("Access to user.dir is not allowed.");
                 }
-                return userDir.resolve(path);
-            } else {
                 return path.toAbsolutePath();
+            } else {
+                return cwd.resolve(path);
             }
+        }
+
+        @Override
+        public void setCurrentWorkingDirectory(Path currentWorkingDirectory) {
+            Objects.requireNonNull(currentWorkingDirectory, "Current working directory must be non null.");
+            if (explicitUserDir && userDir == null) { // Forbidden set of current working directory
+                throw new SecurityException("Modification of current working directory is not allowed.");
+            }
+            userDir = currentWorkingDirectory;
         }
 
         @Override
@@ -348,14 +363,14 @@ final class FileSystems {
         }
 
         private Path resolveRelative(Path path) {
-            return explicitUserDir ? toAbsolutePath(path) : path;
+            return !path.isAbsolute() && userDir != null ? toAbsolutePath(path) : path;
         }
     }
 
     private static final class DeniedIOFileSystem implements FileSystem {
-        private final Path userDir;
         private final boolean explicitUserDir;
         private final FileSystem fullIO;
+        private volatile Path userDir;
         private volatile Set<Path> languageHomes;
 
         DeniedIOFileSystem() {
@@ -462,14 +477,24 @@ final class FileSystems {
             if (path.isAbsolute()) {
                 return path;
             }
-            if (explicitUserDir) {
-                if (userDir == null) {
-                    throw new SecurityException("Access to 'user.dir' is not allowed.");
+            Path cwd = userDir;
+            if (cwd == null) {
+                if (explicitUserDir) {  // Forbidden read of current working directory
+                    throw new SecurityException("Access to current working directory is not allowed.");
                 }
-                return userDir.resolve(path);
-            } else {
                 return path.toAbsolutePath();
+            } else {
+                return cwd.resolve(path);
             }
+        }
+
+        @Override
+        public void setCurrentWorkingDirectory(Path currentWorkingDirectory) {
+            Objects.requireNonNull(currentWorkingDirectory, "Current working directory must be non null.");
+            if (explicitUserDir && userDir == null) { // Forbidden set of current working directory
+                throw new SecurityException("Modification of current working directory is not allowed.");
+            }
+            userDir = currentWorkingDirectory;
         }
 
         @Override

@@ -48,7 +48,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.AccessMode;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.FileTime;
 import java.util.EnumSet;
@@ -63,21 +65,38 @@ import org.graalvm.polyglot.io.FileSystem;
 public class FileSystemProviderTest {
 
     private Path workDir;
+    private Path invalidWorkDir;
     private Path existingAbsolute;
     private Path existingRelative;
+    private Path originalCwd;
     private FileSystem fs;
 
     @Before
     public void setUp() throws IOException {
+        invalidWorkDir = Files.createTempDirectory(FileSystemProviderTest.class.getSimpleName());
         workDir = Files.createTempDirectory(FileSystemProviderTest.class.getSimpleName());
         existingAbsolute = Files.write(workDir.resolve("existing.txt"), getClass().getSimpleName().getBytes(StandardCharsets.UTF_8));
         existingRelative = workDir.relativize(existingAbsolute);
-        fs = newFullIOFileSystem(workDir);
+        // Use FileSystem.setCurrentWorkingDirectory to verify that all FileSystem operations are
+        // correctly using current working directory
+        fs = newFullIOFileSystem();
+        originalCwd = fs.toAbsolutePath(Paths.get(""));
+        fs.setCurrentWorkingDirectory(workDir);
     }
 
     @After
     public void tearDown() throws IOException {
-        delete(workDir);
+        try {
+            if (originalCwd != null) {
+                fs.setCurrentWorkingDirectory(originalCwd);
+            }
+        } finally {
+            try {
+                delete(workDir);
+            } finally {
+                delete(invalidWorkDir);
+            }
+        }
     }
 
     @Test
@@ -199,6 +218,23 @@ public class FileSystemProviderTest {
     public void testToRealPath() throws IOException {
         Assert.assertEquals(existingAbsolute.toRealPath(), fs.toRealPath(existingAbsolute));
         Assert.assertEquals(existingAbsolute.toRealPath(), fs.toRealPath(existingRelative));
+    }
+
+    @Test
+    public void testSetCurrentWorkingDirectory() throws IOException {
+        fs.checkAccess(existingRelative, EnumSet.noneOf(AccessMode.class));
+        try {
+            fs.setCurrentWorkingDirectory(invalidWorkDir);
+            try {
+                fs.checkAccess(existingRelative, EnumSet.noneOf(AccessMode.class));
+                Assert.fail("Should not reach here, NoSuchFileException expected.");
+            } catch (NoSuchFileException nsf) {
+                // expected
+            }
+        } finally {
+            fs.setCurrentWorkingDirectory(workDir);
+        }
+        fs.checkAccess(existingRelative, EnumSet.noneOf(AccessMode.class));
     }
 
     private void delete(Path path) throws IOException {
