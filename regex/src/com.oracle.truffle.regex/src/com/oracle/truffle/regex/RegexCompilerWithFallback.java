@@ -31,6 +31,7 @@ import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import java.util.logging.Level;
 
 import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_BAILOUT_MESSAGES;
+import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_COMPILER_FALLBACK;
 import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_TOTAL_COMPILATION_TIME;
 
 public class RegexCompilerWithFallback extends RegexCompiler {
@@ -60,6 +61,7 @@ public class RegexCompilerWithFallback extends RegexCompiler {
             if (shouldLog) {
                 elapsedTimeMain = timer.getElapsed();
             }
+            LOG_COMPILER_FALLBACK.info(() -> "Primary compiler used: " + regexSource);
         } catch (UnsupportedRegexException mainBailout) {
             LOG_BAILOUT_MESSAGES.info(() -> mainBailout.getMessage() + ": " + regexSource);
             try {
@@ -70,7 +72,10 @@ public class RegexCompilerWithFallback extends RegexCompiler {
                 if (shouldLog) {
                     elapsedTimeFallback = timer.getElapsed();
                 }
+                LOG_COMPILER_FALLBACK.warning(() -> String.format("Secondary compiler used (primary bailout due to '%s'): %s", mainBailout.getReason(), regexSource));
             } catch (UnsupportedRegexException fallbackBailout) {
+                LOG_COMPILER_FALLBACK.severe(() -> String.format("No compiler handled following regex (primary bailout: '%s'; secondary bailout: '%s'): %s", mainBailout.getReason(),
+                                fallbackBailout.getReason(), regexSource));
                 String bailoutReasons = String.format("%s; %s", mainBailout.getReason(), fallbackBailout.getReason());
                 throw new UnsupportedRegexException(bailoutReasons, regexSource);
             }

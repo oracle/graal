@@ -41,6 +41,7 @@ public class DebugUtil {
     public static final TruffleLogger LOG_PHASES = TruffleLogger.getLogger("regex", "Phases");
     public static final TruffleLogger LOG_BAILOUT_MESSAGES = TruffleLogger.getLogger("regex", "BailoutMessages");
     public static final TruffleLogger LOG_AUTOMATON_SIZES = TruffleLogger.getLogger("regex", "AutomatonSizes");
+    public static final TruffleLogger LOG_COMPILER_FALLBACK = TruffleLogger.getLogger("regex", "CompilerFallback");
 
     private static final CompilationFinalBitSet validSpecialCharsForFileNames = CompilationFinalBitSet.valueOf(
                     '^', '$', '.', '*', '+', '-', '?', '(', ')', '[', ']', '{', '}', '|');
