@@ -24,20 +24,20 @@ public final class NearestSectionsFinder {
     private NearestSectionsFinder() {
     }
 
-    public static NearestNodeHolder findNearestNode(Source source, int line, int character, Env env, Class<?>... tag) {
+    public static NearestNode findNearestNode(Source source, int line, int character, Env env, Class<?>... tag) {
         int oneBasedLineNumber = SourceUtils.zeroBasedLineToOneBasedLine(line, source);
-        NearestNodeHolder nearestNodeHolder = findNearestNodeOneBased(oneBasedLineNumber, character, source, env, tag);
+        NearestNode nearestNode = findNearestNodeOneBased(oneBasedLineNumber, character, source, env, tag);
 
         // TODO(ds) wrap debug printing
-        Node nearestNode = nearestNodeHolder.getNearestNode();
+        Node node = nearestNode.getNode();
         System.out.println("nearestNode: " +
-                        (nearestNode != null ? nearestNode.getClass().getSimpleName() : "--NULL--") + "\t-" + nearestNodeHolder.getLocationType() + "-\t" +
-                        (nearestNode != null ? nearestNode.getSourceSection() : ""));
+                        (node != null ? node.getClass().getSimpleName() : "--NULL--") + "\t-" + nearestNode.getLocationType() + "-\t" +
+                        (node != null ? node.getSourceSection() : ""));
 
-        return nearestNodeHolder;
+        return nearestNode;
     }
 
-    protected static NearestNodeHolder findNearestNodeOneBased(int oneBasedLineNumber, int column, Source source, Env env, Class<?>... tag) {
+    protected static NearestNode findNearestNodeOneBased(int oneBasedLineNumber, int column, Source source, Env env, Class<?>... tag) {
         NearestSections nearestSections = findNearestSections(source, env, oneBasedLineNumber, column, false, tag);
         SourceSection containsSection = nearestSections.getContainsSourceSection();
 
@@ -69,7 +69,7 @@ public final class NearestSectionsFinder {
             locationType = NodeLocationType.CONTAINS;
         }
 
-        return new NearestNodeHolder(nearestNode, locationType);
+        return new NearestNode(nearestNode, locationType);
     }
 
     private static boolean isEndOfSectionMatchingCaretPosition(int line, int character, SourceSection section) {

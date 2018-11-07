@@ -11,7 +11,6 @@ public class SourceLocation {
     private int endLine; // 1-based
     private int startColumn;
     private int endColumn;
-    private int sourceHash;
 
     private SourceLocation() {
     }
@@ -21,7 +20,6 @@ public class SourceLocation {
         this.endLine = location.endLine;
         this.startColumn = location.startColumn;
         this.endColumn = location.endColumn;
-        this.sourceHash = location.sourceHash;
     }
 
     public static SourceLocation from(SourceSection section) {
@@ -30,7 +28,6 @@ public class SourceLocation {
         location.endLine = section.getEndLine();
         location.startColumn = section.getStartColumn();
         location.endColumn = section.getEndColumn();
-        location.sourceHash = section.getCharacters().hashCode();
 
         return location;
     }
@@ -74,12 +71,12 @@ public class SourceLocation {
         }
 
         SourceLocation other = (SourceLocation) obj;
-        return startLine == other.startLine && endLine == other.endLine && startColumn == other.startColumn && endColumn == other.endColumn/* && sourceHash == other.sourceHash */;
+        return startLine == other.startLine && endLine == other.endLine && startColumn == other.startColumn && endColumn == other.endColumn;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(startLine, startColumn, endLine, endColumn/* , sourceHash */);
+        return Objects.hash(startLine, startColumn, endLine, endColumn);
     }
 
     @Override
@@ -87,11 +84,10 @@ public class SourceLocation {
         return String.format("Location[line=%d-%d, column=%d-%d]", startLine, endLine, startColumn, endColumn);
     }
 
-    @SuppressWarnings("hiding")
     public boolean includes(Range range) {
-        int startLine = range.getStart().getLine() + 1;
-        int endLine = range.getStart().getLine() + 1;
-        if (this.startLine < startLine && endLine < this.endLine) {
+        int otherStartLine = range.getStart().getLine() + 1;
+        int otherEndLine = range.getStart().getLine() + 1;
+        if (this.startLine < otherStartLine && otherEndLine < this.endLine) {
             // range is fully included and we do not have to check the columns
             return true;
         }
@@ -99,20 +95,18 @@ public class SourceLocation {
         return false;
     }
 
-    @SuppressWarnings("hiding")
     public boolean before(Range range) {
-        int startLine = range.getStart().getLine() + 1;
-        if (this.endLine < startLine) {
+        int otherStartLine = range.getStart().getLine() + 1;
+        if (this.endLine < otherStartLine) {
             // range is fully behind us in the text
             return true;
         }
         return false;
     }
 
-    @SuppressWarnings("hiding")
     public boolean behind(Range range) {
-        int endLine = range.getStart().getLine() + 1;
-        if (endLine < this.startLine) {
+        int otherEndLine = range.getStart().getLine() + 1;
+        if (otherEndLine < this.startLine) {
             // range is fully before us in the text
             return true;
         }

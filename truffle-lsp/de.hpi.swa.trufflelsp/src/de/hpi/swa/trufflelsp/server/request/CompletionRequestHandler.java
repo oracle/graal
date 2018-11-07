@@ -47,7 +47,7 @@ import de.hpi.swa.trufflelsp.interop.GetSignature;
 import de.hpi.swa.trufflelsp.interop.ObjectStructures;
 import de.hpi.swa.trufflelsp.server.utils.CoverageData;
 import de.hpi.swa.trufflelsp.server.utils.EvaluationResult;
-import de.hpi.swa.trufflelsp.server.utils.NearestNodeHolder;
+import de.hpi.swa.trufflelsp.server.utils.NearestNode;
 import de.hpi.swa.trufflelsp.server.utils.NearestSectionsFinder;
 import de.hpi.swa.trufflelsp.server.utils.NearestSectionsFinder.NodeLocationType;
 import de.hpi.swa.trufflelsp.server.utils.SourceUtils;
@@ -205,15 +205,15 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
     }
 
     private Node findNearestNode(SourceWrapper sourceWrapper, int line, int character) {
-        NearestNodeHolder nearestNodeHolder = NearestSectionsFinder.findNearestNode(sourceWrapper.getSource(), line, character, env);
-        return nearestNodeHolder.getNearestNode();
+        NearestNode nearestNodeHolder = NearestSectionsFinder.findNearestNode(sourceWrapper.getSource(), line, character, env);
+        return nearestNodeHolder.getNode();
     }
 
     private void fillCompletionsWithObjectProperties(TextDocumentSurrogate surrogate, int line, int character, CompletionList completions) throws DiagnosticsNotification {
         SourceWrapper sourceWrapper = surrogate.getSourceWrapper();
         Source source = sourceWrapper.getSource();
-        NearestNodeHolder nearestNodeHolder = NearestSectionsFinder.findNearestNode(source, line, character, env, StandardTags.ExpressionTag.class);
-        Node nearestNode = nearestNodeHolder.getNearestNode();
+        NearestNode nearestNodeHolder = NearestSectionsFinder.findNearestNode(source, line, character, env, StandardTags.ExpressionTag.class);
+        Node nearestNode = nearestNodeHolder.getNode();
 
         if (!isInstrumentable(nearestNode)) {
             return;
