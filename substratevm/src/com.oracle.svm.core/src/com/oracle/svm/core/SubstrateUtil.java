@@ -24,9 +24,19 @@
  */
 package com.oracle.svm.core;
 
+// Checkstyle: allow reflection
+
 import java.io.FileDescriptor;
 import java.io.FileOutputStream;
+import java.io.UnsupportedEncodingException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Executable;
+import java.lang.reflect.Field;
+import java.lang.reflect.Member;
+import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -70,6 +80,9 @@ import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
 import com.oracle.svm.core.util.Counter;
+import com.oracle.svm.core.util.VMError;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class SubstrateUtil {
 
@@ -549,5 +562,75 @@ public class SubstrateUtil {
         list.add(value.substring(offset, value.length()));
 
         return list.toArray(new String[list.size()]);
+    }
+
+    private static final char[] HEX = "0123456789abcdef".toCharArray();
+
+    public static String toHex(byte[] data) {
+        StringBuilder r = new StringBuilder(data.length * 2);
+        for (byte b : data) {
+            r.append(HEX[(b >> 4) & 0xf]);
+            r.append(HEX[b & 0xf]);
+        }
+        return r.toString();
+    }
+
+    public static String digest(String value) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-1");
+            md.update(value.getBytes("UTF-8"));
+            return toHex(md.digest());
+        } catch (NoSuchAlgorithmException | UnsupportedEncodingException ex) {
+            throw VMError.shouldNotReachHere(ex);
+        }
+    }
+
+    /**
+     * Returns a short, reasonably descriptive, but still unique name for the provided method. The
+     * name includes a digest of the fully qualified method name, which ensures uniqueness.
+     */
+    public static String uniqueShortName(ResolvedJavaMethod m) {
+        StringBuilder fullName = new StringBuilder();
+        fullName.append(m.getDeclaringClass().toClassName()).append(".").append(m.getName()).append("(");
+        for (int i = 0; i < m.getSignature().getParameterCount(false); i++) {
+            fullName.append(m.getSignature().getParameterType(i, null).toClassName()).append(",");
+        }
+        fullName.append(')');
+        if (!m.isConstructor()) {
+            fullName.append(m.getSignature().getReturnType(null).toClassName());
+        }
+
+        return m.getDeclaringClass().toJavaName(false) + "_" +
+                        (m.isConstructor() ? "constructor" : m.getName()) + "_" +
+                        SubstrateUtil.digest(fullName.toString());
+    }
+
+    /**
+     * Returns a short, reasonably descriptive, but still unique name for the provided
+     * {@link Method}, {@link Constructor}, or {@link Field}. The name includes a digest of the
+     * fully qualified method name, which ensures uniqueness.
+     */
+    public static String uniqueShortName(Member m) {
+        StringBuilder fullName = new StringBuilder();
+        fullName.append(m.getDeclaringClass().getName()).append(".");
+        if (m instanceof Constructor) {
+            fullName.append("<init>");
+        } else {
+            fullName.append(m.getName());
+        }
+        if (m instanceof Executable) {
+            fullName.append("(");
+            for (Class<?> c : ((Executable) m).getParameterTypes()) {
+                fullName.append(c.getName()).append(",");
+            }
+            fullName.append(')');
+            if (m instanceof Method) {
+                fullName.append(((Method) m).getReturnType().getName());
+            }
+        }
+
+        return m.getDeclaringClass().getSimpleName() + "_" +
+                        (m instanceof Constructor ? "constructor" : m.getName()) + "_" +
+                        SubstrateUtil.digest(fullName.toString());
     }
 }

@@ -29,7 +29,7 @@ import java.util.ArrayList;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.code.CEntryPointCallStubs;
+import com.oracle.svm.core.code.IsolateEnterStub;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
@@ -68,7 +68,7 @@ public class StackTraceBuilder implements StackFrameVisitor {
          * We would prefer to do a Class check instead of a String comparison for the class name,
          * but for now the SVM metadata only stores names as strings.
          */
-        if (CEntryPointCallStubs.class.getName().equals(sourceReference.getClassName())) {
+        if (IsolateEnterStub.class.getName().equals(sourceReference.getClassName())) {
             /*
              * Always ignore the frame. It is the synthetic frame created for entry points from C
              * code.

@@ -66,6 +66,7 @@ import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointBuiltins;
 import com.oracle.svm.core.c.function.CEntryPointBuiltins.CEntryPointBuiltinImplementation;
@@ -73,7 +74,7 @@ import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.core.c.function.CEntryPointSetup;
-import com.oracle.svm.core.code.CEntryPointCallStubs;
+import com.oracle.svm.core.code.IsolateEnterStub;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode.LeaveAction;
 import com.oracle.svm.core.graal.nodes.CEntryPointPrologueBailoutNode;
@@ -86,7 +87,6 @@ import com.oracle.svm.hosted.c.info.ElementInfo;
 import com.oracle.svm.hosted.c.info.EnumInfo;
 import com.oracle.svm.hosted.c.info.EnumLookupInfo;
 import com.oracle.svm.hosted.c.info.EnumValueInfo;
-import com.oracle.svm.hosted.image.NativeBootImage;
 import com.oracle.svm.hosted.phases.CInterfaceEnumTool;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 
@@ -109,8 +109,8 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
     static CEntryPointCallStubMethod create(AnalysisMethod targetMethod, CEntryPointData entryPointData, AnalysisMetaAccess metaAccess) {
         ResolvedJavaMethod unwrappedMethod = targetMethod.getWrapped();
         MetaAccessProvider unwrappedMetaAccess = metaAccess.getWrapped();
-        ResolvedJavaType declaringClass = unwrappedMetaAccess.lookupJavaType(CEntryPointCallStubs.class);
-        ConstantPool constantPool = CEntryPointCallStubs.getConstantPool(unwrappedMetaAccess);
+        ResolvedJavaType declaringClass = unwrappedMetaAccess.lookupJavaType(IsolateEnterStub.class);
+        ConstantPool constantPool = IsolateEnterStub.getConstantPool(unwrappedMetaAccess);
         return new CEntryPointCallStubMethod(entryPointData, unwrappedMethod, declaringClass, constantPool);
     }
 
@@ -139,7 +139,7 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
 
     @Override
     public String getName() {
-        return NativeBootImage.globalSymbolNameForMethod(targetMethod);
+        return SubstrateUtil.uniqueShortName(targetMethod);
     }
 
     @Override
