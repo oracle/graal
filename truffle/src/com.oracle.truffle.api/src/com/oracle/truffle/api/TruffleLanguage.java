@@ -1972,6 +1972,44 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
+         * Gets the current working directory. The current working directory is used to resolve non
+         * absolute paths in {@link TruffleFile} methods.
+         *
+         * @return the current working directory
+         * @throws SecurityException if the {@link FileSystem filesystem} denies reading of the
+         *             current working directory
+         * @since 1.0
+         */
+        @TruffleBoundary
+        public TruffleFile getCurrentWorkingDirectory() {
+            return getTruffleFile("").getAbsoluteFile();
+        }
+
+        /**
+         * Sets the current working directory. The current working directory is used to resolve non
+         * absolute paths in {@link TruffleFile} methods.
+         *
+         * @param currentWorkingDirectory the new current working directory
+         * @throws UnsupportedOperationException if setting of the current working directory is not
+         *             supported
+         * @throws IllegalArgumentException if the {@code currentWorkingDirectory} is not a valid
+         *             current working directory
+         * @throws SecurityException if {@code currentWorkingDirectory} is not readable
+         * @since 1.0
+         */
+        @TruffleBoundary
+        public void setCurrentWorkingDirectory(TruffleFile currentWorkingDirectory) {
+            Objects.requireNonNull(currentWorkingDirectory, "Current working directory must be non null.");
+            if (!currentWorkingDirectory.isAbsolute()) {
+                throw new IllegalArgumentException("Current working directory must be absolute.");
+            }
+            if (!currentWorkingDirectory.isDirectory()) {
+                throw new IllegalArgumentException("Current working directory must be directory.");
+            }
+            fileSystem.setCurrentWorkingDirectory(currentWorkingDirectory.getSPIPath());
+        }
+
+        /**
          * @since 1.0
          * @deprecated use {@link Source#newBuilder(String, TruffleFile)} instead.
          */

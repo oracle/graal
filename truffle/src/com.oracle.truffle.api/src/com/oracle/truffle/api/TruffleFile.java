@@ -123,6 +123,10 @@ public final class TruffleFile {
         this.normalizedPath = normalizedPath;
     }
 
+    Path getSPIPath() {
+        return normalizedPath;
+    }
+
     /**
      * Tests existence of a file.
      *

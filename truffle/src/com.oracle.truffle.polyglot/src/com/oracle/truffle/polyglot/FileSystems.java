@@ -64,21 +64,18 @@ import org.graalvm.polyglot.io.FileSystem;
 final class FileSystems {
 
     static final String FILE_SCHEME = "file";
-    private static final AtomicReference<FileSystem> DEFAULT_FILE_SYSTEM = new AtomicReference<>();
+    private static final AtomicReference<FileSystemProvider> DEFAULT_FILE_SYSTEM_PROVIDER = new AtomicReference<>();
 
     private FileSystems() {
         throw new IllegalStateException("No instance allowed");
     }
 
-    static FileSystem getDefaultFileSystem() {
-        FileSystem fs = DEFAULT_FILE_SYSTEM.get();
-        if (fs == null) {
-            fs = FileSystems.newFileSystem(findDefaultFileSystemProvider());
-            if (!DEFAULT_FILE_SYSTEM.compareAndSet(null, fs)) {
-                fs = DEFAULT_FILE_SYSTEM.get();
-            }
-        }
-        return fs;
+    static FileSystem newDefaultFileSystem() {
+        return FileSystems.newFileSystem(findDefaultFileSystemProvider());
+    }
+
+    static FileSystem newDefaultFileSystem(Path userDir) {
+        return newFileSystem(findDefaultFileSystemProvider(), userDir);
     }
 
     static FileSystem newNoIOFileSystem() {
@@ -89,18 +86,6 @@ final class FileSystems {
         return new DeniedIOFileSystem(userDir);
     }
 
-    static FileSystem newFullIOFileSystem(Path userDir) {
-        return newFileSystem(findDefaultFileSystemProvider(), userDir);
-    }
-
-    static FileSystem newFileSystem(final FileSystemProvider fileSystemProvider) {
-        return new NIOFileSystem(fileSystemProvider);
-    }
-
-    static FileSystem newFileSystem(final FileSystemProvider fileSystemProvider, final Path userDir) {
-        return new NIOFileSystem(fileSystemProvider, userDir);
-    }
-
     static boolean isDefaultFileSystem(FileSystem fileSystem) {
         return fileSystem != null && fileSystem.getClass() == NIOFileSystem.class && FILE_SCHEME.equals(((NIOFileSystem) fileSystem).delegate.getScheme());
     }
@@ -109,13 +94,29 @@ final class FileSystems {
         return fileSystem != null && fileSystem.getClass() == DeniedIOFileSystem.class;
     }
 
+    private static FileSystem newFileSystem(final FileSystemProvider fileSystemProvider) {
+        return new NIOFileSystem(fileSystemProvider);
+    }
+
+    private static FileSystem newFileSystem(final FileSystemProvider fileSystemProvider, final Path userDir) {
+        return new NIOFileSystem(fileSystemProvider, userDir);
+    }
+
     private static FileSystemProvider findDefaultFileSystemProvider() {
-        for (FileSystemProvider fsp : FileSystemProvider.installedProviders()) {
-            if (FILE_SCHEME.equals(fsp.getScheme())) {
-                return fsp;
+        FileSystemProvider defaultFsProvider = DEFAULT_FILE_SYSTEM_PROVIDER.get();
+        if (defaultFsProvider == null) {
+            for (FileSystemProvider fsp : FileSystemProvider.installedProviders()) {
+                if (FILE_SCHEME.equals(fsp.getScheme())) {
+                    defaultFsProvider = fsp;
+                    break;
+                }
             }
+            if (defaultFsProvider == null) {
+                throw new IllegalStateException("No FileSystemProvider for scheme 'file'.");
+            }
+            DEFAULT_FILE_SYSTEM_PROVIDER.set(defaultFsProvider);
         }
-        throw new IllegalStateException("No FileSystemProvider for scheme 'file'.");
+        return defaultFsProvider;
     }
 
     private static boolean isFollowLinks(final LinkOption... linkOptions) {
@@ -132,7 +133,7 @@ final class FileSystems {
         private FileSystem delegate; // effectively final after patch context
 
         PreInitializeContextFileSystem() {
-            this.delegate = newFullIOFileSystem(null);
+            this.delegate = newDefaultFileSystem(null);
         }
 
         void patchDelegate(final FileSystem newDelegate) {
@@ -219,13 +220,18 @@ final class FileSystems {
         public Path readSymbolicLink(Path link) throws IOException {
             return delegate.readSymbolicLink(link);
         }
+
+        @Override
+        public void setCurrentWorkingDirectory(Path currentWorkingDirectory) {
+            delegate.setCurrentWorkingDirectory(currentWorkingDirectory);
+        }
     }
 
     private static final class NIOFileSystem implements FileSystem {
 
         private final FileSystemProvider delegate;
         private final boolean explicitUserDir;
-        private final Path userDir;
+        private volatile Path userDir;
 
         NIOFileSystem(final FileSystemProvider fileSystemProvider) {
             this(fileSystemProvider, false, null);
@@ -331,14 +337,24 @@ final class FileSystems {
             if (path.isAbsolute()) {
                 return path;
             }
-            if (explicitUserDir) {
-                if (userDir == null) {
+            Path cwd = userDir;
+            if (cwd == null) {
+                if (explicitUserDir) {  // Forbidden read of current working directory
                     throw new SecurityException("Access to user.dir is not allowed.");
                 }
-                return userDir.resolve(path);
-            } else {
                 return path.toAbsolutePath();
+            } else {
+                return cwd.resolve(path);
             }
+        }
+
+        @Override
+        public void setCurrentWorkingDirectory(Path currentWorkingDirectory) {
+            Objects.requireNonNull(currentWorkingDirectory, "Current working directory must be non null.");
+            if (explicitUserDir && userDir == null) { // Forbidden set of current working directory
+                throw new SecurityException("Modification of current working directory is not allowed.");
+            }
+            userDir = currentWorkingDirectory;
         }
 
         @Override
@@ -348,28 +364,20 @@ final class FileSystems {
         }
 
         private Path resolveRelative(Path path) {
-            return explicitUserDir ? toAbsolutePath(path) : path;
+            return !path.isAbsolute() && userDir != null ? toAbsolutePath(path) : path;
         }
     }
 
     private static final class DeniedIOFileSystem implements FileSystem {
-        private final Path userDir;
-        private final boolean explicitUserDir;
         private final FileSystem fullIO;
         private volatile Set<Path> languageHomes;
 
         DeniedIOFileSystem() {
-            this(null, false);
+            this.fullIO = newDefaultFileSystem();
         }
 
         DeniedIOFileSystem(final Path userDir) {
-            this(userDir, true);
-        }
-
-        private DeniedIOFileSystem(final Path userDir, final boolean explicitUserDir) {
-            this.userDir = userDir;
-            this.explicitUserDir = explicitUserDir;
-            this.fullIO = FileSystems.getDefaultFileSystem();
+            this.fullIO = newDefaultFileSystem(userDir);
         }
 
         @Override
@@ -459,17 +467,12 @@ final class FileSystems {
 
         @Override
         public Path toAbsolutePath(Path path) {
-            if (path.isAbsolute()) {
-                return path;
-            }
-            if (explicitUserDir) {
-                if (userDir == null) {
-                    throw new SecurityException("Access to 'user.dir' is not allowed.");
-                }
-                return userDir.resolve(path);
-            } else {
-                return path.toAbsolutePath();
-            }
+            return fullIO.toAbsolutePath(path);
+        }
+
+        @Override
+        public void setCurrentWorkingDirectory(Path currentWorkingDirectory) {
+            fullIO.setCurrentWorkingDirectory(currentWorkingDirectory);
         }
 
         @Override
