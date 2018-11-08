@@ -3,7 +3,7 @@
 This changelog summarizes major changes between Graal SDK versions. The main focus is on APIs exported by Graal SDK.
 
 ## Version 1.0 RC10
-* Added support for setting current working directory for relative path resolution in polyglot FileSystem.
+* Added [FileSystem.setCurrentWorkingDirectory](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/FileSystem.html#setCurrentWorkingDirectory-java.nio.file.Path-) method to set a current working directory for relative paths resolution in the polyglot FileSystem.
 
 ## Version 1.0 RC9
 * Added a [Context.Builder.logHandler](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#logHandler-java.io.OutputStream-) and [Engine.Builder.logHandler](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Engine.Builder.html#logHandler-java.io.OutputStream-) methods to install a logging handler writing into a given `OutputStream`
