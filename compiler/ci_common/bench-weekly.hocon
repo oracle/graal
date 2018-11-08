@@ -1,30 +1,63 @@
-x52.default : ${linux-amd64} {
-  capabilities: [x52, no_frequency_scaling]
-  environment : {
-    XMX         : "64g"
-    XMS         : "64g"
-    JVM_CONFIG  : ${jvm-config.default}
-    JVM         : "server"
-    MACHINE_NAME: "x52"
-  }
-}
-
-x52.tmpfs10g : ${x52.default} {
-  capabilities: ${x52.default.capabilities} [tmpfs10g]
-}
-
-perf_tag : {
+bench-perftag : {
   environment : {
     BENCH_SERVER_EXTRAS : "target:weekly-perf"
   }
-  targets: [bench, weekly]
+}
+
+bench-dacapo-hwloc-forks : ${x52.tmpfs10g} ${bench-dacapo-hwloc} ${weeklys-bench-notifications} ${labsjdk8} {
+  targets: [bench, weekly],
+  setup: ${fork-counts.setup} ${bench-dacapo-hwloc.setup}
+  name: "bench-forks-compiler-dacapo-linux-x52"
+  timelimit: "23:59:00"
+  environment : ${x52.tmpfs10g.environment} ${bench-dacapo-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+    FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/dacapo_forks.json"
+  }
+}
+
+bench-scala-dacapo-hwloc-forks : ${x52.tmpfs10g} ${bench-scala-dacapo-hwloc} ${weeklys-bench-notifications} ${labsjdk8} {
+  targets: [bench, weekly],
+  setup: ${fork-counts.setup} ${bench-scala-dacapo-hwloc.setup}
+  name: "bench-forks-compiler-scala-dacapo-linux-x52"
+  timelimit: "23:59:00"
+  environment : ${x52.tmpfs10g.environment} ${bench-scala-dacapo-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+    FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/scala_dacapo_forks.json"
+  }
+}
+
+bench-specjvm2008-Single-forks : ${x52.default} ${bench-specjvm2008-Single} ${weeklys-bench-notifications} ${labsjdk8} {
+  targets: [bench, weekly],
+  setup: ${fork-counts.setup} ${bench-specjvm2008-Single.setup}
+  name: "bench-forks-compiler-specjvm2008-Single-linux-x52"
+  timelimit: "23:59:00"
+  environment : ${x52.default.environment} ${bench-specjvm2008-Single.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+    FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/specjvm2008_forks.json"
+  }
+}
+
+bench-specjbb2015-forks : ${x52.default} ${bench-specjbb2015} ${weeklys-bench-notifications} ${labsjdk8} {
+  targets: [bench, weekly],
+  setup: ${fork-counts.setup} ${bench-specjbb2015.setup}
+  name: "bench-forks-compiler-specjbb2015-linux-x52"
+  timelimit: "23:59:00"
+  environment : ${x52.default.environment} ${bench-specjbb2015.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+    FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/specjbb2015_forks.json"
+  }
+}
+
+bench-renaissance-hwloc-forks : ${x52.tmpfs10g} ${bench-renaissance-hwloc} ${weeklys-bench-notifications} ${labsjdk8} {
+  targets: [bench, weekly],
+  setup: ${fork-counts.setup} ${bench-renaissance-hwloc.setup}
+  name: "bench-forks-compiler-renaissance-linux-x52"
+  timelimit: "23:59:00"
+  environment : ${x52.tmpfs10g.environment} ${bench-renaissance-hwloc.environment} ${fork-counts.environment} ${bench-perftag.environment} {
+    FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/renaissance_forks.json"
+  }
 }
 
 builds += [
-  ${x52.tmpfs10g} ${bench-dacapo-hwloc}       ${labsjdk8}  { name: "bench-weekly-compiler-dacapo-linux-x52" } ${perf_tag}
-  ${x52.tmpfs10g} ${bench-scala-dacapo-hwloc} ${labsjdk8}  { name: "bench-weekly-compiler-scala-dacapo-linux-x52" } ${perf_tag}
-  ${x52.default} ${bench-specjvm2008-Single}  ${labsjdk8}  { name: "bench-weekly-compiler-specjvm2008-Single-linux-x52" } ${perf_tag}
-  ${x52.default} ${bench-specjbb2015}         ${labsjdk8}  { name: "bench-weekly-compiler-specjbb2015-linux-x52" } ${perf_tag}
-  ${x52.default} ${bench-renaissance-hwloc}   ${labsjdk8}  { name: "bench-weekly-compiler-renaissance-linux-x52" } ${perf_tag}
-  ${x52.default} ${bench-spark-sql-perf}      ${labsjdk8}  { name: "bench-weekly-compiler-spark-sql-perf-linux-x52" } ${perf_tag}
+  ${bench-dacapo-hwloc-forks}
+  ${bench-scala-dacapo-hwloc-forks}
+  ${bench-specjvm2008-Single-forks}
+  ${bench-specjbb2015-forks}
+  ${bench-renaissance-hwloc-forks}
 ]

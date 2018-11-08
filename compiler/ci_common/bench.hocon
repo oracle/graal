@@ -3,7 +3,7 @@
 bench-arguments : ["--machine-name", "${MACHINE_NAME}", "--", "-Xmx${XMX}", "-Xms${XMS}", "-XX:+PrintConcurrentLocks", "--jvm-config=${JVM_CONFIG}", "--jvm=${JVM}"]
 
 bench-jvmci : {
-  mx-benchmark : ["mx", "--kill-with-sigquit", "benchmark", "--extras=${BENCH_SERVER_EXTRAS}", "--results-file", "${BENCH_RESULTS_FILE_PATH}"]
+  mx-benchmark : ["mx", "--kill-with-sigquit", "benchmark", "--fork-count-file=${FORK_COUNT_FILE}", "--extras=${BENCH_SERVER_EXTRAS}", "--results-file", "${BENCH_RESULTS_FILE_PATH}"]
   mx-dacapo : ${bench-jvmci.mx-benchmark} ["dacapo:*"]
   mx-scala-dacapo : ${bench-jvmci.mx-benchmark} ["scala-dacapo:*"]
   mx-dacapo-timing : ${bench-jvmci.mx-benchmark} ["dacapo-timing:*"]
@@ -13,7 +13,7 @@ bench-jvmci : {
   mx-specjvm2008-Single: ${bench-jvmci.mx-benchmark} ["specjvm2008:*"]
   mx-specjvm2008-OneVM: ${bench-jvmci.mx-benchmark} ["specjvm2008"]
   mx-specjbb2005: ${bench-jvmci.mx-benchmark} ["specjbb2005"]
-  mx-specjbb2015: ${bench-jvmci.mx-benchmark} ["specjbb2015"]
+  mx-specjbb2015: ${bench-jvmci.mx-benchmark} ["specjbb2015:*"]
   mx-renaissance: ${bench-jvmci.mx-benchmark} ["renaissance:*"]
   mx-spark-sql-perf: ${bench-jvmci.mx-benchmark} ["spark-sql-perf"]
   mx-micros-graal-whitebox: ${bench-jvmci.mx-benchmark} ["jmh-whitebox:*"]

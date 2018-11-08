@@ -1,12 +1,11 @@
-
 x52.c2-perftag : ${labsjdk8} {
   capabilities: [linux, x52, no_frequency_scaling]
   environment : {
     XMX          : "64g"
     XMS          : "64g"
-    JVM_CONFIG :  "default"
-    JVM        :  "server"
-    MACHINE_NAME: "x52"
+    JVM_CONFIG   : "default"
+    JVM          : "server"
+    MACHINE_NAME : "x52"
     BENCH_SERVER_EXTRAS : "target:weekly-perf"
     }
 }
@@ -15,12 +14,60 @@ x52.c2-tmpfs10g-perftag : ${x52.c2-perftag} {
   capabilities: [linux, x52, no_frequency_scaling, tmpfs10g]
 }
 
+bench-dacapo-hwloc-forks-c2 : ${x52.c2-tmpfs10g-perftag} ${bench-dacapo-hwloc} ${weeklys-bench-notifications} {
+  targets: [bench, weekly],
+  setup: ${fork-counts.setup} ${bench-dacapo-hwloc.setup}
+  name: "bench-forks-compiler-dacapo-linux-x52-c2"
+  timelimit: "23:59:00"
+  environment : ${x52.c2-tmpfs10g-perftag.environment} ${bench-dacapo-hwloc.environment} ${fork-counts.environment} {
+    FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/dacapo_forks.json"
+  }
+}
+
+bench-scala-dacapo-hwloc-forks-c2 : ${x52.c2-tmpfs10g-perftag} ${bench-scala-dacapo-hwloc} ${weeklys-bench-notifications} {
+  targets: [bench, weekly],
+  setup: ${fork-counts.setup} ${bench-scala-dacapo-hwloc.setup}
+  name: "bench-forks-compiler-scala-dacapo-linux-x52-c2"
+  timelimit: "23:59:00"
+  environment : ${x52.c2-tmpfs10g-perftag.environment} ${bench-scala-dacapo-hwloc.environment} ${fork-counts.environment} {
+    FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/scala_dacapo_forks.json"
+  }
+}
+
+bench-specjvm2008-Single-forks-c2 : ${x52.c2-perftag} ${bench-specjvm2008-Single} ${weeklys-bench-notifications} {
+  targets: [bench, weekly],
+  setup: ${fork-counts.setup} ${bench-specjvm2008-Single.setup}
+  name: "bench-forks-compiler-specjvm2008-Single-linux-x52-c2"
+  timelimit: "23:59:00"
+  environment : ${x52.c2-perftag.environment} ${bench-specjvm2008-Single.environment} ${fork-counts.environment} {
+    FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/specjvm2008_forks.json"
+  }
+}
+
+bench-specjbb2015-forks-c2 : ${x52.c2-perftag} ${bench-specjbb2015} ${weeklys-bench-notifications} {
+  targets: [bench, weekly],
+  setup: ${fork-counts.setup} ${bench-specjbb2015.setup}
+  name: "bench-forks-compiler-specjbb2015-linux-x52-c2"
+  timelimit: "23:59:00"
+  environment : ${x52.c2-perftag.environment} ${bench-specjbb2015.environment} ${fork-counts.environment} {
+    FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/specjbb2015_forks.json"
+  }
+}
+
+bench-renaissance-hwloc-forks-c2 : ${x52.c2-tmpfs10g-perftag} ${bench-renaissance-hwloc} ${weeklys-bench-notifications} {
+  targets: [bench, weekly],
+  setup: ${fork-counts.setup} ${bench-renaissance-hwloc.setup}
+  name: "bench-forks-compiler-renaissance-linux-x52-c2"
+  timelimit: "23:59:00"
+  environment : ${x52.c2-tmpfs10g-perftag.environment} ${bench-renaissance-hwloc.environment} ${fork-counts.environment} {
+    FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/renaissance_forks.json"
+  }
+}
+
 builds += [
-  ${x52.c2-tmpfs10g-perftag} ${bench-dacapo-hwloc}        { targets: [bench, weekly], name: "bench-compiler-dacapo-linux-x52-c2" }
-  ${x52.c2-tmpfs10g-perftag} ${bench-scala-dacapo-hwloc}  { targets: [bench, weekly], name: "bench-compiler-scala-dacapo-linux-x52-c2" }
-  ${x52.c2-perftag} ${bench-specjvm2008-Single}           { targets: [bench, weekly], name: "bench-compiler-specjvm2008-Single-linux-x52-c2" }
-  ${x52.c2-perftag} ${bench-specjvm2008-OneVM}            { targets: [bench, weekly], name: "bench-compiler-specjvm2008-OneVM-linux-x52-c2" }
-  ${x52.c2-perftag} ${bench-specjbb2015}                  { targets: [bench, weekly], name: "bench-compiler-specjbb2015-linux-x52-c2" }
-  ${x52.c2-perftag} ${bench-renaissance-hwloc}            { targets: [bench, weekly], name: "bench-compiler-renaissance-linux-x52-c2" }
-#  ${x52.c2-perftag} ${bench-micros-graal-dist}            { targets: [bench, weekly], name: "bench-compiler-jmh-micros-graal-dist-linux-x52-c2" }
+  ${bench-dacapo-hwloc-forks-c2}
+  ${bench-scala-dacapo-hwloc-forks-c2}
+  ${bench-specjvm2008-Single-forks-c2}
+  ${bench-specjbb2015-forks-c2}
+  ${bench-renaissance-hwloc-forks-c2}
 ]
