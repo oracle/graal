@@ -523,4 +523,31 @@ public class SubstrateUtil {
             }
         }
     }
+
+    /**
+     * Similar to {@link String#split} but with a fixed separator string instead of a regular
+     * expression. This avoids making regular expression code reachable.
+     */
+    public static String[] split(String value, String separator) {
+        int offset = 0;
+        int next = 0;
+        ArrayList<String> list = null;
+        while ((next = value.indexOf(separator, offset)) != -1) {
+            if (list == null) {
+                list = new ArrayList<>();
+            }
+            list.add(value.substring(offset, next));
+            offset = next + separator.length();
+        }
+
+        if (offset == 0) {
+            /* No match found. */
+            return new String[]{value};
+        }
+
+        /* Add remaining segment. */
+        list.add(value.substring(offset, value.length()));
+
+        return list.toArray(new String[list.size()]);
+    }
 }
