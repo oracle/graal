@@ -1452,7 +1452,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      *
      * @param cmp general purpose register. May not be null, zero-register or stackpointer.
      * @param uimm6 Unsigned 6-bit bit index.
-     * @param label Can only handle 21-bit word-aligned offsets for now. May be unbound. Non null.
+     * @param label Can only handle 16-bit word-aligned offsets for now. May be unbound. Non null.
      */
     public void tbnz(Register cmp, int uimm6, Label label) {
         assert NumUtil.isUnsignedNbit(6, uimm6);
@@ -1472,7 +1472,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      *
      * @param cmp general purpose register. May not be null, zero-register or stackpointer.
      * @param uimm6 Unsigned 6-bit bit index.
-     * @param label Can only handle 21-bit word-aligned offsets for now. May be unbound. Non null.
+     * @param label Can only handle 16-bit word-aligned offsets for now. May be unbound. Non null.
      */
     public void tbz(Register cmp, int uimm6, Label label) {
         assert NumUtil.isUnsignedNbit(6, uimm6);

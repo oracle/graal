@@ -885,7 +885,7 @@ public abstract class AArch64Assembler extends Assembler {
         // size bit is overloaded as top bit of uimm6 bit index
         int size = (((uimm6 >> 5) & 1) == 0 ? 32 : 64);
         // remaining 5 bits are encoded lower down
-        int uimm5 = uimm6 >> 1;
+        int uimm5 = uimm6 & 0x1F;
         int offset = (imm16 & NumUtil.getNbitNumberInt(16)) >> 2;
         InstructionType type = generalFromSize(size);
         int encoding = type.encoding | TBNZ.encoding | (uimm5 << 19) | (offset << 5) | rd(reg);
@@ -912,7 +912,7 @@ public abstract class AArch64Assembler extends Assembler {
         // size bit is overloaded as top bit of uimm6 bit index
         int size = (((uimm6 >> 5) & 1) == 0 ? 32 : 64);
         // remaining 5 bits are encoded lower down
-        int uimm5 = uimm6 >> 1;
+        int uimm5 = uimm6 & 0x1F;
         int offset = (imm16 & NumUtil.getNbitNumberInt(16)) >> 2;
         InstructionType type = generalFromSize(size);
         int encoding = type.encoding | TBZ.encoding | (uimm5 << 19) | (offset << 5) | rd(reg);
