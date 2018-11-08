@@ -400,6 +400,16 @@ public class NativeImageMojo extends AbstractMojo {
         }
 
         @Override
+        public List<Path> getBuilderModulePath() {
+            throw NativeImage.showError("Module system currently unsupported");
+        }
+
+        @Override
+        public List<Path> getBuilderUpgradeModulePath() {
+            throw NativeImage.showError("Module system currently unsupported");
+        }
+
+        @Override
         public List<Path> getImageClasspath() {
             return classpath;
         }
