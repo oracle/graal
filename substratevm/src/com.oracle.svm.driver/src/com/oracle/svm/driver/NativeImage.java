@@ -94,7 +94,7 @@ public class NativeImage {
 
     static final String graalvmVersion = System.getProperty("org.graalvm.version", System.getProperty("graalvm.version", "dev"));
 
-    static final String[] graalCompilerFlags = System.getProperty("native-image.graal-compiler-flags", "").split(" ");
+    static final String[] graalCompilerFlags = getResource("/graal-compiler-flags").split("\n");
 
     static String getResource(String resourceName) {
         try (InputStream input = NativeImage.class.getResourceAsStream(resourceName)) {

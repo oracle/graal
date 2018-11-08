@@ -917,6 +917,14 @@ def build(args, vm=None):
     if not _host_os_supported():
         mx.abort('build: SubstrateVM can be built only on Darwin, Linux and Windows platforms')
 
+    graal_compiler_flags_file = join(
+        mx.dependency('substratevm:com.oracle.svm.driver').dir,
+        'resources',
+        'graal-compiler-flags'
+    )
+    with open(graal_compiler_flags_file, 'w') as f:
+        f.write('\n'.join(GRAAL_COMPILER_FLAGS))
+
     orig_command_build(args, vm)
 
 
@@ -937,7 +945,6 @@ def native_image_on_jvm(args, **kwargs):
     run_java([
         '-Dorg.graalvm.version=' + svm_version,
         '-Dnative-image.root=' + suite_native_image_root(),
-        '-Dnative-image.graal-compiler-flags=' + ' '.join(GRAAL_COMPILER_FLAGS),
         '-cp', os.pathsep.join(driver_cp),
         mx.dependency('substratevm:SVM_DRIVER').mainClass] + save_args, **kwargs)
 
