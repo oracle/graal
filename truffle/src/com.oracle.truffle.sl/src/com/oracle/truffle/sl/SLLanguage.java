@@ -216,7 +216,6 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         if (request.getArgumentNames().isEmpty()) {
             functions = SimpleLanguageParser.parseSL(this, source);
         } else {
-            Source requestedSource = request.getSource();
             StringBuilder sb = new StringBuilder();
             sb.append("function main(");
             String sep = "";
@@ -226,10 +225,10 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
                 sep = ",";
             }
             sb.append(") { return ");
-            sb.append(request.getSource().getCharacters());
+            sb.append(source.getCharacters());
             sb.append(";}");
-            String language = requestedSource.getLanguage() == null ? ID : requestedSource.getLanguage();
-            Source decoratedSource = Source.newBuilder(language, sb.toString(), request.getSource().getName()).build();
+            String language = source.getLanguage() == null ? ID : source.getLanguage();
+            Source decoratedSource = Source.newBuilder(language, sb.toString(), source.getName()).build();
             functions = SimpleLanguageParser.parseSL(this, decoratedSource);
         }
 
