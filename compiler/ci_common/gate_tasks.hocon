@@ -24,7 +24,7 @@ builds += [
   ${gateStyle}         ${labsjdk8}       ${gateLinuxAMD64}   {name: "gate-compiler-style-linux-amd64"}
   ${gateCoverage}      ${labsjdk8}       ${gateLinuxAMD64}   {name: "weekly-compiler-coverage-8-linux-amd64", timelimit: "1:50:00"} ${graalWeekly} { logs += [*/report.zip] }
 
-  ${gateTestCompileImmediately}     ${labsjdk8}       ${gateLinuxAMD64}   {name: "gate-compiler-test-compile-immediately-8-linux-amd64"}
+  ${gateTestCompileImmediately}     ${labsjdk8}       ${gateLinuxAMD64}   {name: "gate-compiler-test-compile-immediately-8-linux-amd64", timelimit: "1:50:00"}
 
   # Solaris SPARC
   ${gateTest}          ${labsjdk8}       ${gateSolarisSPARC} {name: "gate-compiler-test-8-solaris-sparcv9",                    timelimit: "1:00:00"}
