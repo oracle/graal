@@ -398,7 +398,7 @@ public class NativeImage {
 
         @Override
         public List<Path> getBuilderUpgradeModulePath() {
-            return getJars(rootDir.resolve(Paths.get("lib", "jvmci")), "graal-management", "graal");
+            return getJars(rootDir.resolve(Paths.get("lib", "jvmci")), "graal");
         }
 
         @Override
