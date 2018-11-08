@@ -525,19 +525,19 @@ public class NativeImage {
 
         if (config.useJavaModules()) {
             String modulePath = config.getBuilderModulePath().stream()
-                    .map(p -> canonicalize(p).toString())
-                    .collect(Collectors.joining(File.pathSeparator));
+                            .map(p -> canonicalize(p).toString())
+                            .collect(Collectors.joining(File.pathSeparator));
             addImageBuilderJavaArgs(Arrays.asList("--module-path", modulePath));
             String upgradeModulePath = config.getBuilderUpgradeModulePath().stream()
-                    .map(p -> canonicalize(p).toString())
-                    .collect(Collectors.joining(File.pathSeparator));
+                            .map(p -> canonicalize(p).toString())
+                            .collect(Collectors.joining(File.pathSeparator));
             addImageBuilderJavaArgs(Arrays.asList("--upgrade-module-path", upgradeModulePath));
         } else {
             config.getBuilderJVMCIClasspath().forEach((Consumer<? super Path>) this::addImageBuilderClasspath);
             if (!config.getBuilderJVMCIClasspathAppend().isEmpty()) {
                 String builderJavaArg = config.getBuilderJVMCIClasspathAppend()
-                        .stream().map(path -> canonicalize(path).toString())
-                        .collect(Collectors.joining(":", "-Djvmci.class.path.append=", ""));
+                                .stream().map(path -> canonicalize(path).toString())
+                                .collect(Collectors.joining(":", "-Djvmci.class.path.append=", ""));
                 addImageBuilderJavaArgs(builderJavaArg);
             }
 
@@ -1071,20 +1071,20 @@ public class NativeImage {
     static List<Path> getJars(Path dir, String... jarBaseNames) {
         try {
             return Files.list(dir)
-                    .filter(p -> {
-                        String jarFileName = p.getFileName().toString();
-                        String jarSuffix = ".jar";
-                        if (!jarFileName.toLowerCase().endsWith(jarSuffix)) {
-                            return false;
-                        }
-                        List<String> baseNameList = Arrays.asList(jarBaseNames);
-                        if (baseNameList.isEmpty()) {
-                            return true;
-                        }
-                        String jarBaseName = jarFileName.substring(0, jarFileName.length() - jarSuffix.length());
-                        return baseNameList.contains(jarBaseName);
-                    })
-                    .collect(Collectors.toList());
+                            .filter(p -> {
+                                String jarFileName = p.getFileName().toString();
+                                String jarSuffix = ".jar";
+                                if (!jarFileName.toLowerCase().endsWith(jarSuffix)) {
+                                    return false;
+                                }
+                                List<String> baseNameList = Arrays.asList(jarBaseNames);
+                                if (baseNameList.isEmpty()) {
+                                    return true;
+                                }
+                                String jarBaseName = jarFileName.substring(0, jarFileName.length() - jarSuffix.length());
+                                return baseNameList.contains(jarBaseName);
+                            })
+                            .collect(Collectors.toList());
         } catch (IOException e) {
             throw showError("Unable to use jar-files from directory " + dir, e);
         }
