@@ -920,7 +920,7 @@ def build(args, vm=None):
     graal_compiler_flags_file = join(
         mx.dependency('substratevm:com.oracle.svm.driver').dir,
         'resources',
-        'graal-compiler-flags'
+        'graal-compiler-flags.config'
     )
     with open(graal_compiler_flags_file, 'w') as f:
         f.write('\n'.join(GRAAL_COMPILER_FLAGS))
