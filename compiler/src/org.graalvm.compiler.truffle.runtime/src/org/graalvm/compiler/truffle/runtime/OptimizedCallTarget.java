@@ -235,12 +235,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     @TruffleCallBoundary
     protected final Object callBoundary(Object[] args) {
-        // since this method is not compiled, it needs to be as small as possible
-        return callRoot(args);
-    }
-
-    // Note: {@code PartialEvaluator} looks up this method by name and signature.
-    protected final Object callRoot(Object[] originalArguments) {
         if (CompilerDirectives.inInterpreter()) {
             // We are called and we are still in Truffle interpreter mode.
             if (isValid()) {
@@ -249,11 +243,16 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             }
             if (getCompilationProfile().interpreterCall(this)) {
                 // synchronous compile -> call again to take us to the compiled code
-                return doInvoke(originalArguments);
+                return doInvoke(args);
             }
         } else {
             // We come here from compiled code
         }
+        return callRoot(args);
+    }
+
+    // Note: {@code PartialEvaluator} looks up this method by name and signature.
+    protected final Object callRoot(Object[] originalArguments) {
         if (GraalCompilerDirectives.inFirstTier()) {
             getCompilationProfile().firstTierCall(this);
         }
