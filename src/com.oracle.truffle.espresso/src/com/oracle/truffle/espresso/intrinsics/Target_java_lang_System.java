@@ -32,6 +32,7 @@ import java.util.Properties;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -102,22 +103,8 @@ public class Target_java_lang_System {
             setProperty.invoke(entry.getKey(), entry.getValue());
         }
 
+        // FIXME(peterssen): Load libjvm surrogate, but this should not be in initProperties.
         return props;
-    }
-
-    @Intrinsic
-    public static void setIn0(@Type(InputStream.class) StaticObjectImpl in) {
-        EspressoLanguage.getCurrentContext().getMeta().knownKlass(System.class).staticField("in").set(in);
-    }
-
-    @Intrinsic
-    public static void setOut0(@Type(PrintStream.class) StaticObject out) {
-        EspressoLanguage.getCurrentContext().getMeta().knownKlass(System.class).staticField("out").set(out);
-    }
-
-    @Intrinsic
-    public static void setErr0(@Type(PrintStream.class) StaticObject err) {
-        EspressoLanguage.getCurrentContext().getMeta().knownKlass(System.class).staticField("err").set(err);
     }
 
     @Intrinsic
@@ -162,5 +149,4 @@ public class Target_java_lang_System {
     public static int identityHashCode(Object object) {
         return System.identityHashCode(MetaUtil.unwrap(object));
     }
-
 }
