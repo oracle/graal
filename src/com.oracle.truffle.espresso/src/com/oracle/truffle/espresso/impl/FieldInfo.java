@@ -30,6 +30,7 @@ import com.oracle.truffle.espresso.types.TypeDescriptor;
 
 /**
  * Represents a resolved Espresso field.
+ * FieldInfo instances can be safely compared using ==.
  */
 public class FieldInfo implements ModifiersProvider {
 
@@ -64,33 +65,12 @@ public class FieldInfo implements ModifiersProvider {
         return typeDescriptor.toKind();
     }
 
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj instanceof FieldInfo) {
-            FieldInfo that = (FieldInfo) obj;
-            if (that.offset != this.offset || that.isStatic() != this.isStatic()) {
-                return false;
-            } else if (this.holder.equals(that.holder)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     public Klass getType() {
         if (type == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             type = getDeclaringClass().getContext().getRegistries().resolve(getTypeDescriptor(), getDeclaringClass().getClassLoader());
         }
         return type;
-    }
-
-    @Override
-    public int hashCode() {
-        return holder.hashCode() ^ offset;
     }
 
     public int getModifiers() {
