@@ -29,6 +29,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
+import com.oracle.truffle.espresso.nodes.LinkedNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 
@@ -38,12 +39,23 @@ public class Target_sun_reflect_Reflection {
     public static @Type(Class.class) StaticObject getCallerClass() {
         final int[] depth = new int[]{0};
         CallTarget caller = Truffle.getRuntime().iterateFrames(
-                        frameInstance -> (depth[0]++ <= 1) ? null : frameInstance.getCallTarget());
+                        frameInstance -> {
+                            if (frameInstance.getCallTarget() instanceof RootCallTarget) {
+                                RootCallTarget callTarget = (RootCallTarget) frameInstance.getCallTarget();
+                                RootNode rootNode = callTarget.getRootNode();
+                                if (rootNode instanceof LinkedNode) {
+                                    if (depth[0]++ > 1)  {
+                                        return frameInstance.getCallTarget();
+                                    }
+                                }
+                            }
+                            return null;
+                        });
 
         RootCallTarget callTarget = (RootCallTarget) caller;
         RootNode rootNode = callTarget.getRootNode();
-        if (rootNode instanceof EspressoRootNode) {
-            return ((EspressoRootNode) rootNode).getMethod().getDeclaringClass().mirror();
+        if (rootNode instanceof LinkedNode) {
+            return ((LinkedNode) rootNode).getOriginalMethod().getDeclaringClass().rawKlass().mirror();
         }
 
         throw EspressoError.shouldNotReachHere();
