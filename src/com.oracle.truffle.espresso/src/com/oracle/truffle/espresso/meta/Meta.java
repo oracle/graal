@@ -44,7 +44,6 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
-import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 import com.oracle.truffle.espresso.types.SignatureDescriptor;
 

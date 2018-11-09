@@ -68,8 +68,7 @@ public final class MethodInfo implements ModifiersProvider {
     private final LocalVariableTable localVariableTable;
     private final int modifiers;
 
-    @CompilerDirectives.CompilationFinal
-    private boolean intrinsified = false;
+    @CompilerDirectives.CompilationFinal private boolean intrinsified = false;
 
     @CompilerDirectives.CompilationFinal private CallTarget callTarget;
     @CompilerDirectives.CompilationFinal private Klass returnType;
@@ -175,11 +174,12 @@ public final class MethodInfo implements ModifiersProvider {
             case Void:
                 return NativeSimpleType.VOID;
             case Object:
-                // TODO(peterssen): We don't want Interop null passed verbatim to native, but native NULL instead.
+                // TODO(peterssen): We don't want Interop null passed verbatim to native, but native
+                // NULL instead.
 
                 return javaToNative
-                        ? NativeSimpleType.OBJECT_OR_NULL
-                        : NativeSimpleType.OBJECT;
+                                ? NativeSimpleType.OBJECT_OR_NULL
+                                : NativeSimpleType.OBJECT;
 
             default:
                 throw EspressoError.shouldNotReachHere();
@@ -252,7 +252,8 @@ public final class MethodInfo implements ModifiersProvider {
                         callTarget = lookupJniCallTarget(findNative, true);
                     }
 
-                    // TODO(peterssen): Search JNI methods with OS prefix/suffix (print_jni_name_suffix_on ...)
+                    // TODO(peterssen): Search JNI methods with OS prefix/suffix
+                    // (print_jni_name_suffix_on ...)
 
                     if (callTarget == null) {
                         System.err.println("Failed to link native method: " + meta(this).getDeclaringClass().getName() + "#" + getName() + " " + getSignature());

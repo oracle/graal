@@ -47,7 +47,6 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
             super(declaringClass, name, signature);
         }
 
-
         public MethodInfo resolve(ConstantPool pool, int index) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             Klass declaringClass = pool.getContext().getRegistries().resolve(getDeclaringClass(pool, -1), pool.getClassLoader());

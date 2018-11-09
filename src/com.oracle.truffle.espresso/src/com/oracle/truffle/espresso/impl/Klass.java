@@ -40,12 +40,16 @@ import com.oracle.truffle.espresso.types.TypeDescriptor;
 public abstract class Klass implements ModifiersProvider {
 
     public final static Klass[] EMPTY_ARRAY = new Klass[0];
-    @CompilerDirectives.CompilationFinal
+    private final String name;
+
+    @CompilerDirectives.CompilationFinal //
     private StaticObject statics;
 
-    @CompilerDirectives.CompilationFinal
+    @CompilerDirectives.CompilationFinal //
     private ArrayKlass arrayClass;
-    private final String name;
+
+    @CompilerDirectives.CompilationFinal //
+    private StaticObject mirrorCache;
 
     Klass(String name) {
         this.name = name;
@@ -58,9 +62,6 @@ public abstract class Klass implements ModifiersProvider {
     public String getName() {
         return name;
     }
-
-    @CompilerDirectives.CompilationFinal
-    private StaticObject mirrorCache;
 
     public StaticObject mirror() {
         if (mirrorCache == null) {

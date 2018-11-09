@@ -2,7 +2,6 @@ package com.oracle.truffle.espresso.runtime;
 
 import com.oracle.truffle.api.interop.CanResolve;
 import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 

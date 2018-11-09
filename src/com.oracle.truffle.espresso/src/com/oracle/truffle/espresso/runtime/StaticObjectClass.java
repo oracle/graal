@@ -26,7 +26,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.impl.Klass;
 
 public final class StaticObjectClass extends StaticObjectImpl {
-    @CompilerDirectives.CompilationFinal
+    @CompilerDirectives.CompilationFinal //
     private Klass mirror;
 
     public void setMirror(Klass mirror) {

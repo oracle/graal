@@ -41,7 +41,7 @@ public class Target_java_lang_Runtime {
         Object[] wrapped = ((StaticObjectArray) cmdarray).getWrapped();
         String[] hostArgs = new String[wrapped.length];
         Arrays.setAll(hostArgs, i -> meta.toHost(wrapped[i]));
-        
+
         try {
             Runtime.getRuntime().exec(hostArgs);
         } catch (IOException e) {

@@ -29,7 +29,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.espresso.impl.FieldInfo;
 import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 
 public class StaticObjectImpl implements StaticObject {
@@ -154,9 +153,6 @@ public class StaticObjectImpl implements StaticObject {
     public String toString() {
         return Meta.toHost((StaticObject) Meta.meta(this).method("toString", String.class).invokeDirect());
     }
-
-
-
 
     public void setFieldByName(String name, Object value) {
         fields.put(name, value);

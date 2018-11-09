@@ -29,8 +29,7 @@ import com.oracle.truffle.espresso.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.types.TypeDescriptor;
 
 /**
- * Represents a resolved Espresso field.
- * FieldInfo instances can be safely compared using ==.
+ * Represents a resolved Espresso field. FieldInfo instances can be safely compared using ==.
  */
 public class FieldInfo implements ModifiersProvider {
 

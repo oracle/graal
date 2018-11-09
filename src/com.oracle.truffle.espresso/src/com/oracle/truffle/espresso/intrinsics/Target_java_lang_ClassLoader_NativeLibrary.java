@@ -2,13 +2,11 @@ package com.oracle.truffle.espresso.intrinsics;
 
 import static com.oracle.truffle.espresso.meta.Meta.meta;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.jni.JniVersion;
 import com.oracle.truffle.espresso.meta.Meta;

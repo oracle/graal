@@ -25,20 +25,16 @@ package com.oracle.truffle.espresso.intrinsics;
 
 import static com.oracle.truffle.espresso.meta.Meta.meta;
 
-import java.io.InputStream;
-import java.io.PrintStream;
 import java.util.Map;
 import java.util.Properties;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
-import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
-import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 
 @EspressoIntrinsics
 public class Target_java_lang_System {

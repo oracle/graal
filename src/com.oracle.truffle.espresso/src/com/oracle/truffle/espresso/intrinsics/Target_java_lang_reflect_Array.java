@@ -23,18 +23,15 @@
 
 package com.oracle.truffle.espresso.intrinsics;
 
+import java.lang.reflect.Array;
+
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.bytecode.InterpreterToVM;
-import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
-
-import java.lang.reflect.Array;
-
-import static com.oracle.truffle.espresso.meta.Meta.meta;
 
 @EspressoIntrinsics
 public class Target_java_lang_reflect_Array {
@@ -51,10 +48,9 @@ public class Target_java_lang_reflect_Array {
 
     @Intrinsic
     public static Object multiNewArray(@Type(Class.class) StaticObject componentType,
-                                               int[] dimensions) {
+                    int[] dimensions) {
         return EspressoLanguage.getCurrentContext().getVm().newMultiArray(((StaticObjectClass) componentType).getMirror(), dimensions);
     }
-
 
     @Intrinsic
     public static int getLength(Object array) {
@@ -65,7 +61,6 @@ public class Target_java_lang_reflect_Array {
             throw context.getMeta().throwEx(e.getClass(), e.getMessage());
         }
     }
-
 
     @Intrinsic
     public static boolean getBoolean(Object array, int index) {

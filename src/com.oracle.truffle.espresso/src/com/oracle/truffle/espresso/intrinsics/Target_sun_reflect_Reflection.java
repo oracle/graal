@@ -28,7 +28,6 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.LinkedNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
@@ -44,7 +43,7 @@ public class Target_sun_reflect_Reflection {
                                 RootCallTarget callTarget = (RootCallTarget) frameInstance.getCallTarget();
                                 RootNode rootNode = callTarget.getRootNode();
                                 if (rootNode instanceof LinkedNode) {
-                                    if (depth[0]++ > 1)  {
+                                    if (depth[0]++ > 1) {
                                         return frameInstance.getCallTarget();
                                     }
                                 }

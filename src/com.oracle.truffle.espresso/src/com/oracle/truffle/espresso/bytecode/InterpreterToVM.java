@@ -37,10 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
@@ -50,11 +47,6 @@ import com.oracle.truffle.espresso.impl.MethodInfo;
 import com.oracle.truffle.espresso.intrinsics.EspressoIntrinsics;
 import com.oracle.truffle.espresso.intrinsics.Intrinsic;
 import com.oracle.truffle.espresso.intrinsics.Surrogate;
-import com.oracle.truffle.espresso.intrinsics.Target_java_io_Console;
-import com.oracle.truffle.espresso.intrinsics.Target_java_io_FileDescriptor;
-import com.oracle.truffle.espresso.intrinsics.Target_java_io_FileInputStream;
-import com.oracle.truffle.espresso.intrinsics.Target_java_io_FileOutputStream;
-import com.oracle.truffle.espresso.intrinsics.Target_java_io_UnixFileSystem;
 import com.oracle.truffle.espresso.intrinsics.Target_java_lang_Class;
 import com.oracle.truffle.espresso.intrinsics.Target_java_lang_ClassLoader;
 import com.oracle.truffle.espresso.intrinsics.Target_java_lang_ClassLoader_NativeLibrary;
@@ -72,14 +64,11 @@ import com.oracle.truffle.espresso.intrinsics.Target_java_lang_reflect_Array;
 import com.oracle.truffle.espresso.intrinsics.Target_java_security_AccessController;
 import com.oracle.truffle.espresso.intrinsics.Target_java_util_concurrent_atomic_AtomicLong;
 import com.oracle.truffle.espresso.intrinsics.Target_java_util_jar_JarFile;
-import com.oracle.truffle.espresso.intrinsics.Target_java_util_zip_Inflater;
-import com.oracle.truffle.espresso.intrinsics.Target_java_util_zip_ZipFile;
 import com.oracle.truffle.espresso.intrinsics.Target_sun_misc_Perf;
 import com.oracle.truffle.espresso.intrinsics.Target_sun_misc_Signal;
 import com.oracle.truffle.espresso.intrinsics.Target_sun_misc_URLClassPath;
 import com.oracle.truffle.espresso.intrinsics.Target_sun_misc_Unsafe;
 import com.oracle.truffle.espresso.intrinsics.Target_sun_misc_VM;
-import com.oracle.truffle.espresso.intrinsics.Target_sun_nio_fs_UnixNativeDispatcher;
 import com.oracle.truffle.espresso.intrinsics.Target_sun_reflect_NativeConstructorAccessorImpl;
 import com.oracle.truffle.espresso.intrinsics.Target_sun_reflect_NativeMethodAccessorImpl;
 import com.oracle.truffle.espresso.intrinsics.Target_sun_reflect_Reflection;
@@ -113,11 +102,6 @@ public class InterpreterToVM {
     private final Map<MethodKey, RootNode> intrinsics = new HashMap<>();
 
     public static List<Class<?>> DEFAULTS = Arrays.asList(
-                    Target_java_io_Console.class,
-                    Target_java_io_FileDescriptor.class,
-                    Target_java_io_FileInputStream.class,
-                    Target_java_io_FileOutputStream.class,
-                    Target_java_io_UnixFileSystem.class,
                     Target_java_lang_Class.class,
                     Target_java_lang_ClassLoader.class,
                     Target_java_lang_ClassLoader_NativeLibrary.class,
@@ -135,14 +119,11 @@ public class InterpreterToVM {
                     Target_java_security_AccessController.class,
                     Target_java_util_concurrent_atomic_AtomicLong.class,
                     Target_java_util_jar_JarFile.class,
-                    Target_java_util_zip_Inflater.class,
-                    Target_java_util_zip_ZipFile.class,
                     Target_sun_misc_Perf.class,
                     Target_sun_misc_Signal.class,
                     Target_sun_misc_Unsafe.class,
                     Target_sun_misc_URLClassPath.class,
                     Target_sun_misc_VM.class,
-                    Target_sun_nio_fs_UnixNativeDispatcher.class,
                     Target_sun_reflect_NativeConstructorAccessorImpl.class,
                     Target_sun_reflect_NativeMethodAccessorImpl.class,
                     Target_sun_reflect_Reflection.class);
