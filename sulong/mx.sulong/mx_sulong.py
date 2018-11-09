@@ -241,8 +241,8 @@ def runLLVMUnittests(unittest_runner):
     mx_testsuites.compileTestSuite(test_suite, extra_build_args=[])
 
     run_args = [libpath, libs] + java_run_props
-    build_args = unittest_runner.keywords.get('build_args', []) + java_run_props
-    unittest_runner(unittest_args=['com.oracle.truffle.llvm.test.interop'], run_args=run_args, build_args=build_args)
+    build_args = ['--language:llvm'] + java_run_props
+    unittest_runner(['com.oracle.truffle.llvm.test.interop', '--run-args'] + run_args + ['--build-args'] + build_args)
 
 
 def clangformatcheck(args=None):

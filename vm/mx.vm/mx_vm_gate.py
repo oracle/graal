@@ -28,10 +28,11 @@
 import mx
 import mx_vm
 import mx_subst
+
+import functools
 from mx_gate import Task
 
 from os.path import join, exists
-import functools
 from contextlib import contextmanager
 
 _suite = mx.suite('vm')
@@ -123,7 +124,7 @@ def gate_sulong(tasks):
                     }
                     return path_substitutions.get(dname, mx._get_dependency_path(dname))
                 mx_subst.path_substitutions.register_with_arg('path', distribution_paths)
-                sulong.extensions.runLLVMUnittests(functools.partial(svm.native_junit, native_image, build_args=['--language:llvm']))
+                sulong.extensions.runLLVMUnittests(functools.partial(svm._native_unittest, native_image))
 
 def gate_ruby(tasks):
     with Task('Ruby', tasks, tags=[VmGateTasks.ruby]) as t:
