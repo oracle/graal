@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.bytecode;
+package com.oracle.truffle.espresso.vm;
 
 import static com.oracle.truffle.espresso.meta.Meta.meta;
 

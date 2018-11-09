@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.espresso;
 
-import com.oracle.truffle.espresso.bytecode.InterpreterToVM;
+import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public class Utils {

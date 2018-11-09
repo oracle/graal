@@ -32,7 +32,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.bytecode.InterpreterToVM;
+import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.classfile.StringTable;
 import com.oracle.truffle.espresso.classfile.SymbolTable;
 import com.oracle.truffle.espresso.impl.ClassRegistries;

@@ -37,7 +37,7 @@ import java.util.function.IntFunction;
 import java.util.stream.Stream;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.espresso.bytecode.InterpreterToVM;
+import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.impl.FieldInfo;
 import com.oracle.truffle.espresso.impl.MethodInfo;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
