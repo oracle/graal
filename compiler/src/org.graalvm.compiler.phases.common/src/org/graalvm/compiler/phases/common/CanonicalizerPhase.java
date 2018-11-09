@@ -349,7 +349,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                     COUNTER_SIMPLIFICATION_CONSIDERED_NODES.increment(debug);
                     node.simplify(tool);
                     if (node.isDeleted()) {
-                        debug.log("Canonicalizer: simplified %1s", node);
+                        debug.log("Canonicalizer: simplified %s", node);
                     }
                     return node.isDeleted();
                 }
