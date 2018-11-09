@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.runtime;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Method;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -32,12 +33,14 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.bytecode.InterpreterToVM;
 import com.oracle.truffle.espresso.classfile.StringTable;
 import com.oracle.truffle.espresso.classfile.SymbolTable;
 import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.jni.JniEnv;
+import com.oracle.truffle.espresso.jni.NativeLibrary;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
@@ -161,6 +164,11 @@ public class EspressoContext {
     private void createVm() {
         this.vm = new InterpreterToVM(language);
 
+        // FIXME(peterssen): Contextualize the JniENv, even if shared libraries are isolated, currently
+        // we assume a singleton context.
+        JniEnv.touch();
+        getJniEnv(); // initialize native context
+
         initializeClass(Object.class);
 
         // Primitive classes have no dependencies.
@@ -201,8 +209,6 @@ public class EspressoContext {
 
         // Load system class loader.
         appClassLoader = meta.knownKlass(ClassLoader.class).staticMethod("getSystemClassLoader", ClassLoader.class).invokeDirect();
-
-        getJniEnv(); // initialize native context
     }
 
     private void initializeClass(Class<?> clazz) {
