@@ -414,15 +414,6 @@ TYPE_LIST2(CALL_NON_VIRTUAL_METHOD_BRIDGE)
   EXPAND(TYPE_LIST2(V MAKE_NON_VIRTUAL_METHOD)) \
   V(NewObject)
 
-
-jstring NewString(JNIEnv *env, const jchar *unicode, jsize len) {  
-  jclass java_lang_String = env->FindClass("java.lang.String");
-  jmethodID constructor = env->GetMethodID(java_lang_String, "<init>", "([CZ)V");
-  jcharArray chars = env->NewCharArray(len);
-  env->SetCharArrayRegion(chars, 0, len, unicode);
-  return (jstring) env->NewObject(java_lang_String, constructor, chars, (jboolean) JNI_FALSE);  
-}
-
 // Spawn a "guest" direct byte buffer.
 jobject NewDirectByteBuffer(JNIEnv* env, void* address, jlong capacity) {
   jclass java_nio_DirectByteBuffer = env->FindClass("java.nio.DirectByteBuffer");
@@ -441,7 +432,6 @@ jobject NewDirectByteBuffer(JNIEnv* env, void* address, jlong capacity) {
   EXPAND(TYPE_LIST2(V MAKE_NON_VIRTUAL_METHOD_V)) \
   V(NewObjectA) \
   V(NewObjectV) \
-  V(NewString) \
   V(NewDirectByteBuffer)
 
 
