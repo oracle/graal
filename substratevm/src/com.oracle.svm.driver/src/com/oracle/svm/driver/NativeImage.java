@@ -93,7 +93,15 @@ public class NativeImage {
 
     static final String graalvmVersion = System.getProperty("org.graalvm.version", System.getProperty("graalvm.version", "dev"));
 
-    static final String[] graalCompilerFlags = getResource("/graal-compiler-flags.config").split("\n");
+    private static Map<String, String[]> getCompilerFlags() {
+        Map<String, String[]> result = new HashMap<>();
+        for (String versionTag : Arrays.asList("1.8", "11")) {
+            result.put(versionTag, getResource("/graal-compiler-flags-" + versionTag + ".config").split("\n"));
+        }
+        return result;
+    }
+
+    static final Map<String, String[]> graalCompilerFlags = getCompilerFlags();
 
     static String getResource(String resourceName) {
         try (InputStream input = NativeImage.class.getResourceAsStream(resourceName)) {
@@ -241,7 +249,16 @@ public class NativeImage {
          * @return additional arguments for JVM that runs image builder
          */
         default List<String> getBuilderJavaArgs() {
-            return Arrays.asList(graalCompilerFlags);
+            String javaVersion = System.getProperty("java.version");
+            if (javaVersion.startsWith("1.")) {
+                javaVersion = javaVersion.substring(0, 3);
+            }
+
+            String[] flagsForVersion = graalCompilerFlags.get(javaVersion);
+            if (flagsForVersion == null) {
+                showError("Image building not supported for Java version " + javaVersion);
+            }
+            return Arrays.asList(flagsForVersion);
         }
 
         /**
