@@ -138,7 +138,7 @@ svm-common: ${mx} {
     LANG: "en_US.UTF-8"
   }
   logs: [
-    "*/native_image_server.log"
+    "../.native-image/*/*/*/*.log"
     "*/svmbuild/*.log"
     "*/svmbuild/images/*.log"
     "*/*/stripped/*.map"
