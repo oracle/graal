@@ -71,6 +71,25 @@ public class NativeImageClassLoader extends URLClassLoader {
             }
             /* The class is missing. Generate a ghost interface and return it. */
             return defineClass(name);
+        } catch (IncompatibleClassChangeError e) {
+            /*
+             * The IncompatibleClassChangeError can be thrown when a known subtype of a missing type
+             * is loaded after the missing type has been previously loaded and a Ghost interface has
+             * been created. The Ghost interface is seen as the super class of the class being
+             * loaded and instead of throwing a ClassNotFoundException due to a missing class in the
+             * hierarchy this leads to a "java.lang.IncompatibleClassChangeError: KnownClass has
+             * interface MissingSuperClass in the image builder".
+             */
+
+            if (mustNotReturnGhost(true)) {
+                /*
+                 * Instead of throwing the IncompatibleClassChangeError we throw a
+                 * ClassNotFoundException.
+                 */
+                throw new ClassNotFoundException(name);
+            }
+            /* The class is missing. Generate a ghost interface and return it. */
+            return defineClass(name);
         }
 
         if (classIsMissing(clazz) && mustNotReturnGhost(false)) {
