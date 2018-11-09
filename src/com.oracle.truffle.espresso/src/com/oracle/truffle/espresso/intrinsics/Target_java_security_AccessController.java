@@ -66,7 +66,7 @@ public class Target_java_security_AccessController {
             meta(ex).method("<init>", void.class, Exception.class).invoke(e.getException());
             throw new EspressoException(ex);
         } catch (Exception e) {
-            throw EspressoError.shouldNotReachHere();
+            throw EspressoError.shouldNotReachHere(e);
         }
     }
 

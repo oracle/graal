@@ -27,13 +27,10 @@ import static com.oracle.truffle.espresso.meta.Meta.meta;
 
 import java.lang.reflect.Constructor;
 
-import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.impl.MethodInfo;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
-import com.oracle.truffle.espresso.runtime.Utils;
 
 @EspressoIntrinsics
 public class Target_sun_reflect_NativeConstructorAccessorImpl {

@@ -64,7 +64,7 @@ public class Target_java_lang_Class {
 
     @Intrinsic(hasReceiver = true)
     public static boolean desiredAssertionStatus(Object self) {
-        return true;
+        return false;
     }
 
     @Intrinsic

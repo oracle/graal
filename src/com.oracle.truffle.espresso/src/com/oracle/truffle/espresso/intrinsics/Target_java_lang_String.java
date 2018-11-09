@@ -24,7 +24,7 @@
 package com.oracle.truffle.espresso.intrinsics;
 
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.Utils;
+import com.oracle.truffle.espresso.Utils;
 
 @EspressoIntrinsics
 public class Target_java_lang_String {
