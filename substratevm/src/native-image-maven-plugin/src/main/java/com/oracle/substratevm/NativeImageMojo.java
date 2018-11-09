@@ -35,9 +35,9 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Scanner;
+import java.util.ServiceLoader;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -56,6 +56,8 @@ import org.codehaus.plexus.archiver.tar.TarGZipUnArchiver;
 import org.codehaus.plexus.logging.AbstractLogger;
 import org.codehaus.plexus.logging.Logger;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
+import org.graalvm.compiler.options.OptionDescriptor;
+import org.graalvm.compiler.options.OptionDescriptors;
 
 import com.oracle.svm.driver.NativeImage;
 
@@ -220,6 +222,18 @@ public class NativeImageMojo extends AbstractMojo {
                 getLog().info("WorkingDirectory: " + config.getWorkingDirectory());
                 getLog().info("ImageClasspath: " + classpathStr);
                 getLog().info("BuildArgs: " + config.getBuildArgs());
+                if (config.useJavaModules()) {
+                    /*
+                     * Java 11+ Workaround: Ensure all OptionDescriptors exist prior to using
+                     * OptionKey.getName() in NativeImage.NativeImage(BuildConfiguration config)
+                     */
+                    ServiceLoader<OptionDescriptors> optionDescriptors = ServiceLoader.load(OptionDescriptors.class, OptionDescriptors.class.getClassLoader());
+                    for (OptionDescriptors optionDescriptor : optionDescriptors) {
+                        for (OptionDescriptor descriptor : optionDescriptor) {
+                            getLog().debug("Eager initialization of OptionDescriptor: " + descriptor.getName());
+                        }
+                    }
+                }
                 NativeImage.build(config);
             } catch (NativeImage.NativeImageError e) {
                 throw new MojoExecutionException("Error creating native image:", e);
@@ -337,10 +351,14 @@ public class NativeImageMojo extends AbstractMojo {
         private final List<Path> jvmciJars;
 
         MojoBuildConfiguration() throws MojoExecutionException {
-            try {
-                jvmciJars = Files.list(getJavaHome().resolve("lib/jvmci")).collect(Collectors.toList());
-            } catch (IOException e) {
-                throw new MojoExecutionException("JVM in " + getJavaHome() + " does not support JVMCI interface", e);
+            if (useJavaModules()) {
+                jvmciJars = Collections.emptyList();
+            } else {
+                try {
+                    jvmciJars = Files.list(getJavaHome().resolve("lib/jvmci")).collect(Collectors.toList());
+                } catch (IOException e) {
+                    throw new MojoExecutionException("JVM in " + getJavaHome() + " does not support JVMCI interface", e);
+                }
             }
         }
 
@@ -363,7 +381,13 @@ public class NativeImageMojo extends AbstractMojo {
 
         @Override
         public List<Path> getBuilderClasspath() {
-            return getSelectedArtifactPaths(svmGroupId, "svm", "objectfile", "pointsto");
+            List<Path> paths = new ArrayList<>();
+            if (useJavaModules()) {
+                paths.addAll(getSelectedArtifactPaths("org.graalvm.sdk", "graal-sdk"));
+                paths.addAll(getSelectedArtifactPaths("org.graalvm.compiler", "compiler"));
+            }
+            paths.addAll(getSelectedArtifactPaths(svmGroupId, "svm", "objectfile", "pointsto"));
+            return paths;
         }
 
         @Override
@@ -401,12 +425,15 @@ public class NativeImageMojo extends AbstractMojo {
 
         @Override
         public List<Path> getBuilderModulePath() {
-            throw NativeImage.showError("Module system currently unsupported");
+            List<Path> paths = new ArrayList<>();
+            paths.addAll(getSelectedArtifactPaths("org.graalvm.sdk", "graal-sdk"));
+            paths.addAll(getSelectedArtifactPaths("org.graalvm.truffle", "truffle-api"));
+            return paths;
         }
 
         @Override
         public List<Path> getBuilderUpgradeModulePath() {
-            throw NativeImage.showError("Module system currently unsupported");
+            return getSelectedArtifactPaths("org.graalvm.compiler", "compiler");
         }
 
         @Override

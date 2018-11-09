@@ -63,7 +63,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
@@ -124,29 +123,29 @@ public class NativeImage {
     static final String oH = "-H:";
     static final String oR = "-R:";
 
-    static final String enablePrintFlags = SubstrateOptions.PrintFlags.getName() + "=";
+    final String enablePrintFlags = SubstrateOptions.PrintFlags.getName() + "=";
 
     private static <T> String oH(OptionKey<T> option) {
         return oH + option.getName() + "=";
     }
 
-    static final String oHClass = oH(NativeImageOptions.Class);
-    static final String oHName = oH(NativeImageOptions.Name);
-    static final String oHPath = oH(SubstrateOptions.Path);
-    static final String oHKind = oH(NativeImageOptions.Kind);
-    static final String oHCLibraryPath = oH(SubstrateOptions.CLibraryPath);
-    static final String oHOptimize = oH(SubstrateOptions.Optimize);
+    final String oHClass = oH(NativeImageOptions.Class);
+    final String oHName = oH(NativeImageOptions.Name);
+    final String oHPath = oH(SubstrateOptions.Path);
+    final String oHKind = oH(NativeImageOptions.Kind);
+    final String oHCLibraryPath = oH(SubstrateOptions.CLibraryPath);
+    final String oHOptimize = oH(SubstrateOptions.Optimize);
 
     /* List arguments */
-    static final String oHSubstitutionFiles = oH(DeclarativeSubstitutionProcessor.Options.SubstitutionFiles);
-    static final String oHReflectionConfigurationFiles = oH(ReflectionFeature.Options.ReflectionConfigurationFiles);
-    static final String oHDynamicProxyConfigurationFiles = oH(DynamicProxyFeature.Options.DynamicProxyConfigurationFiles);
-    static final String oHJNIConfigurationFiles = oH(SubstrateOptions.JNIConfigurationFiles);
+    final String oHSubstitutionFiles = oH(DeclarativeSubstitutionProcessor.Options.SubstitutionFiles);
+    final String oHReflectionConfigurationFiles = oH(ReflectionFeature.Options.ReflectionConfigurationFiles);
+    final String oHDynamicProxyConfigurationFiles = oH(DynamicProxyFeature.Options.DynamicProxyConfigurationFiles);
+    final String oHJNIConfigurationFiles = oH(SubstrateOptions.JNIConfigurationFiles);
 
-    static final String oHMaxRuntimeCompileMethods = oH(GraalFeature.Options.MaxRuntimeCompileMethods);
-    static final String oHInspectServerContentPath = oH(PointstoOptions.InspectServerContentPath);
-    static final String oDPolyglotLauncherClasses = "-Dcom.oracle.graalvm.launcher.launcherclasses=";
-    static final String oDLauncherClasspath = "-Dorg.graalvm.launcher.classpath=";
+    final String oHMaxRuntimeCompileMethods = oH(GraalFeature.Options.MaxRuntimeCompileMethods);
+    final String oHInspectServerContentPath = oH(PointstoOptions.InspectServerContentPath);
+    final String oDPolyglotLauncherClasses = "-Dcom.oracle.graalvm.launcher.launcherclasses=";
+    final String oDLauncherClasspath = "-Dorg.graalvm.launcher.classpath=";
 
     static final String oXmx = "-Xmx";
     static final String oXms = "-Xms";
@@ -195,7 +194,12 @@ public class NativeImage {
          * @return true if Java modules system should be used
          */
         default boolean useJavaModules() {
-            return !GraalServices.Java8OrEarlier;
+            try {
+                Class.forName("java.lang.Module");
+            } catch (ClassNotFoundException e) {
+                return false;
+            }
+            return true;
         }
 
         /**
@@ -705,7 +709,7 @@ public class NativeImage {
     private void processNativeImageProperties(Map<String, String> properties, Function<String, String> resolver) {
         String imageName = properties.get("ImageName");
         if (imageName != null) {
-            addCustomImageBuilderArgs(NativeImage.oHName + resolver.apply(imageName));
+            addCustomImageBuilderArgs(oHName + resolver.apply(imageName));
         }
         forEachPropertyValue(properties.get("JavaArgs"), this::addImageBuilderJavaArgs, resolver);
         forEachPropertyValue(properties.get("Args"), this::addImageBuilderArg, resolver);
@@ -717,8 +721,8 @@ public class NativeImage {
         completeOptionArgs();
 
         if (queryOption != null) {
-            addPlainImageBuilderArg(NativeImage.oH + NativeImage.enablePrintFlags + queryOption);
-            addPlainImageBuilderArg(NativeImage.oR + NativeImage.enablePrintFlags + queryOption);
+            addPlainImageBuilderArg(NativeImage.oH + enablePrintFlags + queryOption);
+            addPlainImageBuilderArg(NativeImage.oR + enablePrintFlags + queryOption);
         }
 
         /* If no customImageClasspath was specified put "." on classpath */
