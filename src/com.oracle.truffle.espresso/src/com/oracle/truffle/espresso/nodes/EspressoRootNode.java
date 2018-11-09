@@ -269,7 +269,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.types.SignatureDescriptor;
 
-public class EspressoRootNode extends RootNode {
+public class EspressoRootNode extends RootNode implements LinkedNode {
     private final MethodInfo method;
     private final InterpreterToVM vm;
 
@@ -1212,7 +1212,7 @@ public class EspressoRootNode extends RootNode {
     }
 
     private void invokeVirtual(OperandStack stack, MethodInfo method) {
-        if (Modifier.isFinal(method.getModifiers())) {
+        if (method.isFinal()) {
             // TODO(peterssen): Intercept/hook methods on primitive arrays e.g. int[].clone().
             // Receiver can be a primitive array (not a StaticObject).
             Object receiver = nullCheck(stack.peekReceiver(method));
@@ -1241,13 +1241,17 @@ public class EspressoRootNode extends RootNode {
     }
 
     private void invoke(OperandStack stack, MethodInfo targetMethod, Object receiver, boolean hasReceiver, SignatureDescriptor signature) {
-        CallTarget redirectedMethod = vm.getIntrinsic(targetMethod);
-        if (redirectedMethod != null) {
+        CallTarget callTarget = targetMethod.getCallTarget();
+        // In bytecode boolean, byte, char and short are just plain ints.
+        // When a method is intrinsified it will obey Java types, so we need to convert the
+        // (boolean, byte, char, short) result back to int.
+        // (pop)Arguments have proper Java types.
+        if (targetMethod.isIntrinsified()) {
             CompilerDirectives.transferToInterpreter();
-            invokeRedirectedMethodViaVM(stack, targetMethod, redirectedMethod);
+            invokeRedirectedMethodViaVM(stack, targetMethod, callTarget);
         } else {
             Object[] arguments = popArguments(stack, hasReceiver, signature);
-            CallTarget callTarget = targetMethod.getCallTarget();
+
             assert receiver == null || arguments[0] == receiver;
             JavaKind resultKind = signature.getReturnTypeDescriptor().toKind();
             Object result = callTarget.call(arguments);
@@ -1271,7 +1275,6 @@ public class EspressoRootNode extends RootNode {
     }
 
     private void invokeRedirectedMethodViaVM(OperandStack stack, MethodInfo originalMethod, CallTarget intrinsic) {
-        // CompilerAsserts.partialEvaluationConstant(originalMethod);
         Object[] originalCalleeParameters = popArguments(stack, !originalMethod.isStatic(), originalMethod.getSignature());
         Object returnValue = call(intrinsic, originalCalleeParameters);
         pushKindIntrinsic(stack, returnValue, originalMethod.getSignature().resultKind());
@@ -1725,5 +1728,10 @@ public class EspressoRootNode extends RootNode {
     @Override
     public String toString() {
         return method.getDeclaringClass().getName() + "." + method.getName() + method.getSignature().toString();
+    }
+
+    @Override
+    public Meta.Method getOriginalMethod() {
+        return Meta.meta(method);
     }
 }
