@@ -28,6 +28,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import com.oracle.svm.core.SubstrateUtil;
+
 /**
  * This class contains static helper methods related to options.
  */
@@ -46,7 +48,7 @@ public class OptionUtils {
         List<String> result = new ArrayList<>();
         for (String value : values) {
             if (value != null && !value.isEmpty()) {
-                for (String component : value.split(delimiter)) {
+                for (String component : SubstrateUtil.split(value, delimiter)) {
                     String trimmed = component.trim();
                     if (!trimmed.isEmpty()) {
                         result.add(trimmed);

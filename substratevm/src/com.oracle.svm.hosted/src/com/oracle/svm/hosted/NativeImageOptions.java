@@ -91,9 +91,6 @@ public class NativeImageOptions {
     @Option(help = "Print the sizes of the native image heap as the image is built")//
     public static final HostedOptionKey<Boolean> PrintImageHeapPartitionSizes = new HostedOptionKey<>(false);
 
-    @Option(help = "Compiles all methods as deoptimization targets for testing")//
-    public static final HostedOptionKey<Boolean> DeoptimizeAll = new HostedOptionKey<>(false);
-
     @Option(help = "Print features-specific information")//
     public static final HostedOptionKey<Boolean> PrintFeatures = new HostedOptionKey<>(false);
 

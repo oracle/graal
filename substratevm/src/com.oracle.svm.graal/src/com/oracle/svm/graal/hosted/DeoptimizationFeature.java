@@ -25,53 +25,103 @@
 package com.oracle.svm.graal.hosted;
 
 import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.debug.DebugHandlersFactory;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.core.deopt.DeoptTester;
+import com.oracle.svm.core.deopt.DeoptimizationCounters;
+import com.oracle.svm.core.deopt.DeoptimizationRuntime;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
-import com.oracle.svm.core.snippets.SnippetRuntime;
+import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
+import com.oracle.svm.core.graal.snippets.DeoptTestSnippets;
+import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
+import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
+import com.oracle.svm.core.util.CounterFeature;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.CompilationAccessImpl;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.MethodPointer;
 
-import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
-
 /**
  * Feature to allow deoptimization in a generated native image.
  */
-public final class DeoptimizationFeature implements Feature {
+public final class DeoptimizationFeature implements GraalFeature {
 
     private static final Method deoptStubMethod;
-    private static final Method deoptimizeMethod;
 
     static {
         try {
             deoptStubMethod = Deoptimizer.class.getMethod("deoptStub", DeoptimizedFrame.class);
-            deoptimizeMethod = SnippetRuntime.class.getDeclaredMethod("deoptimize", long.class, SpeculationReason.class);
         } catch (NoSuchMethodException ex) {
             throw VMError.shouldNotReachHere(ex);
         }
     }
 
     @Override
+    public List<Class<? extends Feature>> getRequiredFeatures() {
+        return Arrays.asList(CounterFeature.class);
+    }
+
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(DeoptimizationSupport.class, new DeoptimizationSupport());
+        /* Counters for deoptimization. */
+        ImageSingletons.add(DeoptimizationCounters.class, new DeoptimizationCounters());
+    }
+
+    @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
-        BeforeAnalysisAccessImpl config = (BeforeAnalysisAccessImpl) a;
+        BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
 
         /*
          * The deoptimization stub is never called directly. It is patched in as the new return
          * address during deoptimization.
          */
-        config.registerAsCompiled(deoptStubMethod);
+        access.registerAsCompiled(deoptStubMethod);
 
         /*
          * The deoptimize run time call is not used for method in the native image, but only for
          * runtime compiled methods. Make sure it gets compiled.
          */
-        config.registerAsCompiled(deoptimizeMethod);
+        access.registerAsCompiled((AnalysisMethod) DeoptimizationRuntime.DEOPTIMIZE.findMethod(access.getMetaAccess()));
+
+        if (DeoptTester.enabled()) {
+            access.getBigBang().addRootMethod((AnalysisMethod) DeoptTester.DEOPTTEST.findMethod(access.getMetaAccess()));
+        }
+    }
+
+    @Override
+    public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection,
+                    Map<SubstrateForeignCallDescriptor, SubstrateForeignCallLinkage> foreignCalls, boolean hosted) {
+
+        foreignCalls.put(DeoptimizationRuntime.DEOPTIMIZE, new SubstrateForeignCallLinkage(providers, DeoptimizationRuntime.DEOPTIMIZE));
+        if (DeoptTester.enabled()) {
+            foreignCalls.put(DeoptTester.DEOPTTEST, new SubstrateForeignCallLinkage(providers, DeoptTester.DEOPTTEST));
+        }
+    }
+
+    @Override
+    public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
+                    Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
+
+        if (DeoptTester.enabled()) {
+            DeoptTestSnippets.registerLowerings(options, factories, providers, snippetReflection, lowerings);
+        }
     }
 
     @Override

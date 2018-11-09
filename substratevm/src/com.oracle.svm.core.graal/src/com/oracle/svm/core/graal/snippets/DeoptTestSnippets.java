@@ -40,14 +40,14 @@ import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
 
+import com.oracle.svm.core.deopt.DeoptTester;
 import com.oracle.svm.core.graal.nodes.DeoptTestNode;
-import com.oracle.svm.core.snippets.SnippetRuntime;
 
 public final class DeoptTestSnippets extends SubstrateTemplates implements Snippets {
 
     @Snippet
     protected static void deoptTestSnippet() {
-        runtimeCall(SnippetRuntime.DEOPTTEST);
+        runtimeCall(DeoptTester.DEOPTTEST);
     }
 
     @SuppressWarnings("unused")
