@@ -24,12 +24,23 @@ package com.oracle.truffle.espresso.jni;
 
 import static com.oracle.truffle.espresso.meta.Meta.meta;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.CharBuffer;
+import java.nio.DoubleBuffer;
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
+import java.nio.LongBuffer;
+import java.nio.ShortBuffer;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -38,24 +49,47 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.bytecode.InterpreterToVM;
+import com.oracle.truffle.espresso.impl.FieldInfo;
+import com.oracle.truffle.espresso.impl.MethodInfo;
 import com.oracle.truffle.espresso.intrinsics.Target_java_lang_Object;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
 
 public class JniEnv {
-    private static final TruffleObject mokapotLibrary = NativeLibrary.loadLibrary(System.getProperty("mokapot.library", "mokapot"));
 
-    public static void touch() {}
+    public static void touch() {
+    }
+
+    private static final int JNI_OK = 0; /* success */
+    private static final int JNI_ERR = -1; /* unknown error */
+    private static final int JNI_COMMIT = 1;
+    private static final int JNI_ABORT = 2;
+
+    // mokapot.dll (Windows) or libmokapot.so (Unixes) is the Espresso implementation of the VM
+    // interface (libjvm)
+    // Espresso loads all shared libraries in a private namespace (e.g. using dlmopen on Linux).
+    // mokapot must be loaded strictly before any other library in the private namespace to
+    // linking with HotSpot libjvm (or just linking errors), then libjava is loaded and further
+    // system libraries, libzip ...
+    private static final TruffleObject mokapotLibrary = NativeLibrary.loadLibrary(System.getProperty("mokapot.library", "mokapot"));
 
     // Load native library nespresso.dll (Windows) or libnespresso.so (Unixes) at runtime.
     private static final TruffleObject nespressoLibrary = NativeLibrary.loadLibrary(System.getProperty("nespresso.library", "nespresso"));
-    private static final TruffleObject javaLibrary = NativeLibrary.loadLibrary(System.getProperty("java.library", "java"));
+
+    public static final TruffleObject javaLibrary = NativeLibrary.loadLibrary(System.getProperty("java.library", "java"));
 
     private static final TruffleObject initializeNativeContext = NativeLibrary.lookupAndBind(nespressoLibrary,
                     "initializeNativeContext", "(env, (string): pointer): pointer");
+
+    private static final TruffleObject setMokapotEspressoJniEnv = NativeLibrary.lookupAndBind(mokapotLibrary,
+                    "Mokapot_SetJNIEnv", "(pointer): void");
 
     private static final TruffleObject dupClosureRef = NativeLibrary.lookup(nespressoLibrary, "dupClosureRef");
 
@@ -67,11 +101,18 @@ public class JniEnv {
 
     private long jniEnvPtr;
 
+    private final Handles<FieldInfo> fieldIds = new Handles<>();
+    private final Handles<MethodInfo> methodIds = new Handles<>();
+
+    // Prevent cleaner threads from collecting in-use native buffers.
+    private final Map<Long, ByteBuffer> nativeBuffers = new ConcurrentHashMap<>();
+
     private JniEnv() {
         try {
             Callback lookupJniImplCallback = Callback.wrapInstanceMethod(this, "lookupJniImpl", String.class);
             this.jniEnvPtr = unwrapPointer(ForeignAccess.sendExecute(Message.EXECUTE.createNode(), initializeNativeContext, lookupJniImplCallback));
             assert this.jniEnvPtr != 0;
+            ForeignAccess.sendExecute(Message.EXECUTE.createNode(), setMokapotEspressoJniEnv, this.jniEnvPtr);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere("Cannot initialize Espresso native interface");
         }
@@ -118,8 +159,8 @@ public class JniEnv {
         return NativeLibrary.bind(dupClosureRef, "(env, " + signature + ")" + ": pointer");
     }
 
-    private static NativeSimpleType kindToType(Class<?> clazz) {
-        return classToNative.getOrDefault(clazz, NativeSimpleType.OBJECT);
+    private static NativeSimpleType kindToType(Class<?> clazz, boolean javaToNative) {
+        return classToNative.getOrDefault(clazz, javaToNative ? NativeSimpleType.OBJECT_OR_NULL : NativeSimpleType.OBJECT);
     }
 
     private static String nativeSignature(Method method) {
@@ -127,9 +168,9 @@ public class JniEnv {
         // Prepend JNIEnv* . The raw pointer will be substituted by the proper `this` reference.
         sb.append(NativeSimpleType.POINTER);
         for (Class<?> param : method.getParameterTypes()) {
-            sb.append(", ").append(kindToType(param));
+            sb.append(", ").append(kindToType(param, false));
         }
-        sb.append("): ").append(kindToType(method.getReturnType()));
+        sb.append("): ").append(kindToType(method.getReturnType(), true));
         return sb.toString();
     }
 
@@ -142,7 +183,7 @@ public class JniEnv {
         try {
             // Dummy placeholder for unimplemented/unknown methods.
             if (m == null) {
-                System.err.println("Fetching unknown/unimplemented JNI method: " + methodName);
+                // System.err.println("Fetching unknown/unimplemented JNI method: " + methodName);
                 return (TruffleObject) ForeignAccess.sendExecute(Message.EXECUTE.createNode(), dupClosureRefAndCast("(pointer): void"),
                                 new Callback(1, args -> {
                                     System.err.println("Calling unimplemented JNI method: " + methodName);
@@ -228,81 +269,104 @@ public class JniEnv {
     }
 
     @JniImpl
-    public Meta.Field GetFieldID(StaticObjectClass clazz, String name, String signature) {
-        return meta((clazz).getMirror()).field(name);
+    public int GetStringLength(StaticObject str) {
+        return (int) meta(str).method("length", int.class).invokeDirect();
+    }
+
+    // region Get*ID
+
+    @JniImpl
+    public long GetFieldID(StaticObjectClass clazz, String name, String signature) {
+        clazz.getMirror().initialize();
+        Meta.Field field = meta((clazz).getMirror()).field(name);
+        return fieldIds.handlify(field.rawField());
     }
 
     @JniImpl
-    public Meta.Method GetMethodID(StaticObjectClass clazz, String name, String signature) {
+    public long GetStaticFieldID(StaticObjectClass clazz, String name, String signature) {
+        clazz.getMirror().initialize();
+        return fieldIds.handlify(meta((clazz).getMirror()).staticField(name).getField().rawField());
+    }
+
+    @JniImpl
+    public long GetMethodID(StaticObjectClass clazz, String name, String signature) {
+        clazz.getMirror().initialize();
         Meta.Method[] methods = meta(clazz.getMirror()).methods(true);
         for (Meta.Method m : methods) {
             if (m.getName().equals(name) && m.rawMethod().getSignature().toString().equals(signature)) {
-                return m;
+                return methodIds.handlify(m.rawMethod());
             }
         }
         throw new RuntimeException("Method " + name + " not found");
     }
 
     @JniImpl
-    public Meta.Method GetStaticMethodID(StaticObjectClass clazz, String name, String signature) {
+    public long GetStaticMethodID(StaticObjectClass clazz, String name, String signature) {
+        clazz.getMirror().initialize();
         Meta.Method[] methods = meta(clazz.getMirror()).methods(false);
         for (Meta.Method m : methods) {
             if (m.getName().equals(name) && m.rawMethod().getSignature().toString().equals(signature)) {
-                return m;
+                return methodIds.handlify(m.rawMethod());
             }
         }
         throw new RuntimeException("Method " + name + " not found");
     }
 
-    @JniImpl
-    public Object GetObjectClass(Object obj) {
-        return Target_java_lang_Object.getClass(obj);
-    }
+    // endregion Get*ID
 
     // region Get*Field
 
     @JniImpl
-    public Object GetObjectField(StaticObject obj, Meta.Field fieldID) {
-        return fieldID.get(obj);
+    public Object GetObjectField(StaticObject obj, long fieldHandle) {
+        Meta.Field field = meta(fieldIds.getObject(fieldHandle));
+        return field.get(obj);
     }
 
     @JniImpl
-    public boolean GetBooleanField(StaticObject object, Meta.Field field) {
+    public boolean GetBooleanField(StaticObject object, long fieldHandle) {
+        Meta.Field field = meta(fieldIds.getObject(fieldHandle));
         return (boolean) field.get(object);
     }
 
     @JniImpl
-    public byte GetByteField(StaticObject object, Meta.Field field) {
+    public byte GetByteField(StaticObject object, long fieldHandle) {
+        Meta.Field field = meta(fieldIds.getObject(fieldHandle));
         return (byte) field.get(object);
     }
 
     @JniImpl
-    public char GetCharField(StaticObject object, Meta.Field field) {
+    public char GetCharField(StaticObject object, long fieldHandle) {
+        Meta.Field field = meta(fieldIds.getObject(fieldHandle));
         return (char) field.get(object);
     }
 
     @JniImpl
-    public short GetShortField(StaticObject object, Meta.Field field) {
+    public short GetShortField(StaticObject object, long fieldHandle) {
+        Meta.Field field = meta(fieldIds.getObject(fieldHandle));
         return (short) field.get(object);
     }
 
     @JniImpl
-    public int GetIntField(StaticObject object, Meta.Field field) {
+    public int GetIntField(StaticObject object, long fieldHandle) {
+        Meta.Field field = meta(fieldIds.getObject(fieldHandle));
         return (int) field.get(object);
     }
 
     @JniImpl
-    public long GetLongField(StaticObject object, Meta.Field field) {
+    public long GetLongField(StaticObject object, long fieldHandle) {
+        Meta.Field field = meta(fieldIds.getObject(fieldHandle));
         return (long) field.get(object);
     }
 
     @JniImpl
-    public float GetFloatField(StaticObject object, Meta.Field field) {
+    public float GetFloatField(StaticObject object, long fieldHandle) {
+        Meta.Field field = meta(fieldIds.getObject(fieldHandle));
         return (float) field.get(object);
     }
 
     @JniImpl
-    public double GetDoubleField(StaticObject object, Meta.Field field) {
+    public double GetDoubleField(StaticObject object, long fieldHandle) {
+        Meta.Field field = meta(fieldIds.getObject(fieldHandle));
         return (double) field.get(object);
     }
 
@@ -311,48 +375,57 @@ public class JniEnv {
     // region Set*Field
 
     @JniImpl
-    public void SetObjectField(StaticObject obj, Meta.Field fieldID, Object val) {
-        fieldID.set(obj, val);
+    public void SetObjectField(StaticObject obj, long fieldHandle, Object val) {
+        Meta.Field field = meta(fieldIds.getObject(fieldHandle));
+        field.set(obj, val);
     }
 
     @JniImpl
-    public void SetBooleanField(StaticObject obj, Meta.Field fieldID, boolean val) {
-        fieldID.set(obj, val);
+    public void SetBooleanField(StaticObject obj, long fieldHandle, boolean val) {
+        Meta.Field field = meta(fieldIds.getObject(fieldHandle));
+        field.set(obj, val);
     }
 
     @JniImpl
-    public void SetByteField(StaticObject obj, Meta.Field fieldID, byte val) {
-        fieldID.set(obj, val);
+    public void SetByteField(StaticObject obj, long fieldHandle, byte val) {
+        Meta.Field field = meta(fieldIds.getObject(fieldHandle));
+        field.set(obj, val);
     }
 
     @JniImpl
-    public void SetCharField(StaticObject obj, Meta.Field fieldID, char val) {
-        fieldID.set(obj, val);
+    public void SetCharField(StaticObject obj, long fieldHandle, char val) {
+        Meta.Field field = meta(fieldIds.getObject(fieldHandle));
+        field.set(obj, val);
     }
 
     @JniImpl
-    public void SetShortField(StaticObject obj, Meta.Field fieldID, short val) {
-        fieldID.set(obj, val);
+    public void SetShortField(StaticObject obj, long fieldHandle, short val) {
+        Meta.Field field = meta(fieldIds.getObject(fieldHandle));
+        field.set(obj, val);
     }
 
     @JniImpl
-    public void SetIntField(StaticObject obj, Meta.Field fieldID, int val) {
-        fieldID.set(obj, val);
+    public void SetIntField(StaticObject obj, long fieldHandle, int val) {
+        Meta.Field field = meta(fieldIds.getObject(fieldHandle));
+        field.set(obj, val);
     }
 
     @JniImpl
-    public void SetLongField(StaticObject obj, Meta.Field fieldID, long val) {
-        fieldID.set(obj, val);
+    public void SetLongField(StaticObject obj, long fieldHandle, long val) {
+        Meta.Field field = meta(fieldIds.getObject(fieldHandle));
+        field.set(obj, val);
     }
 
     @JniImpl
-    public void SetFloatField(StaticObject obj, Meta.Field fieldID, float val) {
-        fieldID.set(obj, val);
+    public void SetFloatField(StaticObject obj, long fieldHandle, float val) {
+        Meta.Field field = meta(fieldIds.getObject(fieldHandle));
+        field.set(obj, val);
     }
 
     @JniImpl
-    public void SetDoubleField(StaticObject obj, Meta.Field fieldID, double val) {
-        fieldID.set(obj, val);
+    public void SetDoubleField(StaticObject obj, long fieldHandle, double val) {
+        Meta.Field field = meta(fieldIds.getObject(fieldHandle));
+        field.set(obj, val);
     }
 
     // endregion Set*Field
@@ -360,52 +433,62 @@ public class JniEnv {
     // region Call*Method
 
     @JniImpl
-    public Object CallObjectMethod(Object receiver, Meta.Method methodID, long varargsPtr) {
+    public Object CallObjectMethod(Object receiver, long methodHandle, long varargsPtr) {
+        Meta.Method method = meta(methodIds.getObject(methodHandle));
+        return method.invokeDirect(receiver, VarArgs.pop(varargsPtr, method.getParameterTypes()));
+    }
+
+    @JniImpl
+    public boolean CallBooleanMethod(Object receiver, long methodHandle, long varargsPtr) {
+        Meta.Method method = meta(methodIds.getObject(methodHandle));
         throw EspressoError.unimplemented();
     }
 
     @JniImpl
-    public boolean CallBooleanMethod(Object receiver, Meta.Method methodID, long varargsPtr) {
+    public char CallCharMethod(Object receiver, long methodHandle, long varargsPtr) {
+        Meta.Method method = meta(methodIds.getObject(methodHandle));
         throw EspressoError.unimplemented();
     }
 
     @JniImpl
-    public char CallCharMethod(Object receiver, Meta.Method methodID, long varargsPtr) {
+    public byte CallByteMethod(Object receiver, long methodHandle, long varargsPtr) {
+        Meta.Method method = meta(methodIds.getObject(methodHandle));
         throw EspressoError.unimplemented();
     }
 
     @JniImpl
-    public byte CallByteMethod(Object receiver, Meta.Method methodID, long varargsPtr) {
+    public short CallShortMethod(Object receiver, long methodHandle, long varargsPtr) {
+        Meta.Method method = meta(methodIds.getObject(methodHandle));
         throw EspressoError.unimplemented();
     }
 
     @JniImpl
-    public short CallShortMethod(Object receiver, Meta.Method methodID, long varargsPtr) {
+    public int CallIntMethod(Object receiver, long methodHandle, long varargsPtr) {
+        Meta.Method method = meta(methodIds.getObject(methodHandle));
         throw EspressoError.unimplemented();
     }
 
     @JniImpl
-    public int CallIntMethod(Object receiver, Meta.Method methodID, long varargsPtr) {
+    public float CallFloatMethod(Object receiver, long methodHandle, long varargsPtr) {
+        Meta.Method method = meta(methodIds.getObject(methodHandle));
         throw EspressoError.unimplemented();
     }
 
     @JniImpl
-    public float CallFloatMethod(Object receiver, Meta.Method methodID, long varargsPtr) {
+    public double CallDoubleMethod(Object receiver, long methodHandle, long varargsPtr) {
+        Meta.Method method = meta(methodIds.getObject(methodHandle));
         throw EspressoError.unimplemented();
     }
 
     @JniImpl
-    public double CallDoubleMethod(Object receiver, Meta.Method methodID, long varargsPtr) {
+    public long CallLongMethod(Object receiver, long methodHandle, long varargsPtr) {
+        Meta.Method method = meta(methodIds.getObject(methodHandle));
         throw EspressoError.unimplemented();
     }
 
     @JniImpl
-    public long CallLongMethod(Object receiver, Meta.Method methodID, long varargsPtr) {
-        throw EspressoError.unimplemented();
-    }
-
-    @JniImpl
-    public void CallVoidMethod(Object receiver, Meta.Method methodID, long varargsPtr) {
+    public void CallVoidMethod(Object receiver, long methodHandle, long varargsPtr) {
+        Meta.Method method = meta(methodIds.getObject(methodHandle));
         throw EspressoError.unimplemented();
     }
 
@@ -414,58 +497,69 @@ public class JniEnv {
     // region CallNonvirtual*Method
 
     @JniImpl
-    public Object CallNonvirtualObjectMethod(Object receiver, Object clazz, Meta.Method methodID, long varargsPtr) {
-        return methodID.invoke(receiver, VarArgs.pop(varargsPtr, methodID.getParameterTypes()));
+    public Object CallNonvirtualObjectMethod(Object receiver, Object clazz, long methodHandle, long varargsPtr) {
+        Meta.Method method = meta(methodIds.getObject(methodHandle));
+        return method.invokeDirect(receiver, VarArgs.pop(varargsPtr, method.getParameterTypes()));
     }
 
     @JniImpl
-    public boolean CallNonvirtualBooleanMethod(Object receiver, Object clazz, Meta.Method methodID, long varargsPtr) {
-        return (boolean) methodID.invoke(receiver, VarArgs.pop(varargsPtr, methodID.getParameterTypes()));
+    public boolean CallNonvirtualBooleanMethod(Object receiver, Object clazz, long methodHandle, long varargsPtr) {
+        Meta.Method method = meta(methodIds.getObject(methodHandle));
+        return (boolean) method.invoke(receiver, VarArgs.pop(varargsPtr, method.getParameterTypes()));
     }
 
     @JniImpl
-    public char CallNonvirtualCharMethod(Object receiver, Object clazz, Meta.Method methodID, long varargsPtr) {
-        return (char) methodID.invoke(receiver, VarArgs.pop(varargsPtr, methodID.getParameterTypes()));
+    public char CallNonvirtualCharMethod(Object receiver, Object clazz, long methodHandle, long varargsPtr) {
+        Meta.Method method = meta(methodIds.getObject(methodHandle));
+        return (char) method.invoke(receiver, VarArgs.pop(varargsPtr, method.getParameterTypes()));
     }
 
     @JniImpl
-    public byte CallNonvirtualByteMethod(Object receiver, Object clazz, Meta.Method methodID, long varargsPtr) {
-        return (byte) methodID.invoke(receiver, VarArgs.pop(varargsPtr, methodID.getParameterTypes()));
+    public byte CallNonvirtualByteMethod(Object receiver, Object clazz, long methodHandle, long varargsPtr) {
+        Meta.Method method = meta(methodIds.getObject(methodHandle));
+        return (byte) method.invoke(receiver, VarArgs.pop(varargsPtr, method.getParameterTypes()));
     }
 
     @JniImpl
-    public short CallNonvirtualShortMethod(Object receiver, Object clazz, Meta.Method methodID, long varargsPtr) {
-        return (short) methodID.invoke(receiver, VarArgs.pop(varargsPtr, methodID.getParameterTypes()));
+    public short CallNonvirtualShortMethod(Object receiver, Object clazz, long methodHandle, long varargsPtr) {
+        Meta.Method method = meta(methodIds.getObject(methodHandle));
+        return (short) method.invoke(receiver, VarArgs.pop(varargsPtr, method.getParameterTypes()));
     }
 
     @JniImpl
-    public int CallNonvirtualIntMethod(Object receiver, Object clazz, Meta.Method methodID, long varargsPtr) {
-        return (int) methodID.invoke(receiver, VarArgs.pop(varargsPtr, methodID.getParameterTypes()));
+    public int CallNonvirtualIntMethod(Object receiver, Object clazz, long methodHandle, long varargsPtr) {
+        Meta.Method method = meta(methodIds.getObject(methodHandle));
+        return (int) method.invoke(receiver, VarArgs.pop(varargsPtr, method.getParameterTypes()));
     }
 
     @JniImpl
-    public float CallNonvirtualFloatMethod(Object receiver, Object clazz, Meta.Method methodID, long varargsPtr) {
-        return (float) methodID.invoke(receiver, VarArgs.pop(varargsPtr, methodID.getParameterTypes()));
+    public float CallNonvirtualFloatMethod(Object receiver, Object clazz, long methodHandle, long varargsPtr) {
+        Meta.Method method = meta(methodIds.getObject(methodHandle));
+        return (float) method.invoke(receiver, VarArgs.pop(varargsPtr, method.getParameterTypes()));
     }
 
     @JniImpl
-    public double CallNonvirtualDoubleMethod(Object receiver, Object clazz, Meta.Method methodID, long varargsPtr) {
-        return (double) methodID.invoke(receiver, VarArgs.pop(varargsPtr, methodID.getParameterTypes()));
+    public double CallNonvirtualDoubleMethod(Object receiver, Object clazz, long methodHandle, long varargsPtr) {
+        Meta.Method method = meta(methodIds.getObject(methodHandle));
+        return (double) method.invoke(receiver, VarArgs.pop(varargsPtr, method.getParameterTypes()));
     }
 
     @JniImpl
-    public long CallNonvirtualLongMethod(Object receiver, Object clazz, Meta.Method methodID, long varargsPtr) {
-        return (long) methodID.invoke(receiver, VarArgs.pop(varargsPtr, methodID.getParameterTypes()));
+    public long CallNonvirtualLongMethod(Object receiver, Object clazz, long methodHandle, long varargsPtr) {
+        Meta.Method method = meta(methodIds.getObject(methodHandle));
+        return (long) method.invoke(receiver, VarArgs.pop(varargsPtr, method.getParameterTypes()));
     }
 
     @JniImpl
-    public void CallNonvirtualVoidMethod(Object receiver, Object clazz, Meta.Method methodID, long varargsPtr) {
-        methodID.invoke(receiver, VarArgs.pop(varargsPtr, methodID.getParameterTypes()));
+    public void CallNonvirtualVoidMethod(Object receiver, Object clazz, long methodHandle, long varargsPtr) {
+        Meta.Method method = meta(methodIds.getObject(methodHandle));
+        method.invoke(receiver, VarArgs.pop(varargsPtr, method.getParameterTypes()));
     }
 
     @JniImpl
-    public Object CallNonvirtualtualObjectMethod(Object receiver, Object clazz, Meta.Method methodID, long varargsPtr) {
-        return methodID.invoke(receiver, VarArgs.pop(varargsPtr, methodID.getParameterTypes()));
+    public Object CallNonvirtualtualObjectMethod(Object receiver, Object clazz, long methodHandle, long varargsPtr) {
+        Meta.Method method = meta(methodIds.getObject(methodHandle));
+        return method.invoke(receiver, VarArgs.pop(varargsPtr, method.getParameterTypes()));
     }
 
     // endregion CallNonvirtual*Method
@@ -641,6 +735,74 @@ public class JniEnv {
     }
 
     // endregion Set*ArrayRegion
+
+    @JniImpl
+    public long GetPrimitiveArrayCritical(Object array, long isCopyPtr) {
+        if (isCopyPtr != 0L) {
+            ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
+            isCopyBuf.put((byte) 1); // Always copy since pinning is not supported.
+        }
+        StaticObjectClass clazz = (StaticObjectClass) GetObjectClass(array);
+        JavaKind componentKind = clazz.getMirror().getComponentType().getJavaKind();
+        assert componentKind.isPrimitive();
+        int length = GetArrayLength(array);
+
+        ByteBuffer region = allocateDirect(length, componentKind);
+        long address = byteBufferAddress(region);
+        // @formatter:off
+        // Checkstyle: stop
+        switch (componentKind) {
+            case Boolean: GetBooleanArrayRegion((boolean[]) array, 0, length, address); break;
+            case Byte:    GetByteArrayRegion((byte[]) array, 0, length, address);       break;
+            case Short:   GetShortArrayRegion((short[]) array, 0, length, address);     break;
+            case Char:    GetCharArrayRegion((char[]) array, 0, length, address);       break;
+            case Int:     GetIntArrayRegion((int[]) array, 0, length, address);         break;
+            case Float:   GetFloatArrayRegion((float[]) array, 0, length, address);     break;
+            case Long:    GetLongArrayRegion((long[]) array, 0, length, address);       break;
+            case Double:  GetDoubleArrayRegion((double[]) array, 0, length, address);   break;
+            case Object:  // fall through
+            case Void:    // fall through
+            case Illegal:
+                throw EspressoError.shouldNotReachHere();
+        }
+        // @formatter:on
+        // Checkstyle: resume
+
+        return address;
+    }
+
+    @JniImpl
+    public void ReleasePrimitiveArrayCritical(Object array, long carrayPtr, int mode) {
+        if (mode == 0 || mode == JNI_COMMIT) { // Update array contents.
+            StaticObjectClass clazz = (StaticObjectClass) GetObjectClass(array);
+            JavaKind componentKind = clazz.getMirror().getComponentType().getJavaKind();
+            assert componentKind.isPrimitive();
+            int length = GetArrayLength(array);
+            // @formatter:off
+            // Checkstyle: stop
+            switch (componentKind) {
+                case Boolean: SetBooleanArrayRegion((boolean[]) array, 0, length, carrayPtr); break;
+                case Byte:    SetByteArrayRegion((byte[]) array, 0, length, carrayPtr);       break;
+                case Short:   SetShortArrayRegion((short[]) array, 0, length, carrayPtr);     break;
+                case Char:    SetCharArrayRegion((char[]) array, 0, length, carrayPtr);       break;
+                case Int:     SetIntArrayRegion((int[]) array, 0, length, carrayPtr);         break;
+                case Float:   SetFloatArrayRegion((float[]) array, 0, length, carrayPtr);     break;
+                case Long:    SetLongArrayRegion((long[]) array, 0, length, carrayPtr);       break;
+                case Double:  SetDoubleArrayRegion((double[]) array, 0, length, carrayPtr);   break;
+                case Object:  // fall through
+                case Void:    // fall through
+                case Illegal:
+                    throw EspressoError.shouldNotReachHere();
+            }
+            // @formatter:on
+            // Checkstyle: resume
+        }
+
+        if (mode == 0 || mode == JNI_ABORT) { // Dispose copy.
+            assert nativeBuffers.containsKey(carrayPtr);
+            nativeBuffers.remove(carrayPtr);
+        }
+    }
 
     // region New*Array
 
@@ -856,6 +1018,16 @@ public class JniEnv {
     @JniImpl
     public void SetObjectArrayElement(StaticObjectArray array, int index, Object value) {
         EspressoLanguage.getCurrentContext().getVm().setArrayObject(value, index, array);
+    }
+
+    @JniImpl
+    public StaticObject NewString(long unicodePtr, int len) {
+        char[] value = new char[Math.multiplyExact(len, JavaKind.Char.getByteCount())];
+        SetCharArrayRegion(value, 0, len, unicodePtr);
+        return EspressoLanguage.getCurrentContext().getMeta() //
+                        .STRING.metaNew() //
+                                        .fields(Meta.Field.set("value", value)) //
+                                        .getInstance();
     }
 
     private static ByteBuffer directByteBuffer(long address, long capacity, JavaKind kind) {
