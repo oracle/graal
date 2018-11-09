@@ -55,7 +55,6 @@ import com.oracle.truffle.espresso.intrinsics.Target_java_lang_Float;
 import com.oracle.truffle.espresso.intrinsics.Target_java_lang_Object;
 import com.oracle.truffle.espresso.intrinsics.Target_java_lang_Package;
 import com.oracle.truffle.espresso.intrinsics.Target_java_lang_Runtime;
-import com.oracle.truffle.espresso.intrinsics.Target_java_lang_StrictMath;
 import com.oracle.truffle.espresso.intrinsics.Target_java_lang_String;
 import com.oracle.truffle.espresso.intrinsics.Target_java_lang_System;
 import com.oracle.truffle.espresso.intrinsics.Target_java_lang_Thread;
@@ -107,7 +106,6 @@ public class InterpreterToVM {
                     Target_java_lang_ClassLoader_NativeLibrary.class,
                     Target_java_lang_Double.class,
                     Target_java_lang_Float.class,
-                    Target_java_lang_StrictMath.class,
                     Target_java_lang_Package.class,
                     Target_java_lang_Object.class,
                     Target_java_lang_Runtime.class,
