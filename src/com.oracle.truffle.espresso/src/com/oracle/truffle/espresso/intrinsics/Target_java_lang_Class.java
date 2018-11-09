@@ -31,7 +31,7 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.bytecode.InterpreterToVM;
+import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.classfile.ClassConstant;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
@@ -43,6 +43,7 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
+import com.oracle.truffle.espresso.runtime.AttributeInfo;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -370,5 +371,31 @@ public class Target_java_lang_Class {
     @Intrinsic
     public static void registerNatives() {
         /* nop */
+    }
+
+    @Intrinsic(hasReceiver = true)
+    public static @Type(byte[].class) Object getRawAnnotations(StaticObjectClass self) {
+        Klass klass = self.getMirror();
+        if (klass instanceof ObjectKlass) {
+            AttributeInfo annotations = ((ObjectKlass) klass).getRuntimeVisibleAnnotations();
+            if (annotations != null) {
+                return annotations.getRawInfo();
+            }
+        }
+        return StaticObject.NULL;
+    }
+
+    @Intrinsic(hasReceiver = true)
+    public static @Type(sun.reflect.ConstantPool.class) StaticObject getConstantPool(StaticObjectClass self) {
+        Klass klass = self.getMirror();
+        if (klass instanceof ObjectKlass) {
+            Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+            return meta //
+                            .knownKlass(sun.reflect.ConstantPool.class) //
+                            .metaNew().fields(Meta.Field.set("constantPoolOop", self)) //
+                            .getInstance();
+
+        }
+        return StaticObject.NULL;
     }
 }
