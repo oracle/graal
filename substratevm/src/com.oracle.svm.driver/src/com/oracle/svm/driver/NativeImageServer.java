@@ -44,6 +44,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
@@ -404,7 +405,11 @@ final class NativeImageServer extends NativeImage {
                 replaceArg(javaArgs, oXms, xmsValueStr);
 
                 Path sessionDir = getSessionDir();
-                String serverUID = imageServerUID(classpath, bootClasspath, javaArgs);
+                List<Collection<Path>> builderPaths = new ArrayList<>(Arrays.asList(classpath, bootClasspath));
+                if (config.useJavaModules()) {
+                    builderPaths.addAll(Arrays.asList(config.getBuilderModulePath(), config.getBuilderUpgradeModulePath()));
+                }
+                String serverUID = imageServerUID(javaArgs, builderPaths);
                 Path serverDir = sessionDir.resolve(serverDirPrefix + serverUID);
                 Optional<Server> reusableServer = aliveServers.stream().filter(s -> s.serverDir.equals(serverDir)).findFirst();
                 if (reusableServer.isPresent()) {
@@ -752,26 +757,22 @@ final class NativeImageServer extends NativeImage {
         super.buildImage(javaArgs, bcp, cp, imageArgs, imagecp);
     }
 
-    private static String imageServerUID(LinkedHashSet<Path> classpath, LinkedHashSet<Path> bootClasspath, List<String> vmArgs) {
+    private static String imageServerUID(List<String> vmArgs, List<Collection<Path>> builderPaths) {
         MessageDigest digest;
         try {
             digest = MessageDigest.getInstance("SHA-512");
         } catch (NoSuchAlgorithmException e) {
             throw showError("SHA-512 digest is not available", e);
         }
-        for (Path path : classpath) {
-            digest.update(path.toString().getBytes());
-        }
-        for (Path path : bootClasspath) {
-            digest.update(path.toString().getBytes());
+        for (Collection<Path> paths : builderPaths) {
+            for (Path path : paths) {
+                digest.update(path.toString().getBytes());
+                updateHash(digest, path);
+            }
         }
         for (String string : vmArgs) {
             digest.update(string.getBytes());
         }
-
-        classpath.forEach(pathElement -> updateHash(digest, pathElement));
-        bootClasspath.forEach(pathElement -> updateHash(digest, pathElement));
-        vmArgs.stream().map(String::getBytes).forEach(digest::update);
 
         byte[] digestBytes = digest.digest();
         StringBuilder sb = new StringBuilder(digestBytes.length * 2);
