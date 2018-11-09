@@ -63,12 +63,12 @@ public final class ObjectKlass extends Klass {
     public static final int INITIALIZED = 3;
 
     public ObjectKlass(EspressoContext context, String name, Klass superclass, Klass[] interfaces,
-                       MethodInfo[] declaredMethods,
-                       FieldInfo[] declaredFields,
-                       int accessFlags,
-                       EnclosingMethodAttribute enclosingMethod,
-                       InnerClassesAttribute innerClasses,
-                       ConstantPool pool, AttributeInfo runtimeVisibleAnnotations) {
+                    MethodInfo[] declaredMethods,
+                    FieldInfo[] declaredFields,
+                    int accessFlags,
+                    EnclosingMethodAttribute enclosingMethod,
+                    InnerClassesAttribute innerClasses,
+                    ConstantPool pool, AttributeInfo runtimeVisibleAnnotations) {
         super(name);
         this.superclass = superclass;
         this.interfaces = interfaces;
