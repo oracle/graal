@@ -423,7 +423,7 @@ jobject NewDirectByteBuffer(JNIEnv* env, void* address, jlong capacity) {
   return env->NewObject(java_nio_DirectByteBuffer, constructor, (jlong) address, (jint) capacity);
 }  
 
-#define BRIDGE_METHOD_LIST(V) \ 
+#define BRIDGE_METHOD_LIST(V) \
   EXPAND(TYPE_LIST2(V MAKE_METHOD_A)) \
   EXPAND(TYPE_LIST2(V MAKE_METHOD_V)) \
   EXPAND(TYPE_LIST2(V MAKE_STATIC_METHOD_A)) \
