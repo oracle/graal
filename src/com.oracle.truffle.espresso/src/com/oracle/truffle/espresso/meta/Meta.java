@@ -44,6 +44,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
+import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 import com.oracle.truffle.espresso.types.SignatureDescriptor;
 
@@ -183,6 +184,12 @@ public final class Meta {
     public StaticObject initEx(java.lang.Class<?> clazz) {
         StaticObject ex = throwableKlass(clazz).allocateInstance();
         meta(ex).method("<init>", void.class).invokeDirect();
+        return ex;
+    }
+
+    public StaticObject initEx(Meta.Klass clazz, String message) {
+        StaticObject ex = clazz.allocateInstance();
+        meta(ex).method("<init>", void.class, String.class).invoke(message);
         return ex;
     }
 
@@ -377,6 +384,10 @@ public final class Meta {
 
         public Meta.Klass getComponentType() {
             return isArray() ? meta(klass.getComponentType()) : null;
+        }
+
+        public JavaKind kind() {
+            return klass.getJavaKind();
         }
 
         public Meta getMeta() {
@@ -741,6 +752,11 @@ public final class Meta {
     public static class Field implements ModifiersProvider {
         private final FieldInfo field;
 
+        @Override
+        public String toString() {
+            return "field " + field.getName() + " : " + field.getType().getName();
+        }
+
         public static SetField set(String name, Object value) {
             assert value != null;
             return new SetField(name, value);
@@ -748,6 +764,10 @@ public final class Meta {
 
         public static SetField setNull(String name) {
             return set(name, StaticObject.NULL);
+        }
+
+        public FieldInfo rawField() {
+            return field;
         }
 
         @Override
@@ -864,6 +884,10 @@ public final class Meta {
                 assert obj != null;
                 assert obj != StaticObject.NULL;
                 instance = obj;
+            }
+
+            public Meta.Field getField() {
+                return Field.this;
             }
 
             public Object get() {
