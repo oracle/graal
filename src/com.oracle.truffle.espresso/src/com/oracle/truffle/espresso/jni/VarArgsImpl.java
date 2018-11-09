@@ -26,23 +26,39 @@ import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.espresso.meta.EspressoError;
 
 class VarArgsImpl implements VarArgs {
 
-    private static final TruffleObject nespressoLibrary = NativeLibrary.loadLibrary(System.getProperty("nespresso.library", "nespresso"));
+    private static final TruffleObject popBoolean;
+    private static final TruffleObject popByte;
+    private static final TruffleObject popChar;
+    private static final TruffleObject popShort;
+    private static final TruffleObject popInt;
+    private static final TruffleObject popFloat;
+    private static final TruffleObject popDouble;
+    private static final TruffleObject popLong;
+    private static final TruffleObject popObject;
 
-    private static final TruffleObject popBoolean = NativeLibrary.lookupAndBind(nespressoLibrary, "popBoolean", "(sint64): uint8");
-    private static final TruffleObject popByte = NativeLibrary.lookupAndBind(nespressoLibrary, "popByte", "(sint64): uint8");
-    private static final TruffleObject popChar = NativeLibrary.lookupAndBind(nespressoLibrary, "popChar", "(sint64): uint16");
-    private static final TruffleObject popShort = NativeLibrary.lookupAndBind(nespressoLibrary, "popShort", "(sint64): sint16");
-    private static final TruffleObject popInt = NativeLibrary.lookupAndBind(nespressoLibrary, "popInt", "(sint64): sint32");
-    private static final TruffleObject popFloat = NativeLibrary.lookupAndBind(nespressoLibrary, "popFloat", "(sint64): float");
-    private static final TruffleObject popDouble = NativeLibrary.lookupAndBind(nespressoLibrary, "popDouble", "(sint64): double");
-    private static final TruffleObject popLong = NativeLibrary.lookupAndBind(nespressoLibrary, "popLong", "(sint64): sint64");
-    private static final TruffleObject popObject = NativeLibrary.lookupAndBind(nespressoLibrary, "popObject", "(sint64): object");
+    static {
+        try {
+            popBoolean = NativeLibrary.lookupAndBind(JniEnv.nespressoLibrary, "popBoolean", "(sint64): uint8");
+            popByte = NativeLibrary.lookupAndBind(JniEnv.nespressoLibrary, "popByte", "(sint64): uint8");
+            popChar = NativeLibrary.lookupAndBind(JniEnv.nespressoLibrary, "popChar", "(sint64): uint16");
+            popShort = NativeLibrary.lookupAndBind(JniEnv.nespressoLibrary, "popShort", "(sint64): sint16");
+            popInt = NativeLibrary.lookupAndBind(JniEnv.nespressoLibrary, "popInt", "(sint64): sint32");
+            popFloat = NativeLibrary.lookupAndBind(JniEnv.nespressoLibrary, "popFloat", "(sint64): float");
+            popDouble = NativeLibrary.lookupAndBind(JniEnv.nespressoLibrary, "popDouble", "(sint64): double");
+            popLong = NativeLibrary.lookupAndBind(JniEnv.nespressoLibrary, "popLong", "(sint64): sint64");
+            popObject = NativeLibrary.lookupAndBind(JniEnv.nespressoLibrary, "popObject", "(sint64): object");
+        } catch (UnknownIdentifierException e) {
+            throw EspressoError.shouldNotReachHere(e);
+        }
+    }
     @Node.Child static Node execute = Message.EXECUTE.createNode();
 
     private final long nativePointer;

@@ -20,7 +20,11 @@ interface NativeLibrary {
 public class Target_java_lang_ClassLoader_NativeLibrary {
 
     private static TruffleObject loadLibrary(String lib) {
-        return com.oracle.truffle.espresso.jni.NativeLibrary.loadLibrary(lib);
+        try {
+            return com.oracle.truffle.espresso.jni.NativeLibrary.loadLibrary(lib);
+        } catch (UnsatisfiedLinkError e) {
+            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(UnsatisfiedLinkError.class, e.getMessage());
+        }
     }
 
     @Intrinsic(hasReceiver = true)

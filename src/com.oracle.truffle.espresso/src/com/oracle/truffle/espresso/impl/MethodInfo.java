@@ -31,6 +31,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.jni.JniEnv;
@@ -204,7 +205,7 @@ public final class MethodInfo implements ModifiersProvider {
         return sb.toString();
     }
 
-    private static TruffleObject bind(TruffleObject library, Meta.Method m, String mangledName) {
+    private static TruffleObject bind(TruffleObject library, Meta.Method m, String mangledName) throws UnknownIdentifierException {
         String signature = buildJniNativeSignature(m);
         return NativeLibrary.lookupAndBind(library, mangledName, signature);
     }
@@ -240,7 +241,8 @@ public final class MethodInfo implements ModifiersProvider {
                             TruffleObject nativeMethod = bind(JniEnv.javaLibrary, meta(this), mangledName);
                             callTarget = Truffle.getRuntime().createCallTarget(new JniNativeNode(getContext().getLanguage(), nativeMethod, meta(this)));
                             return callTarget;
-                        } catch (Throwable t) {
+                        } catch (UnknownIdentifierException e) {
+                            // native method not found in libjava, safe to ignore
                         }
                     }
 
@@ -275,7 +277,12 @@ public final class MethodInfo implements ModifiersProvider {
             return null;
         }
         TruffleObject library = getContext().getNativeLibraries().get(handle);
-        TruffleObject nativeMethod = bind(library, meta(this), mangledName);
+        TruffleObject nativeMethod = null;
+        try {
+            nativeMethod = bind(library, meta(this), mangledName);
+        } catch (UnknownIdentifierException e) {
+            return null;
+        }
         return Truffle.getRuntime().createCallTarget(new JniNativeNode(getContext().getLanguage(), nativeMethod, meta(this)));
     }
 
