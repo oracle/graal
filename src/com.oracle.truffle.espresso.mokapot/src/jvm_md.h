@@ -65,6 +65,20 @@
 #include <errno.h>
 #include <sys/signal.h>
 
+/*
+ * Macros to use the right data type for file descriptors
+ */
+#define FD jint
+
+/*
+ * Retry the operation if it is interrupted
+ */
+#define RESTARTABLE(_cmd, _result) do { \
+    do { \
+        _result = _cmd; \
+    } while((_result == -1) && (errno == EINTR)); \
+} while(0)
+
 /* O Flags */
 
 #define JVM_O_RDONLY     O_RDONLY

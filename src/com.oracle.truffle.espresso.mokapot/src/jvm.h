@@ -1537,6 +1537,8 @@ typedef struct JDK1_1InitArgs {
     jint debugPort;
 } JDK1_1InitArgs;
 
+JNIEXPORT void JNICALL
+Mokapot_SetJNIEnv(JNIEnv* env);
 
 #ifdef __cplusplus
 } /* extern "C" */
