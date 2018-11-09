@@ -26,6 +26,9 @@
 
 SUNWprivate_1.1 {
         global:
+                # Mokapot
+                Mokapot_SetJNIEnv;
+
                 # JNI
                 JNI_CreateJavaVM;
                 JNI_GetCreatedJavaVMs;
