@@ -37,9 +37,6 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 public class NativeLibrary {
 
     public static TruffleObject loadLibrary(String lib) {
-        if (lib.endsWith("libzip.so")) {
-            JniEnv.touch();
-        }
         Source source = Source.newBuilder("nfi", String.format("with dlmopen load(RTLD_LAZY) '%s'", lib), "loadLibrary").build();
         CallTarget target = EspressoLanguage.getCurrentContext().getEnv().parse(source);
         return (TruffleObject) target.call();
