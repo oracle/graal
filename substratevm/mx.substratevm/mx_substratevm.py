@@ -137,6 +137,7 @@ def svm_java_compliance():
 
 def svm_java80():
     return svm_java_compliance() <= mx.JavaCompliance('1.8')
+
 if svm_java80():
     GRAAL_COMPILER_FLAGS = GRAAL_COMPILER_FLAGS_BASE + GRAAL_COMPILER_FLAGS_MAP['1.8']
 else:
@@ -369,7 +370,7 @@ def layout_native_image_root(native_image_root):
         native_image_layout_dists(join('lib', 'boot'), graal_sdk_dists)
         jvmci_dists = graalDistribution
     else:
-        jvmci_dists = ['compiler:GRAAL_MANAGEMENT'] + graalDistribution + graal_sdk_dists
+        jvmci_dists = graalDistribution + graal_sdk_dists
 
     # Create native-image layout for compiler & jvmci parts
     native_image_layout_dists(join('lib', 'jvmci'), jvmci_dists)
