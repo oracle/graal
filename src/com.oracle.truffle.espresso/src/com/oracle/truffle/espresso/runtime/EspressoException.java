@@ -22,9 +22,12 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
+import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.meta.Meta;
 
-public class EspressoException extends RuntimeException {
+public class EspressoException extends RuntimeException implements TruffleException {
     private static final long serialVersionUID = -7667957575377419520L;
     private final StaticObject exception;
 
@@ -43,5 +46,55 @@ public class EspressoException extends RuntimeException {
 
     public StaticObject getException() {
         return exception;
+    }
+
+    @Override
+    public Node getLocation() {
+        return null;
+    }
+
+    @Override
+    public Object getExceptionObject() {
+        return null;
+    }
+
+    @Override
+    public boolean isSyntaxError() {
+        return false;
+    }
+
+    @Override
+    public boolean isIncompleteSource() {
+        return false;
+    }
+
+    @Override
+    public boolean isInternalError() {
+        return false;
+    }
+
+    @Override
+    public boolean isCancelled() {
+        return false;
+    }
+
+    @Override
+    public boolean isExit() {
+        return false;
+    }
+
+    @Override
+    public int getExitStatus() {
+        return 0;
+    }
+
+    @Override
+    public int getStackTraceElementLimit() {
+        return -1;
+    }
+
+    @Override
+    public SourceSection getSourceLocation() {
+        return null;
     }
 }
