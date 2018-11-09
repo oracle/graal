@@ -35,6 +35,7 @@ import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
+import com.oracle.truffle.espresso.runtime.AttributeInfo;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 /**
@@ -53,6 +54,8 @@ public final class ObjectKlass extends Klass {
     private FieldInfo[] instanceFieldsCache;
     private final InnerClassesAttribute innerClasses;
 
+    private final AttributeInfo runtimeVisibleAnnotations;
+
     private int initState = LOADED;
     public static final int LOADED = 0;
     public static final int LINKED = 1;
@@ -60,12 +63,12 @@ public final class ObjectKlass extends Klass {
     public static final int INITIALIZED = 3;
 
     public ObjectKlass(EspressoContext context, String name, Klass superclass, Klass[] interfaces,
-                    MethodInfo[] declaredMethods,
-                    FieldInfo[] declaredFields,
-                    int accessFlags,
-                    EnclosingMethodAttribute enclosingMethod,
-                    InnerClassesAttribute innerClasses,
-                    ConstantPool pool) {
+                       MethodInfo[] declaredMethods,
+                       FieldInfo[] declaredFields,
+                       int accessFlags,
+                       EnclosingMethodAttribute enclosingMethod,
+                       InnerClassesAttribute innerClasses,
+                       ConstantPool pool, AttributeInfo runtimeVisibleAnnotations) {
         super(name);
         this.superclass = superclass;
         this.interfaces = interfaces;
@@ -75,6 +78,7 @@ public final class ObjectKlass extends Klass {
         this.enclosingMethod = enclosingMethod;
         this.innerClasses = innerClasses;
         this.pool = pool;
+        this.runtimeVisibleAnnotations = runtimeVisibleAnnotations;
     }
 
     @Override
@@ -83,10 +87,10 @@ public final class ObjectKlass extends Klass {
     }
 
     public static Klass create(EspressoContext context, String className, Klass superClass, Klass[] localInterfaces, MethodInfo.Builder[] methodBuilders, FieldInfo.Builder[] fieldBuilders,
-                    int accessFlags, EnclosingMethodAttribute enclosingMethod, InnerClassesAttribute innerClasses, ConstantPool pool) {
+                    int accessFlags, EnclosingMethodAttribute enclosingMethod, InnerClassesAttribute innerClasses, ConstantPool pool, AttributeInfo runtimeVisibleAnnotations) {
         MethodInfo[] methods = new MethodInfo[methodBuilders.length];
         FieldInfo[] fields = new FieldInfo[fieldBuilders.length];
-        ObjectKlass result = new ObjectKlass(context, className, superClass, localInterfaces, methods, fields, accessFlags, enclosingMethod, innerClasses, pool);
+        ObjectKlass result = new ObjectKlass(context, className, superClass, localInterfaces, methods, fields, accessFlags, enclosingMethod, innerClasses, pool, runtimeVisibleAnnotations);
         for (int i = 0; i < methods.length; ++i) {
             methods[i] = methodBuilders[i].setDeclaringClass(result).build();
         }
@@ -272,5 +276,9 @@ public final class ObjectKlass extends Klass {
             return (ObjectKlass) getContext().getMeta().OBJECT.rawKlass();
         }
         return (ObjectKlass) getSuperclass();
+    }
+
+    public AttributeInfo getRuntimeVisibleAnnotations() {
+        return runtimeVisibleAnnotations;
     }
 }

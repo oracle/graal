@@ -224,11 +224,13 @@ public class ClassfileParser {
 
         Optional<AttributeInfo> optEnclosingMethod = Arrays.stream(attributes).filter(a -> a.getName().equals("EnclosingMethod")).findAny();
         Optional<AttributeInfo> optInnerClasses = Arrays.stream(attributes).filter(a -> a.getName().equals("InnerClasses")).findAny();
+        Optional<AttributeInfo> optVisibleAnnotations = Arrays.stream(attributes).filter(a -> a.getName().equals("RuntimeVisibleAnnotations")).findAny();
 
         return ObjectKlass.create(context, typeDescriptor.toString(), superClass, localInterfaces, methods, fields, accessFlags,
                         (EnclosingMethodAttribute) optEnclosingMethod.orElse(null),
                         (InnerClassesAttribute) optInnerClasses.orElse(null),
-                        pool);
+                        pool,
+                        optVisibleAnnotations.orElse(null));
     }
 
     private MethodInfo.Builder[] parseMethods() {
