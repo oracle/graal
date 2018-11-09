@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
+import java.util.Arrays;
+
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
@@ -34,10 +36,14 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.jni.JniEnv;
+import com.oracle.truffle.espresso.jni.JniThreadLocalPendingException;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public class JniNativeNode extends RootNode {
+public class JniNativeNode extends RootNode implements LinkedNode {
 
     private final TruffleObject boundNative;
     private final Meta.Method originalMethod;
@@ -60,13 +66,62 @@ public class JniNativeNode extends RootNode {
             JniEnv jniEnv = EspressoLanguage.getCurrentContext().getJniEnv();
             assert jniEnv.getNativePointer() != 0;
 
-            Object[] argsWithEnv = originalMethod.isStatic()
-                            ? prepend2(jniEnv.getNativePointer(), originalMethod.getDeclaringClass().rawKlass().mirror(), frame.getArguments())
-                            : prepend1(jniEnv.getNativePointer(), frame.getArguments());
+            Object[] args = frame.getArguments();
 
-            return ForeignAccess.sendExecute(execute, boundNative, argsWithEnv);
+            Meta.Klass[] params = getOriginalMethod().getParameterTypes();
+
+            // TODO(peterssen): Static method does not get the clazz in the arguments,
+            int argIndex = getOriginalMethod().isStatic() ? 0 : 1;
+            for (int i = 0; i < params.length; ++i) {
+                if (args[argIndex] instanceof Boolean) {
+                    if (params[i].kind() == JavaKind.Boolean) {
+                        args[argIndex] = (boolean) args[argIndex] ? (byte) 1 : (byte) 0;
+                    }
+                }
+                ++argIndex;
+            }
+
+            Object[] argsWithEnv = originalMethod.isStatic()
+                            ? prepend2(jniEnv.getNativePointer(), originalMethod.getDeclaringClass().rawKlass().mirror(), args)
+                            : prepend1(jniEnv.getNativePointer(), args);
+
+            // System.err.println("Calling native " + originalMethod.getName() + Arrays.toString(argsWithEnv));
+            Object result = ForeignAccess.sendExecute(execute, boundNative, argsWithEnv);
+
+            StaticObject ex = JniThreadLocalPendingException.get();
+            if (ex != null) {
+                JniThreadLocalPendingException.clear();
+                throw new EspressoException(ex);
+            }
+
+            switch (getOriginalMethod().getReturnType().kind()) {
+                case Boolean:
+                case Byte:
+                    result = (int) (byte) result;
+                    break;
+                case Char:
+                    result = (int) (char) result;
+                    break;
+                case Short:
+                    result = (int) (short) result;
+                    break;
+                case Object:
+                    if (result instanceof TruffleObject) {
+                        if (ForeignAccess.sendIsNull(Message.IS_NULL.createNode(), (TruffleObject) result)) {
+                            result = StaticObject.NULL;
+                        }
+                    }
+                    break;
+            }
+
+            //System.err.println("Return native " + originalMethod.getName() + " -> " + result);
+            return result;
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-            throw EspressoError.shouldNotReachHere();
+            throw EspressoError.shouldNotReachHere(e);
+        } catch (VirtualMachineError | EspressoException allowed) {
+            throw allowed;
+        } catch (Exception e) {
+            throw EspressoError.shouldNotReachHere(e);
         }
     }
 
@@ -83,5 +138,10 @@ public class JniNativeNode extends RootNode {
         newArgs[0] = first;
         newArgs[1] = second;
         return newArgs;
+    }
+
+    @Override
+    public Meta.Method getOriginalMethod() {
+        return originalMethod;
     }
 }
