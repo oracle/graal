@@ -22,10 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.core.test.ea;
+package org.graalvm.compiler.core.jdk9.test.ea;
 
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
+import org.graalvm.compiler.core.test.ea.EATestBase;
 
 import org.junit.Test;
 
