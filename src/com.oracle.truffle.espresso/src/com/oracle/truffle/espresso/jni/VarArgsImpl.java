@@ -33,6 +33,7 @@ import com.oracle.truffle.api.nodes.Node;
 class VarArgsImpl implements VarArgs {
 
     private static final TruffleObject nespressoLibrary = NativeLibrary.loadLibrary(System.getProperty("nespresso.library", "nespresso"));
+
     private static final TruffleObject popBoolean = NativeLibrary.lookupAndBind(nespressoLibrary, "popBoolean", "(sint64): uint8");
     private static final TruffleObject popByte = NativeLibrary.lookupAndBind(nespressoLibrary, "popByte", "(sint64): uint8");
     private static final TruffleObject popChar = NativeLibrary.lookupAndBind(nespressoLibrary, "popChar", "(sint64): uint16");
@@ -52,7 +53,7 @@ class VarArgsImpl implements VarArgs {
 
     static boolean popBoolean(long nativePointer) {
         try {
-            return (boolean) ForeignAccess.sendExecute(execute, popBoolean, nativePointer);
+            return ((byte) ForeignAccess.sendExecute(execute, popBoolean, nativePointer)) != 0;
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw new RuntimeException(e);
         }
