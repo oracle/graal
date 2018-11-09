@@ -33,7 +33,8 @@ import java.util.WeakHashMap;
  */
 public class Handles<T> {
 
-    private final static int DEFAULT_INITIAL_CAPACITY = 32;
+    private static final int DEFAULT_INITIAL_CAPACITY = 32;
+
     private final WeakHashMap<T, Integer> map;
     private final LinkedList<Integer> freeList = new LinkedList<>();
 
@@ -45,6 +46,7 @@ public class Handles<T> {
      *
      * @param initialCapacity must be > 0
      */
+    @SuppressWarnings("unchecked")
     public Handles(int initialCapacity) {
         if (initialCapacity <= 0) {
             throw new IllegalArgumentException("initialCapacity must be > 0");
