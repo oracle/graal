@@ -110,7 +110,7 @@ public class InterpreterToVM {
         }
     }
 
-    private final Map<MethodKey, CallTarget> intrinsics = new HashMap<>();
+    private final Map<MethodKey, RootNode> intrinsics = new HashMap<>();
 
     public static List<Class<?>> DEFAULTS = Arrays.asList(
                     Target_java_io_Console.class,
@@ -174,7 +174,7 @@ public class InterpreterToVM {
     }
 
     @CompilerDirectives.TruffleBoundary
-    public CallTarget getIntrinsic(MethodInfo method) {
+    public RootNode getIntrinsic(MethodInfo method) {
         assert method != null;
         return intrinsics.get(getMethodKey(method));
     }
@@ -277,7 +277,7 @@ public class InterpreterToVM {
                 continue;
             }
 
-            RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(createRootNodeForMethod(language, method));
+            RootNode rootNode = createRootNodeForMethod(language, method);
             StringBuilder signature = new StringBuilder("(");
             Parameter[] parameters = method.getParameters();
             for (int i = intrinsic.hasReceiver() ? 1 : 0; i < parameters.length; i++) {
@@ -317,7 +317,7 @@ public class InterpreterToVM {
                 methodName = method.getName();
             }
 
-            registerIntrinsic(fixTypeName(className), methodName, signature.toString(), callTarget);
+            registerIntrinsic(fixTypeName(className), methodName, signature.toString(), rootNode);
         }
     }
 
@@ -335,7 +335,7 @@ public class InterpreterToVM {
         }
     }
 
-    public void registerIntrinsic(String clazz, String methodName, String signature, CallTarget intrinsic) {
+    public void registerIntrinsic(String clazz, String methodName, String signature, RootNode intrinsic) {
         MethodKey key = new MethodKey(clazz, methodName, signature);
         assert !intrinsics.containsKey(key) : key + " intrinsic is already registered";
         assert intrinsic != null;
@@ -698,4 +698,7 @@ public class InterpreterToVM {
         }
     }
 
+    public int identityHashcode(Object obj) {
+        return System.identityHashCode(MetaUtil.unwrap(obj));
+    }
 }
