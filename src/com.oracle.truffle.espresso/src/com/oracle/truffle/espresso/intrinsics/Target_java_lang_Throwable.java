@@ -34,6 +34,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
+import com.oracle.truffle.espresso.nodes.LinkedNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectWrapper;
 
@@ -72,10 +73,10 @@ public class Target_java_lang_Throwable {
 
         RootNode rootNode = ((RootCallTarget) frame.getCallTarget()).getRootNode();
         Meta.Method.WithInstance init = meta(ste).method("<init>", void.class, String.class, String.class, String.class, int.class);
-        if (rootNode instanceof EspressoRootNode) {
-            EspressoRootNode espressoRootNode = (EspressoRootNode) rootNode;
-            String className = meta(espressoRootNode.getMethod().getDeclaringClass()).getName();
-            init.invoke(className, espressoRootNode.getMethod().getName(), null, -1);
+        if (rootNode instanceof LinkedNode) {
+            LinkedNode linkedNode = (LinkedNode) rootNode;
+            String className = linkedNode.getOriginalMethod().getDeclaringClass().getName();
+            init.invoke(className, linkedNode.getOriginalMethod().getName(), null, -1);
         } else {
             // TODO(peterssen): Get access to the original (intrinsified) method and report
             // properly.
