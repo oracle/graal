@@ -243,6 +243,8 @@ public abstract class Accessor {
 
         public abstract boolean isNativeAccessAllowed(Object vmObject, Env env);
 
+        public abstract boolean inContextPreInitialization(Object vmObject);
+
         public abstract Object createInternalContext(Object vmObject, Map<String, Object> config, TruffleContext spiContext);
 
         public abstract void initializeInternalContext(Object vmObject, Object contextImpl);

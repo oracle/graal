@@ -168,6 +168,7 @@ final class ForeignAccessFactoryGenerator {
                         messageGenerators.containsKey(Message.IS_POINTER))) {
             imports.add("com.oracle.truffle.api.nodes.RootNode");
         }
+        imports.add("com.oracle.truffle.api.dsl.GeneratedBy");
 
         for (MessageGenerator generator : messageGenerators.values()) {
             generator.addImports(imports);
