@@ -163,11 +163,40 @@ public class JniEnv {
         return new Callback(m.getParameterCount() + 1, args -> {
             assert unwrapPointer(args[0]) == getNativePointer() : "Calling " + m + " from alien JniEnv";
             Object[] shiftedArgs = Arrays.copyOfRange(args, 1, args.length);
+
+            Class<?>[] params = m.getParameterTypes();
+
+            for (int i = 0; i < shiftedArgs.length; ++i) {
+                // FIXME(peterssen): Espresso should accept interop null objects, since it doesn't
+                // we must convert to Espresso null.
+                // FIXME(peterssen): Also, do use proper nodes.
+                if (shiftedArgs[i] instanceof TruffleObject) {
+                    if (ForeignAccess.sendIsNull(Message.IS_NULL.createNode(), (TruffleObject) shiftedArgs[i])) {
+                        shiftedArgs[i] = StaticObject.NULL;
+                    }
+                } else {
+                    // TruffleNFI pass booleans as byte, do the proper conversion.
+                    if (params[i] == boolean.class) {
+                        shiftedArgs[i] = ((byte) shiftedArgs[i]) != 0;
+                    }
+                }
+            }
             assert args.length - 1 == shiftedArgs.length;
             try {
                 // Substitute raw pointer by proper `this` reference.
-                return m.invoke(JniEnv.this, shiftedArgs);
-            } catch (IllegalAccessException | InvocationTargetException e) {
+                // System.err.print("Call DEFINED method: " + m.getName() +
+                // Arrays.toString(shiftedArgs));
+                Object ret = m.invoke(JniEnv.this, shiftedArgs);
+                // System.err.println(" -> " + ret);
+                if (ret instanceof Boolean) {
+                    return (boolean) ret ? (byte) 1 : (byte) 0;
+                }
+
+                if (ret == null && !m.getReturnType().isPrimitive()) {
+                    throw EspressoError.shouldNotReachHere("Cannot return host null, only Espresso NULL");
+                }
+                return ret;
+            } catch (Exception e) {
                 throw new RuntimeException(e);
             }
         });
