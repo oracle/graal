@@ -50,7 +50,6 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.impl.FieldInfo;
 import com.oracle.truffle.espresso.impl.MethodInfo;
 import com.oracle.truffle.espresso.intrinsics.Target_java_lang_Object;
@@ -61,6 +60,7 @@ import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
+import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
 
 public class JniEnv {
@@ -235,8 +235,8 @@ public class JniEnv {
             assert args.length - 1 == shiftedArgs.length;
             try {
                 // Substitute raw pointer by proper `this` reference.
-                //System.err.print("Call DEFINED method: " + m.getName() +
-                //                Arrays.toString(shiftedArgs));
+                // System.err.print("Call DEFINED method: " + m.getName() +
+                // Arrays.toString(shiftedArgs));
                 Object ret = m.invoke(JniEnv.this, shiftedArgs);
                 // System.err.println(" -> " + ret);
                 if (ret instanceof Boolean) {
@@ -873,7 +873,7 @@ public class JniEnv {
     @JniImpl
     public Object NewObject(StaticObjectClass clazz, long methodHandle, long varargsPtr) {
         Meta.Method method = meta(methodIds.getObject(methodHandle));
-        StaticObject instance = meta(((StaticObjectClass) clazz).getMirror()).allocateInstance();
+        StaticObject instance = meta(clazz.getMirror()).allocateInstance();
         assert method.isConstructor();
         method.invokeDirect(instance, VarArgs.pop(varargsPtr, method.getParameterTypes()));
         return instance;
@@ -1049,7 +1049,9 @@ public class JniEnv {
 
     static {
         try {
+            @SuppressWarnings("unchecked")
             Class<? extends ByteBuffer> clazz = (Class<? extends ByteBuffer>) Class.forName("java.nio.DirectByteBuffer");
+            @SuppressWarnings("unchecked")
             Class<? extends ByteBuffer> bufferClazz = (Class<? extends ByteBuffer>) Class.forName("java.nio.Buffer");
             constructor = clazz.getDeclaredConstructor(long.class, int.class);
             address = bufferClazz.getDeclaredField("address");

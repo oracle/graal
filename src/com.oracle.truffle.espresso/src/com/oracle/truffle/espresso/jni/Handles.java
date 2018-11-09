@@ -46,7 +46,7 @@ public class Handles<T> {
      *
      * @param initialCapacity must be > 0
      */
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "rawtypes"})
     public Handles(int initialCapacity) {
         if (initialCapacity <= 0) {
             throw new IllegalArgumentException("initialCapacity must be > 0");
