@@ -216,14 +216,33 @@ public final class MethodInfo implements ModifiersProvider {
             CompilerDirectives.transferToInterpreterAndInvalidate();
 
             // TODO(peterssen): Rethink method substitution logic.
-            CallTarget redirectedMethod = getContext().getVm().getIntrinsic(this);
+            RootNode redirectedMethod = getContext().getVm().getIntrinsic(this);
             if (redirectedMethod != null) {
-                callTarget = redirectedMethod;
+                if (redirectedMethod instanceof IntrinsicReflectionRootNode) {
+                    ((IntrinsicReflectionRootNode) redirectedMethod).setOriginalMethod(Meta.meta(this));
+                } else if (redirectedMethod instanceof IntrinsicRootNode) {
+                    ((IntrinsicRootNode) redirectedMethod).setOriginalMethod(Meta.meta(this));
+                }
+                intrinsified = true;
+                callTarget = Truffle.getRuntime().createCallTarget(redirectedMethod);
             } else {
                 if (this.isNative()) {
                     // Bind native method.
                     System.err.println("Linking native method: " + meta(this).getDeclaringClass().getName() + "#" + getName() + " " + getSignature());
                     Meta meta = getContext().getMeta();
+
+                    // If the loader is null we have a system class, so we attempt a lookup in
+                    // the native Java library.
+                    if (getDeclaringClass().getClassLoader() == null) {
+                        // Look in libjava
+                        String mangledName = Mangle.mangleMethod(meta(this), false);
+                        try {
+                            TruffleObject nativeMethod = bind(JniEnv.javaLibrary, meta(this), mangledName);
+                            callTarget = Truffle.getRuntime().createCallTarget(new JniNativeNode(getContext().getLanguage(), nativeMethod, meta(this)));
+                            return callTarget;
+                        } catch (Throwable t) {
+                        }
+                    }
 
                     Meta.Method.WithInstance findNative = meta.knownKlass(ClassLoader.class).staticMethod("findNative", long.class, ClassLoader.class, String.class);
 
