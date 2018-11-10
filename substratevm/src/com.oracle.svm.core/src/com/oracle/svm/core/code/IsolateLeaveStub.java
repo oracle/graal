@@ -30,7 +30,7 @@ import org.graalvm.nativeimage.c.function.CEntryPoint;
  * Holder class for generated Java-to-native call stubs for calling {@link CEntryPoint} methods from
  * Java via a Java-to-native call to their native-to-Java stub.
  */
-public final class CEntryPointJavaCallStubs {
-    private CEntryPointJavaCallStubs() {
+public final class IsolateLeaveStub {
+    private IsolateLeaveStub() {
     }
 }
