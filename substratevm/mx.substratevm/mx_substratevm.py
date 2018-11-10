@@ -56,74 +56,92 @@ from mx_gate import Task
 from mx_substratevm_benchmark import run_js, host_vm_tuple, output_processors, rule_snippets # pylint: disable=unused-import
 from mx_unittest import _run_tests, _VMLauncher
 
-GRAAL_COMPILER_FLAGS = [
+GRAAL_COMPILER_FLAGS_BASE = [
+    '-XX:+UnlockExperimentalVMOptions',
+    '-XX:+EnableJVMCI',
     '-XX:-UseJVMCICompiler', # GR-8656: Do not run with Graal as JIT compiler until libgraal is available.
     '-Dtruffle.TrustAllTruffleRuntimeProviders=true', # GR-7046
 ]
 
-if mx.get_jdk(tag='default').javaCompliance <= mx.JavaCompliance('1.8'):
-    GRAAL_COMPILER_FLAGS += ['-XX:-UseJVMCIClassLoader']
+GRAAL_COMPILER_FLAGS_MAP = dict()
+GRAAL_COMPILER_FLAGS_MAP['1.8'] = ['-d64', '-noverify', '-XX:-UseJVMCIClassLoader']
+GRAAL_COMPILER_FLAGS_MAP['11'] = []
+# Disable the check for JDK-8 graal version.
+GRAAL_COMPILER_FLAGS_MAP['11'] += ['-Dsubstratevm.IgnoreGraalVersionCheck=true']
+# GR-11937: Use bytecodes instead of invoke-dynamic for string concatenation.
+GRAAL_COMPILER_FLAGS_MAP['11'] += ['-Djava.lang.invoke.stringConcat=BC_SB']
+
+
+# Turn a list of package names into a list of `--add-exports` command line arguments.
+def add_exports_from_packages(packageNameList):
+    # Return one command line argument (pair) for one package name.
+    def add_exports_to_all_unnamed(packageName):
+        return ['--add-exports', packageName + '=ALL-UNNAMED']
+
+    return itertools.chain.from_iterable(add_exports_to_all_unnamed(package) for package in packageNameList)
+
+
+# Turn a list of package names into a list of `--add-opens` command line arguments.
+def add_opens_from_packages(packageNameList):
+    # Return one command line argument (pair) for one package name.
+    def add_opens_to_all_unnamed(packageName):
+        return ['--add-opens', packageName + '=ALL-UNNAMED']
+
+    return itertools.chain.from_iterable(add_opens_to_all_unnamed(package) for package in packageNameList)
+
+
+# JVMCI access
+graal_compiler_export_packages = [
+    'jdk.internal.vm.ci/jdk.vm.ci.runtime',
+    'jdk.internal.vm.ci/jdk.vm.ci.code',
+    'jdk.internal.vm.ci/jdk.vm.ci.amd64',
+    'jdk.internal.vm.ci/jdk.vm.ci.meta',
+    'jdk.internal.vm.ci/jdk.vm.ci.hotspot',
+    'jdk.internal.vm.ci/jdk.vm.ci.common']
+GRAAL_COMPILER_FLAGS_MAP['11'].extend(add_exports_from_packages(graal_compiler_export_packages))
+
+# Packages to open to allow reflective access at runtime.
+jdk_opens_packages = [
+    # Reflective access
+    'jdk.unsupported/sun.reflect',
+    # Reflective access to jdk.internal.module.Modules, using which I can export and open other modules.
+    'java.base/jdk.internal.module'
+]
+GRAAL_COMPILER_FLAGS_MAP['11'].extend(add_opens_from_packages(jdk_opens_packages))
+
+# These packages should be opened at runtime calls to Modules.addOpens, if they are still needed.
+java_base_opens_packages = [
+    # Reflective access to jdk.internal.ref.CleanerImpl$PhantomCleanableRef.
+    'java.base/jdk.internal.ref',
+    # Reflective access to private fields of java.lang.Class.
+    'java.base/java.lang',
+    # Reflective access to java.lang.invoke.VarHandle*.
+    'java.base/java.lang.invoke',
+    # Reflective access to java.lang.Reference.referent.
+    'java.base/java.lang.ref',
+    # Reflective access to java.net.URL.getURLStreamHandler.
+    'java.base/java.net',
+    # Reflective access to java.nio.MappedByteBuffer.fd.
+    'java.base/java.nio',
+    # Reflective access to java.util.Bits.words.
+    'java.base/java.util']
+GRAAL_COMPILER_FLAGS_MAP['11'].extend(add_opens_from_packages(java_base_opens_packages))
+
+# Reflective access to org.graalvm.nativeimage.impl.ImageSingletonsSupport.
+graal_sdk_opens_packages = [
+    'org.graalvm.sdk/org.graalvm.nativeimage.impl']
+GRAAL_COMPILER_FLAGS_MAP['11'].extend(add_opens_from_packages(graal_sdk_opens_packages))
+
+def svm_java_compliance():
+    return mx.get_jdk(tag='default').javaCompliance
+
+def svm_java80():
+    return svm_java_compliance() <= mx.JavaCompliance('1.8')
+
+if svm_java80():
+    GRAAL_COMPILER_FLAGS = GRAAL_COMPILER_FLAGS_BASE + GRAAL_COMPILER_FLAGS_MAP['1.8']
 else:
-    # Disable the check for JDK-8 graal version.
-    GRAAL_COMPILER_FLAGS += ['-Dsubstratevm.IgnoreGraalVersionCheck=true']
-    # GR-11937: Use bytecodes instead of invoke-dynamic for string concatenation.
-    GRAAL_COMPILER_FLAGS += ['-Djava.lang.invoke.stringConcat=BC_SB']
-
-    # Turn a list of package names into a list of `--add-exports` command line arguments.
-    def add_exports_from_packages(packageNameList):
-        # Return one command line argument (pair) for one package name.
-        def add_exports_to_all_unnamed(packageName):
-            return ['--add-exports', packageName + '=ALL-UNNAMED']
-        return itertools.chain.from_iterable(add_exports_to_all_unnamed(package) for package in packageNameList)
-
-    # Turn a list of package names into a list of `--add-opens` command line arguments.
-    def add_opens_from_packages(packageNameList):
-        # Return one command line argument (pair) for one package name.
-        def add_opens_to_all_unnamed(packageName):
-            return ['--add-opens', packageName + '=ALL-UNNAMED']
-        return itertools.chain.from_iterable(add_opens_to_all_unnamed(package) for package in packageNameList)
-
-    # JVMCI access
-    graal_compiler_export_packages = [
-        'jdk.internal.vm.ci/jdk.vm.ci.runtime',
-        'jdk.internal.vm.ci/jdk.vm.ci.code',
-        'jdk.internal.vm.ci/jdk.vm.ci.amd64',
-        'jdk.internal.vm.ci/jdk.vm.ci.meta',
-        'jdk.internal.vm.ci/jdk.vm.ci.hotspot',
-        'jdk.internal.vm.ci/jdk.vm.ci.common']
-    GRAAL_COMPILER_FLAGS.extend(add_exports_from_packages(graal_compiler_export_packages))
-
-    # Packages to open to allow reflective access at runtime.
-    jdk_opens_packages = [
-        # Reflective access
-        'jdk.unsupported/sun.reflect',
-        # Reflective access to jdk.internal.module.Modules, using which I can export and open other modules.
-        'java.base/jdk.internal.module'
-        ]
-    GRAAL_COMPILER_FLAGS.extend(add_opens_from_packages(jdk_opens_packages))
-
-    # These packages should be opened at runtime calls to Modules.addOpens, if they are still needed.
-    java_base_opens_packages = [
-        # Reflective access to jdk.internal.ref.CleanerImpl$PhantomCleanableRef.
-        'java.base/jdk.internal.ref',
-        # Reflective access to private fields of java.lang.Class.
-        'java.base/java.lang',
-        # Reflective access to java.lang.invoke.VarHandle*.
-        'java.base/java.lang.invoke',
-        # Reflective access to java.lang.Reference.referent.
-        'java.base/java.lang.ref',
-        # Reflective access to java.net.URL.getURLStreamHandler.
-        'java.base/java.net',
-        # Reflective access to java.nio.MappedByteBuffer.fd.
-        'java.base/java.nio',
-        # Reflective access to java.util.Bits.words.
-        'java.base/java.util']
-    GRAAL_COMPILER_FLAGS.extend(add_opens_from_packages(java_base_opens_packages))
-
-    # Reflective access to org.graalvm.nativeimage.impl.ImageSingletonsSupport.
-    graal_sdk_opens_packages = [
-        'org.graalvm.sdk/org.graalvm.nativeimage.impl']
-    GRAAL_COMPILER_FLAGS.extend(add_opens_from_packages(graal_sdk_opens_packages))
+    GRAAL_COMPILER_FLAGS = GRAAL_COMPILER_FLAGS_BASE + GRAAL_COMPILER_FLAGS_MAP['11']
 
 IMAGE_ASSERTION_FLAGS = ['-H:+VerifyGraalGraphs', '-H:+VerifyGraalGraphEdges', '-H:+VerifyPhases']
 suite = mx.suite('substratevm')
@@ -167,7 +185,7 @@ def svmbuild_dir(suite=None):
 def suite_native_image_root(suite=None):
     if not suite:
         suite = svm_suite()
-    root_dir = join(svmbuild_dir(suite), 'native-image-root')
+    root_dir = join(svmbuild_dir(suite), 'native-image-root-' + str(svm_java_compliance()))
     rev_file_name = join(root_dir, 'rev')
     rev_value = suite.vc.parent(suite.vc_dir)
     def write_rev_file():
@@ -344,17 +362,24 @@ def layout_native_image_root(native_image_root):
     def native_image_extract_dists(subdir, dist_names):
         native_image_extract(names_to_dists(dist_names), subdir, native_image_root)
 
-    # Create native-image layout for sdk parts
-    native_image_layout_dists(join('lib', 'boot'), ['sdk:GRAAL_SDK'])
     native_image_layout_dists(join('lib', 'graalvm'), ['substratevm:SVM_DRIVER', 'sdk:LAUNCHER_COMMON'])
 
+    # Create native-image layout for sdk parts
+    graal_sdk_dists = ['sdk:GRAAL_SDK']
+    if svm_java80():
+        native_image_layout_dists(join('lib', 'boot'), graal_sdk_dists)
+        jvmci_dists = graalDistribution
+    else:
+        jvmci_dists = graalDistribution + graal_sdk_dists
+
     # Create native-image layout for compiler & jvmci parts
-    native_image_layout_dists(join('lib', 'jvmci'), graalDistribution)
-    jdk_config = mx.get_jdk()
-    jvmci_path = join(jdk_config.home, 'jre', 'lib', 'jvmci')
-    if os.path.isdir(jvmci_path):
-        for symlink_name in os.listdir(jvmci_path):
-            symlink_or_copy(join(jvmci_path, symlink_name), join(native_image_root, 'lib', 'jvmci', symlink_name))
+    native_image_layout_dists(join('lib', 'jvmci'), jvmci_dists)
+    if svm_java80():
+        jdk_config = mx.get_jdk()
+        jvmci_path = join(jdk_config.home, 'jre', 'lib', 'jvmci')
+        if os.path.isdir(jvmci_path):
+            for symlink_name in os.listdir(jvmci_path):
+                symlink_or_copy(join(jvmci_path, symlink_name), join(native_image_root, 'lib', 'jvmci', symlink_name))
 
     # Create native-image layout for truffle parts
     native_image_layout_dists(join('lib', 'truffle'), ['truffle:TRUFFLE_API', 'truffle:TRUFFLE_NFI'])
@@ -901,6 +926,28 @@ def build(args, vm=None):
     if not _host_os_supported():
         mx.abort('build: SubstrateVM can be built only on Darwin, Linux and Windows platforms')
 
+    graal_compiler_flags_dir = join(mx.dependency('substratevm:com.oracle.svm.driver').dir, 'resources')
+
+    def update_if_needed(version_tag, graal_compiler_flags):
+        flags_filename = 'graal-compiler-flags-' + version_tag + '.config'
+        flags_path = join(graal_compiler_flags_dir, flags_filename)
+        flags_contents = '\n'.join(graal_compiler_flags)
+        needs_update = True
+        try:
+            with open(flags_path, 'r') as flags_file:
+                if flags_file.read() == flags_contents:
+                    needs_update = False
+        except:
+            pass
+
+        if needs_update:
+            with open(flags_path, 'w') as f:
+                print('Write file ' + flags_path)
+                f.write(flags_contents)
+
+    for version_tag in GRAAL_COMPILER_FLAGS_MAP:
+        update_if_needed(version_tag, GRAAL_COMPILER_FLAGS_BASE + GRAAL_COMPILER_FLAGS_MAP[version_tag])
+
     orig_command_build(args, vm)
 
 
@@ -918,8 +965,11 @@ def native_image_on_jvm(args, **kwargs):
     driver_cp = list(itertools.chain.from_iterable(glob.glob(cp) for cp in driver_cp))
 
     svm_version = suite.release_version(snapshotSuffix='SNAPSHOT')
-    run_java(['-Dorg.graalvm.version=' + svm_version, '-Dnative-image.root=' + suite_native_image_root(), '-cp', os.pathsep.join(driver_cp),
-              mx.dependency('substratevm:SVM_DRIVER').mainClass] + save_args, **kwargs)
+    run_java([
+        '-Dorg.graalvm.version=' + svm_version,
+        '-Dnative-image.root=' + suite_native_image_root(),
+        '-cp', os.pathsep.join(driver_cp),
+        mx.dependency('substratevm:SVM_DRIVER').mainClass] + save_args, **kwargs)
 
 
 @mx.command(suite.name, 'native-unittest')
