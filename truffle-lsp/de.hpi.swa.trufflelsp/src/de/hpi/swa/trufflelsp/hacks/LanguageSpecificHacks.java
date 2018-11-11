@@ -2,6 +2,7 @@ package de.hpi.swa.trufflelsp.hacks;
 
 import java.util.Map;
 
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.interop.TruffleObject;
 
 import de.hpi.swa.trufflelsp.interop.ObjectStructures;
@@ -42,5 +43,15 @@ public class LanguageSpecificHacks {
             }
         }
         return definitionSearchSymbol;
+    }
+
+    public static Class<?>[] getSupportedTags(String langId) {
+        if (enableLanguageSpecificHacks) {
+            if ("R".equals(langId)) {
+                // R supports no ExpressionTags in vm-1.0.0-rc7, but AnonymousBodyNode has a RootTag
+                return new Class<?>[]{StandardTags.RootTag.class};
+            }
+        }
+        return null;
     }
 }

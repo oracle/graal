@@ -212,7 +212,8 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
     private void fillCompletionsWithObjectProperties(TextDocumentSurrogate surrogate, int line, int character, CompletionList completions) throws DiagnosticsNotification {
         SourceWrapper sourceWrapper = surrogate.getSourceWrapper();
         Source source = sourceWrapper.getSource();
-        NearestNode nearestNodeHolder = NearestSectionsFinder.findNearestNode(source, line, character, env, StandardTags.ExpressionTag.class);
+        Class<?>[] tags = LanguageSpecificHacks.getSupportedTags(surrogate.getLangId());
+        NearestNode nearestNodeHolder = NearestSectionsFinder.findNearestNode(source, line, character, env, tags != null ? tags : new Class<?>[]{StandardTags.ExpressionTag.class});
         Node nearestNode = nearestNodeHolder.getNode();
 
         if (!isInstrumentable(nearestNode)) {
