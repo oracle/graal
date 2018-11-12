@@ -1098,6 +1098,7 @@ public class JniEnv {
 
     @JniImpl
     public Object NewLocalRef(Object obj) {
+        // Local ref is allocated by host JNI on return.
         return obj;
     }
 
@@ -1241,6 +1242,13 @@ public class JniEnv {
                 .STRING.metaNew() //
                 .fields(Meta.Field.set("value", value)) //
                 .getInstance();
+    }
+
+    @JniImpl
+    public void GetStringRegion(StaticObject str, int start, int len, long bufPtr) {
+        final char[] chars = (char[]) meta(str).field("value").get();
+        CharBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Char).asCharBuffer();
+        buf.put(chars, start, len);
     }
 
     private static ByteBuffer directByteBuffer(long address, long capacity, JavaKind kind) {
