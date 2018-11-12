@@ -258,11 +258,14 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
                 return props, remaining_args
 
             props, launcher_args = _filter_properties(launcher_args)
-            sulongCmdLine = mx_sulong.getClasspathOptions() + \
+            sulongCmdLine = self.launcher_classpath() + \
                             props + \
                             ['-XX:-UseJVMCIClassLoader', "com.oracle.truffle.llvm.launcher.LLVMLauncher"]
             result = self.host_vm().run(cwd, sulongCmdLine + launcher_args)
         return result
+
+    def launcher_classpath(self):
+        return mx_sulong.getClasspathOptions()
 
     def prepare_env(self, env):
         env['CFLAGS'] = ' '.join(_env_flags + ['-lm', '-lgmp'])
