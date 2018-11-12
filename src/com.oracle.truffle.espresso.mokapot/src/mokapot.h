@@ -1,0 +1,663 @@
+#ifndef __MOKAPOT_H
+#define __MOKAPOT_H
+
+#include "jvm.h"
+#include "jni.h"
+
+struct MokapotNativeInterface_;
+struct MokapotEnv_;
+
+#ifdef __cplusplus
+typedef MokapotEnv_ MokapotEnv;
+#else
+typedef const struct MokapotNativeInterface_ *MokapotEnv;
+#endif
+
+#define VM_METHOD_LIST(V) \
+    V(JVM_GetInterfaceVersion) \
+    V(JVM_IHashCode) \
+    V(JVM_MonitorWait) \
+    V(JVM_MonitorNotify) \
+    V(JVM_MonitorNotifyAll) \
+    V(JVM_Clone) \
+    V(JVM_InternString) \
+    V(JVM_CurrentTimeMillis) \
+    V(JVM_NanoTime) \
+    V(JVM_ArrayCopy) \
+    V(JVM_InitProperties) \
+    V(JVM_OnExit) \
+    V(JVM_Exit) \
+    V(JVM_Halt) \
+    V(JVM_GC) \
+    V(JVM_MaxObjectInspectionAge) \
+    V(JVM_TraceInstructions) \
+    V(JVM_TraceMethodCalls) \
+    V(JVM_TotalMemory) \
+    V(JVM_FreeMemory) \
+    V(JVM_MaxMemory) \
+    V(JVM_ActiveProcessorCount) \
+    V(JVM_LoadLibrary) \
+    V(JVM_UnloadLibrary) \
+    V(JVM_FindLibraryEntry) \
+    V(JVM_IsSupportedJNIVersion) \
+    V(JVM_IsNaN) \
+    V(JVM_FillInStackTrace) \
+    V(JVM_GetStackTraceDepth) \
+    V(JVM_GetStackTraceElement) \
+    V(JVM_InitializeCompiler) \
+    V(JVM_IsSilentCompiler) \
+    V(JVM_CompileClass) \
+    V(JVM_CompileClasses) \
+    V(JVM_CompilerCommand) \
+    V(JVM_EnableCompiler) \
+    V(JVM_DisableCompiler) \
+    V(JVM_StartThread) \
+    V(JVM_StopThread) \
+    V(JVM_IsThreadAlive) \
+    V(JVM_SuspendThread) \
+    V(JVM_ResumeThread) \
+    V(JVM_SetThreadPriority) \
+    V(JVM_Yield) \
+    V(JVM_Sleep) \
+    V(JVM_CurrentThread) \
+    V(JVM_CountStackFrames) \
+    V(JVM_Interrupt) \
+    V(JVM_IsInterrupted) \
+    V(JVM_HoldsLock) \
+    V(JVM_DumpAllStacks) \
+    V(JVM_GetAllThreads) \
+    V(JVM_SetNativeThreadName) \
+    V(JVM_DumpThreads) \
+    V(JVM_CurrentLoadedClass) \
+    V(JVM_CurrentClassLoader) \
+    V(JVM_GetClassContext) \
+    V(JVM_ClassDepth) \
+    V(JVM_ClassLoaderDepth) \
+    V(JVM_GetSystemPackage) \
+    V(JVM_GetSystemPackages) \
+    V(JVM_AllocateNewObject) \
+    V(JVM_AllocateNewArray) \
+    V(JVM_LatestUserDefinedLoader) \
+    V(JVM_LoadClass0) \
+    V(JVM_GetArrayLength) \
+    V(JVM_GetArrayElement) \
+    V(JVM_GetPrimitiveArrayElement) \
+    V(JVM_SetArrayElement) \
+    V(JVM_SetPrimitiveArrayElement) \
+    V(JVM_NewArray) \
+    V(JVM_NewMultiArray) \
+    V(JVM_GetCallerClass) \
+    V(JVM_FindPrimitiveClass) \
+    V(JVM_ResolveClass) \
+    V(JVM_FindClassFromBootLoader) \
+    V(JVM_FindClassFromCaller) \
+    V(JVM_FindClassFromClassLoader) \
+    V(JVM_FindClassFromClass) \
+    V(JVM_FindLoadedClass) \
+    V(JVM_DefineClass) \
+    V(JVM_DefineClassWithSource) \
+    V(JVM_GetClassName) \
+    V(JVM_GetClassInterfaces) \
+    V(JVM_IsInterface) \
+    V(JVM_GetClassSigners) \
+    V(JVM_SetClassSigners) \
+    V(JVM_GetProtectionDomain) \
+    V(JVM_IsArrayClass) \
+    V(JVM_IsPrimitiveClass) \
+    V(JVM_GetComponentType) \
+    V(JVM_GetClassModifiers) \
+    V(JVM_GetDeclaredClasses) \
+    V(JVM_GetDeclaringClass) \
+    V(JVM_GetClassSignature) \
+    V(JVM_GetClassAnnotations) \
+    V(JVM_GetClassTypeAnnotations) \
+    V(JVM_GetFieldTypeAnnotations) \
+    V(JVM_GetMethodTypeAnnotations) \
+    V(JVM_GetClassDeclaredMethods) \
+    V(JVM_GetClassDeclaredFields) \
+    V(JVM_GetClassDeclaredConstructors) \
+    V(JVM_GetClassAccessFlags) \
+    V(JVM_InvokeMethod) \
+    V(JVM_NewInstanceFromConstructor) \
+    V(JVM_GetClassConstantPool) \
+    V(JVM_ConstantPoolGetSize) \
+    V(JVM_ConstantPoolGetClassAt) \
+    V(JVM_ConstantPoolGetClassAtIfLoaded) \
+    V(JVM_ConstantPoolGetMethodAt) \
+    V(JVM_ConstantPoolGetMethodAtIfLoaded) \
+    V(JVM_ConstantPoolGetFieldAt) \
+    V(JVM_ConstantPoolGetFieldAtIfLoaded) \
+    V(JVM_ConstantPoolGetMemberRefInfoAt) \
+    V(JVM_ConstantPoolGetIntAt) \
+    V(JVM_ConstantPoolGetLongAt) \
+    V(JVM_ConstantPoolGetFloatAt) \
+    V(JVM_ConstantPoolGetDoubleAt) \
+    V(JVM_ConstantPoolGetStringAt) \
+    V(JVM_ConstantPoolGetUTF8At) \
+    V(JVM_GetMethodParameters) \
+    V(JVM_DoPrivileged) \
+    V(JVM_GetInheritedAccessControlContext) \
+    V(JVM_GetStackAccessControlContext) \
+    V(JVM_RegisterSignal) \
+    V(JVM_RaiseSignal) \
+    V(JVM_FindSignal) \
+    V(JVM_DesiredAssertionStatus) \
+    V(JVM_AssertionStatusDirectives) \
+    V(JVM_SupportsCX8) \
+    V(JVM_DTraceGetVersion) \
+    V(JVM_DTraceActivate) \
+    V(JVM_DTraceIsProbeEnabled) \
+    V(JVM_DTraceDispose) \
+    V(JVM_DTraceIsSupported) \
+    V(JVM_GetClassNameUTF) \
+    V(JVM_GetClassCPTypes) \
+    V(JVM_GetClassCPEntriesCount) \
+    V(JVM_GetClassFieldsCount) \
+    V(JVM_GetClassMethodsCount) \
+    V(JVM_GetMethodIxExceptionIndexes) \
+    V(JVM_GetMethodIxExceptionsCount) \
+    V(JVM_GetMethodIxByteCode) \
+    V(JVM_GetMethodIxByteCodeLength) \
+    V(JVM_GetMethodIxExceptionTableEntry) \
+    V(JVM_GetMethodIxExceptionTableLength) \
+    V(JVM_GetFieldIxModifiers) \
+    V(JVM_GetMethodIxModifiers) \
+    V(JVM_GetMethodIxLocalsCount) \
+    V(JVM_GetMethodIxArgsSize) \
+    V(JVM_GetMethodIxMaxStack) \
+    V(JVM_IsConstructorIx) \
+    V(JVM_IsVMGeneratedMethodIx) \
+    V(JVM_GetMethodIxNameUTF) \
+    V(JVM_GetMethodIxSignatureUTF) \
+    V(JVM_GetCPFieldNameUTF) \
+    V(JVM_GetCPMethodNameUTF) \
+    V(JVM_GetCPMethodSignatureUTF) \
+    V(JVM_GetCPFieldSignatureUTF) \
+    V(JVM_GetCPClassNameUTF) \
+    V(JVM_GetCPFieldClassNameUTF) \
+    V(JVM_GetCPMethodClassNameUTF) \
+    V(JVM_GetCPFieldModifiers) \
+    V(JVM_GetCPMethodModifiers) \
+    V(JVM_ReleaseUTF) \
+    V(JVM_IsSameClassPackage) \
+    V(JVM_GetLastErrorString) \
+    V(JVM_NativePath) \
+    V(JVM_Open) \
+    V(JVM_Close) \
+    V(JVM_Read) \
+    V(JVM_Write) \
+    V(JVM_Available) \
+    V(JVM_Lseek) \
+    V(JVM_SetLength) \
+    V(JVM_Sync) \
+    V(JVM_InitializeSocketLibrary) \
+    V(JVM_Socket) \
+    V(JVM_SocketClose) \
+    V(JVM_SocketShutdown) \
+    V(JVM_Recv) \
+    V(JVM_Send) \
+    V(JVM_Timeout) \
+    V(JVM_Listen) \
+    V(JVM_Connect) \
+    V(JVM_Bind) \
+    V(JVM_Accept) \
+    V(JVM_RecvFrom) \
+    V(JVM_SendTo) \
+    V(JVM_SocketAvailable) \
+    V(JVM_GetSockName) \
+    V(JVM_GetSockOpt) \
+    V(JVM_SetSockOpt) \
+    V(JVM_GetHostName) \
+    V(JVM_RawMonitorCreate) \
+    V(JVM_RawMonitorDestroy) \
+    V(JVM_RawMonitorEnter) \
+    V(JVM_RawMonitorExit) \
+    V(JVM_GetManagement) \
+    V(JVM_InitAgentProperties) \
+    V(JVM_GetTemporaryDirectory) \
+    V(JVM_GetEnclosingMethodInfo) \
+    V(JVM_GetThreadStateValues) \
+    V(JVM_GetThreadStateNames) \
+    V(JVM_KnownToNotExist) \
+    V(JVM_GetResourceLookupCacheURLs) \
+    V(JVM_GetResourceLookupCache) \
+    V(JVM_GetVersionInfo)
+
+
+struct MokapotNativeInterface_ {
+
+jint (*JVM_GetInterfaceVersion)(void);
+
+jint (*JVM_IHashCode)(JNIEnv *env, jobject obj);
+
+void (*JVM_MonitorWait)(JNIEnv *env, jobject obj, jlong ms);
+
+void (*JVM_MonitorNotify)(JNIEnv *env, jobject obj);
+
+void (*JVM_MonitorNotifyAll)(JNIEnv *env, jobject obj);
+
+jobject (*JVM_Clone)(JNIEnv *env, jobject obj);
+
+jstring (*JVM_InternString)(JNIEnv *env, jstring str);
+
+jlong (*JVM_CurrentTimeMillis)(JNIEnv *env, jclass ignored);
+
+jlong (*JVM_NanoTime)(JNIEnv *env, jclass ignored);
+
+void (*JVM_ArrayCopy)(JNIEnv *env, jclass ignored, jobject src, jint src_pos,
+            jobject dst, jint dst_pos, jint length);
+jobject (*JVM_InitProperties)(JNIEnv *env, jobject p);
+
+void (*JVM_OnExit)(void (*func)(void));
+
+void (*JVM_Exit)(jint code);
+
+void (*JVM_Halt)(jint code);
+
+void (*JVM_GC)(void);
+
+jlong (*JVM_MaxObjectInspectionAge)(void);
+
+void (*JVM_TraceInstructions)(jboolean on);
+
+void (*JVM_TraceMethodCalls)(jboolean on);
+
+jlong (*JVM_TotalMemory)(void);
+
+jlong (*JVM_FreeMemory)(void);
+
+jlong (*JVM_MaxMemory)(void);
+
+jint (*JVM_ActiveProcessorCount)(void);
+
+void * (*JVM_LoadLibrary)(const char *name);
+
+void (*JVM_UnloadLibrary)(void * handle);
+
+void * (*JVM_FindLibraryEntry)(void *handle, const char *name);
+
+jboolean (*JVM_IsSupportedJNIVersion)(jint version);
+
+jboolean (*JVM_IsNaN)(jdouble d);
+
+void (*JVM_FillInStackTrace)(JNIEnv *env, jobject throwable);
+
+jint (*JVM_GetStackTraceDepth)(JNIEnv *env, jobject throwable);
+
+jobject (*JVM_GetStackTraceElement)(JNIEnv *env, jobject throwable, jint index);
+
+void (*JVM_InitializeCompiler) (JNIEnv *env, jclass compCls);
+
+jboolean (*JVM_IsSilentCompiler)(JNIEnv *env, jclass compCls);
+
+jboolean (*JVM_CompileClass)(JNIEnv *env, jclass compCls, jclass cls);
+
+jboolean (*JVM_CompileClasses)(JNIEnv *env, jclass cls, jstring jname);
+
+jobject (*JVM_CompilerCommand)(JNIEnv *env, jclass compCls, jobject arg);
+
+void (*JVM_EnableCompiler)(JNIEnv *env, jclass compCls);
+
+void (*JVM_DisableCompiler)(JNIEnv *env, jclass compCls);
+
+void (*JVM_StartThread)(JNIEnv *env, jobject thread);
+
+void (*JVM_StopThread)(JNIEnv *env, jobject thread, jobject exception);
+
+jboolean (*JVM_IsThreadAlive)(JNIEnv *env, jobject thread);
+
+void (*JVM_SuspendThread)(JNIEnv *env, jobject thread);
+
+void (*JVM_ResumeThread)(JNIEnv *env, jobject thread);
+
+void (*JVM_SetThreadPriority)(JNIEnv *env, jobject thread, jint prio);
+
+void (*JVM_Yield)(JNIEnv *env, jclass threadClass);
+
+void (*JVM_Sleep)(JNIEnv *env, jclass threadClass, jlong millis);
+
+jobject (*JVM_CurrentThread)(JNIEnv *env, jclass threadClass);
+
+jint (*JVM_CountStackFrames)(JNIEnv *env, jobject thread);
+
+void (*JVM_Interrupt)(JNIEnv *env, jobject thread);
+
+jboolean (*JVM_IsInterrupted)(JNIEnv *env, jobject thread, jboolean clearInterrupted);
+
+jboolean (*JVM_HoldsLock)(JNIEnv *env, jclass threadClass, jobject obj);
+
+void (*JVM_DumpAllStacks)(JNIEnv *env, jclass unused);
+
+jobjectArray (*JVM_GetAllThreads)(JNIEnv *env, jclass dummy);
+
+void (*JVM_SetNativeThreadName)(JNIEnv *env, jobject jthread, jstring name);
+
+jobjectArray (*JVM_DumpThreads)(JNIEnv *env, jclass threadClass, jobjectArray threads);
+
+jclass (*JVM_CurrentLoadedClass)(JNIEnv *env);
+
+jobject (*JVM_CurrentClassLoader)(JNIEnv *env);
+
+jobjectArray (*JVM_GetClassContext)(JNIEnv *env);
+
+jint (*JVM_ClassDepth)(JNIEnv *env, jstring name);
+
+jint (*JVM_ClassLoaderDepth)(JNIEnv *env);
+
+jstring (*JVM_GetSystemPackage)(JNIEnv *env, jstring name);
+
+jobjectArray (*JVM_GetSystemPackages)(JNIEnv *env);
+
+jobject (*JVM_AllocateNewObject)(JNIEnv *env, jobject obj, jclass currClass,
+                    jclass initClass);
+jobject (*JVM_AllocateNewArray)(JNIEnv *env, jobject obj, jclass currClass,
+                    jint length);
+jobject (*JVM_LatestUserDefinedLoader)(JNIEnv *env);
+
+jclass (*JVM_LoadClass0)(JNIEnv *env, jobject obj, jclass currClass,
+            jstring currClassName);
+jint (*JVM_GetArrayLength)(JNIEnv *env, jobject arr);
+
+jobject (*JVM_GetArrayElement)(JNIEnv *env, jobject arr, jint index);
+
+jvalue (*JVM_GetPrimitiveArrayElement)(JNIEnv *env, jobject arr, jint index, jint wCode);
+
+void (*JVM_SetArrayElement)(JNIEnv *env, jobject arr, jint index, jobject val);
+
+void (*JVM_SetPrimitiveArrayElement)(JNIEnv *env, jobject arr, jint index, jvalue v,
+                            unsigned char vCode);
+jobject (*JVM_NewArray)(JNIEnv *env, jclass eltClass, jint length);
+
+jobject (*JVM_NewMultiArray)(JNIEnv *env, jclass eltClass, jintArray dim);
+
+jclass (*JVM_GetCallerClass)(JNIEnv *env, int depth);
+
+jclass (*JVM_FindPrimitiveClass)(JNIEnv *env, const char *utf);
+
+void (*JVM_ResolveClass)(JNIEnv *env, jclass cls);
+
+jclass (*JVM_FindClassFromBootLoader)(JNIEnv *env, const char *name);
+
+jclass (*JVM_FindClassFromCaller)(JNIEnv *env, const char *name, jboolean init,
+                        jobject loader, jclass caller);
+jclass (*JVM_FindClassFromClassLoader)(JNIEnv *env, const char *name, jboolean init,
+                            jobject loader, jboolean throwError);
+jclass (*JVM_FindClassFromClass)(JNIEnv *env, const char *name, jboolean init,
+                            jclass from);
+jclass (*JVM_FindLoadedClass)(JNIEnv *env, jobject loader, jstring name);
+
+jclass (*JVM_DefineClass)(JNIEnv *env, const char *name, jobject loader, const jbyte *buf,
+                jsize len, jobject pd);
+
+jclass (*JVM_DefineClassWithSource)(JNIEnv *env, const char *name, jobject loader,
+                        const jbyte *buf, jsize len, jobject pd,
+                        const char *source);
+
+jstring (*JVM_GetClassName)(JNIEnv *env, jclass cls);
+
+jobjectArray (*JVM_GetClassInterfaces)(JNIEnv *env, jclass cls);
+
+jboolean (*JVM_IsInterface)(JNIEnv *env, jclass cls);
+
+jobjectArray (*JVM_GetClassSigners)(JNIEnv *env, jclass cls);
+
+void (*JVM_SetClassSigners)(JNIEnv *env, jclass cls, jobjectArray signers);
+
+jobject (*JVM_GetProtectionDomain)(JNIEnv *env, jclass cls);
+
+jboolean (*JVM_IsArrayClass)(JNIEnv *env, jclass cls);
+
+jboolean (*JVM_IsPrimitiveClass)(JNIEnv *env, jclass cls);
+
+jclass (*JVM_GetComponentType)(JNIEnv *env, jclass cls);
+
+jint (*JVM_GetClassModifiers)(JNIEnv *env, jclass cls);
+
+jobjectArray (*JVM_GetDeclaredClasses)(JNIEnv *env, jclass ofClass);
+
+jclass (*JVM_GetDeclaringClass)(JNIEnv *env, jclass ofClass);
+
+jstring (*JVM_GetClassSignature)(JNIEnv *env, jclass cls);
+
+jbyteArray (*JVM_GetClassAnnotations)(JNIEnv *env, jclass cls);
+
+jbyteArray (*JVM_GetClassTypeAnnotations)(JNIEnv *env, jclass cls);
+
+jbyteArray (*JVM_GetFieldTypeAnnotations)(JNIEnv *env, jobject field);
+
+jbyteArray (*JVM_GetMethodTypeAnnotations)(JNIEnv *env, jobject method);
+
+jobjectArray (*JVM_GetClassDeclaredMethods)(JNIEnv *env, jclass ofClass, jboolean publicOnly);
+
+jobjectArray (*JVM_GetClassDeclaredFields)(JNIEnv *env, jclass ofClass, jboolean publicOnly);
+
+jobjectArray (*JVM_GetClassDeclaredConstructors)(JNIEnv *env, jclass ofClass, jboolean publicOnly);
+
+jint (*JVM_GetClassAccessFlags)(JNIEnv *env, jclass cls);
+
+jobject (*JVM_InvokeMethod)(JNIEnv *env, jobject method, jobject obj, jobjectArray args0);
+
+jobject (*JVM_NewInstanceFromConstructor)(JNIEnv *env, jobject c, jobjectArray args0);
+
+jobject (*JVM_GetClassConstantPool)(JNIEnv *env, jclass cls);
+
+jint (*JVM_ConstantPoolGetSize)(JNIEnv *env, jobject unused, jobject jcpool);
+
+jclass (*JVM_ConstantPoolGetClassAt)(JNIEnv *env, jobject unused, jobject jcpool, jint index);
+
+jclass (*JVM_ConstantPoolGetClassAtIfLoaded)(JNIEnv *env, jobject unused, jobject jcpool, jint index);
+
+jobject (*JVM_ConstantPoolGetMethodAt)(JNIEnv *env, jobject unused, jobject jcpool, jint index);
+
+jobject (*JVM_ConstantPoolGetMethodAtIfLoaded)(JNIEnv *env, jobject unused, jobject jcpool, jint index);
+
+jobject (*JVM_ConstantPoolGetFieldAt)(JNIEnv *env, jobject unused, jobject jcpool, jint index);
+
+jobject (*JVM_ConstantPoolGetFieldAtIfLoaded)(JNIEnv *env, jobject unused, jobject jcpool, jint index);
+
+jobjectArray (*JVM_ConstantPoolGetMemberRefInfoAt)(JNIEnv *env, jobject unused, jobject jcpool, jint index);
+
+jint (*JVM_ConstantPoolGetIntAt)(JNIEnv *env, jobject unused, jobject jcpool, jint index);
+
+jlong (*JVM_ConstantPoolGetLongAt)(JNIEnv *env, jobject unused, jobject jcpool, jint index);
+
+jfloat (*JVM_ConstantPoolGetFloatAt)(JNIEnv *env, jobject unused, jobject jcpool, jint index);
+
+jdouble (*JVM_ConstantPoolGetDoubleAt)(JNIEnv *env, jobject unused, jobject jcpool, jint index);
+
+jstring (*JVM_ConstantPoolGetStringAt)(JNIEnv *env, jobject unused, jobject jcpool, jint index);
+
+jstring (*JVM_ConstantPoolGetUTF8At)(JNIEnv *env, jobject unused, jobject jcpool, jint index);
+
+jobjectArray (*JVM_GetMethodParameters)(JNIEnv *env, jobject method);
+
+jobject (*JVM_DoPrivileged)(JNIEnv *env, jclass cls,
+                jobject action, jobject context, jboolean wrapException);
+jobject (*JVM_GetInheritedAccessControlContext)(JNIEnv *env, jclass cls);
+
+jobject (*JVM_GetStackAccessControlContext)(JNIEnv *env, jclass cls);
+
+void * (*JVM_RegisterSignal)(jint sig, void *handler);
+
+jboolean (*JVM_RaiseSignal)(jint sig);
+
+jint (*JVM_FindSignal)(const char *name);
+
+jboolean (*JVM_DesiredAssertionStatus)(JNIEnv *env, jclass unused, jclass cls);
+
+jobject (*JVM_AssertionStatusDirectives)(JNIEnv *env, jclass unused);
+
+jboolean (*JVM_SupportsCX8)(void);
+
+jint (*JVM_DTraceGetVersion)(JNIEnv* env);
+
+jlong (*JVM_DTraceActivate)(JNIEnv* env, jint version, jstring module_name,
+jint providers_count, JVM_DTraceProvider* providers);
+jboolean (*JVM_DTraceIsProbeEnabled)(JNIEnv* env, jmethodID method);
+
+void (*JVM_DTraceDispose)(JNIEnv* env, jlong activation_handle);
+
+jboolean (*JVM_DTraceIsSupported)(JNIEnv* env);
+
+const char * (*JVM_GetClassNameUTF)(JNIEnv *env, jclass cb);
+
+void (*JVM_GetClassCPTypes)(JNIEnv *env, jclass cb, unsigned char *types);
+
+jint (*JVM_GetClassCPEntriesCount)(JNIEnv *env, jclass cb);
+
+jint (*JVM_GetClassFieldsCount)(JNIEnv *env, jclass cb);
+
+jint (*JVM_GetClassMethodsCount)(JNIEnv *env, jclass cb);
+
+void (*JVM_GetMethodIxExceptionIndexes)(JNIEnv *env, jclass cb, jint method_index,
+                                unsigned short *exceptions);
+jint (*JVM_GetMethodIxExceptionsCount)(JNIEnv *env, jclass cb, jint method_index);
+
+void (*JVM_GetMethodIxByteCode)(JNIEnv *env, jclass cb, jint method_index,
+                        unsigned char *code);
+jint (*JVM_GetMethodIxByteCodeLength)(JNIEnv *env, jclass cb, jint method_index);
+
+void (*JVM_GetMethodIxExceptionTableEntry)(JNIEnv *env, jclass cb, jint method_index,
+                                jint entry_index,
+                                JVM_ExceptionTableEntryType *entry);
+
+jint (*JVM_GetMethodIxExceptionTableLength)(JNIEnv *env, jclass cb, int index);
+
+jint (*JVM_GetFieldIxModifiers)(JNIEnv *env, jclass cb, int index);
+
+jint (*JVM_GetMethodIxModifiers)(JNIEnv *env, jclass cb, int index);
+
+jint (*JVM_GetMethodIxLocalsCount)(JNIEnv *env, jclass cb, int index);
+
+jint (*JVM_GetMethodIxArgsSize)(JNIEnv *env, jclass cb, int index);
+
+jint (*JVM_GetMethodIxMaxStack)(JNIEnv *env, jclass cb, int index);
+
+jboolean (*JVM_IsConstructorIx)(JNIEnv *env, jclass cb, int index);
+
+jboolean (*JVM_IsVMGeneratedMethodIx)(JNIEnv *env, jclass cb, int index);
+
+const char * (*JVM_GetMethodIxNameUTF)(JNIEnv *env, jclass cb, jint index);
+
+const char * (*JVM_GetMethodIxSignatureUTF)(JNIEnv *env, jclass cb, jint index);
+
+const char * (*JVM_GetCPFieldNameUTF)(JNIEnv *env, jclass cb, jint index);
+
+const char * (*JVM_GetCPMethodNameUTF)(JNIEnv *env, jclass cb, jint index);
+
+const char * (*JVM_GetCPMethodSignatureUTF)(JNIEnv *env, jclass cb, jint index);
+
+const char * (*JVM_GetCPFieldSignatureUTF)(JNIEnv *env, jclass cb, jint index);
+
+const char * (*JVM_GetCPClassNameUTF)(JNIEnv *env, jclass cb, jint index);
+
+const char * (*JVM_GetCPFieldClassNameUTF)(JNIEnv *env, jclass cb, jint index);
+
+const char * (*JVM_GetCPMethodClassNameUTF)(JNIEnv *env, jclass cb, jint index);
+
+jint (*JVM_GetCPFieldModifiers)(JNIEnv *env, jclass cb, int index, jclass calledClass);
+
+jint (*JVM_GetCPMethodModifiers)(JNIEnv *env, jclass cb, int index, jclass calledClass);
+
+void (*JVM_ReleaseUTF)(const char *utf);
+
+jboolean (*JVM_IsSameClassPackage)(JNIEnv *env, jclass class1, jclass class2);
+
+jint (*JVM_GetLastErrorString)(char *buf, int len);
+
+char * (*JVM_NativePath)(char *);
+
+jint (*JVM_Open)(const char *fname, jint flags, jint mode);
+
+jint (*JVM_Close)(jint fd);
+
+jint (*JVM_Read)(jint fd, char *buf, jint nbytes);
+
+jint (*JVM_Write)(jint fd, char *buf, jint nbytes);
+
+jint (*JVM_Available)(jint fd, jlong *pbytes);
+
+jlong (*JVM_Lseek)(jint fd, jlong offset, jint whence);
+
+jint (*JVM_SetLength)(jint fd, jlong length);
+
+jint (*JVM_Sync)(jint fd);
+
+jint (*JVM_InitializeSocketLibrary)(void);
+
+jint (*JVM_Socket)(jint domain, jint type, jint protocol);
+
+jint (*JVM_SocketClose)(jint fd);
+
+jint (*JVM_SocketShutdown)(jint fd, jint howto);
+
+jint (*JVM_Recv)(jint fd, char *buf, jint nBytes, jint flags);
+
+jint (*JVM_Send)(jint fd, char *buf, jint nBytes, jint flags);
+
+jint (*JVM_Timeout)(int fd, long timeout);
+
+jint (*JVM_Listen)(jint fd, jint count);
+
+jint (*JVM_Connect)(jint fd, struct sockaddr *him, jint len);
+
+jint (*JVM_Bind)(jint fd, struct sockaddr *him, jint len);
+
+jint (*JVM_Accept)(jint fd, struct sockaddr *him, jint *len);
+
+jint (*JVM_RecvFrom)(jint fd, char *buf, int nBytes,
+                int flags, struct sockaddr *from, int *fromlen);
+jint (*JVM_SendTo)(jint fd, char *buf, int len,
+                int flags, struct sockaddr *to, int tolen);
+jint (*JVM_SocketAvailable)(jint fd, jint *result);
+
+jint (*JVM_GetSockName)(jint fd, struct sockaddr *him, int *len);
+
+jint (*JVM_GetSockOpt)(jint fd, int level, int optname, char *optval, int *optlen);
+
+jint (*JVM_SetSockOpt)(jint fd, int level, int optname, const char *optval, int optlen);
+
+int (*JVM_GetHostName)(char* name, int namelen);
+
+void * (*JVM_RawMonitorCreate)(void);
+
+void (*JVM_RawMonitorDestroy)(void *mon);
+
+jint (*JVM_RawMonitorEnter)(void *mon);
+
+void (*JVM_RawMonitorExit)(void *mon);
+
+void* (*JVM_GetManagement)(jint version);
+
+jobject (*JVM_InitAgentProperties)(JNIEnv *env, jobject agent_props);
+
+jstring (*JVM_GetTemporaryDirectory)(JNIEnv *env);
+
+jobjectArray (*JVM_GetEnclosingMethodInfo)(JNIEnv* env, jclass ofClass);
+
+jintArray (*JVM_GetThreadStateValues)(JNIEnv* env, jint javaThreadState);
+
+jobjectArray (*JVM_GetThreadStateNames)(JNIEnv* env, jint javaThreadState, jintArray values);
+
+jboolean (*JVM_KnownToNotExist)(JNIEnv *env, jobject loader, const char *classname);
+
+jobjectArray (*JVM_GetResourceLookupCacheURLs)(JNIEnv *env, jobject loader);
+
+jintArray (*JVM_GetResourceLookupCache)(JNIEnv *env, jobject loader, const char *resource_name);
+
+void (*JVM_GetVersionInfo)(JNIEnv* env, jvm_version_info* info, size_t info_size);
+
+void (*Mokapot_SetJNIEnv)(JNIEnv* env);
+
+};
+
+struct MokapotEnv_ {
+    const struct MokapotNativeInterface_ *functions;
+    // Add C++ methods
+    #ifdef __cplusplus
+
+    #endif
+};
+
+
+#endif
