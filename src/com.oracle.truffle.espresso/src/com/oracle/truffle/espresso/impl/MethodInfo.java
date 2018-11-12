@@ -155,39 +155,6 @@ public final class MethodInfo implements ModifiersProvider {
         throw EspressoError.unimplemented();
     }
 
-    private static NativeSimpleType kindToType(JavaKind kind, boolean javaToNative) {
-        switch (kind) {
-            case Boolean:
-                return NativeSimpleType.UINT8; // ?
-            case Short:
-                return NativeSimpleType.SINT16;
-            case Char:
-                return NativeSimpleType.UINT16;
-            case Long:
-                return NativeSimpleType.SINT64;
-            case Float:
-                return NativeSimpleType.FLOAT;
-            case Double:
-                return NativeSimpleType.DOUBLE;
-            case Int:
-                return NativeSimpleType.SINT32;
-            case Byte:
-                return NativeSimpleType.SINT8;
-            case Void:
-                return NativeSimpleType.VOID;
-            case Object:
-                // TODO(peterssen): We don't want Interop null passed verbatim to native, but native
-                // NULL instead.
-
-                return javaToNative
-                                ? NativeSimpleType.OBJECT_OR_NULL
-                                : NativeSimpleType.OBJECT;
-
-            default:
-                throw EspressoError.shouldNotReachHere();
-        }
-    }
-
     private static String buildJniNativeSignature(Meta.Method method) {
         // Prepend JNIEnv*.
         StringBuilder sb = new StringBuilder("(").append(NativeSimpleType.POINTER);

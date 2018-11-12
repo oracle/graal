@@ -42,14 +42,14 @@ public class Target_java_lang_reflect_Array {
             byte jvmPrimitiveType = (byte) componentType.getMirror().getJavaKind().getBasicType();
             return InterpreterToVM.allocateNativeArray(jvmPrimitiveType, length);
         }
-        InterpreterToVM vm = EspressoLanguage.getCurrentContext().getVm();
+        InterpreterToVM vm = EspressoLanguage.getCurrentContext().getInterpreterToVM();
         return vm.newArray(componentType.getMirror(), length);
     }
 
     @Intrinsic
     public static Object multiNewArray(@Type(Class.class) StaticObject componentType,
                     int[] dimensions) {
-        return EspressoLanguage.getCurrentContext().getVm().newMultiArray(((StaticObjectClass) componentType).getMirror(), dimensions);
+        return EspressoLanguage.getCurrentContext().getInterpreterToVM().newMultiArray(((StaticObjectClass) componentType).getMirror(), dimensions);
     }
 
     @Intrinsic
@@ -218,7 +218,7 @@ public class Target_java_lang_reflect_Array {
     @Intrinsic
     public static void set(Object array, int index, Object value) {
         if (array instanceof StaticObjectArray) {
-            EspressoLanguage.getCurrentContext().getVm().setArrayObject(value, index, (StaticObjectArray) array);
+            EspressoLanguage.getCurrentContext().getInterpreterToVM().setArrayObject(value, index, (StaticObjectArray) array);
         } else {
             if (array == StaticObject.NULL) {
                 throw EspressoLanguage.getCurrentContext().getMeta().throwEx(NullPointerException.class);

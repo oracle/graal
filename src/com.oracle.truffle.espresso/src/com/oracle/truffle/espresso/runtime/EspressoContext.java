@@ -43,6 +43,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.types.SignatureDescriptors;
 import com.oracle.truffle.espresso.types.TypeDescriptors;
+import com.oracle.truffle.espresso.vm.VM;
 
 public class EspressoContext {
 
@@ -51,7 +52,7 @@ public class EspressoContext {
     private final TruffleLanguage.Env env;
 
     // Must be initialized after the context instance creation.
-    private InterpreterToVM vm;
+    private InterpreterToVM interpreterToVM;
     private final StringTable strings;
     private final ClassRegistries registries;
     private boolean initialized = false;
@@ -66,6 +67,7 @@ public class EspressoContext {
     private final ConcurrentHashMap<Long, TruffleObject> nativeLibraries = new ConcurrentHashMap<>();
     private final AtomicLong nativeHandleCount = new AtomicLong();
     private JniEnv jniEnv;
+    private VM vm;
 
     public long addNativeLibrary(TruffleObject library) {
         long handle = nativeHandleCount.incrementAndGet();
@@ -159,12 +161,15 @@ public class EspressoContext {
     }
 
     private void createVm() {
-        this.vm = new InterpreterToVM(language);
-
         // FIXME(peterssen): Contextualize the JniENv, even if shared libraries are isolated,
         // currently
         // we assume a singleton context.
-        getJniEnv(); // initialize native context
+        ; // initialize native context
+
+        // TODO(peterssen): Combine these 2.
+        this.interpreterToVM = new InterpreterToVM(language);
+        // Spawn JNI first, then the VM.
+        this.vm = VM.create(getJNI());
 
         initializeClass(Object.class);
 
@@ -221,7 +226,11 @@ public class EspressoContext {
         return initialized;
     }
 
-    public InterpreterToVM getVm() {
+    public InterpreterToVM getInterpreterToVM() {
+        return interpreterToVM;
+    }
+
+    public VM getVM() {
         return vm;
     }
 
@@ -253,7 +262,7 @@ public class EspressoContext {
         return nativeLibraries;
     }
 
-    public JniEnv getJniEnv() {
+    public JniEnv getJNI() {
         if (jniEnv == null) {
             jniEnv = JniEnv.create();
         }
@@ -261,6 +270,6 @@ public class EspressoContext {
     }
 
     public void disposeContext() {
-        getJniEnv().dispose();
+        getJNI().dispose();
     }
 }

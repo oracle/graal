@@ -186,7 +186,7 @@ public class Target_java_lang_Class {
                             Meta.Field.set("modifiers", m.getModifiers()),
                             Meta.Field.set("clazz", m.getDeclaringClass().rawKlass().mirror()),
                             Meta.Field.set("slot", i),
-                            Meta.Field.set("name", context.getVm().intern(meta.toGuest(m.getName()))),
+                            Meta.Field.set("name", context.getInterpreterToVM().intern(meta.toGuest(m.getName()))),
                             Meta.Field.set("returnType", m.getReturnType().rawKlass().mirror()),
                             Meta.Field.set("parameterTypes", parameterTypes)).getInstance();
 
@@ -258,7 +258,7 @@ public class Target_java_lang_Class {
     @Intrinsic(hasReceiver = true)
     public static @Type(Object[].class) StaticObject getEnclosingMethod0(StaticObjectClass self) {
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-        InterpreterToVM vm = EspressoLanguage.getCurrentContext().getVm();
+        InterpreterToVM vm = EspressoLanguage.getCurrentContext().getInterpreterToVM();
         if (self.getMirror() instanceof ObjectKlass) {
             EnclosingMethodAttribute enclosingMethodAttr = ((ObjectKlass) self.getMirror()).getEnclosingMethod();
             if (enclosingMethodAttr == null) {
@@ -365,7 +365,7 @@ public class Target_java_lang_Class {
      */
     @Intrinsic(hasReceiver = true)
     public static boolean isInstance(StaticObjectClass self, Object obj) {
-        return EspressoLanguage.getCurrentContext().getVm().instanceOf(obj, self.getMirror());
+        return EspressoLanguage.getCurrentContext().getInterpreterToVM().instanceOf(obj, self.getMirror());
     }
 
     @Intrinsic
