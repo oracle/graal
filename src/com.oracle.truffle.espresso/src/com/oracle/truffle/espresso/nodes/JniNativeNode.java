@@ -85,13 +85,13 @@ public class JniNativeNode extends RootNode implements LinkedNode {
                             ? prepend2(jniEnv.getNativePointer(), originalMethod.getDeclaringClass().rawKlass().mirror(), args)
                             : prepend1(jniEnv.getNativePointer(), args);
 
-            // System.err.println("Calling native " + originalMethod.getName() +
-            // Arrays.toString(argsWithEnv));
+//            System.err.println("Calling native " + originalMethod.getName() +
+//            Arrays.toString(argsWithEnv));
             Object result = ForeignAccess.sendExecute(execute, boundNative, argsWithEnv);
 
-            StaticObject ex = JniThreadLocalPendingException.get();
+            StaticObject ex = jniEnv.getThreadLocalPendingException().get();
             if (ex != null) {
-                JniThreadLocalPendingException.clear();
+                jniEnv.getThreadLocalPendingException().clear();
                 throw new EspressoException(ex);
             }
 
@@ -115,7 +115,7 @@ public class JniNativeNode extends RootNode implements LinkedNode {
                     break;
             }
 
-            // System.err.println("Return native " + originalMethod.getName() + " -> " + result);
+            //System.err.println("Return native " + originalMethod.getName() + " -> " + result);
             return result;
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere(e);

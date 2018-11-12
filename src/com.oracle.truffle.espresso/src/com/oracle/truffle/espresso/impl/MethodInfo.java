@@ -237,8 +237,11 @@ public final class MethodInfo implements ModifiersProvider {
                     if (getDeclaringClass().getClassLoader() == null) {
                         // Look in libjava
                         String mangledName = Mangle.mangleMethod(meta(this), false);
+
+                        JniEnv jniEnv = EspressoLanguage.getCurrentContext().getJniEnv();
+
                         try {
-                            TruffleObject nativeMethod = bind(JniEnv.javaLibrary, meta(this), mangledName);
+                            TruffleObject nativeMethod = bind(jniEnv.getJavaLibrary(), meta(this), mangledName);
                             callTarget = Truffle.getRuntime().createCallTarget(new JniNativeNode(getContext().getLanguage(), nativeMethod, meta(this)));
                             return callTarget;
                         } catch (UnknownIdentifierException e) {
