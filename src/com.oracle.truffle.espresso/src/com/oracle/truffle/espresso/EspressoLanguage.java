@@ -130,7 +130,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     @Override
     protected void disposeContext(final EspressoContext context) {
-        // TODO: call destructors on disposeContext?
+        context.disposeContext();
     }
 
     @Override

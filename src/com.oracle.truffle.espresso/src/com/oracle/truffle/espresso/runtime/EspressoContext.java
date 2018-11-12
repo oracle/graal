@@ -164,7 +164,6 @@ public class EspressoContext {
         // FIXME(peterssen): Contextualize the JniENv, even if shared libraries are isolated,
         // currently
         // we assume a singleton context.
-        JniEnv.touch();
         getJniEnv(); // initialize native context
 
         initializeClass(Object.class);
@@ -177,12 +176,12 @@ public class EspressoContext {
         }
 
         for (Class<?> clazz : new Class<?>[]{
-                        String.class,
-                        System.class,
-                        ThreadGroup.class,
-                        Thread.class,
-                        Class.class,
-                        Method.class}) {
+                String.class,
+                System.class,
+                ThreadGroup.class,
+                Thread.class,
+                Class.class,
+                Method.class}) {
             initializeClass(clazz);
         }
 
@@ -194,14 +193,14 @@ public class EspressoContext {
 
         // System exceptions.
         for (Class<?> clazz : new Class<?>[]{
-                        OutOfMemoryError.class,
-                        NullPointerException.class,
-                        ClassCastException.class,
-                        ArrayStoreException.class,
-                        ArithmeticException.class,
-                        StackOverflowError.class,
-                        IllegalMonitorStateException.class,
-                        IllegalArgumentException.class}) {
+                OutOfMemoryError.class,
+                NullPointerException.class,
+                ClassCastException.class,
+                ArrayStoreException.class,
+                ArithmeticException.class,
+                StackOverflowError.class,
+                IllegalMonitorStateException.class,
+                IllegalArgumentException.class}) {
             initializeClass(clazz);
         }
 
@@ -259,5 +258,9 @@ public class EspressoContext {
             jniEnv = JniEnv.create();
         }
         return jniEnv;
+    }
+
+    public void disposeContext() {
+        getJniEnv().dispose();
     }
 }
