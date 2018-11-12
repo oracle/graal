@@ -31,7 +31,7 @@ import com.oracle.truffle.regex.util.CompilationFinalBitSet;
  * Specialized {@link BitSetMatcher} that exists simply because ascii bit set matchers occur often
  * and we can save one comparison when the high byte is {@code 0x00}.
  */
-public final class NullHighByteBitSetMatcher extends ProfiledCharMatcher {
+public final class NullHighByteBitSetMatcher extends InvertibleCharMatcher {
 
     private final CompilationFinalBitSet bitSet;
 

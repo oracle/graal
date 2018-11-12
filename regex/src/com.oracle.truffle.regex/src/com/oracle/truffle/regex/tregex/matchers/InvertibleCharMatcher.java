@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,24 +22,41 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.regex.util;
+package com.oracle.truffle.regex.tregex.matchers;
 
-import com.oracle.truffle.api.CompilerDirectives;
+/**
+ * Abstract character matcher that allows matching behavior to be inverted with a constructor
+ * parameter.
+ */
+public abstract class InvertibleCharMatcher implements CharMatcher {
 
-public class NumberConversion {
+    private final boolean invert;
 
-    public static int intValue(Number number) {
-        if (number instanceof Integer) {
-            return ((Integer) number).intValue();
-        } else if (number instanceof Long) {
-            return ((Long) number).intValue();
-        } else {
-            return invokeIntValue(number);
-        }
+    /**
+     * Construct a new {@link InvertibleCharMatcher}.
+     *
+     * @param invert if this is set to true, the result of {@link #match(char)} is always inverted.
+     */
+    protected InvertibleCharMatcher(boolean invert) {
+        this.invert = invert;
     }
 
-    @CompilerDirectives.TruffleBoundary
-    private static int invokeIntValue(Number number) {
-        return number.intValue();
+    @Override
+    public boolean match(char c) {
+        return matchChar(c) != invert;
+    }
+
+    protected abstract boolean matchChar(char c);
+
+    protected String modifiersToString() {
+        return invert ? "!" : "";
+    }
+
+    static int highByte(int i) {
+        return i >> Byte.SIZE;
+    }
+
+    static int lowByte(int i) {
+        return i & 0xff;
     }
 }

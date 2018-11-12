@@ -91,6 +91,13 @@ public class AMD64StringSubstitutions {
                 return indexOfResult + totalOffset;
             }
             return indexOfResult;
+        } else if (targetCount == 2) {
+            Pointer sourcePointer = Word.objectToTrackedPointer(source).add(charArrayBaseOffset(INJECTED)).add(totalOffset * charArrayIndexScale(INJECTED));
+            int indexOfResult = AMD64ArrayIndexOf.indexOfTwoConsecutiveChars(sourcePointer, sourceCount - fromIndex, target[targetOffset], target[targetOffset + 1]);
+            if (indexOfResult >= 0) {
+                return indexOfResult + totalOffset;
+            }
+            return indexOfResult;
         } else {
             int haystackLength = sourceCount - (fromIndex + (targetCount - 2));
             while (haystackLength > 0) {

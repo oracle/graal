@@ -35,35 +35,60 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 
-public abstract class ExpectNumberNode extends Node {
+public abstract class RegexParamToLongNode extends Node {
 
-    public abstract Number execute(Object arg);
+    public abstract long execute(Object arg);
 
     @Specialization
-    Number expectNumberInt(int arg) {
+    long doByte(byte arg) {
         return arg;
     }
 
     @Specialization
-    Number expectNumberLong(long arg) {
+    long doChar(char arg) {
         return arg;
     }
 
     @Specialization
-    Number expectNumber(Number arg) {
+    long doShort(short arg) {
         return arg;
     }
 
     @Specialization
-    Number expectNumberTruffleObject(TruffleObject arg,
+    long doInt(int arg) {
+        return arg;
+    }
+
+    @Specialization
+    long doLong(long arg) {
+        return arg;
+    }
+
+    @Specialization
+    long doFloat(float arg) {
+        return (long) arg;
+    }
+
+    @Specialization
+    long doDouble(double arg) {
+        return (long) arg;
+    }
+
+    @Specialization
+    long doNumber(Number arg) {
+        return arg.longValue();
+    }
+
+    @Specialization
+    long expectNumberTruffleObject(TruffleObject arg,
                     @Cached("createIsBoxedNode()") Node isBoxed,
-                    @Cached("createUnboxNode()") Node unbox) {
+                    @Cached("createUnboxNode()") Node unbox,
+                    @Cached("create()") RegexParamToLongNode convertUnboxed) {
         try {
             if (ForeignAccess.sendIsBoxed(isBoxed, arg)) {
                 Object unboxedObject = ForeignAccess.sendUnbox(unbox, arg);
-                if (unboxedObject instanceof Number) {
-                    return (Number) unboxedObject;
-                }
+                assert !(unboxedObject instanceof TruffleObject) : "unboxed Object must be a primitive!";
+                return convertUnboxed.execute(unboxedObject);
             }
             CompilerDirectives.transferToInterpreter();
             throw UnsupportedTypeException.raise(new Object[]{arg});
@@ -74,7 +99,7 @@ public abstract class ExpectNumberNode extends Node {
     }
 
     @Fallback
-    Number fallback(Object arg) {
+    long fallback(Object arg) {
         CompilerDirectives.transferToInterpreter();
         throw UnsupportedTypeException.raise(new Object[]{arg});
     }
@@ -87,7 +112,7 @@ public abstract class ExpectNumberNode extends Node {
         return Message.UNBOX.createNode();
     }
 
-    public static ExpectNumberNode create() {
-        return ExpectNumberNodeGen.create();
+    public static RegexParamToLongNode create() {
+        return RegexParamToLongNodeGen.create();
     }
 }
