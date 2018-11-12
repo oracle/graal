@@ -28,6 +28,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.CharBuffer;
@@ -167,8 +168,16 @@ public class JniEnv extends NativeEnv {
         StringBuilder sb = new StringBuilder("(");
         // Prepend JNIEnv* . The raw pointer will be substituted by the proper `this` reference.
         sb.append(NativeSimpleType.POINTER);
-        for (Class<?> param : method.getParameterTypes()) {
-            sb.append(", ").append(classToType(param, false));
+        for (Parameter param : method.getParameters()) {
+            sb.append(", ");
+
+            // Override NFI type.
+            NFIType nfiType = param.getAnnotatedType().getAnnotation(NFIType.class);
+            if (nfiType != null) {
+                sb.append(NativeSimpleType.valueOf(nfiType.value().toUpperCase()));
+            } else {
+                sb.append(classToType(param.getType(), false));
+            }
         }
         sb.append("): ").append(classToType(method.getReturnType(), true));
         return sb.toString();
@@ -1213,12 +1222,12 @@ public class JniEnv extends NativeEnv {
             sb.append(", ").append(Utils.kindToType(kind, false));
         }
 
-        sb.append("): ").append(Utils.kindToType(descriptor.resultKind(), true));
+        sb.append("): ").append(Utils.kindToType(descriptor.resultKind(), false));
         return sb.toString();
     }
 
     @JniImpl
-    public int RegisterNative(StaticObject clazz, String name, String signature, TruffleObject closure) {
+    public int RegisterNative(StaticObject clazz, String name, String signature, @NFIType("POINTER") TruffleObject closure) {
         String className = meta(((StaticObjectClass) clazz).getMirror()).getInternalName();
 
         TruffleObject boundNative = NativeLibrary.bind(closure, nfiSignature(signature));

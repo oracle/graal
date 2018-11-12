@@ -18,11 +18,17 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
+import java.util.Arrays;
+
 public abstract class NativeRootNode extends RootNode implements LinkedNode {
 
     private final TruffleObject boundNative;
-    private final Meta.Method originalMethod;
+    private Meta.Method originalMethod;
     @Node.Child Node execute = Message.EXECUTE.createNode();
+
+    public NativeRootNode(TruffleLanguage<?> language, TruffleObject boundNative) {
+        this(language, boundNative, null);
+    }
 
     public NativeRootNode(TruffleLanguage<?> language, TruffleObject boundNative, Meta.Method originalMethod) {
         super(language);
@@ -53,8 +59,7 @@ public abstract class NativeRootNode extends RootNode implements LinkedNode {
             // constant.
             // Having a constant length would help PEA to skip the copying.
             Object[] argsWithEnv = preprocessArgs(frame.getArguments());
-// System.err.println("Calling native " + originalMethod.getName() +
-// Arrays.toString(argsWithEnv));
+            System.err.println("Calling native " + originalMethod.getName() + Arrays.toString(argsWithEnv));
             Object result = ForeignAccess.sendExecute(execute, boundNative, argsWithEnv);
             return processResult(result);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
@@ -118,6 +123,10 @@ public abstract class NativeRootNode extends RootNode implements LinkedNode {
     @Override
     public Meta.Method getOriginalMethod() {
         return originalMethod;
+    }
+
+    public void setOriginalMethod(Meta.Method originalMethod) {
+        this.originalMethod = originalMethod;
     }
 
     public TruffleObject getBoundNative() {

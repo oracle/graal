@@ -50,6 +50,8 @@ import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.IntrinsicReflectionRootNode;
 import com.oracle.truffle.espresso.nodes.IntrinsicRootNode;
 import com.oracle.truffle.espresso.nodes.JniNativeNode;
+import com.oracle.truffle.espresso.nodes.LinkedNode;
+import com.oracle.truffle.espresso.nodes.NativeRootNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.types.SignatureDescriptor;
 import com.oracle.truffle.espresso.vm.VM;
@@ -193,6 +195,8 @@ public final class MethodInfo implements ModifiersProvider {
                     ((IntrinsicReflectionRootNode) redirectedMethod).setOriginalMethod(Meta.meta(this));
                 } else if (redirectedMethod instanceof IntrinsicRootNode) {
                     ((IntrinsicRootNode) redirectedMethod).setOriginalMethod(Meta.meta(this));
+                } else if (redirectedMethod instanceof NativeRootNode) {
+                    ((NativeRootNode) redirectedMethod).setOriginalMethod(Meta.meta(this));
                 }
                 intrinsified = true;
                 callTarget = Truffle.getRuntime().createCallTarget(redirectedMethod);

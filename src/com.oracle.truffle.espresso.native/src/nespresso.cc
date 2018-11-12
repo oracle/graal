@@ -354,7 +354,7 @@ struct NespressoEnv {
   jobject (*NewObject)(JNIEnv *env, jclass clazz, jmethodID methodID, jlong varargs);
 
   // RegisterNative (single method)
-  jint (*RegisterNative)(JNIEnv *env, jclass clazz, const char* name, const char* signature, jobject closure);
+  jint (*RegisterNative)(JNIEnv *env, jclass clazz, const char* name, const char* signature, void* closure);
 };
 
 #define CALL_METHOD_BRIDGE(returnType, Type) \
@@ -459,12 +459,12 @@ jobject NewObjectA(JNIEnv *env, jclass clazz, jmethodID methodID, const jvalue *
   return nespresso_env->NewObject(env, clazz, methodID, (jlong) &varargs);
 }
 
-jint RegisterNatives(JNIEnv *env, jclass clazz, const JNINativeMethod *methods, jint nMethods) {
-  TruffleEnv *truffle_env = truffle_ctx->getTruffleEnv();
+jint RegisterNatives(JNIEnv *env, jclass clazz, const JNINativeMethod *methods, jint nMethods) {  
   NespressoEnv *nespresso_env = (NespressoEnv*) env->functions->reserved0;
+  
   for (jint i = 0; i < nMethods; ++i) {
-    TruffleObject closure = truffle_env->getClosureObject(methods[i].fnPtr);
-    nespresso_env->RegisterNative(env, clazz, methods[i].name, methods[i].signature, (jobject) closure);
+    fprintf(stderr, "RegisterNative %s %s %p\n", methods[i].name, methods[i].signature, methods[i].fnPtr);
+    nespresso_env->RegisterNative(env, clazz, methods[i].name, methods[i].signature, methods[i].fnPtr);
   }
   // TODO(peterssen): Always OK?.
   return JNI_OK;
