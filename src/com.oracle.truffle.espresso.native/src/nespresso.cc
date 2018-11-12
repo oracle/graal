@@ -471,6 +471,7 @@ JNIEnv* initializeNativeContext(TruffleEnv* truffle_env, void* (*fetch_by_name)(
   #define INIT_NATIVE_METHOD__(name) \
     functions->name = &name;
 
+
     BRIDGE_METHOD_LIST(INIT_NATIVE_METHOD__)
   #undef INIT_NATIVE_METHOD__
 
@@ -480,20 +481,24 @@ JNIEnv* initializeNativeContext(TruffleEnv* truffle_env, void* (*fetch_by_name)(
 }
 
 void disposeNativeContext(TruffleEnv* truffle_env, jlong envPtr) {
+  // FIXME(peterssen): This method leaks, a lot, please fix.
+
   JNIEnv *env = (JNIEnv*) envPtr;
-  #define DISPOSE__(name) \
+  NespressoEnv *nespresso_env = (NespressoEnv *) env->functions->reserved0;
+
+/*   #define DISPOSE__(name) \
      truffle_env->releaseClosureRef(env->functions->name);
 
   JNI_FUNCTION_LIST(DISPOSE__)
-  #undef DISPOSE__
+  #undef DISPOSE__ */
 
   #define DISPOSE_VARARGS_METHOD__(name) \
-    truffle_env->releaseClosureRef(env->functions->name);
+    truffle_env->releaseClosureRef(nespresso_env->name);
 
   VARARGS_METHOD_LIST(DISPOSE_VARARGS_METHOD__)
   #undef DISPOSE_VARARG_METHOD__
 
-  delete (NespressoEnv*) env->functions->reserved0;
+  delete nespresso_env;
   delete env->functions;
   delete env;
 }
