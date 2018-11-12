@@ -6,6 +6,7 @@
 
 // Global
 JNIEnv *jniEnv = NULL;
+MokapotEnv *mokaEnv = NULL;
 
 void Mokapot_SetJNIEnv(JNIEnv *env) {
   jniEnv = env;
@@ -14,8 +15,11 @@ void Mokapot_SetJNIEnv(JNIEnv *env) {
 #define UNIMPLEMENTED(name) \
   fprintf(stderr, "Calling unimplemented mokapot %s\n", #name);
 
+#define IMPLEMENTED(name) \
+  fprintf(stderr, "Calling implemented mokapot %s\n", #name);
 
-jlong initializeMokapotContext(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *)) {
+
+jlong initializeMokapotContext(TruffleEnv *truffle_env, jlong jniEnvPtr, void* (*fetch_by_name)(const char *)) {
 
   MokapotEnv *moka_env = (MokapotEnv *) malloc(sizeof(MokapotEnv));
   struct MokapotNativeInterface_ *functions = (struct MokapotNativeInterface_*) malloc(sizeof(struct MokapotNativeInterface_));
@@ -31,12 +35,18 @@ jlong initializeMokapotContext(TruffleEnv *truffle_env, void* (*fetch_by_name)(c
   VM_METHOD_LIST(INIT__)
   #undef INIT_
 
+  mokaEnv = moka_env;
+  jniEnv = (JNIEnv*) jniEnvPtr;
+
   return (jlong) moka_env;
 }
 
-void disposeMokapotContext(TruffleEnv *truffle_env, jlong env_ptr) {
-  MokapotEnv *moka_env = (MokapotEnv *) env_ptr;
-  struct MokapotNativeInterface_ *functions = (struct MokapotNativeInterface_*) *moka_env;
+MokapotEnv* getEnv() {
+  return mokaEnv;
+}
+
+void disposeMokapotContext(TruffleEnv *truffle_env, jlong moka_env_ptr) {
+  MokapotEnv *moka_env = (MokapotEnv *) moka_env_ptr;
 
   #define DISPOSE__(name) \
       (*truffle_env)->releaseClosureRef(truffle_env, (*moka_env)->name);
@@ -44,7 +54,9 @@ void disposeMokapotContext(TruffleEnv *truffle_env, jlong env_ptr) {
   VM_METHOD_LIST(DISPOSE__)
   #undef DISPOSE__
 
-  free(functions);
+  free((void*) *moka_env);
+  *moka_env = NULL;
+
   free(moka_env);
 }
 
@@ -54,9 +66,8 @@ jint JVM_GetInterfaceVersion(void) {
 }
 
 jint JVM_IHashCode(JNIEnv *env, jobject obj) {
-  UNIMPLEMENTED(JVM_IHashCode);
-
-  return 0;
+  IMPLEMENTED(JVM_IHashCode);
+  return (*getEnv())->JVM_IHashCode(env, obj);
 }
 
 void JVM_MonitorWait(JNIEnv *env, jobject obj, jlong ms) {
@@ -86,12 +97,12 @@ jstring JVM_InternString(JNIEnv *env, jstring str) {
 
 jlong JVM_CurrentTimeMillis(JNIEnv *env, jclass ignored) {
   UNIMPLEMENTED(JVM_CurrentTimeMillis);
-  return 0;
+  return (*getEnv())->JVM_CurrentTimeMillis(env, ignored);
 }
 
 jlong JVM_NanoTime(JNIEnv *env, jclass ignored) {
-  UNIMPLEMENTED(JVM_NanoTime);
-  return 0;
+  UNIMPLEMENTED(JVM_NanoTime);  
+  return (*getEnv())->JVM_NanoTime(env, ignored);  
 }
 
 void JVM_ArrayCopy(JNIEnv *env, jclass ignored, jobject src, jint src_pos, jobject dst, jint dst_pos, jint length) {
@@ -141,7 +152,7 @@ void JVM_TraceMethodCalls(jboolean on) {
 
 jlong JVM_TotalMemory(void) {
   UNIMPLEMENTED(JVM_TotalMemory);
-  return 0;
+  return 666;
 }
 
 jlong JVM_FreeMemory(void) {

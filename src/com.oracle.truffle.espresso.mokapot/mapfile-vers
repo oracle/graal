@@ -27,7 +27,8 @@
 SUNWprivate_1.1 {
         global:
                 # Mokapot
-                Mokapot_SetJNIEnv;
+                initializeMokapotContext;
+                disposeMokapotContext;
 
                 # JNI
                 JNI_CreateJavaVM;

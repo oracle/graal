@@ -309,7 +309,7 @@ public:
   }
   inline jshort popShort() {
     return _args++->s;
-  } 
+  }
   inline jint popInt() {
     return _args++->i;
   }
@@ -353,6 +353,8 @@ struct NespressoEnv {
   // NewObject varargs
   jobject (*NewObject)(JNIEnv *env, jclass clazz, jmethodID methodID, jlong varargs);
 
+  // RegisterNative (single method)
+  jint (*RegisterNative)(JNIEnv *env, jclass clazz, const char* name, const char* signature, jobject closure);
 };
 
 #define CALL_METHOD_BRIDGE(returnType, Type) \
@@ -412,16 +414,18 @@ TYPE_LIST2(CALL_NON_VIRTUAL_METHOD_BRIDGE)
   EXPAND(TYPE_LIST2(V MAKE_METHOD)) \
   EXPAND(TYPE_LIST2(V MAKE_STATIC_METHOD)) \
   EXPAND(TYPE_LIST2(V MAKE_NON_VIRTUAL_METHOD)) \
-  V(NewObject)
+  V(NewObject) \
+  V(RegisterNative)
 
 // Spawn a "guest" direct byte buffer.
+// This ByteBuffer is set to BIG_ENDIAN by default.
 jobject NewDirectByteBuffer(JNIEnv* env, void* address, jlong capacity) {
   jclass java_nio_DirectByteBuffer = env->FindClass("java.nio.DirectByteBuffer");
   // TODO(peterssen): Cache class and constructor.
   jmethodID constructor = env->GetMethodID(java_nio_DirectByteBuffer, "<init>", "(JI)V");
   // TODO(peterssen): Check narrowing conversion.
   return env->NewObject(java_nio_DirectByteBuffer, constructor, (jlong) address, (jint) capacity);
-}  
+}
 
 #define BRIDGE_METHOD_LIST(V) \
   EXPAND(TYPE_LIST2(V MAKE_METHOD_A)) \
@@ -432,12 +436,18 @@ jobject NewDirectByteBuffer(JNIEnv* env, void* address, jlong capacity) {
   EXPAND(TYPE_LIST2(V MAKE_NON_VIRTUAL_METHOD_V)) \
   V(NewObjectA) \
   V(NewObjectV) \
-  V(NewDirectByteBuffer)
+  V(NewDirectByteBuffer) \
+  V(RegisterNatives) \
+  V(NewGlobalRef) \
+  V(DeleteGlobalRef)
 
 
 extern "C" {
 
-jobject NewObjectV(JNIEnv *env, jclass clazz, jmethodID methodID, va_list args) { 
+// Global state.
+static TruffleContext *truffle_ctx;
+
+jobject NewObjectV(JNIEnv *env, jclass clazz, jmethodID methodID, va_list args) {
   VarArgsVaList varargs(args);
   NespressoEnv *nespresso_env = (NespressoEnv*) env->functions->reserved0;
   return nespresso_env->NewObject(env, clazz, methodID, (jlong) &varargs);
@@ -449,11 +459,35 @@ jobject NewObjectA(JNIEnv *env, jclass clazz, jmethodID methodID, const jvalue *
   return nespresso_env->NewObject(env, clazz, methodID, (jlong) &varargs);
 }
 
+jint RegisterNatives(JNIEnv *env, jclass clazz, const JNINativeMethod *methods, jint nMethods) {
+  TruffleEnv *truffle_env = truffle_ctx->getTruffleEnv();
+  NespressoEnv *nespresso_env = (NespressoEnv*) env->functions->reserved0;
+  for (jint i = 0; i < nMethods; ++i) {
+    TruffleObject closure = truffle_env->getClosureObject(methods[i].fnPtr);
+    nespresso_env->RegisterNative(env, clazz, methods[i].name, methods[i].signature, (jobject) closure);
+  }
+  // TODO(peterssen): Always OK?.
+  return JNI_OK;
+}
+
+jobject NewGlobalRef(JNIEnv *env, jobject obj) {
+  TruffleEnv *truffle_env = truffle_ctx->getTruffleEnv();
+  return (jobject) truffle_env->newObjectRef((TruffleObject) obj);
+}
+
+void DeleteGlobalRef(JNIEnv *env, jobject globalRef) {
+  TruffleEnv *truffle_env = truffle_ctx->getTruffleEnv();
+  truffle_env->releaseObjectRef((TruffleObject) globalRef);
+}
+
 JNIEnv* initializeNativeContext(TruffleEnv* truffle_env, void* (*fetch_by_name)(const char *)) {
   JNIEnv* env = new JNIEnv();
   JNINativeInterface_ *functions = new JNINativeInterface_();
   NespressoEnv *nespresso_env = new NespressoEnv();
   functions->reserved0 = nespresso_env;
+
+  // Global state.
+  truffle_ctx = truffle_env->getTruffleContext();
 
   // Fetch Java ... varargs methods.
   #define INIT_VARARGS_METHOD__(name) \
@@ -471,7 +505,6 @@ JNIEnv* initializeNativeContext(TruffleEnv* truffle_env, void* (*fetch_by_name)(
   #define INIT_NATIVE_METHOD__(name) \
     functions->name = &name;
 
-
     BRIDGE_METHOD_LIST(INIT_NATIVE_METHOD__)
   #undef INIT_NATIVE_METHOD__
 
@@ -481,16 +514,14 @@ JNIEnv* initializeNativeContext(TruffleEnv* truffle_env, void* (*fetch_by_name)(
 }
 
 void disposeNativeContext(TruffleEnv* truffle_env, jlong envPtr) {
-  // FIXME(peterssen): This method leaks, a lot, please fix.
-
   JNIEnv *env = (JNIEnv*) envPtr;
-  NespressoEnv *nespresso_env = (NespressoEnv *) env->functions->reserved0;
+  NespressoEnv *nespresso_env = new NespressoEnv();
 
-/*   #define DISPOSE__(name) \
+  #define DISPOSE__(name) \
      truffle_env->releaseClosureRef(env->functions->name);
 
   JNI_FUNCTION_LIST(DISPOSE__)
-  #undef DISPOSE__ */
+  #undef DISPOSE__
 
   #define DISPOSE_VARARGS_METHOD__(name) \
     truffle_env->releaseClosureRef(nespresso_env->name);
@@ -498,9 +529,11 @@ void disposeNativeContext(TruffleEnv* truffle_env, jlong envPtr) {
   VARARGS_METHOD_LIST(DISPOSE_VARARGS_METHOD__)
   #undef DISPOSE_VARARG_METHOD__
 
-  delete nespresso_env;
+  delete (NespressoEnv*) env->functions->reserved0;
   delete env->functions;
   delete env;
+
+  truffle_ctx = NULL;
 }
 
 void* dupClosureRef(TruffleEnv *truffle_env, void* closure) {

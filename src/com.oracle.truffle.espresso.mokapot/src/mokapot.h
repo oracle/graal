@@ -3,6 +3,7 @@
 
 #include "jvm.h"
 #include "jni.h"
+#include <trufflenfi.h>
 
 struct MokapotNativeInterface_;
 struct MokapotEnv_;
@@ -223,6 +224,17 @@ typedef const struct MokapotNativeInterface_ *MokapotEnv;
     V(JVM_GetResourceLookupCache) \
     V(JVM_GetVersionInfo)
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+jlong initializeMokapotContext(TruffleEnv *truffle_env, jlong jniEnvPtr, void* (*fetch_by_name)(const char *));
+
+void disposeMokapotContext(TruffleEnv *truffle_env, jlong moka_env_ptr);
+
+#ifdef __cplusplus
+} // extern "C"
+#endif
 
 struct MokapotNativeInterface_ {
 
