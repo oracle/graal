@@ -50,7 +50,9 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.Utils;
 import com.oracle.truffle.espresso.impl.FieldInfo;
 import com.oracle.truffle.espresso.impl.MethodInfo;
 import com.oracle.truffle.espresso.intrinsics.Target_java_lang_Object;
@@ -58,13 +60,15 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
+import com.oracle.truffle.espresso.nodes.VmNativeNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
+import com.oracle.truffle.espresso.types.SignatureDescriptor;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
 
-public class JniEnv {
+public class JniEnv extends NativeEnv {
 
     private static final int JNI_OK = 0; /* success */
     private static final int JNI_ERR = -1; /* unknown error */
@@ -73,26 +77,12 @@ public class JniEnv {
 
     private long jniEnvPtr;
 
-    // mokapot.dll (Windows) or libmokapot.so (Unixes) is the Espresso implementation of the VM
-    // interface (libjvm)
-    // Espresso loads all shared libraries in a private namespace (e.g. using dlmopen on Linux).
-    // mokapot must be loaded strictly before any other library in the private namespace to
-    // linking with HotSpot libjvm (or just linking errors), then libjava is loaded and further
-    // system libraries, libzip ...
-    private final TruffleObject mokapotLibrary = NativeLibrary.loadLibrary(System.getProperty("mokapot.library", "mokapot"));
-
     // Load native library nespresso.dll (Windows) or libnespresso.so (Unixes) at runtime.
     private final TruffleObject nespressoLibrary = NativeLibrary.loadLibrary(System.getProperty("nespresso.library", "nespresso"));
 
-    private final TruffleObject javaLibrary = NativeLibrary.loadLibrary(System.getProperty("java.library", "java"));
-
-    public TruffleObject getJavaLibrary() {
-        return javaLibrary;
-    }
-
     private final TruffleObject initializeNativeContext;
-    private final TruffleObject setMokapotEspressoJniEnv;
     private final TruffleObject disposeNativeContext;
+
 
 
     private final TruffleObject dupClosureRef = NativeLibrary.lookup(nespressoLibrary, "dupClosureRef");
@@ -107,7 +97,7 @@ public class JniEnv {
     private final TruffleObject popLong;
     private final TruffleObject popObject;
 
-    private static final Map<Class<?>, NativeSimpleType> classToNative = buildClassToNative();
+
     private static final Map<String, Method> jniMethods = buildJniMethods();
 
     private final Handles<FieldInfo> fieldIds = new Handles<>();
@@ -116,10 +106,94 @@ public class JniEnv {
     // Prevent cleaner threads from collecting in-use native buffers.
     private final Map<Long, ByteBuffer> nativeBuffers = new ConcurrentHashMap<>();
 
-    private final JniThreadLocalPendingException threadLocalPendingException  = new JniThreadLocalPendingException();
+    private final JniThreadLocalPendingException threadLocalPendingException = new JniThreadLocalPendingException();
 
     public JniThreadLocalPendingException getThreadLocalPendingException() {
         return threadLocalPendingException;
+    }
+
+    public Callback jniMethodWrapper(Method m) {
+        return new Callback(m.getParameterCount() + 1, args -> {
+            assert unwrapPointer(args[0]) == getNativePointer() : "Calling " + m + " from alien JniEnv";
+            Object[] shiftedArgs = Arrays.copyOfRange(args, 1, args.length);
+
+            Class<?>[] params = m.getParameterTypes();
+
+            for (int i = 0; i < shiftedArgs.length; ++i) {
+                // FIXME(peterssen): Espresso should accept interop null objects, since it doesn't
+                // we must convert to Espresso null.
+                // FIXME(peterssen): Also, do use proper nodes.
+                if (shiftedArgs[i] instanceof TruffleObject) {
+                    if (ForeignAccess.sendIsNull(Message.IS_NULL.createNode(), (TruffleObject) shiftedArgs[i])) {
+                        shiftedArgs[i] = StaticObject.NULL;
+                    }
+                } else {
+                    // TruffleNFI pass booleans as byte, do the proper conversion.
+                    if (params[i] == boolean.class) {
+                        shiftedArgs[i] = ((byte) shiftedArgs[i]) != 0;
+                    }
+                }
+            }
+            assert args.length - 1 == shiftedArgs.length;
+            try {
+                // Substitute raw pointer by proper `this` reference.
+// System.err.print("Call DEFINED method: " + m.getName() +
+// Arrays.toString(shiftedArgs));
+                Object ret = m.invoke(this, shiftedArgs);
+
+                if (ret instanceof Boolean) {
+                    return (boolean) ret ? (byte) 1 : (byte) 0;
+                }
+
+                if (ret == null && !m.getReturnType().isPrimitive()) {
+                    throw EspressoError.shouldNotReachHere("Cannot return host null, only Espresso NULL");
+                }
+
+                if (ret == null && m.getReturnType() == void.class) {
+                    // Cannot return host null to TruffleNFI.
+                    ret = StaticObject.NULL;
+                }
+
+// System.err.println(" -> " + ret);
+
+                return ret;
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    public static String jniNativeSignature(Method method) {
+        StringBuilder sb = new StringBuilder("(");
+        // Prepend JNIEnv* . The raw pointer will be substituted by the proper `this` reference.
+        sb.append(NativeSimpleType.POINTER);
+        for (Class<?> param : method.getParameterTypes()) {
+            sb.append(", ").append(classToType(param, false));
+        }
+        sb.append("): ").append(classToType(method.getReturnType(), true));
+        return sb.toString();
+    }
+
+    TruffleObject lookupJniImpl(String methodName) {
+        Method m = jniMethods.get(methodName);
+        try {
+            // Dummy placeholder for unimplemented/unknown methods.
+            if (m == null) {
+                // System.err.println("Fetching unknown/unimplemented JNI method: " + methodName);
+                return (TruffleObject) ForeignAccess.sendExecute(Message.EXECUTE.createNode(), dupClosureRefAndCast("(pointer): void"),
+                        new Callback(1, args -> {
+                            System.err.println("Calling unimplemented JNI method: " + methodName);
+                            throw EspressoError.unimplemented("JNI method: " + methodName);
+                        }));
+            }
+
+            String signature = jniNativeSignature(m);
+            Callback target = jniMethodWrapper(m);
+            return (TruffleObject) ForeignAccess.sendExecute(Message.EXECUTE.createNode(), dupClosureRefAndCast(signature), target);
+
+        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private class VarArgsImpl implements VarArgs {
@@ -261,14 +335,10 @@ public class JniEnv {
     private JniEnv() {
         try {
             initializeNativeContext = NativeLibrary.lookupAndBind(nespressoLibrary,
-                    "initializeNativeContext", "(env, (string): pointer): pointer");
-
-            setMokapotEspressoJniEnv = NativeLibrary.lookupAndBind(mokapotLibrary,
-                    "Mokapot_SetJNIEnv", "(pointer): void");
+                            "initializeNativeContext", "(env, (string): pointer): pointer");
 
             disposeNativeContext = NativeLibrary.lookupAndBind(nespressoLibrary, "disposeNativeContext",
-                    "(env, sint64): void");
-
+                            "(env, sint64): void");
 
             // Vararg()ds
             popBoolean = NativeLibrary.lookupAndBind(nespressoLibrary, "popBoolean", "(sint64): uint8");
@@ -284,27 +354,10 @@ public class JniEnv {
             Callback lookupJniImplCallback = Callback.wrapInstanceMethod(this, "lookupJniImpl", String.class);
             this.jniEnvPtr = unwrapPointer(ForeignAccess.sendExecute(Message.EXECUTE.createNode(), initializeNativeContext, lookupJniImplCallback));
             assert this.jniEnvPtr != 0;
-            ForeignAccess.sendExecute(Message.EXECUTE.createNode(), setMokapotEspressoJniEnv, this.jniEnvPtr);
         } catch (UnsupportedMessageException | ArityException | UnknownIdentifierException | UnsupportedTypeException e) {
             throw EspressoError.shouldNotReachHere("Cannot initialize Espresso native interface");
         }
     }
-
-    private static Map<Class<?>, NativeSimpleType> buildClassToNative() {
-        Map<Class<?>, NativeSimpleType> map = new HashMap<>();
-        map.put(boolean.class, NativeSimpleType.UINT8);
-        map.put(byte.class, NativeSimpleType.SINT8);
-        map.put(short.class, NativeSimpleType.SINT16);
-        map.put(char.class, NativeSimpleType.UINT16);
-        map.put(int.class, NativeSimpleType.SINT32);
-        map.put(float.class, NativeSimpleType.FLOAT);
-        map.put(long.class, NativeSimpleType.SINT64);
-        map.put(double.class, NativeSimpleType.DOUBLE);
-        map.put(void.class, NativeSimpleType.VOID);
-        map.put(String.class, NativeSimpleType.STRING);
-        return Collections.unmodifiableMap(map);
-    }
-
     private static Map<String, Method> buildJniMethods() {
         Map<String, Method> map = new HashMap<>();
         Method[] declaredMethods = JniEnv.class.getDeclaredMethods();
@@ -318,110 +371,15 @@ public class JniEnv {
         return Collections.unmodifiableMap(map);
     }
 
-    private static long unwrapPointer(Object nativePointer) {
-        try {
-            return ForeignAccess.sendAsPointer(Message.AS_POINTER.createNode(), (TruffleObject) nativePointer);
-        } catch (UnsupportedMessageException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private TruffleObject dupClosureRefAndCast(String signature) {
+    public TruffleObject dupClosureRefAndCast(String signature) {
         // TODO(peterssen): Cache binding per signature.
         return NativeLibrary.bind(dupClosureRef, "(env, " + signature + ")" + ": pointer");
     }
-
-    private static NativeSimpleType kindToType(Class<?> clazz, boolean javaToNative) {
-        return classToNative.getOrDefault(clazz, javaToNative ? NativeSimpleType.OBJECT_OR_NULL : NativeSimpleType.OBJECT);
-    }
-
-    private static String nativeSignature(Method method) {
-        StringBuilder sb = new StringBuilder("(");
-        // Prepend JNIEnv* . The raw pointer will be substituted by the proper `this` reference.
-        sb.append(NativeSimpleType.POINTER);
-        for (Class<?> param : method.getParameterTypes()) {
-            sb.append(", ").append(kindToType(param, false));
-        }
-        sb.append("): ").append(kindToType(method.getReturnType(), true));
-        return sb.toString();
-    }
-
     public static JniEnv create() {
         return new JniEnv();
     }
 
-    TruffleObject lookupJniImpl(String methodName) {
-        Method m = jniMethods.get(methodName);
-        try {
-            // Dummy placeholder for unimplemented/unknown methods.
-            if (m == null) {
-                // System.err.println("Fetching unknown/unimplemented JNI method: " + methodName);
-                return (TruffleObject) ForeignAccess.sendExecute(Message.EXECUTE.createNode(), dupClosureRefAndCast("(pointer): void"),
-                        new Callback(1, args -> {
-                            System.err.println("Calling unimplemented JNI method: " + methodName);
-                            throw EspressoError.unimplemented("JNI method: " + methodName);
-                        }));
-            }
 
-            String signature = nativeSignature(m);
-            Callback target = jniMethodWrapper(m);
-            return (TruffleObject) ForeignAccess.sendExecute(Message.EXECUTE.createNode(), dupClosureRefAndCast(signature), target);
-
-        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private Callback jniMethodWrapper(Method m) {
-        return new Callback(m.getParameterCount() + 1, args -> {
-            assert unwrapPointer(args[0]) == getNativePointer() : "Calling " + m + " from alien JniEnv";
-            Object[] shiftedArgs = Arrays.copyOfRange(args, 1, args.length);
-
-            Class<?>[] params = m.getParameterTypes();
-
-            for (int i = 0; i < shiftedArgs.length; ++i) {
-                // FIXME(peterssen): Espresso should accept interop null objects, since it doesn't
-                // we must convert to Espresso null.
-                // FIXME(peterssen): Also, do use proper nodes.
-                if (shiftedArgs[i] instanceof TruffleObject) {
-                    if (ForeignAccess.sendIsNull(Message.IS_NULL.createNode(), (TruffleObject) shiftedArgs[i])) {
-                        shiftedArgs[i] = StaticObject.NULL;
-                    }
-                } else {
-                    // TruffleNFI pass booleans as byte, do the proper conversion.
-                    if (params[i] == boolean.class) {
-                        shiftedArgs[i] = ((byte) shiftedArgs[i]) != 0;
-                    }
-                }
-            }
-            assert args.length - 1 == shiftedArgs.length;
-            try {
-                // Substitute raw pointer by proper `this` reference.
-//                System.err.print("Call DEFINED method: " + m.getName() +
-//                Arrays.toString(shiftedArgs));
-                Object ret = m.invoke(JniEnv.this, shiftedArgs);
-
-                if (ret instanceof Boolean) {
-                    return (boolean) ret ? (byte) 1 : (byte) 0;
-                }
-
-                if (ret == null && !m.getReturnType().isPrimitive()) {
-                    throw EspressoError.shouldNotReachHere("Cannot return host null, only Espresso NULL");
-                }
-
-                if (ret == null && m.getReturnType() == void.class) {
-                    // Cannot return host null to TruffleNFI.
-                    ret = StaticObject.NULL;
-                }
-
-//                System.err.println(" -> " + ret);
-
-                return ret;
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        });
-    }
 
     public long getNativePointer() {
         return jniEnvPtr;
@@ -446,7 +404,7 @@ public class JniEnv {
 
     @JniImpl
     public int GetArrayLength(Object arr) {
-        return EspressoLanguage.getCurrentContext().getVm().arrayLength(arr);
+        return EspressoLanguage.getCurrentContext().getInterpreterToVM().arrayLength(arr);
     }
 
     @JniImpl
@@ -1130,7 +1088,7 @@ public class JniEnv {
 
     private ByteBuffer allocateDirect(int capacity) {
         ByteBuffer bb = ByteBuffer.allocateDirect(capacity) //
-                .order(ByteOrder.nativeOrder());
+                        .order(ByteOrder.nativeOrder());
         long address = byteBufferAddress(bb);
         nativeBuffers.put(address, bb);
         return bb;
@@ -1171,19 +1129,9 @@ public class JniEnv {
     }
 
     @JniImpl
-    public Object NewGlobalRef(Object obj) {
-        return obj; // nop
-    }
-
-    @JniImpl
-    public void DeleteGlobalRef(Object globalRef) {
-        // nop
-    }
-
-    @JniImpl
     public int Throw(StaticObject ex) {
         assert EspressoLanguage.getCurrentContext().getMeta() //
-                .THROWABLE.isAssignableFrom(meta(ex.getKlass()));
+                        .THROWABLE.isAssignableFrom(meta(ex.getKlass()));
 
         threadLocalPendingException.set(ex);
         return JNI_OK;
@@ -1207,13 +1155,13 @@ public class JniEnv {
 
     @JniImpl
     public int MonitorEnter(Object obj) {
-        EspressoLanguage.getCurrentContext().getVm().monitorEnter(obj);
+        EspressoLanguage.getCurrentContext().getInterpreterToVM().monitorEnter(obj);
         return JNI_OK;
     }
 
     @JniImpl
     public int MonitorExit(Object obj) {
-        EspressoLanguage.getCurrentContext().getVm().monitorExit(obj);
+        EspressoLanguage.getCurrentContext().getInterpreterToVM().monitorExit(obj);
         return JNI_OK;
     }
 
@@ -1223,7 +1171,7 @@ public class JniEnv {
         StaticObjectArray arr = (StaticObjectArray) meta(elementClass.getMirror()).allocateArray(length);
         if (length > 0) {
             // Single store check
-            EspressoLanguage.getCurrentContext().getVm().setArrayObject(initialElement, 0, arr);
+            EspressoLanguage.getCurrentContext().getInterpreterToVM().setArrayObject(initialElement, 0, arr);
             Arrays.fill(arr.getWrapped(), initialElement);
         }
         return arr;
@@ -1231,7 +1179,7 @@ public class JniEnv {
 
     @JniImpl
     public void SetObjectArrayElement(StaticObjectArray array, int index, Object value) {
-        EspressoLanguage.getCurrentContext().getVm().setArrayObject(value, index, array);
+        EspressoLanguage.getCurrentContext().getInterpreterToVM().setArrayObject(value, index, array);
     }
 
     @JniImpl
@@ -1239,9 +1187,9 @@ public class JniEnv {
         char[] value = new char[len];
         SetCharArrayRegion(value, 0, len, unicodePtr);
         return EspressoLanguage.getCurrentContext().getMeta() //
-                .STRING.metaNew() //
-                .fields(Meta.Field.set("value", value)) //
-                .getInstance();
+                        .STRING.metaNew() //
+                                        .fields(Meta.Field.set("value", value)) //
+                                        .getInstance();
     }
 
     @JniImpl
@@ -1249,6 +1197,35 @@ public class JniEnv {
         final char[] chars = (char[]) meta(str).field("value").get();
         CharBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Char).asCharBuffer();
         buf.put(chars, start, len);
+    }
+
+    private String nfiSignature(String signature) {
+        SignatureDescriptor descriptor = EspressoLanguage.getCurrentContext().getSignatureDescriptors().make(signature);
+        int argCount = descriptor.getParameterCount(false);
+        StringBuilder sb = new StringBuilder("(");
+
+        if (argCount > 0) {
+            JavaKind kind = descriptor.getParameterKind(0);
+            sb.append(Utils.kindToType(kind, false));
+        }
+        for (int i = 1; i  < argCount; ++i) {
+            JavaKind kind = descriptor.getParameterKind(i);
+            sb.append(", ").append(Utils.kindToType(kind, false));
+        }
+
+        sb.append("): ").append(Utils.kindToType(descriptor.resultKind(), true));
+        return sb.toString();
+    }
+
+    @JniImpl
+    public int RegisterNative(StaticObject clazz, String name, String signature, TruffleObject closure) {
+        String className = meta(((StaticObjectClass) clazz).getMirror()).getInternalName();
+
+        TruffleObject boundNative = NativeLibrary.bind(closure, nfiSignature(signature));
+
+        RootNode nativeNode = new VmNativeNode(EspressoLanguage.getCurrentContext().getLanguage(), boundNative, null);
+        EspressoLanguage.getCurrentContext().getInterpreterToVM().registerIntrinsic(className, name, signature, nativeNode);
+        return JNI_OK;
     }
 
     private static ByteBuffer directByteBuffer(long address, long capacity, JavaKind kind) {

@@ -62,6 +62,7 @@ public class Callback implements TruffleObject {
     }
 
     private static Callback wrap(Object receiver, Method m) {
+        assert m != null;
         return new Callback(m.getParameterCount(), args -> {
             try {
                 return m.invoke(receiver, args);
@@ -82,7 +83,7 @@ public class Callback implements TruffleObject {
         return wrap(clazz, m);
     }
 
-    static Callback wrapInstanceMethod(Object receiver, String methodName, Class<?> parameterTypes) {
+    public static Callback wrapInstanceMethod(Object receiver, String methodName, Class<?> parameterTypes) {
         Method m;
         try {
             m = receiver.getClass().getDeclaredMethod(methodName, parameterTypes);

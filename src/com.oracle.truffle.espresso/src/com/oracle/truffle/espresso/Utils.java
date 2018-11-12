@@ -22,16 +22,52 @@
  */
 package com.oracle.truffle.espresso;
 
+import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.nfi.types.NativeSimpleType;
 
 public class Utils {
 
     public static InterpreterToVM getVm() {
-        return EspressoLanguage.getCurrentContext().getVm();
+        return EspressoLanguage.getCurrentContext().getInterpreterToVM();
     }
 
     public static Object maybeNull(Object obj) {
         return (obj == null) ? StaticObject.NULL : obj;
+    }
+
+    public static NativeSimpleType kindToType(JavaKind kind, boolean javaToNative) {
+        switch (kind) {
+            case Boolean:
+                return NativeSimpleType.UINT8; // ?
+            case Short:
+                return NativeSimpleType.SINT16;
+            case Char:
+                return NativeSimpleType.UINT16;
+            case Long:
+                return NativeSimpleType.SINT64;
+            case Float:
+                return NativeSimpleType.FLOAT;
+            case Double:
+                return NativeSimpleType.DOUBLE;
+            case Int:
+                return NativeSimpleType.SINT32;
+            case Byte:
+                return NativeSimpleType.SINT8;
+            case Void:
+                return NativeSimpleType.VOID;
+            case Object:
+                // TODO(peterssen): We don't want Interop null passed verbatim to native, but native
+                // NULL instead.
+
+                return javaToNative
+                        ? NativeSimpleType.OBJECT_OR_NULL
+                        : NativeSimpleType.OBJECT;
+
+            default:
+                throw EspressoError.shouldNotReachHere();
+        }
     }
 }

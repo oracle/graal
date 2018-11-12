@@ -34,6 +34,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.Utils;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.jni.Mangle;
@@ -51,6 +52,7 @@ import com.oracle.truffle.espresso.nodes.IntrinsicRootNode;
 import com.oracle.truffle.espresso.nodes.JniNativeNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.types.SignatureDescriptor;
+import com.oracle.truffle.espresso.vm.VM;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
 
 public final class MethodInfo implements ModifiersProvider {
@@ -165,10 +167,10 @@ public final class MethodInfo implements ModifiersProvider {
 
         int argCount = signature.getParameterCount(false);
         for (int i = 0; i < argCount; ++i) {
-            sb.append(", ").append(kindToType(signature.getParameterKind(i), true));
+            sb.append(", ").append(Utils.kindToType(signature.getParameterKind(i), true));
         }
 
-        sb.append("): ").append(kindToType(signature.resultKind(), false));
+        sb.append("): ").append(Utils.kindToType(signature.resultKind(), false));
 
         return sb.toString();
     }
@@ -185,7 +187,7 @@ public final class MethodInfo implements ModifiersProvider {
             CompilerDirectives.transferToInterpreterAndInvalidate();
 
             // TODO(peterssen): Rethink method substitution logic.
-            RootNode redirectedMethod = getContext().getVm().getIntrinsic(this);
+            RootNode redirectedMethod = getContext().getInterpreterToVM().getIntrinsic(this);
             if (redirectedMethod != null) {
                 if (redirectedMethod instanceof IntrinsicReflectionRootNode) {
                     ((IntrinsicReflectionRootNode) redirectedMethod).setOriginalMethod(Meta.meta(this));
@@ -206,10 +208,10 @@ public final class MethodInfo implements ModifiersProvider {
                         // Look in libjava
                         String mangledName = Mangle.mangleMethod(meta(this), false);
 
-                        JniEnv jniEnv = EspressoLanguage.getCurrentContext().getJniEnv();
+                        VM vm = EspressoLanguage.getCurrentContext().getVM();
 
                         try {
-                            TruffleObject nativeMethod = bind(jniEnv.getJavaLibrary(), meta(this), mangledName);
+                            TruffleObject nativeMethod = bind(vm.getJavaLibrary(), meta(this), mangledName);
                             callTarget = Truffle.getRuntime().createCallTarget(new JniNativeNode(getContext().getLanguage(), nativeMethod, meta(this)));
                             return callTarget;
                         } catch (UnknownIdentifierException e) {
@@ -233,7 +235,7 @@ public final class MethodInfo implements ModifiersProvider {
                         throw meta.throwEx(UnsatisfiedLinkError.class);
                     }
                 } else {
-                    callTarget = Truffle.getRuntime().createCallTarget(new EspressoRootNode(getContext().getLanguage(), this, getContext().getVm()));
+                    callTarget = Truffle.getRuntime().createCallTarget(new EspressoRootNode(getContext().getLanguage(), this, getContext().getInterpreterToVM()));
                 }
             }
         }
