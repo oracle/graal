@@ -134,15 +134,4 @@ public class Target_java_lang_System {
     public static void registerNatives() {
         /* nop */
     }
-
-    @Intrinsic
-    public static @Type(String.class) StaticObject mapLibraryName(@Type(String.class) StaticObject libname) {
-        String hostLibname = Meta.toHost(libname);
-        return meta(libname).getMeta().toGuest(System.mapLibraryName(hostLibname));
-    }
-
-    @Intrinsic
-    public static int identityHashCode(Object object) {
-        return System.identityHashCode(MetaUtil.unwrap(object));
-    }
 }

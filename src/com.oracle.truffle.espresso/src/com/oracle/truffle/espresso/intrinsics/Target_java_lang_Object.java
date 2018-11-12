@@ -37,15 +37,6 @@ import com.oracle.truffle.espresso.runtime.StaticObjectWrapper;
 @EspressoIntrinsics
 public class Target_java_lang_Object {
     @Intrinsic(hasReceiver = true)
-    public static int hashCode(Object self) {
-        // (Identity) hash code must be respected for wrappers.
-        // The same object could be wrapped by two different instances of StaticObjectWrapper.
-        // Wrappers are transparent, it's identity comes from the wrapped object.
-        Object target = (self instanceof StaticObjectWrapper) ? ((StaticObjectWrapper) self).getWrapped() : self;
-        return System.identityHashCode(target);
-    }
-
-    @Intrinsic(hasReceiver = true)
     public static @Type(Class.class) StaticObject getClass(Object self) {
         if (self instanceof StaticObject) {
             return ((StaticObject) self).getKlass().mirror();
@@ -105,10 +96,10 @@ public class Target_java_lang_Object {
         return ((StaticObjectImpl) self).copy();
     }
 
-    @Intrinsic
-    public static void registerNatives() {
-        /* nop */
-    }
+//    @Intrinsic
+//    public static void registerNatives() {
+//        /* nop */
+//    }
 
     @SuppressFBWarnings(value = {"IMSE"}, justification = "Not dubious, .notify is just forwarded from the guest.")
     @Intrinsic(hasReceiver = true)
