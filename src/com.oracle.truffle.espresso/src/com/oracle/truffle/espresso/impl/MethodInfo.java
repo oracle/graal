@@ -33,6 +33,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.jni.Mangle;
@@ -295,8 +296,7 @@ public final class MethodInfo implements ModifiersProvider {
 
     public boolean isConstructor() {
         assert signature.resultKind() == JavaKind.Void;
-        assert isStatic();
-        assert signature.getParameterCount(false) == 0;
+        assert !isStatic();
         return "<init>".equals(getName());
     }
 
