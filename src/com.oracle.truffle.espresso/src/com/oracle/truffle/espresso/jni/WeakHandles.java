@@ -31,7 +31,7 @@ import java.util.WeakHashMap;
 /**
  * Manages a collection of weak references associated to handles.
  */
-public class Handles<T> {
+public class WeakHandles<T> {
 
     private static final int DEFAULT_INITIAL_CAPACITY = 32;
 
@@ -47,7 +47,7 @@ public class Handles<T> {
      * @param initialCapacity must be > 0
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
-    public Handles(int initialCapacity) {
+    public WeakHandles(int initialCapacity) {
         if (initialCapacity <= 0) {
             throw new IllegalArgumentException("initialCapacity must be > 0");
         }
@@ -55,7 +55,7 @@ public class Handles<T> {
         handles = new WeakReference[initialCapacity];
     }
 
-    public Handles() {
+    public WeakHandles() {
         this(DEFAULT_INITIAL_CAPACITY);
     }
 

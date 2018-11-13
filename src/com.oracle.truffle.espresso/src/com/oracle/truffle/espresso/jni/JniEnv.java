@@ -98,8 +98,8 @@ public class JniEnv extends NativeEnv {
 
     private static final Map<String, Method> jniMethods = buildJniMethods();
 
-    private final Handles<FieldInfo> fieldIds = new Handles<>();
-    private final Handles<MethodInfo> methodIds = new Handles<>();
+    private final WeakHandles<FieldInfo> fieldIds = new WeakHandles<>();
+    private final WeakHandles<MethodInfo> methodIds = new WeakHandles<>();
 
     // Prevent cleaner threads from collecting in-use native buffers.
     private final Map<Long, ByteBuffer> nativeBuffers = new ConcurrentHashMap<>();
