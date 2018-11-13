@@ -16,8 +16,9 @@ void Mokapot_SetJNIEnv(JNIEnv *env) {
 #define UNIMPLEMENTED(name) \
   fprintf(stderr, "Calling unimplemented mokapot %s\n", #name);
 
-#define IMPLEMENTED(name) \
-  fprintf(stderr, "Calling implemented mokapot %s\n", #name);
+#define IMPLEMENTED(name) do {} while (0);
+
+  // fprintf(stderr, "Calling implemented mokapot %s\n", #name);
 
 
 
@@ -220,18 +221,18 @@ jboolean JVM_IsNaN(jdouble d) {
 }
 
 void JVM_FillInStackTrace(JNIEnv *env, jobject throwable) {
-  UNIMPLEMENTED(JVM_FillInStackTrace);
-
+  IMPLEMENTED(JVM_FillInStackTrace);
+  (*getEnv())->JVM_FillInStackTrace(env, throwable);
 }
 
 jint JVM_GetStackTraceDepth(JNIEnv *env, jobject throwable) {
-  UNIMPLEMENTED(JVM_GetStackTraceDepth);
-  return 0;
+  IMPLEMENTED(JVM_GetStackTraceDepth);
+  return (*getEnv())->JVM_GetStackTraceDepth(env, throwable);
 }
 
 jobject JVM_GetStackTraceElement(JNIEnv *env, jobject throwable, jint index) {
-  UNIMPLEMENTED(JVM_GetStackTraceElement);
-  return NULL;
+  IMPLEMENTED(JVM_GetStackTraceElement);
+  return (*getEnv())->JVM_GetStackTraceElement(env, throwable, index);
 }
 
 void JVM_InitializeCompiler(JNIEnv *env, jclass compCls) {
@@ -617,8 +618,8 @@ jobject JVM_GetClassConstantPool(JNIEnv *env, jclass cls) {
 }
 
 jint JVM_ConstantPoolGetSize(JNIEnv *env, jobject unused, jobject jcpool) {
-  UNIMPLEMENTED(JVM_ConstantPoolGetSize);
-  return 0;
+  IMPLEMENTED(JVM_ConstantPoolGetSize);
+  return (*getEnv())->JVM_ConstantPoolGetSize(env, unused, jcpool);
 }
 
 jclass JVM_ConstantPoolGetClassAt(JNIEnv *env, jobject unused, jobject jcpool, jint index) {
@@ -682,8 +683,8 @@ jstring JVM_ConstantPoolGetStringAt(JNIEnv *env, jobject unused, jobject jcpool,
 }
 
 jstring JVM_ConstantPoolGetUTF8At(JNIEnv *env, jobject unused, jobject jcpool, jint index) {
-  UNIMPLEMENTED(JVM_ConstantPoolGetUTF8At);
-  return NULL;
+  IMPLEMENTED(JVM_ConstantPoolGetUTF8At);
+  return (*getEnv())->JVM_ConstantPoolGetUTF8At(env, unused, jcpool, index);
 }
 
 jobjectArray JVM_GetMethodParameters(JNIEnv *env, jobject method) {
@@ -1078,7 +1079,7 @@ int JVM_GetHostName(char *name, int namelen) {
 }
 
 void *JVM_RawMonitorCreate(void) {
-  // fprintf(stderr, "Calling mokapot JVM_RawMonitorCreate.\n");
+  IMPLEMENTED(JVM_RawMonitorCreate);
   // TODO(peterssen): Cache class and method.
   jclass java_lang_Object = (*jniEnv)->FindClass(jniEnv, "java.lang.Object");
   jmethodID constructor = (*jniEnv)->GetMethodID(jniEnv, java_lang_Object, "<init>", "()V");
@@ -1087,19 +1088,18 @@ void *JVM_RawMonitorCreate(void) {
 }
 
 void JVM_RawMonitorDestroy(void *mon) {
-  UNIMPLEMENTED(JVM_RawMonitorDestroy);
-  // TODO(peterssen): Cache class and method.
+  IMPLEMENTED(JVM_RawMonitorDestroy);
   jobject lock = (jobject) mon;
   (*jniEnv)->DeleteGlobalRef(jniEnv, lock);
 }
 
 jint JVM_RawMonitorEnter(void *mon) {
-  // fprintf(stderr, "Calling mokapot JVM_RawMonitorEnter.\n");
+  IMPLEMENTED(JVM_RawMonitorEnter);
   return (*jniEnv)->MonitorEnter(jniEnv, (jobject) mon);
 }
 
 void JVM_RawMonitorExit(void *mon) {
-  // fprintf(stderr, "Calling mokapot JVM_RawMonitorExit.\n");
+  IMPLEMENTED(JVM_RawMonitorExit);
   (*jniEnv)->MonitorExit(jniEnv, (jobject) mon);
 }
 

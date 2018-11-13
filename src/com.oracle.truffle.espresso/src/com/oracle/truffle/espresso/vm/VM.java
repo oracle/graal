@@ -58,6 +58,7 @@ import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.nodes.LinkedNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
+import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 import com.oracle.truffle.espresso.runtime.StaticObjectWrapper;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
@@ -433,7 +434,7 @@ public class VM extends NativeEnv {
 
     @VmImpl
     @JniImpl
-    public @Type(StackTraceElement.class) StaticObject JVM_getStackTraceElement(@Type(Throwable.class) StaticObject self, int index) {
+    public @Type(StackTraceElement.class) StaticObject JVM_GetStackTraceElement(@Type(Throwable.class) StaticObject self, int index) {
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
         StaticObject ste = meta.knownKlass(StackTraceElement.class).allocateInstance();
         Object backtrace = meta.THROWABLE.field("backtrace").get(self);
@@ -453,6 +454,19 @@ public class VM extends NativeEnv {
             init.invoke("UnknownIntrinsic", "unknownIntrinsic", null, -1);
         }
         return ste;
+    }
+
+    @VmImpl
+    @JniImpl
+    public int JVM_ConstantPoolGetSize(Object unused, StaticObjectClass jcpool) {
+        return jcpool.getMirror().getConstantPool().length();
+    }
+
+    @VmImpl
+    @JniImpl
+    public @Type(String.class) StaticObject JVM_ConstantPoolGetUTF8At(Object unused, StaticObjectClass jcpool, int index) {
+        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        return meta.toGuest(jcpool.getMirror().getConstantPool().utf8At(index).getValue());
     }
 
     // endregion JNI Invocation Interface
