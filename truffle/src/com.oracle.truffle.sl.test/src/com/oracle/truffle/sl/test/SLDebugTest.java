@@ -567,7 +567,7 @@ public class SLDebugTest {
 
                 DebugScope scope = frame.getScope();
                 DebugValue v = scope.getDeclaredValue("a");
-                assertEquals("Null", v.getMetaObject().as(String.class));
+                assertEquals("NULL", v.getMetaObject().as(String.class));
                 v = scope.getDeclaredValue("b");
                 assertEquals("Boolean", v.getMetaObject().as(String.class));
                 v = scope.getDeclaredValue("c");

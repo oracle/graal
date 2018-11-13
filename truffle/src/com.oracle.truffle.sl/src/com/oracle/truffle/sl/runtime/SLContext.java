@@ -94,7 +94,7 @@ import com.oracle.truffle.sl.nodes.local.SLReadArgumentNode;
 public final class SLContext {
 
     private static final Source BUILTIN_SOURCE = Source.newBuilder(SLLanguage.ID, "", "SL builtin").build();
-    private static final Layout LAYOUT = Layout.createLayout();
+    static final Layout LAYOUT = Layout.createLayout();
 
     private final Env env;
     private final BufferedReader input;

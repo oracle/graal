@@ -43,19 +43,34 @@ package com.oracle.truffle.sl.runtime;
 import java.math.BigInteger;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.NumberLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
-@MessageResolution(receiverType = SLBigNumber.class)
+@ExportLibrary(NumberLibrary.class)
 public final class SLBigNumber implements TruffleObject, Comparable<SLBigNumber> {
+
+    private static final long LONG_MAX_SAFE_DOUBLE = 9007199254740991L; // 2 ** 53 - 1
+    private static final int INT_MAX_SAFE_FLOAT = 16777215; // 2 ** 24 - 1
+
+    private static boolean inSafeDoubleRange(long l) {
+        return l >= -LONG_MAX_SAFE_DOUBLE && l <= LONG_MAX_SAFE_DOUBLE;
+    }
+
+    private static boolean inSafeFloatRange(int i) {
+        return i >= -INT_MAX_SAFE_FLOAT && i <= INT_MAX_SAFE_FLOAT;
+    }
 
     private final BigInteger value;
 
     public SLBigNumber(BigInteger value) {
         this.value = value;
+    }
+
+    public SLBigNumber(long value) {
+        this.value = BigInteger.valueOf(value);
     }
 
     public BigInteger getValue() {
@@ -65,11 +80,6 @@ public final class SLBigNumber implements TruffleObject, Comparable<SLBigNumber>
     @TruffleBoundary
     public int compareTo(SLBigNumber o) {
         return value.compareTo(o.getValue());
-    }
-
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return SLBigNumberForeign.ACCESS;
     }
 
     @Override
@@ -92,22 +102,106 @@ public final class SLBigNumber implements TruffleObject, Comparable<SLBigNumber>
         return value.hashCode();
     }
 
-    static boolean isInstance(TruffleObject obj) {
-        return obj instanceof SLBigNumber;
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    final boolean isNumber() {
+        return true;
     }
 
-    @Resolve(message = "UNBOX")
-    abstract static class UnboxBigNode extends Node {
-        Object access(SLBigNumber obj) {
-            return obj.value.doubleValue();
+    @ExportMessage
+    @TruffleBoundary
+    final boolean fitsInByte() {
+        return value.bitLength() < 8;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    final boolean fitsInShort() {
+        return value.bitLength() < 16;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    final boolean fitsInFloat() {
+        return fitsInInt() && inSafeFloatRange(value.intValue());
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    final boolean fitsInLong() {
+        return value.bitLength() < 64;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    final boolean fitsInInt() {
+        return value.bitLength() < 32;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    final boolean fitsInDouble() {
+        return fitsInLong() && inSafeDoubleRange(value.longValue());
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    final double asDouble() throws UnsupportedMessageException {
+        if (fitsInDouble()) {
+            return value.doubleValue();
+        } else {
+            throw UnsupportedMessageException.create();
         }
     }
 
-    @Resolve(message = "IS_BOXED")
-    abstract static class IsBoxedBigNode extends Node {
-        @SuppressWarnings("unused")
-        Object access(SLBigNumber obj) {
-            return true;
+    @ExportMessage
+    @TruffleBoundary
+    final long asLong() throws UnsupportedMessageException {
+        if (fitsInLong()) {
+            return value.longValue();
+        } else {
+            throw UnsupportedMessageException.create();
         }
     }
+
+    @ExportMessage
+    @TruffleBoundary
+    final byte asByte() throws UnsupportedMessageException {
+        if (fitsInByte()) {
+            return value.byteValue();
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    final int asInt() throws UnsupportedMessageException {
+        if (fitsInInt()) {
+            return value.intValue();
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    final float asFloat() throws UnsupportedMessageException {
+        if (fitsInFloat()) {
+            return value.floatValue();
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    final short asShort() throws UnsupportedMessageException {
+        if (fitsInShort()) {
+            return value.shortValue();
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
 }

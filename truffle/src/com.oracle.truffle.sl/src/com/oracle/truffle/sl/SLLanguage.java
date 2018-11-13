@@ -40,6 +40,13 @@
  */
 package com.oracle.truffle.sl;
 
+import static com.oracle.truffle.api.interop.InteropLibraries.BOOLEANS;
+import static com.oracle.truffle.api.interop.InteropLibraries.EXECUTABLES;
+import static com.oracle.truffle.api.interop.InteropLibraries.NUMBERS;
+import static com.oracle.truffle.api.interop.InteropLibraries.OBJECTS;
+import static com.oracle.truffle.api.interop.InteropLibraries.STRINGS;
+import static com.oracle.truffle.api.interop.InteropLibraries.VALUES;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -48,6 +55,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
@@ -59,6 +67,7 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -72,12 +81,6 @@ import com.oracle.truffle.sl.builtins.SLReadlnBuiltin;
 import com.oracle.truffle.sl.builtins.SLStackTraceBuiltin;
 import com.oracle.truffle.sl.nodes.SLEvalRootNode;
 import com.oracle.truffle.sl.nodes.SLTypes;
-import com.oracle.truffle.sl.nodes.access.SLReadPropertyCacheNode;
-import com.oracle.truffle.sl.nodes.access.SLReadPropertyNode;
-import com.oracle.truffle.sl.nodes.access.SLWritePropertyCacheNode;
-import com.oracle.truffle.sl.nodes.access.SLWritePropertyNode;
-import com.oracle.truffle.sl.nodes.call.SLDispatchNode;
-import com.oracle.truffle.sl.nodes.call.SLInvokeNode;
 import com.oracle.truffle.sl.nodes.controlflow.SLBlockNode;
 import com.oracle.truffle.sl.nodes.controlflow.SLBreakNode;
 import com.oracle.truffle.sl.nodes.controlflow.SLContinueNode;
@@ -90,13 +93,16 @@ import com.oracle.truffle.sl.nodes.expression.SLBigIntegerLiteralNode;
 import com.oracle.truffle.sl.nodes.expression.SLDivNode;
 import com.oracle.truffle.sl.nodes.expression.SLEqualNode;
 import com.oracle.truffle.sl.nodes.expression.SLFunctionLiteralNode;
+import com.oracle.truffle.sl.nodes.expression.SLInvokeNode;
 import com.oracle.truffle.sl.nodes.expression.SLLessOrEqualNode;
 import com.oracle.truffle.sl.nodes.expression.SLLessThanNode;
 import com.oracle.truffle.sl.nodes.expression.SLLogicalAndNode;
 import com.oracle.truffle.sl.nodes.expression.SLLogicalOrNode;
 import com.oracle.truffle.sl.nodes.expression.SLMulNode;
+import com.oracle.truffle.sl.nodes.expression.SLReadPropertyNode;
 import com.oracle.truffle.sl.nodes.expression.SLStringLiteralNode;
 import com.oracle.truffle.sl.nodes.expression.SLSubNode;
+import com.oracle.truffle.sl.nodes.expression.SLWritePropertyNode;
 import com.oracle.truffle.sl.nodes.local.SLLexicalScope;
 import com.oracle.truffle.sl.nodes.local.SLReadLocalVariableNode;
 import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNode;
@@ -108,6 +114,7 @@ import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.runtime.SLFunctionRegistry;
 import com.oracle.truffle.sl.runtime.SLNull;
+import com.oracle.truffle.sl.runtime.SLObjectType;
 
 /**
  * SL is a simple language to demonstrate and showcase features of Truffle. The implementation is as
@@ -267,7 +274,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
 
     @Override
     protected boolean isVisible(SLContext context, Object value) {
-        return value != SLNull.SINGLETON;
+        return !VALUES.isNull(value);
     }
 
     @Override
@@ -275,49 +282,77 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         if (!(object instanceof TruffleObject)) {
             return false;
         }
-        TruffleObject truffleObject = (TruffleObject) object;
-        return truffleObject instanceof SLFunction || truffleObject instanceof SLBigNumber || SLContext.isSLObject(truffleObject);
+        if (object instanceof SLBigNumber || object instanceof SLFunction || object instanceof SLNull) {
+            return true;
+        } else if (object instanceof DynamicObject) {
+            return ((DynamicObject) object).dispatch() == SLObjectType.class;
+        }
+        return false;
     }
 
     @Override
     protected String toString(SLContext context, Object value) {
-        if (value == SLNull.SINGLETON) {
-            return "NULL";
+        return toString(value);
+    }
+
+    public static String toString(Object value) {
+        try {
+            if (value == null) {
+                return "ANY";
+            } else if (NUMBERS.fitsInLong(value)) {
+                return Long.toString(NUMBERS.asLong(value));
+            } else if (BOOLEANS.isBoolean(value)) {
+                return Boolean.toString(BOOLEANS.asBoolean(value));
+            } else if (STRINGS.isString(value)) {
+                return STRINGS.asString(value);
+            } else if (VALUES.isNull(value)) {
+                return "NULL";
+            } else if (EXECUTABLES.isExecutable(value)) {
+                if (value instanceof SLFunction) {
+                    return ((SLFunction) value).getName();
+                } else {
+                    return "Function";
+                }
+            } else if (OBJECTS.isObject(value)) {
+                return "Object";
+            } else {
+                return "Unsupported";
+            }
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw new AssertionError();
         }
-        if (value instanceof SLBigNumber) {
-            return super.toString(context, ((SLBigNumber) value).getValue());
-        }
-        if (value instanceof Long) {
-            return Long.toString((Long) value);
-        }
-        return super.toString(context, value);
     }
 
     @Override
     protected Object findMetaObject(SLContext context, Object value) {
-        if (value instanceof Number || value instanceof SLBigNumber) {
+        return getMetaObject(value);
+    }
+
+    public static String getMetaObject(Object value) {
+        if (value == null) {
+            return "ANY";
+        } else if (NUMBERS.isNumber(value)) {
             return "Number";
-        }
-        if (value instanceof Boolean) {
+        } else if (BOOLEANS.isBoolean(value)) {
             return "Boolean";
-        }
-        if (value instanceof String) {
+        } else if (STRINGS.isString(value)) {
             return "String";
-        }
-        if (value == SLNull.SINGLETON) {
-            return "Null";
-        }
-        if (value instanceof SLFunction) {
+        } else if (VALUES.isNull(value)) {
+            return "NULL";
+        } else if (EXECUTABLES.isExecutable(value)) {
             return "Function";
+        } else if (OBJECTS.isObject(value)) {
+            return "Object";
+        } else {
+            return "Unsupported";
         }
-        return "Object";
     }
 
     @Override
     protected SourceSection findSourceLocation(SLContext context, Object value) {
         if (value instanceof SLFunction) {
-            SLFunction f = (SLFunction) value;
-            return f.getCallTarget().getRootNode().getSourceSection();
+            return ((SLFunction) value).getDeclaredLocation();
         }
         return null;
     }

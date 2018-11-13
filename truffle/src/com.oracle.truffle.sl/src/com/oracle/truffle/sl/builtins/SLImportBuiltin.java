@@ -40,14 +40,14 @@
  */
 package com.oracle.truffle.sl.builtins;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.ObjectLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.sl.nodes.util.SLSimplifyNode;
 import com.oracle.truffle.sl.runtime.SLNull;
 
 /**
@@ -56,18 +56,15 @@ import com.oracle.truffle.sl.runtime.SLNull;
 @NodeInfo(shortName = "import")
 public abstract class SLImportBuiltin extends SLBuiltinNode {
 
-    @Child private Node readNode = Message.READ.createNode();
-
     @Specialization
-    public Object importSymbol(String name) {
+    public Object importSymbol(String symbol,
+                    @CachedLibrary(limit = "3") ObjectLibrary arrays,
+                    @Cached SLSimplifyNode normalize) {
         try {
-            return ForeignAccess.sendRead(readNode, getContext().getPolyglotBindings(), name);
-        } catch (UnknownIdentifierException e) {
+            return normalize.executeConvert(arrays.readMember(getContext().getPolyglotBindings(), symbol));
+        } catch (UnsupportedMessageException | UnknownIdentifierException e) {
             return SLNull.SINGLETON;
-        } catch (UnsupportedMessageException e) {
-            // polyglot bindings should always support reading
-            CompilerDirectives.transferToInterpreter();
-            throw new AssertionError(e);
         }
     }
+
 }

@@ -38,24 +38,22 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.sl.nodes.access;
+package com.oracle.truffle.sl.nodes.expression;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Fallback;
-import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.ArrayLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.NumberLibrary;
+import com.oracle.truffle.api.interop.ObjectLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
-import com.oracle.truffle.sl.runtime.SLContext;
+import com.oracle.truffle.sl.nodes.util.SLToMemberNode;
 import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 
 /**
@@ -72,47 +70,34 @@ import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 @NodeChild("receiverNode")
 @NodeChild("nameNode")
 @NodeChild("valueNode")
-@ImportStatic({SLContext.class, Message.class})
 public abstract class SLWritePropertyNode extends SLExpressionNode {
 
-    @Specialization(guards = "isSLObject(receiver)")
-    protected Object write(DynamicObject receiver, Object name, Object value,
-                    @Cached("create()") SLWritePropertyCacheNode writeNode) {
-        /**
-         * The polymorphic cache node that performs the actual write. This is a separate node so
-         * that it can be re-used in cases where the receiver, name, and value are not nodes but
-         * already evaluated values.
-         */
-        writeNode.executeWrite(receiver, name, value);
+    static final int LIBRARY_LIMIT = 3;
+
+    @Specialization(guards = "arrays.isArray(receiver)", limit = "LIBRARY_LIMIT")
+    protected Object write(Object receiver, Object index, Object value,
+                    @CachedLibrary("receiver") ArrayLibrary arrays,
+                    @CachedLibrary("index") NumberLibrary numbers) {
+        try {
+            arrays.writeElement(receiver, numbers.asLong(index), value);
+        } catch (UnsupportedMessageException | UnsupportedTypeException | InvalidArrayIndexException e) {
+            // read was not successful. In SL we only have basic support for errors.
+            throw SLUndefinedNameException.undefinedProperty(this, index);
+        }
         return value;
     }
 
-    /**
-     * Language interoperability: If the receiver object is a foreign value we use Truffle's interop
-     * API to access the foreign data.
-     */
-    @Specialization(guards = "!isSLObject(receiver)")
-    protected void writeForeign(TruffleObject receiver, Object name, Object value,
-                    // The child node to access the foreign object
-                    @Cached("WRITE.createNode()") Node foreignWriteNode) {
-
+    @Specialization(limit = "LIBRARY_LIMIT")
+    protected Object write(Object receiver, Object name, Object value,
+                    @CachedLibrary("receiver") ObjectLibrary objectLibrary,
+                    @Cached SLToMemberNode asMember) {
         try {
-            /* Perform the foreign object access. */
-            ForeignAccess.sendWrite(foreignWriteNode, receiver, name, value);
-
-        } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
-            /* Foreign access was not successful. */
+            objectLibrary.writeMember(receiver, asMember.execute(name), value);
+        } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
+            // write was not successful. In SL we only have basic support for errors.
             throw SLUndefinedNameException.undefinedProperty(this, name);
         }
-    }
-
-    /**
-     * When no specialization fits, the receiver is not an object (which is a type error).
-     */
-    @Fallback
-    @SuppressWarnings("unused")
-    protected void updateShape(Object r, Object name, Object value) {
-        throw SLUndefinedNameException.undefinedProperty(this, name);
+        return value;
     }
 
 }
