@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
+import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.espresso.impl.Klass;
 
 public final class StaticObjectArray extends StaticObjectWrapper<Object[]> {
@@ -31,5 +32,10 @@ public final class StaticObjectArray extends StaticObjectWrapper<Object[]> {
 
     public StaticObjectArray copy() {
         return new StaticObjectArray(getKlass().getComponentType(), getWrapped().clone());
+    }
+
+    @Override
+    public ForeignAccess getForeignAccess() {
+        return StaticObjectArrayMessageResolutionForeign.ACCESS;
     }
 }
