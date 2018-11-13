@@ -1,5 +1,13 @@
 package com.oracle.truffle.espresso.vm;
 
+import static com.oracle.truffle.espresso.meta.Meta.meta;
+
+import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -7,23 +15,26 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.intrinsics.Intrinsic;
+import com.oracle.truffle.espresso.intrinsics.SuppressFBWarnings;
 import com.oracle.truffle.espresso.jni.Callback;
 import com.oracle.truffle.espresso.jni.JniEnv;
+import com.oracle.truffle.espresso.jni.JniImpl;
 import com.oracle.truffle.espresso.jni.NativeEnv;
 import com.oracle.truffle.espresso.jni.NativeLibrary;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-
-import java.lang.reflect.Method;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import com.oracle.truffle.espresso.runtime.StaticObjectArray;
+import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
+import com.oracle.truffle.nfi.types.NativeSimpleType;
 
 public class VM extends NativeEnv {
 
     private final TruffleObject initializeMokapotContext;
-//    private final TruffleObject disposeMokapotContext;
+// private final TruffleObject disposeMokapotContext;
 
     private final JniEnv jniEnv;
 
@@ -54,12 +65,13 @@ public class VM extends NativeEnv {
             initializeMokapotContext = NativeLibrary.lookupAndBind(mokapotLibrary,
                             "initializeMokapotContext", "(env, sint64, (string): pointer): sint64");
 //
-//            disposeMokapotContext = NativeLibrary.lookupAndBind(mokapotLibrary,
-//                            "disposeMokapotContext",
-//                            "(env, sint64): void");
+// disposeMokapotContext = NativeLibrary.lookupAndBind(mokapotLibrary,
+// "disposeMokapotContext",
+// "(env, sint64): void");
 
             Callback lookupVmImplCallback = Callback.wrapInstanceMethod(this, "lookupVmImpl", String.class);
             this.vmPtr = (long) ForeignAccess.sendExecute(Message.EXECUTE.createNode(), initializeMokapotContext, jniEnv.getNativePointer(), lookupVmImplCallback);
+
             assert this.vmPtr != 0;
 
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException | UnknownIdentifierException e) {
@@ -69,7 +81,7 @@ public class VM extends NativeEnv {
 
     private static Map<String, Method> buildVmMethods() {
         Map<String, Method> map = new HashMap<>();
-        Method[] declaredMethods = JniEnv.class.getDeclaredMethods();
+        Method[] declaredMethods = VM.class.getDeclaredMethods();
         for (Method method : declaredMethods) {
             VmImpl jniImpl = method.getAnnotation(VmImpl.class);
             if (jniImpl != null) {
@@ -86,16 +98,20 @@ public class VM extends NativeEnv {
         return new VM(jniEnv);
     }
 
-
     public static String vmNativeSignature(Method method) {
         StringBuilder sb = new StringBuilder("(");
-        // Prepend JNIEnv* . The raw pointer will be substituted by the proper `this` reference.
+
         boolean first = true;
+        if (method.getAnnotation(JniImpl.class) != null) {
+            sb.append(NativeSimpleType.POINTER); // Prepend JNIEnv*;
+            first = false;
+        }
+
         for (Class<?> param : method.getParameterTypes()) {
             if (!first) {
                 sb.append(", ");
             } else {
-                first = true;
+                first = false;
             }
             sb.append(classToType(param, false));
         }
@@ -110,10 +126,10 @@ public class VM extends NativeEnv {
             if (m == null) {
                 System.err.println("Fetching unknown/unimplemented VM method: " + methodName);
                 return (TruffleObject) ForeignAccess.sendExecute(Message.EXECUTE.createNode(), jniEnv.dupClosureRefAndCast("(pointer): void"),
-                        new Callback(1, args -> {
-                            System.err.println("Calling unimplemented VM method: " + methodName);
-                            throw EspressoError.unimplemented("VM method: " + methodName);
-                        }));
+                                new Callback(1, args -> {
+                                    System.err.println("Calling unimplemented VM method: " + methodName);
+                                    throw EspressoError.unimplemented("VM method: " + methodName);
+                                }));
             }
 
             String signature = vmNativeSignature(m);
@@ -127,6 +143,13 @@ public class VM extends NativeEnv {
 
     public Callback vmMethodWrapper(Method m) {
         return new Callback(m.getParameterCount() + 1, args -> {
+
+            assert unwrapPointer(args[0]) == jniEnv.getNativePointer() : "Calling JVM_ method " + m + " from alien JniEnv";
+            if (m.getAnnotation(JniImpl.class) != null) {
+                args = Arrays.copyOfRange(args, 1, args.length); // Strip JNIEnv* pointer, replace
+                                                                 // by VM (this) receiver.
+            }
+
             Class<?>[] params = m.getParameterTypes();
 
             for (int i = 0; i < args.length; ++i) {
@@ -144,7 +167,6 @@ public class VM extends NativeEnv {
                     }
                 }
             }
-            assert args.length - 1 == args.length;
             try {
                 // Substitute raw pointer by proper `this` reference.
 // System.err.print("Call DEFINED method: " + m.getName() +
@@ -173,24 +195,166 @@ public class VM extends NativeEnv {
         });
     }
 
+    // region VM methods
 
     @VmImpl
-    public long JVM_CurrentTimeMillis(long jniEnv, StaticObject ignored) {
+    @JniImpl
+    public long JVM_CurrentTimeMillis(StaticObject ignored) {
         return 666;
     }
 
     @VmImpl
-    public long JVM_NanoTime(long jniEnv, StaticObject ignored) {
+    @JniImpl
+    public long JVM_NanoTime(StaticObject ignored) {
         return 12345;
     }
 
     /**
-     * (Identity) hash code must be respected for wrappers.
-     * The same object could be wrapped by two different instances of StaticObjectWrapper.
-     * Wrappers are transparent, it's identity comes from the wrapped object.
+     * (Identity) hash code must be respected for wrappers. The same object could be wrapped by two
+     * different instances of StaticObjectWrapper. Wrappers are transparent, it's identity comes
+     * from the wrapped object.
      */
     @VmImpl
-    public int JVM_IHashCode(long jniEnv, StaticObject object) {
+    @JniImpl
+    public int JVM_IHashCode(StaticObject object) {
         return System.identityHashCode(MetaUtil.unwrap(object));
     }
+
+    @VmImpl
+    @JniImpl
+    public void JVM_ArrayCopy(Object ignored, Object src, int srcPos, Object dest, int destPos, int length) {
+        try {
+            if (src instanceof StaticObjectArray && dest instanceof StaticObjectArray) {
+                System.arraycopy(((StaticObjectArray) src).getWrapped(), srcPos, ((StaticObjectArray) dest).getWrapped(), destPos, length);
+            } else {
+                assert src.getClass().isArray();
+                assert dest.getClass().isArray();
+                System.arraycopy(src, srcPos, dest, destPos, length);
+            }
+        } catch (Exception e) {
+            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
+        }
+    }
+
+    @VmImpl
+    @JniImpl
+    public Object JVM_Clone(Object self) {
+        if (self instanceof StaticObjectArray) {
+            // For arrays.
+            return ((StaticObjectArray) self).copy();
+        }
+
+        if (self instanceof int[]) {
+            return ((int[]) self).clone();
+        } else if (self instanceof byte[]) {
+            return ((byte[]) self).clone();
+        } else if (self instanceof boolean[]) {
+            return ((boolean[]) self).clone();
+        } else if (self instanceof long[]) {
+            return ((long[]) self).clone();
+        } else if (self instanceof float[]) {
+            return ((float[]) self).clone();
+        } else if (self instanceof double[]) {
+            return ((double[]) self).clone();
+        } else if (self instanceof char[]) {
+            return ((char[]) self).clone();
+        } else if (self instanceof short[]) {
+            return ((short[]) self).clone();
+        }
+
+        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        if (!meta.knownKlass(Cloneable.class).isAssignableFrom(meta(((StaticObject) self).getKlass()))) {
+            throw meta.throwEx(java.lang.CloneNotSupportedException.class);
+        }
+
+        // Normal object just copy the fields.
+        return ((StaticObjectImpl) self).copy();
+    }
+
+    @VmImpl
+    @JniImpl
+    @SuppressFBWarnings(value = {"IMSE"}, justification = "Not dubious, .notify is just forwarded from the guest.")
+    public void JVM_MonitorNotifyAll(Object self) {
+        try {
+            MetaUtil.unwrap(self).notifyAll();
+        } catch (IllegalMonitorStateException e) {
+            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
+        }
+    }
+
+
+    @VmImpl
+    @JniImpl
+    @SuppressFBWarnings(value = {"IMSE"}, justification = "Not dubious, .notify is just forwarded from the guest.")
+    public void JVM_MonitorNotify(Object self) {
+        try {
+            MetaUtil.unwrap(self).notify();
+        } catch (IllegalMonitorStateException e) {
+            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
+        }
+    }
+
+    @VmImpl
+    @JniImpl
+    @SuppressFBWarnings(value = {"IMSE"}, justification = "Not dubious, .notify is just forwarded from the guest.")
+    public void JVM_MonitorWait(Object self, long timeout) {
+        try {
+            MetaUtil.unwrap(self).wait(timeout);
+        } catch (InterruptedException | IllegalMonitorStateException | IllegalArgumentException e) {
+            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
+        }
+    }
+
+    @VmImpl
+    public void JVM_Halt(int code) {
+        // TODO(peterssen): Kill the context, not the whole VM; maybe not even the context.
+        Runtime.getRuntime().halt(code);
+    }
+
+    @VmImpl
+    public void JVM_Exit(int code) {
+        // TODO(peterssen): Kill the context, not the whole VM; maybe not even the context.
+        System.exit(code);
+    }
+
+    @VmImpl
+    public boolean JVM_isNaN(double d) {
+        return Double.isNaN(d);
+    }
+
+    // endregion VM methods
+
+    // region JNI Invocation Interface
+
+    @VmImpl
+    public Object JVM_LoadLibrary(String name) {
+        return NativeLibrary.loadLibrary(name);
+    }
+
+    @VmImpl
+    public int DestroyJavaVM() {
+        return JniEnv.JNI_OK;
+    }
+
+    @VmImpl
+    public int AttachCurrentThread(long penvPtr, long argsPtr) {
+        return JniEnv.JNI_OK;
+    }
+
+    @VmImpl
+    public int DetachCurrentThread() {
+        return JniEnv.JNI_OK;
+    }
+
+    @VmImpl
+    public int GetEnv(long penvPtr, int version) {
+        return JniEnv.JNI_OK;
+    }
+
+    @VmImpl
+    public int AttachCurrentThreadAsDaemon(long penvPtr, long argsPtr) {
+        return JniEnv.JNI_OK;
+    }
+
+    // endregion JNI Invocation Interface
 }
