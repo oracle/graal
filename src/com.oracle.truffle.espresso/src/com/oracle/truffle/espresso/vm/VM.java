@@ -17,8 +17,10 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.Utils;
 import com.oracle.truffle.espresso.intrinsics.Intrinsic;
 import com.oracle.truffle.espresso.intrinsics.SuppressFBWarnings;
+import com.oracle.truffle.espresso.intrinsics.Type;
 import com.oracle.truffle.espresso.jni.Callback;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.jni.JniImpl;
@@ -319,7 +321,7 @@ public class VM extends NativeEnv {
     }
 
     @VmImpl
-    public boolean JVM_isNaN(double d) {
+    public boolean JVM_IsNaN(double d) {
         return Double.isNaN(d);
     }
 
@@ -333,6 +335,12 @@ public class VM extends NativeEnv {
         } catch (IllegalAccessException | NoSuchFieldException | ClassNotFoundException e) {
             throw EspressoError.shouldNotReachHere(e);
         }
+    }
+
+    @VmImpl
+    @JniImpl
+    public @Type(String.class) StaticObject intern(@Type(String.class) StaticObject self) {
+        return Utils.getVm().intern(self);
     }
 
     // endregion VM methods

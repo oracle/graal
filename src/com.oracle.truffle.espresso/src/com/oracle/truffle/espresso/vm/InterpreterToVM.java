@@ -38,7 +38,6 @@ import java.util.Map;
 import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
@@ -51,16 +50,13 @@ import com.oracle.truffle.espresso.intrinsics.Surrogate;
 import com.oracle.truffle.espresso.intrinsics.Target_java_lang_Class;
 import com.oracle.truffle.espresso.intrinsics.Target_java_lang_ClassLoader;
 import com.oracle.truffle.espresso.intrinsics.Target_java_lang_ClassLoader_NativeLibrary;
-import com.oracle.truffle.espresso.intrinsics.Target_java_lang_Object;
 import com.oracle.truffle.espresso.intrinsics.Target_java_lang_Package;
 import com.oracle.truffle.espresso.intrinsics.Target_java_lang_Runtime;
-import com.oracle.truffle.espresso.intrinsics.Target_java_lang_String;
 import com.oracle.truffle.espresso.intrinsics.Target_java_lang_System;
 import com.oracle.truffle.espresso.intrinsics.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.intrinsics.Target_java_lang_Throwable;
 import com.oracle.truffle.espresso.intrinsics.Target_java_lang_reflect_Array;
 import com.oracle.truffle.espresso.intrinsics.Target_java_security_AccessController;
-import com.oracle.truffle.espresso.intrinsics.Target_java_util_concurrent_atomic_AtomicLong;
 import com.oracle.truffle.espresso.intrinsics.Target_java_util_jar_JarFile;
 import com.oracle.truffle.espresso.intrinsics.Target_sun_misc_Perf;
 import com.oracle.truffle.espresso.intrinsics.Target_sun_misc_Signal;
@@ -104,15 +100,12 @@ public class InterpreterToVM {
                     Target_java_lang_ClassLoader.class,
                     Target_java_lang_ClassLoader_NativeLibrary.class,
                     Target_java_lang_Package.class,
-                    Target_java_lang_Object.class,
                     Target_java_lang_Runtime.class,
-                    Target_java_lang_String.class,
                     Target_java_lang_System.class,
                     Target_java_lang_Thread.class,
                     Target_java_lang_Throwable.class,
                     Target_java_lang_reflect_Array.class,
                     Target_java_security_AccessController.class,
-                    Target_java_util_concurrent_atomic_AtomicLong.class,
                     Target_java_util_jar_JarFile.class,
                     Target_sun_misc_Perf.class,
                     Target_sun_misc_Signal.class,

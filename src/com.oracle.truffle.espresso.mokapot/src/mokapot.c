@@ -115,8 +115,8 @@ jobject JVM_Clone(JNIEnv *env, jobject obj) {
 }
 
 jstring JVM_InternString(JNIEnv *env, jstring str) {
-  UNIMPLEMENTED(JVM_InternString);
-  return NULL;
+  IMPLEMENTED(JVM_InternString);  
+  return (*getEnv())->JVM_InternString(env, str);
 }
 
 jlong JVM_CurrentTimeMillis(JNIEnv *env, jclass ignored) {
@@ -216,7 +216,7 @@ jboolean JVM_IsSupportedJNIVersion(jint version) {
 
 jboolean JVM_IsNaN(jdouble d) {
   IMPLEMENTED(JVM_IsNaN);
-  return (*getEnv())->JVM_isNaN(d);
+  return (*getEnv())->JVM_IsNaN(d);
 }
 
 void JVM_FillInStackTrace(JNIEnv *env, jobject throwable) {
