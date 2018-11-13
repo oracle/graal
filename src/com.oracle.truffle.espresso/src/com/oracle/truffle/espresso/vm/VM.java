@@ -2,6 +2,7 @@ package com.oracle.truffle.espresso.vm;
 
 import static com.oracle.truffle.espresso.meta.Meta.meta;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;
@@ -320,6 +321,18 @@ public class VM extends NativeEnv {
     @VmImpl
     public boolean JVM_isNaN(double d) {
         return Double.isNaN(d);
+    }
+
+    @VmImpl
+    public boolean JVM_SupportsCX8() {
+        try {
+            Class<?> klass = Class.forName("java.util.concurrent.atomic.AtomicLong");
+            Field field = klass.getDeclaredField("VM_SUPPORTS_LONG_CAS");
+            field.setAccessible(true);
+            return field.getBoolean(null);
+        } catch (IllegalAccessException | NoSuchFieldException | ClassNotFoundException e) {
+            throw EspressoError.shouldNotReachHere(e);
+        }
     }
 
     // endregion VM methods
