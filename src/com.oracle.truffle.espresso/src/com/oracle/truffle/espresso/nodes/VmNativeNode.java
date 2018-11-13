@@ -10,8 +10,11 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public class VmNativeNode extends NativeRootNode {
 
-    public VmNativeNode(TruffleLanguage<?> language, TruffleObject boundNative, Meta.Method originalMethod) {
+    private final boolean isJni;
+
+    public VmNativeNode(TruffleLanguage<?> language, TruffleObject boundNative, boolean isJni, Meta.Method originalMethod) {
         super(language, boundNative, originalMethod);
+        this.isJni = isJni;
     }
 
     public Object[] preprocessArgs(Object[] args) {
@@ -23,6 +26,10 @@ public class VmNativeNode extends NativeRootNode {
         Object[] argsWithEnv = getOriginalMethod().isStatic()
                 ? prepend1(getOriginalMethod().getDeclaringClass().rawKlass().mirror(), args)
                 : args;
+
+        if (isJni) {
+            argsWithEnv = prepend1(jniEnv.getNativePointer(), argsWithEnv);
+        }
 
         return argsWithEnv;
     }
