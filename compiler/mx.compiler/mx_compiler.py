@@ -973,9 +973,10 @@ def java_base_unittest(args):
         shutil.rmtree(basejdk_dir)
     mx.run([jlink, '--output', basejdk_dir, '--add-modules', basemodules, '--module-path', join(jdk.home, 'jmods')])
     jdwp = mx.add_lib_suffix(mx.add_lib_prefix('jdwp'))
-    shutil.copy(join(jdk.home, 'lib', jdwp), join(basejdk_dir, 'lib', jdwp))
+    lib_folder = 'bin' if mx.get_os() == 'windows' else 'lib'
+    shutil.copy(join(jdk.home, lib_folder, jdwp), join(basejdk_dir, lib_folder, jdwp))
     dt_socket = mx.add_lib_suffix(mx.add_lib_prefix('dt_socket'))
-    shutil.copy(join(jdk.home, 'lib', dt_socket), join(basejdk_dir, 'lib', dt_socket))
+    shutil.copy(join(jdk.home, lib_folder, dt_socket), join(basejdk_dir, lib_folder, dt_socket))
 
     if not args:
         args = []
