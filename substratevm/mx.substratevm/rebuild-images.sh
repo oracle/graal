@@ -92,7 +92,7 @@ function common() {
         ${custom_args[@]}
     )
 
-    if ! is_shellscript "${graalvm_home}/bin/native-image"; then
+    if $(${graalvm_home}/bin/native-image --help-extra | grep -q "\-\-no\-server"); then
         cmd_line+=("--no-server")
     fi
 
@@ -183,11 +183,6 @@ function language() {
 
 function set_path() {
     cmd_line+=("-H:Path=$1")
-}
-
-function is_shellscript() {
-    local path="$1"
-    file -b -L --mime-type "${path}" | grep -q text/x-shellscript
 }
 
 for binary in "${to_build[@]}"; do

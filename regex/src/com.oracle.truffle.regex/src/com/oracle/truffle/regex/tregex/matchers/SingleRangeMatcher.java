@@ -24,12 +24,12 @@
  */
 package com.oracle.truffle.regex.tregex.matchers;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * Matcher for a single character range.
  */
-public final class SingleRangeMatcher extends ProfiledCharMatcher {
+public final class SingleRangeMatcher extends InvertibleCharMatcher {
 
     private final char lo;
     private final char hi;
@@ -37,7 +37,7 @@ public final class SingleRangeMatcher extends ProfiledCharMatcher {
     /**
      * Constructs a new {@link SingleRangeMatcher}.
      * 
-     * @param invert see {@link ProfiledCharMatcher}.
+     * @param invert see {@link InvertibleCharMatcher}.
      * @param lo inclusive lower bound of range to match.
      * @param hi inclusive upper bound of range to match.
      */
@@ -72,7 +72,7 @@ public final class SingleRangeMatcher extends ProfiledCharMatcher {
     }
 
     @Override
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public String toString() {
         return modifiersToString() + MatcherBuilder.rangeToString(lo, hi);
     }

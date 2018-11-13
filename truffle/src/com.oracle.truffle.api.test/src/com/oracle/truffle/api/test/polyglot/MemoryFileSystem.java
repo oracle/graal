@@ -88,7 +88,7 @@ final class MemoryFileSystem implements FileSystem {
     private final Map<Long, FileInfo> inodes;
     private final Map<Long, byte[]> blocks;
     private final Path root;
-    private Path userDir;
+    private volatile Path userDir;
     private long nextInode = 0;
 
     MemoryFileSystem() throws IOException {
@@ -97,10 +97,6 @@ final class MemoryFileSystem implements FileSystem {
         root = Paths.get("/");
         userDir = root;
         createDirectoryImpl();
-    }
-
-    void setUserDir(final Path newUserDir) {
-        userDir = newUserDir;
     }
 
     @Override
@@ -340,6 +336,12 @@ final class MemoryFileSystem implements FileSystem {
             return path;
         }
         return userDir.resolve(path);
+    }
+
+    @Override
+    public void setCurrentWorkingDirectory(Path currentWorkingDirectory) {
+        Objects.requireNonNull(currentWorkingDirectory, "Current working directory must be non null.");
+        this.userDir = currentWorkingDirectory;
     }
 
     @Override

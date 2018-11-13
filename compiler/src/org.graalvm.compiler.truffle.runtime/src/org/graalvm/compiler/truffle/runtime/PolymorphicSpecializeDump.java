@@ -27,7 +27,6 @@ package org.graalvm.compiler.truffle.runtime;
 import com.oracle.truffle.api.dsl.Introspection;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.graphio.GraphOutput;
 import org.graalvm.graphio.GraphStructure;
 
@@ -37,16 +36,14 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getOptions;
+import org.graalvm.compiler.truffle.common.TruffleDebugContext;
 
 class PolymorphicSpecializeDump {
 
     public static void dumpPolymorphicSpecialize(List<Node> toDump, List<OptimizedDirectCallNode> knownCallNodes) {
         assert toDump.size() > 0;
         assert knownCallNodes.size() > 0;
-        final DebugContext debugContext = DebugContext.create(getOptions(), Collections.emptyList());
-        try {
+        try (TruffleDebugContext debugContext = openDebugContext()) {
             Collections.reverse(toDump);
             PolymorphicSpecializeDump.PolymorphicSpecializeGraph graph = new PolymorphicSpecializeDump.PolymorphicSpecializeGraph(knownCallNodes, toDump);
             final GraphOutput<PolymorphicSpecializeGraph, ?> output = debugContext.buildOutput(
@@ -58,6 +55,10 @@ class PolymorphicSpecializeDump {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private static TruffleDebugContext openDebugContext() {
+        return GraalTruffleRuntime.getRuntime().getTruffleCompiler().openDebugContext(TruffleRuntimeOptions.asMap(TruffleRuntimeOptions.getOptions()), null, null);
     }
 
     static class PolymorphicSpecializeGraph {

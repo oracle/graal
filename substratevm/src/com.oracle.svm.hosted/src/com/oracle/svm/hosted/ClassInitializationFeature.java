@@ -47,6 +47,7 @@ import com.oracle.svm.core.hub.ClassInitializationInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
@@ -68,11 +69,11 @@ public final class ClassInitializationFeature implements Feature, RuntimeClassIn
     public static class Options {
         @APIOption(name = "delay-class-initialization-to-runtime")//
         @Option(help = "A comma-separated list of classes (and implicitly all of their subclasses) that are initialized at runtime and not during image building", type = OptionType.User)//
-        public static final HostedOptionKey<String> DelayClassInitialization = new HostedOptionKey<>("");
+        public static final HostedOptionKey<String[]> DelayClassInitialization = new HostedOptionKey<>(null);
 
         @APIOption(name = "rerun-class-initialization-at-runtime") //
         @Option(help = "A comma-separated list of classes (and implicitly all of their subclasses) that are initialized both at runtime and during image building", type = OptionType.User)//
-        public static final HostedOptionKey<String> RerunClassInitialization = new HostedOptionKey<>("");
+        public static final HostedOptionKey<String[]> RerunClassInitialization = new HostedOptionKey<>(null);
     }
 
     /**
@@ -158,8 +159,8 @@ public final class ClassInitializationFeature implements Feature, RuntimeClassIn
         processOption(access, Options.RerunClassInitialization, this::rerunClassInitialization);
     }
 
-    private static void processOption(AfterRegistrationAccess access, HostedOptionKey<String> option, Consumer<Class<?>[]> handler) {
-        for (String className : option.getValue().split(",")) {
+    private static void processOption(AfterRegistrationAccess access, HostedOptionKey<String[]> option, Consumer<Class<?>[]> handler) {
+        for (String className : OptionUtils.flatten(",", option.getValue())) {
             if (className.length() > 0) {
                 Class<?> clazz = access.findClassByName(className);
                 if (clazz == null) {
@@ -234,7 +235,7 @@ public final class ClassInitializationFeature implements Feature, RuntimeClassIn
          */
         for (Map.Entry<Class<?>, InitKind> entry : classInitKinds.entrySet()) {
             if (entry.getValue() == InitKind.DELAY && !UnsafeAccess.UNSAFE.shouldBeInitialized(entry.getKey())) {
-                throw UserError.abort("Class that is marked for delaying initialization to runtime got initialized during image building: " + entry.getKey().getTypeName());
+                throw UserError.abort("Class that is marked for delaying initialization to run time got initialized during image building: " + entry.getKey().getTypeName());
             }
         }
     }
@@ -352,10 +353,11 @@ public final class ClassInitializationFeature implements Feature, RuntimeClassIn
             return InitKind.EAGER;
 
         } catch (Throwable ex) {
-            if (NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
+            if (NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue() || NativeImageOptions.AllowIncompleteClasspath.getValue()) {
                 System.out.println("Warning: class initialization of class " + clazz.getTypeName() + " failed with exception " +
-                                ex.getClass().getTypeName() + (ex.getMessage() == null ? "" : ": " + ex.getMessage()) + ". This class will be initialized at runtime because option " +
-                                SubstrateOptionsParser.commandArgument(NativeImageOptions.ReportUnsupportedElementsAtRuntime, "+") + " is used for image building. " +
+                                ex.getClass().getTypeName() + (ex.getMessage() == null ? "" : ": " + ex.getMessage()) + ". This class will be initialized at run time because either option " +
+                                SubstrateOptionsParser.commandArgument(NativeImageOptions.ReportUnsupportedElementsAtRuntime, "+") + " or option " +
+                                SubstrateOptionsParser.commandArgument(NativeImageOptions.AllowIncompleteClasspath, "+") + " is used for image building. " +
                                 "Use the option " + SubstrateOptionsParser.commandArgument(Options.DelayClassInitialization, clazz.getTypeName()) +
                                 " to explicitly request delayed initialization of this class.");
 
@@ -436,7 +438,7 @@ public final class ClassInitializationFeature implements Feature, RuntimeClassIn
     private static void checkEagerInitialization(Class<?> clazz) {
         if (clazz.isPrimitive() || clazz.isArray()) {
             throw UserError.abort("Primitive types and array classes are initialized eagerly because initialization is side-effect free. " +
-                            "It is not possible (and also not useful) to register them for runtime initialization: " + clazz.getTypeName());
+                            "It is not possible (and also not useful) to register them for run time initialization: " + clazz.getTypeName());
         }
     }
 }

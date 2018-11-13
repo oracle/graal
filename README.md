@@ -33,7 +33,7 @@ images or shared objects.
 
 
 ## Related Repositories
-GralVM allows running of following languages which are being developed and tested in related repositories with GraalVM core to run on top of it using Truffle and Graal compiler. These are:
+GraalVM allows running of following languages which are being developed and tested in related repositories with GraalVM core to run on top of it using Truffle and Graal compiler. These are:
 * [Graal.JS](https://github.com/graalvm/graaljs) - JavaScript (ECMAScript 2017 compatible) and node.js 8.11.1
 * [FastR](https://github.com/oracle/fastr) - R Language 3.4.0
 * [GraalPython](https://github.com/graalvm/graalpython) - Python 3.7
@@ -50,4 +50,4 @@ Each GraalVM component is licensed:
 * The [Graal compiler](/compiler/) is licensed under the [GPL 2 with Classpath exception](compiler/LICENSE.md).
 * [Substrate VM](/substratevm/) is licensed under the [GPL 2 with Classpath exception](substratevm/LICENSE.md).
 * [Sulong](/sulong/) is licensed under [3-clause BSD](sulong/LICENSE).
-* [VM](/vm/) is licensed under the [GPL 2 with Classpath exception](vm/GraalCE_license_3rd_party_license.txt).
+* [VM](/vm/) is licensed under the [GPL 2 with Classpath exception](vm/LICENSE_GRAALVM_CE).

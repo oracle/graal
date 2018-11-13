@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.hotspot;
 
+import static org.graalvm.compiler.hotspot.HotSpotCompiledCodeBuilder.Options.ShowSubstitutionSourceInfo;
 import static org.graalvm.util.CollectionsUtil.anyMatch;
 
 import java.nio.ByteBuffer;
@@ -38,6 +39,8 @@ import java.util.Map;
 import java.util.stream.Stream;
 import java.util.stream.Stream.Builder;
 
+import org.graalvm.compiler.api.replacements.MethodSubstitution;
+import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
 import org.graalvm.compiler.code.CompilationResult.CodeComment;
@@ -46,6 +49,9 @@ import org.graalvm.compiler.code.DataSection;
 import org.graalvm.compiler.code.SourceMapping;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeSourcePosition;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.DebugInfo;
@@ -65,14 +71,20 @@ import jdk.vm.ci.meta.Assumptions.Assumption;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class HotSpotCompiledCodeBuilder {
+    public static class Options {
+        // @formatter:off
+        @Option(help = "Controls whether the source position information of snippets and method substitutions" +
+                " are exposed to HotSpot.  Can be useful when profiling to get more precise position information.")
+        public static final OptionKey<Boolean> ShowSubstitutionSourceInfo = new OptionKey<>(false);
+    }
 
-    public static HotSpotCompiledCode createCompiledCode(CodeCacheProvider codeCache, ResolvedJavaMethod method, HotSpotCompilationRequest compRequest, CompilationResult compResult) {
+    public static HotSpotCompiledCode createCompiledCode(CodeCacheProvider codeCache, ResolvedJavaMethod method, HotSpotCompilationRequest compRequest, CompilationResult compResult, OptionValues options) {
         String name = compResult.getName();
 
         byte[] targetCode = compResult.getTargetCode();
         int targetCodeSize = compResult.getTargetCodeSize();
 
-        Site[] sites = getSortedSites(codeCache, compResult);
+        Site[] sites = getSortedSites(compResult, options, codeCache.shouldDebugNonSafepoints() && method != null);
 
         Assumption[] assumptions = compResult.getAssumptions();
 
@@ -206,7 +218,7 @@ public class HotSpotCompiledCodeBuilder {
      * {@code DebugInformationRecorder::add_new_pc_offset}). In addition, it expects
      * {@link Infopoint} PCs to be unique.
      */
-    private static Site[] getSortedSites(CodeCacheProvider codeCache, CompilationResult target) {
+    private static Site[] getSortedSites(CompilationResult target, OptionValues options, boolean includeSourceInfo) {
         List<Site> sites = new ArrayList<>(
                         target.getExceptionHandlers().size() + target.getInfopoints().size() + target.getDataPatches().size() + target.getMarks().size() + target.getSourceMappings().size());
         sites.addAll(target.getExceptionHandlers());
@@ -214,7 +226,7 @@ public class HotSpotCompiledCodeBuilder {
         sites.addAll(target.getDataPatches());
         sites.addAll(target.getMarks());
 
-        if (codeCache.shouldDebugNonSafepoints()) {
+        if (includeSourceInfo) {
             /*
              * Translate the source mapping into appropriate info points. In HotSpot only one
              * position can really be represented and recording the end PC seems to give the best
@@ -281,7 +293,10 @@ public class HotSpotCompiledCodeBuilder {
                 // Good source mapping. Create an infopoint and add it to the list.
                 NodeSourcePosition sourcePosition = source.getSourcePosition();
                 assert sourcePosition.verify();
-                sourcePosition = sourcePosition.trim();
+                if (!ShowSubstitutionSourceInfo.getValue(options)) {
+                    sourcePosition = sourcePosition.trim();
+                    assert verifyTrim(sourcePosition);
+                }
                 if (sourcePosition != null) {
                     assert !anyMatch(sites, s -> source.getStartOffset() <= s.pcOffset && s.pcOffset <= source.getEndOffset());
                     sourcePositionSites.add(new Infopoint(source.getEndOffset(), new DebugInfo(sourcePosition), InfopointReason.BYTECODE_POSITION));
@@ -315,5 +330,12 @@ public class HotSpotCompiledCodeBuilder {
         }
 
         return sites.toArray(new Site[sites.size()]);
+    }
+
+    private static boolean verifyTrim(NodeSourcePosition sourcePosition) {
+        for (NodeSourcePosition sp = sourcePosition; sp != null; sp = sp.getCaller()) {
+            assert (sp.getMethod().getAnnotation(Snippet.class) == null && sp.getMethod().getAnnotation(MethodSubstitution.class) == null);
+        }
+        return true;
     }
 }

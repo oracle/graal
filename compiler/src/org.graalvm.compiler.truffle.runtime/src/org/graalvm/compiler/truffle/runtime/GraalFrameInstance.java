@@ -26,7 +26,6 @@ package org.graalvm.compiler.truffle.runtime;
 
 import java.lang.reflect.Method;
 
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.truffle.runtime.OptimizedOSRLoopNode.OSRRootNode;
 
 import com.oracle.truffle.api.CallTarget;
@@ -57,7 +56,7 @@ public final class GraalFrameInstance implements FrameInstance {
             CALL_TARGET_METHOD = OptimizedCallTarget.class.getDeclaredMethod("callProxy", VirtualFrame.class);
             CALL_OSR_METHOD = OptimizedOSRLoopNode.OSRRootNode.class.getDeclaredMethod("callProxy", OSRRootNode.class, VirtualFrame.class);
         } catch (NoSuchMethodException | SecurityException e) {
-            throw new GraalError(e);
+            throw new InternalError(e);
         }
     }
 

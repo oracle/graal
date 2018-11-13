@@ -76,6 +76,7 @@ public final class TruffleProfiler extends ProfilerDomain {
 
     private final TruffleExecutionContext context;
     private final ConnectionWatcher connectionWatcher;
+    private Enabler enabler;
 
     public TruffleProfiler(TruffleExecutionContext context, ConnectionWatcher connectionWatcher) {
         this.context = context;
@@ -87,7 +88,8 @@ public final class TruffleProfiler extends ProfilerDomain {
         sampler = context.getEnv().lookup(context.getEnv().getInstruments().get(CPUSamplerInstrument.ID), CPUSampler.class);
         tracer = context.getEnv().lookup(context.getEnv().getInstruments().get(CPUTracerInstrument.ID), CPUTracer.class);
         InstrumentInfo instrumentInfo = context.getEnv().getInstruments().get(TypeProfileInstrument.ID);
-        context.getEnv().lookup(instrumentInfo, Enabler.class).enable();
+        this.enabler = context.getEnv().lookup(instrumentInfo, Enabler.class);
+        enabler.enable();
         typeHandler = context.getEnv().lookup(instrumentInfo, TypeHandler.Provider.class).getTypeHandler();
     }
 
@@ -106,7 +108,8 @@ public final class TruffleProfiler extends ProfilerDomain {
             sampler = null;
             tracer = null;
             typeHandler = null;
-            context.getEnv().lookup(context.getEnv().getInstruments().get(TypeProfileInstrument.ID), Enabler.class).disable();
+            enabler.disable();
+            enabler = null;
         }
     }
 

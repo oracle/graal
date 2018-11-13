@@ -769,6 +769,11 @@ public final class Engine implements AutoCloseable {
             return null;
         }
 
+        @Override
+        public Value asValue(Object o) {
+            throw noPolyglotImplementationFound();
+        }
+
         static class EmptySource extends AbstractSourceImpl {
 
             protected EmptySource(AbstractPolyglotImpl engineImpl) {

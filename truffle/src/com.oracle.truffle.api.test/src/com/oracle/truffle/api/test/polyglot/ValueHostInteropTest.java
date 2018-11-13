@@ -124,8 +124,8 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
         Value calendarValue = testListValue.getArrayElement(0);
         assertTrue(calendarValue.isHostObject());
 
-        assertValue(context, testListValue);
-        assertValue(context, calendarValue);
+        assertValue(testListValue);
+        assertValue(calendarValue);
     }
 
     @Test
@@ -192,7 +192,7 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
         assertFalse(memberKeys.contains("one"));
         assertFalse(memberKeys.contains("null"));
         assertFalse(memberKeys.contains("three"));
-        assertValue(context, context.asValue(map));
+        assertValue(context.asValue(map));
     }
 
     @Test
@@ -443,6 +443,8 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
         assertEquals(50, f.call((Object) 13, (Object) 37));
         f.hashCode();
         f.equals(null);
+        assertTrue(f.equals(f));
+        assertEquals(f, context.asValue(executable).as(FunctionalWithDefaults.class));
         f.toString();
     }
 
@@ -453,6 +455,8 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
         assertEquals(50, f.call(13, 37));
         f.hashCode();
         f.equals(null);
+        assertTrue(f.equals(f));
+        assertEquals(f, context.asValue(executable).as(FunctionalWithObjectMethodOverrides.class));
         f.toString();
     }
 

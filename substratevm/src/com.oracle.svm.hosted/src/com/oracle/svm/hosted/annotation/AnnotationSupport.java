@@ -36,9 +36,11 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.java.FrameStateBuilder;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
@@ -70,6 +72,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import sun.reflect.annotation.AnnotationType;
+import sun.reflect.annotation.TypeNotPresentExceptionProxy;
 
 public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitutionType> {
 
@@ -151,7 +154,7 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
                     substitutionMethod = new AnnotationAnnotationTypeMethod(originalMethod);
                 } else {
                     substitutionMethod = new AnnotationAccessorMethod(originalMethod);
-                    result.addSubstitutionField(new AnnotationSubstitutionField(result, originalMethod, snippetReflection));
+                    result.addSubstitutionField(new AnnotationSubstitutionField(result, originalMethod, snippetReflection, metaAccess));
                 }
                 result.addSubstitutionMethod(originalMethod, substitutionMethod);
             }
@@ -159,6 +162,12 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
             typeSubstitutions.put(type, result);
         }
         return result;
+    }
+
+    /* Used to check the type of fields that need special guarding against missing types. */
+    static boolean isClassType(JavaType type, MetaAccessProvider metaAccess) {
+        return type.getJavaKind() == JavaKind.Object &&
+                        (type.equals(metaAccess.lookupJavaType(Class.class)) || type.equals(metaAccess.lookupJavaType(Class[].class)));
     }
 
     static class AnnotationAccessorMethod extends AnnotationSubstitutionMethod {
@@ -171,7 +180,7 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
             ResolvedJavaType annotationType = method.getDeclaringClass();
             assert !Modifier.isStatic(method.getModifiers()) && method.getSignature().getParameterCount(false) == 0;
 
-            GraphKit kit = new HostedGraphKit(debug, providers, method);
+            HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
             StructuredGraph graph = kit.getGraph();
             FrameStateBuilder state = new FrameStateBuilder(null, method, graph);
             state.initializeForMethodStart(null, true, providers.getGraphBuilderPlugins());
@@ -185,9 +194,38 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
 
             ValueNode receiver = state.loadLocal(0, JavaKind.Object);
             ResolvedJavaField field = findField(annotationType, canonicalMethodName(method));
+
             ValueNode loadField = kit.append(LoadFieldNode.create(null, receiver, field));
 
             ResolvedJavaType resultType = method.getSignature().getReturnType(null).resolve(null);
+
+            if (isClassType(resultType, providers.getMetaAccess())) {
+                /* Accessor of an annotation element that has a Class type. */
+
+                /* Check if it stores a TypeNotPresentExceptionProxy. */
+                ResolvedJavaType exceptionProxyType = providers.getMetaAccess().lookupJavaType(TypeNotPresentExceptionProxy.class);
+                TypeReference exceptionProxyTypeRef = TypeReference.createTrusted(kit.getAssumptions(), exceptionProxyType);
+
+                LogicNode condition = kit.append(InstanceOfNode.create(exceptionProxyTypeRef, loadField));
+                kit.startIf(condition, BranchProbabilityNode.SLOW_PATH_PROBABILITY);
+                kit.thenPart();
+
+                /* Generate the TypeNotPresentException exception and throw it. */
+                PiNode casted = kit.createPiNode(loadField, StampFactory.object(exceptionProxyTypeRef, true));
+                ResolvedJavaMethod generateExceptionMethod = kit.findMethod(TypeNotPresentExceptionProxy.class, "generateException", false);
+                ValueNode exception = kit.createJavaCallWithExceptionAndUnwind(InvokeKind.Virtual, generateExceptionMethod, casted);
+                kit.append(new UnwindNode(exception));
+                kit.mergeUnwinds();
+
+                kit.elsePart();
+
+                /* Cast the value to the original type. */
+                TypeReference resultTypeRef = TypeReference.createTrusted(kit.getAssumptions(), resultType);
+                loadField = kit.createPiNode(loadField, StampFactory.object(resultTypeRef, true));
+
+                kit.endIf();
+            }
+
             if (resultType.isArray()) {
                 /* From the specification: Arrays with length > 0 need to be cloned. */
                 ValueNode arrayLength = kit.append(new ArrayLengthNode(loadField));
@@ -275,7 +313,7 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
                 ResolvedJavaField ourField = findField(annotationType, attribute);
                 ResolvedJavaMethod otherMethod = findMethod(annotationInterfaceType, attribute);
                 ResolvedJavaType attributeType = ourField.getType().resolve(null);
-                assert attributeType.equals(otherMethod.getSignature().getReturnType(null));
+                // assert attributeType.equals(otherMethod.getSignature().getReturnType(null));
 
                 /*
                  * Access other value. The other object can be any implementation of the annotation

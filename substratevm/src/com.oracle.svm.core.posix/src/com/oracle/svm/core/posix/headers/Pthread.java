@@ -167,7 +167,7 @@ public class Pthread {
     // FIXME: public static native int PTHREAD_MUTEX_ADAPTIVE_NP();
 
     @CConstant
-    public static native int PTHREAD_STACK_MIN();
+    public static native UnsignedWord PTHREAD_STACK_MIN();
 
     @CConstant
     public static native int PTHREAD_MUTEX_NORMAL();

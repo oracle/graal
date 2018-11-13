@@ -26,14 +26,18 @@ package com.oracle.svm.core.posix.linux;
 
 import java.io.IOException;
 
+import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.RuntimeClassInitialization;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
@@ -410,6 +414,31 @@ public final class LinuxNIOSubstitutions {
         }
     }
     /* } @formatter:on */
+
+    /**
+     * Re-run the class initialization for {@code sun.nio.ch.EPollArrayWrapper} so that static
+     * fields are re-initialized from the platform running the image.
+     * <p>
+     * The static initializer for {@code sun.nio.ch.EPollArrayWrapper} captures the number of file
+     * descriptors available on the platform in {@code EPollArrayWrapper.OPEN_MAX} using
+     * {@code IOUtil,fdLimit()}. Based on that the constructor for
+     * {@code sun.nio.ch.EPollArrayWrapper} does or does not create an overflow table,
+     * {@code EPollArrayWrapper.eventsHigh}. If the number of file descriptors increases between the
+     * build platform and the execution platform, attempting to use the uninitialized overflow table
+     * may cause a {@code NullPointerException}. Re-initializing the static fields should allow the
+     * overflow table to be created if it is needed on the execution platform.
+     */
+    @AutomaticFeature
+    static final class EPollArrayWrapperFeature implements Feature {
+
+        @Override
+        public void duringSetup(DuringSetupAccess access) {
+            if (GraalServices.Java8OrEarlier) {
+                /* This class only exists on JDK-8 and earlier platforms. */
+                RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.nio.ch.EPollArrayWrapper"));
+            }
+        }
+    }
 
     /* { Do not reformat commented-out code: @formatter:off */
     /** Translations of jdk/src/solaris/native/sun/nio/ch/EPollPort.c?v=Java_1.8.0_40_b10. */

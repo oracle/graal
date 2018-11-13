@@ -72,13 +72,13 @@ public final class WebSocketServer extends NanoWSD implements InspectorWSConnect
 
     private static final Map<InetSocketAddress, WebSocketServer> SERVERS = new HashMap<>();
 
+    private final int port;
     private final Map<String, ServerPathSession> sessions = new HashMap<>();
-    private final AtomicReference<InspectServerSession> initialSession;
     private final PrintStream log;
 
-    private WebSocketServer(InetSocketAddress isa, InspectServerSession initialSession, PrintStream log) {
+    private WebSocketServer(InetSocketAddress isa, PrintStream log) {
         super(isa.getHostName(), isa.getPort());
-        this.initialSession = new AtomicReference<>(initialSession);
+        this.port = isa.getPort();
         this.log = log;
         if (log != null) {
             log.println("New WebSocketServer at " + isa);
@@ -90,10 +90,11 @@ public final class WebSocketServer extends NanoWSD implements InspectorWSConnect
                     boolean secure, KeyStoreOptions keyStoreOptions, ConnectionWatcher connectionWatcher,
                     InspectServerSession initialSession) throws IOException {
         WebSocketServer wss;
+        boolean startServer = false;
         synchronized (SERVERS) {
             wss = SERVERS.get(isa);
             if (wss == null) {
-                wss = new WebSocketServer(isa, initialSession, context.getLogger());
+                wss = new WebSocketServer(isa, context.getLogger());
                 if (secure) {
                     if (TruffleOptions.AOT) {
                         throw new IOException("Secure connection is not available in the native-image yet.");
@@ -101,12 +102,15 @@ public final class WebSocketServer extends NanoWSD implements InspectorWSConnect
                         wss.makeSecure(createSSLFactory(keyStoreOptions), null);
                     }
                 }
-                wss.start(Integer.MAX_VALUE);
+                startServer = true;
                 SERVERS.put(isa, wss);
             }
         }
         synchronized (wss.sessions) {
-            wss.sessions.put(path, new ServerPathSession(context, debugBrk, connectionWatcher));
+            wss.sessions.put(path, new ServerPathSession(context, initialSession, debugBrk, connectionWatcher));
+        }
+        if (startServer) {
+            wss.start(Integer.MAX_VALUE);
         }
         return wss;
     }
@@ -193,10 +197,10 @@ public final class WebSocketServer extends NanoWSD implements InspectorWSConnect
             log.flush();
         }
         if (session != null) {
-            // Do the initial break for the first time only, do not break on reconnect
-            boolean debugBreak = Boolean.TRUE.equals(session.getDebugBrkAndReset());
-            InspectServerSession iss = initialSession.getAndSet(null);
+            InspectServerSession iss = session.getServerSession();
             if (iss == null) {
+                // Do the initial break for the first time only, do not break on reconnect
+                boolean debugBreak = Boolean.TRUE.equals(session.getDebugBrkAndReset());
                 iss = InspectServerSession.create(session.getContext(), debugBreak, session.getConnectionWatcher());
             }
             return new InspectWebSocket(handshake, iss, session.getConnectionWatcher(), log);
@@ -235,7 +239,11 @@ public final class WebSocketServer extends NanoWSD implements InspectorWSConnect
 
     @Override
     public int getPort() {
-        return getListeningPort();
+        int p = getListeningPort();
+        if (p == -1) {
+            p = this.port;
+        }
+        return p;
     }
 
     /**
@@ -269,17 +277,23 @@ public final class WebSocketServer extends NanoWSD implements InspectorWSConnect
     private static class ServerPathSession {
 
         private final TruffleExecutionContext context;
+        private final AtomicReference<InspectServerSession> serverSession;
         private final AtomicBoolean debugBrk;
         private final ConnectionWatcher connectionWatcher;
 
-        ServerPathSession(TruffleExecutionContext context, boolean debugBrk, ConnectionWatcher connectionWatcher) {
+        ServerPathSession(TruffleExecutionContext context, InspectServerSession serverSession, boolean debugBrk, ConnectionWatcher connectionWatcher) {
             this.context = context;
+            this.serverSession = new AtomicReference<>(serverSession);
             this.debugBrk = new AtomicBoolean(debugBrk);
             this.connectionWatcher = connectionWatcher;
         }
 
         TruffleExecutionContext getContext() {
             return context;
+        }
+
+        InspectServerSession getServerSession() {
+            return serverSession.getAndSet(null);
         }
 
         boolean getDebugBrkAndReset() {

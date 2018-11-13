@@ -138,16 +138,20 @@ public abstract class DebugValue {
     public abstract boolean isReadable();
 
     /**
-     * Returns <code>true</code> if this value can be read else <code>false</code>.
+     * Returns <code>true</code> if reading of this value can have side-effects, else
+     * <code>false</code>. Read has side-effects if it changes runtime state.
      *
-     * @see #as(Class)
-     * @since 0.17
-     * @deprecated Use {@link #isWritable()}
+     * @since 1.0
      */
-    @Deprecated
-    public final boolean isWriteable() {
-        return isWritable();
-    }
+    public abstract boolean hasReadSideEffects();
+
+    /**
+     * Returns <code>true</code> if setting a new value can have side-effects, else
+     * <code>false</code>. Write has side-effects if it changes runtime state besides this value.
+     *
+     * @since 1.0
+     */
+    public abstract boolean hasWriteSideEffects();
 
     /**
      * Returns <code>true</code> if this value can be written to, else <code>false</code>.
@@ -548,6 +552,16 @@ public abstract class DebugValue {
         }
 
         @Override
+        public boolean hasReadSideEffects() {
+            return false;
+        }
+
+        @Override
+        public boolean hasWriteSideEffects() {
+            return false;
+        }
+
+        @Override
         public boolean isInternal() {
             return false;
         }
@@ -621,6 +635,18 @@ public abstract class DebugValue {
         public boolean isWritable() {
             checkValid();
             return KeyInfo.isWritable(keyInfo);
+        }
+
+        @Override
+        public boolean hasReadSideEffects() {
+            checkValid();
+            return KeyInfo.hasReadSideEffects(keyInfo);
+        }
+
+        @Override
+        public boolean hasWriteSideEffects() {
+            checkValid();
+            return KeyInfo.hasWriteSideEffects(keyInfo);
         }
 
         @Override
@@ -717,6 +743,18 @@ public abstract class DebugValue {
         public boolean isWritable() {
             checkValid();
             return KeyInfo.isWritable(keyInfo);
+        }
+
+        @Override
+        public boolean hasReadSideEffects() {
+            checkValid();
+            return KeyInfo.hasReadSideEffects(keyInfo);
+        }
+
+        @Override
+        public boolean hasWriteSideEffects() {
+            checkValid();
+            return KeyInfo.hasWriteSideEffects(keyInfo);
         }
 
         @Override

@@ -36,7 +36,6 @@ import java.util.stream.Stream;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.svm.core.deopt.Deoptimizer;
-import com.oracle.svm.hosted.ameta.HostedDynamicHubFeature;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -52,9 +51,7 @@ public class HostedMetaAccess extends UniverseMetaAccess {
 
     @Override
     public HostedType lookupJavaType(Class<?> clazz) {
-        HostedType result = (HostedType) super.lookupJavaType(clazz);
-        HostedDynamicHubFeature.setHostedIdentityHashCode(result.getHub(), clazz);
-        return result;
+        return (HostedType) super.lookupJavaType(clazz);
     }
 
     public Optional<HostedType> optionalLookupJavaType(Class<?> clazz) {

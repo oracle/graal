@@ -68,6 +68,7 @@ public final class TruffleExecutionContext {
     private volatile SuspendedThreadExecutor suspendThreadExecutor;
     private RemoteObjectsHandler roh;
     private ScriptsHandler sch;
+    private SourceLoadInstrument sourceLoadInstrument;
     private AtomicInteger schCounter;
     private volatile String lastMimeType = "text/javascript";   // Default JS
     private volatile String lastLanguage = "js";
@@ -142,6 +143,7 @@ public final class TruffleExecutionContext {
             SourceLoadInstrument sli = getEnv().lookup(instrumentInfo, SourceLoadInstrument.class);
             sli.enable(inspectInternal);
             sch = sli.getScriptsHandler();
+            sourceLoadInstrument = sli;
             schCounter = new AtomicInteger(0);
         }
         schCounter.incrementAndGet();
@@ -150,8 +152,8 @@ public final class TruffleExecutionContext {
 
     public void releaseScriptsHandler() {
         if (schCounter.decrementAndGet() == 0) {
-            InstrumentInfo instrumentInfo = getEnv().getInstruments().get(SourceLoadInstrument.ID);
-            getEnv().lookup(instrumentInfo, SourceLoadInstrument.class).disable();
+            sourceLoadInstrument.disable();
+            sourceLoadInstrument = null;
             sch = null;
             schCounter = null;
         }

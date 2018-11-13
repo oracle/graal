@@ -498,6 +498,141 @@ public class LoggingTest {
         Assert.assertTrue(stream.isClosed());
     }
 
+    @Test
+    public void testDecreaseLogLevelSingleContext() {
+        Level defaultLevel = Level.INFO;
+        Map<String, Level> setLevelsMap = new HashMap<>();
+        setLevelsMap.put("a", Level.FINEST);
+        setLevelsMap.put("a.a", Level.INFO);
+        Context.Builder builder = Context.newBuilder();
+        for (Map.Entry<String, Level> levelsMapEntry : setLevelsMap.entrySet()) {
+            builder.options(createLoggingOptions(LoggingLanguageFirst.ID, levelsMapEntry.getKey(), levelsMapEntry.getValue().toString()));
+        }
+        TestHandler handler = new TestHandler();
+        try (Context ctx = builder.logHandler(handler).build()) {
+            ctx.eval(LoggingLanguageFirst.ID, "");
+            List<Map.Entry<Level, String>> expected = new ArrayList<>();
+            expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, setLevelsMap));
+            Assert.assertEquals(expected, handler.getLog());
+        }
+    }
+
+    @Test
+    public void testDecreaseLogLevelMultipleContexts() {
+        Level defaultLevel = Level.INFO;
+        Map<String, Level> setLevelsMap = new HashMap<>();
+        setLevelsMap.put("a", Level.FINEST);
+        setLevelsMap.put("a.a", Level.INFO);
+        Context.Builder builder = Context.newBuilder();
+        for (Map.Entry<String, Level> levelsMapEntry : setLevelsMap.entrySet()) {
+            builder.options(createLoggingOptions(LoggingLanguageFirst.ID, levelsMapEntry.getKey(), levelsMapEntry.getValue().toString()));
+        }
+        TestHandler handler = new TestHandler();
+        try (Context ctx = builder.logHandler(handler).build()) {
+            TestHandler handler2 = new TestHandler();
+            try (Context ctx2 = Context.newBuilder().logHandler(handler2).build()) {
+                ctx.eval(LoggingLanguageFirst.ID, "");
+                ctx2.eval(LoggingLanguageFirst.ID, "");
+                List<Map.Entry<Level, String>> expected = new ArrayList<>();
+                expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, setLevelsMap));
+                Assert.assertEquals(expected, handler.getLog());
+                expected = new ArrayList<>();
+                expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, Collections.emptyMap()));
+                Assert.assertEquals(expected, handler2.getLog());
+            }
+        }
+    }
+
+    @Test
+    public void testDecreaseIncreaseLogLevelSingleContext() {
+        Map<String, Level> setLevelsMap = new HashMap<>();
+        setLevelsMap.put(null, Level.FINEST);   // level on language root level
+        setLevelsMap.put("a", Level.INFO);
+        setLevelsMap.put("a.a", Level.FINE);
+        TestHandler handler = new TestHandler();
+        Context.Builder builder = Context.newBuilder();
+        for (Map.Entry<String, Level> levelsMapEntry : setLevelsMap.entrySet()) {
+            builder.options(createLoggingOptions(LoggingLanguageFirst.ID, levelsMapEntry.getKey(), levelsMapEntry.getValue().toString()));
+        }
+        try (Context ctx = builder.logHandler(handler).build()) {
+            ctx.eval(LoggingLanguageFirst.ID, "");
+            List<Map.Entry<Level, String>> expected = new ArrayList<>();
+            expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, setLevelsMap.remove(null), setLevelsMap));
+            Assert.assertEquals(expected, handler.getLog());
+        }
+    }
+
+    @Test
+    public void testDecreaseIncreaseLogLevelMultipleContexts() {
+        Level defaultLevel = Level.INFO;
+        Map<String, Level> setLevelsMap = new HashMap<>();
+        setLevelsMap.put(null, Level.FINEST);   // level on language root level
+        setLevelsMap.put("a", Level.INFO);
+        setLevelsMap.put("a.a", Level.FINE);
+        Context.Builder builder = Context.newBuilder();
+        for (Map.Entry<String, Level> levelsMapEntry : setLevelsMap.entrySet()) {
+            builder.options(createLoggingOptions(LoggingLanguageFirst.ID, levelsMapEntry.getKey(), levelsMapEntry.getValue().toString()));
+        }
+        TestHandler handler = new TestHandler();
+        try (Context ctx = builder.logHandler(handler).build()) {
+            TestHandler handler2 = new TestHandler();
+            try (Context ctx2 = Context.newBuilder().logHandler(handler2).build()) {
+                ctx.eval(LoggingLanguageFirst.ID, "");
+                ctx2.eval(LoggingLanguageFirst.ID, "");
+                List<Map.Entry<Level, String>> expected = new ArrayList<>();
+                expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, setLevelsMap.remove(null), setLevelsMap));
+                Assert.assertEquals(expected, handler.getLog());
+                expected = new ArrayList<>();
+                expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, Collections.emptyMap()));
+                Assert.assertEquals(expected, handler2.getLog());
+            }
+        }
+    }
+
+    @Test
+    public void testDisableLoggersSingleContext() {
+        Map<String, Level> setLevelsMap = new HashMap<>();
+        setLevelsMap.put(null, Level.FINEST);   // level on language root level
+        setLevelsMap.put("a", Level.OFF);
+        Context.Builder builder = Context.newBuilder();
+        for (Map.Entry<String, Level> levelsMapEntry : setLevelsMap.entrySet()) {
+            builder.options(createLoggingOptions(LoggingLanguageFirst.ID, levelsMapEntry.getKey(), levelsMapEntry.getValue().toString()));
+        }
+        TestHandler handler = new TestHandler();
+        try (Context ctx = builder.logHandler(handler).build()) {
+            ctx.eval(LoggingLanguageFirst.ID, "");
+            List<Map.Entry<Level, String>> expected = new ArrayList<>();
+            expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, setLevelsMap.remove(null), setLevelsMap));
+            Assert.assertEquals(expected, handler.getLog());
+        }
+    }
+
+    @Test
+    public void testDisableLoggersMultipleContexts() {
+        Level defaultLevel = Level.INFO;
+        Map<String, Level> setLevelsMap = new HashMap<>();
+        setLevelsMap.put(null, Level.FINEST);   // level on language root level
+        setLevelsMap.put("a", Level.OFF);
+        Context.Builder builder = Context.newBuilder();
+        for (Map.Entry<String, Level> levelsMapEntry : setLevelsMap.entrySet()) {
+            builder.options(createLoggingOptions(LoggingLanguageFirst.ID, levelsMapEntry.getKey(), levelsMapEntry.getValue().toString()));
+        }
+        TestHandler handler = new TestHandler();
+        try (Context ctx = builder.logHandler(handler).build()) {
+            TestHandler handler2 = new TestHandler();
+            try (Context ctx2 = Context.newBuilder().logHandler(handler2).build()) {
+                ctx.eval(LoggingLanguageFirst.ID, "");
+                ctx2.eval(LoggingLanguageFirst.ID, "");
+                List<Map.Entry<Level, String>> expected = new ArrayList<>();
+                expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, setLevelsMap.remove(null), setLevelsMap));
+                Assert.assertEquals(expected, handler.getLog());
+                expected = new ArrayList<>();
+                expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, Collections.emptyMap()));
+                Assert.assertEquals(expected, handler2.getLog());
+            }
+        }
+    }
+
     private static void testLogToStream(Context.Builder contextBuilder, CloseableByteArrayOutputStream stream, boolean expectStreamClosed) {
         AbstractLoggingLanguage.action = new BiPredicate<LoggingContext, Collection<TruffleLogger>>() {
             @Override

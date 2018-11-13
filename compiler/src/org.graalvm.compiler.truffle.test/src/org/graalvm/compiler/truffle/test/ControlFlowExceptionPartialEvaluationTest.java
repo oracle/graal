@@ -24,9 +24,8 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleFunctionInlining;
-
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
+import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
 import org.junit.Assume;
@@ -69,7 +68,7 @@ public class ControlFlowExceptionPartialEvaluationTest extends PartialEvaluation
 
     @Test
     public void catchControlFlowExceptionFromCall() {
-        Assume.assumeTrue(TruffleCompilerOptions.getValue(TruffleFunctionInlining));
+        Assume.assumeTrue(TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleFunctionInlining));
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new RootTestNode(new FrameDescriptor(), "throwControlFlowException", new ThrowControlFlowExceptionTestNode()));
         AbstractTestNode result = new CatchControlFlowExceptionTestNode(new CallTestNode(callTarget));
         assertPartialEvalEquals("constant42", new RootTestNode(new FrameDescriptor(), "catchControlFlowExceptionFromCall", result));

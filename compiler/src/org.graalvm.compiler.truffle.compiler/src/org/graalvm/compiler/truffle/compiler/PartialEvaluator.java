@@ -24,17 +24,17 @@
  */
 package org.graalvm.compiler.truffle.compiler;
 
+import java.net.URI;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.PrintTruffleExpansionHistogram;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TraceTrufflePerformanceWarnings;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TraceTruffleStackTraceLimit;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleFunctionInlining;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleInlineAcrossTruffleBoundary;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleInstrumentBoundaries;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleInstrumentBranches;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleIterativePartialEscape;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TrufflePerformanceWarningsAreFatal;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.getRuntime;
+import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.PrintTruffleExpansionHistogram;
+import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TraceTrufflePerformanceWarnings;
+import static org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions.TraceTruffleStackTraceLimit;
+import static org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions.TruffleFunctionInlining;
+import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleInlineAcrossTruffleBoundary;
+import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleInstrumentBoundaries;
+import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleInstrumentBranches;
+import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleIterativePartialEscape;
+import static org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions.TrufflePerformanceWarningsAreFatal;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -95,7 +95,6 @@ import org.graalvm.compiler.replacements.PEGraphDecoder;
 import org.graalvm.compiler.replacements.ReplacementsImpl;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.compiler.debug.HistogramInlineInvokePlugin;
@@ -119,6 +118,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
+import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
 
 /**
  * Class performing the partial evaluation starting from the root node of an AST.
@@ -304,7 +304,7 @@ public abstract class PartialEvaluator {
         @Override
         public InlineInfo shouldInlineInvoke(GraphBuilderContext builder, ResolvedJavaMethod original, ValueNode[] arguments) {
             TruffleCompilerRuntime rt = TruffleCompilerRuntime.getRuntime();
-            InlineInfo inlineInfo = rt.getInlineInfo(original, true);
+            InlineInfo inlineInfo = asInlineInfo(rt.getInlineKind(original, true), original);
             if (!inlineInfo.allowsInlining()) {
                 return inlineInfo;
             }
@@ -351,7 +351,8 @@ public abstract class PartialEvaluator {
 
         @Override
         public SourceLanguagePosition getPosition(JavaConstant node) {
-            return inliningPlan.getPosition(node);
+            final TruffleSourceLanguagePosition position = inliningPlan.getPosition(node);
+            return position == null ? null : new SourceLanguagePositionImpl(position);
         }
     }
 
@@ -394,7 +395,7 @@ public abstract class PartialEvaluator {
             }
 
             TruffleCompilerRuntime rt = TruffleCompilerRuntime.getRuntime();
-            InlineInfo inlineInfo = rt.getInlineInfo(original, true);
+            InlineInfo inlineInfo = asInlineInfo(rt.getInlineKind(original, true), original);
             if (!inlineInfo.allowsInlining()) {
                 return inlineInfo;
             }
@@ -417,7 +418,21 @@ public abstract class PartialEvaluator {
         @Override
         public LoopExplosionKind loopExplosionKind(ResolvedJavaMethod method) {
             TruffleCompilerRuntime rt = TruffleCompilerRuntime.getRuntime();
-            return rt.getLoopExplosionKind(method);
+            TruffleCompilerRuntime.LoopExplosionKind explosionKind = rt.getLoopExplosionKind(method);
+            switch (explosionKind) {
+                case NONE:
+                    return LoopExplosionKind.NONE;
+                case FULL_EXPLODE:
+                    return LoopExplosionKind.FULL_EXPLODE;
+                case FULL_EXPLODE_UNTIL_RETURN:
+                    return LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN;
+                case FULL_UNROLL:
+                    return LoopExplosionKind.FULL_UNROLL;
+                case MERGE_EXPLODE:
+                    return LoopExplosionKind.MERGE_EXPLODE;
+                default:
+                    throw new IllegalStateException("Unsupported TruffleCompilerRuntime.LoopExplosionKind: " + String.valueOf(explosionKind));
+            }
         }
     }
 
@@ -438,7 +453,8 @@ public abstract class PartialEvaluator {
         }
 
         Providers compilationUnitProviders = providers.copyWith(new TruffleConstantFieldProvider(providers.getConstantFieldProvider(), providers.getMetaAccess()));
-        return new CachingPEGraphDecoder(architecture, graph, compilationUnitProviders, newConfig, TruffleCompilerImpl.Optimizations, AllowAssumptions.ifNonNull(graph.getAssumptions()),
+        return new CachingPEGraphDecoder(architecture, graph, compilationUnitProviders, newConfig, TruffleCompilerImpl.Optimizations,
+                        AllowAssumptions.ifNonNull(graph.getAssumptions()),
                         loopExplosionPlugin, decodingInvocationPlugins, inlineInvokePlugins, parameterPlugin, nodePluginList, callInlined, sourceLanguagePositionProvider);
     }
 
@@ -486,9 +502,8 @@ public abstract class PartialEvaluator {
     protected void registerTruffleInvocationPlugins(InvocationPlugins invocationPlugins, boolean canDelayIntrinsification) {
         ConstantReflectionProvider constantReflection = providers.getConstantReflection();
         TruffleGraphBuilderPlugins.registerInvocationPlugins(invocationPlugins, canDelayIntrinsification, providers.getMetaAccess(), constantReflection, knownTruffleTypes);
-
         for (TruffleInvocationPluginProvider p : GraalServices.load(TruffleInvocationPluginProvider.class)) {
-            p.registerInvocationPlugins(providers.getMetaAccess(), invocationPlugins, canDelayIntrinsification, constantReflection);
+            p.registerInvocationPlugins(providers, architecture, invocationPlugins, canDelayIntrinsification);
         }
     }
 
@@ -572,8 +587,8 @@ public abstract class PartialEvaluator {
         if (!TruffleCompilerOptions.getValue(TruffleInlineAcrossTruffleBoundary)) {
             // Do not inline across Truffle boundaries.
             for (MethodCallTargetNode mct : graph.getNodes(MethodCallTargetNode.TYPE)) {
-                InlineInfo inlineInfo = rt.getInlineInfo(mct.targetMethod(), false);
-                if (!inlineInfo.allowsInlining()) {
+                TruffleCompilerRuntime.InlineKind inlineKind = rt.getInlineKind(mct.targetMethod(), false);
+                if (!inlineKind.allowsInlining()) {
                     mct.invoke().setUseForInlining(false);
                 }
             }
@@ -583,10 +598,10 @@ public abstract class PartialEvaluator {
     private static TruffleInliningPlan.Decision getDecision(TruffleInliningPlan inlining, JavaConstant callNode) {
         TruffleInliningPlan.Decision decision = inlining.findDecision(callNode);
         if (decision == null) {
-            JavaConstant target = getRuntime().getCallTargetForCallNode(callNode);
+            JavaConstant target = TruffleCompilerRuntime.getRuntime().getCallTargetForCallNode(callNode);
             PerformanceInformationHandler.reportDecisionIsNull(target, callNode);
         } else if (!decision.isTargetStable()) {
-            JavaConstant target = getRuntime().getCallTargetForCallNode(callNode);
+            JavaConstant target = TruffleCompilerRuntime.getRuntime().getCallTargetForCallNode(callNode);
             PerformanceInformationHandler.reportCallTargetChanged(target, callNode, decision);
             return null;
         }
@@ -672,7 +687,7 @@ public abstract class PartialEvaluator {
                     continue; // native methods cannot be inlined
                 }
                 TruffleCompilerRuntime runtime = TruffleCompilerRuntime.getRuntime();
-                if (runtime.getInlineInfo(call.targetMethod(), true).getMethodToInline() != null) {
+                if (runtime.getInlineKind(call.targetMethod(), true).allowsInlining()) {
                     logPerformanceWarning(target.getName(), Arrays.asList(call), String.format("not inlined %s call to %s (%s)", call.invokeKind(), call.targetMethod(), call), null);
                     warnings.add(call);
                 }
@@ -725,6 +740,59 @@ public abstract class PartialEvaluator {
             properties.put("originalTarget", decision.getTargetName());
             properties.put("callNode", callNode.toValueString());
             logPerformanceWarning(target.toValueString(), null, "CallTarget changed during compilation. Call node could not be inlined.", properties);
+        }
+    }
+
+    private static InlineInfo asInlineInfo(final TruffleCompilerRuntime.InlineKind inlineKind, final ResolvedJavaMethod method) {
+        switch (inlineKind) {
+            case DO_NOT_INLINE_DEOPTIMIZE_ON_EXCEPTION:
+                return InlineInfo.DO_NOT_INLINE_DEOPTIMIZE_ON_EXCEPTION;
+            case DO_NOT_INLINE_NO_EXCEPTION:
+                return InlineInfo.DO_NOT_INLINE_NO_EXCEPTION;
+            case DO_NOT_INLINE_WITH_EXCEPTION:
+                return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
+            case INLINE:
+                return InlineInfo.createStandardInlineInfo(method);
+            default:
+                throw new IllegalArgumentException(String.valueOf(inlineKind));
+        }
+    }
+
+    private static final class SourceLanguagePositionImpl implements SourceLanguagePosition {
+        private final TruffleSourceLanguagePosition delegate;
+
+        SourceLanguagePositionImpl(final TruffleSourceLanguagePosition delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public String toShortString() {
+            return delegate.getDescription();
+        }
+
+        @Override
+        public int getOffsetEnd() {
+            return delegate.getOffsetEnd();
+        }
+
+        @Override
+        public int getOffsetStart() {
+            return delegate.getOffsetStart();
+        }
+
+        @Override
+        public int getLineNumber() {
+            return delegate.getLineNumber();
+        }
+
+        @Override
+        public URI getURI() {
+            return delegate.getURI();
+        }
+
+        @Override
+        public String getLanguage() {
+            return delegate.getLanguage();
         }
     }
 }

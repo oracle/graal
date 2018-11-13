@@ -32,12 +32,12 @@ import com.oracle.truffle.regex.RegexSource;
 public class TRegexLazyFindStartRootNode extends RegexBodyNode {
 
     private final int prefixLength;
-    @Child private TRegexDFAExecutorNode executorNode;
+    @Child private TRegexDFAExecutorEntryNode entryNode;
 
     public TRegexLazyFindStartRootNode(RegexLanguage language, RegexSource source, int prefixLength, TRegexDFAExecutorNode backwardNode) {
         super(language, source);
         this.prefixLength = prefixLength;
-        this.executorNode = backwardNode;
+        this.entryNode = TRegexDFAExecutorEntryNode.create(backwardNode);
     }
 
     @Override
@@ -47,12 +47,8 @@ public class TRegexLazyFindStartRootNode extends RegexBodyNode {
         final Object input = args[0];
         final int fromIndexArg = (int) args[1];
         final int max = (int) args[2];
-        executorNode.setInput(frame, input);
-        executorNode.setIndex(frame, fromIndexArg);
-        executorNode.setFromIndex(frame, max);
-        executorNode.setMaxIndex(frame, Math.max(-1, max - 1 - prefixLength));
-        executorNode.execute(frame);
-        return executorNode.getResultInt(frame);
+        entryNode.execute(frame, input, max, fromIndexArg, Math.max(-1, max - 1 - prefixLength));
+        return entryNode.getExecutor().getResultInt(frame);
     }
 
     @Override

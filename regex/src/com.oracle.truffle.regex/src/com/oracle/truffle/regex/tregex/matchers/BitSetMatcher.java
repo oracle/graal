@@ -34,7 +34,7 @@ import com.oracle.truffle.regex.util.CompilationFinalBitSet;
  * are matched by this high byte and a bit set that matches {@code 0x10}, {@code 0x20} and
  * {@code 0x30}.
  */
-public final class BitSetMatcher extends ProfiledCharMatcher {
+public final class BitSetMatcher extends InvertibleCharMatcher {
 
     private final int highByte;
     private final CompilationFinalBitSet bitSet;
@@ -48,12 +48,12 @@ public final class BitSetMatcher extends ProfiledCharMatcher {
     /**
      * Constructs a new bit-set-based character matcher.
      * 
-     * @param invert see {@link ProfiledCharMatcher}.
+     * @param invert see {@link InvertibleCharMatcher}.
      * @param highByte the high byte common to all characters to match.
      * @param bitSet the bit set to match the low byte of the characters to match.
      * @return a new {@link BitSetMatcher} or a {@link NullHighByteBitSetMatcher}.
      */
-    public static ProfiledCharMatcher create(boolean invert, int highByte, CompilationFinalBitSet bitSet) {
+    public static InvertibleCharMatcher create(boolean invert, int highByte, CompilationFinalBitSet bitSet) {
         if (highByte == 0) {
             return new NullHighByteBitSetMatcher(invert, bitSet);
         }

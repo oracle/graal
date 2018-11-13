@@ -35,12 +35,12 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.code.CEntryPointJavaCallStubs;
+import com.oracle.svm.core.code.IsolateLeaveStub;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
-import com.oracle.svm.hosted.image.NativeBootImage;
 import com.oracle.svm.hosted.meta.MethodPointer;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -104,8 +104,8 @@ public final class CEntryPointCallStubSupport {
                 assert !bigbang.getUniverse().sealed();
                 AnalysisMethod nativeStub = registerStubForMethod(method, () -> CEntryPointData.create(method));
                 CFunctionPointer nativeStubAddress = MethodPointer.factory(nativeStub);
-                String stubName = NativeBootImage.globalSymbolNameForMethod(method);
-                ResolvedJavaType holderClass = bigbang.getMetaAccess().lookupJavaType(CEntryPointJavaCallStubs.class).getWrapped();
+                String stubName = SubstrateUtil.uniqueShortName(method);
+                ResolvedJavaType holderClass = bigbang.getMetaAccess().lookupJavaType(IsolateLeaveStub.class).getWrapped();
                 CEntryPointJavaCallStubMethod stub = new CEntryPointJavaCallStubMethod(method.getWrapped(), stubName, holderClass, nativeStubAddress);
                 value = bigbang.getUniverse().lookup(stub);
             }
