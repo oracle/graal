@@ -1,6 +1,7 @@
 #include "mokapot.h"
 
 #include <trufflenfi.h>
+#include <jni.h>
 #include <stdlib.h>
 #include <unistd.h>
 
@@ -19,11 +20,26 @@ void Mokapot_SetJNIEnv(JNIEnv *env) {
   fprintf(stderr, "Calling implemented mokapot %s\n", #name);
 
 
+
+#define JNI_INVOKE_INTERFACE_METHODS(V) \
+  V(DestroyJavaVM) \
+  V(AttachCurrentThread) \
+  V(DetachCurrentThread) \
+  V(GetEnv) \
+  V(AttachCurrentThreadAsDaemon)
+
+
 jlong initializeMokapotContext(TruffleEnv *truffle_env, jlong jniEnvPtr, void* (*fetch_by_name)(const char *)) {
 
-  MokapotEnv *moka_env = (MokapotEnv *) malloc(sizeof(MokapotEnv));
-  struct MokapotNativeInterface_ *functions = (struct MokapotNativeInterface_*) malloc(sizeof(struct MokapotNativeInterface_));
+  MokapotEnv *moka_env = (MokapotEnv *) malloc(sizeof(*moka_env));
 
+  struct MokapotNativeInterface_ *functions = (struct MokapotNativeInterface_*) malloc(sizeof(*functions));
+  struct JNIInvokeInterface_ *java_vm_functions = (struct JNIInvokeInterface_*) malloc(sizeof(*java_vm_functions));
+
+  JavaVM * java_vm = (JavaVM*) malloc(sizeof(*java_vm));
+
+  *java_vm = java_vm_functions;
+  functions->vm = java_vm;
   *moka_env = functions;
 
   void *fn_ptr = NULL;
@@ -31,12 +47,19 @@ jlong initializeMokapotContext(TruffleEnv *truffle_env, jlong jniEnvPtr, void* (
       fn_ptr = fetch_by_name(#name); \
       (*truffle_env)->newClosureRef(truffle_env, fn_ptr); \
       functions->name = fn_ptr;
-  
   VM_METHOD_LIST(INIT__)
   #undef INIT_
 
   mokaEnv = moka_env;
   jniEnv = (JNIEnv*) jniEnvPtr;
+
+  #define INIT_VM__(name) \
+      fn_ptr = fetch_by_name(#name); \
+      (*truffle_env)->newClosureRef(truffle_env, fn_ptr); \
+      java_vm_functions->name = fn_ptr;
+
+  JNI_INVOKE_INTERFACE_METHODS(INIT_VM__)
+  #undef INIT_VM__
 
   return (jlong) moka_env;
 }
@@ -46,18 +69,19 @@ MokapotEnv* getEnv() {
 }
 
 void disposeMokapotContext(TruffleEnv *truffle_env, jlong moka_env_ptr) {
-  MokapotEnv *moka_env = (MokapotEnv *) moka_env_ptr;
+  // MokapotEnv *moka_env = (MokapotEnv *) moka_env_ptr;
 
+  // FIXME(peterssen): Leak.
+
+/*
   #define DISPOSE__(name) \
-      (*truffle_env)->releaseClosureRef(truffle_env, (*moka_env)->name);
-
-  VM_METHOD_LIST(DISPOSE__)
-  #undef DISPOSE__
-
-  free((void*) *moka_env);
-  *moka_env = NULL;
-
-  free(moka_env);
+       (*truffle_env)->releaseClosureRef(truffle_env, (*moka_env)->name);
+*/
+  // VM_METHOD_LIST(DISPOSE__)
+  // #undef DISPOSE__
+  // free((*moka_env)->vm);
+  // free((void*) *moka_env);
+  // free(moka_env);
 }
 
 jint JVM_GetInterfaceVersion(void) {
@@ -71,23 +95,23 @@ jint JVM_IHashCode(JNIEnv *env, jobject obj) {
 }
 
 void JVM_MonitorWait(JNIEnv *env, jobject obj, jlong ms) {
-  UNIMPLEMENTED(JVM_MonitorWait);
-
+  IMPLEMENTED(JVM_MonitorWait);
+  (*getEnv())->JVM_MonitorWait(env, obj, ms);
 }
 
 void JVM_MonitorNotify(JNIEnv *env, jobject obj) {
-  UNIMPLEMENTED(JVM_MonitorNotify);
-
+  IMPLEMENTED(JVM_MonitorNotify);
+  (*getEnv())->JVM_MonitorNotify(env, obj);
 }
 
 void JVM_MonitorNotifyAll(JNIEnv *env, jobject obj) {
-  UNIMPLEMENTED(JVM_MonitorNotifyAll);
-
+  IMPLEMENTED(JVM_MonitorNotifyAll);
+  (*getEnv())->JVM_MonitorNotifyAll(env, obj);
 }
 
 jobject JVM_Clone(JNIEnv *env, jobject obj) {
-  UNIMPLEMENTED(JVM_Clone);
-  return NULL;
+  IMPLEMENTED(JVM_Clone);
+  return (*getEnv())->JVM_Clone(env, obj);
 }
 
 jstring JVM_InternString(JNIEnv *env, jstring str) {
@@ -96,18 +120,18 @@ jstring JVM_InternString(JNIEnv *env, jstring str) {
 }
 
 jlong JVM_CurrentTimeMillis(JNIEnv *env, jclass ignored) {
-  UNIMPLEMENTED(JVM_CurrentTimeMillis);
+  IMPLEMENTED(JVM_CurrentTimeMillis);
   return (*getEnv())->JVM_CurrentTimeMillis(env, ignored);
 }
 
 jlong JVM_NanoTime(JNIEnv *env, jclass ignored) {
-  UNIMPLEMENTED(JVM_NanoTime);  
+  IMPLEMENTED(JVM_NanoTime);  
   return (*getEnv())->JVM_NanoTime(env, ignored);  
 }
 
 void JVM_ArrayCopy(JNIEnv *env, jclass ignored, jobject src, jint src_pos, jobject dst, jint dst_pos, jint length) {
-  UNIMPLEMENTED(JVM_ArrayCopy);
-
+  IMPLEMENTED(JVM_ArrayCopy);
+  return (*getEnv())->JVM_ArrayCopy(env, ignored, src, src_pos, dst, dst_pos, length);
 }
 
 jobject JVM_InitProperties(JNIEnv *env, jobject p) {
@@ -126,13 +150,13 @@ void JVM_Exit(jint code) {
 }
 
 void JVM_Halt(jint code) {
-  UNIMPLEMENTED(JVM_Halt);
-
+  IMPLEMENTED(JVM_Halt);
+  (*getEnv())->JVM_Halt(code);
 }
 
 void JVM_GC(void) {
   UNIMPLEMENTED(JVM_GC);
-
+  (*getEnv())->JVM_GC();
 }
 
 jlong JVM_MaxObjectInspectionAge(void) {
@@ -171,8 +195,8 @@ jint JVM_ActiveProcessorCount(void) {
 }
 
 void *JVM_LoadLibrary(const char *name) {
-  UNIMPLEMENTED(JVM_LoadLibrary);
-  return NULL;
+  IMPLEMENTED(JVM_LoadLibrary);
+  return (*getEnv())->JVM_LoadLibrary(name);
 }
 
 void JVM_UnloadLibrary(void *handle) {
@@ -191,8 +215,8 @@ jboolean JVM_IsSupportedJNIVersion(jint version) {
 }
 
 jboolean JVM_IsNaN(jdouble d) {
-  UNIMPLEMENTED(JVM_IsNaN);
-  return 0;
+  IMPLEMENTED(JVM_IsNaN);
+  return (*getEnv())->JVM_isNaN(d);
 }
 
 void JVM_FillInStackTrace(JNIEnv *env, jobject throwable) {
@@ -708,8 +732,8 @@ jobject JVM_AssertionStatusDirectives(JNIEnv *env, jclass unused) {
 }
 
 jboolean JVM_SupportsCX8(void) {
-  UNIMPLEMENTED(JVM_SupportsCX8);
-  return 0;
+  IMPLEMENTED(JVM_SupportsCX8);
+  return (*getEnv())->JVM_SupportsCX8();
 }
 
 jint JVM_DTraceGetVersion(JNIEnv *env) {

@@ -2,7 +2,7 @@
 #define __MOKAPOT_H
 
 #include "jvm.h"
-#include "jni.h"
+#include <jni.h>
 #include <trufflenfi.h>
 
 struct MokapotNativeInterface_;
@@ -237,6 +237,8 @@ void disposeMokapotContext(TruffleEnv *truffle_env, jlong moka_env_ptr);
 #endif
 
 struct MokapotNativeInterface_ {
+
+    JavaVM *vm;
 
 jint (*JVM_GetInterfaceVersion)(void);
 
