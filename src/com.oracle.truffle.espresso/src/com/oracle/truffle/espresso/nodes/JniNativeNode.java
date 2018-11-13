@@ -27,8 +27,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.EspressoException;
-import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public class JniNativeNode extends NativeRootNode {
 

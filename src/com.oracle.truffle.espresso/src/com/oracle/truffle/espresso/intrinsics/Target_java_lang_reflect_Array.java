@@ -26,12 +26,12 @@ package com.oracle.truffle.espresso.intrinsics;
 import java.lang.reflect.Array;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
+import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 @EspressoIntrinsics
 public class Target_java_lang_reflect_Array {

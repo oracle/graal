@@ -22,10 +22,6 @@
  */
 package com.oracle.truffle.espresso.jni;
 
-import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.JavaKind;
-import com.oracle.truffle.espresso.meta.Meta;
-
 /**
  * Varargs... methods for Java. Helper shim to call Java methods from the native world with
  * varargs... signature. This is a "pop" implementation, e.g. parameters are popped by the callee.

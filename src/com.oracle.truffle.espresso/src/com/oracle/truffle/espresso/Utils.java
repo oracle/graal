@@ -24,8 +24,8 @@ package com.oracle.truffle.espresso;
 
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
-import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
 
 public class Utils {
@@ -63,8 +63,8 @@ public class Utils {
                 // NULL instead.
 
                 return javaToNative
-                        ? NativeSimpleType.OBJECT_OR_NULL
-                        : NativeSimpleType.OBJECT;
+                                ? NativeSimpleType.OBJECT_OR_NULL
+                                : NativeSimpleType.OBJECT;
 
             default:
                 throw EspressoError.shouldNotReachHere();

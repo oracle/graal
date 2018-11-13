@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
+import static com.oracle.truffle.espresso.meta.Meta.meta;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -31,8 +33,6 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.FieldInfo;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.Meta;
-
-import static com.oracle.truffle.espresso.meta.Meta.meta;
 
 public class StaticObjectImpl implements StaticObject {
     private final Map<String, Object> fields;

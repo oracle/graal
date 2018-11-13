@@ -246,7 +246,6 @@ import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.BytecodeTableSwitch;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.bytecode.DualStack;
-import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.bytecode.OperandStack;
 import com.oracle.truffle.espresso.classfile.ClassConstant;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
@@ -268,6 +267,7 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.types.SignatureDescriptor;
+import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 public class EspressoRootNode extends RootNode implements LinkedNode {
     private final MethodInfo method;

@@ -32,7 +32,6 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.classfile.StringTable;
 import com.oracle.truffle.espresso.classfile.SymbolTable;
 import com.oracle.truffle.espresso.impl.ClassRegistries;
@@ -43,6 +42,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.types.SignatureDescriptors;
 import com.oracle.truffle.espresso.types.TypeDescriptors;
+import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
 
 public class EspressoContext {
@@ -169,7 +169,7 @@ public class EspressoContext {
         // TODO(peterssen): Combine these 2.
         this.interpreterToVM = new InterpreterToVM(language);
         // Spawn JNI first, then the VM.
-        this.vm = VM.create(getJNI());
+        this.vm = VM.create(getJNI()); // Mokapot is loaded
 
         initializeClass(Object.class);
 
@@ -181,12 +181,12 @@ public class EspressoContext {
         }
 
         for (Class<?> clazz : new Class<?>[]{
-                String.class,
-                System.class,
-                ThreadGroup.class,
-                Thread.class,
-                Class.class,
-                Method.class}) {
+                        String.class,
+                        System.class,
+                        ThreadGroup.class,
+                        Thread.class,
+                        Class.class,
+                        Method.class}) {
             initializeClass(clazz);
         }
 
@@ -198,14 +198,14 @@ public class EspressoContext {
 
         // System exceptions.
         for (Class<?> clazz : new Class<?>[]{
-                OutOfMemoryError.class,
-                NullPointerException.class,
-                ClassCastException.class,
-                ArrayStoreException.class,
-                ArithmeticException.class,
-                StackOverflowError.class,
-                IllegalMonitorStateException.class,
-                IllegalArgumentException.class}) {
+                        OutOfMemoryError.class,
+                        NullPointerException.class,
+                        ClassCastException.class,
+                        ArrayStoreException.class,
+                        ArithmeticException.class,
+                        StackOverflowError.class,
+                        IllegalMonitorStateException.class,
+                        IllegalArgumentException.class}) {
             initializeClass(clazz);
         }
 
