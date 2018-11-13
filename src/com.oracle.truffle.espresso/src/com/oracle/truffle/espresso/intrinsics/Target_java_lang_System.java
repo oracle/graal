@@ -38,14 +38,6 @@ import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 
 @EspressoIntrinsics
 public class Target_java_lang_System {
-
-    @Intrinsic
-    public static void exit(int status) {
-        // TODO(peterssen): Use TruffleException.
-
-        System.exit(status);
-    }
-
     @Intrinsic
     public static @Type(Properties.class) StaticObject initProperties(@Type(Properties.class) StaticObject props) {
         EspressoContext context = EspressoLanguage.getCurrentContext();
@@ -101,37 +93,5 @@ public class Target_java_lang_System {
 
         // FIXME(peterssen): Load libjvm surrogate, but this should not be in initProperties.
         return props;
-    }
-
-    @Intrinsic
-    public static void arraycopy(Object src, int srcPos,
-                    Object dest, int destPos,
-                    int length) {
-        try {
-            if (src instanceof StaticObjectArray && dest instanceof StaticObjectArray) {
-                System.arraycopy(((StaticObjectArray) src).getWrapped(), srcPos, ((StaticObjectArray) dest).getWrapped(), destPos, length);
-            } else {
-                assert src.getClass().isArray();
-                assert dest.getClass().isArray();
-                System.arraycopy(src, srcPos, dest, destPos, length);
-            }
-        } catch (Exception e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
-        }
-    }
-
-    @Intrinsic
-    public static long currentTimeMillis() {
-        return System.currentTimeMillis();
-    }
-
-    @Intrinsic
-    public static long nanoTime() {
-        return System.nanoTime();
-    }
-
-    @Intrinsic
-    public static void registerNatives() {
-        /* nop */
     }
 }
