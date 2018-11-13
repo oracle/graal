@@ -4,11 +4,15 @@ import static com.oracle.truffle.espresso.meta.Meta.meta;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -16,9 +20,9 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.Utils;
-import com.oracle.truffle.espresso.intrinsics.Intrinsic;
 import com.oracle.truffle.espresso.intrinsics.SuppressFBWarnings;
 import com.oracle.truffle.espresso.intrinsics.Type;
 import com.oracle.truffle.espresso.jni.Callback;
@@ -29,17 +33,20 @@ import com.oracle.truffle.espresso.jni.NativeLibrary;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
+import com.oracle.truffle.espresso.nodes.LinkedNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
+import com.oracle.truffle.espresso.runtime.StaticObjectWrapper;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
 
 public class VM extends NativeEnv {
 
     private final TruffleObject initializeMokapotContext;
-// private final TruffleObject disposeMokapotContext;
+    private final TruffleObject disposeMokapotContext;
 
     private final JniEnv jniEnv;
+
 
     private long vmPtr;
 
@@ -67,10 +74,10 @@ public class VM extends NativeEnv {
         try {
             initializeMokapotContext = NativeLibrary.lookupAndBind(mokapotLibrary,
                             "initializeMokapotContext", "(env, sint64, (string): pointer): sint64");
-//
-// disposeMokapotContext = NativeLibrary.lookupAndBind(mokapotLibrary,
-// "disposeMokapotContext",
-// "(env, sint64): void");
+
+            disposeMokapotContext = NativeLibrary.lookupAndBind(mokapotLibrary,
+                            "disposeMokapotContext",
+                            "(env, sint64): void");
 
             Callback lookupVmImplCallback = Callback.wrapInstanceMethod(this, "lookupVmImpl", String.class);
             this.vmPtr = (long) ForeignAccess.sendExecute(Message.EXECUTE.createNode(), initializeMokapotContext, jniEnv.getNativePointer(), lookupVmImplCallback);
@@ -145,7 +152,9 @@ public class VM extends NativeEnv {
     }
 
     public Callback vmMethodWrapper(Method m) {
-        return new Callback(m.getParameterCount() + 1, args -> {
+        int extraArg = (m.getAnnotation(JniImpl.class) != null) ? 1 : 0;
+
+        return new Callback(m.getParameterCount() + extraArg, args -> {
 
             assert unwrapPointer(args[0]) == jniEnv.getNativePointer() : "Calling JVM_ method " + m + " from alien JniEnv";
             if (m.getAnnotation(JniImpl.class) != null) {
@@ -219,7 +228,7 @@ public class VM extends NativeEnv {
      */
     @VmImpl
     @JniImpl
-    public int JVM_IHashCode(StaticObject object) {
+    public int JVM_IHashCode(Object object) {
         return System.identityHashCode(MetaUtil.unwrap(object));
     }
 
@@ -285,7 +294,6 @@ public class VM extends NativeEnv {
         }
     }
 
-
     @VmImpl
     @JniImpl
     @SuppressFBWarnings(value = {"IMSE"}, justification = "Not dubious, .notify is just forwarded from the guest.")
@@ -339,7 +347,8 @@ public class VM extends NativeEnv {
 
     @VmImpl
     @JniImpl
-    public @Type(String.class) StaticObject intern(@Type(String.class) StaticObject self) {
+    // TODO(peterssen): @Type annotaion only for readability purposes.
+    public @Type(String.class) StaticObject JVM_InternString(@Type(String.class) StaticObject self) {
         return Utils.getVm().intern(self);
     }
 
@@ -377,5 +386,64 @@ public class VM extends NativeEnv {
         return JniEnv.JNI_OK;
     }
 
+    @VmImpl
+    @JniImpl
+    public @Type(Throwable.class) StaticObject JVM_FillInStackTrace(@Type(Throwable.class) StaticObject self, int dummy) {
+        final ArrayList<FrameInstance> frames = new ArrayList<>(16);
+        Truffle.getRuntime().iterateFrames(frameInstance -> {
+            frames.add(frameInstance);
+            return null;
+        });
+        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        meta.THROWABLE.field("backtrace").set(self, new StaticObjectWrapper<>(meta.OBJECT.rawKlass(), frames.toArray(new FrameInstance[0])));
+        return self;
+    }
+
+    @VmImpl
+    @JniImpl
+    public int JVM_GetStackTraceDepth(@Type(Throwable.class) StaticObject self) {
+        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        Object backtrace = meta.THROWABLE.field("backtrace").get(self);
+        if (backtrace == StaticObject.NULL) {
+            return 0;
+        }
+        return ((FrameInstance[]) ((StaticObjectWrapper<?>) backtrace).getWrapped()).length;
+    }
+
+    @VmImpl
+    @JniImpl
+    public @Type(StackTraceElement.class) StaticObject JVM_getStackTraceElement(@Type(Throwable.class) StaticObject self, int index) {
+        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        StaticObject ste = meta.knownKlass(StackTraceElement.class).allocateInstance();
+        Object backtrace = meta.THROWABLE.field("backtrace").get(self);
+        FrameInstance[] frames = (FrameInstance[]) ((StaticObjectWrapper<?>) backtrace).getWrapped();
+
+        FrameInstance frame = frames[index];
+
+        RootNode rootNode = ((RootCallTarget) frame.getCallTarget()).getRootNode();
+        Meta.Method.WithInstance init = meta(ste).method("<init>", void.class, String.class, String.class, String.class, int.class);
+        if (rootNode instanceof LinkedNode) {
+            LinkedNode linkedNode = (LinkedNode) rootNode;
+            String className = linkedNode.getOriginalMethod().getDeclaringClass().getName();
+            init.invoke(className, linkedNode.getOriginalMethod().getName(), null, -1);
+        } else {
+            // TODO(peterssen): Get access to the original (intrinsified) method and report
+            // properly.
+            init.invoke("UnknownIntrinsic", "unknownIntrinsic", null, -1);
+        }
+        return ste;
+    }
+
     // endregion JNI Invocation Interface
+
+    public void dispose() {
+        assert vmPtr != 0L : "Mokapot already disposed";
+        try {
+            ForeignAccess.sendExecute(Message.EXECUTE.createNode(), disposeMokapotContext, vmPtr);
+            this.vmPtr = 0L;
+        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+            throw EspressoError.shouldNotReachHere("Cannot dispose Espresso libjvm (mokapot).");
+        }
+        assert vmPtr == 0L;
+    }
 }
