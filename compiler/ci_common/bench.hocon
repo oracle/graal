@@ -13,7 +13,7 @@ bench-jvmci : {
   mx-specjvm2008-Single: ${bench-jvmci.mx-benchmark} ["specjvm2008:*"]
   mx-specjvm2008-OneVM: ${bench-jvmci.mx-benchmark} ["specjvm2008"]
   mx-specjbb2005: ${bench-jvmci.mx-benchmark} ["specjbb2005"]
-  mx-specjbb2015: ${bench-jvmci.mx-benchmark} ["specjbb2015:*"]
+  mx-specjbb2015: ${bench-jvmci.mx-benchmark} ["specjbb2015"]
   mx-renaissance: ${bench-jvmci.mx-benchmark} ["renaissance:*"]
   mx-spark-sql-perf: ${bench-jvmci.mx-benchmark} ["spark-sql-perf"]
   mx-micros-graal-whitebox: ${bench-jvmci.mx-benchmark} ["jmh-whitebox:*"]

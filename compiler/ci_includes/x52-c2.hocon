@@ -68,6 +68,6 @@ builds += [
   ${bench-dacapo-hwloc-forks-c2}
   ${bench-scala-dacapo-hwloc-forks-c2}
   ${bench-specjvm2008-Single-forks-c2}
-  ${bench-specjbb2015-forks-c2}
+  #${bench-specjbb2015-forks-c2}
   ${bench-renaissance-hwloc-forks-c2}
 ]
