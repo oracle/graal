@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -72,7 +71,6 @@ import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleFile.FileAdapter;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleStackTrace.LazyStackTrace;
 import com.oracle.truffle.api.frame.Frame;
@@ -88,6 +86,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import java.nio.file.Path;
 
 /**
  * A Truffle language implementation contains all the services a language should provide to make it
@@ -2023,17 +2022,6 @@ public abstract class TruffleLanguage<C> {
             fileSystem.setCurrentWorkingDirectory(currentWorkingDirectory.getSPIPath());
         }
 
-        /**
-         * @since 1.0
-         * @deprecated use {@link Source#newBuilder(String, TruffleFile)} instead.
-         */
-        @SuppressWarnings({"static-method", "deprecation"})
-        @Deprecated
-        public Source.Builder<IOException, RuntimeException, RuntimeException> newSourceBuilder(final TruffleFile file) {
-            Objects.requireNonNull(file, "File must be non null");
-            return Source.newBuilder(new TruffleFile.FileAdapter(file));
-        }
-
         @SuppressWarnings("rawtypes")
         @TruffleBoundary
         <E extends TruffleLanguage> E getLanguage(Class<E> languageClass) {
@@ -2595,20 +2583,8 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        public boolean checkTruffleFile(File file) {
-            return file instanceof FileAdapter;
-        }
-
-        @Override
-        public byte[] truffleFileContent(File file) throws IOException {
-            assert file instanceof FileAdapter : "File must be " + FileAdapter.class.getSimpleName();
-            final TruffleFile tf = ((FileAdapter) file).getTruffleFile();
-            return tf.readAllBytes();
-        }
-
-        @Override
-        public File asFile(TruffleFile file) {
-            return new FileAdapter(file);
+        public Path getPath(TruffleFile file) {
+            return file.getSPIPath();
         }
 
         @Override
