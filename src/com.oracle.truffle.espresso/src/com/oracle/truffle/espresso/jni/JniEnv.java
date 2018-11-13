@@ -56,12 +56,12 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.Utils;
 import com.oracle.truffle.espresso.impl.FieldInfo;
 import com.oracle.truffle.espresso.impl.MethodInfo;
-import com.oracle.truffle.espresso.intrinsics.Target_java_lang_Object;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.nodes.VmNativeNode;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
@@ -84,8 +84,6 @@ public class JniEnv extends NativeEnv {
     private final TruffleObject initializeNativeContext;
     private final TruffleObject disposeNativeContext;
 
-
-
     private final TruffleObject dupClosureRef = NativeLibrary.lookup(nespressoLibrary, "dupClosureRef");
 
     private final TruffleObject popBoolean;
@@ -97,7 +95,6 @@ public class JniEnv extends NativeEnv {
     private final TruffleObject popDouble;
     private final TruffleObject popLong;
     private final TruffleObject popObject;
-
 
     private static final Map<String, Method> jniMethods = buildJniMethods();
 
@@ -158,8 +155,15 @@ public class JniEnv extends NativeEnv {
 // System.err.println(" -> " + ret);
 
                 return ret;
-            } catch (Exception e) {
+            } catch (InvocationTargetException e) {
+                Throwable targetEx = e.getTargetException();
+                if (targetEx instanceof EspressoException) {
+                    getThreadLocalPendingException().set(((EspressoException) targetEx).getException());
+                }
+                // FIXME(peterssen): Handle VME exceptions back to guest.
                 throw new RuntimeException(e);
+            } catch (IllegalAccessException e) {
+                throw EspressoError.shouldNotReachHere(e);
             }
         });
     }
@@ -190,10 +194,10 @@ public class JniEnv extends NativeEnv {
             if (m == null) {
                 // System.err.println("Fetching unknown/unimplemented JNI method: " + methodName);
                 return (TruffleObject) ForeignAccess.sendExecute(Message.EXECUTE.createNode(), dupClosureRefAndCast("(pointer): void"),
-                        new Callback(1, args -> {
-                            System.err.println("Calling unimplemented JNI method: " + methodName);
-                            throw EspressoError.unimplemented("JNI method: " + methodName);
-                        }));
+                                new Callback(1, args -> {
+                                    System.err.println("Calling unimplemented JNI method: " + methodName);
+                                    throw EspressoError.unimplemented("JNI method: " + methodName);
+                                }));
             }
 
             String signature = jniNativeSignature(m);
@@ -371,6 +375,7 @@ public class JniEnv extends NativeEnv {
             throw EspressoError.shouldNotReachHere("Cannot initialize Espresso native interface");
         }
     }
+
     private static Map<String, Method> buildJniMethods() {
         Map<String, Method> map = new HashMap<>();
         Method[] declaredMethods = JniEnv.class.getDeclaredMethods();
@@ -388,11 +393,10 @@ public class JniEnv extends NativeEnv {
         // TODO(peterssen): Cache binding per signature.
         return NativeLibrary.bind(dupClosureRef, "(env, " + signature + ")" + ": pointer");
     }
+
     public static JniEnv create() {
         return new JniEnv();
     }
-
-
 
     public long getNativePointer() {
         return jniEnvPtr;
@@ -1040,8 +1044,29 @@ public class JniEnv extends NativeEnv {
     }
 
     @JniImpl
-    public Object GetObjectClass(Object obj) {
-        return Target_java_lang_Object.getClass(obj);
+    public Object GetObjectClass(Object self) {
+        if (self instanceof StaticObject) {
+            return ((StaticObject) self).getKlass().mirror();
+        }
+        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        if (self instanceof int[]) {
+            return meta.INT.array().rawKlass().mirror();
+        } else if (self instanceof byte[]) {
+            return meta.BYTE.array().rawKlass().mirror();
+        } else if (self instanceof boolean[]) {
+            return meta.BOOLEAN.array().rawKlass().mirror();
+        } else if (self instanceof long[]) {
+            return meta.LONG.array().rawKlass().mirror();
+        } else if (self instanceof float[]) {
+            return meta.FLOAT.array().rawKlass().mirror();
+        } else if (self instanceof double[]) {
+            return meta.DOUBLE.array().rawKlass().mirror();
+        } else if (self instanceof char[]) {
+            return meta.CHAR.array().rawKlass().mirror();
+        } else if (self instanceof short[]) {
+            return meta.SHORT.array().rawKlass().mirror();
+        }
+        throw EspressoError.shouldNotReachHere(".getClass failed. Non-espresso object: " + self);
     }
 
     @JniImpl
@@ -1221,10 +1246,11 @@ public class JniEnv extends NativeEnv {
         if (isJni) {
             sb.append(NativeSimpleType.POINTER); // JNIEnv*
             sb.append(",");
-            sb.append(Utils.kindToType(JavaKind.Object, false)); // Receiver or class (for static methods).
+            sb.append(Utils.kindToType(JavaKind.Object, false)); // Receiver or class (for static
+                                                                 // methods).
             first = false;
         }
-        for (int i = 0; i  < argCount; ++i) {
+        for (int i = 0; i < argCount; ++i) {
             JavaKind kind = descriptor.getParameterKind(i);
             if (!first) {
                 sb.append(", ");
@@ -1242,8 +1268,8 @@ public class JniEnv extends NativeEnv {
     public int RegisterNative(StaticObject clazz, String name, String signature, @NFIType("POINTER") TruffleObject closure) {
         String className = meta(((StaticObjectClass) clazz).getMirror()).getInternalName();
         TruffleObject boundNative = NativeLibrary.bind(closure, nfiSignature(signature, true));
-        RootNode nativeNode = new VmNativeNode(EspressoLanguage.getCurrentContext().getLanguage(), boundNative, true,null);
-        EspressoLanguage.getCurrentContext().getInterpreterToVM().registerIntrinsic(className, name, signature, nativeNode);
+        RootNode nativeNode = new VmNativeNode(EspressoLanguage.getCurrentContext().getLanguage(), boundNative, true, null);
+        EspressoLanguage.getCurrentContext().getInterpreterToVM().registerIntrinsic(className, name, signature, nativeNode, false);
         return JNI_OK;
     }
 

@@ -293,7 +293,7 @@ public class InterpreterToVM {
                 methodName = method.getName();
             }
 
-            registerIntrinsic(fixTypeName(className), methodName, signature.toString(), rootNode);
+            registerIntrinsic(fixTypeName(className), methodName, signature.toString(), rootNode, false);
         }
     }
 
@@ -311,11 +311,13 @@ public class InterpreterToVM {
         }
     }
 
-    public void registerIntrinsic(String clazz, String methodName, String signature, RootNode intrinsic) {
+    public void registerIntrinsic(String clazz, String methodName, String signature, RootNode intrinsic, boolean update) {
         MethodKey key = new MethodKey(clazz, methodName, signature);
-        assert !intrinsics.containsKey(key) : key + " intrinsic is already registered";
         assert intrinsic != null;
-        intrinsics.put(key, intrinsic);
+        if (update || !intrinsics.containsKey(key)) {
+            // assert !intrinsics.containsKey(key) : key + " intrinsic is already registered";
+            intrinsics.put(key, intrinsic);
+        }
     }
 
     // region Get (array) operations
