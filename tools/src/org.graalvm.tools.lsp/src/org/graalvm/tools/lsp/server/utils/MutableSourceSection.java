@@ -4,32 +4,39 @@ import java.util.Objects;
 
 import org.eclipse.lsp4j.Range;
 
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
-public class SourceLocation {
+/**
+ * A mutable source section whose equality is depending only on line and column and not also on the
+ * content of a {@link Source} object. Used to create a mapping from source section to
+ * {@link CoverageData} and to migrate the coverage data when the user modifies code.
+ *
+ */
+public class MutableSourceSection {
     private int startLine; // 1-based
     private int endLine; // 1-based
     private int startColumn;
     private int endColumn;
 
-    private SourceLocation() {
+    private MutableSourceSection() {
     }
 
-    public SourceLocation(SourceLocation location) {
-        this.startLine = location.startLine;
-        this.endLine = location.endLine;
-        this.startColumn = location.startColumn;
-        this.endColumn = location.endColumn;
+    public MutableSourceSection(MutableSourceSection section) {
+        this.startLine = section.startLine;
+        this.endLine = section.endLine;
+        this.startColumn = section.startColumn;
+        this.endColumn = section.endColumn;
     }
 
-    public static SourceLocation from(SourceSection section) {
-        SourceLocation location = new SourceLocation();
-        location.startLine = section.getStartLine();
-        location.endLine = section.getEndLine();
-        location.startColumn = section.getStartColumn();
-        location.endColumn = section.getEndColumn();
+    public static MutableSourceSection from(SourceSection section) {
+        MutableSourceSection mutableSection = new MutableSourceSection();
+        mutableSection.startLine = section.getStartLine();
+        mutableSection.endLine = section.getEndLine();
+        mutableSection.startColumn = section.getStartColumn();
+        mutableSection.endColumn = section.getEndColumn();
 
-        return location;
+        return mutableSection;
     }
 
     public int getStartLine() {
@@ -66,11 +73,11 @@ public class SourceLocation {
 
     @Override
     public boolean equals(Object obj) {
-        if (!(obj instanceof SourceLocation)) {
+        if (!(obj instanceof MutableSourceSection)) {
             return false;
         }
 
-        SourceLocation other = (SourceLocation) obj;
+        MutableSourceSection other = (MutableSourceSection) obj;
         return startLine == other.startLine && endLine == other.endLine && startColumn == other.startColumn && endColumn == other.endColumn;
     }
 

@@ -149,19 +149,19 @@ public class SourceUtils {
         System.out.println("newLineModification: " + newLineModification);
 
         if (newLineModification != 0) {
-            List<SourceLocation> locations = surrogate.getCoverageLocations();
-            locations.stream().filter(location -> location.includes(range)).forEach(location -> {
-                SourceLocation fixedLocation = new SourceLocation(location);
-                fixedLocation.setEndLine(fixedLocation.getEndLine() + newLineModification);
-                surrogate.replace(location, fixedLocation);
-                System.out.println("Inlcuded - Old: " + location + " Fixed: " + fixedLocation);
+            List<MutableSourceSection> sections = surrogate.getCoverageLocations();
+            sections.stream().filter(section -> section.includes(range)).forEach(section -> {
+                MutableSourceSection migratedSection = new MutableSourceSection(section);
+                migratedSection.setEndLine(migratedSection.getEndLine() + newLineModification);
+                surrogate.replace(section, migratedSection);
+                System.out.println("Inlcuded - Old: " + section + " Fixed: " + migratedSection);
             });
-            locations.stream().filter(location -> location.behind(range)).forEach(location -> {
-                SourceLocation fixedLocation = new SourceLocation(location);
-                fixedLocation.setStartLine(fixedLocation.getStartLine() + newLineModification);
-                fixedLocation.setEndLine(fixedLocation.getEndLine() + newLineModification);
-                surrogate.replace(location, fixedLocation);
-                System.out.println("Behind   - Old: " + location + " Fixed: " + fixedLocation);
+            sections.stream().filter(section -> section.behind(range)).forEach(section -> {
+                MutableSourceSection migratedSection = new MutableSourceSection(section);
+                migratedSection.setStartLine(migratedSection.getStartLine() + newLineModification);
+                migratedSection.setEndLine(migratedSection.getEndLine() + newLineModification);
+                surrogate.replace(section, migratedSection);
+                System.out.println("Behind   - Old: " + section + " Fixed: " + migratedSection);
             });
         }
     }

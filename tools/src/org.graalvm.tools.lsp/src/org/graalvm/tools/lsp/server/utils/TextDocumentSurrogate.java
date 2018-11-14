@@ -22,7 +22,7 @@ public final class TextDocumentSurrogate {
 
     private final URI uri;
     private final List<TextDocumentContentChangeEvent> changeEventsSinceLastSuccessfulParsing;
-    private final Map<SourceLocation, List<CoverageData>> location2coverageData;
+    private final Map<MutableSourceSection, List<CoverageData>> section2coverageData;
     private String editorText;
     private Boolean coverageAnalysisDone = Boolean.FALSE;
     private SourceWrapper sourceWrapper;
@@ -32,7 +32,7 @@ public final class TextDocumentSurrogate {
 
     private TextDocumentSurrogate(TextDocumentSurrogate blueprint) {
         this.uri = blueprint.uri;
-        this.location2coverageData = blueprint.location2coverageData;
+        this.section2coverageData = blueprint.section2coverageData;
         this.changeEventsSinceLastSuccessfulParsing = blueprint.changeEventsSinceLastSuccessfulParsing;
         this.editorText = blueprint.editorText;
         this.sourceWrapper = blueprint.sourceWrapper;
@@ -44,7 +44,7 @@ public final class TextDocumentSurrogate {
     public TextDocumentSurrogate(final URI uri, final LanguageInfo languageInfo, final List<String> completionTriggerCharacters) {
         this.uri = uri;
         this.completionTriggerCharacters = completionTriggerCharacters;
-        this.location2coverageData = new HashMap<>();
+        this.section2coverageData = new HashMap<>();
         this.changeEventsSinceLastSuccessfulParsing = new ArrayList<>();
         this.languageInfo = languageInfo;
     }
@@ -111,40 +111,40 @@ public final class TextDocumentSurrogate {
     }
 
     public List<CoverageData> getCoverageData(SourceSection section) {
-        return location2coverageData.get(SourceLocation.from(section));
+        return section2coverageData.get(MutableSourceSection.from(section));
     }
 
-    public List<CoverageData> getCoverageData(SourceLocation location) {
-        return location2coverageData.get(location);
+    public List<CoverageData> getCoverageData(MutableSourceSection section) {
+        return section2coverageData.get(section);
     }
 
     public Set<URI> getCoverageUris(SourceSection section) {
-        List<CoverageData> coverageDataObjects = location2coverageData.get(SourceLocation.from(section));
+        List<CoverageData> coverageDataObjects = section2coverageData.get(MutableSourceSection.from(section));
         return coverageDataObjects == null ? null : coverageDataObjects.stream().map(coverageData -> coverageData.getCovarageUri()).collect(Collectors.toSet());
     }
 
-    public void addLocationCoverage(SourceLocation location, CoverageData coverageData) {
-        if (!location2coverageData.containsKey(location)) {
-            location2coverageData.put(location, new ArrayList<>());
+    public void addLocationCoverage(MutableSourceSection section, CoverageData coverageData) {
+        if (!section2coverageData.containsKey(section)) {
+            section2coverageData.put(section, new ArrayList<>());
         }
-        location2coverageData.get(location).add(coverageData);
+        section2coverageData.get(section).add(coverageData);
     }
 
-    public boolean isLocationCovered(SourceLocation location) {
-        return location2coverageData.containsKey(location);
+    public boolean isLocationCovered(MutableSourceSection section) {
+        return section2coverageData.containsKey(section);
     }
 
     public boolean hasCoverageData() {
-        return !location2coverageData.isEmpty();
+        return !section2coverageData.isEmpty();
     }
 
     public void clearCoverage() {
-        location2coverageData.clear();
+        section2coverageData.clear();
     }
 
     public void clearCoverage(URI runScriptUri) {
-        for (Iterator<Entry<SourceLocation, List<CoverageData>>> iterator = location2coverageData.entrySet().iterator(); iterator.hasNext();) {
-            Entry<SourceLocation, List<CoverageData>> entry = iterator.next();
+        for (Iterator<Entry<MutableSourceSection, List<CoverageData>>> iterator = section2coverageData.entrySet().iterator(); iterator.hasNext();) {
+            Entry<MutableSourceSection, List<CoverageData>> entry = iterator.next();
             for (Iterator<CoverageData> iteratorData = entry.getValue().iterator(); iteratorData.hasNext();) {
                 CoverageData coverageData = iteratorData.next();
                 if (coverageData.getCovarageUri().equals(runScriptUri)) {
@@ -157,14 +157,14 @@ public final class TextDocumentSurrogate {
         }
     }
 
-    public List<SourceLocation> getCoverageLocations() {
-        return new ArrayList<>(location2coverageData.keySet());
+    public List<MutableSourceSection> getCoverageLocations() {
+        return new ArrayList<>(section2coverageData.keySet());
     }
 
-    public void replace(SourceLocation oldLocation, SourceLocation newLocation) {
-        List<CoverageData> removedCoverageData = location2coverageData.remove(oldLocation);
+    public void replace(MutableSourceSection oldSection, MutableSourceSection newSection) {
+        List<CoverageData> removedCoverageData = section2coverageData.remove(oldSection);
         assert removedCoverageData != null;
-        location2coverageData.put(newLocation, removedCoverageData);
+        section2coverageData.put(newSection, removedCoverageData);
     }
 
     public Source buildSource() {
