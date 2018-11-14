@@ -364,7 +364,7 @@ public class NFAState implements IndexedState, JsonConvertible {
                         Json.prop("reverseAnchoredFinalState", isReverseAnchoredFinalState()),
                         Json.prop("reverseUnAnchoredFinalState", isReverseUnAnchoredFinalState()),
                         Json.prop("next", next.stream().map(x -> Json.val(x.getId()))),
-                        Json.prop("prev", next.stream().map(x -> Json.val(x.getId()))));
+                        Json.prop("prev", prev.stream().map(x -> Json.val(x.getId()))));
     }
 
     @TruffleBoundary
