@@ -182,12 +182,16 @@ public class Target_java_lang_Class {
                             m.getParameterCount(),
                             j -> m.getParameterTypes()[j].rawKlass().mirror());
 
+            final Klass[] rawCheckedExceptions = m.rawMethod().getCheckedExceptions();
+            StaticObjectArray checkedExceptions = (StaticObjectArray) meta.CLASS.allocateArray(rawCheckedExceptions.length, j -> rawCheckedExceptions[j].mirror());
+
             StaticObjectImpl method = (StaticObjectImpl) methodKlass.metaNew().fields(
                             Meta.Field.set("modifiers", m.getModifiers()),
                             Meta.Field.set("clazz", m.getDeclaringClass().rawKlass().mirror()),
                             Meta.Field.set("slot", i),
                             Meta.Field.set("name", context.getInterpreterToVM().intern(meta.toGuest(m.getName()))),
                             Meta.Field.set("returnType", m.getReturnType().rawKlass().mirror()),
+                            Meta.Field.set("exceptionTypes", checkedExceptions),
                             Meta.Field.set("parameterTypes", parameterTypes)).getInstance();
 
             method.setHiddenField("$$method_info", m.rawMethod());
