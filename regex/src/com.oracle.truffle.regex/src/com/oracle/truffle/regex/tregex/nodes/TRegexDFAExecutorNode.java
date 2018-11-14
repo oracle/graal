@@ -166,6 +166,9 @@ public final class TRegexDFAExecutorNode extends Node {
             }
             for (int i = 0; i < successors.length; i++) {
                 if (i == getSuccessorIndex(frame)) {
+                    if (successors[i] != -1 && states[successors[i]] instanceof DFAStateNode) {
+                        ((DFAStateNode) states[successors[i]]).getStateReachedProfile().enter();
+                    }
                     ip = successors[i];
                     continue outer;
                 }
