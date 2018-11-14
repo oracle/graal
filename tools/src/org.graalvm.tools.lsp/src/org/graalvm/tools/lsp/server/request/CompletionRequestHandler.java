@@ -392,7 +392,6 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
 
         if (value instanceof TruffleObject) {
             documentation = getDocumentation((TruffleObject) value);
-// markup.setKind("plaintext");
             return Either.forLeft(documentation);
         }
 

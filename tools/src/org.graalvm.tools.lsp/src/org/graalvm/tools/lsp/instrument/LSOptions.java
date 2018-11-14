@@ -23,8 +23,8 @@ public final class LSOptions {
     @com.oracle.truffle.api.Option(help = "Enable features for language developers, e.g. hovering code snippets shows AST related information like the node class or tags. (default:false)", category = OptionCategory.EXPERT) //
     public static final OptionKey<Boolean> LanguageDeveloperMode = new OptionKey<>(false);
 
-    @com.oracle.truffle.api.Option(help = "Include sources with isInternal()==true in goto-definition search. (default:false)", category = OptionCategory.EXPERT) //
-    public static final OptionKey<Boolean> IncludeInternlSources = new OptionKey<>(false);
+    @com.oracle.truffle.api.Option(help = "Include sources with isInternal()==true in goto-definition, references and symbols search. (default:false)", category = OptionCategory.EXPERT) //
+    public static final OptionKey<Boolean> IncludeInternalSources = new OptionKey<>(false);
 
     private static final int DEFAULT_PORT = 8123;
     private static final HostAndPort DEFAULT_ADDRESS = new HostAndPort(null, DEFAULT_PORT);

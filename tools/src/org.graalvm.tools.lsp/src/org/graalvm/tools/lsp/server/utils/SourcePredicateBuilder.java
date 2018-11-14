@@ -45,7 +45,7 @@ public final class SourcePredicateBuilder {
     }
 
     public SourcePredicateBuilder excludeInternal(OptionValues options) {
-        boolean includeInternal = options.get(LSOptions.IncludeInternlSources);
+        boolean includeInternal = options.get(LSOptions.IncludeInternalSources);
         SourcePredicate predicate = src -> (includeInternal || !src.isInternal());
         this.predicates.add(predicate);
         return this;

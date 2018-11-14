@@ -322,7 +322,7 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
     public Future<Boolean> runCoverageAnalysis(final URI uri) {
         Future<Boolean> future = contextAwareExecutor.executeWithDefaultContext(() -> {
             contextAwareExecutor.resetContextCache(); // We choose coverage runs as checkpoints to
-                                                      // clear the pooled context. A coverage run
+                                                      // clear the cached context. A coverage run
                                                       // can be triggered by the user via the
                                                       // editor, so that the user can actively
                                                       // control the reset of the current cached

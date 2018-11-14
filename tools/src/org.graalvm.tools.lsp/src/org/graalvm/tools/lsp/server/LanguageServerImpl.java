@@ -349,19 +349,7 @@ public class LanguageServerImpl implements LanguageServer, LanguageClientAware, 
 
     @Override
     public void didChangeConfiguration(DidChangeConfigurationParams params) {
-        // TODO(ds) client configs are not used atm...
-        if (params.getSettings() instanceof Map<?, ?>) {
-            Map<?, ?> settings = (Map<?, ?>) params.getSettings();
-            if (settings.get("graalLsp") instanceof Map<?, ?>) {
-                Map<?, ?> truffleLsp = (Map<?, ?>) settings.get("graalLsp");
-                if (truffleLsp.get("trace") instanceof Map<?, ?>) {
-                    Map<?, ?> trace = (Map<?, ?>) truffleLsp.get("trace");
-                    if (trace.get("server") instanceof String) {
-                        trace_server = (String) trace.get("server");
-                    }
-                }
-            }
-        }
+        // TODO(ds) client configs are not used yet
     }
 
     @Override
