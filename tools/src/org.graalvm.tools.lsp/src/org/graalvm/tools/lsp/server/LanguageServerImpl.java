@@ -103,7 +103,8 @@ public class LanguageServerImpl implements LanguageServer, LanguageClientAware, 
     public CompletableFuture<InitializeResult> initialize(InitializeParams params) {
         truffleAdapter.initialize();
 
-        List<String> signatureTriggerChars = Arrays.asList("(");
+        List<String> signatureTriggerChars = Arrays.asList("("); // TODO(ds): implement analogous to
+                                                                 // completion trigger character
         final SignatureHelpOptions signatureHelpOptions = new SignatureHelpOptions(signatureTriggerChars);
 
         ServerCapabilities capabilities = new ServerCapabilities();
