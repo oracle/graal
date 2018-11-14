@@ -30,7 +30,6 @@ import os
 import shutil
 from collections import namedtuple
 from argparse import ArgumentParser
-from os.path import join, exists
 from os.path import join, exists, dirname
 
 import mx
