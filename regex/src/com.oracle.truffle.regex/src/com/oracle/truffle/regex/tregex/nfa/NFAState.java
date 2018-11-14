@@ -274,7 +274,15 @@ public class NFAState implements IndexedState, JsonConvertible {
     }
 
     public void removeNext(NFAState state) {
+        NFAStateTransition transitionToAFS = hasTransitionToAnchoredFinalState(true) ? getTransitionToAnchoredFinalState(true) : null;
+        NFAStateTransition transitionToUFS = hasTransitionToUnAnchoredFinalState(true) ? getTransitionToUnAnchoredFinalState(true) : null;
         next.removeIf(x -> x.getTarget() == state);
+        if (hasTransitionToAnchoredFinalState(true)) {
+            this.transitionToAnchoredFinalState = (short) next.indexOf(transitionToAFS);
+        }
+        if (hasTransitionToUnAnchoredFinalState(true)) {
+            this.transitionToUnAnchoredFinalState = (short) next.indexOf(transitionToUFS);
+        }
     }
 
     public void setPrev(ArrayList<NFAStateTransition> transitions) {
