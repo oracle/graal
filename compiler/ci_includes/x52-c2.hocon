@@ -18,7 +18,7 @@ bench-dacapo-hwloc-forks-c2 : ${x52.c2-tmpfs10g-perftag} ${bench-dacapo-hwloc} $
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-dacapo-hwloc.setup}
   name: "bench-forks-compiler-dacapo-linux-x52-c2"
-  timelimit: "23:59:00"
+  timelimit: "01:45:00"
   environment : ${x52.c2-tmpfs10g-perftag.environment} ${bench-dacapo-hwloc.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/dacapo_forks.json"
   }
@@ -28,7 +28,7 @@ bench-scala-dacapo-hwloc-forks-c2 : ${x52.c2-tmpfs10g-perftag} ${bench-scala-dac
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-scala-dacapo-hwloc.setup}
   name: "bench-forks-compiler-scala-dacapo-linux-x52-c2"
-  timelimit: "23:59:00"
+  timelimit: "03:30:00"
   environment : ${x52.c2-tmpfs10g-perftag.environment} ${bench-scala-dacapo-hwloc.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/scala_dacapo_forks.json"
   }
@@ -38,7 +38,7 @@ bench-specjvm2008-Single-forks-c2-batch0 : ${x52.c2-perftag} ${bench-specjvm2008
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-specjvm2008-Single.setup}
   name: "bench-forks-compiler-specjvm2008-Single-linux-x52-c2-batch0"
-  timelimit: "23:59:00"
+  timelimit: "06:00:00"
   environment : ${x52.c2-perftag.environment} ${bench-specjvm2008-Single.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/specjvm2008_forks_batch0.json"
   }
@@ -48,9 +48,9 @@ bench-specjvm2008-Single-forks-c2-batch1 : ${x52.c2-perftag} ${bench-specjvm2008
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-specjvm2008-Single.setup}
   name: "bench-forks-compiler-specjvm2008-Single-linux-x52-c2-batch1"
-  timelimit: "23:59:00"
+  timelimit: "06:00:00"
   environment : ${x52.c2-perftag.environment} ${bench-specjvm2008-Single.environment} ${fork-counts.environment} {
-    FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/specjvm2008_forks_batch.json1"
+    FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/specjvm2008_forks_batch1.json"
   }
 }
 
@@ -58,7 +58,7 @@ bench-specjvm2008-Single-forks-c2-batch2 : ${x52.c2-perftag} ${bench-specjvm2008
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-specjvm2008-Single.setup}
   name: "bench-forks-compiler-specjvm2008-Single-linux-x52-c2-batch2"
-  timelimit: "23:59:00"
+  timelimit: "06:00:00"
   environment : ${x52.c2-perftag.environment} ${bench-specjvm2008-Single.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/specjvm2008_forks_batch2.json"
   }
@@ -68,7 +68,7 @@ bench-specjvm2008-Single-forks-c2-batch3 : ${x52.c2-perftag} ${bench-specjvm2008
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-specjvm2008-Single.setup}
   name: "bench-forks-compiler-specjvm2008-Single-linux-x52-c2-batch3"
-  timelimit: "23:59:00"
+  timelimit: "06:00:00"
   environment : ${x52.c2-perftag.environment} ${bench-specjvm2008-Single.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/specjvm2008_forks_batch3.json"
   }
@@ -78,7 +78,7 @@ bench-specjvm2008-Single-forks-c2-batch4 : ${x52.c2-perftag} ${bench-specjvm2008
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-specjvm2008-Single.setup}
   name: "bench-forks-compiler-specjvm2008-Single-linux-x52-c2-batch4"
-  timelimit: "23:59:00"
+  timelimit: "06:00:00"
   environment : ${x52.c2-perftag.environment} ${bench-specjvm2008-Single.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/specjvm2008_forks_batch4.json"
   }
@@ -98,7 +98,7 @@ bench-renaissance-hwloc-forks-c2-batch0 : ${x52.c2-tmpfs10g-perftag} ${bench-ren
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-renaissance-hwloc.setup}
   name: "bench-forks-compiler-renaissance-linux-x52-c2-batch0"
-  timelimit: "23:59:00"
+  timelimit: "04:30:00"
   environment : ${x52.c2-tmpfs10g-perftag.environment} ${bench-renaissance-hwloc.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/renaissance_forks_batch0.json"
   }
@@ -107,7 +107,7 @@ bench-renaissance-hwloc-forks-c2-batch1 : ${x52.c2-tmpfs10g-perftag} ${bench-ren
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-renaissance-hwloc.setup}
   name: "bench-forks-compiler-renaissance-linux-x52-c2-batch1"
-  timelimit: "23:59:00"
+  timelimit: "04:30:00"
   environment : ${x52.c2-tmpfs10g-perftag.environment} ${bench-renaissance-hwloc.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/renaissance_forks_batch1.json"
   }
@@ -116,7 +116,7 @@ bench-renaissance-hwloc-forks-c2-batch2 : ${x52.c2-tmpfs10g-perftag} ${bench-ren
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-renaissance-hwloc.setup}
   name: "bench-forks-compiler-renaissance-linux-x52-c2-batch2"
-  timelimit: "23:59:00"
+  timelimit: "04:30:00"
   environment : ${x52.c2-tmpfs10g-perftag.environment} ${bench-renaissance-hwloc.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/renaissance_forks_batch2.json"
   }
@@ -125,7 +125,7 @@ bench-renaissance-hwloc-forks-c2-batch3 : ${x52.c2-tmpfs10g-perftag} ${bench-ren
   targets: [bench, weekly],
   setup: ${fork-counts.setup} ${bench-renaissance-hwloc.setup}
   name: "bench-forks-compiler-renaissance-linux-x52-c2-batch3"
-  timelimit: "23:59:00"
+  timelimit: "04:30:00"
   environment : ${x52.c2-tmpfs10g-perftag.environment} ${bench-renaissance-hwloc.environment} ${fork-counts.environment} {
     FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/renaissance_forks_batch3.json"
   }
