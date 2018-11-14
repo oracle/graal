@@ -680,10 +680,25 @@ public class VirtualizedFileSystemTest {
             try {
                 final URI uri = file.toUri();
                 Assert.assertTrue(cfg.formatErrorMessage("Expected SecurityException"), allowsUserDir);
+                Assert.assertTrue(uri.isAbsolute());
                 Assert.assertEquals(cfg.formatErrorMessage("URI"), userDir.resolve(FOLDER_EXISTING).resolve(FILE_EXISTING).toUri(), uri);
             } catch (SecurityException se) {
                 Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), allowsUserDir);
             }
+        };
+        ctx.eval(LANGAUGE_ID, "");
+    }
+
+    @Test
+    public void testToUriRelative() {
+        final Context ctx = cfg.getContext();
+        final Path userDir = cfg.getUserDir();
+        languageAction = (Env env) -> {
+            TruffleFile file = env.getTruffleFile(FILE_EXISTING);
+            URI uri = file.toUri(false);
+            Assert.assertFalse(uri.isAbsolute());
+            URI expectedUri = userDir.toUri().relativize(userDir.resolve(FILE_EXISTING).toUri());
+            Assert.assertEquals(cfg.formatErrorMessage("Relative URI"), expectedUri, uri);
         };
         ctx.eval(LANGAUGE_ID, "");
     }
@@ -730,6 +745,31 @@ public class VirtualizedFileSystemTest {
             relative = parent.relativize(sibling);
             Assert.assertEquals("../sibling", relative.getPath());
             Assert.assertEquals(sibling.normalize(), parent.resolve(relative.getPath()).normalize());
+        };
+        ctx.eval(LANGAUGE_ID, "");
+    }
+
+    @Test
+    public void testResolve() {
+        Context ctx = cfg.getContext();
+        final boolean canRead = cfg.canRead();
+        languageAction = (Env env) -> {
+            TruffleFile parent = env.getTruffleFile(FOLDER_EXISTING);
+            TruffleFile child = parent.resolve(FILE_EXISTING);
+            try {
+                Assert.assertTrue(child.exists());
+                Assert.assertTrue(cfg.formatErrorMessage("Expected SecurityException"), canRead);
+            } catch (SecurityException se) {
+                Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canRead);
+            }
+            TruffleFile childRelativeToParent = parent.relativize(child);
+            Assert.assertEquals(FILE_EXISTING, childRelativeToParent.getPath());
+            try {
+                Assert.assertFalse(childRelativeToParent.exists());
+                Assert.assertTrue(cfg.formatErrorMessage("Expected SecurityException"), canRead);
+            } catch (SecurityException se) {
+                Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canRead);
+            }
         };
         ctx.eval(LANGAUGE_ID, "");
     }

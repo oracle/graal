@@ -312,7 +312,7 @@ public final class TruffleFile {
     }
 
     /**
-     * Returns the {@link URI} representation of this {@link TruffleFile}.
+     * Returns the absolute {@link URI} representation of this {@link TruffleFile}.
      *
      * @return the absolute {@link URI} representing the {@link TruffleFile}
      * @throws SecurityException if the {@link FileSystem} denied a resolution of an absolute path
@@ -320,9 +320,33 @@ public final class TruffleFile {
      */
     @TruffleBoundary
     public URI toUri() {
+        return toUri(true);
+    }
+
+    /**
+     * Returns possibly relative {@link URI} representation of this {@link TruffleFile}. When
+     * invoked with {@code absolute} parameter set to {@code true} this method always creates an
+     * absolute {@link URI}. For {@code absolute} set to {@code false} this method creates absolute
+     * {@link URI} for {@link #isAbsolute() absolute} {@link TruffleFile}s and relative {@link URI}
+     * for relative ones.
+     *
+     * @param absolute if {@code true} the returned {@link URI} is absolute even for relative
+     *            {@link TruffleFile}
+     * @return the {@link URI} representing the {@link TruffleFile}
+     * @throws SecurityException if an absolute {@link URI} is required and the {@link FileSystem}
+     *             denied a resolution of an absolute path
+     * @since 1.0
+     */
+    @TruffleBoundary
+    public URI toUri(boolean absolute) {
         try {
-            final Path absolutePath = path.isAbsolute() ? path : toAbsolutePathImpl()[0];
-            return absolutePath.toUri();
+            if (absolute || path.isAbsolute()) {
+                final Path absolutePath = path.isAbsolute() ? path : toAbsolutePathImpl()[0];
+                return absolutePath.toUri();
+            } else {
+                String strPath = "/".equals(path.getFileSystem().getSeparator()) ? path.toString() : path.toString().replace(path.getFileSystem().getSeparator(), "/");
+                return new URI(null, null, strPath, null);
+            }
         } catch (SecurityException se) {
             throw se;
         } catch (Throwable t) {
@@ -1046,7 +1070,7 @@ public final class TruffleFile {
     @TruffleBoundary
     public TruffleFile relativize(TruffleFile other) {
         try {
-            return new TruffleFile(fileSystem, path.relativize(other.path), other.normalizedPath);
+            return new TruffleFile(fileSystem, path.relativize(other.path));
         } catch (IllegalArgumentException e) {
             throw e;
         } catch (Throwable t) {
