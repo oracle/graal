@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.jni;
 
 import static com.oracle.truffle.espresso.meta.Meta.meta;
+import static com.oracle.truffle.espresso.meta.Meta.toHost;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -56,6 +57,8 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.Utils;
 import com.oracle.truffle.espresso.impl.FieldInfo;
 import com.oracle.truffle.espresso.impl.MethodInfo;
+import com.oracle.truffle.espresso.intrinsics.Target_java_lang_ClassLoader;
+import com.oracle.truffle.espresso.intrinsics.Type;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -1271,6 +1274,18 @@ public class JniEnv extends NativeEnv {
         RootNode nativeNode = new VmNativeNode(EspressoLanguage.getCurrentContext().getLanguage(), boundNative, true, null);
         EspressoLanguage.getCurrentContext().getInterpreterToVM().registerIntrinsic(className, name, signature, nativeNode, false);
         return JNI_OK;
+    }
+
+    @JniImpl
+    public int GetStringUTFLength(String string) {
+        return Utf8.UTFLength(string);
+    }
+
+    @JniImpl
+    public void GetStringUTFRegion(@Type(String.class) StaticObject str, int start, int len, long bufPtr) {
+        byte[] bytes = Utf8.asUTF(toHost(str), start, len, true); // always 0 terminated.
+        ByteBuffer buf = directByteBuffer(bufPtr, bytes.length, JavaKind.Byte);
+        buf.put(bytes);
     }
 
     private static ByteBuffer directByteBuffer(long address, long capacity, JavaKind kind) {
