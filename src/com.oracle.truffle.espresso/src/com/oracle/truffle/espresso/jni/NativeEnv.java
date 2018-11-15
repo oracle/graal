@@ -63,4 +63,44 @@ public class NativeEnv {
         return classToNative.getOrDefault(clazz, javaToNative ? NativeSimpleType.OBJECT_OR_NULL : NativeSimpleType.OBJECT);
     }
 
+    protected static ByteBuffer directByteBuffer(long address, long capacity, JavaKind kind) {
+        return directByteBuffer(address, Math.multiplyExact(capacity, kind.getByteCount()));
+    }
+
+    private final static Constructor<? extends ByteBuffer> constructor;
+    private final static Field address;
+    static {
+        try {
+            @SuppressWarnings("unchecked")
+            Class<? extends ByteBuffer> clazz = (Class<? extends ByteBuffer>) Class.forName("java.nio.DirectByteBuffer");
+            @SuppressWarnings("unchecked")
+            Class<? extends ByteBuffer> bufferClazz = (Class<? extends ByteBuffer>) Class.forName("java.nio.Buffer");
+            constructor = clazz.getDeclaredConstructor(long.class, int.class);
+            address = bufferClazz.getDeclaredField("address");
+            address.setAccessible(true);
+            constructor.setAccessible(true);
+        } catch (ClassNotFoundException | NoSuchMethodException | NoSuchFieldException e) {
+            throw EspressoError.shouldNotReachHere(e);
+        }
+    }
+
+    protected static ByteBuffer directByteBuffer(long address, long capacity) {
+        ByteBuffer buffer = null;
+        try {
+            buffer = constructor.newInstance(address, Math.toIntExact(capacity));
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
+            throw EspressoError.shouldNotReachHere(e);
+        }
+        buffer.order(ByteOrder.nativeOrder());
+        return buffer;
+    }
+
+    protected static long byteBufferAddress(ByteBuffer byteBuffer) {
+        try {
+            return (long) address.get(byteBuffer);
+        } catch (IllegalAccessException e) {
+            throw EspressoError.shouldNotReachHere(e);
+        }
+    }
+
 }

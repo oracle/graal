@@ -25,8 +25,6 @@ package com.oracle.truffle.espresso.jni;
 import static com.oracle.truffle.espresso.meta.Meta.meta;
 import static com.oracle.truffle.espresso.meta.Meta.toHost;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -57,13 +55,13 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.Utils;
 import com.oracle.truffle.espresso.impl.FieldInfo;
 import com.oracle.truffle.espresso.impl.MethodInfo;
-import com.oracle.truffle.espresso.intrinsics.Target_java_lang_ClassLoader;
 import com.oracle.truffle.espresso.intrinsics.Type;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.nodes.VmNativeNode;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
@@ -78,6 +76,11 @@ public class JniEnv extends NativeEnv {
     public static final int JNI_ERR = -1; /* unknown error */
     public static final int JNI_COMMIT = 1;
     public static final int JNI_ABORT = 2;
+
+
+    public static final int JVM_INTERFACE_VERSION = 4;
+    public static final int JNI_TRUE = 1;
+    public static final int JNI_FALSE = 0;
 
     private long jniEnvPtr;
 
@@ -428,7 +431,10 @@ public class JniEnv extends NativeEnv {
     }
 
     @JniImpl
-    public int GetStringLength(StaticObject str) {
+    public int GetStringLength(@Type(String.class) StaticObject str) {
+        if (str == StaticObject.NULL) {
+            return 0;
+        }
         return (int) meta(str).method("length", int.class).invokeDirect();
     }
 
@@ -437,7 +443,7 @@ public class JniEnv extends NativeEnv {
     @JniImpl
     public long GetFieldID(StaticObjectClass clazz, String name, String signature) {
         clazz.getMirror().initialize();
-        Meta.Field field = meta((clazz).getMirror()).field(name);
+        Meta.Field field = meta((clazz).getMirror()).declaredField(name);
         return fieldIds.handlify(field.rawField());
     }
 
@@ -1109,12 +1115,12 @@ public class JniEnv extends NativeEnv {
     }
 
     @JniImpl
-    public long GetStringCritical(StaticObject str, long isCopyPtr) {
+    public long GetStringCritical(@Type(String.class) StaticObject str, long isCopyPtr) {
         if (isCopyPtr != 0L) {
             ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // always copy since pinning is not supported
         }
-        final char[] stringChars = (char[]) meta(str).field("value").get();
+        final char[] stringChars = (char[]) meta(str).declaredField("value").get();
         int len = stringChars.length;
         ByteBuffer criticalRegion = allocateDirect(len, JavaKind.Char); // direct byte buffer
         // (non-relocatable)
@@ -1136,25 +1142,25 @@ public class JniEnv extends NativeEnv {
     }
 
     @JniImpl
-    public long GetStringUTFChars(StaticObject str, long isCopyPtr) {
+    public long GetStringUTFChars(@Type(String.class) StaticObject str, long isCopyPtr) {
         if (isCopyPtr != 0L) {
             ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // always copy since pinning is not supported
         }
-        byte[] bytes = Utf8.asUTF(Meta.toHost(str));
+        byte[] bytes = Utf8.asUTF(Meta.toHost(str), true);
         ByteBuffer region = allocateDirect(bytes.length);
         region.put(bytes);
         return byteBufferAddress(region);
     }
 
     @JniImpl
-    public void ReleaseStringUTFChars(StaticObject str, long charsPtr) {
+    public void ReleaseStringUTFChars(@Type(String.class) StaticObject str, long charsPtr) {
         assert nativeBuffers.containsKey(charsPtr);
         nativeBuffers.remove(charsPtr);
     }
 
     @JniImpl
-    public void ReleaseStringCritical(StaticObject str, long criticalRegionPtr) {
+    public void ReleaseStringCritical(@Type(String.class) StaticObject str, long criticalRegionPtr) {
         assert nativeBuffers.containsKey(criticalRegionPtr);
         nativeBuffers.remove(criticalRegionPtr);
     }
@@ -1179,7 +1185,7 @@ public class JniEnv extends NativeEnv {
     }
 
     @JniImpl
-    public int ThrowNew(StaticObjectClass clazz, String message) {
+    public int ThrowNew(@Type(Class.class) StaticObjectClass clazz, String message) {
         StaticObject ex = meta(clazz).getMeta().initEx(meta(clazz.getKlass()), message);
         threadLocalPendingException.set(ex);
         return JNI_OK;
@@ -1234,8 +1240,8 @@ public class JniEnv extends NativeEnv {
     }
 
     @JniImpl
-    public void GetStringRegion(StaticObject str, int start, int len, long bufPtr) {
-        final char[] chars = (char[]) meta(str).field("value").get();
+    public void GetStringRegion(@Type(String.class) StaticObject str, int start, int len, long bufPtr) {
+        final char[] chars = (char[]) meta(str).declaredField("value").get();
         CharBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Char).asCharBuffer();
         buf.put(chars, start, len);
     }
@@ -1277,8 +1283,8 @@ public class JniEnv extends NativeEnv {
     }
 
     @JniImpl
-    public int GetStringUTFLength(String string) {
-        return Utf8.UTFLength(string);
+    public int GetStringUTFLength(@Type(String.class) StaticObject string) {
+        return Utf8.UTFLength(EspressoLanguage.getCurrentContext().getMeta().toHost(string));
     }
 
     @JniImpl
@@ -1288,43 +1294,30 @@ public class JniEnv extends NativeEnv {
         buf.put(bytes);
     }
 
-    private static ByteBuffer directByteBuffer(long address, long capacity, JavaKind kind) {
-        return directByteBuffer(address, Math.multiplyExact(capacity, kind.getByteCount()));
+    /**
+     * Loads a class from a buffer of raw class data. The buffer containing the raw class data is not
+     * referenced by the VM after the DefineClass call returns, and it may be discarded if desired.
+     *
+     * @param name the name of the class or interface to be defined. The string is encoded in modified UTF-8.
+     * @param loader a class loader assigned to the defined class.
+     * @param bufPtr buffer containing the .class file data.
+     * @param bufLen buffer length.
+     *
+     * @return Returns a Java class object or NULL if an error occurs.
+     */
+    @JniImpl
+    public @Type(Class.class) StaticObject DefineClass(String name, Object loader, long bufPtr, int bufLen) {
+        // TODO(peterssen): Propagete errors and verifications, e.g. no class win the java package.
+        return EspressoLanguage.getCurrentContext().getVM().JVM_DefineClass(name, loader, bufPtr, bufLen, StaticObject.NULL);
     }
 
-    private final static Constructor<? extends ByteBuffer> constructor;
-    private final static Field address;
-    static {
-        try {
-            @SuppressWarnings("unchecked")
-            Class<? extends ByteBuffer> clazz = (Class<? extends ByteBuffer>) Class.forName("java.nio.DirectByteBuffer");
-            @SuppressWarnings("unchecked")
-            Class<? extends ByteBuffer> bufferClazz = (Class<? extends ByteBuffer>) Class.forName("java.nio.Buffer");
-            constructor = clazz.getDeclaredConstructor(long.class, int.class);
-            address = bufferClazz.getDeclaredField("address");
-            address.setAccessible(true);
-            constructor.setAccessible(true);
-        } catch (ClassNotFoundException | NoSuchMethodException | NoSuchFieldException e) {
-            throw EspressoError.shouldNotReachHere(e);
-        }
-    }
 
-    private static ByteBuffer directByteBuffer(long address, long capacity) {
-        ByteBuffer buffer = null;
-        try {
-            buffer = constructor.newInstance(address, Math.toIntExact(capacity));
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-            throw EspressoError.shouldNotReachHere(e);
-        }
-        buffer.order(ByteOrder.nativeOrder());
-        return buffer;
-    }
+    // JavaVM **vm);
 
-    private static long byteBufferAddress(ByteBuffer byteBuffer) {
-        try {
-            return (long) address.get(byteBuffer);
-        } catch (IllegalAccessException e) {
-            throw EspressoError.shouldNotReachHere(e);
-        }
+    @JniImpl
+    public int GetJavaVM(long vmPtr) {
+        ByteBuffer buf = directByteBuffer(vmPtr, 1, JavaKind.Long); // 64 bits pointer
+        buf.putLong(EspressoLanguage.getCurrentContext().getVM().getJavaVM());
+        return JNI_OK;
     }
 }
