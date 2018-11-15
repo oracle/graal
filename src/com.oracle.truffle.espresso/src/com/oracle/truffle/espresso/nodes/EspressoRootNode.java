@@ -1263,15 +1263,17 @@ public class EspressoRootNode extends RootNode implements LinkedNode {
         CompilerAsserts.partialEvaluationConstant(originalMethod);
         // TODO(peterssen): Ignore return type on method signature.
         // TODO(peterssen): Intercept/hook methods on primitive arrays e.g. int[].clone().
-        StaticObject receiver = (StaticObject) nullCheck(stack.peekReceiver(originalMethod));
+        // We could call a virtual method on a primitive array. e.g. ((Object)new byte[1]).clone();
+        Object receiver = nullCheck(stack.peekReceiver(originalMethod));
         // Resolve
         MethodInfo targetMethod = methodLookup(originalMethod, receiver);
         invoke(stack, targetMethod, receiver, !originalMethod.isStatic(), originalMethod.getSignature());
     }
 
     @CompilerDirectives.TruffleBoundary
-    private MethodInfo methodLookup(MethodInfo originalMethod, StaticObject receiver) {
-        return receiver.getKlass().findConcreteMethod(originalMethod.getName(), originalMethod.getSignature());
+    private MethodInfo methodLookup(MethodInfo originalMethod, Object receiver) {
+        StaticObjectClass clazz = (StaticObjectClass) EspressoLanguage.getCurrentContext().getJNI().GetObjectClass(receiver);
+        return clazz.getMirror().findConcreteMethod(originalMethod.getName(), originalMethod.getSignature());
     }
 
     private void invokeRedirectedMethodViaVM(OperandStack stack, MethodInfo originalMethod, CallTarget intrinsic) {
