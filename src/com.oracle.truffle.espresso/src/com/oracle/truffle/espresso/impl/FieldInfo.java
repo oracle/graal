@@ -26,6 +26,7 @@ package com.oracle.truffle.espresso.impl;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
+import com.oracle.truffle.espresso.runtime.AttributeInfo;
 import com.oracle.truffle.espresso.types.TypeDescriptor;
 
 /**
@@ -40,6 +41,7 @@ public class FieldInfo implements ModifiersProvider {
     private final String name;
     private final int offset;
     private final short index;
+    private AttributeInfo runtimeVisibleAnnotations;
 
     @CompilerDirectives.CompilationFinal private Klass type;
 
@@ -48,13 +50,14 @@ public class FieldInfo implements ModifiersProvider {
      */
     private final int modifiers;
 
-    FieldInfo(Klass holder, String name, TypeDescriptor typeDescriptor, long offset, int modifiers, int index) {
+    FieldInfo(Klass holder, String name, TypeDescriptor typeDescriptor, long offset, int modifiers, int index, AttributeInfo runtimeVisibleAnnotations) {
         this.holder = holder;
         this.name = name;
         this.typeDescriptor = typeDescriptor;
         this.index = (short) index;
         this.offset = (int) offset;
         this.modifiers = modifiers;
+        this.runtimeVisibleAnnotations = runtimeVisibleAnnotations;
         assert this.index == index;
         assert offset != -1;
         assert offset == (int) offset : "offset larger than int";
@@ -101,6 +104,10 @@ public class FieldInfo implements ModifiersProvider {
         return modifiers;
     }
 
+    public AttributeInfo getRuntimeVisibleAnnotations() {
+        return runtimeVisibleAnnotations;
+    }
+
     public static class Builder implements BuilderBase<FieldInfo> {
         private Klass declaringClass;
         private String name;
@@ -108,6 +115,7 @@ public class FieldInfo implements ModifiersProvider {
         private long offset;
         private int modifiers;
         private int index;
+        private AttributeInfo runtimeVisibleAnnotations;
 
         public Builder setDeclaringClass(Klass declaringClass) {
             this.declaringClass = declaringClass;
@@ -139,9 +147,14 @@ public class FieldInfo implements ModifiersProvider {
             return this;
         }
 
+        public Builder setRuntimeVisibleAnnotations(AttributeInfo runtimeVisibleAnnotations) {
+            this.runtimeVisibleAnnotations = runtimeVisibleAnnotations;
+            return this;
+        }
+
         @Override
         public FieldInfo build() {
-            return new FieldInfo(declaringClass, name, type, offset, modifiers, index);
+            return new FieldInfo(declaringClass, name, type, offset, modifiers, index, runtimeVisibleAnnotations);
         }
     }
 }

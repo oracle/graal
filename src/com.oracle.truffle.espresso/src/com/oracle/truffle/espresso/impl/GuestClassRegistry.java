@@ -25,10 +25,13 @@ package com.oracle.truffle.espresso.impl;
 
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.types.TypeDescriptor;
+
+import static com.oracle.truffle.espresso.meta.Meta.meta;
 
 /**
  * A {@link GuestClassRegistry} maps class names to resolved {@link Klass} instances. Each class
@@ -51,9 +54,9 @@ public class GuestClassRegistry implements ClassRegistry {
     /**
      * The class loader associated with this registry.
      */
-    private final Object classLoader;
+    private final StaticObject classLoader;
 
-    public GuestClassRegistry(EspressoContext context, Object classLoader) {
+    public GuestClassRegistry(EspressoContext context, StaticObject classLoader) {
         this.context = context;
         this.classLoader = classLoader;
     }
@@ -64,10 +67,11 @@ public class GuestClassRegistry implements ClassRegistry {
             return resolve(type.getComponentType()).getArrayClass();
         }
         assert classLoader != null;
-        MethodInfo loadClass = ((StaticObject) classLoader).getKlass().findMethod("loadClass", context.getSignatureDescriptors().make("(Ljava/lang/String;Z)Ljava/lang/Class;"));
         // TODO(peterssen): Should the class be resolved?
-        StaticObjectClass guestClass = (StaticObjectClass) loadClass.getCallTarget().call(classLoader, context.getMeta().toGuest(type.toJavaName()), false);
+        StaticObjectClass guestClass = (StaticObjectClass) Meta.meta(classLoader).method("loadClass", Class.class, String.class, boolean.class)
+                .invokeDirect(context.getMeta().toGuest(type.toJavaName()), false);
         Klass k = guestClass.getMirror();
+        meta(classLoader).method("addClass", void.class, Class.class).invokeDirect(guestClass);
         classes.put(type, k);
         return k;
     }

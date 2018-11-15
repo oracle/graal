@@ -23,18 +23,12 @@
 
 package com.oracle.truffle.espresso.intrinsics;
 
-import java.security.ProtectionDomain;
-
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.classfile.ClassfileParser;
-import com.oracle.truffle.espresso.classfile.ClassfileStream;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
-import com.oracle.truffle.espresso.runtime.ClasspathFile;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.types.TypeDescriptor;
 
 @EspressoIntrinsics
@@ -42,17 +36,6 @@ public class Target_java_lang_ClassLoader {
     @Intrinsic
     public static void registerNatives() {
         /* nop */
-    }
-
-    @Intrinsic(hasReceiver = true)
-    public static @Type(Class.class) Object findLoadedClass0(Object self, @Type(String.class) StaticObject name) {
-        EspressoContext context = EspressoLanguage.getCurrentContext();
-        TypeDescriptor type = context.getTypeDescriptors().make(Meta.toHost(name));
-        Klass klass = EspressoLanguage.getCurrentContext().getRegistries().findLoadedClass(type, self);
-        if (klass == null) {
-            return StaticObject.NULL;
-        }
-        return klass.mirror();
     }
 
     @Intrinsic(hasReceiver = true)
