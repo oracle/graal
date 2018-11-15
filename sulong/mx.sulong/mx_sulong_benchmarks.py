@@ -258,7 +258,7 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
                 return props, remaining_args
 
             props, launcher_args = _filter_properties(launcher_args)
-            sulongCmdLine = mx_sulong.getClasspathOptions() + \
+            sulongCmdLine = self.launcher_vm_args() + \
                             props + \
                             ['-XX:-UseJVMCIClassLoader', "com.oracle.truffle.llvm.launcher.LLVMLauncher"]
             result = self.host_vm().run(cwd, sulongCmdLine + launcher_args)
@@ -288,12 +288,15 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
             '-gvn',
         ]
 
+    def launcher_vm_args(self):
+        return mx_sulong.getClasspathOptions() + \
+               [mx_subst.path_substitutions.substitute('-Dpolyglot.llvm.libraryPath=<path:SULONG_LIBS>')]
+
     def launcher_args(self, args):
         launcher_args = [
             '--jvm.Dgraal.TruffleBackgroundCompilation=false',
             '--jvm.Dgraal.TruffleInliningMaxCallerSize=10000',
             '--jvm.Dgraal.TruffleCompilationExceptionsAreFatal=true',
-            mx_subst.path_substitutions.substitute('--llvm.libraryPath=<path:SULONG_LIBS>'),
             '--llvm.libraries=libgmp.so.10'] + args
         # FIXME: currently, we do not support a common option prefix for jvm and native mode (GR-11165) #pylint: disable=fixme
         if self.host_vm().config_name() == "native":
