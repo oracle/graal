@@ -64,17 +64,8 @@ public class EspressoContext {
     private Meta meta;
     private StaticObject mainThread;
 
-    private final ConcurrentHashMap<Long, TruffleObject> nativeLibraries = new ConcurrentHashMap<>();
-    private final AtomicLong nativeHandleCount = new AtomicLong();
     private JniEnv jniEnv;
     private VM vm;
-
-    public long addNativeLibrary(TruffleObject library) {
-        long handle = nativeHandleCount.incrementAndGet();
-        assert !nativeLibraries.containsValue(library);
-        nativeLibraries.put(handle, library);
-        return handle;
-    }
 
     public EspressoContext(TruffleLanguage.Env env, EspressoLanguage language) {
         this.env = env;
@@ -256,10 +247,6 @@ public class EspressoContext {
 
     public Object getAppClassLoader() {
         return appClassLoader;
-    }
-
-    public ConcurrentHashMap<Long, TruffleObject> getNativeLibraries() {
-        return nativeLibraries;
     }
 
     public JniEnv getJNI() {

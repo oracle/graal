@@ -42,16 +42,6 @@ public class NativeLibrary {
         return (TruffleObject) target.call();
     }
 
-    private static long load(String name) {
-        TruffleObject lib = null;
-        try {
-            lib = loadLibrary(name);
-        } catch (UnsatisfiedLinkError e) {
-            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(UnsatisfiedLinkError.class);
-        }
-        return EspressoLanguage.getCurrentContext().addNativeLibrary(lib);
-    }
-
     public static TruffleObject lookup(TruffleObject library, String method) {
         try {
             return (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), library, method);
@@ -76,5 +66,4 @@ public class NativeLibrary {
             throw EspressoError.shouldNotReachHere("Cannot bind " + method);
         }
     }
-
 }
