@@ -870,6 +870,21 @@ public class LanguageSPITest {
     }
 
     @Test
+    public void testInitializeCalledWithEngineOptions() {
+        Engine engine = Engine.newBuilder().option(MultiContextLanguage.ID + ".DummyOption", "42").build();
+        Context context = Context.newBuilder().engine(engine).build();
+        context.initialize(MultiContextLanguage.ID);
+        MultiContextLanguage lang = MultiContextLanguage.getInstance(context);
+        assertEquals(1, lang.initializeMultiContextCalled.size());
+        assertEquals(1, lang.initializeMultipleContextsCalled.size());
+        assertEquals(1, (int) lang.initializeMultipleContextsCalled.get(0));
+        assertEquals(2, (int) lang.initializeMultiContextCalled.get(0));
+        assertEquals(1, lang.createContextCalled.size());
+        context.close();
+        engine.close();
+    }
+
+    @Test
     public void testMultiContextExplicitEngineNoCaching() {
         org.graalvm.polyglot.Source source1 = org.graalvm.polyglot.Source.create(MultiContextLanguage.ID, "foo");
         org.graalvm.polyglot.Source source2 = org.graalvm.polyglot.Source.create(MultiContextLanguage.ID, "bar");
