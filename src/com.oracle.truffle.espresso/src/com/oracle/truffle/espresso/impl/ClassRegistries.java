@@ -26,7 +26,14 @@ package com.oracle.truffle.espresso.impl;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.classfile.ClassfileParser;
+import com.oracle.truffle.espresso.classfile.ClassfileStream;
+import com.oracle.truffle.espresso.meta.MetaUtil;
+import com.oracle.truffle.espresso.runtime.ClasspathFile;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.types.TypeDescriptor;
 
 public class ClassRegistries {
@@ -67,8 +74,22 @@ public class ClassRegistries {
         if (classLoader == null) {
             return bootClassRegistry.resolve(type);
         } else {
-            ClassRegistry registry = registries.computeIfAbsent(classLoader, cl -> new GuestClassRegistry(context, cl));
+            ClassRegistry registry = registries.computeIfAbsent(classLoader, cl -> new GuestClassRegistry(context, (StaticObject) cl));
             return registry.resolve(type);
         }
+    }
+
+    public Klass defineKlass(String name, byte[] bytes, Object classLoader) {
+        ClasspathFile cpf = new ClasspathFile(bytes, null, name);
+        ClassfileParser parser = new ClassfileParser(classLoader, new ClassfileStream(bytes, 0, bytes.length, cpf), name, null, EspressoLanguage.getCurrentContext());
+
+        // TODO(peterssen): Propagate errors to the guest.
+        // Class parsing should be moved to ClassRegistry.
+        StaticObjectClass klass = (StaticObjectClass) parser.parseClass().mirror();
+
+        ClassRegistry registry = (classLoader == null || classLoader == StaticObject.NULL) ? bootClassRegistry : registries.get(classLoader);
+        TypeDescriptor descriptor = context.getTypeDescriptors().make(MetaUtil.toInternalName(name));
+        registry.defineKlass(descriptor, klass.getMirror());
+        return klass.getMirror();
     }
 }
