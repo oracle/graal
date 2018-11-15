@@ -66,24 +66,6 @@ public class Target_java_lang_ClassLoader {
         return klass.mirror();
     }
 
-    @Intrinsic(hasReceiver = true)
-    public static @Type(Class.class) StaticObject defineClass0(Object self, @Type(String.class) StaticObject name, byte[] b, int off, int len,
-                    @Type(ProtectionDomain.class) Object pd) {
-        ClasspathFile cpf = new ClasspathFile(b, null, Meta.toHost(name));
-        ClassfileParser parser = new ClassfileParser(self, new ClassfileStream(b, off, len, cpf), Meta.toHost(name), null, EspressoLanguage.getCurrentContext());
-
-        // TODO(peterssen): Propagate errors to the guest.
-        // Class parsing should be moved to ClassRegistry.
-        StaticObjectClass klass = (StaticObjectClass) parser.parseClass().mirror();
-        return klass;
-    }
-
-    @Intrinsic(hasReceiver = true)
-    public static @Type(Class.class) StaticObject defineClass1(Object self, @Type(String.class) StaticObject name, byte[] b, int off, int len,
-                    @Type(ProtectionDomain.class) Object pd, @Type(String.class) StaticObject source) {
-        return defineClass0(self, name, b, off, len, pd);
-    }
-
     @Intrinsic
     public static @Type(String.class) StaticObject findBuiltinLib(@Type(String.class) StaticObject name) {
         return StaticObject.NULL;
