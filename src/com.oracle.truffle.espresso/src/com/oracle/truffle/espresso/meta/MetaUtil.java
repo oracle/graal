@@ -80,6 +80,11 @@ public class MetaUtil {
      * @return the internal name form of the class name
      */
     public static String toInternalName(String className) {
+        // Already internal name.
+        if (className.startsWith("L") && className.endsWith(";")) {
+            return className.replace('.', '/');
+        }
+
         if (className.startsWith("[")) {
             /* Already in the correct array style. */
             return className.replace('.', '/');

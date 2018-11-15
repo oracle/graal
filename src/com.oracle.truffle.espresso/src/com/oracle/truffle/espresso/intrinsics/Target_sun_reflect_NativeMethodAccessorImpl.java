@@ -18,7 +18,7 @@ public class Target_sun_reflect_NativeMethodAccessorImpl {
         while (target == null) {
             target = (MethodInfo) ((StaticObjectImpl) method).getHiddenField("$$method_info");
             if (target == null) {
-                method = (StaticObject) meta(method).field("root").get();
+                method = (StaticObject) meta(method).declaredField("root").get();
             }
         }
         Meta.Method m = meta(target);
