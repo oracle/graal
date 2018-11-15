@@ -184,6 +184,11 @@ public final class MethodInfo implements ModifiersProvider {
         return NativeLibrary.lookupAndBind(library, mangledName, signature);
     }
 
+    private static TruffleObject bind(TruffleObject symbol, Meta.Method m) {
+        String signature = buildJniNativeSignature(m);
+        return NativeLibrary.bind(symbol, signature);
+    }
+
     @CompilerDirectives.TruffleBoundary
     public CallTarget getCallTarget() {
         // TODO(peterssen): Make lazy call target thread-safe.
@@ -255,13 +260,8 @@ public final class MethodInfo implements ModifiersProvider {
         if (handle == 0) { // not found
             return null;
         }
-        TruffleObject library = getContext().getNativeLibraries().get(handle);
-        TruffleObject nativeMethod = null;
-        try {
-            nativeMethod = bind(library, meta(this), mangledName);
-        } catch (UnknownIdentifierException e) {
-            return null;
-        }
+        TruffleObject symbol = EspressoLanguage.getCurrentContext().getVM().getFunction(handle);
+        TruffleObject nativeMethod = bind(symbol, meta(this));
         return Truffle.getRuntime().createCallTarget(new JniNativeNode(getContext().getLanguage(), nativeMethod, meta(this)));
     }
 
