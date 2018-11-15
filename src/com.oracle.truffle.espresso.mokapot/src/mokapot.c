@@ -13,6 +13,10 @@ void Mokapot_SetJNIEnv(JNIEnv *env) {
   jniEnv = env;
 }
 
+void* getJavaVM(TruffleEnv *truffle_env) {
+  return (*mokaEnv)->vm;
+}
+
 #define UNIMPLEMENTED(name) \
   fprintf(stderr, "Calling unimplemented mokapot %s\n", #name);
 
@@ -86,8 +90,8 @@ void disposeMokapotContext(TruffleEnv *truffle_env, jlong moka_env_ptr) {
 }
 
 jint JVM_GetInterfaceVersion(void) {
-  UNIMPLEMENTED(JVM_GetInterfaceVersion);
-  return 666;
+  IMPLEMENTED(JVM_GetInterfaceVersion);
+  return (*getEnv())->JVM_GetInterfaceVersion();
 }
 
 jint JVM_IHashCode(JNIEnv *env, jobject obj) {
@@ -146,8 +150,8 @@ void JVM_OnExit(void (*func)(void)) {
 }
 
 void JVM_Exit(jint code) {
-  UNIMPLEMENTED(JVM_Exit);
-
+  IMPLEMENTED(JVM_Exit);
+  (*getEnv())->JVM_Exit(code);
 }
 
 void JVM_Halt(jint code) {
@@ -156,7 +160,7 @@ void JVM_Halt(jint code) {
 }
 
 void JVM_GC(void) {
-  UNIMPLEMENTED(JVM_GC);
+  IMPLEMENTED(JVM_GC);
   (*getEnv())->JVM_GC();
 }
 
@@ -191,7 +195,7 @@ jlong JVM_MaxMemory(void) {
 }
 
 jint JVM_ActiveProcessorCount(void) {
-  fprintf(stderr, "Calling mokapot JVM_ActiveProcessorCount.\n");
+  IMPLEMENTED(JVM_ActiveProcessorCount);
   return sysconf(_SC_NPROCESSORS_ONLN);
 }
 
@@ -201,18 +205,19 @@ void *JVM_LoadLibrary(const char *name) {
 }
 
 void JVM_UnloadLibrary(void *handle) {
-  UNIMPLEMENTED(JVM_UnloadLibrary);
-
+  IMPLEMENTED(JVM_UnloadLibrary);
+  (*getEnv())->JVM_UnloadLibrary(handle);
 }
 
 void *JVM_FindLibraryEntry(void *handle, const char *name) {
-  UNIMPLEMENTED(JVM_FindLibraryEntry);
-  return NULL;
+  IMPLEMENTED(JVM_FindLibraryEntry);
+  fprintf(stderr, "JVM_FindLibraryEntry %s\n", name);
+  return (*getEnv())->JVM_FindLibraryEntry(handle, name);
 }
 
 jboolean JVM_IsSupportedJNIVersion(jint version) {
-  UNIMPLEMENTED(JVM_IsSupportedJNIVersion);
-  return 0;
+  IMPLEMENTED(JVM_IsSupportedJNIVersion);
+  return (*getEnv())->JVM_IsSupportedJNIVersion(version);
 }
 
 jboolean JVM_IsNaN(jdouble d) {
@@ -482,19 +487,19 @@ jclass JVM_FindClassFromClass(JNIEnv *env, const char *name, jboolean init, jcla
 }
 
 jclass JVM_FindLoadedClass(JNIEnv *env, jobject loader, jstring name) {
-  UNIMPLEMENTED(JVM_FindLoadedClass);
-  return NULL;
+  IMPLEMENTED(JVM_FindLoadedClass);
+  return (*getEnv())->JVM_FindLoadedClass(env, loader, name);
 }
 
 jclass JVM_DefineClass(JNIEnv *env, const char *name, jobject loader, const jbyte *buf, jsize len, jobject pd) {
-  UNIMPLEMENTED(JVM_DefineClass);
-  return NULL;
+  IMPLEMENTED(JVM_DefineClass);
+  return (*getEnv())->JVM_DefineClass(env, name, loader, buf, len, pd);
 }
 
 jclass JVM_DefineClassWithSource(JNIEnv *env, const char *name, jobject loader, const jbyte *buf, jsize len, jobject pd,
                                  const char *source) {
-  UNIMPLEMENTED(JVM_DefineClassWithSource);
-  return NULL;
+  IMPLEMENTED(JVM_DefineClassWithSource);
+  return (*getEnv())->JVM_DefineClassWithSource(env, name, loader, buf, len, pd, source);
 }
 
 jstring JVM_GetClassName(JNIEnv *env, jclass cls) {
@@ -608,8 +613,8 @@ jobject JVM_InvokeMethod(JNIEnv *env, jobject method, jobject obj, jobjectArray 
 }
 
 jobject JVM_NewInstanceFromConstructor(JNIEnv *env, jobject c, jobjectArray args0) {
-  UNIMPLEMENTED(JVM_NewInstanceFromConstructor);
-  return NULL;
+  IMPLEMENTED(JVM_NewInstanceFromConstructor);
+  return (*getEnv())->JVM_NewInstanceFromConstructor(env, c, args0);
 }
 
 jobject JVM_GetClassConstantPool(JNIEnv *env, jclass cls) {

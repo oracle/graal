@@ -29,6 +29,7 @@ SUNWprivate_1.1 {
                 # Mokapot
                 initializeMokapotContext;
                 disposeMokapotContext;
+                getJavaVM;
 
                 # JNI
                 JNI_CreateJavaVM;
