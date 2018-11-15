@@ -266,6 +266,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
+import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.types.SignatureDescriptor;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
@@ -1044,7 +1045,7 @@ public class EspressoRootNode extends RootNode implements LinkedNode {
     private ExceptionHandler resolveExceptionHandlers(int bci, StaticObject ex) {
         ExceptionHandler[] handlers = getMethod().getExceptionHandlers();
         for (ExceptionHandler handler : handlers) {
-            if (bci >= handler.getStartBCI() && bci <= handler.getEndBCI()) {
+            if (bci >= handler.getStartBCI() && bci < handler.getEndBCI()) {
                 Klass catchType = null;
                 if (!handler.isCatchAll()) {
                     // exception handlers are similar to instanceof bytecodes, so we pass instanceof
