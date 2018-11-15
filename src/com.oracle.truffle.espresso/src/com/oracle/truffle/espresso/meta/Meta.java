@@ -37,6 +37,7 @@ import java.util.function.IntFunction;
 import java.util.stream.Stream;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.FieldInfo;
 import com.oracle.truffle.espresso.impl.MethodInfo;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -231,7 +232,7 @@ public final class Meta {
         if (str == StaticObject.NULL) {
             return null;
         }
-        char[] value = (char[]) meta(str).field("value").get();
+        char[] value = (char[]) meta(str).declaredField("value").get();
         return createString(value);
     }
 
@@ -558,7 +559,7 @@ public final class Meta {
             return m.forInstance(m.getDeclaringClass().rawKlass().getStatics());
         }
 
-        public Meta.Field field(String name) {
+        public Meta.Field declaredField(String name) {
             // TODO(peterssen): Improve lookup performance.
             for (FieldInfo f : klass.getDeclaredFields()) {
                 if (name.equals(f.getName())) {
@@ -568,9 +569,20 @@ public final class Meta {
             return null;
         }
 
+        public Meta.Field field(String name) {
+            // TODO(peterssen): Improve lookup performance.
+            Field f = declaredField(name);
+            if (f == null) {
+                if (getSuperclass() != null) {
+                    return getSuperclass().field(name);
+                }
+            }
+            return f;
+        }
+
         public Field.WithInstance staticField(String name) {
             assert klass.isInitialized();
-            return Klass.this.field(name).forInstance(klass.getStatics());
+            return Klass.this.declaredField(name).forInstance(klass.getStatics());
         }
 
         public WithInstance forInstance(StaticObject instance) {
@@ -595,13 +607,17 @@ public final class Meta {
                 this.instance = obj;
             }
 
+            public Field.WithInstance declaredField(String name) {
+                return Klass.this.declaredField(name).forInstance(instance);
+            }
+
             public Field.WithInstance field(String name) {
                 return Klass.this.field(name).forInstance(instance);
             }
 
             public WithInstance fields(Field.SetField... setters) {
                 for (Field.SetField setter : setters) {
-                    setter.action.accept(field(setter.name));
+                    setter.action.accept(declaredField(setter.name));
                 }
                 return this;
             }
@@ -632,6 +648,7 @@ public final class Meta {
         private final MethodInfo method;
 
         Method(MethodInfo method) {
+            assert method != null;
             this.method = method;
         }
 
@@ -904,6 +921,26 @@ public final class Meta {
             public void set(Object value) {
                 Field.this.set(instance, value);
             }
+        }
+
+        // TODO(peterssen): Hack to make inherited fields offset work for Unsafe.
+        public int getUnsafeInstanceOffset() {
+            int totalOffset = 0;
+            Meta.Klass superKlass = getDeclaringClass().getSuperclass();
+            while (superKlass != null) {
+                totalOffset += superKlass.rawKlass().getDeclaredFields().length;
+                superKlass = superKlass.getSuperclass();
+            }
+            FieldInfo[] declaredFields = getDeclaringClass().rawKlass().getDeclaredFields();
+            for (int i = 0; i < declaredFields.length; ++i) {
+                // Fields are singletons, == comparison is enough.
+                if (declaredFields[i] == field) {
+                    totalOffset += i;
+                    return totalOffset;
+                }
+            }
+
+            throw EspressoError.shouldNotReachHere("Cannot find field in declaring klass.");
         }
     }
 

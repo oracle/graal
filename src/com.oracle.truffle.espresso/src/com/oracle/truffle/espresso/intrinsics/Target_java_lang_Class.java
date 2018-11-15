@@ -55,6 +55,10 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 @EspressoIntrinsics
 public class Target_java_lang_Class {
+
+    public static final String HIDDEN_METHOD_KEY = "$$method_info";
+    public static final String HIDDEN_FIELD_KEY = "$$field_info";
+
     @Intrinsic
     public static @Type(Class.class) StaticObject getPrimitiveClass(
                     @Type(String.class) StaticObject name) {
@@ -130,12 +134,16 @@ public class Target_java_lang_Class {
 
         StaticObject arr = (StaticObject) fieldKlass.allocateArray(fields.length, i -> {
             Meta.Field f = meta(fields[i]);
-            return fieldKlass.metaNew().fields(
+            StaticObjectImpl instance = (StaticObjectImpl) fieldKlass.metaNew().fields(
                             Meta.Field.set("modifiers", f.getModifiers()),
                             Meta.Field.set("type", f.getType().rawKlass().mirror()),
                             Meta.Field.set("name", context.getStrings().intern(f.getName())),
                             Meta.Field.set("clazz", f.getDeclaringClass().rawKlass().mirror()),
                             Meta.Field.set("slot", i)).getInstance();
+
+            instance.setHiddenField(HIDDEN_FIELD_KEY, f.rawField());
+
+            return instance;
         });
 
         return arr;
@@ -156,11 +164,20 @@ public class Target_java_lang_Class {
                             m.getParameterCount(),
                             j -> m.getParameterTypes()[j].rawKlass().mirror());
 
-            return constructorKlass.metaNew().fields(
+            final Klass[] rawCheckedExceptions = m.rawMethod().getCheckedExceptions();
+            StaticObjectArray checkedExceptions = (StaticObjectArray) meta.CLASS.allocateArray(rawCheckedExceptions.length, j -> rawCheckedExceptions[j].mirror());
+
+            StaticObjectImpl constructor = (StaticObjectImpl) constructorKlass.metaNew().fields(
                             Meta.Field.set("modifiers", m.getModifiers()),
                             Meta.Field.set("clazz", m.getDeclaringClass().rawKlass().mirror()),
                             Meta.Field.set("slot", i),
-                            Meta.Field.set("parameterTypes", parameterTypes)).getInstance();
+                            Meta.Field.set("exceptionTypes", checkedExceptions),
+                            Meta.Field.set("parameterTypes", parameterTypes))
+                    .getInstance();
+
+            constructor.setHiddenField(HIDDEN_METHOD_KEY, m.rawMethod());
+
+            return constructor;
         });
 
         return arr;
@@ -194,7 +211,7 @@ public class Target_java_lang_Class {
                             Meta.Field.set("exceptionTypes", checkedExceptions),
                             Meta.Field.set("parameterTypes", parameterTypes)).getInstance();
 
-            method.setHiddenField("$$method_info", m.rawMethod());
+            method.setHiddenField(HIDDEN_METHOD_KEY, m.rawMethod());
             return method;
         });
 
