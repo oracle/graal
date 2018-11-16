@@ -38,9 +38,11 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.llvm.nodes.op.LLVMPointerCompareNodeGen.LLVMManagedCompareNodeGen;
 import com.oracle.truffle.llvm.nodes.op.LLVMPointerCompareNodeGen.LLVMNativeCompareNodeGen;
 import com.oracle.truffle.llvm.nodes.op.LLVMPointerCompareNodeGen.LLVMNegateNodeGen;
+import com.oracle.truffle.llvm.nodes.op.LLVMPointerCompareNodeGen.LLVMObjectEqualsNodeGen;
 import com.oracle.truffle.llvm.nodes.op.LLVMPointerCompareNodeGen.LLVMPointToSameObjectNodeGen;
 import com.oracle.truffle.llvm.nodes.op.ToComparableValue.ManagedToComparableValue;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
+import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
@@ -225,21 +227,13 @@ public abstract class LLVMPointerCompareNode extends LLVMAbstractCompareNode {
         }
     }
 
-    /**
-     * Uses an inline cache to devirtualize the virtual call to equals.
-     */
     public abstract static class LLVMPointToSameObjectNode extends LLVMNode {
         abstract boolean execute(Object a, Object b);
 
-        @Specialization(guards = "cachedClassA == getObjectClass(a)")
+        @Specialization
         protected boolean pointToSameObjectCached(LLVMManagedPointer a, LLVMManagedPointer b,
-                        @Cached("getObjectClass(a)") Class<?> cachedClassA) {
-            return CompilerDirectives.castExact(a.getObject(), cachedClassA).equals(b.getObject());
-        }
-
-        @Specialization(replaces = "pointToSameObjectCached")
-        protected boolean pointToSameObject(LLVMManagedPointer a, LLVMManagedPointer b) {
-            return a.getObject().equals(b.getObject());
+                        @Cached("create()") LLVMObjectEqualsNode equalsNode) {
+            return equalsNode.execute(a.getObject(), b.getObject());
         }
 
         @Specialization
@@ -254,6 +248,57 @@ public abstract class LLVMPointerCompareNode extends LLVMAbstractCompareNode {
         @TruffleBoundary
         public static LLVMPointToSameObjectNode create() {
             return LLVMPointToSameObjectNodeGen.create();
+        }
+    }
+
+    /**
+     * Uses an inline cache to devirtualize the virtual call to equals.
+     */
+    abstract static class LLVMObjectEqualsNode extends LLVMNode {
+        abstract boolean execute(Object a, Object b);
+
+        @Specialization(guards = "cachedClassA == getObjectClass(a)")
+        protected boolean pointToSameForeignObjectCached(LLVMTypedForeignObject a, LLVMTypedForeignObject b,
+                        @Cached("getObjectClass(a)") Class<?> cachedClassA) {
+            return CompilerDirectives.castExact(a.getForeign(), cachedClassA).equals(b.getForeign());
+        }
+
+        @Specialization(replaces = "pointToSameForeignObjectCached")
+        protected boolean pointToSameForeignObject(LLVMTypedForeignObject a, LLVMTypedForeignObject b) {
+            return a.equals(b);
+        }
+
+        @Specialization(guards = "!isTypedForeignObject(a)")
+        protected boolean pointToDifferentObjects(@SuppressWarnings("unused") Object a, @SuppressWarnings("unused") LLVMTypedForeignObject b) {
+            return false;
+        }
+
+        @Specialization(guards = "!isTypedForeignObject(b)")
+        protected boolean pointToDifferentObjects(@SuppressWarnings("unused") LLVMTypedForeignObject a, @SuppressWarnings("unused") Object b) {
+            return false;
+        }
+
+        @Specialization(guards = {"!isTypedForeignObject(a)", "!isTypedForeignObject(b)", "cachedClass == a.getClass()"})
+        protected boolean pointToSameObjectCached(Object a, Object b,
+                        @Cached("a.getClass()") Class<?> cachedClass) {
+            return CompilerDirectives.castExact(a, cachedClass).equals(b);
+        }
+
+        @Specialization(guards = {"!isTypedForeignObject(a)", "!isTypedForeignObject(b)"}, replaces = "pointToSameObjectCached")
+        protected boolean pointToSameObject(Object a, Object b) {
+            return a.equals(b);
+        }
+
+        protected static Class<?> getObjectClass(LLVMTypedForeignObject foreignObject) {
+            return foreignObject.getForeign().getClass();
+        }
+
+        protected static boolean isTypedForeignObject(Object object) {
+            return object instanceof LLVMTypedForeignObject;
+        }
+
+        public static LLVMObjectEqualsNode create() {
+            return LLVMObjectEqualsNodeGen.create();
         }
     }
 
