@@ -367,7 +367,7 @@ class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, mx.LayoutTARDistr
             config_components_set = set(config_components)
             config_additional_components = sorted(components_set - config_components_set)
             if config_components_set <= components_set and len(config_additional_components) <= len(vm_config_additional_components):
-                vm_config_name = config_name
+                vm_config_name = config_name.replace('-', '_')
                 vm_config_additional_components = config_additional_components
 
         name = (base_name + (('_' + vm_config_name) if vm_config_name else '') + ('_' if vm_config_additional_components else '') + '_'.join(vm_config_additional_components)).upper()
