@@ -163,7 +163,7 @@ public final class MethodInfo implements ModifiersProvider {
 
     private static String buildJniNativeSignature(Meta.Method method) {
         // Prepend JNIEnv*.
-        StringBuilder sb = new StringBuilder("(").append(NativeSimpleType.POINTER);
+        StringBuilder sb = new StringBuilder("(").append(NativeSimpleType.SINT64);
         SignatureDescriptor signature = method.rawMethod().getSignature();
 
         // Receiver for instance methods, class for static methods.

@@ -480,7 +480,7 @@ void DeleteGlobalRef(JNIEnv *env, jobject globalRef) {
   truffle_env->releaseObjectRef((TruffleObject) globalRef);
 }
 
-JNIEnv* initializeNativeContext(TruffleEnv* truffle_env, void* (*fetch_by_name)(const char *)) {
+jlong initializeNativeContext(TruffleEnv* truffle_env, void* (*fetch_by_name)(const char *)) {
   JNIEnv* env = new JNIEnv();
   JNINativeInterface_ *functions = new JNINativeInterface_();
   NespressoEnv *nespresso_env = new NespressoEnv();
@@ -510,7 +510,7 @@ JNIEnv* initializeNativeContext(TruffleEnv* truffle_env, void* (*fetch_by_name)(
 
   env->functions = functions;
 
-  return env;
+  return (jlong) env;
 }
 
 void disposeNativeContext(TruffleEnv* truffle_env, jlong envPtr) {

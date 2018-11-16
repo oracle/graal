@@ -118,7 +118,7 @@ public class JniEnv extends NativeEnv {
 
     public Callback jniMethodWrapper(Method m) {
         return new Callback(m.getParameterCount() + 1, args -> {
-            assert unwrapPointer(args[0]) == getNativePointer() : "Calling " + m + " from alien JniEnv";
+            assert (long) args[0] == getNativePointer() : "Calling " + m + " from alien JniEnv";
             Object[] shiftedArgs = Arrays.copyOfRange(args, 1, args.length);
 
             Class<?>[] params = m.getParameterTypes();
@@ -177,7 +177,7 @@ public class JniEnv extends NativeEnv {
     public static String jniNativeSignature(Method method) {
         StringBuilder sb = new StringBuilder("(");
         // Prepend JNIEnv* . The raw pointer will be substituted by the proper `this` reference.
-        sb.append(NativeSimpleType.POINTER);
+        sb.append(NativeSimpleType.SINT64);
         for (Parameter param : method.getParameters()) {
             sb.append(", ");
 
@@ -358,7 +358,7 @@ public class JniEnv extends NativeEnv {
     private JniEnv() {
         try {
             initializeNativeContext = NativeLibrary.lookupAndBind(nespressoLibrary,
-                            "initializeNativeContext", "(env, (string): pointer): pointer");
+                            "initializeNativeContext", "(env, (string): pointer): sint64");
 
             disposeNativeContext = NativeLibrary.lookupAndBind(nespressoLibrary, "disposeNativeContext",
                             "(env, sint64): void");
@@ -375,7 +375,7 @@ public class JniEnv extends NativeEnv {
             popObject = NativeLibrary.lookupAndBind(nespressoLibrary, "popObject", "(sint64): object");
 
             Callback lookupJniImplCallback = Callback.wrapInstanceMethod(this, "lookupJniImpl", String.class);
-            this.jniEnvPtr = unwrapPointer(ForeignAccess.sendExecute(Message.EXECUTE.createNode(), initializeNativeContext, lookupJniImplCallback));
+            this.jniEnvPtr = (long) ForeignAccess.sendExecute(Message.EXECUTE.createNode(), initializeNativeContext, lookupJniImplCallback);
             assert this.jniEnvPtr != 0;
         } catch (UnsupportedMessageException | ArityException | UnknownIdentifierException | UnsupportedTypeException e) {
             throw EspressoError.shouldNotReachHere("Cannot initialize Espresso native interface");

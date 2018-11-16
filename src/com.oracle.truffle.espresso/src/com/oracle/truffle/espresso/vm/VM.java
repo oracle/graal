@@ -168,7 +168,7 @@ public class VM extends NativeEnv {
 
         boolean first = true;
         if (method.getAnnotation(JniImpl.class) != null) {
-            sb.append(NativeSimpleType.POINTER); // Prepend JNIEnv*;
+            sb.append(NativeSimpleType.SINT64); // Prepend JNIEnv*;
             first = false;
         }
 
@@ -217,9 +217,8 @@ public class VM extends NativeEnv {
         int extraArg = (m.getAnnotation(JniImpl.class) != null) ? 1 : 0;
 
         return new Callback(m.getParameterCount() + extraArg, args -> {
-
-            assert unwrapPointer(args[0]) == jniEnv.getNativePointer() : "Calling JVM_ method " + m + " from alien JniEnv";
             if (m.getAnnotation(JniImpl.class) != null) {
+                assert (long) args[0] == jniEnv.getNativePointer() : "Calling JVM_ method " + m + " from alien JniEnv";
                 args = Arrays.copyOfRange(args, 1, args.length); // Strip JNIEnv* pointer, replace
                                                                  // by VM (this) receiver.
             }
