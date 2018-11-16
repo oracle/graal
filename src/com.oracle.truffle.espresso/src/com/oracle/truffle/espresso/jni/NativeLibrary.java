@@ -42,10 +42,10 @@ public class NativeLibrary {
         return (TruffleObject) target.call();
     }
 
-    public static TruffleObject lookup(TruffleObject library, String method) {
+    public static TruffleObject lookup(TruffleObject library, String method) throws UnknownIdentifierException {
         try {
             return (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), library, method);
-        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+        } catch (UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere("Cannot find " + method);
         }
     }

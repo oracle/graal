@@ -35,6 +35,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.nio.ByteBuffer;
@@ -75,6 +76,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.nodes.LinkedNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
@@ -217,7 +219,10 @@ public class VM extends NativeEnv {
         int extraArg = (m.getAnnotation(JniImpl.class) != null) ? 1 : 0;
 
         return new Callback(m.getParameterCount() + extraArg, args -> {
-            if (m.getAnnotation(JniImpl.class) != null) {
+
+            boolean isJni = (m.getAnnotation(JniImpl.class) != null);
+
+            if (isJni) {
                 assert (long) args[0] == jniEnv.getNativePointer() : "Calling JVM_ method " + m + " from alien JniEnv";
                 args = Arrays.copyOfRange(args, 1, args.length); // Strip JNIEnv* pointer, replace
                                                                  // by VM (this) receiver.
@@ -262,8 +267,18 @@ public class VM extends NativeEnv {
 // System.err.println(" -> " + ret);
 
                 return ret;
-            } catch (Exception e) {
+            } catch (InvocationTargetException e) {
+                Throwable targetEx = e.getTargetException();
+                if (isJni) {
+                    if (targetEx instanceof EspressoException) {
+                        jniEnv.getThreadLocalPendingException().set(((EspressoException) targetEx).getException());
+                        return defaultValue(m.getReturnType());
+                    }
+                }
+                // FIXME(peterssen): Handle VME exceptions back to guest.
                 throw new RuntimeException(e);
+            } catch (IllegalAccessException e) {
+                throw EspressoError.shouldNotReachHere(e);
             }
         });
     }
@@ -346,7 +361,7 @@ public class VM extends NativeEnv {
 
     @VmImpl
     @JniImpl
-    @SuppressFBWarnings(value = {"IMSE"}, justification = "Not dubious, .notify is just forwarded from the guest.")
+    @SuppressFBWarnings(value = {"IMSE"}, justification = "Not dubious, .notifyAll is just forwarded from the guest.")
     public void JVM_MonitorNotifyAll(Object self) {
         try {
             MetaUtil.unwrap(self).notifyAll();
@@ -368,7 +383,7 @@ public class VM extends NativeEnv {
 
     @VmImpl
     @JniImpl
-    @SuppressFBWarnings(value = {"IMSE"}, justification = "Not dubious, .notify is just forwarded from the guest.")
+    @SuppressFBWarnings(value = {"IMSE"}, justification = "Not dubious, .wait is just forwarded from the guest.")
     public void JVM_MonitorWait(Object self, long timeout) {
         try {
             MetaUtil.unwrap(self).wait(timeout);
@@ -627,6 +642,17 @@ public class VM extends NativeEnv {
             throw EspressoError.shouldNotReachHere("Cannot dispose Espresso libjvm (mokapot).");
         }
         assert vmPtr == 0L;
+    }
+
+    @VmImpl
+    public long JVM_TotalMemory() {
+        // TODO(peterssen): What to report here?
+        return Runtime.getRuntime().totalMemory();
+    }
+
+    @VmImpl
+    public void JVM_GC() {
+        System.gc();
     }
 
     public TruffleObject getLibrary(long handle) {

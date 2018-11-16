@@ -180,8 +180,8 @@ void JVM_TraceMethodCalls(jboolean on) {
 }
 
 jlong JVM_TotalMemory(void) {
-  UNIMPLEMENTED(JVM_TotalMemory);
-  return 666;
+  IMPLEMENTED(JVM_TotalMemory);
+  return (*getEnv())->JVM_TotalMemory();
 }
 
 jlong JVM_FreeMemory(void) {
@@ -196,6 +196,7 @@ jlong JVM_MaxMemory(void) {
 
 jint JVM_ActiveProcessorCount(void) {
   IMPLEMENTED(JVM_ActiveProcessorCount);
+  // TODO(peterssen): What to report here?
   return sysconf(_SC_NPROCESSORS_ONLN);
 }
 
