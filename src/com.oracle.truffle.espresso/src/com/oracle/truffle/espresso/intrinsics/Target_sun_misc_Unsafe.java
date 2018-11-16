@@ -99,7 +99,7 @@ public class Target_sun_misc_Unsafe {
 
         FieldInfo target = null;
         while (target == null) {
-            target = (FieldInfo) ((StaticObjectImpl) field).getHiddenField(Target_java_lang_Class.HIDDEN_FIELD_KEY);
+            target = (FieldInfo) field.getHiddenField(Target_java_lang_Class.HIDDEN_FIELD_KEY);
             if (target == null) {
                 field = (StaticObjectImpl) meta(field).declaredField("root").get();
             }
@@ -158,14 +158,14 @@ public class Target_sun_misc_Unsafe {
     @Intrinsic(hasReceiver = true)
     public static int getIntVolatile(Object unsafe, @Type(Object.class) StaticObject holder, long offset) {
         // TODO(peterssen): Use holder.getKlass().findInstanceFieldWithOffset
-        Meta.Field f = getInstanceFieldFromOffset((StaticObject) holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        Meta.Field f = getInstanceFieldFromOffset(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         return (int) f.get(holder);
     }
 
     @Intrinsic(hasReceiver = true)
     public static long getLongVolatile(Object unsafe, @Type(Object.class) StaticObject holder, long offset) {
         // TODO(peterssen): Use holder.getKlass().findInstanceFieldWithOffset
-        Meta.Field f = getInstanceFieldFromOffset((StaticObject) holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        Meta.Field f = getInstanceFieldFromOffset(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         return (long) f.get(holder);
     }
 
@@ -181,7 +181,7 @@ public class Target_sun_misc_Unsafe {
     @Intrinsic(hasReceiver = true)
     public static boolean compareAndSwapInt(Object self, @Type(Object.class) StaticObject holder, long offset, int before, int after) {
         // TODO(peterssen): Use holder.getKlass().findInstanceFieldWithOffset
-        Meta.Field f = getInstanceFieldFromOffset((StaticObject) holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        Meta.Field f = getInstanceFieldFromOffset(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         int inTheField = (int) f.get(holder);
         if (inTheField == before) {
             f.set(holder, after);
@@ -194,7 +194,7 @@ public class Target_sun_misc_Unsafe {
     @Intrinsic(hasReceiver = true)
     public static boolean compareAndSwapLong(Object self, @Type(Object.class) StaticObject holder, long offset, long before, long after) {
         // TODO(peterssen): Use holder.getKlass().findInstanceFieldWithOffset
-        Meta.Field f = getInstanceFieldFromOffset((StaticObject) holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        Meta.Field f = getInstanceFieldFromOffset(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         long inTheField = (long) f.get(holder);
         if (inTheField == before) {
             f.set(holder, after);

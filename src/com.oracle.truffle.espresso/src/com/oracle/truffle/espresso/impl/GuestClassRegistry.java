@@ -93,7 +93,7 @@ public class GuestClassRegistry implements ClassRegistry {
         assert !classes.contains(type);
         classes.putIfAbsent(type, klass);
         // Register class in guest CL. Mimics HotSpot behavior.
-        meta((StaticObject) classLoader).method("addClass", void.class, Class.class).invokeDirect(klass.mirror());
+        meta(classLoader).method("addClass", void.class, Class.class).invokeDirect(klass.mirror());
         return klass;
     }
 }
