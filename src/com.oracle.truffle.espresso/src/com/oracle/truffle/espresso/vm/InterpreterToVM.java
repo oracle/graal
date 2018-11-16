@@ -57,7 +57,6 @@ import com.oracle.truffle.espresso.intrinsics.Target_java_lang_reflect_Array;
 import com.oracle.truffle.espresso.intrinsics.Target_java_lang_reflect_Field;
 import com.oracle.truffle.espresso.intrinsics.Target_java_security_AccessController;
 import com.oracle.truffle.espresso.intrinsics.Target_java_util_jar_JarFile;
-import com.oracle.truffle.espresso.intrinsics.Target_java_util_zip_CRC32;
 import com.oracle.truffle.espresso.intrinsics.Target_sun_misc_Perf;
 import com.oracle.truffle.espresso.intrinsics.Target_sun_misc_Signal;
 import com.oracle.truffle.espresso.intrinsics.Target_sun_misc_URLClassPath;
@@ -103,7 +102,6 @@ public class InterpreterToVM {
                     Target_java_lang_Thread.class,
                     Target_java_lang_reflect_Array.class,
                     Target_java_lang_reflect_Field.class,
-                    Target_java_util_zip_CRC32.class,
                     Target_java_security_AccessController.class,
                     Target_java_util_jar_JarFile.class,
                     Target_sun_misc_Perf.class,
