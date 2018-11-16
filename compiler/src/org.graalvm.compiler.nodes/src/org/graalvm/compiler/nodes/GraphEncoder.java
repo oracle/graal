@@ -440,11 +440,9 @@ public class GraphEncoder {
         StructuredGraph decodedGraph = new StructuredGraph.Builder(originalGraph.getOptions(), debug, AllowAssumptions.YES).
                         method(originalGraph.method()).
                         setIsSubstitution(originalGraph.isSubstitution()).
+                        trackNodeSourcePosition(originalGraph.trackNodeSourcePosition()).
                         build();
         // @formatter:off
-        if (originalGraph.trackNodeSourcePosition()) {
-            decodedGraph.setTrackNodeSourcePosition();
-        }
         GraphDecoder decoder = new GraphDecoder(architecture, decodedGraph);
         decoder.decode(encodedGraph);
 
