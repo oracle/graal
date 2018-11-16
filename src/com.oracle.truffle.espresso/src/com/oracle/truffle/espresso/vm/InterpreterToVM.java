@@ -49,20 +49,20 @@ import com.oracle.truffle.espresso.intrinsics.Intrinsic;
 import com.oracle.truffle.espresso.intrinsics.Surrogate;
 import com.oracle.truffle.espresso.intrinsics.Target_java_lang_Class;
 import com.oracle.truffle.espresso.intrinsics.Target_java_lang_ClassLoader;
-import com.oracle.truffle.espresso.intrinsics.Target_java_lang_ClassLoader_NativeLibrary;
 import com.oracle.truffle.espresso.intrinsics.Target_java_lang_Package;
 import com.oracle.truffle.espresso.intrinsics.Target_java_lang_Runtime;
 import com.oracle.truffle.espresso.intrinsics.Target_java_lang_System;
 import com.oracle.truffle.espresso.intrinsics.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.intrinsics.Target_java_lang_reflect_Array;
+import com.oracle.truffle.espresso.intrinsics.Target_java_lang_reflect_Field;
 import com.oracle.truffle.espresso.intrinsics.Target_java_security_AccessController;
 import com.oracle.truffle.espresso.intrinsics.Target_java_util_jar_JarFile;
+import com.oracle.truffle.espresso.intrinsics.Target_java_util_zip_CRC32;
 import com.oracle.truffle.espresso.intrinsics.Target_sun_misc_Perf;
 import com.oracle.truffle.espresso.intrinsics.Target_sun_misc_Signal;
 import com.oracle.truffle.espresso.intrinsics.Target_sun_misc_URLClassPath;
 import com.oracle.truffle.espresso.intrinsics.Target_sun_misc_Unsafe;
 import com.oracle.truffle.espresso.intrinsics.Target_sun_misc_VM;
-import com.oracle.truffle.espresso.intrinsics.Target_sun_reflect_NativeConstructorAccessorImpl;
 import com.oracle.truffle.espresso.intrinsics.Target_sun_reflect_NativeMethodAccessorImpl;
 import com.oracle.truffle.espresso.intrinsics.Target_sun_reflect_Reflection;
 import com.oracle.truffle.espresso.intrinsics.Type;
@@ -97,12 +97,13 @@ public class InterpreterToVM {
     public static List<Class<?>> DEFAULTS = Arrays.asList(
                     Target_java_lang_Class.class,
                     Target_java_lang_ClassLoader.class,
-                    Target_java_lang_ClassLoader_NativeLibrary.class,
                     Target_java_lang_Package.class,
                     Target_java_lang_Runtime.class,
                     Target_java_lang_System.class,
                     Target_java_lang_Thread.class,
                     Target_java_lang_reflect_Array.class,
+                    Target_java_lang_reflect_Field.class,
+                    Target_java_util_zip_CRC32.class,
                     Target_java_security_AccessController.class,
                     Target_java_util_jar_JarFile.class,
                     Target_sun_misc_Perf.class,
@@ -110,7 +111,6 @@ public class InterpreterToVM {
                     Target_sun_misc_Unsafe.class,
                     Target_sun_misc_URLClassPath.class,
                     Target_sun_misc_VM.class,
-                    Target_sun_reflect_NativeConstructorAccessorImpl.class,
                     Target_sun_reflect_NativeMethodAccessorImpl.class,
                     Target_sun_reflect_Reflection.class);
 
@@ -665,9 +665,5 @@ public class InterpreterToVM {
             // Primitive arrays are shared in the guest/host.
             return Array.getLength(arr);
         }
-    }
-
-    public int identityHashcode(Object obj) {
-        return System.identityHashCode(MetaUtil.unwrap(obj));
     }
 }
