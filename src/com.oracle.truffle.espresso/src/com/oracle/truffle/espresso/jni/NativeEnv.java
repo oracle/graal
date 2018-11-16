@@ -37,6 +37,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
 
 public class NativeEnv {
@@ -109,5 +110,19 @@ public class NativeEnv {
             throw EspressoError.shouldNotReachHere(e);
         }
     }
+
+
+    protected static Object defaultValue(Class<?> returnType) {
+        if (returnType == boolean.class) return false;
+        if (returnType == byte.class) return (byte) 0;
+        if (returnType == char.class) return (char) 0;
+        if (returnType == short.class) return (short) 0;
+        if (returnType == int.class) return 0;
+        if (returnType == float.class) return 0.0F;
+        if (returnType == double.class) return 0.0;
+        if (returnType == long.class) return 0L;
+        return StaticObject.NULL;
+    }
+
 
 }

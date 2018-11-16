@@ -89,8 +89,7 @@ public class JniEnv extends NativeEnv {
 
     private final TruffleObject initializeNativeContext;
     private final TruffleObject disposeNativeContext;
-
-    private final TruffleObject dupClosureRef = NativeLibrary.lookup(nespressoLibrary, "dupClosureRef");
+    private final TruffleObject dupClosureRef;
 
     private final TruffleObject popBoolean;
     private final TruffleObject popByte;
@@ -167,12 +166,13 @@ public class JniEnv extends NativeEnv {
                     getThreadLocalPendingException().set(((EspressoException) targetEx).getException());
                 }
                 // FIXME(peterssen): Handle VME exceptions back to guest.
-                throw new RuntimeException(e);
+                return defaultValue(m.getReturnType());
             } catch (IllegalAccessException e) {
                 throw EspressoError.shouldNotReachHere(e);
             }
         });
     }
+
 
     public static String jniNativeSignature(Method method) {
         StringBuilder sb = new StringBuilder("(");
@@ -357,6 +357,8 @@ public class JniEnv extends NativeEnv {
 
     private JniEnv() {
         try {
+            dupClosureRef = NativeLibrary.lookup(nespressoLibrary, "dupClosureRef");
+
             initializeNativeContext = NativeLibrary.lookupAndBind(nespressoLibrary,
                             "initializeNativeContext", "(env, (string): pointer): sint64");
 
@@ -1284,7 +1286,7 @@ public class JniEnv extends NativeEnv {
 
     @JniImpl
     public int GetStringUTFLength(@Type(String.class) StaticObject string) {
-        return Utf8.UTFLength(EspressoLanguage.getCurrentContext().getMeta().toHost(string));
+        return Utf8.UTFLength(Meta.toHost(string));
     }
 
     @JniImpl

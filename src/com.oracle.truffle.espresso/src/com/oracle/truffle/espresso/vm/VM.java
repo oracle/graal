@@ -572,16 +572,18 @@ public class VM extends NativeEnv {
 
     @VmImpl
     public long JVM_FindLibraryEntry(long libHandle, String name) {
-        TruffleObject function = NativeLibrary.lookup(handle2Lib.get(libHandle), name);
         try {
+            TruffleObject function = NativeLibrary.lookup(handle2Lib.get(libHandle), name);
             long handle = (long) ForeignAccess.sendUnbox(Message.UNBOX.createNode(), function);
             if (!handle2Sym.contains(handle)) {
                 handle2Sym.put(handle, function);
             }
             return handle;
         } catch (UnsupportedMessageException e) {
+            throw EspressoError.shouldNotReachHere(e);
+        } catch (UnknownIdentifierException e) {
+            return 0; // not found
         }
-        return 0;
     }
 
     @VmImpl
@@ -595,8 +597,8 @@ public class VM extends NativeEnv {
 
     @VmImpl
     public long JVM_LoadLibrary(String name) {
-        TruffleObject lib = NativeLibrary.loadLibrary(name);
         try {
+            TruffleObject lib = NativeLibrary.loadLibrary(name);
             Field f = lib.getClass().getDeclaredField("handle");
             f.setAccessible(true);
             long handle = (long) f.get(lib);
@@ -605,9 +607,8 @@ public class VM extends NativeEnv {
             }
             return handle;
         } catch (IllegalAccessException | NoSuchFieldException e) {
-            e.printStackTrace();
+            throw EspressoError.shouldNotReachHere(e);
         }
-        return 0;
     }
 
     @VmImpl
