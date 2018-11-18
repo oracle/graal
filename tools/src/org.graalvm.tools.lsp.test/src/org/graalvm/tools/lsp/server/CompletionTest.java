@@ -255,4 +255,57 @@ public class CompletionTest extends TruffleLSPTest {
             assertTrue(thrown);
         }
     }
+
+    @Test
+    public void objectPropertyCompletionViaCoverageData() throws InterruptedException, ExecutionException {
+        URI uri = createDummyFileUriForSL();
+        //@formatter:off
+        /**
+         *  0 function main() {
+         *  1     obj = abc();
+         *  2     obj;
+         *  3 }
+         *  4
+         *  5 function abc() {
+         *  6   obj = new();
+         *  7   obj.p = 1;
+         *  8   return obj;
+         *  9 }
+         * 10
+         * 11 function never_called(obj) {
+         * 12     obj;
+         * 13 }
+         * 14
+         */
+        //@formatter:on
+        String text = "function main() {\n    obj = abc();\n    obj;\n}\n\nfunction abc() {\n  obj = new();\n  obj.p = 1;\n  return obj;\n}\n\nfunction never_called(obj) {\n    obj;\n}\n";
+        Future<?> future = truffleAdapter.parse(text, "sl", uri);
+        future.get();
+
+        Future<Boolean> futureCoverage = truffleAdapter.runCoverageAnalysis(uri);
+        futureCoverage.get();
+
+        {
+            String replacement = ".";
+            Range range = new Range(new Position(8, 12), new Position(8, 12));
+            TextDocumentContentChangeEvent event = new TextDocumentContentChangeEvent(range, replacement.length(), replacement);
+            boolean thrown = false;
+            try {
+                Future<?> future2 = truffleAdapter.processChangesAndParse(Arrays.asList(event), uri);
+                future2.get();
+            } catch (RuntimeException e) {
+                thrown = true;
+                assertTrue(e.getCause() instanceof DiagnosticsNotification);
+            }
+            assertTrue(thrown);
+
+            Future<CompletionList> future3 = truffleAdapter.completion(uri, 8, 13, null);
+            CompletionList completionList = future3.get();
+            assertEquals(1, completionList.getItems().size());
+            CompletionItem item = completionList.getItems().get(0);
+            assertEquals("p", item.getLabel());
+            assertEquals("Number", item.getDetail());
+            assertEquals(CompletionItemKind.Property, item.getKind());
+        }
+    }
 }

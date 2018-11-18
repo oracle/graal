@@ -30,6 +30,7 @@ import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogateMap;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
@@ -39,6 +40,7 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.Builder;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.IndexRange;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.KeyInfo;
@@ -140,10 +142,22 @@ public class SourceCodeEvaluator extends AbstractRequestHandler {
             return EvaluationResult.createEvaluationSectionNotReached();
         }
 
+        CoverageData coverageData = dataBeforeNode.get(dataBeforeNode.size() - 1);
+        if (((InstrumentableNode) nearestNode).hasTag(StandardTags.ReadVariableTag.class)) {
+            // Shortcut for variables
+            List<? extends FrameSlot> slots = coverageData.getFrame().getFrameDescriptor().getSlots();
+            String symbol = nearestNode.getSourceSection().getCharacters().toString();
+            FrameSlot frameSlot = slots.stream().filter(slot -> slot.getIdentifier().equals(symbol)).findFirst().orElseGet(() -> null);
+            if (frameSlot != null) {
+                System.out.println("Coverage-based variable look-up");
+                Object frameSlotValue = coverageData.getFrame().getValue(frameSlot);
+                return EvaluationResult.createResult(frameSlotValue);
+            }
+        }
+
         LanguageInfo info = nearestNode.getRootNode().getLanguageInfo();
         String code = nearestNode.getSourceSection().getCharacters().toString();
         Source inlineEvalSource = Source.newBuilder(info.getId(), code, "in-line eval (hover request)").cached(false).build();
-        CoverageData coverageData = dataBeforeNode.get(dataBeforeNode.size() - 1);
         ExecutableNode executableNode = env.parseInline(inlineEvalSource, nearestNode, coverageData.getFrame());
 
         CoverageEventNode coverageEventNode = coverageData.getCoverageEventNode();
