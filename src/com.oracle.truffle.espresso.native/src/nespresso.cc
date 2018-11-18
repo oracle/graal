@@ -37,66 +37,6 @@ V(NewObjectA) \
 V(GetObjectClass) \
 V(IsInstanceOf) \
 V(GetMethodID) \
-V(CallObjectMethod) \
-V(CallObjectMethodV) \
-V(CallObjectMethodA) \
-V(CallBooleanMethod) \
-V(CallBooleanMethodV) \
-V(CallBooleanMethodA) \
-V(CallByteMethod) \
-V(CallByteMethodV) \
-V(CallByteMethodA) \
-V(CallCharMethod) \
-V(CallCharMethodV) \
-V(CallCharMethodA) \
-V(CallShortMethod) \
-V(CallShortMethodV) \
-V(CallShortMethodA) \
-V(CallIntMethod) \
-V(CallIntMethodV) \
-V(CallIntMethodA) \
-V(CallLongMethod) \
-V(CallLongMethodV) \
-V(CallLongMethodA) \
-V(CallFloatMethod) \
-V(CallFloatMethodV) \
-V(CallFloatMethodA) \
-V(CallDoubleMethod) \
-V(CallDoubleMethodV) \
-V(CallDoubleMethodA) \
-V(CallVoidMethod) \
-V(CallVoidMethodV) \
-V(CallVoidMethodA) \
-V(CallNonvirtualObjectMethod) \
-V(CallNonvirtualObjectMethodV) \
-V(CallNonvirtualObjectMethodA) \
-V(CallNonvirtualBooleanMethod) \
-V(CallNonvirtualBooleanMethodV) \
-V(CallNonvirtualBooleanMethodA) \
-V(CallNonvirtualByteMethod) \
-V(CallNonvirtualByteMethodV) \
-V(CallNonvirtualByteMethodA) \
-V(CallNonvirtualCharMethod) \
-V(CallNonvirtualCharMethodV) \
-V(CallNonvirtualCharMethodA) \
-V(CallNonvirtualShortMethod) \
-V(CallNonvirtualShortMethodV) \
-V(CallNonvirtualShortMethodA) \
-V(CallNonvirtualIntMethod) \
-V(CallNonvirtualIntMethodV) \
-V(CallNonvirtualIntMethodA) \
-V(CallNonvirtualLongMethod) \
-V(CallNonvirtualLongMethodV) \
-V(CallNonvirtualLongMethodA) \
-V(CallNonvirtualFloatMethod) \
-V(CallNonvirtualFloatMethodV) \
-V(CallNonvirtualFloatMethodA) \
-V(CallNonvirtualDoubleMethod) \
-V(CallNonvirtualDoubleMethodV) \
-V(CallNonvirtualDoubleMethodA) \
-V(CallNonvirtualVoidMethod) \
-V(CallNonvirtualVoidMethodV) \
-V(CallNonvirtualVoidMethodA) \
 V(GetFieldID) \
 V(GetObjectField) \
 V(GetBooleanField) \
@@ -237,6 +177,68 @@ V(GetDirectBufferAddress) \
 V(GetDirectBufferCapacity) \
 V(GetObjectRefType)
 
+#define NON_JAVA_IMPL(V) \
+V(CallObjectMethod) \
+V(CallObjectMethodV) \
+V(CallObjectMethodA) \
+V(CallBooleanMethod) \
+V(CallBooleanMethodV) \
+V(CallBooleanMethodA) \
+V(CallByteMethod) \
+V(CallByteMethodV) \
+V(CallByteMethodA) \
+V(CallCharMethod) \
+V(CallCharMethodV) \
+V(CallCharMethodA) \
+V(CallShortMethod) \
+V(CallShortMethodV) \
+V(CallShortMethodA) \
+V(CallIntMethod) \
+V(CallIntMethodV) \
+V(CallIntMethodA) \
+V(CallLongMethod) \
+V(CallLongMethodV) \
+V(CallLongMethodA) \
+V(CallFloatMethod) \
+V(CallFloatMethodV) \
+V(CallFloatMethodA) \
+V(CallDoubleMethod) \
+V(CallDoubleMethodV) \
+V(CallDoubleMethodA) \
+V(CallVoidMethod) \
+V(CallVoidMethodV) \
+V(CallVoidMethodA) \
+V(CallNonvirtualObjectMethod) \
+V(CallNonvirtualObjectMethodV) \
+V(CallNonvirtualObjectMethodA) \
+V(CallNonvirtualBooleanMethod) \
+V(CallNonvirtualBooleanMethodV) \
+V(CallNonvirtualBooleanMethodA) \
+V(CallNonvirtualByteMethod) \
+V(CallNonvirtualByteMethodV) \
+V(CallNonvirtualByteMethodA) \
+V(CallNonvirtualCharMethod) \
+V(CallNonvirtualCharMethodV) \
+V(CallNonvirtualCharMethodA) \
+V(CallNonvirtualShortMethod) \
+V(CallNonvirtualShortMethodV) \
+V(CallNonvirtualShortMethodA) \
+V(CallNonvirtualIntMethod) \
+V(CallNonvirtualIntMethodV) \
+V(CallNonvirtualIntMethodA) \
+V(CallNonvirtualLongMethod) \
+V(CallNonvirtualLongMethodV) \
+V(CallNonvirtualLongMethodA) \
+V(CallNonvirtualFloatMethod) \
+V(CallNonvirtualFloatMethodV) \
+V(CallNonvirtualFloatMethodA) \
+V(CallNonvirtualDoubleMethod) \
+V(CallNonvirtualDoubleMethodV) \
+V(CallNonvirtualDoubleMethodA) \
+V(CallNonvirtualVoidMethod) \
+V(CallNonvirtualVoidMethodV) \
+V(CallNonvirtualVoidMethodA)
+
 
 class VarArgs {
 public:
@@ -337,7 +339,6 @@ public:
   V(jfloat, Float)     \
   V(jdouble, Double)   \
   V(jlong, Long)       \
-  V(void, Void)
 
 
 struct NespressoEnv {
@@ -360,13 +361,23 @@ struct NespressoEnv {
 #define CALL_METHOD_BRIDGE(returnType, Type) \
 returnType Call##Type##MethodV(JNIEnv *env, jobject obj, jmethodID methodID, va_list args) { \
   VarArgsVaList varargs(args); \
+  fprintf(stderr, "Call " #Type "MethodV (valist)\n"); \
   NespressoEnv *nespresso_env = (NespressoEnv*) env->functions->reserved0; \
   return nespresso_env->Call##Type##Method(env, obj, methodID, (jlong) &varargs); \
 } \
 returnType Call##Type##MethodA(JNIEnv *env, jobject obj, jmethodID methodID, const jvalue *args) { \
   VarArgsJValues varargs(args); \
   NespressoEnv *nespresso_env = (NespressoEnv*) env->functions->reserved0; \
+  fprintf(stderr, "Call " #Type "MethodV (jvalueArgs)\n"); \
   return nespresso_env->Call##Type##Method(env, obj, methodID, (jlong) &varargs); \
+} \
+returnType Call##Type##Method(JNIEnv *env, jobject obj, jmethodID methodID, ...) { \
+  va_list args; \
+  returnType result; \
+  va_start(args, methodID); \
+  result = Call##Type##MethodV(env, obj, methodID, args); \
+  va_end(args); \
+  return result; \
 }
 
 #define CALL_STATIC_METHOD_BRIDGE(returnType, Type) \
@@ -379,6 +390,14 @@ returnType CallStatic##Type##MethodA(JNIEnv *env, jclass clazz, jmethodID method
   VarArgsJValues varargs(args); \
   NespressoEnv *nespresso_env = (NespressoEnv*) env->functions->reserved0; \
   return nespresso_env->CallStatic##Type##Method(env, clazz, methodID, (jlong) &varargs); \
+} \
+returnType CallStatic##Type##Method(JNIEnv *env, jclass clazz, jmethodID methodID, ...) { \
+  va_list args; \
+  returnType result; \
+  va_start(args, methodID); \
+  result = CallStatic##Type##MethodV(env, clazz, methodID, args); \
+  va_end(args); \
+  return result; \
 }
 
 #define CALL_NON_VIRTUAL_METHOD_BRIDGE(returnType, Type) \
@@ -391,6 +410,14 @@ returnType CallNonvirtual##Type##MethodA(JNIEnv *env, jobject obj, jclass clazz,
   VarArgsJValues varargs(args); \
   NespressoEnv *nespresso_env = (NespressoEnv*) env->functions->reserved0; \
   return nespresso_env->CallNonvirtual##Type##Method(env, obj, clazz, methodID, (jlong) &varargs); \
+} \
+returnType CallNonvirtual##Type##Method(JNIEnv *env, jobject obj, jclass clazz, jmethodID methodID, ...) { \
+  va_list args; \
+  returnType result; \
+  va_start(args, methodID); \
+  result = CallNonvirtual##Type##MethodV(env, obj, clazz, methodID, args); \
+  va_end(args); \
+  return result; \
 }
 
 TYPE_LIST2(CALL_METHOD_BRIDGE)
@@ -427,11 +454,14 @@ jobject NewDirectByteBuffer(JNIEnv* env, void* address, jlong capacity) {
   return env->NewObject(java_nio_DirectByteBuffer, constructor, (jlong) address, (jint) capacity);
 }
 
-#define BRIDGE_METHOD_LIST(V) \
+#define BRIDGE_METHOD_LIST(V) \  
+  EXPAND(TYPE_LIST2(V MAKE_METHOD)) \
   EXPAND(TYPE_LIST2(V MAKE_METHOD_A)) \
   EXPAND(TYPE_LIST2(V MAKE_METHOD_V)) \
+  EXPAND(TYPE_LIST2(V MAKE_STATIC_METHOD)) \
   EXPAND(TYPE_LIST2(V MAKE_STATIC_METHOD_A)) \
   EXPAND(TYPE_LIST2(V MAKE_STATIC_METHOD_V)) \
+  EXPAND(TYPE_LIST2(V MAKE_NON_VIRTUAL_METHOD)) \
   EXPAND(TYPE_LIST2(V MAKE_NON_VIRTUAL_METHOD_A)) \
   EXPAND(TYPE_LIST2(V MAKE_NON_VIRTUAL_METHOD_V)) \
   V(NewObjectA) \

@@ -63,6 +63,9 @@ public abstract class NativeRootNode extends RootNode implements LinkedNode {
         // TODO(peterssen): Static method does not get the clazz in the arguments,
         int argIndex = getOriginalMethod().isStatic() ? 0 : 1;
         for (int i = 0; i < params.length; ++i) {
+            if (args[argIndex] == null) {
+                args[argIndex] = StaticObject.NULL;
+            }
             if (args[argIndex] instanceof Boolean) {
                 if (params[i].kind() == JavaKind.Boolean) {
                     args[argIndex] = (boolean) args[argIndex] ? (byte) 1 : (byte) 0;
@@ -81,7 +84,8 @@ public abstract class NativeRootNode extends RootNode implements LinkedNode {
             // constant.
             // Having a constant length would help PEA to skip the copying.
             Object[] argsWithEnv = preprocessArgs(frame.getArguments());
-            System.err.println("Calling native " + originalMethod.getName() + Arrays.toString(argsWithEnv));
+            // System.err.println("Calling native " + originalMethod.getName() + Arrays.toString(argsWithEnv));
+
             Object result = ForeignAccess.sendExecute(execute, boundNative, argsWithEnv);
             return processResult(result);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {

@@ -36,7 +36,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 
 @EspressoIntrinsics
 public class Target_java_lang_System {
-    @Intrinsic
+    /*@Intrinsic
     public static @Type(Properties.class) StaticObject initProperties(@Type(Properties.class) StaticObject props) {
         EspressoContext context = EspressoLanguage.getCurrentContext();
 
@@ -92,4 +92,5 @@ public class Target_java_lang_System {
         // FIXME(peterssen): Load libjvm surrogate, but this should not be in initProperties.
         return props;
     }
+    */
 }
