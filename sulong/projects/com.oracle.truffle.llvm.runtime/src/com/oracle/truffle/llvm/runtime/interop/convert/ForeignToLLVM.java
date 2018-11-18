@@ -95,26 +95,24 @@ public abstract class ForeignToLLVM extends LLVMNode {
     }
 
     public enum ForeignToLLVMType {
-        I1(1, false),
-        I8(1, (byte) 0),
-        I16(2, (short) 0),
-        I32(4, 0),
-        I64(8, 0L),
-        FLOAT(4, 0f),
-        DOUBLE(8, 0d),
-        POINTER(8, 0L),
-        VECTOR(-1, null),
-        ARRAY(-1, null),
-        STRUCT(-1, null),
-        ANY(-1, null),
-        VOID(-1, null);
+        I1(1),
+        I8(1),
+        I16(2),
+        I32(4),
+        I64(8),
+        FLOAT(4),
+        DOUBLE(8),
+        POINTER(8),
+        VECTOR(-1),
+        ARRAY(-1),
+        STRUCT(-1),
+        ANY(-1),
+        VOID(-1);
 
         private final int size;
-        private final Object defaultValue;
 
-        ForeignToLLVMType(int size, Object defaultValue) {
+        ForeignToLLVMType(int size) {
             this.size = size;
-            this.defaultValue = defaultValue;
         }
 
         public static ForeignToLLVMType getIntegerType(int bitWidth) {
@@ -138,11 +136,6 @@ public abstract class ForeignToLLVM extends LLVMNode {
         public int getSizeInBytes() {
             assert size > 0;
             return size;
-        }
-
-        public Object getDefaultValue() {
-            assert defaultValue != null;
-            return defaultValue;
         }
 
         public boolean isI1() {
@@ -175,6 +168,29 @@ public abstract class ForeignToLLVM extends LLVMNode {
 
         public boolean isPointer() {
             return this == ForeignToLLVMType.POINTER;
+        }
+
+        public static Object getDefaultValue(ForeignToLLVMType type) {
+            switch (type) {
+                case I1:
+                    return false;
+                case I8:
+                    return (byte) 0;
+                case I16:
+                    return (short) 0;
+                case I32:
+                    return 0;
+                case I64:
+                case POINTER:
+                    return 0L;
+                case FLOAT:
+                    return 0f;
+                case DOUBLE:
+                    return 0d;
+                default:
+                    CompilerDirectives.transferToInterpreter();
+                    throw new IllegalStateException("Unexpected value: " + type);
+            }
         }
     }
 

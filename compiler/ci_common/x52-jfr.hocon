@@ -81,7 +81,7 @@ bench-spark-sql-perf-jfr: ${bench-common} ${jfr-bench-notifications} {
   timelimit: "0:30:00"
 }
 
-x52.default : ${linux-amd64} {
+x52.default-jfr : ${linux-amd64} {
   capabilities: ${linux-amd64.capabilities} [x52, no_frequency_scaling]
   environment : {
     XMX         : "64g"
@@ -94,15 +94,15 @@ x52.default : ${linux-amd64} {
   targets: [bench, weekly]
 }
 
-x52.tmpfs10g : ${x52.default} {
-  capabilities: ${x52.default.capabilities} [tmpfs10g]
+x52.tmpfs10g-jfr : ${x52.default-jfr} {
+  capabilities: ${x52.default-jfr.capabilities} [tmpfs10g]
 }
 
 builds += [
-  ${x52.tmpfs10g} ${bench-dacapo-jfr}                        ${labsjdk8} { name: "bench-compiler-dacapo-linux-x52-jfr" }
-  ${x52.tmpfs10g} ${bench-scala-dacapo-jfr}                  ${labsjdk8} { name: "bench-compiler-scala-dacapo-linux-x52-jfr" }
-  ${x52.default} ${bench-specjvm2008-Single-jfr}             ${labsjdk8} { name: "bench-compiler-specjvm2008-Single-linux-x52-jfr" }
-  ${x52.default} ${bench-specjbb2015-jfr}                    ${labsjdk8} { name: "bench-compiler-specjbb2015-linux-x52-jfr" }
-  ${x52.default} ${bench-renaissance-jfr}                    ${labsjdk8} { name: "bench-compiler-renaissance-linux-x52-jfr" }
-  ${x52.default} ${bench-spark-sql-perf-jfr}                 ${labsjdk8} { name: "bench-compiler-spark-sql-perf-linux-x52-jfr" }
+  ${x52.tmpfs10g-jfr} ${bench-dacapo-jfr}                        ${labsjdk8} { name: "bench-compiler-dacapo-linux-x52-jfr" }
+  ${x52.tmpfs10g-jfr} ${bench-scala-dacapo-jfr}                  ${labsjdk8} { name: "bench-compiler-scala-dacapo-linux-x52-jfr" }
+  ${x52.default-jfr} ${bench-specjvm2008-Single-jfr}             ${labsjdk8} { name: "bench-compiler-specjvm2008-Single-linux-x52-jfr" }
+  ${x52.default-jfr} ${bench-specjbb2015-jfr}                    ${labsjdk8} { name: "bench-compiler-specjbb2015-linux-x52-jfr" }
+  ${x52.default-jfr} ${bench-renaissance-jfr}                    ${labsjdk8} { name: "bench-compiler-renaissance-linux-x52-jfr" }
+  ${x52.default-jfr} ${bench-spark-sql-perf-jfr}                 ${labsjdk8} { name: "bench-compiler-spark-sql-perf-linux-x52-jfr" }
 ]

@@ -171,7 +171,7 @@ public class Option {
         option("TruffleExperimentalSplittingAllowForcedSplits")
             .type("Boolean")
             .category("EXPERT")
-            .def("false")
+            .def("true")
             .help("Should forced splits be allowed (when using experimental splitting)"),
 
         option("TruffleBackgroundCompilation")

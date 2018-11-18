@@ -25,6 +25,7 @@
 package com.oracle.truffle.regex.runtime.nodes;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
@@ -33,6 +34,7 @@ import com.oracle.truffle.regex.CompiledRegex;
 import com.oracle.truffle.regex.RegexObject;
 import com.oracle.truffle.regex.result.RegexResult;
 
+@ReportPolymorphism
 public abstract class ExecuteRegexDispatchNode extends Node {
 
     public abstract RegexResult execute(CompiledRegex receiver, RegexObject regexObject, Object input, Object fromIndex);

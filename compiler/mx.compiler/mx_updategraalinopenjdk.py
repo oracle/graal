@@ -30,10 +30,15 @@ import os
 import shutil
 from collections import namedtuple
 from argparse import ArgumentParser
-from os.path import join, exists
+from os.path import join, exists, dirname
 
 import mx
 import mx_compiler
+
+def _read_sibling_file(basename):
+    path = join(dirname(__file__), basename)
+    with open(path, 'r') as fp:
+        return fp.read()
 
 def _find_version_base_project(versioned_project):
     extended_packages = versioned_project.extended_java_packages()
@@ -98,7 +103,8 @@ def updategraalinopenjdk(args):
 
     # Strings to be replaced in files copied to OpenJDK.
     replacements = {
-        'published by the Free Software Foundation.  Oracle designates this\n * particular file as subject to the "Classpath" exception as provided\n * by Oracle in the LICENSE file that accompanied this code.' : 'published by the Free Software Foundation.'
+        'published by the Free Software Foundation.  Oracle designates this\n * particular file as subject to the "Classpath" exception as provided\n * by Oracle in the LICENSE file that accompanied this code.' : 'published by the Free Software Foundation.',
+        _read_sibling_file('upl_substring.txt') : _read_sibling_file('gplv2_substring.txt')
     }
 
     # Strings that must not exist in OpenJDK source files. This is applied after replacements are made.

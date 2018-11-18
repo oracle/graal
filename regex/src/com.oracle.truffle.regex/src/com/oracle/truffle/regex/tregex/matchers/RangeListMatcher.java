@@ -62,6 +62,11 @@ public final class RangeListMatcher extends InvertibleCharMatcher {
                 if (lo == c) {
                     return true;
                 }
+            } else if (isTwoChars(lo, hi)) {
+                // do simple equality checks on ranges that contain two characters
+                if (c == lo || c == hi) {
+                    return true;
+                }
             } else {
                 if (lo <= c) {
                     if (hi >= c) {
@@ -79,6 +84,12 @@ public final class RangeListMatcher extends InvertibleCharMatcher {
         CompilerAsserts.partialEvaluationConstant(lo);
         CompilerAsserts.partialEvaluationConstant(hi);
         return lo == hi;
+    }
+
+    private static boolean isTwoChars(char lo, char hi) {
+        CompilerAsserts.partialEvaluationConstant(lo);
+        CompilerAsserts.partialEvaluationConstant(hi);
+        return lo + 1 == hi;
     }
 
     @Override
