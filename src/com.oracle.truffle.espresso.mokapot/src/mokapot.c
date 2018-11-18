@@ -140,8 +140,8 @@ void JVM_ArrayCopy(JNIEnv *env, jclass ignored, jobject src, jint src_pos, jobje
 }
 
 jobject JVM_InitProperties(JNIEnv *env, jobject p) {
-  UNIMPLEMENTED(JVM_InitProperties);
-  return NULL;
+  IMPLEMENTED(JVM_InitProperties);
+  return (*getEnv())->JVM_InitProperties(env, p);
 }
 
 void JVM_OnExit(void (*func)(void)) {

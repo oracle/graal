@@ -45,6 +45,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.RootCallTarget;
@@ -59,6 +60,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.Utils;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.MethodInfo;
@@ -654,6 +656,17 @@ public class VM extends NativeEnv {
     public void JVM_GC() {
         System.gc();
     }
+
+    @VmImpl
+    @JniImpl
+    public @Type(Properties.class) StaticObject JVM_InitProperties(@Type(Properties.class) StaticObject properties) {
+        Meta.Method.WithInstance setProperty = meta(properties).method("setProperty", Object.class, String.class, String.class);
+        for (Map.Entry<String, String> entry : EspressoLanguage.getCurrentContext().getEnv().getOptions().get(EspressoOptions.Properties).entrySet()) {
+            setProperty.invoke(entry.getKey(), entry.getValue());
+        }
+        return properties;
+    }
+
 
     public TruffleObject getLibrary(long handle) {
         return handle2Lib.get(handle);
