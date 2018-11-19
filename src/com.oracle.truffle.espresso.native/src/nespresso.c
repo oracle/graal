@@ -470,16 +470,17 @@ struct NespressoEnv {
 #define CALL_METHOD_BRIDGE(returnType, Type) \
 returnType Call##Type##MethodV(JNIEnv *env, jobject obj, jmethodID methodID, va_list args) { \
   struct VarargsV varargs = { .base = { .functions = &valist_functions } }; \
+  struct NespressoEnv *nespresso_env = (struct NespressoEnv*) (*env)->reserved0; \
   va_copy(varargs.args, args); \
-  struct NespressoEnv *nespresso_env = (struct NespressoEnv*) env->functions->reserved0; \
   VAR(returnType)(result) nespresso_env->Call##Type##MethodVarargs(env, obj, methodID, (jlong) &varargs); \
   va_end(varargs.args); \
   RETURN(returnType)(result); \
 } \
 returnType Call##Type##MethodA(JNIEnv *env, jobject obj, jmethodID methodID, const jvalue *args) { \
-  struct VarargsA varargs = {&jvalues_functions, args}; \
-  NespressoEnv *nespresso_env = (NespressoEnv*) (*env)->functions->reserved0; \
-  return nespresso_env->Call##Type##MethodVarargs(env, obj, methodID, (jlong) &varargs); \
+  struct VarargsA varargs = { .base = { .functions = &jvalues_functions }, .args = (void*) args}; \
+  struct NespressoEnv *nespresso_env = (struct NespressoEnv*) (*env)->reserved0; \
+  VAR(returnType)(result) nespresso_env->Call##Type##MethodVarargs(env, obj, methodID, (jlong) &varargs); \
+  RETURN(returnType)(result); \
 } \
 returnType Call##Type##Method(JNIEnv *env, jobject obj, jmethodID methodID, ...) { \
   va_list args; \
@@ -491,17 +492,18 @@ returnType Call##Type##Method(JNIEnv *env, jobject obj, jmethodID methodID, ...)
 
 #define CALL_STATIC_METHOD_BRIDGE(returnType, Type) \
 returnType CallStatic##Type##MethodV(JNIEnv *env, jclass clazz, jmethodID methodID, va_list args) { \
-  VarargsV varargs = { .functions = &valist_functions }; \
+  struct VarargsV varargs = { .base = { .functions = &valist_functions } }; \
+  struct NespressoEnv *nespresso_env = (struct NespressoEnv*) (*env)->reserved0; \
   va_copy(varargs.args, args); \
-  NespressoEnv *nespresso_env = (NespressoEnv*) (*env)->functions->reserved0; \
   VAR(returnType)(result) nespresso_env->CallStatic##Type##MethodVarargs(env, clazz, methodID, (jlong) &varargs); \
   va_end(varargs.args); \
   RETURN(returnType)(result); \
 } \
 returnType CallStatic##Type##MethodA(JNIEnv *env, jclass clazz, jmethodID methodID, const jvalue *args) { \
-  VarargsA varargs = {&jvalues_functions, args}; \
-  NespressoEnv *nespresso_env = (NespressoEnv*) (*env)->functions->reserved0; \
-  return nespresso_env->CallStatic##Type##MethodVarargs(env, clazz, methodID, (jlong) &varargs); \
+  struct VarargsA varargs = { .base = { .functions = &jvalues_functions } , .args = (void*) args}; \
+  struct NespressoEnv *nespresso_env = (struct NespressoEnv*) (*env)->reserved0; \
+  VAR(returnType)(result) nespresso_env->CallStatic##Type##MethodVarargs(env, clazz, methodID, (jlong) &varargs); \
+  RETURN(returnType)(result); \
 } \
 returnType CallStatic##Type##Method(JNIEnv *env, jclass clazz, jmethodID methodID, ...) { \
   va_list args; \
@@ -513,16 +515,16 @@ returnType CallStatic##Type##Method(JNIEnv *env, jclass clazz, jmethodID methodI
 
 #define CALL_NON_VIRTUAL_METHOD_BRIDGE(returnType, Type) \
 returnType CallNonvirtual##Type##MethodV(JNIEnv *env, jobject obj, jclass clazz, jmethodID methodID, va_list args) { \
-  VarargsV varargs = { .functions = &valist_functions }; \
+  struct VarargsV varargs = { .base = { .functions = &valist_functions } }; \
   va_copy(varargs.args, args); \
-  NespressoEnv *nespresso_env = (NespressoEnv*) (*env)->functions->reserved0; \
-  return nespresso_env->CallNonvirtual##Type##MethodVarargs(env, obj, clazz, methodID, (jlong) &varargs); \
+  struct NespressoEnv *nespresso_env = (struct NespressoEnv*) (*env)->reserved0; \
+  VAR(returnType)(result) nespresso_env->CallNonvirtual##Type##MethodVarargs(env, obj, clazz, methodID, (jlong) &varargs); \
+  RETURN(returnType)(result); \
 } \
 returnType CallNonvirtual##Type##MethodA(JNIEnv *env, jobject obj, jclass clazz, jmethodID methodID, const jvalue *args) { \
-  VarargsA varargs = {&jvalues_functions, args}; \
-  NespressoEnv *nespresso_env = (NespressoEnv*) (*env)->functions->reserved0; \
+  struct VarargsA varargs = { .base = { .functions = &jvalues_functions }, .args = (void*) args}; \
+  struct NespressoEnv *nespresso_env = (struct NespressoEnv*) (*env)->reserved0; \
   VAR(returnType)(result) nespresso_env->CallNonvirtual##Type##MethodVarargs(env, obj, clazz, methodID, (jlong) &varargs); \
-  va_end(varargs.args); \
   RETURN(returnType)(result); \
 } \
 returnType CallNonvirtual##Type##Method(JNIEnv *env, jobject obj, jclass clazz, jmethodID methodID, ...) { \
@@ -565,11 +567,11 @@ TYPE_LIST2(CALL_NON_VIRTUAL_METHOD_BRIDGE)
 // Spawn a "guest" direct byte buffer.
 // This ByteBuffer is set to BIG_ENDIAN by default.
 jobject NewDirectByteBuffer(JNIEnv* env, void* address, jlong capacity) {
-  jclass java_nio_DirectByteBuffer = (*env)->FindClass("java.nio.DirectByteBuffer");
+  jclass java_nio_DirectByteBuffer = (*env)->FindClass(env, "java.nio.DirectByteBuffer");
   // TODO(peterssen): Cache class and constructor.
-  jmethodID constructor = (*env)->GetMethodID(java_nio_DirectByteBuffer, "<init>", "(JI)V");
+  jmethodID constructor = (*env)->GetMethodID(env, java_nio_DirectByteBuffer, "<init>", "(JI)V");
   // TODO(peterssen): Check narrowing conversion.
-  return (*env)->NewObject(java_nio_DirectByteBuffer, constructor, (jlong) address, (jint) capacity);
+  return (*env)->NewObject(env, java_nio_DirectByteBuffer, constructor, (jlong) address, (jint) capacity);
 }
 
 #define BRIDGE_METHOD_LIST(V) \
@@ -591,33 +593,34 @@ jobject NewDirectByteBuffer(JNIEnv* env, void* address, jlong capacity) {
   V(DeleteGlobalRef)
 
 
-extern "C" {
-
 // Global state.
 static TruffleContext *truffle_ctx;
 
 jobject NewObjectV(JNIEnv *env, jclass clazz, jmethodID methodID, va_list args) {
-  VarargsV varargs = { .functions = &valist_functions };
-  NespressoEnv *nespresso_env = (NespressoEnv*) (*env)->functions->reserved0;
-  return nespresso_env->NewObjectVarargs(env, clazz, methodID, (jlong) &varargs);
+  struct VarargsV varargs = { .base = { .functions = &valist_functions } };
+  struct NespressoEnv *nespresso_env = (struct NespressoEnv*) (*env)->reserved0;
+  va_copy(varargs.args, args);
+  jobject result = nespresso_env->NewObjectVarargs(env, clazz, methodID, (jlong) &varargs);
+  va_end(varargs.args);
+  return result;
 }
 
 jobject NewObjectA(JNIEnv *env, jclass clazz, jmethodID methodID, const jvalue *args) {
-  VarargsJValues varargs(args);
-  NespressoEnv *nespresso_env = (NespressoEnv*) (*env)->functions->reserved0;
+  struct VarargsA varargs = { .base = { .functions = &jvalues_functions }, .args = (jvalue*) args };
+  struct NespressoEnv *nespresso_env = (struct NespressoEnv*) (*env)->reserved0;
   return nespresso_env->NewObjectVarargs(env, clazz, methodID, (jlong) &varargs);
 }
 
 jobject NewObject(JNIEnv *env, jclass clazz, jmethodID methodID, ...) {
   va_list args;
   va_start(args, methodID);
-  jobject result = (*env)->NewObjectV(clazz, methodID, args);
+  jobject result = (*env)->NewObjectV(env, clazz, methodID, args);
   va_end(args);
   return result;
 }
 
 jint RegisterNatives(JNIEnv *env, jclass clazz, const JNINativeMethod *methods, jint nMethods) {  
-  NespressoEnv *nespresso_env = (NespressoEnv*) (*env)->functions->reserved0;
+  struct NespressoEnv *nespresso_env = (struct NespressoEnv*) (*env)->reserved0;
   
   for (jint i = 0; i < nMethods; ++i) {
     fprintf(stderr, "RegisterNative %s %s %p\n", methods[i].name, methods[i].signature, methods[i].fnPtr);
@@ -628,73 +631,81 @@ jint RegisterNatives(JNIEnv *env, jclass clazz, const JNINativeMethod *methods, 
 }
 
 jobject NewGlobalRef(JNIEnv *env, jobject obj) {
-  TruffleEnv *truffle_env = truffle_ctx->getTruffleEnv();
-  return (jobject) truffle_env->newObjectRef((TruffleObject) obj);
+  TruffleEnv *truffle_env = (*truffle_ctx)->getTruffleEnv(truffle_ctx);
+  return (jobject) (*truffle_env)->newObjectRef(truffle_env, (TruffleObject) obj);
 }
 
 void DeleteGlobalRef(JNIEnv *env, jobject globalRef) {
-  TruffleEnv *truffle_env = truffle_ctx->getTruffleEnv();
-  truffle_env->releaseObjectRef((TruffleObject) globalRef);
+  TruffleEnv *truffle_env = (*truffle_ctx)->getTruffleEnv(truffle_ctx);
+  (*truffle_env)->releaseObjectRef(truffle_env, (TruffleObject) globalRef);
 }
 
 jlong initializeNativeContext(TruffleEnv* truffle_env, void* (*fetch_by_name)(const char *)) {
-  JNIEnv* env = new JNIEnv();
-  JNINativeInterface_ *functions = new JNINativeInterface_();
-  NespressoEnv *nespresso_env = new NespressoEnv();
-  functions->reserved0 = nespresso_env;
+  JNIEnv* env = (JNIEnv*) malloc(sizeof(*env));
+  struct JNINativeInterface_* jni_impl = malloc(sizeof(*jni_impl));
+  struct NespressoEnv* nespresso_env = (struct NespressoEnv*) malloc(sizeof(*nespresso_env));
+
+  *env = jni_impl;
+  
+  jni_impl->reserved0 = nespresso_env;
 
   // Global state.
-  truffle_ctx = truffle_env->getTruffleContext();
+  truffle_ctx = (*truffle_env)->getTruffleContext(truffle_env);
 
   // Fetch Java ... varargs methods.
-  #define INIT_VARARGS_METHOD__(name) \
-    nespresso_env->name = truffle_env->dupClosureRef((typeof(nespresso_env->name)) fetch_by_name(#name));
+  void* fn_ptr = NULL;
+  #define INIT_VARARGS_METHOD__(fn_name) \
+    fn_ptr = fetch_by_name(#fn_name); \
+    (*truffle_env)->newClosureRef(truffle_env, fn_ptr); \
+    *(void**)(&nespresso_env->fn_name) = fn_ptr;
 
     VARARGS_METHOD_LIST(INIT_VARARGS_METHOD__)
   #undef INIT_VARARGS_METHOD__
 
-  #define INIT__(name) \
-    functions->name = truffle_env->dupClosureRef((typeof(functions->name)) fetch_by_name(#name));
+  #define INIT__(fn_name) \
+    fn_ptr = fetch_by_name(#fn_name); \
+    (*truffle_env)->newClosureRef(truffle_env, fn_ptr); \
+    jni_impl->fn_name = fn_ptr;
+
   JNI_FUNCTION_LIST(INIT__)
   #undef INIT__
 
   // Put ... bridges in the env.
-  #define INIT_NATIVE_METHOD__(name) \
-    functions->name = &name;
+  #define INIT_NATIVE_METHOD__(fn_name) \
+    jni_impl->fn_name = &fn_name;
 
     BRIDGE_METHOD_LIST(INIT_NATIVE_METHOD__)
   #undef INIT_NATIVE_METHOD__
-
-  (*env)->functions = functions;
 
   return (jlong) env;
 }
 
 void disposeNativeContext(TruffleEnv* truffle_env, jlong envPtr) {
-  JNIEnv *env = (JNIEnv*) envPtr;
-  NespressoEnv *nespresso_env = new NespressoEnv();
+ /*  JNIEnv *env = (JNIEnv*) envPtr;
+  struct JNINativeInterface_* jni_impl = (struct JNINativeInterface_*) *env;
+  struct NespressoEnv *nespresso_env = (struct NespressoEnv *) (*env)->reserved0;
 
-  #define DISPOSE__(name) \
-     truffle_env->releaseClosureRef(env->functions->name);
+  #define DISPOSE__(fn_name) \
+     (*truffle_env)->releaseClosureRef(truffle_env, jni_impl->fn_name); \
+     jni_impl->fn_name = NULL;
 
   JNI_FUNCTION_LIST(DISPOSE__)
   #undef DISPOSE__
 
-  #define DISPOSE_VARARGS_METHOD__(name) \
-    truffle_env->releaseClosureRef(nespresso_env->name);
+  #define DISPOSE_VARARGS_METHOD__(fn_name) \
+    (*truffle_env)->releaseClosureRef(truffle_env, nespresso_env->fn_name); \
+    *(void**)(&nespresso_env->fn_name) = NULL;
 
   VARARGS_METHOD_LIST(DISPOSE_VARARGS_METHOD__)
   #undef DISPOSE_VARARG_METHOD__
 
-  delete (NespressoEnv*) (*env)->functions->reserved0;
-  delete (*env)->functions;
-  delete env;
-
-  truffle_ctx = NULL;
+  free(nespresso_env);
+  free(jni_impl);
+  free(env);
+  truffle_ctx = NULL; */
 }
 
 void* dupClosureRef(TruffleEnv *truffle_env, void* closure) {
-    return truffle_env->dupClosureRef(closure);
+    (*truffle_env)->newClosureRef(truffle_env, closure);
+    return closure;
 }
-
-} // extern "C"
