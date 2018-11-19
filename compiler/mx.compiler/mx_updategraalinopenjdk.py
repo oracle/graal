@@ -306,7 +306,6 @@ def updategraalinopenjdk(args):
     end_line = ', \\'
     old_line_check = single_column_with_continuation
     replace_lines(JtregGraalUnit_gmk, begin_lines, end_line, new_lines, old_line_check)
-    mx.log
 
     mx.log('Adding new files to HG...')
     overwritten = ''
