@@ -84,5 +84,4 @@ public final class Class_cast02 extends JTTTest {
     public void run4() throws Throwable {
         runTest("test", 4);
     }
-
 }
