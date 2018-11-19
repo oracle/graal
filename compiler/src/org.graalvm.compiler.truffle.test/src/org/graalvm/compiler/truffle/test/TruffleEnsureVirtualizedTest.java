@@ -32,7 +32,6 @@ import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -40,7 +39,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 
 import jdk.vm.ci.code.BailoutException;
 
-@Ignore
 public class TruffleEnsureVirtualizedTest extends PartialEvaluationTest {
 
     private static TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope immediateCompilationScope;
