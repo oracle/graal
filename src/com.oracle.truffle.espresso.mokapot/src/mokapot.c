@@ -3,6 +3,7 @@
 #include <trufflenfi.h>
 #include <jni.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <unistd.h>
 
 // Global
@@ -1160,21 +1161,31 @@ void JVM_GetVersionInfo(JNIEnv *env, jvm_version_info *info, size_t info_size) {
 }
 
 int jio_vsnprintf(char *str, size_t count, const char *fmt, va_list args) {
-    fprintf(stderr, "Calling unimplemented mokapot jio_vsnprintf.\n");
-    return 0;
+    IMPLEMENTED(jio_vsnprintf);
+    return vsnprintf(str, count, fmt, args);
 }
 
 int jio_snprintf(char *str, size_t count, const char *fmt, ...) {
-    fprintf(stderr, "Calling unimplemented mokapot jio_snprintf.\n");
-    return 0;
+  IMPLEMENTED(jio_snprintf);
+  int len;
+  va_list args;
+  va_start(args, fmt);
+  len = jio_vsnprintf(str, count, fmt, args);
+  va_end(args);
+  return len;
 }
 
 int jio_fprintf(FILE *file, const char *fmt, ...) {
-    fprintf(stderr, "Calling unimplemented mokapot jio_fprintf.\n");
-    return 0;
+  IMPLEMENTED(jio_fprintf);
+  int len;
+  va_list args;
+  va_start(args, fmt);
+  len = jio_vfprintf(file, fmt, args);
+  va_end(args);
+  return len; 
 }
 
 int jio_vfprintf(FILE *file, const char *fmt, va_list args) {
-    fprintf(stderr, "Calling unimplemented mokapot jio_vfprintf.\n");
-    return 0;
+    IMPLEMENTED(jio_vfprintf);
+    return vfprintf(file, fmt, args);
 }
