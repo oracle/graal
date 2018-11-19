@@ -145,6 +145,7 @@ def updategraalinopenjdk(args):
 
     copied_source_dirs = []
     jdk_internal_vm_compiler_EXCLUDES = set() # pylint: disable=invalid-name
+    jdk_internal_vm_compiler_test_SRC = set() # pylint: disable=invalid-name
     # Add org.graalvm.compiler.processor since it is only a dependency
     # for (most) Graal annotation processors and is not needed to
     # run Graal.
@@ -235,15 +236,32 @@ def updategraalinopenjdk(args):
                                         to_exclude = new_name + sfx
                                         break
                                 jdk_internal_vm_compiler_EXCLUDES.add(to_exclude)
+                                if p.testProject:
+                                    jdk_internal_vm_compiler_test_SRC.add(to_exclude)
                             first_file = False
                         with open(dst_file, 'w') as fp:
                             fp.write(contents)
 
-    def replace_lines(filename, begin_line, end_line, replace_lines, old_line_check):
+    def replace_lines(filename, begin_lines, end_line, replace_lines, old_line_check):
+        mx.log('Updating ' + filename + '...')
         old_lines = []
         new_lines = []
         with open(filename) as fp:
-            line_in_def = False
+            for begin_line in begin_lines:
+                line = fp.readline()
+                while line:
+                    stripped_line = line.strip()
+                    if stripped_line == begin_line:
+                        new_lines.append(line)
+                        break
+                    new_lines.append(line)
+                    line = fp.readline()
+                assert line, begin_line + ' not found'
+
+            line_in_def = True
+            for replace in replace_lines:
+                new_lines.append(replace)
+
             for line in fp.readlines():
                 stripped_line = line.strip()
                 if line_in_def:
@@ -252,12 +270,6 @@ def updategraalinopenjdk(args):
                         new_lines.append(line)
                     else:
                         old_line_check(line)
-                elif stripped_line == begin_line:
-                    line_in_def = True
-                    new_lines.append(line)
-
-                    for replace in replace_lines:
-                        new_lines.append(replace)
                 else:
                     new_lines.append(line)
         with open(filename, 'w') as fp:
@@ -275,10 +287,26 @@ def updategraalinopenjdk(args):
     new_lines = []
     for pkg in sorted(jdk_internal_vm_compiler_EXCLUDES):
         new_lines.append('    ' + pkg + ' \\\n')
-    begin_line ='jdk.internal.vm.compiler_EXCLUDES += \\'
+    begin_lines = ['jdk.internal.vm.compiler_EXCLUDES += \\']
     end_line = '#'
     old_line_check = single_column_with_continuation
-    replace_lines(CompileJavaModules_gmk, begin_line, end_line, new_lines, old_line_check)
+    replace_lines(CompileJavaModules_gmk, begin_lines, end_line, new_lines, old_line_check)
+
+    # Update 'SRC' in the 'Compile graalunit tests' section of make/test/JtregGraalUnit.gmk
+    # to include all test packages.
+    JtregGraalUnit_gmk = join(jdkrepo, 'make', 'test', 'JtregGraalUnit.gmk') # pylint: disable=invalid-name
+    new_lines = []
+    jdk_internal_vm_compiler_test_SRC.discard('jdk.tools.jaotc.test')
+    jdk_internal_vm_compiler_test_SRC.discard('org.graalvm.compiler.microbenchmarks')
+    jdk_internal_vm_compiler_test_SRC.discard('org.graalvm.compiler.virtual.bench')
+    jdk_internal_vm_compiler_test_SRC.discard('org.graalvm.micro.benchmarks')
+    for pkg in sorted(jdk_internal_vm_compiler_test_SRC):
+        new_lines.append('            $(SRC_DIR)/' + pkg + '/src \\\n')
+    begin_lines = ['### Compile graalunit tests', 'SRC := \\']
+    end_line = ', \\'
+    old_line_check = single_column_with_continuation
+    replace_lines(JtregGraalUnit_gmk, begin_lines, end_line, new_lines, old_line_check)
+    mx.log
 
     mx.log('Adding new files to HG...')
     overwritten = ''
