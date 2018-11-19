@@ -252,6 +252,8 @@ public class NativeImage {
             String javaVersion = System.getProperty("java.version");
             if (javaVersion.startsWith("1.")) {
                 javaVersion = javaVersion.substring(0, 3);
+            } else {
+                javaVersion = javaVersion.split("\\.", 2)[0];
             }
 
             String[] flagsForVersion = graalCompilerFlags.get(javaVersion);
