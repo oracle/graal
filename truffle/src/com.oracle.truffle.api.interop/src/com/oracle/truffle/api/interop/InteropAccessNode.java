@@ -3,7 +3,7 @@
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
- * 
+ *
  * Subject to the condition set forth below, permission is hereby granted to any
  * person obtaining a copy of this software, associated documentation and/or
  * data (collectively the "Software"), free of charge and under any and all
@@ -11,25 +11,25 @@
  * freely licensable by each licensor hereunder covering either (i) the
  * unmodified Software as contributed to or provided by such licensor, or (ii)
  * the Larger Works (as defined below), to deal in both
- * 
+ *
  * (a) the Software, and
- * 
+ *
  * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
  * one is included with the Software each a "Larger Work" to which the Software
  * is contributed by such licensors),
- * 
+ *
  * without restriction, including without limitation the rights to copy, create
  * derivative works of, display, perform, and distribute the Software and make,
  * use, sell, offer for sale, import, export, have made, and have sold the
  * Software and the Larger Work(s), and to sublicense the foregoing rights on
  * either these or other terms.
- * 
+ *
  * This license is subject to the following condition:
- * 
+ *
  * The above copyright notice and either this complete permission notice or at a
  * minimum a reference to the UPL must be included in all copies or substantial
  * portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -198,7 +198,7 @@ abstract class InteropAccessNode extends Node {
     protected static Object doCached(TruffleObject receiver, Object[] arguments,
                     @Cached("receiver.getForeignAccess()") ForeignAccess foreignAccess,
                     @Cached("createInlinedCallNode(createMessageTarget(foreignAccess))") DirectCallNode sendMessageCall,
-                    @Cached("createInlinedCallNode(createCanHandleTarget(foreignAccess))") DirectCallNode canHandleCall) {
+                    @Cached("createCanHandleInlinedCallNode(foreignAccess, receiver)") DirectCallNode canHandleCall) {
         return sendMessageCall.call(arguments);
     }
 
@@ -222,18 +222,34 @@ abstract class InteropAccessNode extends Node {
     }
 
     @Specialization
-    protected Object doGeneric(TruffleObject receiver, Object[] arguments, @Cached("create()") IndirectCallNode indirectCall) {
+    protected Object doGeneric(TruffleObject receiver, Object[] arguments,
+                    @Cached("create()") IndirectCallNode indirectCall) {
         return indirectCall.call(createGenericMessageTarget(receiver), arguments);
     }
 
     @TruffleBoundary
-    protected CallTarget createCanHandleTarget(ForeignAccess access) {
-        return access != null ? access.checkLanguage() : null;
+    protected static DirectCallNode createCanHandleInlinedCallNode(ForeignAccess access, TruffleObject receiver) {
+        if (access != null) {
+            DirectCallNode callNode = createInlinedCallNode(access.checkLanguage());
+            assert acceptCached(receiver, access, callNode) : "foreign access for " + receiver.getClass() + " (" + access + ") does not handle its own objects";
+            return callNode;
+        } else {
+            return null;
+        }
     }
 
     @TruffleBoundary
     protected CallTarget createGenericMessageTarget(TruffleObject receiver) {
+        assert assertHandlesItself(receiver);
         return createMessageTarget(receiver.getForeignAccess());
+    }
+
+    private static boolean assertHandlesItself(TruffleObject receiver) {
+        if (receiver.getForeignAccess() != null) {
+            // to exercise the assertion in createCanHandleInlinedCallNode:
+            createCanHandleInlinedCallNode(receiver.getForeignAccess(), receiver);
+        }
+        return true;
     }
 
     protected CallTarget createMessageTarget(ForeignAccess fa) {
@@ -250,5 +266,4 @@ abstract class InteropAccessNode extends Node {
     public static InteropAccessNode create(Message message) {
         return InteropAccessNodeGen.create(message);
     }
-
 }

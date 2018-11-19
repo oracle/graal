@@ -3,7 +3,7 @@
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
- * 
+ *
  * Subject to the condition set forth below, permission is hereby granted to any
  * person obtaining a copy of this software, associated documentation and/or
  * data (collectively the "Software"), free of charge and under any and all
@@ -11,25 +11,25 @@
  * freely licensable by each licensor hereunder covering either (i) the
  * unmodified Software as contributed to or provided by such licensor, or (ii)
  * the Larger Works (as defined below), to deal in both
- * 
+ *
  * (a) the Software, and
- * 
+ *
  * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
  * one is included with the Software each a "Larger Work" to which the Software
  * is contributed by such licensors),
- * 
+ *
  * without restriction, including without limitation the rights to copy, create
  * derivative works of, display, perform, and distribute the Software and make,
  * use, sell, offer for sale, import, export, have made, and have sold the
  * Software and the Larger Work(s), and to sublicense the foregoing rights on
  * either these or other terms.
- * 
+ *
  * This license is subject to the following condition:
- * 
+ *
  * The above copyright notice and either this complete permission notice or at a
  * minimum a reference to the UPL must be included in all copies or substantial
  * portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -71,11 +71,6 @@ final class ToHostPrimitiveNode extends Node {
         return new ToHostPrimitiveNode();
     }
 
-    Integer toInteger(Object value) {
-        assert isUnboxed(value);
-        return toInt(value);
-    }
-
     Object unbox(Object value) {
         if (value instanceof HostObject) {
             return ((HostObject) value).obj;
@@ -86,8 +81,7 @@ final class ToHostPrimitiveNode extends Node {
         }
     }
 
-    Object toPrimitive(Object value, Class<?> requestedType) {
-        assert isUnboxed(value);
+    static Object toPrimitive(Object value, Class<?> requestedType) {
         Object attr = value;
 
         if (requestedType == boolean.class || requestedType == Boolean.class) {
@@ -100,7 +94,7 @@ final class ToHostPrimitiveNode extends Node {
         } else if (requestedType == short.class || requestedType == Short.class) {
             return toShort(attr);
         } else if (requestedType == int.class || requestedType == Integer.class) {
-            return toInt(attr);
+            return toInteger(attr);
         } else if (requestedType == long.class || requestedType == Long.class) {
             return toLong(attr);
         } else if (requestedType == float.class || requestedType == Float.class) {
@@ -206,7 +200,7 @@ final class ToHostPrimitiveNode extends Node {
         return null;
     }
 
-    private static Integer toInt(Object value) {
+    static Integer toInteger(Object value) {
         if (value instanceof Integer) {
             Integer i = (Integer) value;
             return i;
@@ -422,7 +416,4 @@ final class ToHostPrimitiveNode extends Node {
         return ForeignAccess.sendIsBoxed(isBoxedNode, foreignObject);
     }
 
-    private boolean isUnboxed(Object value) {
-        return !(value instanceof HostObject) && !(value instanceof TruffleObject && isBoxed((TruffleObject) value));
-    }
 }

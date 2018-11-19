@@ -3,7 +3,7 @@
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
- * 
+ *
  * Subject to the condition set forth below, permission is hereby granted to any
  * person obtaining a copy of this software, associated documentation and/or
  * data (collectively the "Software"), free of charge and under any and all
@@ -11,25 +11,25 @@
  * freely licensable by each licensor hereunder covering either (i) the
  * unmodified Software as contributed to or provided by such licensor, or (ii)
  * the Larger Works (as defined below), to deal in both
- * 
+ *
  * (a) the Software, and
- * 
+ *
  * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
  * one is included with the Software each a "Larger Work" to which the Software
  * is contributed by such licensors),
- * 
+ *
  * without restriction, including without limitation the rights to copy, create
  * derivative works of, display, perform, and distribute the Software and make,
  * use, sell, offer for sale, import, export, have made, and have sold the
  * Software and the Larger Work(s), and to sublicense the foregoing rights on
  * either these or other terms.
- * 
+ *
  * This license is subject to the following condition:
- * 
+ *
  * The above copyright notice and either this complete permission notice or at a
  * minimum a reference to the UPL must be included in all copies or substantial
  * portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -56,6 +56,7 @@ import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.DebuggerSession;
+import com.oracle.truffle.api.debug.SuspendAnchor;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import org.graalvm.polyglot.Source;
@@ -138,7 +139,47 @@ public class SuspendedEventTest extends AbstractDebugTest {
                 assertEquals("42", event.getReturnValue().as(String.class));
             });
 
-            expectDone();
+            assertEquals("42", expectDone());
+        }
+    }
+
+    @Test
+    public void testReturnValueChanged() throws Throwable {
+        final Source source = testSource("ROOT(\n" +
+                        "  DEFINE(bar, VARIABLE(a, 41), STATEMENT(CONSTANT(42))), \n" +
+                        "  DEFINE(foo, VARIABLE(b, 40), CALL(bar)), \n" +
+                        "  VARIABLE(c, 24), STATEMENT(CALL(foo))\n" +
+                        ")\n");
+
+        try (DebuggerSession session = startSession()) {
+            Breakpoint breakpoint = Breakpoint.newBuilder(getSourceImpl(source)).lineIs(2).suspendAnchor(SuspendAnchor.AFTER).build();
+            session.install(breakpoint);
+            startEval(source);
+
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 2, false, "STATEMENT(CONSTANT(42))", "a", "41").prepareStepInto(1);
+                assertEquals("42", event.getReturnValue().as(String.class));
+                DebugValue a = event.getTopStackFrame().getScope().getDeclaredValues().iterator().next();
+                assertEquals("a", a.getName());
+                event.setReturnValue(a);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 3, false, "CALL(bar)", "b", "40").prepareStepInto(1);
+                assertEquals("41", event.getReturnValue().as(String.class));
+                DebugValue b = event.getTopStackFrame().getScope().getDeclaredValues().iterator().next();
+                assertEquals("b", b.getName());
+                event.setReturnValue(b);
+            });
+
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 4, false, "CALL(foo)", "c", "24").prepareContinue();
+                assertEquals("40", event.getReturnValue().as(String.class));
+                DebugValue c = event.getTopStackFrame().getScope().getDeclaredValues().iterator().next();
+                assertEquals("c", c.getName());
+                event.setReturnValue(c);
+            });
+
+            assertEquals("24", expectDone());
         }
     }
 

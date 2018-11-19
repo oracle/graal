@@ -106,8 +106,12 @@ public final class JNIReflectionDictionary {
         return nativeLinkages.get(key);
     }
 
-    public Iterable<JNINativeLinkage> getLinkages(String declaringClass) {
-        return () -> nativeLinkages.keySet().stream().filter(l -> declaringClass.equals(l.getDeclaringClassName())).iterator();
+    public void unsetEntryPoints(String declaringClass) {
+        for (JNINativeLinkage linkage : nativeLinkages.keySet()) {
+            if (declaringClass.equals(linkage.getDeclaringClassName())) {
+                linkage.unsetEntryPoint();
+            }
+        }
     }
 
     public JNIMethodId getMethodID(Class<?> classObject, JNIAccessibleMethodDescriptor descriptor, boolean isStatic) {

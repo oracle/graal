@@ -27,7 +27,6 @@ package com.oracle.truffle.tools.chromeinspector.server;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -37,6 +36,7 @@ import java.io.PrintWriter;
 import java.io.PushbackInputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.nio.ByteBuffer;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
@@ -46,39 +46,39 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLServerSocketFactory;
 
 import fi.iki.elonen.NanoHTTPD;
 import fi.iki.elonen.NanoWSD;
 
+import org.graalvm.polyglot.io.MessageEndpoint;
+
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.tools.utils.json.JSONArray;
 import com.oracle.truffle.tools.utils.json.JSONObject;
 
-import com.oracle.truffle.tools.chromeinspector.TruffleDebugger;
 import com.oracle.truffle.tools.chromeinspector.TruffleExecutionContext;
-import com.oracle.truffle.tools.chromeinspector.TruffleProfiler;
-import com.oracle.truffle.tools.chromeinspector.TruffleRuntime;
-import com.oracle.truffle.tools.chromeinspector.domains.DebuggerDomain;
-import com.oracle.truffle.tools.chromeinspector.domains.ProfilerDomain;
-import com.oracle.truffle.tools.chromeinspector.domains.RuntimeDomain;
 import com.oracle.truffle.tools.chromeinspector.instrument.KeyStoreOptions;
+import com.oracle.truffle.tools.chromeinspector.instrument.InspectorWSConnection;
 
 /**
  * Server of the
  * <a href="https://chromium.googlesource.com/v8/v8/+/master/src/inspector/js_protocol.json">Chrome
  * inspector protocol</a>.
  */
-public final class WebSocketServer extends NanoWSD {
+public final class WebSocketServer extends NanoWSD implements InspectorWSConnection {
 
     private static final Map<InetSocketAddress, WebSocketServer> SERVERS = new HashMap<>();
 
+    private final int port;
     private final Map<String, ServerPathSession> sessions = new HashMap<>();
     private final PrintStream log;
 
     private WebSocketServer(InetSocketAddress isa, PrintStream log) {
         super(isa.getHostName(), isa.getPort());
+        this.port = isa.getPort();
         this.log = log;
         if (log != null) {
             log.println("New WebSocketServer at " + isa);
@@ -87,25 +87,14 @@ public final class WebSocketServer extends NanoWSD {
     }
 
     public static WebSocketServer get(InetSocketAddress isa, String path, TruffleExecutionContext context, boolean debugBrk,
-                    boolean secure, KeyStoreOptions keyStoreOptions, ConnectionWatcher connectionWatcher) throws IOException {
+                    boolean secure, KeyStoreOptions keyStoreOptions, ConnectionWatcher connectionWatcher,
+                    InspectServerSession initialSession) throws IOException {
         WebSocketServer wss;
+        boolean startServer = false;
         synchronized (SERVERS) {
             wss = SERVERS.get(isa);
             if (wss == null) {
-                PrintStream traceLog = null;
-                String traceLogFile = System.getProperty("chromeinspector.traceMessages");
-                if (traceLogFile != null) {
-                    if (Boolean.parseBoolean(traceLogFile)) {
-                        traceLog = System.err;
-                    } else if (!"false".equalsIgnoreCase(traceLogFile)) {
-                        if ("tmp".equalsIgnoreCase(traceLogFile)) {
-                            traceLog = new PrintStream(new FileOutputStream(File.createTempFile("ChromeInspectorProtocol", ".txt")));
-                        } else {
-                            traceLog = new PrintStream(new FileOutputStream(traceLogFile));
-                        }
-                    }
-                }
-                wss = new WebSocketServer(isa, traceLog);
+                wss = new WebSocketServer(isa, context.getLogger());
                 if (secure) {
                     if (TruffleOptions.AOT) {
                         throw new IOException("Secure connection is not available in the native-image yet.");
@@ -113,12 +102,15 @@ public final class WebSocketServer extends NanoWSD {
                         wss.makeSecure(createSSLFactory(keyStoreOptions), null);
                     }
                 }
-                wss.start(Integer.MAX_VALUE);
+                startServer = true;
                 SERVERS.put(isa, wss);
             }
         }
         synchronized (wss.sessions) {
-            wss.sessions.put(path, new ServerPathSession(context, debugBrk, connectionWatcher));
+            wss.sessions.put(path, new ServerPathSession(context, initialSession, debugBrk, connectionWatcher));
+        }
+        if (startServer) {
+            wss.start(Integer.MAX_VALUE);
         }
         return wss;
     }
@@ -205,13 +197,12 @@ public final class WebSocketServer extends NanoWSD {
             log.flush();
         }
         if (session != null) {
-            // Do the initial break for the first time only, do not break on reconnect
-            boolean debugBreak = Boolean.TRUE.equals(session.getDebugBrkAndReset());
-            TruffleExecutionContext context = session.getContext();
-            RuntimeDomain runtime = new TruffleRuntime(context);
-            DebuggerDomain debugger = new TruffleDebugger(context, debugBreak);
-            ProfilerDomain profiler = new TruffleProfiler(context, session.getConnectionWatcher());
-            InspectServerSession iss = new InspectServerSession(runtime, debugger, profiler, context);
+            InspectServerSession iss = session.getServerSession();
+            if (iss == null) {
+                // Do the initial break for the first time only, do not break on reconnect
+                boolean debugBreak = Boolean.TRUE.equals(session.getDebugBrkAndReset());
+                iss = InspectServerSession.create(session.getContext(), debugBreak, session.getConnectionWatcher());
+            }
             return new InspectWebSocket(handshake, iss, session.getConnectionWatcher(), log);
         } else {
             return new ClosedWebSocket(handshake);
@@ -246,10 +237,20 @@ public final class WebSocketServer extends NanoWSD {
         return new ClientHandler(pbInputStream, finalAccept);
     }
 
+    @Override
+    public int getPort() {
+        int p = getListeningPort();
+        if (p == -1) {
+            p = this.port;
+        }
+        return p;
+    }
+
     /**
      * Close the web socket server on the specific path. No web socket connection is active on the
      * path already, this is called after the {@link ConnectionWatcher#waitForClose()} is done.
      */
+    @Override
     public void close(String wspath) {
         synchronized (sessions) {
             sessions.remove(wspath);
@@ -276,17 +277,23 @@ public final class WebSocketServer extends NanoWSD {
     private static class ServerPathSession {
 
         private final TruffleExecutionContext context;
+        private final AtomicReference<InspectServerSession> serverSession;
         private final AtomicBoolean debugBrk;
         private final ConnectionWatcher connectionWatcher;
 
-        ServerPathSession(TruffleExecutionContext context, boolean debugBrk, ConnectionWatcher connectionWatcher) {
+        ServerPathSession(TruffleExecutionContext context, InspectServerSession serverSession, boolean debugBrk, ConnectionWatcher connectionWatcher) {
             this.context = context;
+            this.serverSession = new AtomicReference<>(serverSession);
             this.debugBrk = new AtomicBoolean(debugBrk);
             this.connectionWatcher = connectionWatcher;
         }
 
         TruffleExecutionContext getContext() {
             return context;
+        }
+
+        InspectServerSession getServerSession() {
+            return serverSession.getAndSet(null);
         }
 
         boolean getDebugBrkAndReset() {
@@ -319,21 +326,32 @@ public final class WebSocketServer extends NanoWSD {
                 log.flush();
             }
             connectionWatcher.notifyOpen();
-            iss.setMessageListener(new InspectServerSession.MessageListener() {
+            iss.setMessageListener(new MessageEndpoint() {
                 @Override
-                public void sendMessage(String message) {
+                public void sendText(String message) throws IOException {
                     if (log != null) {
                         log.println("SERVER: " + message);
                         log.flush();
                     }
-                    try {
-                        send(message);
-                    } catch (IOException ex) {
-                        if (log != null) {
-                            ex.printStackTrace(log);
-                            log.flush();
-                        }
-                    }
+                    send(message);
+                }
+
+                @Override
+                public void sendBinary(ByteBuffer data) throws IOException {
+                    throw new UnsupportedOperationException("Binary messages are not supported.");
+                }
+
+                @Override
+                public void sendPing(ByteBuffer data) throws IOException {
+                }
+
+                @Override
+                public void sendPong(ByteBuffer data) throws IOException {
+                }
+
+                @Override
+                public void sendClose() throws IOException {
+                    close(WebSocketFrame.CloseCode.NormalClosure, "", true);
                 }
             });
         }
@@ -345,7 +363,7 @@ public final class WebSocketServer extends NanoWSD {
                 log.flush();
             }
             connectionWatcher.notifyClosing();
-            iss.dispose();
+            iss.sendClose();
         }
 
         @Override
@@ -355,7 +373,7 @@ public final class WebSocketServer extends NanoWSD {
                 log.println("CLIENT: " + message);
                 log.flush();
             }
-            iss.onMessage(message);
+            iss.sendText(message);
         }
 
         @Override

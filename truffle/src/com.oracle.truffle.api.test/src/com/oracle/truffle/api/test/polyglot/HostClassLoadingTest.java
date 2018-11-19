@@ -3,7 +3,7 @@
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
- * 
+ *
  * Subject to the condition set forth below, permission is hereby granted to any
  * person obtaining a copy of this software, associated documentation and/or
  * data (collectively the "Software"), free of charge and under any and all
@@ -11,25 +11,25 @@
  * freely licensable by each licensor hereunder covering either (i) the
  * unmodified Software as contributed to or provided by such licensor, or (ii)
  * the Larger Works (as defined below), to deal in both
- * 
+ *
  * (a) the Software, and
- * 
+ *
  * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
  * one is included with the Software each a "Larger Work" to which the Software
  * is contributed by such licensors),
- * 
+ *
  * without restriction, including without limitation the rights to copy, create
  * derivative works of, display, perform, and distribute the Software and make,
  * use, sell, offer for sale, import, export, have made, and have sold the
  * Software and the Larger Work(s), and to sublicense the foregoing rights on
  * either these or other terms.
- * 
+ *
  * This license is subject to the following condition:
- * 
+ *
  * The above copyright notice and either this complete permission notice or at a
  * minimum a reference to the UPL must be included in all copies or substantial
  * portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -76,13 +76,16 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import java.io.OutputStream;
+import java.nio.file.StandardOpenOption;
 
 public class HostClassLoadingTest extends AbstractPolyglotTest {
 
-    private static final String TEST_REPLACE_CLASS_NAME = "HostClassLoadingTestClazz";
-    private static final String TEST_REPLACE_QUALIFIED_CLASS_NAME = HostClassLoadingTestClass.class.getPackage().getName() + ".HostClassLoadingTestClazz";
+    private static final String TEST_REPLACE_CLASS_NAME = "HostClassLoadingTestClazz1";
+    private static final String TEST_REPLACE_CLASS_NAME_2 = "HostClassLoadingTestClazz2";
+    private static final String TEST_REPLACE_QUALIFIED_CLASS_NAME = HostClassLoadingTestClass1.class.getPackage().getName() + ".HostClassLoadingTestClazz1";
 
-    // static number that has the same lifetime as HostClassLoadingTestClass.class.
+    // static number that has the same lifetime as HostClassLoadingTestClass1.class.
     private static int hostStaticFieldValue = 42;
 
     @Test
@@ -189,7 +192,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
     }
 
     private static Path setupSimpleClassPath() throws IOException {
-        final Class<?> hostClass = HostClassLoadingTestClass.class;
+        final Class<?> hostClass = HostClassLoadingTestClass1.class;
         Path tempDir = renameHostClass(hostClass, TEST_REPLACE_CLASS_NAME);
         return tempDir;
     }
@@ -198,10 +201,10 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
     public void testJarHostClassLoading() throws IOException {
         setupEnv();
 
-        final Class<?> hostClass = HostClassLoadingTestClass.class;
+        final Class<?> hostClass = HostClassLoadingTestClass1.class;
         Path tempDir = renameHostClass(hostClass, TEST_REPLACE_CLASS_NAME);
         Path jar = createJar(tempDir);
-        assertHostClassPath(languageEnv, hostClass, TEST_REPLACE_CLASS_NAME, jar);
+        assertHostClassPath(languageEnv, hostClass, TEST_REPLACE_CLASS_NAME, languageEnv.getTruffleFile(jar.toString()));
         Files.deleteIfExists(jar);
         deleteDir(tempDir);
     }
@@ -209,13 +212,64 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
     @Test
     public void testDirectoryHostClassLoading() throws IOException {
         setupEnv();
-        final Class<?> hostClass = HostClassLoadingTestClass.class;
+        final Class<?> hostClass = HostClassLoadingTestClass1.class;
         Path tempDir = renameHostClass(hostClass, TEST_REPLACE_CLASS_NAME);
-        assertHostClassPath(languageEnv, hostClass, TEST_REPLACE_CLASS_NAME, tempDir);
+        assertHostClassPath(languageEnv, hostClass, TEST_REPLACE_CLASS_NAME, languageEnv.getTruffleFile(tempDir.toString()));
         deleteDir(tempDir);
     }
 
-    private static void assertHostClassPath(Env env, final Class<?> hostClass, String newName, Path classPathEntry) {
+    @Test
+    public void testMemoryFileSystemJarHostClassLoading() throws IOException {
+        setupEnv(Context.newBuilder(ProxyLanguage.ID).allowAllAccess(true).fileSystem(new MemoryFileSystem()).build());
+        Class<?> hostClass = HostClassLoadingTestClass1.class;
+        TruffleFile root = createClassFolderOnPolyglotFileSystem(languageEnv, hostClass, TEST_REPLACE_CLASS_NAME);
+        assertHostClassPath(languageEnv, hostClass, TEST_REPLACE_CLASS_NAME, root);
+    }
+
+    @Test
+    public void testMemoryFileSystemDirectoryHostClassLoading() throws IOException {
+        setupEnv(Context.newBuilder(ProxyLanguage.ID).allowAllAccess(true).fileSystem(new MemoryFileSystem()).build());
+        Class<?> hostClass = HostClassLoadingTestClass1.class;
+        TruffleFile root = createJarOnPolyglotFileSystem(languageEnv, hostClass, TEST_REPLACE_CLASS_NAME);
+        assertHostClassPath(languageEnv, hostClass, TEST_REPLACE_CLASS_NAME, root);
+    }
+
+    @Test
+    public void testMultipleClassPathRoots() throws IOException {
+        setupEnv();
+        final Class<?> hostClass = HostClassLoadingTestClass1.class;
+        Path tempDir1 = renameHostClass(hostClass, TEST_REPLACE_CLASS_NAME);
+        Path tempDir2 = renameHostClass(hostClass, TEST_REPLACE_CLASS_NAME_2);
+        Path jar1 = createJar(tempDir1);
+        Path jar2 = createJar(tempDir2);
+        assertHostClassPath(languageEnv, hostClass, TEST_REPLACE_CLASS_NAME, languageEnv.getTruffleFile(jar1.toString()));
+        assertHostClassPath(languageEnv, hostClass, TEST_REPLACE_CLASS_NAME_2, languageEnv.getTruffleFile(jar2.toString()));
+        Files.deleteIfExists(jar1);
+        Files.deleteIfExists(jar2);
+        deleteDir(tempDir1);
+        deleteDir(tempDir2);
+    }
+
+    @Test
+    public void testResourceOrder() throws IOException {
+        setupEnv();
+        Class<?> hostClass = HostClassLoadingTestClass2.class;
+        Path tempDir1 = renameHostClass(hostClass, TEST_REPLACE_CLASS_NAME);
+        hostClass = HostClassLoadingTestClass1.class;
+        Path tempDir2 = renameHostClass(hostClass, TEST_REPLACE_CLASS_NAME);
+        Path jar1 = createJar(tempDir1);
+        Path jar2 = createJar(tempDir2);
+        languageEnv.addToHostClassPath(languageEnv.getTruffleFile(jar1.toString()));
+        languageEnv.addToHostClassPath(languageEnv.getTruffleFile(jar2.toString()));
+        Object newSymbol = languageEnv.lookupHostSymbol(hostClass.getPackage().getName() + "." + TEST_REPLACE_CLASS_NAME);
+        assertEquals(1, read(newSymbol, "staticField"));
+        Files.deleteIfExists(jar1);
+        Files.deleteIfExists(jar2);
+        deleteDir(tempDir1);
+        deleteDir(tempDir2);
+    }
+
+    private static void assertHostClassPath(Env env, final Class<?> hostClass, String newName, TruffleFile classPathEntry) {
         String newClassName = hostClass.getPackage().getName() + "." + newName;
 
         try {
@@ -226,7 +280,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
             assertFalse(((TruffleException) e).isInternalError());
         }
 
-        env.addToHostClassPath(env.getTruffleFile(classPathEntry.toString()));
+        env.addToHostClassPath(classPathEntry);
 
         Object newSymbol = env.lookupHostSymbol(newClassName);
         assertHostSymbol(newSymbol, 42);
@@ -378,6 +432,62 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
             }
         }
         return -1;
+    }
+
+    private static TruffleFile createClassFolderOnPolyglotFileSystem(Env env, Class<?> testClass, String newClassName) throws IOException {
+        Path tempDir = renameHostClass(testClass, newClassName);
+        try {
+            TruffleFile root = env.getTruffleFile("/");
+            assertNotNull(root);
+            TruffleFile bin = root.resolve("bin");
+            bin.createDirectory();
+            copyToPolyglotFileSystem(tempDir, bin);
+            return bin;
+        } finally {
+            deleteDir(tempDir);
+        }
+    }
+
+    private static TruffleFile createJarOnPolyglotFileSystem(Env env, Class<?> testClass, String newClassName) throws IOException {
+        Path tempDir = renameHostClass(testClass, newClassName);
+        try {
+            Path jarFile = createJar(tempDir);
+            try {
+                TruffleFile root = env.getTruffleFile("/");
+                assertNotNull(root);
+                copyToPolyglotFileSystem(jarFile, root);
+                return root.resolve(jarFile.getFileName().toString());
+            } finally {
+                Files.deleteIfExists(jarFile);
+            }
+        } finally {
+            deleteDir(tempDir);
+        }
+    }
+
+    private static void copyToPolyglotFileSystem(Path source, TruffleFile targetRoot) throws IOException {
+        boolean folder = Files.isDirectory(source);
+        Files.walk(source).forEach((sourceFile) -> {
+            try {
+                TruffleFile targetFile;
+                if (folder) {
+                    Path relative = source.relativize(sourceFile);
+                    targetFile = targetRoot.resolve(relative.toString());
+                } else {
+                    targetFile = targetRoot.resolve(source.getFileName().toString());
+                }
+                if (Files.isDirectory(sourceFile)) {
+                    targetFile.createDirectories();
+                } else {
+                    byte[] data = Files.readAllBytes(sourceFile);
+                    try (OutputStream out = targetFile.newOutputStream(StandardOpenOption.WRITE, StandardOpenOption.CREATE)) {
+                        out.write(data);
+                    }
+                }
+            } catch (IOException ioe) {
+                throw new AssertionError("Cannot copy test data.", ioe);
+            }
+        });
     }
 
 }

@@ -83,7 +83,7 @@ public final class RegexLanguage extends TruffleLanguage<Void> {
     private final CallTarget getEngineBuilderCT = Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(engineBuilder));
 
     public static void validateRegex(String pattern, String flags) throws RegexSyntaxException {
-        RegexParser.validate(new RegexSource(pattern, RegexFlags.parseFlags(flags)));
+        RegexParser.validate(new RegexSource(pattern, flags));
     }
 
     @Override

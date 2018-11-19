@@ -61,7 +61,6 @@ gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/constexpr-base4.C
 gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/constexpr-static3.C
 gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/decltype14.C
 gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/defaulted30.C
-gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/defaulted36.C
 gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/defaulted46.C
 gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/defaulted5.C
 gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/defaulted9.C
@@ -69,11 +68,9 @@ gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/explicit5.C
 gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/fntmpdefarg4.C
 gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/implicit10.C
 gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/implicit14.C
-gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/implicit5.C
 gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/iop.C
 gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/local-targ1.C
 gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/named_refs.C
-gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/not_special.C
 gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/nsdmi-defer4.C
 gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/nsdmi-template1.C
 gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/nsdmi-template7.C
@@ -103,7 +100,6 @@ gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/rv-deduce2.C
 gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/rv-reinterpret.C
 gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/rv9p.C
 gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/rvo.C
-gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/union4.C
 gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/unnamed_refs.C
 gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/variadic-bind.C
 gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/variadic-crash1.C
@@ -210,7 +206,6 @@ gcc-5.2.0/gcc/testsuite/g++.dg/ext/attribute-test-1.C
 gcc-5.2.0/gcc/testsuite/g++.dg/ext/attribute-test-2.C
 gcc-5.2.0/gcc/testsuite/g++.dg/ext/attribute-test-3.C
 gcc-5.2.0/gcc/testsuite/g++.dg/ext/attribute-test-4.C
-gcc-5.2.0/gcc/testsuite/g++.dg/ext/bitfield1.C
 gcc-5.2.0/gcc/testsuite/g++.dg/ext/builtin7.C
 gcc-5.2.0/gcc/testsuite/g++.dg/ext/cleanup-2.C
 gcc-5.2.0/gcc/testsuite/g++.dg/ext/cleanup-3.C
@@ -255,7 +250,6 @@ gcc-5.2.0/gcc/testsuite/g++.dg/ext/sync-3.C
 gcc-5.2.0/gcc/testsuite/g++.dg/ext/tmplattr4.C
 gcc-5.2.0/gcc/testsuite/g++.dg/ext/typeof11.C
 gcc-5.2.0/gcc/testsuite/g++.dg/ext/typeof11.C
-gcc-5.2.0/gcc/testsuite/g++.dg/ext/typeof6.C
 gcc-5.2.0/gcc/testsuite/g++.dg/ext/visibility/fvisibility-inlines-hidden-4.C
 gcc-5.2.0/gcc/testsuite/g++.dg/ext/visibility/guard1.C
 gcc-5.2.0/gcc/testsuite/g++.dg/ext/visibility/local1.C
@@ -347,7 +341,6 @@ gcc-5.2.0/gcc/testsuite/g++.dg/init/init-ref2.C
 gcc-5.2.0/gcc/testsuite/g++.dg/init/init-ref3.C
 gcc-5.2.0/gcc/testsuite/g++.dg/init/init-ref4.C
 gcc-5.2.0/gcc/testsuite/g++.dg/init/lifetime1.C
-gcc-5.2.0/gcc/testsuite/g++.dg/init/lifetime2.C
 gcc-5.2.0/gcc/testsuite/g++.dg/init/lifetime3.C
 gcc-5.2.0/gcc/testsuite/g++.dg/init/new15.C
 gcc-5.2.0/gcc/testsuite/g++.dg/init/new16.C
@@ -359,7 +352,6 @@ gcc-5.2.0/gcc/testsuite/g++.dg/init/new28.C
 gcc-5.2.0/gcc/testsuite/g++.dg/init/new29.C
 gcc-5.2.0/gcc/testsuite/g++.dg/init/new31.C
 gcc-5.2.0/gcc/testsuite/g++.dg/init/new41.C
-gcc-5.2.0/gcc/testsuite/g++.dg/init/null1.C
 gcc-5.2.0/gcc/testsuite/g++.dg/init/pm1.C
 gcc-5.2.0/gcc/testsuite/g++.dg/init/pm3.C
 gcc-5.2.0/gcc/testsuite/g++.dg/init/pr43890.C
@@ -371,7 +363,6 @@ gcc-5.2.0/gcc/testsuite/g++.dg/init/ref19.C
 gcc-5.2.0/gcc/testsuite/g++.dg/init/ref20.C
 gcc-5.2.0/gcc/testsuite/g++.dg/init/ref4.C
 gcc-5.2.0/gcc/testsuite/g++.dg/init/ref6.C
-gcc-5.2.0/gcc/testsuite/g++.dg/init/self1.C
 gcc-5.2.0/gcc/testsuite/g++.dg/init/static2.C
 gcc-5.2.0/gcc/testsuite/g++.dg/init/static3.C
 gcc-5.2.0/gcc/testsuite/g++.dg/init/value1.C
@@ -556,7 +547,6 @@ gcc-5.2.0/gcc/testsuite/g++.dg/other/pr23205-2.C
 gcc-5.2.0/gcc/testsuite/g++.dg/other/pr34435.C
 gcc-5.2.0/gcc/testsuite/g++.dg/other/pr35504.C
 gcc-5.2.0/gcc/testsuite/g++.dg/other/pr39496.C
-gcc-5.2.0/gcc/testsuite/g++.dg/other/pr55650.C
 gcc-5.2.0/gcc/testsuite/g++.dg/other/pr63815.C
 gcc-5.2.0/gcc/testsuite/g++.dg/other/ptrmem3.C
 gcc-5.2.0/gcc/testsuite/g++.dg/other/stdarg1.C

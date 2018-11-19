@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.junit;
 
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
 import org.hamcrest.core.Every;
 import org.hamcrest.core.IsCollectionContaining;
-import org.hamcrest.internal.ReflectiveTypeFinder;
 
-@TargetClass(value = ReflectiveTypeFinder.class, onlyWith = JUnitFeature.IsEnabled.class)
+import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetClass;
+
+@TargetClass(className = "org.hamcrest.internal.ReflectiveTypeFinder", onlyWith = JUnitFeature.IsEnabled.class)
 public final class Target_org_hamcrest_internal_ReflectiveTypeFinder {
 
     @Substitute

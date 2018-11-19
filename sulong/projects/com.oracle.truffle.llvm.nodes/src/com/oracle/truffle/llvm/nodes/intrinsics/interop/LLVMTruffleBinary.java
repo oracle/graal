@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -43,7 +42,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
 public final class LLVMTruffleBinary {
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMTruffleIsBoxed extends LLVMIntrinsic {
 
         @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.createOptional();
@@ -61,7 +60,7 @@ public final class LLVMTruffleBinary {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMTruffleIsExecutable extends LLVMIntrinsic {
 
         @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.createOptional();
@@ -79,7 +78,7 @@ public final class LLVMTruffleBinary {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMTruffleIsNull extends LLVMIntrinsic {
 
         @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.createOptional();
@@ -97,7 +96,7 @@ public final class LLVMTruffleBinary {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMTruffleHasSize extends LLVMIntrinsic {
 
         @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.createOptional();
@@ -115,7 +114,7 @@ public final class LLVMTruffleBinary {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMTruffleHasKeys extends LLVMIntrinsic {
 
         @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.createOptional();

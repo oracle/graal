@@ -28,7 +28,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.tregex.nodes.input.InputCharAtNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputLengthNode;
-import com.oracle.truffle.regex.util.NumberConversion;
 
 public abstract class RegexExecRootNode extends RegexBodyNode {
 
@@ -46,8 +45,8 @@ public abstract class RegexExecRootNode extends RegexBodyNode {
 
         RegexObject regex = (RegexObject) args[0];
         Object input = args[1];
-        int fromIndex = NumberConversion.intValue((Number) args[2]);
-        if (sourceIsUnicode(regex) && fromIndex > 0 && fromIndex < inputLengthNode.execute(input)) {
+        int fromIndex = (int) args[2];
+        if (regex.isUnicodePattern() && fromIndex > 0 && fromIndex < inputLengthNode.execute(input)) {
             if (Character.isLowSurrogate(inputCharAtNode.execute(input, fromIndex)) &&
                             Character.isHighSurrogate(inputCharAtNode.execute(input, fromIndex - 1))) {
                 fromIndex = fromIndex - 1;
@@ -58,9 +57,4 @@ public abstract class RegexExecRootNode extends RegexBodyNode {
     }
 
     protected abstract RegexResult execute(VirtualFrame frame, RegexObject regex, Object input, int fromIndex);
-
-    @SuppressWarnings("unused")
-    protected boolean sourceIsUnicode(RegexObject regex) {
-        return getSource().getFlags().isUnicode();
-    }
 }

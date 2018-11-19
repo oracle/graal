@@ -2,6 +2,36 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 1.0.0 RC10
+* Added support for setting current working directory for TruffleFiles, see [Env.setCurrentWorkingDirectory](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#setCurrentWorkingDirectory-com.oracle.truffle.api.TruffleFile-)
+* Removed deprecated `TruffleLanguage.Env.newSourceBuilder`.
+
+* Added `TruffleLanguage.Env.isPreInitialization` method to determine whether the context is being pre-initialized.
+* Added `ArrayUtils` API providing additional array and/or string operations that may be intrinsified by the compiler.
+
+## Version 1.0.0 RC9
+
+* Added support for setting the `ThreadGroup` and `stackSize` on truffle thread creation in `TruffleLanguage.Env.createThread`.
+* Added `Instrumenter.lookupExecutionEventNode()` to find an execution event node inserted at the node's location by an event binding.
+* Added `SourceElement.ROOT` and `StepConfig.suspendAnchors()` to tune debugger stepping.
+* Added `KeyInfo.READ_SIDE_EFFECTS` and `KeyInfo.WRITE_SIDE_EFFECTS` to inform about side-effects of READ/WRITE messages.
+* Added `DebugValue.hasReadSideEffects()` and `DebugValue.hasWriteSideEffects()` to test for side-effects of reading or writing the value.
+
+## Version 1.0.0 RC8
+
+* Added `SuspendedEvent.setReturnValue` to change the return value of the currently executed source location.
+* Deprecated `FrameSlot#getIndex` without replacement.
+* Added `TruffleInstrument.Env.startServer()` to get a virtual message-based server provided via `MessageTransport` service.
+* Added `TruffleFile.relativize`, `TruffleFile.startsWith`, `TruffleFile.endsWith`, `TruffleFile.createLink`,  `TruffleFile.createSymbolicLink`, `TruffleFile.getOwner`, `TruffleFile.getGroup`, `TruffleFile.newDirectoryStream`, `TruffleFile.visit`, `TruffleFile.copy` methods.
+
+## Version 1.0.0 RC7
+
+* Truffle was relicensed from GPLv2 with CPE to Universal Permissive License (UPL).
+* Made all Truffle DSL annotations retention policy CLASS instead of RUNTIME. Reflecting DSL annotations at runtime is no longer possible. It is recommended to use `@Introspectable` instead. 
+
+* Removed deprecated FrameDescriptor#shallowCopy (deprecated since 1.0.0 RC3).
+* Removed deprecated FrameSlot#getFrameDescriptor (deprecated since 1.0.0 RC3).
+
 ## Version 1.0.0 RC6
 
 * Added support for byte based sources:
@@ -26,6 +56,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Removed deprecated class `TruffleTCK`.
 * Debugger API methods now throw [DebugException](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebugException.html) on language failures.
 * Deprecated API methods that use `java.beans` package in [AllocationReporter](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/AllocationReporter.html) and [Debugger](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/Debugger.html). New add/remove listener methods were introduced as a replacement.
+* [FrameDescriptor](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/frame/FrameDescriptor.html) no longer shares a lock with a RootNode.
 
 ## Version 1.0.0 RC5
 

@@ -3,7 +3,7 @@
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
- * 
+ *
  * Subject to the condition set forth below, permission is hereby granted to any
  * person obtaining a copy of this software, associated documentation and/or
  * data (collectively the "Software"), free of charge and under any and all
@@ -11,25 +11,25 @@
  * freely licensable by each licensor hereunder covering either (i) the
  * unmodified Software as contributed to or provided by such licensor, or (ii)
  * the Larger Works (as defined below), to deal in both
- * 
+ *
  * (a) the Software, and
- * 
+ *
  * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
  * one is included with the Software each a "Larger Work" to which the Software
  * is contributed by such licensors),
- * 
+ *
  * without restriction, including without limitation the rights to copy, create
  * derivative works of, display, perform, and distribute the Software and make,
  * use, sell, offer for sale, import, export, have made, and have sold the
  * Software and the Larger Work(s), and to sublicense the foregoing rights on
  * either these or other terms.
- * 
+ *
  * This license is subject to the following condition:
- * 
+ *
  * The above copyright notice and either this complete permission notice or at a
  * minimum a reference to the UPL must be included in all copies or substantial
  * portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -338,7 +338,7 @@ final class HostInteropReflect {
     }
 }
 
-class FunctionProxyNode extends HostEntryRootNode<TruffleObject> {
+class FunctionProxyNode extends HostRootNode<TruffleObject> {
 
     final Class<?> receiverClass;
     final Method method;
@@ -363,14 +363,14 @@ class FunctionProxyNode extends HostEntryRootNode<TruffleObject> {
     }
 
     @Override
-    protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject function, Object[] args, int offset) {
+    protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject function, Object[] args) {
         if (executeNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             this.returnClass = HostInteropReflect.getMethodReturnType(method);
             this.returnType = HostInteropReflect.getMethodGenericReturnType(method);
             this.executeNode = insert(new PolyglotExecuteNode());
         }
-        return executeNode.execute(languageContext, function, args[offset], returnClass, returnType);
+        return executeNode.execute(languageContext, function, args[ARGUMENT_OFFSET], returnClass, returnType);
     }
 
     @Override
@@ -400,7 +400,7 @@ class FunctionProxyNode extends HostEntryRootNode<TruffleObject> {
     }
 }
 
-final class FunctionProxyHandler implements InvocationHandler {
+final class FunctionProxyHandler implements InvocationHandler, HostWrapper {
     final TruffleObject functionObj;
     final PolyglotLanguageContext languageContext;
     private final Method functionMethod;
@@ -414,12 +414,28 @@ final class FunctionProxyHandler implements InvocationHandler {
     }
 
     @Override
+    public Object getGuestObject() {
+        return functionObj;
+    }
+
+    @Override
+    public PolyglotContextImpl getContext() {
+        return languageContext.context;
+    }
+
+    @Override
+    public PolyglotLanguageContext getLanguageContext() {
+        return languageContext;
+    }
+
+    @Override
     public Object invoke(Object proxy, Method method, Object[] arguments) throws Throwable {
         CompilerAsserts.neverPartOfCompilation();
+        Object[] resolvedArguments = arguments == null ? HostInteropReflect.EMPTY : arguments;
         if (method.equals(functionMethod)) {
-            return target.call(languageContext, functionObj, spreadVarArgsArray(arguments));
+            return target.call(languageContext, functionObj, spreadVarArgsArray(resolvedArguments));
         } else {
-            return invokeDefault(proxy, method, arguments);
+            return invokeDefault(this, proxy, method, resolvedArguments);
         }
     }
 
@@ -439,15 +455,15 @@ final class FunctionProxyHandler implements InvocationHandler {
         }
     }
 
-    private static Object invokeDefault(Object proxy, Method method, Object[] arguments) throws Throwable {
+    static Object invokeDefault(HostWrapper host, Object proxy, Method method, Object[] arguments) throws Throwable {
         if (method.getDeclaringClass() == Object.class) {
             switch (method.getName()) {
                 case "equals":
-                    return proxy == arguments[0];
+                    return HostWrapper.equalsProxy(host, arguments[0]);
                 case "hashCode":
-                    return System.identityHashCode(proxy);
+                    return HostWrapper.hashCode(host);
                 case "toString":
-                    return proxy.getClass().getName() + "@" + Integer.toHexString(System.identityHashCode(proxy));
+                    return HostWrapper.toString(host);
                 default:
                     throw new UnsupportedOperationException(method.getName());
             }
@@ -465,7 +481,7 @@ final class FunctionProxyHandler implements InvocationHandler {
     }
 }
 
-class ObjectProxyNode extends HostEntryRootNode<TruffleObject> {
+class ObjectProxyNode extends HostRootNode<TruffleObject> {
 
     final Class<?> receiverClass;
     final Class<?> interfaceType;
@@ -490,14 +506,14 @@ class ObjectProxyNode extends HostEntryRootNode<TruffleObject> {
     }
 
     @Override
-    protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args, int offset) {
+    protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args) {
         if (proxyInvoke == null || toGuests == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             toGuests = ToGuestValuesNode.create();
             proxyInvoke = ProxyInvokeNodeGen.create();
         }
-        Method method = (Method) args[offset];
-        Object[] arguments = toGuests.apply(languageContext, (Object[]) args[offset + 1]);
+        Method method = (Method) args[ARGUMENT_OFFSET];
+        Object[] arguments = toGuests.apply(languageContext, (Object[]) args[ARGUMENT_OFFSET + 1]);
         return proxyInvoke.execute(languageContext, receiver, method, arguments);
     }
 
@@ -622,7 +638,7 @@ abstract class ProxyInvokeNode extends Node {
 
 }
 
-final class ObjectProxyHandler implements InvocationHandler {
+final class ObjectProxyHandler implements InvocationHandler, HostWrapper {
 
     final TruffleObject obj;
     final PolyglotLanguageContext languageContext;
@@ -635,9 +651,29 @@ final class ObjectProxyHandler implements InvocationHandler {
     }
 
     @Override
+    public Object getGuestObject() {
+        return obj;
+    }
+
+    @Override
+    public PolyglotLanguageContext getLanguageContext() {
+        return languageContext;
+    }
+
+    @Override
+    public PolyglotContextImpl getContext() {
+        return languageContext.context;
+    }
+
+    @Override
     public Object invoke(Object proxy, Method method, Object[] arguments) throws Throwable {
         CompilerAsserts.neverPartOfCompilation();
-        return invoke.call(languageContext, obj, method, arguments == null ? HostInteropReflect.EMPTY : arguments);
+        Object[] resolvedArguments = arguments == null ? HostInteropReflect.EMPTY : arguments;
+        try {
+            return invoke.call(languageContext, obj, method, resolvedArguments);
+        } catch (UnsupportedOperationException e) {
+            return FunctionProxyHandler.invokeDefault(this, proxy, method, resolvedArguments);
+        }
     }
 
 }

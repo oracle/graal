@@ -24,14 +24,12 @@
  */
 package com.oracle.svm.core.os;
 
-import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_BEGIN;
-import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_END;
 import static org.graalvm.word.WordFactory.nullPointer;
+import static org.graalvm.word.WordFactory.zero;
 
-import org.graalvm.compiler.word.Word;
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.c.function.CEntryPointContext;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
@@ -39,13 +37,14 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Isolates;
-import com.oracle.svm.core.MemoryUtil;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointSetup;
+import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
 import com.oracle.svm.core.util.PointerUtils;
@@ -56,6 +55,7 @@ class OSCommittedMemoryProviderFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         if (!ImageSingletons.contains(CommittedMemoryProvider.class)) {
+            ImageSingletons.add(ImageHeapProvider.class, new CopyingImageHeapProvider());
             ImageSingletons.add(CommittedMemoryProvider.class, new OSCommittedMemoryProvider());
         }
     }
@@ -69,35 +69,13 @@ public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
             isolatePointer.write(CEntryPointSetup.SINGLE_ISOLATE_SENTINEL);
             return CEntryPointErrors.NO_ERROR;
         }
+        return ImageHeapProvider.get().initialize(nullPointer(), zero(), isolatePointer, nullPointer());
+    }
 
-        Word begin = Isolates.IMAGE_HEAP_BEGIN.get();
-        Word size = Isolates.IMAGE_HEAP_END.get().subtract(begin);
-
-        Pointer heap = VirtualMemoryProvider.get().commit(nullPointer(), size, Access.READ | Access.WRITE);
-        if (heap.isNull()) {
-            return CEntryPointErrors.MAP_HEAP_FAILED;
-        }
-
-        MemoryUtil.copyConjointMemoryAtomic(begin, heap, size);
-
-        UnsignedWord pageSize = getGranularity();
-        UnsignedWord writableBeginPageOffset = UnsignedUtils.roundDown(IMAGE_HEAP_WRITABLE_BEGIN.get().subtract(begin), pageSize);
-        if (writableBeginPageOffset.aboveThan(0)) {
-            if (VirtualMemoryProvider.get().protect(heap, writableBeginPageOffset, Access.READ) != 0) {
-                return CEntryPointErrors.PROTECT_HEAP_FAILED;
-            }
-        }
-        UnsignedWord writableEndPageOffset = UnsignedUtils.roundUp(IMAGE_HEAP_WRITABLE_END.get().subtract(begin), pageSize);
-        if (writableEndPageOffset.belowThan(size)) {
-            Pointer afterWritableBoundary = heap.add(writableEndPageOffset);
-            Word afterWritableSize = size.subtract(writableEndPageOffset);
-            if (VirtualMemoryProvider.get().protect(afterWritableBoundary, afterWritableSize, Access.READ) != 0) {
-                return CEntryPointErrors.PROTECT_HEAP_FAILED;
-            }
-        }
-
-        isolatePointer.write(heap);
-        return CEntryPointErrors.NO_ERROR;
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    protected static void tearDownVirtualMemoryConsumers() {
+        CodeInfoTable.getRuntimeCodeCache().tearDown();
+        Heap.getHeap().tearDown();
     }
 
     @Override
@@ -107,12 +85,10 @@ public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
             return CEntryPointErrors.NO_ERROR;
         }
 
-        PointerBase heapBase = Isolates.getHeapBase(CEntryPointContext.getCurrentIsolate());
-        Word size = Isolates.IMAGE_HEAP_END.get().subtract(Isolates.IMAGE_HEAP_BEGIN.get());
-        if (VirtualMemoryProvider.get().free(heapBase, size) != 0) {
-            return CEntryPointErrors.MAP_HEAP_FAILED;
-        }
-        return CEntryPointErrors.NO_ERROR;
+        tearDownVirtualMemoryConsumers();
+
+        PointerBase heapBase = Isolates.getHeapBase(CurrentIsolate.getIsolate());
+        return ImageHeapProvider.get().tearDown(heapBase);
     }
 
     /**
@@ -193,6 +169,7 @@ public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean free(PointerBase start, UnsignedWord nbytes, UnsignedWord alignment, boolean executable) {
         final UnsignedWord pageSize = getGranularity();
         // Re-discover the paged-aligned ends of the memory region.
@@ -204,6 +181,7 @@ public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
         return free(pagedStart, pagedSize);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private boolean free(Pointer start, UnsignedWord size) {
         boolean success = (VirtualMemoryProvider.get().free(start, size) == 0);
         if (success) {
@@ -216,6 +194,7 @@ public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
         tracker.track(size);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void untrackVirtualMemory(UnsignedWord size) {
         tracker.untrack(size);
     }
@@ -237,6 +216,7 @@ public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
             totalAllocated = totalAllocated.add(size);
         }
 
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void untrack(UnsignedWord size) {
             totalAllocated = totalAllocated.subtract(size);
         }

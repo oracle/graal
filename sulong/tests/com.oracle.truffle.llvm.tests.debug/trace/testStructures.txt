@@ -28,7 +28,7 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-BREAK 73 CONTINUE "testCombinedStructArg"
+BREAK 105 CONTINUE "testCombinedStructArg"
     OPEN_SCOPE
         MEMBER structured "struct combinableStruct" "str"
             MEMBER int "int" "a" "128"
@@ -41,7 +41,7 @@ BREAK 73 CONTINUE "testCombinedStructArg"
         END_MEMBERS
 
 
-BREAK 80 CONTINUE "testSplittedStructArg"
+BREAK 112 CONTINUE "testSplittedStructArg"
     OPEN_SCOPE
         MEMBER structured "struct splittableStruct" "str"
             MEMBER int "long int" "a" "128"
@@ -54,7 +54,7 @@ BREAK 80 CONTINUE "testSplittedStructArg"
         END_MEMBERS
 
 
-BREAK 115 CONTINUE "start"
+BREAK 178 CONTINUE "start"
     OPEN_SCOPE
         MEMBER structured "struct splittableStruct" "mySplittableStruct"
             MEMBER int "long int" "a" "128"
@@ -82,6 +82,36 @@ BREAK 115 CONTINUE "start"
             MEMBER int "unsigned int" "f" "0"
             MEMBER int "int" "g" "-1"
             MEMBER int "int" "h" "0"
+        END_MEMBERS
+        MEMBER structured "FloatStruct" "fs"
+            MEMBER float32 "float" "a" "1.2"
+            MEMBER float32 "float" "b" "3.4"
+            MEMBER float32 "float" "c" "-5.6"
+            MEMBER float32 "float" "d" "6.7"
+            MEMBER float32 "float" "e" "8.9"
+            MEMBER float32 "float" "f" "0.0"
+            MEMBER float32 "float" "g" "-0.1"
+            MEMBER float32 "float" "h" "0.2"
+        END_MEMBERS
+        MEMBER structured "DoubleStruct" "ds"
+            MEMBER float64 "double" "a" "1.2"
+            MEMBER float64 "double" "b" "3.4"
+            MEMBER float64 "double" "c" "-5.6"
+            MEMBER float64 "double" "d" "6.7"
+            MEMBER float64 "double" "e" "8.9"
+            MEMBER float64 "double" "f" "0.0"
+            MEMBER float64 "double" "g" "-0.1"
+            MEMBER float64 "double" "h" "0.2"
+        END_MEMBERS
+        MEMBER structured "PointerStruct" "ps"
+            MEMBER exact "void*" "a" "0x1001"
+            MEMBER exact "void*" "b" "0x110"
+            MEMBER exact "void*" "c" "0x10010000"
+            MEMBER exact "void*" "d" "0xabcddcba"
+            MEMBER exact "void*" "e" "0x10000001"
+            MEMBER exact "void*" "f" "0xfedcba9876543210"
+            MEMBER exact "void*" "g" "0x12345678"
+            MEMBER exact "void*" "h" "0xffffffff000000ff"
         END_MEMBERS
     OPEN_SCOPE "<static>"
         MEMBER structured "struct globalStruct" "myGlobalStruct"

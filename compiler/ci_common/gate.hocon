@@ -13,6 +13,15 @@ gateTest : {
   ]
 }
 
+gateCoverage : {
+  environment : {
+    EXTRA_VM_ARGS : ""
+  }
+  run : [
+    ${gateCmd} ["build,coverage", --jacoco-zip, report.zip]
+  ]
+}
+
 gateJavaBaseTest : {
   environment : {
     EXTRA_VM_ARGS : ""
@@ -25,6 +34,18 @@ gateJavaBaseTest : {
 gateTestMaxVS : ${gateTest} {
   environment : {
     EXTRA_VM_ARGS : "-Dgraal.DetailedAsserts=true -XX:MaxVectorSize=16"
+  }
+}
+
+gateTestAVX0 : ${gateTest} {
+  environment : {
+    EXTRA_VM_ARGS : "-XX:UseAVX=0"
+  }
+}
+
+gateTestAVX1 : ${gateTest} {
+  environment : {
+    EXTRA_VM_ARGS : "-XX:UseAVX=1"
   }
 }
 

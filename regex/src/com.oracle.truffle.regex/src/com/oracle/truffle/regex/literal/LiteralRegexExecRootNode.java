@@ -25,6 +25,7 @@
 package com.oracle.truffle.regex.literal;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -158,7 +159,7 @@ public abstract class LiteralRegexExecRootNode extends RegexExecRootNode impleme
 
     public static final class IndexOfChar extends LiteralRegexExecRootNode {
 
-        private final char[] c;
+        @CompilationFinal(dimensions = 1) private final char[] c;
         @Child InputIndexOfNode indexOfNode = InputIndexOfNode.create();
         @Child InputLengthNode lengthNode = InputLengthNode.create();
 

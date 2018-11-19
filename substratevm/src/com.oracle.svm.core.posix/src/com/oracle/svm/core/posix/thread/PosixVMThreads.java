@@ -32,6 +32,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.word.ComparableWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -39,38 +40,23 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.posix.headers.LibC;
-import com.oracle.svm.core.posix.headers.Stdio.FILE;
-import com.oracle.svm.core.posix.pthread.PthreadThreadLocal;
+import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.posix.pthread.PthreadVMLockSupport;
+import com.oracle.svm.core.posix.headers.Stdio.FILE;
 import com.oracle.svm.core.thread.VMThreads;
 
 public final class PosixVMThreads extends VMThreads {
 
-    private static final PthreadThreadLocal<IsolateThread> VMThreadTL = new PthreadThreadLocal<>();
-
-    @Uninterruptible(reason = "Thread state not set up.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
-    protected void initializeOnce() {
-        VMThreadTL.initialize();
-        PthreadVMLockSupport.initialize();
+    protected ComparableWord getCurrentOSThreadId() {
+        return Pthread.pthread_self();
     }
 
     @Uninterruptible(reason = "Thread state not set up.")
     @Override
-    public void tearDown() {
-        VMThreadTL.destroy();
-    }
-
-    @Uninterruptible(reason = "Thread state not set up.")
-    @Override
-    public IsolateThread readIsolateThreadFromOSThreadLocal() {
-        return VMThreadTL.get();
-    }
-
-    @Uninterruptible(reason = "Thread state not set up.")
-    @Override
-    public void writeIsolateThreadToOSThreadLocal(IsolateThread thread) {
-        VMThreadTL.set(thread);
+    protected boolean initializeOnce() {
+        return PthreadVMLockSupport.initialize();
     }
 
     @Uninterruptible(reason = "Thread state not set up.")

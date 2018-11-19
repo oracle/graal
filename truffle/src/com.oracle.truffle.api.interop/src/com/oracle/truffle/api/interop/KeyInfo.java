@@ -3,7 +3,7 @@
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
- * 
+ *
  * Subject to the condition set forth below, permission is hereby granted to any
  * person obtaining a copy of this software, associated documentation and/or
  * data (collectively the "Software"), free of charge and under any and all
@@ -11,25 +11,25 @@
  * freely licensable by each licensor hereunder covering either (i) the
  * unmodified Software as contributed to or provided by such licensor, or (ii)
  * the Larger Works (as defined below), to deal in both
- * 
+ *
  * (a) the Software, and
- * 
+ *
  * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
  * one is included with the Software each a "Larger Work" to which the Software
  * is contributed by such licensors),
- * 
+ *
  * without restriction, including without limitation the rights to copy, create
  * derivative works of, display, perform, and distribute the Software and make,
  * use, sell, offer for sale, import, export, have made, and have sold the
  * Software and the Larger Work(s), and to sublicense the foregoing rights on
  * either these or other terms.
- * 
+ *
  * This license is subject to the following condition:
- * 
+ *
  * The above copyright notice and either this complete permission notice or at a
  * minimum a reference to the UPL must be included in all copies or substantial
  * portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -52,6 +52,10 @@ package com.oracle.truffle.api.interop;
  * <li>{@link #INVOCABLE}: if {@link Message#INVOKE invoking} an existing key is supported.
  * <li>{@link #REMOVABLE} if {@link Message#REMOVE removing} an existing key is supported.
  * <li>{@link #INTERNAL} if an existing key is internal.
+ * <li>{@link #READ_SIDE_EFFECTS} if {@link Message#READ} of the key value may have side-effects,
+ * i.e. may change values of some keys, state of objects, etc.
+ * <li>{@link #WRITE_SIDE_EFFECTS} if {@link Message#WRITE} of the key value may have side-effects,
+ * i.e. may change values of other keys, state of other objects, etc.
  * <p>
  * When a {@link #isReadable(int) readable} or {@link #isWritable(int) writable} flag is
  * <code>true</code>, it does not necessarily guarantee that subsequent {@link Message#READ} or
@@ -77,6 +81,7 @@ public final class KeyInfo {
      * Single bit that is set if {@link Message#READ reading} an existing key is supported.
      *
      * @since 0.33
+     * @see #READ_SIDE_EFFECTS
      */
     public static final int READABLE = 1 << 1;
 
@@ -84,6 +89,7 @@ public final class KeyInfo {
      * Single bit that is set if {@link Message#WRITE writing} an existing key is supported.
      *
      * @since 0.33
+     * @see #WRITE_SIDE_EFFECTS
      */
     public static final int MODIFIABLE = 1 << 2;
 
@@ -114,6 +120,26 @@ public final class KeyInfo {
      * @since 0.33
      */
     public static final int INSERTABLE = 1 << 6;
+
+    /**
+     * Single bit that is set if {@link Message#READ} may have side-effects. A read side-effect
+     * means any change in runtime state that is observable by the guest language program. For
+     * instance in JavaScript a property {@link Message#READ} may have side-effects if the property
+     * has a getter function.
+     *
+     * @since 1.0
+     */
+    public static final int READ_SIDE_EFFECTS = 1 << 7;
+
+    /**
+     * Single bit that is set if {@link Message#WRITE} may have side-effects. A write side-effect
+     * means any change in runtime state, besides the write operation of the member, that is
+     * observable by the guest language program. For instance in JavaScript a property
+     * {@link Message#WRITE} may have side-effects if the property has a setter function.
+     *
+     * @since 1.0
+     */
+    public static final int WRITE_SIDE_EFFECTS = 1 << 8;
 
     private static final int WRITABLE = INSERTABLE | MODIFIABLE;
 
@@ -147,6 +173,24 @@ public final class KeyInfo {
      */
     public static boolean isWritable(int infoBits) {
         return (infoBits & WRITABLE) != 0;
+    }
+
+    /**
+     * Test if {@link Message#READ} may have side-effects.
+     *
+     * @since 1.0
+     */
+    public static boolean hasReadSideEffects(int infoBits) {
+        return (infoBits & READ_SIDE_EFFECTS) != 0;
+    }
+
+    /**
+     * Test if {@link Message#WRITE} may have side-effects.
+     *
+     * @since 1.0
+     */
+    public static boolean hasWriteSideEffects(int infoBits) {
+        return (infoBits & WRITE_SIDE_EFFECTS) != 0;
     }
 
     /**

@@ -3,7 +3,7 @@
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
- * 
+ *
  * Subject to the condition set forth below, permission is hereby granted to any
  * person obtaining a copy of this software, associated documentation and/or
  * data (collectively the "Software"), free of charge and under any and all
@@ -11,25 +11,25 @@
  * freely licensable by each licensor hereunder covering either (i) the
  * unmodified Software as contributed to or provided by such licensor, or (ii)
  * the Larger Works (as defined below), to deal in both
- * 
+ *
  * (a) the Software, and
- * 
+ *
  * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
  * one is included with the Software each a "Larger Work" to which the Software
  * is contributed by such licensors),
- * 
+ *
  * without restriction, including without limitation the rights to copy, create
  * derivative works of, display, perform, and distribute the Software and make,
  * use, sell, offer for sale, import, export, have made, and have sold the
  * Software and the Larger Work(s), and to sublicense the foregoing rights on
  * either these or other terms.
- * 
+ *
  * This license is subject to the following condition:
- * 
+ *
  * The above copyright notice and either this complete permission notice or at a
  * minimum a reference to the UPL must be included in all copies or substantial
  * portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -811,11 +811,11 @@ public final class TruffleLogger {
         }
     }
 
-    private void updateLevelNum() {
+    private void updateLevelNum(boolean singleContext) {
         int value;
         if (levelObj != null) {
             value = levelObj.intValue();
-            if (parent != null) {
+            if (parent != null && !singleContext) {
                 value = Math.min(value, parent.getLevelNum());
             }
         } else if (parent != null) {
@@ -828,7 +828,7 @@ public final class TruffleLogger {
             for (ChildLoggerRef ref : children) {
                 final TruffleLogger logger = ref.get();
                 if (logger != null) {
-                    logger.updateLevelNum();
+                    logger.updateLevelNum(singleContext);
                 }
             }
         }
@@ -852,14 +852,14 @@ public final class TruffleLogger {
         return false;
     }
 
-    private void setLevel(final Level level) {
+    private void setLevel(final Level level, final boolean singleContext) {
         synchronized (childrenLock) {
             this.levelObj = level;
-            updateLevelNum();
+            updateLevelNum(singleContext);
         }
     }
 
-    private void setParent(final TruffleLogger newParent) {
+    private void setParent(final TruffleLogger newParent, final boolean singleContext) {
         Objects.requireNonNull(newParent, "Parent must be non null.");
         synchronized (childrenLock) {
             ChildLoggerRef found = null;
@@ -883,7 +883,7 @@ public final class TruffleLogger {
                 parent.children = new ArrayList<>(2);
             }
             parent.children.add(found);
-            updateLevelNum();
+            updateLevelNum(singleContext);
         }
     }
 
@@ -992,7 +992,7 @@ public final class TruffleLogger {
             if (activeContexts.size() == 1) {
                 return true;
             }
-            final int currentLevel = Math.min(computeLevel(loggerName, current), DEFAULT_VALUE);
+            final int currentLevel = computeLevel(loggerName, current);
             return level.intValue() >= currentLevel && currentLevel != OFF_VALUE;
         }
 
@@ -1056,13 +1056,13 @@ public final class TruffleLogger {
                 }
                 ref = new NamedLoggerRef(logger, loggerName);
                 loggers.put(loggerName, ref);
-                setLoggerLevel(logger, loggerName);
+                setLoggerLevel(logger, loggerName, activeContexts.size() <= 1);
                 createParents(loggerName);
                 final LoggerNode node = findLoggerNode(loggerName);
                 node.setLoggerRef(ref);
                 final TruffleLogger parentLogger = node.findParentLogger();
                 if (parentLogger != null) {
-                    logger.setParent(parentLogger);
+                    logger.setParent(parentLogger, activeContexts.size() <= 1);
                 }
                 node.updateChildParents();
                 ref.setNode(node);
@@ -1097,16 +1097,17 @@ public final class TruffleLogger {
                             activeContexts,
                             loggersWithRemovedLevels,
                             loggersWithChangedLevels);
+            boolean singleContext = activeContexts.size() <= 1;
             for (String loggerName : loggersWithRemovedLevels) {
                 final TruffleLogger logger = getLogger(loggerName);
                 if (logger != null) {
-                    logger.setLevel(null);
+                    logger.setLevel(null, singleContext);
                 }
             }
             for (String loggerName : loggersWithChangedLevels) {
                 final TruffleLogger logger = getLogger(loggerName);
                 if (logger != null) {
-                    setLoggerLevel(logger, loggerName);
+                    setLoggerLevel(logger, loggerName, singleContext);
                     createParents(loggerName);
                 } else {
                     getOrCreateLogger(loggerName);
@@ -1114,10 +1115,10 @@ public final class TruffleLogger {
             }
         }
 
-        private void setLoggerLevel(final TruffleLogger logger, final String loggerName) {
+        private void setLoggerLevel(final TruffleLogger logger, final String loggerName, final boolean singleContext) {
             final Level l = getEffectiveLevel(loggerName);
             if (l != null) {
-                logger.setLevel(l);
+                logger.setLevel(l, singleContext);
             }
         }
 
@@ -1285,7 +1286,7 @@ public final class TruffleLogger {
                 for (LoggerNode child : children.values()) {
                     TruffleLogger childLogger = child.loggerRef != null ? child.loggerRef.get() : null;
                     if (childLogger != null) {
-                        childLogger.setParent(parentLogger);
+                        childLogger.setParent(parentLogger, activeContexts.size() <= 1);
                     } else {
                         child.updateChildParentsImpl(parentLogger);
                     }

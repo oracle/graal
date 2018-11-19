@@ -26,14 +26,15 @@ package com.oracle.svm.truffle.nfi;
 
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
-import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
-import java.nio.charset.CharsetEncoder;
-import java.nio.charset.CoderResult;
 
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.ObjectHandles;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platform.DARWIN;
+import org.graalvm.nativeimage.Platform.LINUX;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -44,9 +45,6 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.truffle.nfi.NativeAPI.TruffleContextHandle;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platform.DARWIN;
-import org.graalvm.nativeimage.Platform.LINUX;
 
 public final class TruffleNFISupport {
 
@@ -142,49 +140,50 @@ public final class TruffleNFISupport {
             return null;
         } else {
             UnsignedWord len = SubstrateUtil.strlen(str);
-            ByteBuffer buffer = SubstrateUtil.wrapAsByteBuffer(str, (int) len.rawValue());
+            ByteBuffer buffer = CTypeConversion.asByteBuffer(str, (int) len.rawValue());
             return UTF8.decode(buffer).toString();
+        }
+    }
+
+    private static final class ZeroTerminatedCharSequence implements CharSequence {
+
+        private CharSequence seq;
+
+        ZeroTerminatedCharSequence(CharSequence seq) {
+            this.seq = seq;
+        }
+
+        @Override
+        public int length() {
+            return seq.length() + 1;
+        }
+
+        @Override
+        public char charAt(int index) {
+            if (index == seq.length()) {
+                return '\0';
+            } else {
+                return seq.charAt(index);
+            }
+        }
+
+        @Override
+        public CharSequence subSequence(int start, int end) {
+            if (end == length()) {
+                return new ZeroTerminatedCharSequence(seq.subSequence(start, end - 1));
+            } else {
+                return seq.subSequence(start, end);
+            }
         }
     }
 
     @TruffleBoundary
     static byte[] javaStringToUtf8(String str) {
-        CharsetEncoder encoder = UTF8.newEncoder();
-        int sizeEstimate = (int) (str.length() * encoder.averageBytesPerChar()) + 1;
-        ByteBuffer retBuffer = ByteBuffer.allocate(sizeEstimate);
-        CharBuffer input = CharBuffer.wrap(str);
-
-        while (input.hasRemaining()) {
-            CoderResult result = encoder.encode(input, retBuffer, true);
-            if (result.isUnderflow()) {
-                result = encoder.flush(retBuffer);
-            }
-            if (result.isUnderflow()) {
-                break;
-            }
-
-            if (result.isOverflow()) {
-                sizeEstimate = 2 * sizeEstimate + 1;
-                ByteBuffer newBuffer = ByteBuffer.allocate(sizeEstimate);
-                retBuffer.flip();
-                newBuffer.put(retBuffer);
-                retBuffer = newBuffer;
-            } else {
-                try {
-                    result.throwException();
-                } catch (CharacterCodingException ex) {
-                    throw new RuntimeException(ex);
-                }
-            }
-        }
-
-        if (retBuffer.remaining() == 0) {
-            ByteBuffer newBuffer = ByteBuffer.allocate(retBuffer.limit() + 1);
-            newBuffer.put(retBuffer);
-            retBuffer = newBuffer;
-        }
-
-        retBuffer.put((byte) 0);
-        return retBuffer.array();
+        CharBuffer input = CharBuffer.wrap(new ZeroTerminatedCharSequence(str));
+        /*
+         * No need to trim the result array. The string is zero terminated, and the array is only
+         * accessed from native code, which ignores the array length anyway.
+         */
+        return UTF8.encode(input).array();
     }
 }

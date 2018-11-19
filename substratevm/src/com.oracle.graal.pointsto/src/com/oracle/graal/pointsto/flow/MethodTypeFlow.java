@@ -318,19 +318,10 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
                     }
                     String message = cause.getMessage();
                     bb.getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, message, ex.context(), cause.getCause());
-                } else if (ex.getCause() instanceof ClassNotFoundException) {
-                    String message = "Bytecode parsing error: " + ex.getMessage();
-                    bb.getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, message, ex.context(), ex.getCause());
-                } else if (ex.getCause() instanceof NoClassDefFoundError) {
-                    String message = "Bytecode parsing error: " + ex.getMessage();
-                    bb.getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, message, ex.context(), ex.getCause());
                 } else {
-                    throw ex;
+                    /* Wrap all other errors as parsing errors. */
+                    throw AnalysisError.parsingError(method, ex);
                 }
-            } catch (NoClassDefFoundError ex) {
-                bb.getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, ex.toString(), null, ex);
-            } catch (UnsupportedFeatureException ex) {
-                bb.getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, ex.getMessage(), null, ex);
             } catch (Throwable t) {
                 /* Wrap all other errors as parsing errors. */
                 throw AnalysisError.parsingError(method, t);

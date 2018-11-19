@@ -72,6 +72,11 @@ public class LLVMFunctionStartNode extends RootNode {
     }
 
     @Override
+    public boolean isInternal() {
+        return debugInformation.bcSource.isInternal();
+    }
+
+    @Override
     public Object execute(VirtualFrame frame) {
         nullStack(frame);
         Object result = node.executeGeneric(frame);

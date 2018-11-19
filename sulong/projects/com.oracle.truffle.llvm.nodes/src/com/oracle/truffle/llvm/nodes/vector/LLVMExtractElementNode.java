@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.nodes.vector;
 
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -45,7 +44,8 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
 
 public abstract class LLVMExtractElementNode {
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMI1ExtractElementNode extends LLVMExpressionNode {
 
         @Specialization
@@ -54,7 +54,8 @@ public abstract class LLVMExtractElementNode {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMI8ExtractElementNode extends LLVMExpressionNode {
 
         @Specialization
@@ -63,7 +64,8 @@ public abstract class LLVMExtractElementNode {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMI16ExtractElementNode extends LLVMExpressionNode {
 
         @Specialization
@@ -72,7 +74,8 @@ public abstract class LLVMExtractElementNode {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMI32ExtractElementNode extends LLVMExpressionNode {
 
         @Specialization
@@ -81,7 +84,8 @@ public abstract class LLVMExtractElementNode {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMI64ExtractElementNode extends LLVMExpressionNode {
 
         @Specialization
@@ -95,7 +99,8 @@ public abstract class LLVMExtractElementNode {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMFloatExtractElementNode extends LLVMExpressionNode {
 
         @Specialization
@@ -104,7 +109,8 @@ public abstract class LLVMExtractElementNode {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMDoubleExtractElementNode extends LLVMExpressionNode {
 
         @Specialization

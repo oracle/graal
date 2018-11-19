@@ -35,7 +35,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -77,7 +76,8 @@ public abstract class LLVMTruffleRead extends LLVMIntrinsic {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMTruffleReadFromName extends LLVMTruffleRead {
 
         @Child protected Node foreignRead = Message.READ.createNode();
@@ -88,16 +88,7 @@ public abstract class LLVMTruffleRead extends LLVMIntrinsic {
             this.toLLVM = toLLVM;
         }
 
-        @SuppressWarnings("unused")
-        @Specialization(limit = "2", guards = "cachedId.equals(readStr.executeWithTarget(id))")
-        protected Object cached(LLVMManagedPointer value, Object id,
-                        @Cached("createReadString()") LLVMReadStringNode readStr,
-                        @Cached("readStr.executeWithTarget(id)") String cachedId) {
-            TruffleObject foreign = asForeign.execute(value);
-            return doRead(foreign, cachedId, foreignRead, toLLVM);
-        }
-
-        @Specialization(replaces = "cached")
+        @Specialization
         protected Object uncached(LLVMManagedPointer value, Object id,
                         @Cached("createReadString()") LLVMReadStringNode readStr) {
             TruffleObject foreign = asForeign.execute(value);
@@ -112,7 +103,8 @@ public abstract class LLVMTruffleRead extends LLVMIntrinsic {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMTruffleReadFromIndex extends LLVMTruffleRead {
 
         @Child protected Node foreignRead = Message.READ.createNode();

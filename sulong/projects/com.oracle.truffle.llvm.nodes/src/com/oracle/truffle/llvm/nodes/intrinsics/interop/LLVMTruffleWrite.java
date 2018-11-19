@@ -34,7 +34,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -82,7 +81,9 @@ public final class LLVMTruffleWrite {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMTruffleWriteToName extends LLVMIntrinsic {
 
         @Child private Node foreignWrite = Message.WRITE.createNode();
@@ -91,16 +92,6 @@ public final class LLVMTruffleWrite {
 
         public LLVMTruffleWriteToName() {
             this.prepareValueForEscape = LLVMDataEscapeNode.create();
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization(limit = "2", guards = "cachedId.equals(readStr.executeWithTarget(id))")
-        protected Object cached(LLVMManagedPointer value, Object id, Object v,
-                        @Cached("createReadString()") LLVMReadStringNode readStr,
-                        @Cached("readStr.executeWithTarget(id)") String cachedId) {
-            TruffleObject foreign = asForeign.execute(value);
-            doWrite(foreignWrite, foreign, cachedId, prepareValueForEscape.executeWithTarget(v));
-            return null;
         }
 
         @Specialization
@@ -119,7 +110,9 @@ public final class LLVMTruffleWrite {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMTruffleWriteToIndex extends LLVMIntrinsic {
 
         @Child private Node foreignWrite = Message.WRITE.createNode();

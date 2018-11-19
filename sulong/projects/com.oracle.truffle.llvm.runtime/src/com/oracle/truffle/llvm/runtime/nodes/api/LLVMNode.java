@@ -79,10 +79,18 @@ public abstract class LLVMNode extends Node {
     }
 
     public final LLVMLanguage getLLVMLanguage() {
-        LLVMLanguage ret = getRootNode().getLanguage(LLVMLanguage.class);
+        LLVMLanguage ret = null;
+
+        final RootNode rootNode = getRootNode();
+        if (rootNode != null) {
+            // for the debugger nodes, a RootNode is not available
+            ret = rootNode.getLanguage(LLVMLanguage.class);
+        }
+
         if (ret == null) {
             ret = LLVMLanguage.getLanguage();
         }
+
         return ret;
     }
 

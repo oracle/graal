@@ -11,6 +11,8 @@ builds += [
   ${gateTest}          ${labsjdk8}       ${gateLinuxAMD64}   {name: "gate-compiler-test-8-linux-amd64"}
   ${gateTest}          ${openjdk8}       ${gateLinuxAMD64}   {name: "weekly-test-compiler-test-openjdk8-linux-amd64"} ${graalWeekly}
   ${gateTestMaxVS}     ${labsjdk8}       ${gateLinuxAMD64}   {name: "weekly-test-compiler-test-8-linux-amd64-maxvectorsize"} ${graalWeekly}
+  ${gateTestAVX0}      ${labsjdk8}       ${gateLinuxAMD64}   {name: "weekly-test-compiler-test-8-linux-amd64-avx0"} ${graalWeekly}
+  ${gateTestAVX1}      ${labsjdk8}       ${gateLinuxAMD64}   {name: "weekly-test-compiler-test-8-linux-amd64-avx1"} ${graalWeekly}
   ${gateTest}          ${oraclejdk11}    ${gateLinuxAMD64}   {name: "gate-compiler-test-11-linux-amd64"}
   ${gateJavaBaseTest}  ${oraclejdk11}    ${gateLinuxAMD64}   {name: "weekly-test-compiler-javabasetest-11-linux-amd64"} ${graalWeekly}
   ${gateTestCTW}       ${labsjdk8}       ${gateLinuxAMD64}   {name: "gate-compiler-ctw-8-linux-amd64"}
@@ -20,6 +22,7 @@ builds += [
   ${gateTestBenchmark} ${labsjdk8}       ${gateLinuxAMD64}   {name: "gate-compiler-benchmarktest-8-linux-amd64"}
   ${gateTestBenchmark} ${labsjdk8Debug}  ${gateLinuxAMD64}   {name: "weekly-test-compiler-benchmarktest-8-linux-amd64-fastdebug"} ${graalWeekly}
   ${gateStyle}         ${labsjdk8}       ${gateLinuxAMD64}   {name: "gate-compiler-style-linux-amd64"}
+  ${gateCoverage}      ${labsjdk8}       ${gateLinuxAMD64}   {name: "weekly-compiler-coverage-8-linux-amd64", timelimit: "1:50:00"} ${graalWeekly} { logs += [*/report.zip] }
 
   # Solaris SPARC
   ${gateTest}          ${labsjdk8}       ${gateSolarisSPARC} {name: "gate-compiler-test-8-solaris-sparcv9",                    timelimit: "1:00:00"}

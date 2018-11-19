@@ -37,6 +37,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 
@@ -46,7 +47,7 @@ public class LocalizationSupport {
 
     public static class Options {
         @Option(help = "Comma separated list of bundles to be included into the image.", type = OptionType.User)//
-        public static final HostedOptionKey<String> IncludeResourceBundles = new HostedOptionKey<>("");
+        public static final HostedOptionKey<String[]> IncludeResourceBundles = new HostedOptionKey<>(null);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -82,8 +83,7 @@ public class LocalizationSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     void includeResourceBundles() {
-        String[] bundles = Options.IncludeResourceBundles.getValue().split(",");
-        for (String bundle : bundles) {
+        for (String bundle : OptionUtils.flatten(",", Options.IncludeResourceBundles.getValue())) {
             addBundleToCache(bundle);
         }
     }

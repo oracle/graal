@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.truffle.api;
 
+import java.io.PrintStream;
 import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -57,15 +58,18 @@ import jdk.vm.ci.code.InstalledCode;
 
 public class SubstrateTruffleCompiler extends TruffleCompilerImpl {
 
+    private final String compilerConfigurationName;
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public SubstrateTruffleCompiler(TruffleCompilerRuntime runtime, Plugins plugins, Suites suites, LIRSuites lirSuites, Backend backend, SnippetReflectionProvider snippetReflection) {
-        super(runtime, plugins, suites, lirSuites, backend, snippetReflection);
+        super(runtime, plugins, suites, lirSuites, backend, null, null, null, snippetReflection);
+        compilerConfigurationName = GraalConfiguration.instance().getCompilerConfigurationName();
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     @Override
     protected PartialEvaluator createPartialEvaluator() {
-        return TruffleFeature.getSupport().createPartialEvaluator(providers, config, snippetReflection, backend.getTarget().arch);
+        return TruffleFeature.getSupport().createPartialEvaluator(lastTierProviders, config, snippetReflection, backend.getTarget().arch);
     }
 
     @Override
@@ -75,22 +79,22 @@ public class SubstrateTruffleCompiler extends TruffleCompilerImpl {
 
     @Override
     public String getCompilerConfigurationName() {
-        return GraalConfiguration.instance().getCompilerConfigurationName();
+        return compilerConfigurationName;
     }
 
     @Override
-    protected CompilationResult createCompilationResult(String name, CompilationIdentifier compilationIdentifier) {
+    protected CompilationResult createCompilationResult(String name, CompilationIdentifier compilationIdentifier, CompilableTruffleAST compilable) {
         return new SubstrateCompilationResult(compilationIdentifier, name);
     }
 
     @Override
-    public CompilationIdentifier getCompilationIdentifier(CompilableTruffleAST optimizedCallTarget) {
+    public CompilationIdentifier createCompilationIdentifier(CompilableTruffleAST optimizedCallTarget) {
         return new SubstrateTruffleCompilationIdentifier((OptimizedCallTarget) optimizedCallTarget);
     }
 
     @Override
-    public DebugContext openDebugContext(OptionValues options, CompilationIdentifier compilationId, CompilableTruffleAST callTarget) {
-        return GraalSupport.get().openDebugContext(options, compilationId, callTarget);
+    public DebugContext createDebugContext(OptionValues options, CompilationIdentifier compilationId, CompilableTruffleAST callTarget, PrintStream logStream) {
+        return GraalSupport.get().openDebugContext(options, compilationId, callTarget, logStream);
     }
 
     @Override

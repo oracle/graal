@@ -28,8 +28,9 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleOptionsOverrideScope;
+import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
+import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope;
+import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -46,13 +47,13 @@ import org.junit.BeforeClass;
  */
 public abstract class TestWithSynchronousCompiling {
 
-    private static TruffleOptionsOverrideScope backgroundCompilationScope;
-    private static TruffleOptionsOverrideScope compilationThresholdScope;
+    private static TruffleRuntimeOptionsOverrideScope backgroundCompilationScope;
+    private static TruffleRuntimeOptionsOverrideScope compilationThresholdScope;
 
     @BeforeClass
     public static void before() {
-        backgroundCompilationScope = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleBackgroundCompilation, false);
-        compilationThresholdScope = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleCompilationThreshold, 10);
+        backgroundCompilationScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleBackgroundCompilation, false);
+        compilationThresholdScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleCompilationThreshold, 10);
     }
 
     @AfterClass

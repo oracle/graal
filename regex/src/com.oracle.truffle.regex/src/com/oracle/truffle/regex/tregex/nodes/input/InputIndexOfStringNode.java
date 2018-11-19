@@ -53,7 +53,7 @@ public abstract class InputIndexOfStringNode extends Node {
         if (fromIndex + match.length() > maxIndex) {
             return -1;
         }
-        for (int i = fromIndex; i < maxIndex - match.length(); i++) {
+        for (int i = fromIndex; i <= maxIndex - match.length(); i++) {
             if (regionMatchesNode.execute(input, match, i)) {
                 return i;
             }

@@ -44,16 +44,10 @@ ifneq (${OS},windows)
 
 default: ${TARGET}/libffi.a ${HEADERFILES}
 
-${TARGET}/libffi.a: libffi-build/.libs/libffi.a bin/svm_initialize.o
-	$(QUIETLY) echo AR libffi.a
+${TARGET}/libffi.a: libffi-build/.libs/libffi.a
 	$(QUIETLY) mkdir -p ${TARGET}
 	$(QUIETLY) cp libffi-build/.libs/libffi.a $@
-	$(QUIETLY) ar r $@ bin/svm_initialize.o
-
-bin/svm_initialize.o: svm_initialize.c ${HEADERFILES}
-	$(QUIETLY) echo CC svm_initialize.c
-	$(QUIETLY) mkdir -p bin
-	$(QUIETLY) $(CC) -c -I${TARGET}/include ${CFLAGS} $< -o $@
+	$(QUIETLY) touch $@
 
 ${TARGET}/include/trufflenfi.h: ${TRUFFLE_NFI}/include/trufflenfi.h
 	$(QUIETLY) mkdir -p ${TARGET}/include
@@ -106,7 +100,7 @@ ${TARGET}/include/svm_libffi.h: include/svm_libffi.h
 	$(QUIETLY) cp $< $@
 	$(QUIETLY) touch $@
 
-${TARGET}/include/ffi.h ${TARGET}/include/ffitarget.h: 
+${TARGET}/include/ffi.h ${TARGET}/include/ffitarget.h:
 	$(QUIETLY) mkdir -p ${TARGET}/include
 	$(QUIETLY) touch $@
 

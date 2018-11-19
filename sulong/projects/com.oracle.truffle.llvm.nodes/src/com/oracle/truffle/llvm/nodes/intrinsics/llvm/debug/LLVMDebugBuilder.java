@@ -29,27 +29,20 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
+import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 
-public abstract class LLVMDebugBuilder {
+@FunctionalInterface
+public interface LLVMDebugBuilder {
 
-    public static final LLVMDebugBuilder NATIVE_DECLARATION = new LLVMDebugBuilder() {
-        @Override
-        public LLVMDebugValue.Builder createBuilder() {
-            return LLVMToDebugDeclarationNodeGen.create();
-        }
-    };
-
-    public static final LLVMDebugBuilder NATIVE_VALUE = new LLVMDebugBuilder() {
-        @Override
-        public LLVMDebugValue.Builder createBuilder() {
-            return LLVMToDebugValueNodeGen.create();
-        }
-    };
-
-    protected LLVMDebugBuilder() {
+    static LLVMDebugBuilder createDeclaration(NodeFactory nodeFactory) {
+        return nodeFactory::createDebugDeclarationBuilder;
     }
 
-    public abstract LLVMDebugValue.Builder createBuilder();
+    static LLVMDebugBuilder createValue(NodeFactory nodeFactory) {
+        return nodeFactory::createDebugValueBuilder;
+    }
+
+    LLVMDebugValue.Builder createBuilder();
 
 }

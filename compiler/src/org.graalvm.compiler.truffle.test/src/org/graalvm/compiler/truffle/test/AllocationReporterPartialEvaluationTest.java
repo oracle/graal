@@ -55,8 +55,6 @@ public class AllocationReporterPartialEvaluationTest extends TestWithSynchronous
 
     @Test
     public void testConsistentAssertions() {
-        TruffleTestUtil.assumeJavaDesktopModuleIsAvailable();
-
         // Test that onEnter()/onReturnValue() are not broken
         // when only one of them is compiled with PE.
         Context context = Context.newBuilder(AllocationReporterLanguage.ID).build();
@@ -86,8 +84,8 @@ public class AllocationReporterPartialEvaluationTest extends TestWithSynchronous
         assertNotCompiled(returnTarget);
         returnTarget.call();
         value[0]++;
-        enterTarget.compile();
-        returnTarget.compile();
+        enterTarget.compile(true);
+        returnTarget.compile(true);
         assertCompiled(enterTarget);
         assertCompiled(returnTarget);
         long expectedCounters = allocCounter(value[0]);
@@ -114,8 +112,8 @@ public class AllocationReporterPartialEvaluationTest extends TestWithSynchronous
             assertCompiled(returnTarget);
             returnTarget.call();
             value[0]++;
-            enterTarget.compile();
-            returnTarget.compile();
+            enterTarget.compile(true);
+            returnTarget.compile(true);
             assertCompiled(enterTarget);
             assertCompiled(returnTarget);
 
@@ -126,8 +124,8 @@ public class AllocationReporterPartialEvaluationTest extends TestWithSynchronous
             assertNotCompiled(returnTarget);
             returnTarget.call();
             value[0]++;
-            enterTarget.compile();
-            returnTarget.compile();
+            enterTarget.compile(true);
+            returnTarget.compile(true);
             assertCompiled(enterTarget);
             assertCompiled(returnTarget);
 
@@ -139,8 +137,8 @@ public class AllocationReporterPartialEvaluationTest extends TestWithSynchronous
             assertNotCompiled(returnTarget);
             returnTarget.call();
             value[0]++;
-            enterTarget.compile();
-            returnTarget.compile();
+            enterTarget.compile(true);
+            returnTarget.compile(true);
             assertCompiled(enterTarget);
             assertCompiled(returnTarget);
         }

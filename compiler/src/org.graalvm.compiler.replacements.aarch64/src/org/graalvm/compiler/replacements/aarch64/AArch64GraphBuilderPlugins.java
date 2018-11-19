@@ -32,6 +32,7 @@ import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.Una
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.SIN;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.TAN;
 import static org.graalvm.compiler.serviceprovider.GraalServices.JAVA_SPECIFICATION_VERSION;
+import static org.graalvm.compiler.serviceprovider.GraalServices.Java11OrEarlier;
 import static org.graalvm.compiler.serviceprovider.GraalServices.Java8OrEarlier;
 
 import org.graalvm.compiler.bytecode.BytecodeProvider;
@@ -167,20 +168,18 @@ public class AArch64GraphBuilderPlugins {
     }
 
     private static void registerUnsafePlugins(InvocationPlugins plugins, BytecodeProvider replacementsBytecodeProvider) {
-        Registration r;
-        JavaKind[] unsafeJavaKinds;
-        if (Java8OrEarlier) {
-            r = new Registration(plugins, Unsafe.class);
-            unsafeJavaKinds = new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object};
-        } else {
-            r = new Registration(plugins, "jdk.internal.misc.Unsafe", replacementsBytecodeProvider);
-            unsafeJavaKinds = new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object};
+        registerUnsafePlugins(new Registration(plugins, Unsafe.class), new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object});
+        if (!Java8OrEarlier) {
+            registerUnsafePlugins(new Registration(plugins, "jdk.internal.misc.Unsafe", replacementsBytecodeProvider), new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object});
         }
+    }
+
+    private static void registerUnsafePlugins(Registration r, JavaKind[] unsafeJavaKinds) {
 
         for (JavaKind kind : unsafeJavaKinds) {
             Class<?> javaClass = kind == JavaKind.Object ? Object.class : kind.toJavaClass();
-
-            r.register4("getAndSet" + kind.name(), Receiver.class, Object.class, long.class, javaClass, new InvocationPlugin() {
+            String kindName = (kind == JavaKind.Object && !Java11OrEarlier) ? "Reference" : kind.name();
+            r.register4("getAndSet" + kindName, Receiver.class, Object.class, long.class, javaClass, new InvocationPlugin() {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode value) {
                     // Emits a null-check for the otherwise unused receiver
@@ -192,7 +191,7 @@ public class AArch64GraphBuilderPlugins {
             });
 
             if (kind != JavaKind.Boolean && kind.isNumericInteger()) {
-                r.register4("getAndAdd" + kind.name(), Receiver.class, Object.class, long.class, javaClass, new InvocationPlugin() {
+                r.register4("getAndAdd" + kindName, Receiver.class, Object.class, long.class, javaClass, new InvocationPlugin() {
                     @Override
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode delta) {
                         // Emits a null-check for the otherwise unused receiver

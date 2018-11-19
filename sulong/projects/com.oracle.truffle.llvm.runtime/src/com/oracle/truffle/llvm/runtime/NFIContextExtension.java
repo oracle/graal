@@ -49,6 +49,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.interop.nfi.LLVMNativeWrapper;
+import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
@@ -67,7 +68,7 @@ public final class NFIContextExtension implements ContextExtension {
     public NFIContextExtension(Env env) {
         this.env = env;
         this.defaultLibraryHandle = loadDefaultLibrary();
-        this.defaultLibrary = new ExternalLibrary("NativeDefault", true);
+        this.defaultLibrary = ExternalLibrary.external("NativeDefault", true);
         this.nativeFunctions = new LLVMNativeFunctions(this);
     }
 
@@ -125,9 +126,11 @@ public final class NFIContextExtension implements ContextExtension {
 
     private void addLibraries(LLVMContext context) {
         CompilerAsserts.neverPartOfCompilation();
-        context.addExternalLibrary("libsulong." + getNativeLibrarySuffix(), true);
-        // dummy library for C++, see {@link #handleSpecialLibraries}
-        context.addExternalLibrary("libsulong++." + getNativeLibrarySuffix(), true);
+        context.addInternalLibrary("libsulong." + getNativeLibrarySuffix(), true);
+        if (context.getEnv().getOptions().get(SulongEngineOption.LOAD_CXX_LIBRARIES)) {
+            // dummy library for C++, see {@link #handleSpecialLibraries}
+            context.addInternalLibrary("libsulong++." + getNativeLibrarySuffix(), true);
+        }
         List<ExternalLibrary> libraries = context.getExternalLibraries(lib -> lib.isNative());
         for (ExternalLibrary l : libraries) {
             addLibrary(l);

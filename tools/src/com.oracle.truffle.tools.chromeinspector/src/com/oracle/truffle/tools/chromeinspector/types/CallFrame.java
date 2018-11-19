@@ -27,6 +27,7 @@ package com.oracle.truffle.tools.chromeinspector.types;
 import com.oracle.truffle.tools.utils.json.JSONObject;
 
 import com.oracle.truffle.api.debug.DebugStackFrame;
+import com.oracle.truffle.api.debug.SuspendAnchor;
 import com.oracle.truffle.api.source.SourceSection;
 
 public final class CallFrame {
@@ -36,19 +37,25 @@ public final class CallFrame {
     private final Location location;
     private final Location functionLocation;
     private final RemoteObject thisObject;
+    private final RemoteObject returnObject;
     private final Scope[] scopes;
 
-    public CallFrame(DebugStackFrame frame, int depth, Script script, SourceSection sourceSection,
-                    SourceSection functionSourceSection, RemoteObject thisObject, Scope... scopes) {
+    public CallFrame(DebugStackFrame frame, int depth, Script script, SourceSection sourceSection, SuspendAnchor anchor,
+                    SourceSection functionSourceSection, RemoteObject thisObject, RemoteObject returnObject, Scope... scopes) {
         this.frame = frame;
         this.depth = depth;
-        this.location = new Location(script.getId(), sourceSection.getStartLine(), sourceSection.getStartColumn());
+        if (anchor == SuspendAnchor.BEFORE) {
+            this.location = new Location(script.getId(), sourceSection.getStartLine(), sourceSection.getStartColumn());
+        } else {
+            this.location = new Location(script.getId(), sourceSection.getEndLine(), sourceSection.getEndColumn());
+        }
         if (functionSourceSection != null) {
             this.functionLocation = new Location(script.getId(), functionSourceSection.getStartLine(), functionSourceSection.getStartColumn());
         } else {
             this.functionLocation = null;
         }
         this.thisObject = thisObject;
+        this.returnObject = returnObject;
         this.scopes = scopes;
     }
 
@@ -81,6 +88,9 @@ public final class CallFrame {
         json.put("scopeChain", Scope.createScopesJSON(scopes));
         if (thisObject != null) {
             json.put("this", thisObject.toJSON());
+        }
+        if (returnObject != null) {
+            json.put("returnValue", returnObject.toJSON());
         }
         return json;
     }

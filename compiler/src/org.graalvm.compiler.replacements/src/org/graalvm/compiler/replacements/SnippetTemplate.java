@@ -49,7 +49,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 
-import jdk.vm.ci.meta.ConstantReflectionProvider;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
@@ -142,6 +141,7 @@ import org.graalvm.word.WordBase;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Local;
@@ -714,7 +714,8 @@ public class SnippetTemplate {
         this.info = args.info;
 
         Object[] constantArgs = getConstantArgs(args);
-        StructuredGraph snippetGraph = providers.getReplacements().getSnippet(args.info.method, args.info.original, constantArgs, trackNodeSourcePosition, replacee.getNodeSourcePosition());
+        boolean shouldTrackNodeSourcePosition1 = trackNodeSourcePosition || (providers.getCodeCache() != null && providers.getCodeCache().shouldDebugNonSafepoints());
+        StructuredGraph snippetGraph = providers.getReplacements().getSnippet(args.info.method, args.info.original, constantArgs, shouldTrackNodeSourcePosition1, replacee.getNodeSourcePosition());
 
         ResolvedJavaMethod method = snippetGraph.method();
         Signature signature = method.getSignature();
@@ -725,9 +726,6 @@ public class SnippetTemplate {
         final StructuredGraph snippetCopy = new StructuredGraph.Builder(options, debug).name(snippetGraph.name).method(snippetGraph.method()).trackNodeSourcePosition(
                         snippetGraph.trackNodeSourcePosition()).setIsSubstitution(true).build();
         assert !GraalOptions.TrackNodeSourcePosition.getValue(options) || snippetCopy.trackNodeSourcePosition();
-        if (providers.getCodeCache() != null && providers.getCodeCache().shouldDebugNonSafepoints()) {
-            snippetCopy.setTrackNodeSourcePosition();
-        }
         try (DebugContext.Scope scope = debug.scope("SpecializeSnippet", snippetCopy)) {
             if (!snippetGraph.isUnsafeAccessTrackingEnabled()) {
                 snippetCopy.disableUnsafeAccessTracking();

@@ -60,6 +60,39 @@ struct splittableStruct
     long int b;
 };
 
+typedef struct {
+    float a;
+    float b;
+    float c;
+    float d;
+    float e;
+    float f;
+    float g;
+    float h;
+} FloatStruct;
+
+typedef struct {
+    double a;
+    double b;
+    double c;
+    double d;
+    double e;
+    double f;
+    double g;
+    double h;
+} DoubleStruct;
+
+typedef struct {
+    void * a;
+    void * b;
+    void * c;
+    void * d;
+    void * e;
+    void * f;
+    void * g;
+    void * h;
+} PointerStruct;
+
 struct globalStruct
 {
     int a;
@@ -111,6 +144,36 @@ int start() __attribute__((constructor))
     mySplittableStruct.a = 128;
     mySplittableStruct.b = 256;
     testSplittedStructArg(mySplittableStruct);
+
+    FloatStruct fs;
+    fs.a = 1.2f;
+    fs.b = 3.4f;
+    fs.c = -5.6f;
+    fs.d = 6.7f;
+    fs.e = 8.9f;
+    fs.f = 0.0f;
+    fs.g = -0.1f;
+    fs.h = 0.2f;
+
+    DoubleStruct ds;
+    ds.a = 1.2;
+    ds.b = 3.4;
+    ds.c = -5.6;
+    ds.d = 6.7;
+    ds.e = 8.9;
+    ds.f = 0.0;
+    ds.g = -0.1;
+    ds.h = 0.2;
+
+    PointerStruct ps;
+    ps.a = (void*) 0x1001;
+    ps.b = (void*) 0x0110;
+    ps.c = (void*) 0x10010000;
+    ps.d = (void*) 0xabcddcba;
+    ps.e = (void*) 0x10000001;
+    ps.f = (void*) 0xfedcba9876543210;
+    ps.g = (void*) 0x12345678;
+    ps.h = (void*) 0xffffffff000000ff;
 
     return 0;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,22 +37,21 @@ import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.compiler.word.Word;
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.nativeimage.Platform.AMD64;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.function.CEntryPointContext;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.MonitorSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.UnsafeAccess;
-import com.oracle.svm.core.amd64.FrameAccess;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Specialize;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -223,11 +222,10 @@ public final class Deoptimizer {
      * Checks if a physical stack frame (identified by the stack pointer) was deoptimized, and
      * returns the {@link DeoptimizedFrame} in that case.
      */
-    @Platforms(AMD64.class)
     public static DeoptimizedFrame checkDeoptimized(Pointer sourceSp) {
-        CodePointer returnAddress = FrameAccess.readReturnAddress(sourceSp);
+        CodePointer returnAddress = FrameAccess.singleton().readReturnAddress(sourceSp);
         /* A frame is deoptimized when the return address was patched to the deoptStub. */
-        if (returnAddress.equal(DeoptimizationSupport.getDeoptStubPointer())) {
+        if (DeoptimizationSupport.enabled() && returnAddress.equal(DeoptimizationSupport.getDeoptStubPointer())) {
             /* The DeoptimizedFrame instance is stored above the return address. */
             DeoptimizedFrame result = KnownIntrinsics.convertUnknownValue(sourceSp.readObject(0), DeoptimizedFrame.class);
             assert result != null;
@@ -237,12 +235,11 @@ public final class Deoptimizer {
         }
     }
 
-    @Platforms(AMD64.class)
     private static void installDeoptimizedFrame(Pointer sourceSp, DeoptimizedFrame deoptimizedFrame) {
         /*
          * Replace the return address to the deoptimized method with a pointer to the deoptStub.
          */
-        FrameAccess.writeReturnAddress(sourceSp, DeoptimizationSupport.getDeoptStubPointer());
+        FrameAccess.singleton().writeReturnAddress(sourceSp, DeoptimizationSupport.getDeoptStubPointer());
 
         /*
          * Store a pointer to the deoptimizedFrame on stack slot above the return address. From this
@@ -278,14 +275,14 @@ public final class Deoptimizer {
     private static void deoptimizeInRangeOperation(CodePointer fromIp, CodePointer toIp, boolean deoptAll) {
         VMOperation.guaranteeInProgress("Deoptimizer.deoptimizeInRangeOperation, but not in VMOperation.");
         /* Handle my own thread specially, because I do not have a JavaFrameAnchor. */
-        StackFrameVisitor currentThreadDeoptVisitor = getStackFrameVisitor((Pointer) fromIp, (Pointer) toIp, deoptAll, CEntryPointContext.getCurrentIsolateThread());
+        StackFrameVisitor currentThreadDeoptVisitor = getStackFrameVisitor((Pointer) fromIp, (Pointer) toIp, deoptAll, CurrentIsolate.getCurrentThread());
         Pointer sp = KnownIntrinsics.readCallerStackPointer();
         CodePointer ip = KnownIntrinsics.readReturnAddress();
         JavaStackWalker.walkCurrentThread(sp, ip, currentThreadDeoptVisitor);
         /* If I am multi-threaded, deoptimize this method on all the other stacks. */
         if (SubstrateOptions.MultiThreaded.getValue()) {
             for (IsolateThread vmThread = VMThreads.firstThread(); VMThreads.isNonNullThread(vmThread); vmThread = VMThreads.nextThread(vmThread)) {
-                if (vmThread == CEntryPointContext.getCurrentIsolateThread()) {
+                if (vmThread == CurrentIsolate.getCurrentThread()) {
                     continue;
                 }
                 StackFrameVisitor deoptVisitor = getStackFrameVisitor((Pointer) fromIp, (Pointer) toIp, deoptAll, vmThread);
@@ -322,13 +319,13 @@ public final class Deoptimizer {
             registerSpeculationFailure(deoptFrame.getSourceInstalledCode(), speculation);
             return;
         }
-        IsolateThread currentThread = CEntryPointContext.getCurrentIsolateThread();
+        IsolateThread currentThread = CurrentIsolate.getCurrentThread();
         VMOperation.enqueueBlockingSafepoint("DeoptimizeFrame", () -> Deoptimizer.deoptimizeFrameOperation(sourceSp, ignoreNonDeoptimizable, speculation, currentThread));
     }
 
     private static void deoptimizeFrameOperation(Pointer sourceSp, boolean ignoreNonDeoptimizable, SpeculationReason speculation, IsolateThread currentThread) {
         VMOperation.guaranteeInProgress("doDeoptimizeFrame");
-        CodePointer returnAddress = FrameAccess.readReturnAddress(sourceSp);
+        CodePointer returnAddress = FrameAccess.singleton().readReturnAddress(sourceSp);
         CodeInfoQueryResult info = CodeInfoTable.lookupCodeInfoQueryResult(returnAddress);
         Deoptimizer deoptimizer = new Deoptimizer(sourceSp, info);
         DeoptimizedFrame sourceFrame = deoptimizer.deoptSourceFrame(returnAddress, ignoreNonDeoptimizable, currentThread);
@@ -342,7 +339,7 @@ public final class Deoptimizer {
      * runtime compiled method, since there is not {@link InstalledCode} for native image methods.
      */
     public static void invalidateMethodOfFrame(Pointer sourceSp, SpeculationReason speculation) {
-        CodePointer returnAddress = FrameAccess.readReturnAddress(sourceSp);
+        CodePointer returnAddress = FrameAccess.singleton().readReturnAddress(sourceSp);
         SubstrateInstalledCode installedCode = CodeInfoTable.lookupInstalledCode(returnAddress);
         /*
          * We look up the installedCode before checking if the frame is deoptimized to avoid race
@@ -428,11 +425,25 @@ public final class Deoptimizer {
         }
     }
 
+    /**
+     * Custom method prologues and epilogues required for deoptimization. The instructions must be
+     * generated by a backend-specific FrameContext class.
+     */
     public enum StubType {
         NoDeoptStub,
 
+        /**
+         * Custom prologue: rescue all of the architecture's return registers into the
+         * {@link DeoptimizedFrame}.
+         */
         EntryStub,
 
+        /**
+         * Custom prologue: set the stack pointer to the first method parameter.
+         *
+         * Custom epilogue:restore all of the architecture's return registers from the
+         * {@link DeoptimizedFrame}.
+         */
         ExitStub
     }
 
@@ -479,8 +490,19 @@ public final class Deoptimizer {
             DeoptimizationCounters.startTime.set(System.nanoTime());
         }
 
+        /* Computation of the new stack pointer: we start with the stack pointer of this frame. */
+        final Pointer newSp = KnownIntrinsics.readStackPointer()
+                        /* Remove the size of this frame... */
+                        .add(WordFactory.unsigned(deoptStubFrameSize))
+                        /* ... but compensate that there was no return address pushed. */
+                        .subtract(FrameAccess.returnAddressSize())
+                        /* Remove the size of the frame that gets deoptimized. */
+                        .add(WordFactory.unsigned(frame.getSourceTotalFrameSize()))
+                        /* Add the size of the deoptimization target frames. */
+                        .subtract(frame.getTargetContent().getSize());
+
         /* Build the content of the deopt target stack frames. */
-        frame.buildContent();
+        frame.buildContent(newSp);
 
         /*
          * The frame was pinned to keep it from moving during construction. I can unpin it now that
@@ -490,45 +512,28 @@ public final class Deoptimizer {
 
         recentDeoptimizationEvents.append(frame.getCompletedMessage());
 
-        Pointer sp = KnownIntrinsics.readStackPointer();
         /* Do the stack rewriting. Return directly to the deopt target. */
-        final Pointer newSp = sp.add(WordFactory.unsigned(deoptStubFrameSize))
-                        .add(WordFactory.unsigned(frame.getSourceTotalFrameSize())
-                                        .subtract(frame.getTargetContent().getSize())
-                                        .subtract(FrameAccess.returnAddressSize()));
         rewriteStackStub(newSp, frame);
     }
 
-    @Uninterruptible(reason = "Frame holds Objects in unmanaged storage.")
-    @NeverInline("don't provoke the writeStackPointer devil with a non-trivial method")
-    private static void rewriteStackStub(Pointer newSp, DeoptimizedFrame frame) {
-        /* Adjust the stack pointer to point to the bottom of the (first) deopt target frame. */
-        KnownIntrinsics.writeStackPointer(newSp);
-        /* Transfer to the ExitStub, which transfers to the deopt target. */
-        rewriteStackAndJumpToTarget(newSp, frame);
-    }
-
     /**
-     * Performs the actual stack rewriting. When this method is called the sp is already at the
-     * bottom of the deopt target method.
+     * Performs the actual stack rewriting. The custom prologue of this method sets the stack
+     * pointer to the new value passed in as the first parameter.
      *
-     * @param newSp Points to the bottom of the deopt target method (but above the return address
-     *            slot).
-     * @param frame The deopt frame handle.
-     * @return The epilog of this method restores the return value registers from the returned frame
-     *         handle. The instructions for restoring the return value registers must be generated
-     *         in this method's epilog by a backend-specific FrameContext class.
+     * The custom epilogue of this method restores the return value registers from the returned
+     * frame handle.
      */
     @DeoptStub(stubType = StubType.ExitStub)
-    @NeverInline("don't provoke the writeStackPointer devil with a non-trivial method")
+    @NeverInline("Custom prologue modifies stack pointer register")
     @Uninterruptible(reason = "Frame holds Objects in unmanaged storage.")
-    private static DeoptimizedFrame rewriteStackAndJumpToTarget(Pointer newSp, DeoptimizedFrame frame) {
+    private static DeoptimizedFrame rewriteStackStub(Pointer newSp, DeoptimizedFrame frame) {
+
         /*
          * The first word of the new stack content is already the return address into the caller of
          * deoptimizeInRange(). So when this method returns we are inside the caller of
          * deoptimizeInRange().
          */
-        Pointer bottomSp = newSp.subtract(FrameAccess.returnAddressSize());
+        Pointer bottomSp = newSp.subtract(FrameAccess.returnAddressSize() + FrameAccess.singleton().savedBasePointerSize());
         frame.getTargetContent().copyToPointer(bottomSp);
 
         if (DeoptimizationCounters.Options.ProfileDeoptimization.getValue()) {
@@ -612,7 +617,6 @@ public final class Deoptimizer {
             }
         }
 
-        assert sourceChunk.getTotalFrameSize() >= FrameAccess.wordSize() : "no place in frame to put pointer to DeoptimizedFrame";
         assert endOfParams == 0;
 
         /*
@@ -668,6 +672,9 @@ public final class Deoptimizer {
                 }
             }
         }
+
+        VMError.guarantee(sourceChunk.getTotalFrameSize() >= FrameAccess.wordSize(), "Insufficient space in frame for pointer to DeoptimizedFrame");
+
         /* Allocate a buffer to hold the contents of the new target frame. */
         DeoptimizedFrame deoptimizedFrame = DeoptimizedFrame.factory(targetContentSize, sourceChunk.getTotalFrameSize(), CodeInfoTable.lookupInstalledCode(pc), topFrame, pc);
 
@@ -713,8 +720,14 @@ public final class Deoptimizer {
      */
     private VirtualFrame constructTargetFrame(CodeInfoQueryResult targetInfo, FrameInfoQueryResult sourceFrame) {
         FrameInfoQueryResult targetFrame = targetInfo.getFrameInfo();
-        long targetFrameSize = targetInfo.getTotalFrameSize() - FrameAccess.returnAddressSize();
+        int savedBasePointerSize = FrameAccess.singleton().savedBasePointerSize();
+        long targetFrameSize = targetInfo.getTotalFrameSize() - FrameAccess.returnAddressSize() - savedBasePointerSize;
         VirtualFrame result = new VirtualFrame(targetFrame);
+
+        if (savedBasePointerSize != 0) {
+            result.savedBasePointer = new DeoptimizedFrame.SavedBasePointer(targetContentSize, targetContentSize + targetFrameSize);
+            targetContentSize += savedBasePointerSize;
+        }
 
         /* The first word of the new content is the return address into the target method. */
         result.returnAddress = new DeoptimizedFrame.ReturnAddress(targetContentSize, targetInfo.getIP().rawValue());
@@ -896,12 +909,12 @@ public final class Deoptimizer {
         if (LayoutEncoding.isArray(hub.getLayoutEncoding())) {
             /* For arrays, the second encoded value is the array length. */
             int length = readValue(encodings[1], sourceFrame).asInt();
-            obj = Array.newInstance(hub.getComponentHub().asClass(), length);
+            obj = Array.newInstance(DynamicHub.toClass(hub.getComponentHub()), length);
             curOffset = LayoutEncoding.getArrayBaseOffset(hub.getLayoutEncoding());
             curIdx = 2;
         } else {
             try {
-                obj = UnsafeAccess.UNSAFE.allocateInstance(hub.asClass());
+                obj = UnsafeAccess.UNSAFE.allocateInstance(DynamicHub.toClass(hub));
             } catch (InstantiationException ex) {
                 throw VMError.shouldNotReachHere(ex);
             }
@@ -1145,6 +1158,18 @@ public final class Deoptimizer {
         protected void writeLong(int offset, long value) {
             offsetCheck(offset, sizeofLong);
             addressOfFrameArray0().writeLong(offset, value);
+        }
+
+        /** Write a word-sized constant to the frame buffer. */
+        @Uninterruptible(reason = "Called from uninterruptible code.")
+        protected void writeWord(int offset, WordBase value) {
+            if (FrameAccess.wordSize() == 8) {
+                writeLong(offset, value.rawValue());
+            } else if (FrameAccess.wordSize() == 4) {
+                writeInt(offset, (int) value.rawValue());
+            } else {
+                throw VMError.shouldNotReachHere("Unexpected word size: " + FrameAccess.wordSize());
+            }
         }
 
         /** An Object can be written to the frame buffer. */

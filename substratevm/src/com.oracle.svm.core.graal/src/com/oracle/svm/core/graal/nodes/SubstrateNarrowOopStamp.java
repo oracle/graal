@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
-import com.oracle.svm.core.heap.ReferenceAccess;
-import com.oracle.svm.core.meta.CompressibleConstant;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MemoryAccessProvider;
@@ -40,7 +38,9 @@ import org.graalvm.compiler.nodes.CompressionNode.CompressionOp;
 import org.graalvm.compiler.nodes.type.NarrowOopStamp;
 
 import com.oracle.svm.core.graal.meta.SubstrateMemoryAccessProvider;
+import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.meta.CompressedNullConstant;
+import com.oracle.svm.core.meta.CompressibleConstant;
 
 public final class SubstrateNarrowOopStamp extends NarrowOopStamp {
     private SubstrateNarrowOopStamp(ResolvedJavaType type, boolean exactType, boolean nonNull, boolean alwaysNull, CompressEncoding encoding) {
@@ -65,8 +65,8 @@ public final class SubstrateNarrowOopStamp extends NarrowOopStamp {
     }
 
     @Override
-    public JavaConstant asConstant() {
-        return alwaysNull() ? CompressedNullConstant.COMPRESSED_NULL : null;
+    public JavaConstant nullConstant() {
+        return CompressedNullConstant.COMPRESSED_NULL;
     }
 
     @Override

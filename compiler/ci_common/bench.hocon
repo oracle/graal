@@ -3,7 +3,7 @@
 bench-arguments : ["--machine-name", "${MACHINE_NAME}", "--", "-Xmx${XMX}", "-Xms${XMS}", "-XX:+PrintConcurrentLocks", "--jvm-config=${JVM_CONFIG}", "--jvm=${JVM}"]
 
 bench-jvmci : {
-  mx-benchmark : ["mx", "--kill-with-sigquit", "benchmark", "--results-file", "${BENCH_RESULTS_FILE_PATH}"]
+  mx-benchmark : ["mx", "--kill-with-sigquit", "benchmark", "--fork-count-file=${FORK_COUNT_FILE}", "--extras=${BENCH_SERVER_EXTRAS}", "--results-file", "${BENCH_RESULTS_FILE_PATH}"]
   mx-dacapo : ${bench-jvmci.mx-benchmark} ["dacapo:*"]
   mx-scala-dacapo : ${bench-jvmci.mx-benchmark} ["scala-dacapo:*"]
   mx-dacapo-timing : ${bench-jvmci.mx-benchmark} ["dacapo-timing:*"]
@@ -85,7 +85,7 @@ bench-specjbb2005: ${bench-common} ${specjbb-bench-notifications} {
     SPECJBB2005: { name: specjbb2005, version: "1.07" }
   }
   run: [
-    ${bench-jvmci.mx-specjbb2005} ${bench-arguments}
+    ${bench-jvmci.mx-specjbb2005} ${bench-arguments} ["input.ending_number_warehouses=77"]
   ]
   timelimit: "2:00:00"
 }

@@ -3,7 +3,7 @@
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
- * 
+ *
  * Subject to the condition set forth below, permission is hereby granted to any
  * person obtaining a copy of this software, associated documentation and/or
  * data (collectively the "Software"), free of charge and under any and all
@@ -11,25 +11,25 @@
  * freely licensable by each licensor hereunder covering either (i) the
  * unmodified Software as contributed to or provided by such licensor, or (ii)
  * the Larger Works (as defined below), to deal in both
- * 
+ *
  * (a) the Software, and
- * 
+ *
  * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
  * one is included with the Software each a "Larger Work" to which the Software
  * is contributed by such licensors),
- * 
+ *
  * without restriction, including without limitation the rights to copy, create
  * derivative works of, display, perform, and distribute the Software and make,
  * use, sell, offer for sale, import, export, have made, and have sold the
  * Software and the Larger Work(s), and to sublicense the foregoing rights on
  * either these or other terms.
- * 
+ *
  * This license is subject to the following condition:
- * 
+ *
  * The above copyright notice and either this complete permission notice or at a
  * minimum a reference to the UPL must be included in all copies or substantial
  * portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -48,6 +48,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.AccessMode;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.FileTime;
@@ -63,21 +64,30 @@ import org.graalvm.polyglot.io.FileSystem;
 public class FileSystemProviderTest {
 
     private Path workDir;
+    private Path invalidWorkDir;
     private Path existingAbsolute;
     private Path existingRelative;
     private FileSystem fs;
 
     @Before
     public void setUp() throws IOException {
+        invalidWorkDir = Files.createTempDirectory(FileSystemProviderTest.class.getSimpleName());
         workDir = Files.createTempDirectory(FileSystemProviderTest.class.getSimpleName());
         existingAbsolute = Files.write(workDir.resolve("existing.txt"), getClass().getSimpleName().getBytes(StandardCharsets.UTF_8));
         existingRelative = workDir.relativize(existingAbsolute);
-        fs = newFullIOFileSystem(workDir);
+        // Use FileSystem.setCurrentWorkingDirectory to verify that all FileSystem operations are
+        // correctly using current working directory
+        fs = newFullIOFileSystem();
+        fs.setCurrentWorkingDirectory(workDir);
     }
 
     @After
     public void tearDown() throws IOException {
-        delete(workDir);
+        try {
+            delete(workDir);
+        } finally {
+            delete(invalidWorkDir);
+        }
     }
 
     @Test
@@ -201,6 +211,23 @@ public class FileSystemProviderTest {
         Assert.assertEquals(existingAbsolute.toRealPath(), fs.toRealPath(existingRelative));
     }
 
+    @Test
+    public void testSetCurrentWorkingDirectory() throws IOException {
+        fs.checkAccess(existingRelative, EnumSet.noneOf(AccessMode.class));
+        try {
+            fs.setCurrentWorkingDirectory(invalidWorkDir);
+            try {
+                fs.checkAccess(existingRelative, EnumSet.noneOf(AccessMode.class));
+                Assert.fail("Should not reach here, NoSuchFileException expected.");
+            } catch (NoSuchFileException nsf) {
+                // expected
+            }
+        } finally {
+            fs.setCurrentWorkingDirectory(workDir);
+        }
+        fs.checkAccess(existingRelative, EnumSet.noneOf(AccessMode.class));
+    }
+
     private void delete(Path path) throws IOException {
         if (Files.isDirectory(path)) {
             try (DirectoryStream<Path> childen = Files.newDirectoryStream(path)) {
@@ -215,7 +242,7 @@ public class FileSystemProviderTest {
     static FileSystem newFullIOFileSystem(final Path workDir) {
         try {
             final Class<?> clz = Class.forName("com.oracle.truffle.polyglot.FileSystems");
-            final Method m = clz.getDeclaredMethod("newFullIOFileSystem", Path.class);
+            final Method m = clz.getDeclaredMethod("newDefaultFileSystem", Path.class);
             m.setAccessible(true);
             return (FileSystem) m.invoke(null, workDir);
         } catch (ReflectiveOperationException e) {
@@ -226,7 +253,7 @@ public class FileSystemProviderTest {
     static FileSystem newFullIOFileSystem() {
         try {
             final Class<?> clz = Class.forName("com.oracle.truffle.polyglot.FileSystems");
-            final Method m = clz.getDeclaredMethod("getDefaultFileSystem");
+            final Method m = clz.getDeclaredMethod("newDefaultFileSystem");
             m.setAccessible(true);
             return (FileSystem) m.invoke(null);
         } catch (ReflectiveOperationException e) {

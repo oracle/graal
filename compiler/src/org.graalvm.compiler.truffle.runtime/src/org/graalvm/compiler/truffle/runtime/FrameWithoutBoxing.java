@@ -49,6 +49,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     private Object[] locals;
     private long[] primitiveLocals;
     private byte[] tags;
+
     public static final byte OBJECT_TAG = 0;
     public static final byte ILLEGAL_TAG = 1;
     public static final byte LONG_TAG = 2;
@@ -57,6 +58,10 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     public static final byte FLOAT_TAG = 5;
     public static final byte BOOLEAN_TAG = 6;
     public static final byte BYTE_TAG = 7;
+
+    private static final Object[] EMPTY_OBJECT_ARRAY = {};
+    private static final long[] EMPTY_LONG_ARRAY = {};
+    private static final byte[] EMPTY_BYTE_ARRAY = {};
 
     static {
         assert OBJECT_TAG == FrameSlotKind.Object.tag;
@@ -73,13 +78,19 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         this.descriptor = descriptor;
         this.arguments = arguments;
         int size = descriptor.getSize();
-        this.locals = new Object[size];
-        Object defaultValue = descriptor.getDefaultValue();
-        if (defaultValue != null) {
-            Arrays.fill(locals, defaultValue);
+        if (size == 0) {
+            this.locals = EMPTY_OBJECT_ARRAY;
+            this.primitiveLocals = EMPTY_LONG_ARRAY;
+            this.tags = EMPTY_BYTE_ARRAY;
+        } else {
+            this.locals = new Object[size];
+            Object defaultValue = descriptor.getDefaultValue();
+            if (defaultValue != null) {
+                Arrays.fill(locals, defaultValue);
+            }
+            this.primitiveLocals = new long[size];
+            this.tags = new byte[size];
         }
-        this.primitiveLocals = new long[size];
-        this.tags = new byte[size];
     }
 
     @Override
@@ -95,7 +106,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     @Override
     public Object getObject(FrameSlot slot) throws FrameSlotTypeException {
-        int slotIndex = slot.getIndex();
+        int slotIndex = getFrameSlotIndex(slot);
         boolean condition = verifyGet(slotIndex, OBJECT_TAG);
         return getObjectUnsafe(slotIndex, slot, condition);
     }
@@ -118,7 +129,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     @Override
     public void setObject(FrameSlot slot, Object value) {
-        int slotIndex = slot.getIndex();
+        int slotIndex = getFrameSlotIndex(slot);
         verifySet(slotIndex, OBJECT_TAG);
         setObjectUnsafe(slotIndex, slot, value);
     }
@@ -129,7 +140,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     @Override
     public byte getByte(FrameSlot slot) throws FrameSlotTypeException {
-        int slotIndex = slot.getIndex();
+        int slotIndex = getFrameSlotIndex(slot);
         boolean condition = verifyGet(slotIndex, BYTE_TAG);
         return getByteUnsafe(slotIndex, slot, condition);
     }
@@ -141,7 +152,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     @Override
     public void setByte(FrameSlot slot, byte value) {
-        int slotIndex = slot.getIndex();
+        int slotIndex = getFrameSlotIndex(slot);
         verifySet(slotIndex, BYTE_TAG);
         setByteUnsafe(slotIndex, slot, value);
     }
@@ -153,7 +164,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     @Override
     public boolean getBoolean(FrameSlot slot) throws FrameSlotTypeException {
-        int slotIndex = slot.getIndex();
+        int slotIndex = getFrameSlotIndex(slot);
         boolean condition = verifyGet(slotIndex, BOOLEAN_TAG);
         return getBooleanUnsafe(slotIndex, slot, condition);
     }
@@ -165,7 +176,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     @Override
     public void setBoolean(FrameSlot slot, boolean value) {
-        int slotIndex = slot.getIndex();
+        int slotIndex = getFrameSlotIndex(slot);
         verifySet(slotIndex, BOOLEAN_TAG);
         setBooleanUnsafe(slotIndex, slot, value);
     }
@@ -177,7 +188,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     @Override
     public float getFloat(FrameSlot slot) throws FrameSlotTypeException {
-        int slotIndex = slot.getIndex();
+        int slotIndex = getFrameSlotIndex(slot);
         boolean condition = verifyGet(slotIndex, FLOAT_TAG);
         return getFloatUnsafe(slotIndex, slot, condition);
     }
@@ -189,7 +200,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     @Override
     public void setFloat(FrameSlot slot, float value) {
-        int slotIndex = slot.getIndex();
+        int slotIndex = getFrameSlotIndex(slot);
         verifySet(slotIndex, FLOAT_TAG);
         setFloatUnsafe(slotIndex, slot, value);
     }
@@ -201,7 +212,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     @Override
     public long getLong(FrameSlot slot) throws FrameSlotTypeException {
-        int slotIndex = slot.getIndex();
+        int slotIndex = getFrameSlotIndex(slot);
         boolean condition = verifyGet(slotIndex, LONG_TAG);
         return getLongUnsafe(slotIndex, slot, condition);
     }
@@ -213,7 +224,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     @Override
     public void setLong(FrameSlot slot, long value) {
-        int slotIndex = slot.getIndex();
+        int slotIndex = getFrameSlotIndex(slot);
         verifySet(slotIndex, LONG_TAG);
         setLongUnsafe(slotIndex, slot, value);
     }
@@ -225,7 +236,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     @Override
     public int getInt(FrameSlot slot) throws FrameSlotTypeException {
-        int slotIndex = slot.getIndex();
+        int slotIndex = getFrameSlotIndex(slot);
         boolean condition = verifyGet(slotIndex, INT_TAG);
         return getIntUnsafe(slotIndex, slot, condition);
     }
@@ -237,7 +248,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     @Override
     public void setInt(FrameSlot slot, int value) {
-        int slotIndex = slot.getIndex();
+        int slotIndex = getFrameSlotIndex(slot);
         verifySet(slotIndex, INT_TAG);
         setIntUnsafe(slotIndex, slot, value);
     }
@@ -249,7 +260,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     @Override
     public double getDouble(FrameSlot slot) throws FrameSlotTypeException {
-        int slotIndex = slot.getIndex();
+        int slotIndex = getFrameSlotIndex(slot);
         boolean condition = verifyGet(slotIndex, DOUBLE_TAG);
         return getDoubleUnsafe(slotIndex, slot, condition);
     }
@@ -261,7 +272,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     @Override
     public void setDouble(FrameSlot slot, double value) {
-        int slotIndex = slot.getIndex();
+        int slotIndex = getFrameSlotIndex(slot);
         verifySet(slotIndex, DOUBLE_TAG);
         setDoubleUnsafe(slotIndex, slot, value);
     }
@@ -305,7 +316,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     @Override
     public Object getValue(FrameSlot slot) {
-        int slotIndex = slot.getIndex();
+        int slotIndex = getFrameSlotIndex(slot);
         if (CompilerDirectives.inInterpreter() && slotIndex >= getTags().length) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             resize();
@@ -355,7 +366,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     byte getTag(FrameSlot slot) {
-        int slotIndex = slot.getIndex();
+        int slotIndex = getFrameSlotIndex(slot);
         byte[] cachedTags = getTags();
         if (slotIndex < cachedTags.length) {
             return cachedTags[slotIndex];
@@ -454,6 +465,11 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     @SuppressWarnings("unused")
     private static void unsafePutObject(Object receiver, long offset, Object value, Object locationIdentity) {
         UNSAFE.putObject(receiver, offset, value);
+    }
+
+    @SuppressWarnings("deprecation")
+    private static int getFrameSlotIndex(FrameSlot slot) {
+        return slot.getIndex();
     }
 
     private static final Unsafe UNSAFE = getUnsafe();

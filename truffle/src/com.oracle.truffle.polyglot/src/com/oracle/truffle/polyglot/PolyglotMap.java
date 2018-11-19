@@ -3,7 +3,7 @@
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
- * 
+ *
  * Subject to the condition set forth below, permission is hereby granted to any
  * person obtaining a copy of this software, associated documentation and/or
  * data (collectively the "Software"), free of charge and under any and all
@@ -11,25 +11,25 @@
  * freely licensable by each licensor hereunder covering either (i) the
  * unmodified Software as contributed to or provided by such licensor, or (ii)
  * the Larger Works (as defined below), to deal in both
- * 
+ *
  * (a) the Software, and
- * 
+ *
  * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
  * one is included with the Software each a "Larger Work" to which the Software
  * is contributed by such licensors),
- * 
+ *
  * without restriction, including without limitation the rights to copy, create
  * derivative works of, display, perform, and distribute the Software and make,
  * use, sell, offer for sale, import, export, have made, and have sold the
  * Software and the Larger Work(s), and to sublicense the foregoing rights on
  * either these or other terms.
- * 
+ *
  * This license is subject to the following condition:
- * 
+ *
  * The above copyright notice and either this complete permission notice or at a
  * minimum a reference to the UPL must be included in all copies or substantial
  * portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -72,7 +72,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValueNode;
 
-class PolyglotMap<K, V> extends AbstractMap<K, V> {
+class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
 
     final PolyglotLanguageContext languageContext;
     final TruffleObject guestObject;
@@ -90,6 +90,21 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> {
         } else {
             return new PolyglotMap<>(languageContext, foreignObject, keyClass, valueClass, valueType);
         }
+    }
+
+    @Override
+    public PolyglotLanguageContext getLanguageContext() {
+        return languageContext;
+    }
+
+    @Override
+    public Object getGuestObject() {
+        return guestObject;
+    }
+
+    @Override
+    public PolyglotContextImpl getContext() {
+        return languageContext.context;
     }
 
     @Override
@@ -123,27 +138,17 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> {
 
     @Override
     public String toString() {
-        try {
-            return languageContext.asValue(guestObject).toString();
-        } catch (UnsupportedOperationException e) {
-            return super.toString();
-        }
+        return HostWrapper.toString(this);
     }
 
     @Override
     public int hashCode() {
-        return guestObject.hashCode();
+        return HostWrapper.hashCode(this);
     }
 
     @Override
     public boolean equals(Object o) {
-        if (o == this) {
-            return true;
-        } else if (o instanceof PolyglotMap) {
-            return languageContext.context == ((PolyglotMap<?, ?>) o).languageContext.context && guestObject.equals(((PolyglotMap<?, ?>) o).guestObject);
-        } else {
-            return false;
-        }
+        return HostWrapper.equals(this, o);
     }
 
     private final class LazyEntries extends AbstractSet<Entry<K, V>> {
@@ -369,14 +374,14 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> {
         }
 
         private static CallTarget initializeCall(PolyglotMapNode node) {
-            return HostEntryRootNode.createTarget(node);
+            return HostRootNode.createTarget(node);
         }
 
         static Cache lookup(PolyglotLanguageContext languageContext, Class<?> receiverClass, Class<?> keyClass, Class<?> valueClass, Type valueType) {
             Key cacheKey = new Key(receiverClass, keyClass, valueType);
-            Cache cache = HostEntryRootNode.lookupHostCodeCache(languageContext, cacheKey, Cache.class);
+            Cache cache = HostRootNode.lookupHostCodeCache(languageContext, cacheKey, Cache.class);
             if (cache == null) {
-                cache = HostEntryRootNode.installHostCodeCache(languageContext, cacheKey, new Cache(receiverClass, keyClass, valueClass, valueType), Cache.class);
+                cache = HostRootNode.installHostCodeCache(languageContext, cacheKey, new Cache(receiverClass, keyClass, valueClass, valueType), Cache.class);
             }
             assert cache.receiverClass == receiverClass;
             assert cache.keyClass == keyClass;
@@ -416,7 +421,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> {
             }
         }
 
-        private abstract static class PolyglotMapNode extends HostEntryRootNode<TruffleObject> {
+        private abstract static class PolyglotMapNode extends HostRootNode<TruffleObject> {
 
             final Cache cache;
             @Child protected Node hasSize = Message.HAS_SIZE.createNode();
@@ -465,8 +470,8 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> {
             }
 
             @Override
-            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args, int offset) {
-                Object key = args[offset];
+            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args) {
+                Object key = args[ARGUMENT_OFFSET];
                 if (isValidKey(receiver, key)) {
                     return KeyInfo.isReadable(sendKeyInfo(keyInfo, receiver, key));
                 }
@@ -491,11 +496,11 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> {
 
             @Override
             @SuppressWarnings("unchecked")
-            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args, int offset) {
+            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args) {
                 List<?> keys = null;
                 int keysSize = 0;
                 int elemSize = 0;
-                PolyglotMap<Object, Object> originalMap = (PolyglotMap<Object, Object>) args[offset];
+                PolyglotMap<Object, Object> originalMap = (PolyglotMap<Object, Object>) args[ARGUMENT_OFFSET];
 
                 if (cache.memberKey && sendHasKeys(hasKeys, receiver)) {
                     TruffleObject truffleKeys;
@@ -541,8 +546,8 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> {
             }
 
             @Override
-            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args, int offset) {
-                Object key = args[offset];
+            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args) {
+                Object key = args[ARGUMENT_OFFSET];
                 Object result = null;
                 if (isValidKey(receiver, key) && KeyInfo.isReadable(sendKeyInfo(keyInfo, receiver, key))) {
                     try {
@@ -581,12 +586,12 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> {
             }
 
             @Override
-            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args, int offset) {
-                Object key = args[offset];
+            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args) {
+                Object key = args[ARGUMENT_OFFSET];
                 Object result = null;
 
                 if (isValidKey(receiver, key)) {
-                    Object value = args[offset + 1];
+                    Object value = args[ARGUMENT_OFFSET + 1];
                     int info = sendKeyInfo(keyInfo, receiver, key);
                     if (!KeyInfo.isExisting(info) || (KeyInfo.isWritable(info) && KeyInfo.isReadable(info))) {
                         if (KeyInfo.isExisting(info)) {
@@ -639,8 +644,8 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> {
             }
 
             @Override
-            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args, int offset) {
-                Object key = args[offset];
+            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args) {
+                Object key = args[ARGUMENT_OFFSET];
                 Object result = null;
 
                 if (isValidKey(receiver, key)) {
@@ -692,12 +697,12 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> {
             }
 
             @Override
-            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args, int offset) {
-                Object key = args[offset];
+            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args) {
+                Object key = args[ARGUMENT_OFFSET];
 
                 if (isValidKey(receiver, key)) {
-                    if (args.length > offset + 1) {
-                        Object value = args[offset + 1];
+                    if (args.length > ARGUMENT_OFFSET + 1) {
+                        Object value = args[ARGUMENT_OFFSET + 1];
                         Object result = null;
                         int info = sendKeyInfo(keyInfo, receiver, key);
                         if (KeyInfo.isReadable(info)) {
@@ -744,8 +749,8 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> {
             }
 
             @Override
-            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject function, Object[] args, int offset) {
-                return apply.execute(languageContext, function, args[offset], Object.class, Object.class);
+            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject function, Object[] args) {
+                return apply.execute(languageContext, function, args[ARGUMENT_OFFSET], Object.class, Object.class);
             }
         }
 

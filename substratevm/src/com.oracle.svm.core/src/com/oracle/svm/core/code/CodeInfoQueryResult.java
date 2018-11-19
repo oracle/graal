@@ -28,12 +28,18 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 
 import com.oracle.svm.core.heap.ReferenceMapDecoder;
 import com.oracle.svm.core.heap.ReferenceMapEncoder;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * Information about an instruction pointer (IP), created and returned by methods in
  * {@link CodeInfoTable}.
  */
 public class CodeInfoQueryResult {
+
+    /**
+     * Marker value for the frame size of entry points that is used by {@link #isEntryPoint()}.
+     */
+    public static final int ENTRY_POINT_FRAME_SIZE = 1;
 
     /**
      * Marker value returned by {@link #getExceptionOffset()} when no exception handler is
@@ -76,9 +82,17 @@ public class CodeInfoQueryResult {
     }
 
     /**
+     * Indicates if the method containing the IP is an entry point method.
+     */
+    public boolean isEntryPoint() {
+        return totalFrameSize == ENTRY_POINT_FRAME_SIZE;
+    }
+
+    /**
      * Returns the frame size of the method containing the IP.
      */
     public long getTotalFrameSize() {
+        VMError.guarantee(totalFrameSize != ENTRY_POINT_FRAME_SIZE, "Entry point method: no valid frame size");
         return totalFrameSize;
     }
 

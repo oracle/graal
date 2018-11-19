@@ -34,7 +34,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
+import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
 import org.junit.AfterClass;
@@ -45,11 +46,11 @@ import org.junit.Test;
 
 public class ExperimentalSplittingStrategyTest extends AbstractSplittingStrategyTest {
 
-    private static TruffleCompilerOptions.TruffleOptionsOverrideScope experimentalSplittingScope;
+    private static TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope experimentalSplittingScope;
 
     @BeforeClass
     public static void before() {
-        experimentalSplittingScope = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleExperimentalSplitting, true);
+        experimentalSplittingScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleExperimentalSplitting, true);
     }
 
     @AfterClass

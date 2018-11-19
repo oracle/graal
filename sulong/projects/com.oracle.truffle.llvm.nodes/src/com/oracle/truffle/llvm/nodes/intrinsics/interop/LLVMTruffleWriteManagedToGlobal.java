@@ -31,11 +31,11 @@ package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNode.AttachInteropTypeNode;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.AttachInteropTypeNodeGen;
+import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -46,7 +46,8 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
  * will only influence future lookups of the global variable address, so that existing pointers to
  * the global variable will remain unchanged.
  */
-@NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+@NodeChild(type = LLVMExpressionNode.class)
+@NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMTruffleWriteManagedToGlobal extends LLVMIntrinsic {
 
     @Child AttachInteropTypeNode attachType = AttachInteropTypeNodeGen.create();
@@ -55,6 +56,9 @@ public abstract class LLVMTruffleWriteManagedToGlobal extends LLVMIntrinsic {
     @Specialization
     protected Object write(LLVMPointer address, Object value) {
         LLVMGlobal global = getContextReference().get().findGlobal(address);
+        if (global == null) {
+            throw new LLVMPolyglotException(this, "First argument to truffle_assign_managed must be a pointer to a global.");
+        }
         Object newValue = attachType.execute(value, global.getInteropType());
         global.setTarget(newValue);
         return newValue;

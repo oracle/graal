@@ -102,6 +102,7 @@ public class RedefineIntrinsicTest extends ReplacementsTest {
 
     @Test
     public void test() throws Throwable {
+        assumeManagementLibraryIsLoadable();
         try {
             Class.forName("java.lang.instrument.Instrumentation");
         } catch (ClassNotFoundException ex) {

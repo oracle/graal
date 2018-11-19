@@ -46,10 +46,10 @@ public final class DynamicProxyFeature implements Feature {
     public static class Options {
 
         @Option(help = "file:doc-files/ProxyConfigurationFilesHelp.txt", type = OptionType.User)//
-        public static final HostedOptionKey<String> DynamicProxyConfigurationFiles = new HostedOptionKey<>("");
+        public static final HostedOptionKey<String[]> DynamicProxyConfigurationFiles = new HostedOptionKey<>(null);
 
         @Option(help = "Resources describing program elements to be made available for reflection (see ProxyConfigurationFiles).", type = OptionType.User)//
-        public static final HostedOptionKey<String> DynamicProxyConfigurationResources = new HostedOptionKey<>("");
+        public static final HostedOptionKey<String[]> DynamicProxyConfigurationResources = new HostedOptionKey<>(null);
     }
 
     @Override

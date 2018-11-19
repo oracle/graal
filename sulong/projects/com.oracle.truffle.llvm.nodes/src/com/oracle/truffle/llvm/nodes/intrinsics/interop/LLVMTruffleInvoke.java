@@ -36,7 +36,6 @@ import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
@@ -59,7 +58,8 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
-@NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+@NodeChild(type = LLVMExpressionNode.class)
+@NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMTruffleInvoke extends LLVMIntrinsic {
     @Children private final LLVMExpressionNode[] args;
     @Children private final LLVMDataEscapeNode[] prepareValuesForEscape;
@@ -108,19 +108,8 @@ public abstract class LLVMTruffleInvoke extends LLVMIntrinsic {
         }
     }
 
-    @SuppressWarnings("unused")
-    @Specialization(limit = "2", guards = "idStr.equals(readStr.executeWithTarget(id))")
-    protected Object cachedId(VirtualFrame frame, LLVMManagedPointer value, Object id,
-                    @Cached("createReadString()") LLVMReadStringNode readStr,
-                    @Cached("readStr.executeWithTarget(id)") String idStr,
-                    @Cached("getContextReference()") ContextReference<LLVMContext> context,
-                    @Cached("create()") LLVMGetStackNode getStack) {
-        TruffleObject foreign = asForeign.execute(value);
-        return doInvoke(frame, foreign, idStr, context, getStack);
-    }
-
-    @Specialization(replaces = "cachedId")
-    protected Object uncached(VirtualFrame frame, LLVMManagedPointer value, Object id,
+    @Specialization
+    protected Object doIntrinsic(VirtualFrame frame, LLVMManagedPointer value, Object id,
                     @Cached("createReadString()") LLVMReadStringNode readStr,
                     @Cached("getContextReference()") ContextReference<LLVMContext> context,
                     @Cached("create()") LLVMGetStackNode getStack) {

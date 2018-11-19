@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.nodes.intrinsics.c;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -338,7 +337,8 @@ public abstract class LLVMCMathsIntrinsics {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMLdexp extends LLVMIntrinsic {
 
         @Specialization
@@ -358,7 +358,8 @@ public abstract class LLVMCMathsIntrinsics {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMModf extends LLVMIntrinsic {
 
         @Specialization
@@ -405,7 +406,8 @@ public abstract class LLVMCMathsIntrinsics {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMFmod extends LLVMIntrinsic {
 
         @Specialization
@@ -425,7 +427,8 @@ public abstract class LLVMCMathsIntrinsics {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMPow extends LLVMBuiltin {
 
         @Specialization
@@ -641,7 +644,8 @@ public abstract class LLVMCMathsIntrinsics {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMATan2 extends LLVMIntrinsic {
 
         @Specialization
@@ -661,7 +665,8 @@ public abstract class LLVMCMathsIntrinsics {
         }
     }
 
-    @NodeChildren({@NodeChild(value = "magnitude", type = LLVMExpressionNode.class), @NodeChild(value = "sign", type = LLVMExpressionNode.class)})
+    @NodeChild(value = "magnitude", type = LLVMExpressionNode.class)
+    @NodeChild(value = "sign", type = LLVMExpressionNode.class)
     public abstract static class LLVMCopySign extends LLVMBuiltin {
 
         @Specialization

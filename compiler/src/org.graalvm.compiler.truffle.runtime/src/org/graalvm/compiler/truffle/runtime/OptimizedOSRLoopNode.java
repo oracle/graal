@@ -24,13 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleInvalidationReprofileCount;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleOSR;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleOSRCompilationThreshold;
-
 import java.util.Objects;
-
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -244,7 +238,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
         osrTarget.setSpeculationLog(speculationLog);
         // let the old parent re-adopt the children
         parent.adoptChildren();
-        osrTarget.compile();
+        osrTarget.compile(true);
         return osrTarget;
     }
 
@@ -279,7 +273,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
     public static LoopNode create(RepeatingNode repeat) {
         // using static methods with LoopNode return type ensures
         // that only one loop node implementation gets loaded.
-        if (TruffleCompilerOptions.getValue(TruffleOSR)) {
+        if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleOSR)) {
             return createDefault(repeat);
         } else {
             return OptimizedLoopNode.create(repeat);
@@ -339,12 +333,12 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
 
         @Override
         protected int getInvalidationBackoff() {
-            return TruffleCompilerOptions.getValue(TruffleInvalidationReprofileCount);
+            return TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleInvalidationReprofileCount);
         }
 
         @Override
         protected int getThreshold() {
-            return TruffleCompilerOptions.getValue(TruffleOSRCompilationThreshold);
+            return TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleOSRCompilationThreshold);
         }
 
     }
@@ -486,12 +480,17 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
             int currentMaxIndex = maxIndex;
             for (int i = 0; i < frameSlots.length; i++) {
                 FrameSlot frameSlot = frameSlots[i];
-                if (frameSlot.getIndex() > currentMaxIndex) {
-                    currentMaxIndex = frameSlot.getIndex();
+                if (getFrameSlotIndex(frameSlot) > currentMaxIndex) {
+                    currentMaxIndex = getFrameSlotIndex(frameSlot);
                 }
                 tags[i] = frameDescriptor.getFrameSlotKind(frameSlot).tag;
             }
             return currentMaxIndex;
+        }
+
+        @SuppressWarnings("deprecation")
+        private static int getFrameSlotIndex(FrameSlot slot) {
+            return slot.getIndex();
         }
 
         @Override
@@ -530,7 +529,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
 
             for (int i = 0; i < frameSlots.length; i++) {
                 FrameSlot slot = frameSlots[i];
-                int index = slot.getIndex();
+                int index = getFrameSlotIndex(slot);
 
                 byte speculatedTag = speculatedTags[i];
                 byte currentSourceTag = currentSourceTags[index];

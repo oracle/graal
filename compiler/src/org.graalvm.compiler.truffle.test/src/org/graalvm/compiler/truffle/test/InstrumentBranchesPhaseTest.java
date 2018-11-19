@@ -24,14 +24,14 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleInstrumentBranches;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleInstrumentBranchesFilter;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleInstrumentBranchesPretty;
+import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleInstrumentBranches;
+import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleInstrumentBranchesFilter;
+import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleInstrumentBranchesPretty;
 
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentPhase;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleOptionsOverrideScope;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleOptionsOverrideScope;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;

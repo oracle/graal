@@ -34,6 +34,8 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceArrayLikeType;
@@ -44,6 +46,7 @@ import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStaticMemberType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
 /**
  * This class describes a source-level variable. Debuggers can use it to display the original
@@ -144,7 +147,30 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
     @Override
     @TruffleBoundary
     public String toString() {
-        return Objects.toString(getValue());
+        Object currentValue = getValue();
+
+        if (LLVMManagedPointer.isInstance(currentValue)) {
+            final LLVMManagedPointer managedPointer = LLVMManagedPointer.cast(currentValue);
+            final TruffleObject target = managedPointer.getObject();
+
+            String targetString;
+            if (target instanceof LLVMFunctionDescriptor) {
+                final LLVMFunctionDescriptor function = (LLVMFunctionDescriptor) target;
+                targetString = "LLVM function " + function.getName();
+
+            } else {
+                targetString = "<managed pointer>";
+            }
+
+            final long targetOffset = managedPointer.getOffset();
+            if (targetOffset != 0L) {
+                targetString = String.format("%s + %d byte%s", targetString, targetOffset, targetOffset == 1L ? "" : "s");
+            }
+
+            currentValue = targetString;
+        }
+
+        return Objects.toString(currentValue);
     }
 
     @Override
@@ -422,7 +448,7 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
 
         private LLVMDebugObject dereference() {
             // the pointer may change at runtime, so we cannot just cache the dereferenced object
-            if (pointerType == null || !pointerType.isSafeToDereference()) {
+            if (pointerType == null || (!pointerType.isSafeToDereference() && !value.isAlwaysSafeToDereference(offset))) {
                 return null;
             }
 

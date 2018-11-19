@@ -73,11 +73,11 @@ public final class Sulong extends LLVMLanguage {
     private static final List<Configuration> configurations = new ArrayList<>();
 
     static {
-        configurations.add(new NativeConfiguration());
         ClassLoader cl = Sulong.class.getClassLoader();
         for (Configuration f : ServiceLoader.load(Configuration.class, cl)) {
             configurations.add(f);
         }
+        configurations.add(new NativeConfiguration());
     }
 
     @TruffleBoundary
@@ -107,7 +107,7 @@ public final class Sulong extends LLVMLanguage {
     }
 
     @Override
-    protected CallTarget parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest request) throws Exception {
+    protected CallTarget parse(ParsingRequest request) {
         Source source = request.getSource();
         LLVMContext context = findLLVMContext();
         return new Runner(context).parse(source);
@@ -181,13 +181,12 @@ public final class Sulong extends LLVMLanguage {
 
     @TruffleBoundary
     private static Configuration getActiveConfiguration(Env env) {
-        String name = env.getOptions().get(SulongEngineOption.CONFIGURATION);
         for (Configuration config : configurations) {
-            if (name.equals(config.getConfigurationName())) {
+            if (config.isActive(env)) {
                 return config;
             }
         }
-        throw new IllegalStateException("Unknown configuration: " + name);
+        throw new IllegalStateException("should not reach here: no configuration found");
     }
 
     @Override

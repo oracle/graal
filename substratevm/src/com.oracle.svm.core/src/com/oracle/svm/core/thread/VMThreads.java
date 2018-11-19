@@ -29,6 +29,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.word.ComparableWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -63,8 +64,9 @@ public abstract class VMThreads {
 
     /** The next element in the linked list of {@link IsolateThread}s. */
     private static final FastThreadLocalWord<IsolateThread> nextTL = FastThreadLocalFactory.createWord();
-
+    private static final FastThreadLocalWord<ComparableWord> OSThreadIdTL = FastThreadLocalFactory.createWord();
     public static final FastThreadLocalWord<Isolate> IsolateTL = FastThreadLocalFactory.createWord();
+
     private static final int STATE_UNINITIALIZED = 1;
     private static final int STATE_INITIALIZING = 2;
     private static final int STATE_INITIALIZED = 3;
@@ -91,22 +93,23 @@ public abstract class VMThreads {
      * Make sure the runtime is initialized for threading.
      */
     @Uninterruptible(reason = "Called from uninterruptible code. Too early for safepoints.")
-    public static void ensureInitialized() {
+    public static boolean ensureInitialized() {
+        boolean result = true;
         if (initializationState.compareAndSet(STATE_UNINITIALIZED, STATE_INITIALIZING)) {
             /*
              * We claimed the initialization lock, so we are now responsible for doing all the
              * initialization.
              */
-            singleton().initializeOnce();
+            result = singleton().initializeOnce();
 
             initializationState.set(STATE_INITIALIZED);
-
         } else {
             /* Already initialized, or some other thread claimed the initialization lock. */
             while (initializationState.get() < STATE_INITIALIZED) {
                 /* Busy wait until the other thread finishes the initialization. */
             }
         }
+        return result;
     }
 
     /**
@@ -114,26 +117,7 @@ public abstract class VMThreads {
      * initialization of native OS resources.
      */
     @Uninterruptible(reason = "Called from uninterruptible code. Too early for safepoints.")
-    protected abstract void initializeOnce();
-
-    /**
-     * Invoked exactly once late during the teardown of an isolate. Subclasses must free the native
-     * OS resources allocated in {@link #initializeOnce()}.
-     */
-    @Uninterruptible(reason = "Called from uninterruptible code. Too late for safepoints.")
-    public abstract void tearDown();
-
-    /**
-     * Read the {@link IsolateThread} from an OS-specific thread local variable.
-     */
-    @Uninterruptible(reason = "Called from uninterruptible code. Too early for safepoints.")
-    public abstract IsolateThread readIsolateThreadFromOSThreadLocal();
-
-    /**
-     * Write the {@link IsolateThread} to an OS-specific thread local variable.
-     */
-    @Uninterruptible(reason = "Called from uninterruptible code. Too early for safepoints.")
-    public abstract void writeIsolateThreadToOSThreadLocal(IsolateThread thread);
+    protected abstract boolean initializeOnce();
 
     /**
      * Allocate native memory for a {@link IsolateThread}. The returned memory must be initialized
@@ -162,13 +146,13 @@ public abstract class VMThreads {
     }
 
     /** A predicate for the {@code null} {@link IsolateThread}. */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isNullThread(IsolateThread vmThread) {
         return vmThread.isNull();
     }
 
     /** A predicate for the {@code non-null} {@link IsolateThread}. */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isNonNullThread(IsolateThread vmThread) {
         return vmThread.isNonNull();
     }
@@ -184,6 +168,7 @@ public abstract class VMThreads {
      * for (VMThread thread = VMThreads.firstThread(); VMThreads.isNonNullThread(thread); thread = VMThreads.nextThread(thread)) {
      * </pre>
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static IsolateThread firstThread() {
         return head;
     }
@@ -192,12 +177,8 @@ public abstract class VMThreads {
      * Iteration of all {@link IsolateThread}s that are currently running. See
      * {@link #firstThread()} for details.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static IsolateThread nextThread(IsolateThread cur) {
-        return nextTL.get(cur);
-    }
-
-    /** Iteration of all {@link IsolateThread}s on a stolen list. */
-    public static IsolateThread nextThreadFromList(IsolateThread cur) {
         return nextTL.get(cur);
     }
 
@@ -206,8 +187,10 @@ public abstract class VMThreads {
      * must be the first method called in every thread.
      */
     @Uninterruptible(reason = "Reason: Thread register not yet set up.")
-    public static void attachThread(IsolateThread thread) {
+    public void attachThread(IsolateThread thread) {
         assert StatusSupport.isStatusCreated(thread) : "Status should be initialized on creation.";
+        OSThreadIdTL.set(thread, getCurrentOSThreadId());
+
         // Manipulating the VMThread list requires the lock, but the IsolateThread is not set up
         // yet, so the locking must be without transitions. Not using try-with-resources to avoid
         // implicitly calling addSuppressed(), which is not uninterruptible.
@@ -252,6 +235,18 @@ public abstract class VMThreads {
         }
         // Signal that the VMThreads list has changed.
         VMThreads.THREAD_LIST_CONDITION.broadcast();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    protected abstract ComparableWord getCurrentOSThreadId();
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public IsolateThread findIsolateThreadforCurrentOSThread() {
+        ComparableWord id = getCurrentOSThreadId();
+        IsolateThread thread;
+        for (thread = head; isNonNullThread(thread) && OSThreadIdTL.get(thread).notEqual(id); thread = nextThread(thread)) {
+        }
+        return thread;
     }
 
     /*

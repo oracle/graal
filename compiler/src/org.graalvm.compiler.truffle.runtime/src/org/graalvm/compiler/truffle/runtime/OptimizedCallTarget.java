@@ -24,6 +24,23 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
+
+import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime.LazyFrameBoxingQuery;
+import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionValues;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -41,40 +58,10 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
+
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.SpeculationLog;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime.LazyFrameBoxingQuery;
-import org.graalvm.options.OptionKey;
-import org.graalvm.options.OptionValues;
-
-import java.lang.ref.WeakReference;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
-import java.util.function.Predicate;
-import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
-
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TraceTruffleAssumptions;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleBackgroundCompilation;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilationExceptionsAreFatal;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilationExceptionsArePrinted;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilationExceptionsAreThrown;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleExperimentalSplittingDumpDecisions;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TrufflePerformanceWarningsAreFatal;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleExperimentalSplittingMaxPropagationDepth;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleExperimentalSplitting;
 
 /**
  * Call target that is optimized by Graal upon surpassing a specific invocation threshold. That is,
@@ -103,7 +90,23 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     private volatile int cachedNonTrivialNodeCount = -1;
     private volatile SpeculationLog speculationLog;
     private volatile int callSitesKnown;
+
+    /**
+     * When this field is not null, this {@link OptimizedCallTarget} is {@linkplain #isCompiling()
+     * being compiled}.<br/>
+     *
+     * It is only set to non-null in {@link #compile(boolean)} in a synchronized block. It is only
+     * {@linkplain #resetCompilationTask() set to null} by the compilation thread once the
+     * compilation is over.<br/>
+     *
+     * Note that {@link #resetCompilationTask()} waits for the field to have been set to a non-null
+     * value before resetting it.<br/>
+     *
+     * Once it has been set to a non-null value, the compilation <em>must</em> complete and call
+     * {@link #resetCompilationTask()} even if that compilation fails or is cancelled.
+     */
     private volatile CancellableCompileTask compilationTask;
+
     /**
      * When this call target is inlined, the inlining {@link InstalledCode} registers this
      * assumption. It gets invalidated when a node rewrite in this call target is performed. This
@@ -125,7 +128,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         this.speculationLog = sourceCallTarget != null ? sourceCallTarget.getSpeculationLog() : null;
         this.rootNode = rootNode;
         uninitializedNodeCount = runtime().getTvmci().adoptChildrenAndCount(this.rootNode);
-        knownCallNodes = TruffleCompilerOptions.getValue(TruffleExperimentalSplitting) ? new ArrayList<>(1) : null;
+        knownCallNodes = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplitting) ? new ArrayList<>(1) : null;
     }
 
     public Assumption getNodeRewritingAssumption() {
@@ -141,7 +144,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      */
     private Assumption initializeNodeRewritingAssumption() {
         Assumption newAssumption = runtime().createAssumption(
-                        !TruffleCompilerOptions.getValue(TraceTruffleAssumptions) ? NODE_REWRITING_ASSUMPTION_NAME : NODE_REWRITING_ASSUMPTION_NAME + " of " + rootNode);
+                        !TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TraceTruffleAssumptions) ? NODE_REWRITING_ASSUMPTION_NAME : NODE_REWRITING_ASSUMPTION_NAME + " of " + rootNode);
         if (NODE_REWRITING_ASSUMPTION_UPDATER.compareAndSet(this, null, newAssumption)) {
             return newAssumption;
         } else {
@@ -250,6 +253,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
     protected final Object callRoot(Object[] originalArguments) {
+        if (GraalCompilerDirectives.inFirstTier()) {
+            getCompilationProfile().firstTierCall(this);
+        }
         Object[] args = originalArguments;
         OptimizedCompilationProfile profile = this.compilationProfile;
         if (CompilerDirectives.inCompiledCode() && profile != null) {
@@ -264,13 +270,13 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     protected final Object callProxy(VirtualFrame frame) {
-        final boolean inCompiled = CompilerDirectives.inCompiledCode();
+        final boolean inCompiled = CompilerDirectives.inCompilationRoot();
         try {
             return getRootNode().execute(frame);
         } catch (ControlFlowException t) {
-            throw rethrow(compilationProfile.profileExceptionType(t));
+            throw rethrow(getCompilationProfile().profileExceptionType(t));
         } catch (Throwable t) {
-            Throwable profiledT = compilationProfile.profileExceptionType(t);
+            Throwable profiledT = getCompilationProfile().profileExceptionType(t);
             runtime().getTvmci().onThrowable(null, this, profiledT, frame);
             throw rethrow(profiledT);
         } finally {
@@ -311,12 +317,20 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     /**
+     * @deprecated Please use {@code compile(boolean)} instead.
+     */
+    @Deprecated
+    public final boolean compile() {
+        return compile(true);
+    }
+
+    /**
      * Returns <code>true</code> if the call target was already compiled or was compiled
      * synchronously. Returns <code>false</code> if compilation was not scheduled or is happening in
      * the background. Use {@link #isCompiling()} to find out whether it is actually compiling.
      */
-    public final boolean compile() {
-        if (isValid()) {
+    public final boolean compile(boolean lastTierCompilation) {
+        if (!needsCompile(lastTierCompilation)) {
             return true;
         }
         if (!isCompiling()) {
@@ -328,38 +342,33 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             // Do not try to compile this target concurrently,
             // but do not block other threads if compilation is not asynchronous.
             synchronized (this) {
-                if (isValid()) {
+                if (!needsCompile(lastTierCompilation)) {
                     return true;
                 }
                 if (this.compilationProfile == null) {
                     initialize();
                 }
                 if (!isCompiling()) {
-                    this.compilationTask = task = runtime().submitForCompilation(this);
+                    this.compilationTask = task = runtime().submitForCompilation(this, lastTierCompilation);
                 }
             }
             if (task != null) {
-                Future<?> submitted = task.getFuture();
-                if (submitted != null) {
-                    boolean allowBackgroundCompilation = !TruffleCompilerOptions.getValue(TrufflePerformanceWarningsAreFatal) &&
-                                    !TruffleCompilerOptions.getValue(TruffleCompilationExceptionsAreThrown);
-                    boolean mayBeAsynchronous = TruffleCompilerOptions.getValue(TruffleBackgroundCompilation) && allowBackgroundCompilation;
-                    runtime().finishCompilation(this, submitted, mayBeAsynchronous);
-                    return !mayBeAsynchronous;
-                }
+                boolean allowBackgroundCompilation = !TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TrufflePerformanceWarningsAreFatal) &&
+                                !TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompilationExceptionsAreThrown);
+                boolean mayBeAsynchronous = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleBackgroundCompilation) && allowBackgroundCompilation;
+                runtime().finishCompilation(this, task, mayBeAsynchronous);
+                return !mayBeAsynchronous;
             }
         }
         return false;
     }
 
+    private boolean needsCompile(boolean isLastTierCompilation) {
+        return !isValid() || (isLastTierCompilation && !isValidLastTier());
+    }
+
     public final boolean isCompiling() {
-        CancellableCompileTask task = getCompilationTask();
-        if (task != null) {
-            if (task.getFuture() != null) {
-                return true;
-            }
-        }
-        return false;
+        return getCompilationTask() != null;
     }
 
     /**
@@ -371,14 +380,15 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     public abstract long getCodeAddress();
 
     /**
-     * Invalidates any machine code attached to this call target.
-     */
-    protected abstract void invalidateCode();
-
-    /**
      * Determines if this call target has valid machine code attached to it.
      */
     public abstract boolean isValid();
+
+    /**
+     * Determines if this call target has valid machine code attached to it, and that this code was
+     * compiled in the last tier.
+     */
+    public abstract boolean isValidLastTier();
 
     /**
      * Invalidates this call target by invalidating any machine code attached to it.
@@ -427,8 +437,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     @Override
     public JavaConstant asJavaConstant() {
-        SnippetReflectionProvider snippetReflection = runtime().getGraalRuntime().getRequiredCapability(SnippetReflectionProvider.class);
-        return snippetReflection.forObject(this);
+        return GraalTruffleRuntime.getRuntime().forObject(this);
     }
 
     @SuppressWarnings({"unchecked"})
@@ -451,17 +460,17 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
              */
         } else {
             compilationProfile.reportCompilationFailure();
-            if (TruffleCompilerOptions.getValue(TruffleCompilationExceptionsAreThrown)) {
+            if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompilationExceptionsAreThrown)) {
                 final InternalError error = new InternalError(reasonAndStackTrace.get());
                 throw new OptimizationFailedException(error, this);
             }
 
-            boolean truffleCompilationExceptionsAreFatal = TruffleCompilerRuntime.areTruffleCompilationExceptionsFatal();
-            if (TruffleCompilerOptions.getValue(TruffleCompilationExceptionsArePrinted) || truffleCompilationExceptionsAreFatal) {
+            boolean truffleCompilationExceptionsAreFatal = TruffleRuntimeOptions.areTruffleCompilationExceptionsFatal();
+            if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompilationExceptionsArePrinted) || truffleCompilationExceptionsAreFatal) {
                 log(reasonAndStackTrace.get());
                 if (truffleCompilationExceptionsAreFatal) {
-                    log("Exiting VM due to " + (TruffleCompilerOptions.getValue(TruffleCompilationExceptionsAreFatal) ? TruffleCompilationExceptionsAreFatal.getName()
-                                    : TrufflePerformanceWarningsAreFatal.getName()) + "=true");
+                    log("Exiting VM due to " + (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompilationExceptionsAreFatal) ? "TruffleCompilationExceptionsAreFatal"
+                                    : "TrufflePerformanceWarningsAreFatal") + "=true");
                     System.exit(-1);
                 }
             }
@@ -668,8 +677,23 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return compilationTask;
     }
 
+    /**
+     * This marks the end of the compilation.
+     *
+     * It may only ever be called by the thread that performed the compilation, and after the
+     * compilation is completely done (either successfully or not successfully).
+     */
     public void resetCompilationTask() {
-        this.compilationTask = null;
+        /*
+         * We synchronize because this is called from the compilation threads so we want to make
+         * sure we have finished setting the compilationTask in #compile. Otherwise
+         * `this.compilationTask = null` might run before then the field is set in #compile and this
+         * will get stuck in a "compiling" state.
+         */
+        synchronized (this) {
+            assert this.compilationTask != null;
+            this.compilationTask = null;
+        }
     }
 
     public <T> T getOptionValue(OptionKey<T> key) {
@@ -699,9 +723,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     void polymorphicSpecialize(Node source) {
-        if (TruffleCompilerOptions.getValue(TruffleExperimentalSplitting)) {
+        if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplitting)) {
             List<Node> toDump = null;
-            if (TruffleCompilerOptions.getValue(TruffleExperimentalSplittingDumpDecisions)) {
+            if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplittingDumpDecisions)) {
                 toDump = new ArrayList<>();
                 pullOutParentChain(source, toDump);
             }
@@ -716,8 +740,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             numberOfKnownCallNodes = knownCallNodes.size();
             onlyCaller = numberOfKnownCallNodes == 1 ? knownCallNodes.get(0).get() : null;
         }
-        if (depth > TruffleCompilerOptions.getValue(TruffleExperimentalSplittingMaxPropagationDepth) || needsSplit || numberOfKnownCallNodes == 0 ||
-                        compilationProfile.getInterpreterCallCount() == 1) {
+        if (depth > TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplittingMaxPropagationDepth) || needsSplit || numberOfKnownCallNodes == 0 ||
+                        compilationProfile.getCallCount() == 1) {
             return false;
         }
         if (numberOfKnownCallNodes == 1) {
@@ -725,10 +749,12 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                 final RootNode callerRootNode = onlyCaller.getRootNode();
                 if (callerRootNode != null && callerRootNode.getCallTarget() != null) {
                     final OptimizedCallTarget callerTarget = (OptimizedCallTarget) callerRootNode.getCallTarget();
-                    if (TruffleCompilerOptions.getValue(TruffleExperimentalSplittingDumpDecisions)) {
+                    if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplittingDumpDecisions)) {
                         pullOutParentChain(onlyCaller, toDump);
                     }
-                    needsSplit = callerTarget.maybeSetNeedsSplit(depth + 1, toDump);
+                    if (callerTarget.maybeSetNeedsSplit(depth + 1, toDump)) {
+                        needsSplit = true;
+                    }
                 }
             }
         } else {
@@ -739,7 +765,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     private void maybeDump(List<Node> toDump) {
-        if (TruffleCompilerOptions.getValue(TruffleExperimentalSplittingDumpDecisions)) {
+        if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplittingDumpDecisions)) {
             final List<OptimizedDirectCallNode> callers = new ArrayList<>();
             synchronized (this) {
                 for (WeakReference<OptimizedDirectCallNode> nodeRef : knownCallNodes) {

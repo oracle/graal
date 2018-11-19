@@ -30,11 +30,11 @@
 package com.oracle.truffle.llvm.test;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.graalvm.polyglot.Context;
 import org.junit.Test;
@@ -49,7 +49,7 @@ import com.oracle.truffle.llvm.test.options.TestOptions;
 @RunWith(Parameterized.class)
 public final class ParserTortureSuite {
 
-    private static final Path GCC_SUITE_DIR = new File(TestOptions.PROJECT_ROOT + "/../cache/tests/gcc.c-torture").toPath();
+    private static final Path GCC_SUITE_DIR = new File(TestOptions.EXTERNAL_TEST_SUITE_PATH).toPath();
     private static final Path GCC_CONFIG_DIR = new File(TestOptions.PROJECT_ROOT + "/../tests/gcc/compileConfigs").toPath();
 
     @Parameter(value = 0) public Path path;
@@ -61,16 +61,17 @@ public final class ParserTortureSuite {
     }
 
     @Test
-    public void test() throws Exception {
-        List<Path> testCandidates = Files.walk(path).filter(BaseTestHarness.isFile).filter(BaseTestHarness.isSulong).collect(Collectors.toList());
-        for (Path candidate : testCandidates) {
+    public void test() throws IOException {
+        try (Stream<Path> files = Files.walk(path)) {
+            for (Path candidate : (Iterable<Path>) files.filter(BaseTestHarness.isFile).filter(BaseTestHarness.isSulong)::iterator) {
 
-            if (!candidate.toAbsolutePath().toFile().exists()) {
-                throw new AssertionError("File " + candidate.toAbsolutePath().toFile() + " does not exist.");
-            }
+                if (!candidate.toAbsolutePath().toFile().exists()) {
+                    throw new AssertionError("File " + candidate.toAbsolutePath().toFile() + " does not exist.");
+                }
 
-            try (Context context = Context.newBuilder().option("llvm.lazyParsing", String.valueOf(false)).allowAllAccess(true).build()) {
-                context.eval(org.graalvm.polyglot.Source.newBuilder(LLVMLanguage.NAME, candidate.toFile()).build());
+                try (Context context = Context.newBuilder().option("llvm.lazyParsing", String.valueOf(false)).allowAllAccess(true).build()) {
+                    context.eval(org.graalvm.polyglot.Source.newBuilder(LLVMLanguage.NAME, candidate.toFile()).build());
+                }
             }
         }
     }

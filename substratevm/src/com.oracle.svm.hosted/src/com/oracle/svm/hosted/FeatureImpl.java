@@ -40,6 +40,7 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.RuntimeReflection;
 
@@ -79,10 +80,12 @@ public class FeatureImpl {
 
         protected final FeatureHandler featureHandler;
         protected final ImageClassLoader imageClassLoader;
+        protected final DebugContext debugContext;
 
-        FeatureAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader) {
+        FeatureAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, DebugContext debugContext) {
             this.featureHandler = featureHandler;
             this.imageClassLoader = imageClassLoader;
+            this.debugContext = debugContext;
         }
 
         public ImageClassLoader getImageClassLoader() {
@@ -113,19 +116,23 @@ public class FeatureImpl {
         public FeatureHandler getFeatureHandler() {
             return featureHandler;
         }
+
+        public DebugContext getDebugContext() {
+            return debugContext;
+        }
     }
 
     public static class IsInConfigurationAccessImpl extends FeatureAccessImpl implements Feature.IsInConfigurationAccess {
-        IsInConfigurationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader) {
-            super(featureHandler, imageClassLoader);
+        IsInConfigurationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, DebugContext debugContext) {
+            super(featureHandler, imageClassLoader, debugContext);
         }
     }
 
     public static class AfterRegistrationAccessImpl extends FeatureAccessImpl implements Feature.AfterRegistrationAccess {
         private final MetaAccessProvider metaAccess;
 
-        AfterRegistrationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, MetaAccessProvider metaAccess) {
-            super(featureHandler, imageClassLoader);
+        AfterRegistrationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, MetaAccessProvider metaAccess, DebugContext debugContext) {
+            super(featureHandler, imageClassLoader, debugContext);
             this.metaAccess = metaAccess;
         }
 
@@ -138,8 +145,8 @@ public class FeatureImpl {
 
         protected final BigBang bb;
 
-        AnalysisAccessBase(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, BigBang bb) {
-            super(featureHandler, imageClassLoader);
+        AnalysisAccessBase(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, BigBang bb, DebugContext debugContext) {
+            super(featureHandler, imageClassLoader, debugContext);
             this.bb = bb;
         }
 
@@ -160,8 +167,8 @@ public class FeatureImpl {
 
         private final SVMHost hostVM;
 
-        DuringSetupAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, BigBang bb, SVMHost hostVM) {
-            super(featureHandler, imageClassLoader, bb);
+        DuringSetupAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, BigBang bb, SVMHost hostVM, DebugContext debugContext) {
+            super(featureHandler, imageClassLoader, bb, debugContext);
             this.hostVM = hostVM;
         }
 
@@ -188,8 +195,8 @@ public class FeatureImpl {
         private final SVMHost hostVM;
         private final NativeLibraries nativeLibraries;
 
-        BeforeAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, BigBang bb, SVMHost hostVM, NativeLibraries nativeLibraries) {
-            super(featureHandler, imageClassLoader, bb);
+        BeforeAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, BigBang bb, SVMHost hostVM, NativeLibraries nativeLibraries, DebugContext debugContext) {
+            super(featureHandler, imageClassLoader, bb, debugContext);
             this.hostVM = hostVM;
             this.nativeLibraries = nativeLibraries;
         }
@@ -294,8 +301,8 @@ public class FeatureImpl {
 
         private boolean requireAnalysisIteration;
 
-        DuringAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, BigBang bb, SVMHost hostVM, NativeLibraries nativeLibraries) {
-            super(featureHandler, imageClassLoader, bb, hostVM, nativeLibraries);
+        DuringAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, BigBang bb, SVMHost hostVM, NativeLibraries nativeLibraries, DebugContext debugContext) {
+            super(featureHandler, imageClassLoader, bb, hostVM, nativeLibraries, debugContext);
         }
 
         @Override
@@ -311,14 +318,14 @@ public class FeatureImpl {
     }
 
     public static class AfterAnalysisAccessImpl extends AnalysisAccessBase implements Feature.AfterAnalysisAccess {
-        AfterAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, BigBang bb) {
-            super(featureHandler, imageClassLoader, bb);
+        AfterAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, BigBang bb, DebugContext debugContext) {
+            super(featureHandler, imageClassLoader, bb, debugContext);
         }
     }
 
     public static class OnAnalysisExitAccessImpl extends AnalysisAccessBase implements Feature.OnAnalysisExitAccess {
-        OnAnalysisExitAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, BigBang bb) {
-            super(featureHandler, imageClassLoader, bb);
+        OnAnalysisExitAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, BigBang bb, DebugContext debugContext) {
+            super(featureHandler, imageClassLoader, bb, debugContext);
         }
     }
 
@@ -330,8 +337,8 @@ public class FeatureImpl {
         protected final NativeImageHeap heap;
 
         CompilationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, AnalysisUniverse aUniverse, HostedUniverse hUniverse, HostedMetaAccess hMetaAccess,
-                        NativeImageHeap heap) {
-            super(featureHandler, imageClassLoader);
+                        NativeImageHeap heap, DebugContext debugContext) {
+            super(featureHandler, imageClassLoader, debugContext);
             this.aUniverse = aUniverse;
             this.hUniverse = hUniverse;
             this.hMetaAccess = hMetaAccess;
@@ -422,23 +429,23 @@ public class FeatureImpl {
 
     public static class BeforeCompilationAccessImpl extends CompilationAccessImpl implements Feature.BeforeCompilationAccess {
         BeforeCompilationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, AnalysisUniverse aUniverse, HostedUniverse hUniverse, HostedMetaAccess hMetaAccess,
-                        NativeImageHeap heap) {
-            super(featureHandler, imageClassLoader, aUniverse, hUniverse, hMetaAccess, heap);
+                        NativeImageHeap heap, DebugContext debugContext) {
+            super(featureHandler, imageClassLoader, aUniverse, hUniverse, hMetaAccess, heap, debugContext);
         }
     }
 
     public static class AfterCompilationAccessImpl extends CompilationAccessImpl implements Feature.AfterCompilationAccess {
         AfterCompilationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, AnalysisUniverse aUniverse, HostedUniverse hUniverse, HostedMetaAccess hMetaAccess,
-                        NativeImageHeap heap) {
-            super(featureHandler, imageClassLoader, aUniverse, hUniverse, hMetaAccess, heap);
+                        NativeImageHeap heap, DebugContext debugContext) {
+            super(featureHandler, imageClassLoader, aUniverse, hUniverse, hMetaAccess, heap, debugContext);
         }
     }
 
     public static class AfterHeapLayoutAccessImpl extends FeatureAccessImpl implements Feature.AfterHeapLayoutAccess {
         protected final HostedMetaAccess hMetaAccess;
 
-        AfterHeapLayoutAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, HostedMetaAccess hMetaAccess) {
-            super(featureHandler, imageClassLoader);
+        AfterHeapLayoutAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, HostedMetaAccess hMetaAccess, DebugContext debugContext) {
+            super(featureHandler, imageClassLoader, debugContext);
             this.hMetaAccess = hMetaAccess;
         }
 
@@ -459,8 +466,8 @@ public class FeatureImpl {
         protected final HostedMetaAccess hMetaAccess;
 
         BeforeImageWriteAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, String imageName, AbstractBootImage image, RuntimeConfiguration runtimeConfig,
-                        AnalysisUniverse aUniverse, HostedUniverse hUniverse, HostedOptionProvider optionProvider, HostedMetaAccess hMetaAccess) {
-            super(featureHandler, imageClassLoader);
+                        AnalysisUniverse aUniverse, HostedUniverse hUniverse, HostedOptionProvider optionProvider, HostedMetaAccess hMetaAccess, DebugContext debugContext) {
+            super(featureHandler, imageClassLoader, debugContext);
             this.imageName = imageName;
             this.image = image;
             this.runtimeConfig = runtimeConfig;
@@ -515,8 +522,9 @@ public class FeatureImpl {
         protected final Path tempDirectory;
         protected final NativeImageKind imageKind;
 
-        AfterImageWriteAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, HostedUniverse hUniverse, Path imagePath, Path tempDirectory, NativeImageKind imageKind) {
-            super(featureHandler, imageClassLoader);
+        AfterImageWriteAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, HostedUniverse hUniverse, Path imagePath, Path tempDirectory, NativeImageKind imageKind,
+                        DebugContext debugContext) {
+            super(featureHandler, imageClassLoader, debugContext);
             this.hUniverse = hUniverse;
             this.imagePath = imagePath;
             this.tempDirectory = tempDirectory;

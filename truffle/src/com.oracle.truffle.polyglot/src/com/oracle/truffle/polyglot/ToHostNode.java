@@ -3,7 +3,7 @@
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
- * 
+ *
  * Subject to the condition set forth below, permission is hereby granted to any
  * person obtaining a copy of this software, associated documentation and/or
  * data (collectively the "Software"), free of charge and under any and all
@@ -11,25 +11,25 @@
  * freely licensable by each licensor hereunder covering either (i) the
  * unmodified Software as contributed to or provided by such licensor, or (ii)
  * the Larger Works (as defined below), to deal in both
- * 
+ *
  * (a) the Software, and
- * 
+ *
  * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
  * one is included with the Software each a "Larger Work" to which the Software
  * is contributed by such licensors),
- * 
+ *
  * without restriction, including without limitation the rights to copy, create
  * derivative works of, display, perform, and distribute the Software and make,
  * use, sell, offer for sale, import, export, have made, and have sold the
  * Software and the Larger Work(s), and to sublicense the foregoing rights on
  * either these or other terms.
- * 
+ *
  * This license is subject to the following condition:
- * 
+ *
  * The above copyright notice and either this complete permission notice or at a
  * minimum a reference to the UPL must be included in all copies or substantial
  * portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -106,23 +106,30 @@ abstract class ToHostNode extends Node {
         return convertImpl(operand, targetType, genericType, languageContext);
     }
 
+    static Object toPrimitiveLossy(Object unboxedValue, Class<?> targetType) {
+        Object convertedValue = ToHostPrimitiveNode.toPrimitive(unboxedValue, targetType);
+        if (convertedValue != null) {
+            return convertedValue;
+        } else if (targetType == char.class || targetType == Character.class) {
+            Integer safeChar = ToHostPrimitiveNode.toInteger(unboxedValue);
+            if (safeChar != null) {
+                int v = safeChar;
+                if (v >= 0 && v < 65536) {
+                    return (char) v;
+                }
+            }
+        } else if (targetType == String.class && PolyglotImpl.isGuestPrimitive(unboxedValue)) {
+            return convertToString(unboxedValue);
+        }
+        return null;
+    }
+
     private Object convertImpl(Object value, Class<?> targetType, Type genericType, PolyglotLanguageContext languageContext) {
         Object convertedValue;
         if (isAssignableFromTrufflePrimitiveType(targetType)) {
-            Object unboxed = primitive.unbox(value);
-            convertedValue = primitive.toPrimitive(unboxed, targetType);
+            convertedValue = toPrimitiveLossy(primitive.unbox(value), targetType);
             if (convertedValue != null) {
                 return convertedValue;
-            } else if (targetType == char.class || targetType == Character.class) {
-                Integer safeChar = primitive.toInteger(unboxed);
-                if (safeChar != null) {
-                    int v = safeChar;
-                    if (v >= 0 && v < 65536) {
-                        return (char) v;
-                    }
-                }
-            } else if (targetType == String.class && PolyglotImpl.isGuestPrimitive(unboxed)) {
-                return convertToString(unboxed);
             }
         }
         if (targetType == Value.class && languageContext != null) {
@@ -133,13 +140,7 @@ abstract class ToHostNode extends Node {
             convertedValue = value;
         } else {
             CompilerDirectives.transferToInterpreter();
-            String reason;
-            if (isAssignableFromTrufflePrimitiveType(targetType)) {
-                reason = "Invalid or lossy primitive coercion.";
-            } else {
-                reason = "Unsupported target type.";
-            }
-            throw HostInteropErrors.cannotConvert(languageContext, value, targetType, reason);
+            throw HostInteropErrors.cannotConvertPrimitive(languageContext, value, targetType);
         }
         return convertedValue;
     }
@@ -152,7 +153,7 @@ abstract class ToHostNode extends Node {
             return false;
         }
         Object unboxed = primitive.unbox(value);
-        Object convertedValue = primitive.toPrimitive(unboxed, targetType);
+        Object convertedValue = ToHostPrimitiveNode.toPrimitive(unboxed, targetType);
         if (convertedValue != null) {
             return true;
         }
@@ -160,7 +161,7 @@ abstract class ToHostNode extends Node {
             return false;
         }
         if (targetType == char.class || targetType == Character.class) {
-            Integer safeChar = primitive.toInteger(unboxed);
+            Integer safeChar = ToHostPrimitiveNode.toInteger(unboxed);
             if (safeChar != null) {
                 int v = safeChar;
                 if (v >= 0 && v < 65536) {

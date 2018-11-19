@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
 import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -51,31 +50,20 @@ public abstract class LLVMPolyglotHasMember extends LLVMIntrinsic {
 
     @Child protected Node keyInfo = Message.KEY_INFO.createNode();
     @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.create();
+    @Child private LLVMReadStringNode readString = LLVMReadStringNodeGen.create();
 
-    private boolean hasMember(LLVMManagedPointer value, String id) {
-        TruffleObject foreign = asForeign.execute(value);
+    @Specialization
+    protected boolean doHasMember(LLVMManagedPointer object, Object name) {
+        TruffleObject foreign = asForeign.execute(object);
+        String id = readString.executeWithTarget(name);
         int ret = ForeignAccess.sendKeyInfo(keyInfo, foreign, id);
         return KeyInfo.isExisting(ret);
-    }
-
-    @SuppressWarnings("unused")
-    @Specialization(limit = "2", guards = "cachedId.equals(readStr.executeWithTarget(id))")
-    protected boolean cached(LLVMManagedPointer value, Object id,
-                    @Cached("createReadString()") LLVMReadStringNode readStr,
-                    @Cached("readStr.executeWithTarget(id)") String cachedId) {
-        return hasMember(value, cachedId);
-    }
-
-    @Specialization(replaces = "cached")
-    protected boolean uncached(LLVMManagedPointer value, Object id,
-                    @Cached("createReadString()") LLVMReadStringNode readStr) {
-        return hasMember(value, readStr.executeWithTarget(id));
     }
 
     @Fallback
     @TruffleBoundary
     @SuppressWarnings("unused")
-    public Object fallback(Object value, Object id) {
+    public Object fallback(Object object, Object name) {
         throw new LLVMPolyglotException(this, "Invalid argument to polyglot builtin.");
     }
 }

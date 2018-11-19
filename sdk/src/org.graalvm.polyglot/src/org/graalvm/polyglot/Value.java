@@ -3,7 +3,7 @@
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
- * 
+ *
  * Subject to the condition set forth below, permission is hereby granted to any
  * person obtaining a copy of this software, associated documentation and/or
  * data (collectively the "Software"), free of charge and under any and all
@@ -11,25 +11,25 @@
  * freely licensable by each licensor hereunder covering either (i) the
  * unmodified Software as contributed to or provided by such licensor, or (ii)
  * the Larger Works (as defined below), to deal in both
- * 
+ *
  * (a) the Software, and
- * 
+ *
  * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
  * one is included with the Software each a "Larger Work" to which the Software
  * is contributed by such licensors),
- * 
+ *
  * without restriction, including without limitation the rights to copy, create
  * derivative works of, display, perform, and distribute the Software and make,
  * use, sell, offer for sale, import, export, have made, and have sold the
  * Software and the Larger Work(s), and to sublicense the foregoing rights on
  * either these or other terms.
- * 
+ *
  * This license is subject to the following condition:
- * 
+ *
  * The above copyright notice and either this complete permission notice or at a
  * minimum a reference to the UPL must be included in all copies or substantial
  * portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -386,6 +386,48 @@ public final class Value {
     public Value newInstance(Object... arguments) {
         Objects.requireNonNull(arguments, "arguments");
         return impl.newInstance(receiver, arguments);
+    }
+
+    /**
+     * Returns <code>true</code> if the given member exists and can be invoked. Returns
+     * <code>false</code> if the member does not exist ({@link #hasMember(String)} returns
+     * <code>false</code>), or is not invocable.
+     *
+     * @param identifier the member identifier
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred.
+     * @see #getMemberKeys() For a list of members.
+     * @see #invokeMember(String, Object...)
+     * @since 1.0
+     */
+    public boolean canInvokeMember(String identifier) {
+        Objects.requireNonNull(identifier, "identifier");
+        return impl.canInvoke(identifier, receiver);
+    }
+
+    /**
+     * Invokes the given member of this value. Unlike {@link #execute(Object...)}, this is an object
+     * oriented execution of a member of an object. To test whether invocation is supported, call
+     * {@link #canInvokeMember(String)}. When object oriented semantics is not supported, use
+     * <code>{@link #getMember(String)}.{@link #execute(Object...) execute(Object...)}</code>
+     * instead.
+     *
+     * @param identifier the member identifier to invoke
+     * @param arguments the invocation arguments
+     * @throws UnsupportedOperationException if this member cannot be invoked.
+     * @throws PolyglotException if a guest language error occurred during invocation.
+     * @throws NullPointerException if the arguments array is null.
+     * @see #canInvokeMember(String)
+     * @since 1.0
+     */
+    public Value invokeMember(String identifier, Object... arguments) {
+        Objects.requireNonNull(identifier, "identifier");
+        if (arguments.length == 0) {
+            // specialized entry point for zero argument invoke calls
+            return impl.invoke(receiver, identifier);
+        } else {
+            return impl.invoke(receiver, identifier, arguments);
+        }
     }
 
     /**
@@ -868,10 +910,11 @@ public final class Value {
      * @throws NullPointerException if the target type is null.
      * @since 1.0
      */
+    @SuppressWarnings("unchecked")
     public <T> T as(Class<T> targetType) throws ClassCastException, IllegalStateException, PolyglotException {
         Objects.requireNonNull(targetType, "targetType");
         if (targetType == Value.class) {
-            return targetType.cast(this);
+            return (T) this;
         }
         return impl.as(receiver, targetType);
     }
@@ -885,10 +928,12 @@ public final class Value {
      * <pre>
      * static final TypeLiteral<List<String>> STRING_LIST = new TypeLiteral<List<String>>() {
      * };
-     *
-     * Context context = Context.create();
-     * List<String> javaList = context.eval("js", "['foo', 'bar', 'bazz']").as(STRING_LIST);
-     * assert javaList.get(0).equals("foo");
+     * 
+     * public static void main(String[] args) {
+     *     Context context = Context.create();
+     *     List<String> javaList = context.eval("js", "['foo', 'bar', 'bazz']").as(STRING_LIST);
+     *     assert javaList.get(0).equals("foo");
+     * }
      * </pre>
      *
      * @throws NullPointerException if the target type is null.
@@ -921,18 +966,19 @@ public final class Value {
     }
 
     /**
-     * Converts a Java host value to a polyglot value representation using
-     * {@link Context#asValue(Object)} with the {@link Context#getCurrent() current} context. This
-     * method is a short-cut for <code>Context.getCurrent().asValue(o)</code>.
+     * Converts a Java host value to a polyglot value. Returns a value for any host or guest value.
+     * If there is a context available use {@link Context#asValue(Object)} for efficiency instead.
      *
      * @param o the object to convert
      * @throws IllegalStateException if no context is currently entered.
      * @see Context#asValue(Object) Conversion rules.
-     * @see Context#getCurrent() Looking up the current context.
      * @since 1.0
      */
     public static Value asValue(Object o) {
-        return Context.getCurrent().asValue(o);
+        if (o instanceof Value) {
+            return (Value) o;
+        }
+        return Engine.getImpl().asValue(o);
     }
 
 }

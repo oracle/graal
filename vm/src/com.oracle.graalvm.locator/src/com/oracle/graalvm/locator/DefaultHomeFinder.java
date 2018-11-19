@@ -24,8 +24,6 @@
  */
 package com.oracle.graalvm.locator;
 
-import com.oracle.truffle.api.impl.HomeFinder;
-import com.oracle.truffle.api.TruffleOptions;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -39,7 +37,12 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+
 import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.nativeimage.ProcessProperties;
+
+import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.impl.HomeFinder;
 
 public final class DefaultHomeFinder extends HomeFinder {
 
@@ -426,17 +429,13 @@ public final class DefaultHomeFinder extends HomeFinder {
 
     @SuppressWarnings("deprecation")
     private static Path getCurrentObjectFilePath() {
-        String path = (String) Compiler.command(new Object[]{
-                        "com.oracle.svm.core.posix.GetObjectFile",
-                        VmLocatorSymbol.SYMBOL});
+        String path = ProcessProperties.getObjectFile(VmLocatorSymbol.SYMBOL);
         return path == null ? null : Paths.get(path);
     }
 
     @SuppressWarnings("deprecation")
     private static Path getCurrentExecutablePath() {
-        return Paths.get((String) Compiler.command(new String[]{
-                        "com.oracle.svm.core.posix.GetExecutableName"
-        }));
+        return Paths.get(ProcessProperties.getExecutableName());
     }
 
     private boolean isVerbose() {

@@ -47,6 +47,6 @@ builds += [
   ${x52.default-g1gc} ${bench-renaissance-hwloc}  ${labsjdk8} { targets: [weekly, bench], name: "bench-compiler-renaissance-g1gc-linux-x52" }
   ${x52.default} ${bench-spark-sql-perf}          ${labsjdk8} { name: "bench-compiler-spark-sql-perf-linux-x52" }
 
-  ${x52.default} ${bench-specjbb2005} ${labsjdk8} { name: "bench-compiler-specjbb2005-linux-x52"}
-  ${x52.default-g1gc} ${bench-specjbb2005} ${labsjdk8} { targets : [weekly, bench], name: "bench-compiler-specjbb2005-g1gc-linux-x52"}
+  ${x52.default} ${bench-specjbb2005}             ${labsjdk8} { targets : [daily, bench],  name: "bench-compiler-specjbb2005-linux-x52"}
+  ${x52.default-g1gc} ${bench-specjbb2005}        ${labsjdk8} { targets : [weekly, bench], name: "bench-compiler-specjbb2005-g1gc-linux-x52"}
 ]

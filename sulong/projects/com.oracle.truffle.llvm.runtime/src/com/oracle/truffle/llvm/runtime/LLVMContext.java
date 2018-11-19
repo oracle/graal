@@ -216,13 +216,17 @@ public final class LLVMContext {
     }
 
     private LLVMManagedPointer getApplicationArguments() {
-        int mainArgsCount = mainArguments == null ? 0 : mainArguments.length;
-        String[] result = new String[mainArgsCount + 1];
-        // we don't have an application path at this point in time. it will be overwritten when
-        // _start is called
-        result[0] = "";
-        for (int i = 1; i < result.length; i++) {
-            result[i] = mainArguments[i - 1].toString();
+        String[] result;
+        if (mainArguments == null) {
+            result = new String[]{""};
+        } else {
+            result = new String[mainArguments.length + 1];
+            // we don't have an application path at this point in time. it will be overwritten when
+            // _start is called
+            result[0] = "";
+            for (int i = 1; i < result.length; i++) {
+                result[i] = mainArguments[i - 1].toString();
+            }
         }
         return toTruffleObjects(result);
     }
@@ -280,7 +284,7 @@ public final class LLVMContext {
 
         // free the space allocated for non-pointer globals
         LLVMIntrinsicProvider provider = getContextExtension(LLVMIntrinsicProvider.class);
-        RootCallTarget free = provider.generateIntrinsic("@free", null);
+        RootCallTarget free = provider.generateIntrinsicTarget("@free", 2);
 
         for (LLVMPointer store : globalsNonPointerStore) {
             if (store != null) {
@@ -345,10 +349,19 @@ public final class LLVMContext {
         return dataLayout;
     }
 
+    public ExternalLibrary addInternalLibrary(String lib, boolean isNative) {
+        CompilerAsserts.neverPartOfCompilation();
+        Path path = locateExternalLibrary(lib);
+        return addExternalLibrary(ExternalLibrary.internal(path, isNative));
+    }
+
     public ExternalLibrary addExternalLibrary(String lib, boolean isNative) {
         CompilerAsserts.neverPartOfCompilation();
         Path path = locateExternalLibrary(lib);
-        ExternalLibrary externalLib = new ExternalLibrary(path, isNative);
+        return addExternalLibrary(ExternalLibrary.external(path, isNative));
+    }
+
+    private ExternalLibrary addExternalLibrary(ExternalLibrary externalLib) {
         int index = externalLibraries.indexOf(externalLib);
         if (index < 0) {
             externalLibraries.add(externalLib);
@@ -610,11 +623,7 @@ public final class LLVMContext {
 
     @TruffleBoundary
     public LLVMGlobal findGlobal(LLVMPointer pointer) {
-        LLVMGlobal result = globalsReverseMap.get(pointer);
-        if (result == null) {
-            throw new IllegalStateException("Could not find pointer " + pointer);
-        }
-        return result;
+        return globalsReverseMap.get(pointer);
     }
 
     public void registerGlobals(LLVMPointer nonPointerStore, HashMap<LLVMPointer, LLVMGlobal> reverseMap) {
@@ -649,19 +658,37 @@ public final class LLVMContext {
         private final Path path;
 
         @CompilationFinal private boolean isNative;
+        private final boolean isInternal;
 
-        public ExternalLibrary(String name, boolean isNative) {
-            this(name, null, isNative);
+        public static ExternalLibrary external(String name, boolean isNative) {
+            return new ExternalLibrary(name, isNative, false);
         }
 
-        public ExternalLibrary(Path path, boolean isNative) {
-            this(extractName(path), path, isNative);
+        public static ExternalLibrary internal(String name, boolean isNative) {
+            return new ExternalLibrary(name, isNative, true);
         }
 
-        private ExternalLibrary(String name, Path path, boolean isNative) {
+        public static ExternalLibrary external(Path path, boolean isNative) {
+            return new ExternalLibrary(path, isNative, false);
+        }
+
+        public static ExternalLibrary internal(Path path, boolean isNative) {
+            return new ExternalLibrary(path, isNative, true);
+        }
+
+        public ExternalLibrary(String name, boolean isNative, boolean isInternal) {
+            this(name, null, isNative, isInternal);
+        }
+
+        public ExternalLibrary(Path path, boolean isNative, boolean isInternal) {
+            this(extractName(path), path, isNative, isInternal);
+        }
+
+        private ExternalLibrary(String name, Path path, boolean isNative, boolean isInternal) {
             this.name = name;
             this.path = path;
             this.isNative = isNative;
+            this.isInternal = isInternal;
         }
 
         public Path getPath() {
@@ -670,6 +697,10 @@ public final class LLVMContext {
 
         public boolean isNative() {
             return isNative;
+        }
+
+        public boolean isInternal() {
+            return isInternal;
         }
 
         public void setIsNative(boolean isNative) {

@@ -24,8 +24,9 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
+import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -44,9 +45,7 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
     public void testVisibleOptions() {
         Engine engine = Engine.create();
         OptionDescriptor compilationThreshold = engine.getOptions().get(COMPILATION_THRESHOLD_OPTION);
-        OptionDescriptor queueTimeThreshold = engine.getOptions().get("compiler.QueueTimeThreshold");
         Assert.assertNotNull(compilationThreshold);
-        Assert.assertNotNull(queueTimeThreshold);
         engine.close();
     }
 
@@ -58,7 +57,7 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
         // doWhile must run isolated and should not affect other compilation thresholds
         Runnable doWhile = () -> testCompilationThreshold(50, "50", null);
         testCompilationThreshold(42, "42", doWhile); // test default value
-        testCompilationThreshold(TruffleCompilerOptions.TruffleCompilationThreshold.getValue(TruffleCompilerOptions.getOptions()), null, doWhile);
+        testCompilationThreshold(TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompilationThreshold), null, doWhile);
         testCompilationThreshold(2, "2", doWhile); // test default value
     }
 

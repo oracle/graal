@@ -3,7 +3,7 @@
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
- * 
+ *
  * Subject to the condition set forth below, permission is hereby granted to any
  * person obtaining a copy of this software, associated documentation and/or
  * data (collectively the "Software"), free of charge and under any and all
@@ -11,25 +11,25 @@
  * freely licensable by each licensor hereunder covering either (i) the
  * unmodified Software as contributed to or provided by such licensor, or (ii)
  * the Larger Works (as defined below), to deal in both
- * 
+ *
  * (a) the Software, and
- * 
+ *
  * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
  * one is included with the Software each a "Larger Work" to which the Software
  * is contributed by such licensors),
- * 
+ *
  * without restriction, including without limitation the rights to copy, create
  * derivative works of, display, perform, and distribute the Software and make,
  * use, sell, offer for sale, import, export, have made, and have sold the
  * Software and the Larger Work(s), and to sublicense the foregoing rights on
  * either these or other terms.
- * 
+ *
  * This license is subject to the following condition:
- * 
+ *
  * The above copyright notice and either this complete permission notice or at a
  * minimum a reference to the UPL must be included in all copies or substantial
  * portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -53,7 +53,6 @@ import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -103,60 +102,13 @@ public class FrameDescriptorTest {
         s2 = d.addFrameSlot("v2", "i2", FrameSlotKind.Float);
 
         assertEquals(2, d.getSize());
-        assertEquals(d.getSlots().get(1).getInfo(), "i2");
-        assertEquals(d.getFrameSlotKind(d.getSlots().get(1)), FrameSlotKind.Float);
-        assertEquals(d.getSlots().get(1).getIndex(), 1);
+        assertEquals("i2", d.getSlots().get(1).getInfo());
+        assertEquals(FrameSlotKind.Float, d.getFrameSlotKind(d.getSlots().get(1)));
 
         FrameDescriptor copy = d.copy();
         assertEquals(2, copy.getSize());
-        assertEquals(1, copy.getSlots().get(1).getIndex());
         assertEquals("Info is copied", "i2", copy.getSlots().get(1).getInfo());
         assertEquals("Kind isn't copied", FrameSlotKind.Illegal, copy.getFrameSlotKind(copy.getSlots().get(1)));
-    }
-
-    @Test
-    public void shallowCopy() {
-        Object defaultValue = "default";
-        FrameDescriptor d = new FrameDescriptor(defaultValue);
-        s1 = d.addFrameSlot("v1", "i1", FrameSlotKind.Boolean);
-        s2 = d.addFrameSlot("v2", "i2", FrameSlotKind.Float);
-
-        assertEquals(2, d.getSize());
-        final FrameSlot first = d.getSlots().get(1);
-        assertEquals(first.getInfo(), "i2");
-        assertEquals(d.getFrameSlotKind(first), FrameSlotKind.Float);
-        assertEquals(first.getIndex(), 1);
-
-        FrameDescriptor copy = getShallowCopy(d);
-
-        assertEquals(2, copy.getSize());
-        final FrameSlot firstCopy = copy.getSlots().get(1);
-        assertEquals("Info is copied", firstCopy.getInfo(), "i2");
-        assertEquals("Kind is copied", copy.getFrameSlotKind(firstCopy), FrameSlotKind.Float);
-        assertEquals(firstCopy.getIndex(), 1);
-
-        Assumption originalVersion = d.getVersion();
-        Assumption copyVersion = copy.getVersion();
-        copy.setFrameSlotKind(firstCopy, FrameSlotKind.Int);
-        assertEquals("Kind is changed", copy.getFrameSlotKind(firstCopy), FrameSlotKind.Int);
-        assertEquals("Kind is changed in original too!", d.getFrameSlotKind(first), FrameSlotKind.Int);
-        assertNotEquals("Kind was changed, therefore original's version has to be updated", originalVersion, d.getVersion());
-        assertNotEquals("Kind was changed, therefore copy's version has to be updated", copyVersion, copy.getVersion());
-
-        originalVersion = d.getVersion();
-        copyVersion = copy.getVersion();
-        d.addFrameSlot("v3", "i5", FrameSlotKind.Byte);
-        assertNotEquals("A slot was added to original, its version has to be updated", originalVersion, d.getVersion());
-        assertEquals("A slot was added to original but not in the copy, its version has remain", copyVersion, copy.getVersion());
-        originalVersion = d.getVersion();
-        d.removeFrameSlot("v3");
-        assertNotEquals("A slot was removed from original, its version has to be updated", originalVersion, d.getVersion());
-        assertEquals("A slot was removed from original but not from the copy, its version has remain", copyVersion, copy.getVersion());
-    }
-
-    @SuppressWarnings("deprecation")
-    private static FrameDescriptor getShallowCopy(FrameDescriptor d) {
-        return d.shallowCopy();
     }
 
     @Test
@@ -234,7 +186,6 @@ public class FrameDescriptorTest {
         assertEquals("a", frame.getObject(slot1));
         assertEquals("b", frame.getObject(slot2));
         assertEquals(2, frameDescriptor.getSize());
-        assertEquals(2, getShallowCopy(frameDescriptor).getSize());
 
         frameDescriptor.removeFrameSlot("var1");
         assertNull(frameDescriptor.findFrameSlot("var1"));

@@ -48,7 +48,9 @@ public abstract class LLVMMemory {
     @Deprecated
     public abstract void copyMemory(long sourceAddress, long targetAddress, long length);
 
-    public abstract void free(LLVMNativePointer address);
+    public final void free(LLVMNativePointer address) {
+        free(address.asNative());
+    }
 
     public abstract void free(long address);
 
@@ -60,85 +62,125 @@ public abstract class LLVMMemory {
     @Deprecated
     public abstract LLVMNativePointer reallocateMemory(LLVMNativePointer addr, long size);
 
-    public abstract boolean getI1(LLVMNativePointer addr);
+    public final boolean getI1(LLVMNativePointer addr) {
+        return getI1(addr.asNative());
+    }
 
     public abstract boolean getI1(long ptr);
 
-    public abstract byte getI8(LLVMNativePointer addr);
+    public final byte getI8(LLVMNativePointer addr) {
+        return getI8(addr.asNative());
+    }
 
     public abstract byte getI8(long ptr);
 
-    public abstract short getI16(LLVMNativePointer addr);
+    public final short getI16(LLVMNativePointer addr) {
+        return getI16(addr.asNative());
+    }
 
     public abstract short getI16(long ptr);
 
-    public abstract int getI32(LLVMNativePointer addr);
+    public final int getI32(LLVMNativePointer addr) {
+        return getI32(addr.asNative());
+    }
 
     public abstract int getI32(long ptr);
 
     public abstract LLVMIVarBit getIVarBit(LLVMNativePointer addr, int bitWidth);
 
-    public abstract long getI64(LLVMNativePointer addr);
+    public final long getI64(LLVMNativePointer addr) {
+        return getI64(addr.asNative());
+    }
 
     public abstract long getI64(long ptr);
 
-    public abstract float getFloat(LLVMNativePointer addr);
+    public final float getFloat(LLVMNativePointer addr) {
+        return getFloat(addr.asNative());
+    }
 
     public abstract float getFloat(long ptr);
 
-    public abstract double getDouble(LLVMNativePointer addr);
+    public final double getDouble(LLVMNativePointer addr) {
+        return getDouble(addr.asNative());
+    }
 
     public abstract double getDouble(long ptr);
 
     public abstract LLVM80BitFloat get80BitFloat(LLVMNativePointer addr);
 
-    public abstract LLVMNativePointer getPointer(LLVMNativePointer addr);
+    public final LLVMNativePointer getPointer(LLVMNativePointer addr) {
+        return getPointer(addr.asNative());
+    }
 
     public abstract LLVMNativePointer getPointer(long ptr);
 
-    public abstract void putI1(LLVMNativePointer addr, boolean value);
+    public final void putI1(LLVMNativePointer addr, boolean value) {
+        putI1(addr.asNative(), value);
+    }
 
     public abstract void putI1(long ptr, boolean value);
 
-    public abstract void putI8(LLVMNativePointer addr, byte value);
+    public final void putI8(LLVMNativePointer addr, byte value) {
+        putI8(addr.asNative(), value);
+    }
 
     public abstract void putI8(long ptr, byte value);
 
-    public abstract void putI16(LLVMNativePointer addr, short value);
+    public final void putI16(LLVMNativePointer addr, short value) {
+        putI16(addr.asNative(), value);
+    }
 
     public abstract void putI16(long ptr, short value);
 
-    public abstract void putI32(LLVMNativePointer addr, int value);
+    public final void putI32(LLVMNativePointer addr, int value) {
+        putI32(addr.asNative(), value);
+    }
 
     public abstract void putI32(long ptr, int value);
 
-    public abstract void putI64(LLVMNativePointer addr, long value);
+    public final void putI64(LLVMNativePointer addr, long value) {
+        putI64(addr.asNative(), value);
+    }
 
     public abstract void putI64(long ptr, long value);
 
     public abstract void putIVarBit(LLVMNativePointer addr, LLVMIVarBit value);
 
-    public abstract void putFloat(LLVMNativePointer addr, float value);
+    public final void putFloat(LLVMNativePointer addr, float value) {
+        putFloat(addr.asNative(), value);
+    }
 
     public abstract void putFloat(long ptr, float value);
 
-    public abstract void putDouble(LLVMNativePointer addr, double value);
+    public final void putDouble(LLVMNativePointer addr, double value) {
+        putDouble(addr.asNative(), value);
+    }
 
     public abstract void putDouble(long ptr, double value);
 
-    public abstract void put80BitFloat(LLVMNativePointer addr, LLVM80BitFloat value);
+    public final void put80BitFloat(LLVMNativePointer addr, LLVM80BitFloat value) {
+        put80BitFloat(addr.asNative(), value);
+    }
 
     public abstract void put80BitFloat(long ptr, LLVM80BitFloat value);
 
-    public abstract void putPointer(LLVMNativePointer addr, LLVMNativePointer value);
+    public final void putPointer(LLVMNativePointer addr, LLVMNativePointer value) {
+        putPointer(addr.asNative(), value.asNative());
+    }
 
-    public abstract void putPointer(LLVMNativePointer addr, long ptrValue);
+    public final void putPointer(LLVMNativePointer addr, long ptrValue) {
+        putPointer(addr.asNative(), ptrValue);
+    }
 
-    public abstract void putPointer(long ptr, LLVMNativePointer value);
+    public final void putPointer(long ptr, LLVMNativePointer value) {
+        putPointer(ptr, value.asNative());
+    }
 
     public abstract void putPointer(long ptr, long ptrValue);
 
-    public abstract void putByteArray(LLVMNativePointer addr, byte[] bytes);
+    public final void putByteArray(LLVMNativePointer addr, byte[] bytes) {
+        putByteArray(addr.asNative(), bytes);
+    }
 
     public abstract void putByteArray(long ptr, byte[] bytes);
 

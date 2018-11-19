@@ -24,24 +24,18 @@
  */
 package com.oracle.svm.core.posix;
 
+import java.util.Collections;
+import java.util.List;
+
+import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
+
 import com.oracle.svm.core.CompilerCommandPlugin;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.RuntimeFeature;
 import com.oracle.svm.core.jdk.RuntimeSupport;
-import com.oracle.svm.core.posix.headers.Dlfcn;
-import com.oracle.svm.core.posix.headers.LibC;
-import com.oracle.svm.core.posix.headers.Stdlib;
-import java.util.Collections;
-import java.util.List;
-import org.graalvm.nativeimage.Feature;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
-import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordFactory;
 
 /**
  * Command returns a path of the object file defining the symbol. The command requires a single
@@ -60,38 +54,12 @@ public class PosixObjectFile implements CompilerCommandPlugin {
     public Object apply(Object[] args) {
         if (args.length == 1) {
             if (args[0] instanceof String) {
-                return getObjectPathDefiningSymbol((String) args[0]);
+                return PosixProcessPropertiesSupport.getObjectPathDefiningSymbol((String) args[0]);
             } else if (args[0] instanceof CEntryPointLiteral) {
-                return getObjectPathDefiningAddress(((CEntryPointLiteral<?>) args[0]).getFunctionPointer());
+                return PosixProcessPropertiesSupport.getObjectPathDefiningAddress(((CEntryPointLiteral<?>) args[0]).getFunctionPointer());
             }
         }
         throw new IllegalArgumentException("Expecting single String or CEntryPointLiteral agrument.");
-    }
-
-    private static String getObjectPathDefiningSymbol(String symbol) {
-        try (CTypeConversion.CCharPointerHolder symbolHolder = CTypeConversion.toCString(symbol)) {
-            PointerBase symbolAddress = Dlfcn.dlsym(Dlfcn.RTLD_DEFAULT(), symbolHolder.get());
-            if (symbolAddress.isNull()) {
-                return null;
-            }
-            return getObjectPathDefiningAddress(symbolAddress);
-        }
-    }
-
-    private static String getObjectPathDefiningAddress(PointerBase symbolAddress) {
-        Dlfcn.Dl_info info = StackValue.get(Dlfcn.Dl_info.class);
-        if (Dlfcn.dladdr(symbolAddress, info) == 0) {
-            return null;
-        }
-        CCharPointer realpath = Stdlib.realpath(info.dli_fname(), WordFactory.nullPointer());
-        if (realpath.isNull()) {
-            return null;
-        }
-        try {
-            return CTypeConversion.toJavaString(realpath);
-        } finally {
-            LibC.free(realpath);
-        }
     }
 
     @AutomaticFeature

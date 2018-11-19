@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.nodes.memory;
 
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.NodeFields;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -40,7 +39,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-@NodeChildren({@NodeChild(type = LLVMExpressionNode.class, value = "source")})
+@NodeChild(type = LLVMExpressionNode.class, value = "source")
 @NodeFields({@NodeField(name = "length", type = long.class)})
 public abstract class LLVMStructByValueNode extends LLVMExpressionNode {
 

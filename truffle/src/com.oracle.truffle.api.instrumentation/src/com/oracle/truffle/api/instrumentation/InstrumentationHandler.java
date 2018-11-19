@@ -3,7 +3,7 @@
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
- * 
+ *
  * Subject to the condition set forth below, permission is hereby granted to any
  * person obtaining a copy of this software, associated documentation and/or
  * data (collectively the "Software"), free of charge and under any and all
@@ -11,25 +11,25 @@
  * freely licensable by each licensor hereunder covering either (i) the
  * unmodified Software as contributed to or provided by such licensor, or (ii)
  * the Larger Works (as defined below), to deal in both
- * 
+ *
  * (a) the Software, and
- * 
+ *
  * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
  * one is included with the Software each a "Larger Work" to which the Software
  * is contributed by such licensors),
- * 
+ *
  * without restriction, including without limitation the rights to copy, create
  * derivative works of, display, perform, and distribute the Software and make,
  * use, sell, offer for sale, import, export, have made, and have sold the
  * Software and the Larger Work(s), and to sublicense the foregoing rights on
  * either these or other terms.
- * 
+ *
  * This license is subject to the following condition:
- * 
+ *
  * The above copyright notice and either this complete permission notice or at a
  * minimum a reference to the UPL must be included in all copies or substantial
  * portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -66,6 +66,7 @@ import java.util.concurrent.locks.Lock;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.io.MessageTransport;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Scope;
@@ -142,15 +143,17 @@ final class InstrumentationHandler {
     private DispatchOutputStream out;   // effectively final
     private DispatchOutputStream err;   // effectively final
     private InputStream in;             // effectively final
+    private MessageTransport messageInterceptor; // effectively final
     private final Map<Class<?>, Set<Class<?>>> cachedProvidedTags = new ConcurrentHashMap<>();
 
     private final EngineInstrumenter engineInstrumenter;
 
-    private InstrumentationHandler(Object sourceVM, DispatchOutputStream out, DispatchOutputStream err, InputStream in) {
+    private InstrumentationHandler(Object sourceVM, DispatchOutputStream out, DispatchOutputStream err, InputStream in, MessageTransport messageInterceptor) {
         this.sourceVM = sourceVM;
         this.out = out;
         this.err = err;
         this.in = in;
+        this.messageInterceptor = messageInterceptor;
         this.engineInstrumenter = new EngineInstrumenter();
     }
 
@@ -299,7 +302,7 @@ final class InstrumentationHandler {
     }
 
     void initializeInstrument(Object vmObject, Class<?> instrumentClass) {
-        Env env = new Env(vmObject, out, err, in);
+        Env env = new Env(vmObject, out, err, in, messageInterceptor);
         env.instrumenter = new InstrumentClientInstrumenter(env, instrumentClass);
 
         if (TRACE) {
@@ -1769,6 +1772,21 @@ final class InstrumentationHandler {
         }
 
         @Override
+        @SuppressWarnings("deprecation")
+        public final ExecutionEventNode lookupExecutionEventNode(Node node, EventBinding<?> binding) {
+            if (!InstrumentationHandler.isInstrumentableNode(node, node.getSourceSection())) {
+                return null;
+            }
+            Node p = node.getParent();
+            if (p instanceof InstrumentableFactory.WrapperNode) {
+                InstrumentableFactory.WrapperNode w = (InstrumentableFactory.WrapperNode) p;
+                return w.getProbeNode().lookupExecutionEventNode(binding);
+            } else {
+                return null;
+            }
+        }
+
+        @Override
         public <T extends ExecutionEventNodeFactory> EventBinding<T> attachExecutionEventFactory(SourceSectionFilter filter, SourceSectionFilter inputFilter, T factory) {
             verifyFilter(filter);
             return InstrumentationHandler.this.attachFactory(this, filter, inputFilter, factory);
@@ -2073,8 +2091,8 @@ final class InstrumentationHandler {
         static final class InstrumentImpl extends InstrumentSupport {
 
             @Override
-            public Object createInstrumentationHandler(Object vm, DispatchOutputStream out, DispatchOutputStream err, InputStream in) {
-                return new InstrumentationHandler(vm, out, err, in);
+            public Object createInstrumentationHandler(Object vm, DispatchOutputStream out, DispatchOutputStream err, InputStream in, MessageTransport messageInterceptor) {
+                return new InstrumentationHandler(vm, out, err, in, messageInterceptor);
             }
 
             @Override

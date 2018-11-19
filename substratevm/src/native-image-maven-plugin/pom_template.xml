@@ -38,6 +38,28 @@
 
     <url>https://github.com/oracle/graal/tree/master/substratevm</url>
 
+    <developers>
+        <developer>
+            <name>SubstrateVM developers</name>
+            <email>graal-dev@openjdk.java.net</email>
+            <organization>Graal</organization>
+            <organizationUrl>http://openjdk.java.net/projects/graal</organizationUrl>
+        </developer>
+    </developers>
+
+    <licenses>
+        <license>
+        <name>GNU General Public License, version 2, with the Classpath Exception</name>
+        <url>http://openjdk.java.net/legal/gplv2+ce.html</url>
+        </license>
+    </licenses>
+
+    <scm>
+        <connection>scm:git:https://github.com/oracle/graal.git</connection>
+        <developerConnection>scm:git:git@github.com:oracle/graal.git</developerConnection>
+        <url>https://github.com/oracle/graal</url>
+    </scm>
+
     <prerequisites>
         <maven>${maven.version}</maven>
     </prerequisites>
@@ -48,33 +70,6 @@
         <maven.compiler.target>1.7</maven.compiler.target>
         <maven.version>3.3.9</maven.version>
     </properties>
-
-    <profiles>
-        <profile>
-            <id>linux-amd64</id>
-            <activation>
-                <os>
-                    <name>linux</name>
-                    <arch>amd64</arch>
-                </os>
-            </activation>
-            <properties>
-                <mx.platform>linux-amd64</mx.platform>
-            </properties>
-        </profile>
-        <profile>
-            <id>darwin-amd64</id>
-            <activation>
-                <os>
-                    <name>mac os x</name>
-                    <arch>x86_64</arch>
-                </os>
-            </activation>
-            <properties>
-                <mx.platform>darwin-amd64</mx.platform>
-            </properties>
-        </profile>
-    </profiles>
 
     <dependencies>
 
@@ -193,6 +188,20 @@
                         <id>help-goal</id>
                         <goals>
                             <goal>helpmojo</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-gpg-plugin</artifactId>
+                <version>1.6</version>
+                <executions>
+                    <execution>
+                        <id>sign-artifacts</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>sign</goal>
                         </goals>
                     </execution>
                 </executions>

@@ -28,11 +28,17 @@ import java.io.File;
 import java.util.Collections;
 import java.util.List;
 
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.CContext;
 
 import com.oracle.svm.core.c.ProjectHeaderFile;
 
 public class LibFFIHeaderDirectives implements CContext.Directives {
+    @Override
+    public boolean isInConfiguration() {
+        /* Necessary until GR-7932 is resolved. */
+        return !Platform.includedIn(Platform.WINDOWS.class);
+    }
 
     @Override
     public List<String> getHeaderFiles() {

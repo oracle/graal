@@ -345,7 +345,7 @@ public class CompileQueue {
             MustNotSynchronizeAnnotationChecker.check(debug, universe.getMethods());
             beforeCompileAll(debug);
 
-            if (SubstrateOptions.AOTInline.getValue()) {
+            if (SubstrateOptions.AOTInline.getValue() && SubstrateOptions.AOTTrivialInline.getValue()) {
                 try (StopTimer ignored = new Timer(imageName, "(inline)").start()) {
                     inlineTrivialMethods(debug);
                 }

@@ -30,10 +30,12 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.MemoryWalker;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * An OldGeneration has three Spaces,
@@ -70,6 +72,15 @@ public class OldGeneration extends Generation {
         this.pinnedToSpace = new Space("pinnedToSpace", false);
         this.toGreyObjectsWalker = GreyObjectsWalker.factory();
         this.pinnedToGreyObjectsWalker = GreyObjectsWalker.factory();
+    }
+
+    /** Return all allocated virtual memory chunks to HeapChunkProvider. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public final void tearDown() {
+        fromSpace.tearDown();
+        toSpace.tearDown();
+        pinnedFromSpace.tearDown();
+        pinnedToSpace.tearDown();
     }
 
     /*
@@ -146,6 +157,15 @@ public class OldGeneration extends Generation {
         assert ObjectHeaderImpl.getObjectHeaderImpl().isAlignedObject(original);
         final AlignedHeapChunk.AlignedHeader originalChunk = AlignedHeapChunk.getEnclosingAlignedHeapChunk(original);
         final Space originalSpace = originalChunk.getSpace();
+        /* { GR-9912: Check that `original` is in a well-formed Space (or at least non-null). */
+        if (originalSpace == null) {
+            /* I am about to fail a guarantee, but first log some things about the object. */
+            final Log failureLog = Log.log().string("[! OldGeneration.promoteAlignedObject:").string("  originalSpace == null").indent(true);
+            ObjectHeaderImpl.getObjectHeaderImpl().objectHeaderToLog(original, failureLog);
+            failureLog.string(" !])").indent(false);
+            throw VMError.shouldNotReachHere("OldGeneration.promoteAlignedObject:  originalSpace == null");
+        }
+        /* } GR-9912: Check that `original` is in a well-formed Space (or at least non-null). */
         trace.string("  originalSpace: ").string(originalSpace.getName());
         Object result = original;
         if (shouldPromoteFrom(originalSpace)) {
@@ -313,6 +333,12 @@ public class OldGeneration extends Generation {
         getPinnedToSpace().report(log, traceHeapChunks);
         log.redent(false).string("]");
         return log;
+    }
+
+    @Override
+    protected boolean isValidSpace(Space space) {
+        return (space == getFromSpace() || (space == getToSpace()) ||
+                        (space == getPinnedFromSpace()) || (space == getPinnedToSpace()));
     }
 
     @Override

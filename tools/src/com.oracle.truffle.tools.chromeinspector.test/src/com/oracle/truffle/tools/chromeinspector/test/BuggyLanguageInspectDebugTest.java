@@ -193,8 +193,8 @@ public class BuggyLanguageInspectDebugTest {
                         "{\"result\":{},\"id\":2}\n"));
         tester.sendMessage("{\"id\":3,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
         assertTrue(tester.compareReceivedMessages(
-                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n" +
-                        "{\"result\":{},\"id\":3}\n"));
+                        "{\"result\":{},\"id\":3}\n" +
+                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
         ProxyLanguage.setDelegate(language);
         Source source = Source.newBuilder(ProxyLanguage.ID, prefix + "1", "BuggyCall1.bug").build();
         String sourceURI = ScriptsHandler.getNiceStringFromURI(source.getURI());

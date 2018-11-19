@@ -64,7 +64,7 @@ public class TypedInteropTest extends InteropTestBase {
         point.put("length", new TestCallback(0, (args) -> {
             int px = (int) point.get("x");
             int py = (int) point.get("y");
-            return Math.sqrt(px * px + py * py);
+            return Math.sqrt(px * (double) px + py * (double) py);
         }));
         point.put("add", new TestCallback(1, (args) -> {
             int px = (int) point.get("x");

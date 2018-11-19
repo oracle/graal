@@ -33,6 +33,7 @@ import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.regex.runtime.nodes.ExpectStringNode;
 import com.oracle.truffle.regex.tregex.TRegexCompiler;
 
 /**
@@ -64,7 +65,7 @@ public class RegexEngineBuilder implements RegexLanguageObject {
     }
 
     public static boolean isInstance(TruffleObject object) {
-        return object instanceof RegexCompiler;
+        return object instanceof RegexEngineBuilder;
     }
 
     @Override
@@ -79,6 +80,7 @@ public class RegexEngineBuilder implements RegexLanguageObject {
         abstract static class RegexEngineBuilderExecuteNode extends Node {
 
             @Child private Node isExecutableNode = Message.IS_EXECUTABLE.createNode();
+            @Child private ExpectStringNode expectOptionsNode = ExpectStringNode.create();
 
             public Object access(RegexEngineBuilder receiver, Object[] args) {
                 if (args.length > 2) {
@@ -86,10 +88,7 @@ public class RegexEngineBuilder implements RegexLanguageObject {
                 }
                 RegexOptions options = RegexOptions.DEFAULT;
                 if (args.length >= 1) {
-                    if (!(args[0] instanceof String)) {
-                        throw UnsupportedTypeException.raise(args);
-                    }
-                    options = RegexOptions.parse((String) args[0]);
+                    options = RegexOptions.parse(expectOptionsNode.execute(args[0]));
                 }
                 TruffleObject fallbackCompiler = null;
                 if (args.length >= 2) {
@@ -105,9 +104,9 @@ public class RegexEngineBuilder implements RegexLanguageObject {
             private static RegexEngine createRegexEngine(RegexLanguage regexLanguage, RegexOptions options, TruffleObject fallbackCompiler) {
                 if (fallbackCompiler != null) {
                     return new CachingRegexEngine(new RegexCompilerWithFallback(new TRegexCompiler(regexLanguage, options), fallbackCompiler),
-                                    options.isRegressionTestMode());
+                                    options);
                 } else {
-                    return new CachingRegexEngine(new TRegexCompiler(regexLanguage, options), options.isRegressionTestMode());
+                    return new CachingRegexEngine(new TRegexCompiler(regexLanguage, options), options);
                 }
             }
         }

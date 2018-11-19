@@ -24,6 +24,8 @@
  */
 package com.oracle.graal.pointsto.meta;
 
+import static com.oracle.graal.pointsto.util.AnalysisError.shouldNotReachHere;
+
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.util.Optional;
@@ -31,6 +33,7 @@ import java.util.Optional;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -67,5 +70,15 @@ public class AnalysisMetaAccess extends UniverseMetaAccess {
     @Override
     public AnalysisField lookupJavaField(Field reflectionField) {
         return (AnalysisField) super.lookupJavaField(reflectionField);
+    }
+
+    @Override
+    public int getArrayIndexScale(JavaKind elementKind) {
+        throw shouldNotReachHere();
+    }
+
+    @Override
+    public int getArrayBaseOffset(JavaKind elementKind) {
+        throw shouldNotReachHere();
     }
 }

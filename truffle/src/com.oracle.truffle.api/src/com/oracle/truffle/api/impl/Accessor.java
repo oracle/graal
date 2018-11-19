@@ -3,7 +3,7 @@
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
- * 
+ *
  * Subject to the condition set forth below, permission is hereby granted to any
  * person obtaining a copy of this software, associated documentation and/or
  * data (collectively the "Software"), free of charge and under any and all
@@ -11,25 +11,25 @@
  * freely licensable by each licensor hereunder covering either (i) the
  * unmodified Software as contributed to or provided by such licensor, or (ii)
  * the Larger Works (as defined below), to deal in both
- * 
+ *
  * (a) the Software, and
- * 
+ *
  * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
  * one is included with the Software each a "Larger Work" to which the Software
  * is contributed by such licensors),
- * 
+ *
  * without restriction, including without limitation the rights to copy, create
  * derivative works of, display, perform, and distribute the Software and make,
  * use, sell, offer for sale, import, export, have made, and have sold the
  * Software and the Larger Work(s), and to sublicense the foregoing rights on
  * either these or other terms.
- * 
+ *
  * This license is subject to the following condition:
- * 
+ *
  * The above copyright notice and either this complete permission notice or at a
  * minimum a reference to the UPL must be included in all copies or substantial
  * portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -58,6 +58,7 @@ import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.MessageTransport;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -80,6 +81,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.Source.SourceBuilder;
 import com.oracle.truffle.api.source.SourceSection;
+import java.nio.file.Path;
 
 /**
  * Communication between TruffleLanguage API/SPI, and other services.
@@ -186,10 +188,6 @@ public abstract class Accessor {
 
         public abstract boolean isEvalRoot(RootNode target);
 
-        public abstract <T> T lookupJavaInteropCodeCache(Object languageContext, Object key, Class<T> expectedType);
-
-        public abstract <T> T installJavaInteropCodeCache(Object languageContext, Object key, T value, Class<T> expectedType);
-
         @SuppressWarnings("static-method")
         public final void attachOutputConsumer(DispatchOutputStream dos, OutputStream out) {
             dos.attach(out);
@@ -246,6 +244,8 @@ public abstract class Accessor {
 
         public abstract boolean isNativeAccessAllowed(Object vmObject, Env env);
 
+        public abstract boolean inContextPreInitialization(Object vmObject);
+
         public abstract Object createInternalContext(Object vmObject, Map<String, Object> config, TruffleContext spiContext);
 
         public abstract void initializeInternalContext(Object vmObject, Object contextImpl);
@@ -264,7 +264,15 @@ public abstract class Accessor {
 
         public abstract boolean isCreateThreadAllowed(Object vmObject);
 
-        public abstract Thread createThread(Object vmObject, Runnable runnable, Object context);
+        public Thread createThread(Object vmObject, Runnable runnable, Object innerContextImpl, ThreadGroup group) {
+            return createThread(vmObject, runnable, innerContextImpl, group, 0);
+        }
+
+        public Thread createThread(Object vmObject, Runnable runnable, Object innerContextImpl) {
+            return createThread(vmObject, runnable, innerContextImpl, null, 0);
+        }
+
+        public abstract Thread createThread(Object vmObject, Runnable runnable, Object innerContextImpl, ThreadGroup group, long stackSize);
 
         public abstract Iterable<Scope> createDefaultLexicalScope(Node node, Frame frame);
 
@@ -408,15 +416,11 @@ public abstract class Accessor {
 
         public abstract void materializeHostFrames(Throwable original);
 
-        public abstract boolean checkTruffleFile(File file);
-
-        public abstract byte[] truffleFileContent(File file) throws IOException;
-
         public abstract void configureLoggers(Object polyglotContext, Map<String, Level> logLevels);
 
         public abstract TruffleLanguage<?> getLanguage(Env env);
 
-        public abstract File asFile(TruffleFile file);
+        public abstract Path getPath(TruffleFile file);
 
     }
 
@@ -432,7 +436,7 @@ public abstract class Accessor {
 
         public abstract <T> T getInstrumentationHandlerService(Object handler, Object key, Class<T> type);
 
-        public abstract Object createInstrumentationHandler(Object vm, DispatchOutputStream out, DispatchOutputStream err, InputStream in);
+        public abstract Object createInstrumentationHandler(Object vm, DispatchOutputStream out, DispatchOutputStream err, InputStream in, MessageTransport messageInterceptor);
 
         public abstract void collectEnvServices(Set<Object> collectTo, Object languageShared, TruffleLanguage<?> language);
 
@@ -626,6 +630,8 @@ public abstract class Accessor {
         } else if (simpleName.endsWith("TruffleTCKAccessor")) {
             // O.K.
         } else if (simpleName.endsWith("TestAccessor")) {
+            // O.K.
+        } else if (simpleName.endsWith("TestAPIAccessor")) {
             // O.K.
         } else {
             assert simpleName.endsWith("VMAccessor");

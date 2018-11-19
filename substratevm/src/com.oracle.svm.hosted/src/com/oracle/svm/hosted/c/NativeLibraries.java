@@ -28,7 +28,6 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -55,6 +54,7 @@ import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.infrastructure.WrappedElement;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.info.ConstantInfo;
@@ -337,7 +337,7 @@ public final class NativeLibraries {
     }
 
     public void finish(Path tempDirectory) {
-        libraryPaths.addAll(Arrays.asList(SubstrateOptions.CLibraryPath.getValue().split(",")));
+        libraryPaths.addAll(OptionUtils.flatten(",", SubstrateOptions.CLibraryPath.getValue()));
         for (NativeCodeContext context : compilationUnitToContext.values()) {
             if (context.isInConfiguration()) {
                 libraries.addAll(context.getDirectives().getLibraries());

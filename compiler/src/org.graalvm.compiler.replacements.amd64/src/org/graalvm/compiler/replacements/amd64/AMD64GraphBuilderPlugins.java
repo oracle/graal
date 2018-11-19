@@ -33,6 +33,7 @@ import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.Una
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.SIN;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.TAN;
 import static org.graalvm.compiler.serviceprovider.GraalServices.JAVA_SPECIFICATION_VERSION;
+import static org.graalvm.compiler.serviceprovider.GraalServices.Java11OrEarlier;
 import static org.graalvm.compiler.serviceprovider.GraalServices.Java8OrEarlier;
 
 import java.util.Arrays;
@@ -211,6 +212,9 @@ public class AMD64GraphBuilderPlugins {
             r.setAllowOverwrite(true);
             r.registerMethodSubstitution(AMD64StringLatin1Substitutions.class, "compareTo", byte[].class, byte[].class);
             r.registerMethodSubstitution(AMD64StringLatin1Substitutions.class, "compareToUTF16", byte[].class, byte[].class);
+            r.registerMethodSubstitution(AMD64StringLatin1Substitutions.class, "inflate", byte[].class, int.class, char[].class, int.class, int.class);
+            r.registerMethodSubstitution(AMD64StringLatin1Substitutions.class, "inflate", byte[].class, int.class, byte[].class, int.class, int.class);
+
             if (arch.getFeatures().contains(CPUFeature.SSSE3)) {
                 r.registerMethodSubstitution(AMD64StringLatin1Substitutions.class, "indexOf", byte[].class, int.class, int.class);
             }
@@ -223,6 +227,9 @@ public class AMD64GraphBuilderPlugins {
             r.setAllowOverwrite(true);
             r.registerMethodSubstitution(AMD64StringUTF16Substitutions.class, "compareTo", byte[].class, byte[].class);
             r.registerMethodSubstitution(AMD64StringUTF16Substitutions.class, "compareToLatin1", byte[].class, byte[].class);
+            r.registerMethodSubstitution(AMD64StringUTF16Substitutions.class, "compress", char[].class, int.class, byte[].class, int.class, int.class);
+            r.registerMethodSubstitution(AMD64StringUTF16Substitutions.class, "compress", byte[].class, int.class, byte[].class, int.class, int.class);
+
             if (arch.getFeatures().contains(CPUFeature.SSSE3)) {
                 r.registerMethodSubstitution(AMD64StringUTF16Substitutions.class, "indexOfCharUnsafe", byte[].class, int.class, int.class, int.class);
             }
@@ -230,18 +237,18 @@ public class AMD64GraphBuilderPlugins {
     }
 
     private static void registerUnsafePlugins(InvocationPlugins plugins, BytecodeProvider replacementsBytecodeProvider, boolean explicitUnsafeNullChecks) {
-        registerUnsafePlugins(new Registration(plugins, Unsafe.class), explicitUnsafeNullChecks, new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object});
+        registerUnsafePlugins(new Registration(plugins, Unsafe.class), explicitUnsafeNullChecks, new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object}, true);
         if (!Java8OrEarlier) {
             registerUnsafePlugins(new Registration(plugins, "jdk.internal.misc.Unsafe", replacementsBytecodeProvider), explicitUnsafeNullChecks,
-                            new JavaKind[]{JavaKind.Boolean, JavaKind.Byte, JavaKind.Char, JavaKind.Short, JavaKind.Int, JavaKind.Long, JavaKind.Object});
+                            new JavaKind[]{JavaKind.Boolean, JavaKind.Byte, JavaKind.Char, JavaKind.Short, JavaKind.Int, JavaKind.Long, JavaKind.Object}, Java11OrEarlier);
         }
     }
 
-    private static void registerUnsafePlugins(Registration r, boolean explicitUnsafeNullChecks, JavaKind[] unsafeJavaKinds) {
+    private static void registerUnsafePlugins(Registration r, boolean explicitUnsafeNullChecks, JavaKind[] unsafeJavaKinds, boolean java11OrEarlier) {
         for (JavaKind kind : unsafeJavaKinds) {
             Class<?> javaClass = kind == JavaKind.Object ? Object.class : kind.toJavaClass();
-
-            r.register4("getAndSet" + kind.name(), Receiver.class, Object.class, long.class, javaClass, new UnsafeAccessPlugin(kind, explicitUnsafeNullChecks) {
+            String kindName = (kind == JavaKind.Object && !java11OrEarlier) ? "Reference" : kind.name();
+            r.register4("getAndSet" + kindName, Receiver.class, Object.class, long.class, javaClass, new UnsafeAccessPlugin(kind, explicitUnsafeNullChecks) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode value) {
                     // Emits a null-check for the otherwise unused receiver
@@ -251,7 +258,7 @@ public class AMD64GraphBuilderPlugins {
                 }
             });
             if (kind != JavaKind.Boolean && kind.isNumericInteger()) {
-                r.register4("getAndAdd" + kind.name(), Receiver.class, Object.class, long.class, javaClass, new UnsafeAccessPlugin(kind, explicitUnsafeNullChecks) {
+                r.register4("getAndAdd" + kindName, Receiver.class, Object.class, long.class, javaClass, new UnsafeAccessPlugin(kind, explicitUnsafeNullChecks) {
                     @Override
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode delta) {
                         // Emits a null-check for the otherwise unused receiver

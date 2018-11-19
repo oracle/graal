@@ -24,14 +24,7 @@
  */
 package com.oracle.svm.core.posix;
 
-import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
-import org.graalvm.word.WordFactory;
-
 import com.oracle.svm.core.CompilerCommandPlugin;
-import com.oracle.svm.core.posix.headers.LibC;
-import com.oracle.svm.core.posix.headers.Stdlib;
 
 public abstract class PosixExecutableName implements CompilerCommandPlugin {
 
@@ -45,23 +38,4 @@ public abstract class PosixExecutableName implements CompilerCommandPlugin {
         return PosixExecutableName.getKey();
     }
 
-    /** A platform-independent method to canonicalize a path. */
-    protected String realpath(String path) {
-        /*
-         * Find the real path to the executable. realpath(3) mallocs a result buffer and returns a
-         * pointer to it, so I have to free it.
-         */
-        try (CCharPointerHolder pathHolder = CTypeConversion.toCString(path)) {
-            final CCharPointer realpathPointer = Stdlib.realpath(pathHolder.get(), WordFactory.nullPointer());
-            if (realpathPointer.isNull()) {
-                /* Failure to find a real path. */
-                return null;
-            } else {
-                /* Success */
-                final String result = CTypeConversion.toJavaString(realpathPointer);
-                LibC.free(realpathPointer);
-                return result;
-            }
-        }
-    }
 }

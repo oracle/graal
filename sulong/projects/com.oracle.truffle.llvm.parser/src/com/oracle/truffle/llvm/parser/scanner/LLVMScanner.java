@@ -136,8 +136,16 @@ public final class LLVMScanner {
 
     private static boolean isSupportedFile(ByteSequence bytes) {
         BitStream bs = BitStream.create(bytes);
-        long magicWord = bs.read(0, Integer.SIZE);
-        return magicWord == BC_MAGIC_WORD || magicWord == WRAPPER_MAGIC_WORD || magicWord == ELF_MAGIC_WORD;
+        try {
+            long magicWord = bs.read(0, Integer.SIZE);
+            return magicWord == BC_MAGIC_WORD || magicWord == WRAPPER_MAGIC_WORD || magicWord == ELF_MAGIC_WORD;
+        } catch (Exception e) {
+            /*
+             * An exception here means we can't read at least 4 bytes from the file. That means it
+             * is definitely not a bitcode or ELF file.
+             */
+            return false;
+        }
     }
 
     private static void parseBitcodeBlock(ByteSequence bitcode, ModelModule model, Source bcSource, LLVMContext context) {

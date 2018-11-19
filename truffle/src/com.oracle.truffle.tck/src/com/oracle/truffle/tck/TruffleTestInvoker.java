@@ -3,7 +3,7 @@
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
- * 
+ *
  * Subject to the condition set forth below, permission is hereby granted to any
  * person obtaining a copy of this software, associated documentation and/or
  * data (collectively the "Software"), free of charge and under any and all
@@ -11,25 +11,25 @@
  * freely licensable by each licensor hereunder covering either (i) the
  * unmodified Software as contributed to or provided by such licensor, or (ii)
  * the Larger Works (as defined below), to deal in both
- * 
+ *
  * (a) the Software, and
- * 
+ *
  * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
  * one is included with the Software each a "Larger Work" to which the Software
  * is contributed by such licensors),
- * 
+ *
  * without restriction, including without limitation the rights to copy, create
  * derivative works of, display, perform, and distribute the Software and make,
  * use, sell, offer for sale, import, export, have made, and have sold the
  * Software and the Larger Work(s), and to sublicense the foregoing rights on
  * either these or other terms.
- * 
+ *
  * This license is subject to the following condition:
- * 
+ *
  * The above copyright notice and either this complete permission notice or at a
  * minimum a reference to the UPL must be included in all copies or substantial
  * portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.tck;
 
+import java.io.Closeable;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -65,10 +66,10 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
 import com.oracle.truffle.tck.TruffleRunner.RunWithPolyglotRule;
 
-final class TruffleTestInvoker<T extends CallTarget> extends TVMCI.TestAccessor<T> {
+final class TruffleTestInvoker<C extends Closeable, T extends CallTarget> extends TVMCI.TestAccessor<C, T> {
 
-    static TruffleTestInvoker<?> create() {
-        TVMCI.Test<?> testTvmci = Truffle.getRuntime().getCapability(TVMCI.Test.class);
+    static TruffleTestInvoker<?, ?> create() {
+        TVMCI.Test<?, ?> testTvmci = Truffle.getRuntime().getCapability(TVMCI.Test.class);
         return new TruffleTestInvoker<>(testTvmci);
     }
 
@@ -127,7 +128,7 @@ final class TruffleTestInvoker<T extends CallTarget> extends TVMCI.TestAccessor<
 
     }
 
-    private TruffleTestInvoker(TVMCI.Test<T> testTvmci) {
+    private TruffleTestInvoker(TVMCI.Test<C, T> testTvmci) {
         super(testTvmci);
     }
 
@@ -205,20 +206,22 @@ final class TruffleTestInvoker<T extends CallTarget> extends TVMCI.TestAccessor<
 
             @Override
             public void evaluate() throws Throwable {
-                ArrayList<T> callTargets = new ArrayList<>(testNodes.length);
-                for (RootNode testNode : testNodes) {
-                    callTargets.add(createTestCallTarget(testNode));
-                }
+                try (C testContext = createTestContext(testName)) {
+                    ArrayList<T> callTargets = new ArrayList<>(testNodes.length);
+                    for (RootNode testNode : testNodes) {
+                        callTargets.add(createTestCallTarget(testContext, testNode));
+                    }
 
-                Object[] args = callTargets.toArray();
-                for (int i = 0; i < truffleMethod.warmupIterations; i++) {
+                    Object[] args = callTargets.toArray();
+                    for (int i = 0; i < truffleMethod.warmupIterations; i++) {
+                        truffleMethod.invokeExplosively(test, args);
+                    }
+
+                    for (T callTarget : callTargets) {
+                        finishWarmup(testContext, callTarget);
+                    }
                     truffleMethod.invokeExplosively(test, args);
                 }
-
-                for (T callTarget : callTargets) {
-                    finishWarmup(callTarget, testName);
-                }
-                truffleMethod.invokeExplosively(test, args);
             }
         };
     }

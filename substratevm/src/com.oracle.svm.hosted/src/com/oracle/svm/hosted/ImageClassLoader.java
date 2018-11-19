@@ -41,7 +41,6 @@ import java.nio.file.FileSystems;
 import java.nio.file.FileVisitResult;
 import java.nio.file.FileVisitor;
 import java.nio.file.Files;
-import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
@@ -60,25 +59,17 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.VMError;
 
 public final class ImageClassLoader {
 
-    /* { GR-8964: Add an option to control tracing. */
-    static class Options {
-        @Option(help = "Verbose tracing of image class loading for GR-8964.")//
-        public static final HostedOptionKey<Boolean> GR8964Tracing = new HostedOptionKey<>(false);
-    }
-    /* } GR-8964: Add an option to control tracing. */
-
-    private static final int CLASS_LENGTH = ".class".length();
+    private static final String CLASS_EXTENSION = ".class";
+    private static final int CLASS_EXTENSION_LENGTH = CLASS_EXTENSION.length();
     private static final int CLASS_LOADING_TIMEOUT_IN_MINUTES = 10;
 
     static {
@@ -133,49 +124,10 @@ public final class ImageClassLoader {
         final ForkJoinPool executor = new ForkJoinPool(Runtime.getRuntime().availableProcessors());
 
         Set<Path> uniquePaths = new TreeSet<>(Comparator.comparing(ImageClassLoader::toRealPath));
-        final boolean debugGR8964 = Boolean.valueOf(System.getProperty("debug_gr_8964", "false"));
-        if (debugGR8964) {
-            System.err.println("[ImageClassLoader.initAllClasses");
-            List<Path> pathList = new ArrayList<>();
-            for (String classPathEntry : classpath) {
-                System.err.println("  [classPathEntry: " + classPathEntry);
-                toClassPathEntries(classPathEntry).forEach(path -> {
-                    pathList.add(path);
-                    final Path absolutePath;
-                    System.err.print("    [        path: " + path.toString());
-                    if (!path.isAbsolute()) {
-                        absolutePath = path.toAbsolutePath();
-                        System.err.println();
-                        System.err.print("     absolutePath: " + path.toString());
-                    } else {
-                        absolutePath = path;
-                    }
-                    System.err.print(path.isAbsolute() ? "  absolute" : "");
-                    final boolean exists = Files.exists(absolutePath);
-                    System.err.print(exists ? "  exists" : "");
-                    if (exists) {
-                        System.err.print(Files.isDirectory(absolutePath) ? "  directory" : "");
-                        System.err.print(Files.isRegularFile(absolutePath, LinkOption.NOFOLLOW_LINKS) ? "  file" : "");
-                        System.err.print(Files.isSymbolicLink(absolutePath) ? "  symlink" : "");
-                        System.err.print(Files.isReadable(absolutePath) ? "  readable" : "");
-                        try {
-                            System.err.print("  " + Files.getLastModifiedTime(absolutePath).toString());
-                        } catch (IOException ioe) {
-                            System.err.print("  n/a");
-                        }
-                    }
-                    System.err.println(" ]");
-                });
-                System.err.println("  ]");
-            }
-            System.err.println("]");
-            uniquePaths.addAll(pathList);
-        } else {
-            uniquePaths.addAll(
-                            Arrays.stream(classpath)
-                                            .flatMap(ImageClassLoader::toClassPathEntries)
-                                            .collect(Collectors.toList()));
-        }
+        uniquePaths.addAll(
+                        Arrays.stream(classpath)
+                                        .flatMap(ImageClassLoader::toClassPathEntries)
+                                        .collect(Collectors.toList()));
         uniquePaths.parallelStream().forEach(path -> loadClassesFromPath(executor, path));
 
         executor.awaitQuiescence(CLASS_LOADING_TIMEOUT_IN_MINUTES, TimeUnit.MINUTES);
@@ -183,7 +135,7 @@ public final class ImageClassLoader {
 
     static Stream<Path> toClassPathEntries(String classPathEntry) {
         Path entry = Paths.get(classPathEntry);
-        if (entry.getFileName().toString().endsWith("*")) {
+        if (entry.getFileName() != null && entry.getFileName().toString().endsWith("*")) {
             return Arrays.stream(entry.getParent().toFile().listFiles()).filter(File::isFile).map(File::toPath);
         }
         return Stream.of(entry);
@@ -201,9 +153,7 @@ public final class ImageClassLoader {
         if (Files.exists(path)) {
             if (Files.isRegularFile(path)) {
                 try {
-                    String name = path.toAbsolutePath().toString();
-                    name = name.replace('\\', '/');
-                    URI jarURI = new URI("jar:file:///" + name);
+                    URI jarURI = new URI("jar:" + path.toAbsolutePath().toUri());
                     try (FileSystem jarFileSystem = FileSystems.newFileSystem(jarURI, Collections.emptyMap())) {
                         initAllClasses(jarFileSystem.getPath("/"), Collections.emptySet(), executor);
                     }
@@ -266,11 +216,12 @@ public final class ImageClassLoader {
                     return FileVisitResult.SKIP_SIBLINGS;
                 }
                 executor.execute(() -> {
-                    String fileName = root.relativize(file).toString().replace('/', '.');
-                    if (fileName.endsWith(".class")) {
-                        String className = fileName.substring(0, fileName.length() - CLASS_LENGTH);
+                    String fileName = root.relativize(file).toString();
+                    if (fileName.endsWith(CLASS_EXTENSION)) {
+                        String unversionedClassName = unversionedFileName(fileName);
+                        String className = curtail(unversionedClassName, CLASS_EXTENSION_LENGTH).replace('/', '.');
                         try {
-                            Class<?> systemClass = Class.forName(className, false, classLoader);
+                            Class<?> systemClass = forName(className);
                             if (includedInPlatform(systemClass)) {
                                 synchronized (systemClasses) {
                                     systemClasses.add(systemClass);
@@ -289,6 +240,35 @@ public final class ImageClassLoader {
             public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
                 /* Silently ignore inaccessible files or directories. */
                 return FileVisitResult.CONTINUE;
+            }
+
+            /**
+             * Take a file name from a possibly-multi-versioned jar file and remove the versioning
+             * information. See https://docs.oracle.com/javase/9/docs/api/java/util/jar/JarFile.html
+             * for the specification of the versioning strings.
+             *
+             * Then, depend on the JDK class loading mechanism to prefer the appropriately-versioned
+             * class when the class is loaded. The same class name be loaded multiple times, but
+             * each request will return the same appropriately-versioned class. If a
+             * higher-versioned class is not available in a lower-versioned JDK, a
+             * ClassNotFoundException will be thrown, which will be handled appropriately.
+             */
+            private String unversionedFileName(String fileName) {
+                final String versionedPrefix = "META-INF/versions/";
+                final String versionedSuffix = "/";
+                String result = fileName;
+                if (fileName.startsWith(versionedPrefix)) {
+                    final int versionedSuffixIndex = fileName.indexOf(versionedSuffix, versionedPrefix.length());
+                    if (versionedSuffixIndex >= 0) {
+                        result = fileName.substring(versionedSuffixIndex + versionedSuffix.length());
+                    }
+                }
+                return result;
+            }
+
+            /** Remove the requested number of characters from the tail of the given string. */
+            private String curtail(String str, int tailLength) {
+                return str.substring(0, str.length() - tailLength);
             }
         };
 
@@ -346,14 +326,27 @@ public final class ImageClassLoader {
                         return void.class;
                 }
             }
-
-            return Class.forName(name, false, classLoader);
+            return forName(name);
         } catch (ClassNotFoundException ex) {
             if (failIfClassMissing) {
                 throw shouldNotReachHere("class " + name + " not found");
             }
+            return null;
         }
-        return null;
+    }
+
+    private Class<?> forName(String name) throws ClassNotFoundException {
+        Class<?> clazz = Class.forName(name, false, classLoader);
+        if (NativeImageClassLoader.classIsMissing(clazz)) {
+            /*
+             * This is a ghost interface. Although Class.forName() doesn't trigger the creation of
+             * ghost interfaces it is possible that the class was referenced in the bytecode, loaded
+             * at an earlier stage and replaced with a ghost interface. Throw a
+             * ClassNotFoundException to maintain the contract of findClassByName().
+             */
+            throw new ClassNotFoundException(name);
+        }
+        return clazz;
     }
 
     public List<String> getClasspath() {
@@ -407,7 +400,7 @@ public final class ImageClassLoader {
         return result;
     }
 
-    List<Field> findAnnotatedFields(Class<? extends Annotation> annotationClass) {
+    public List<Field> findAnnotatedFields(Class<? extends Annotation> annotationClass) {
         ArrayList<Field> result = new ArrayList<>();
         for (Field field : systemFields) {
             if (field.getAnnotation(annotationClass) != null) {

@@ -3,7 +3,7 @@
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
- * 
+ *
  * Subject to the condition set forth below, permission is hereby granted to any
  * person obtaining a copy of this software, associated documentation and/or
  * data (collectively the "Software"), free of charge and under any and all
@@ -11,25 +11,25 @@
  * freely licensable by each licensor hereunder covering either (i) the
  * unmodified Software as contributed to or provided by such licensor, or (ii)
  * the Larger Works (as defined below), to deal in both
- * 
+ *
  * (a) the Software, and
- * 
+ *
  * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
  * one is included with the Software each a "Larger Work" to which the Software
  * is contributed by such licensors),
- * 
+ *
  * without restriction, including without limitation the rights to copy, create
  * derivative works of, display, perform, and distribute the Software and make,
  * use, sell, offer for sale, import, export, have made, and have sold the
  * Software and the Larger Work(s), and to sublicense the foregoing rights on
  * either these or other terms.
- * 
+ *
  * This license is subject to the following condition:
- * 
+ *
  * The above copyright notice and either this complete permission notice or at a
  * minimum a reference to the UPL must be included in all copies or substantial
  * portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -50,6 +50,7 @@ import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SourceElement;
 import com.oracle.truffle.api.debug.StepConfig;
+import com.oracle.truffle.api.debug.SuspendAnchor;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.tck.DebuggerTester;
 import java.util.Arrays;
@@ -646,21 +647,23 @@ public class StepTest extends AbstractDebugTest {
         }
     }
 
+    private static final String ALL_ELEMENTS_SOURCE = "ROOT(\n" +
+                    "  DEFINE(inner1, ROOT(\n" +
+                    "    STATEMENT,\n" +
+                    "    EXPRESSION\n" +
+                    "  )),\n" +
+                    "  DEFINE(inner2, ROOT(\n" +
+                    "    EXPRESSION(STATEMENT), STATEMENT(CONSTANT(1))\n" +
+                    "  )),\n" +
+                    "  EXPRESSION,\n" +
+                    "  STATEMENT(EXPRESSION(CALL(inner1)), EXPRESSION(CALL(inner1)), EXPRESSION(CALL(inner2))),\n" +
+                    "  EXPRESSION,\n" +
+                    "  STATEMENT\n" +
+                    ")\n";
+
     @Test
     public void testExpressionAndStatementStep() {
-        final Source source = testSource("ROOT(\n" +
-                        "  DEFINE(inner1, ROOT(\n" +
-                        "    STATEMENT,\n" +
-                        "    EXPRESSION\n" +
-                        "  )),\n" +
-                        "  DEFINE(inner2, ROOT(\n" +
-                        "    EXPRESSION(STATEMENT), STATEMENT(CONSTANT(1))\n" +
-                        "  )),\n" +
-                        "  EXPRESSION,\n" +
-                        "  STATEMENT(EXPRESSION(CALL(inner1)), EXPRESSION(CALL(inner1)), EXPRESSION(CALL(inner2))),\n" +
-                        "  EXPRESSION,\n" +
-                        "  STATEMENT\n" +
-                        ")\n");
+        final Source source = testSource(ALL_ELEMENTS_SOURCE);
         try (DebuggerSession session = startSession(SourceElement.EXPRESSION, SourceElement.STATEMENT)) {
             startEval(source);
             session.suspendNextExecution();
@@ -712,6 +715,335 @@ public class StepTest extends AbstractDebugTest {
             });
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, 10, false, "EXPRESSION(CALL(inner2))").prepareStepOut(1);
+            });
+            expectDone();
+        }
+    }
+
+    @Test
+    public void testRootStepOver() {
+        final Source source = testSource(ALL_ELEMENTS_SOURCE);
+        try (DebuggerSession session = startSession(SourceElement.ROOT)) {
+            startEval(source);
+            session.suspendNextExecution();
+
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 1, true, ALL_ELEMENTS_SOURCE).prepareStepOver(1);
+                checkReturn(event, null);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 13, false, ALL_ELEMENTS_SOURCE).prepareStepOver(1);
+                checkReturn(event, "()");
+            });
+            expectDone();
+        }
+    }
+
+    @Test
+    public void testRootStepInto() {
+        final Source source = testSource(ALL_ELEMENTS_SOURCE);
+        try (DebuggerSession session = startSession(SourceElement.ROOT)) {
+            startEval(source);
+            session.suspendNextExecution();
+
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 1, true, ALL_ELEMENTS_SOURCE).prepareStepInto(1);
+            });
+            String function1 = " ROOT(\n" +
+                            "    STATEMENT,\n" +
+                            "    EXPRESSION\n" +
+                            "  )";
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 2, true, function1).prepareStepInto(1);
+                checkReturn(event, null);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 5, false, function1).prepareStepInto(1);
+                checkReturn(event, "()");
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 10, false, "CALL(inner1)").prepareStepInto(1);
+                checkReturn(event, "()");
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 2, true, function1).prepareStepInto(1);
+                checkReturn(event, null);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 5, false, function1).prepareStepInto(1);
+                checkReturn(event, "()");
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 10, false, "CALL(inner1)").prepareStepInto(1);
+                checkReturn(event, "()");
+            });
+            String function2 = " ROOT(\n" +
+                            "    EXPRESSION(STATEMENT), STATEMENT(CONSTANT(1))\n" +
+                            "  )";
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 6, true, function2).prepareStepInto(1);
+                checkReturn(event, null);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 8, false, function2).prepareStepInto(1);
+                checkReturn(event, "1");
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 10, false, "CALL(inner2)").prepareStepInto(1);
+                checkReturn(event, "1");
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 13, false, ALL_ELEMENTS_SOURCE).prepareStepInto(1);
+                checkReturn(event, "()");
+            });
+            expectDone();
+        }
+    }
+
+    @Test
+    public void testRootStepOut() {
+        final Source source = testSource(ALL_ELEMENTS_SOURCE);
+        try (DebuggerSession session = startSession(SourceElement.ROOT)) {
+            startEval(source);
+            session.suspendNextExecution();
+
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 1, true, ALL_ELEMENTS_SOURCE).prepareStepInto(1);
+            });
+            String function1 = " ROOT(\n" +
+                            "    STATEMENT,\n" +
+                            "    EXPRESSION\n" +
+                            "  )";
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 2, true, function1).prepareStepOut(1);
+                checkReturn(event, null);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 10, false, "CALL(inner1)").prepareStepOut(1);
+                checkReturn(event, "()");
+            });
+            expectDone();
+        }
+    }
+
+    @Test
+    public void testRootAndStatementStep() {
+        final Source source = testSource(ALL_ELEMENTS_SOURCE);
+        try (DebuggerSession session = startSession(SourceElement.ROOT, SourceElement.STATEMENT)) {
+            startEval(source);
+            session.suspendNextExecution();
+
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 1, true, ALL_ELEMENTS_SOURCE).prepareStepInto(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 10, true, "STATEMENT(EXPRESSION(CALL(inner1)), EXPRESSION(CALL(inner1)), EXPRESSION(CALL(inner2)))").prepareStepInto(1);
+            });
+            String function1 = " ROOT(\n" +
+                            "    STATEMENT,\n" +
+                            "    EXPRESSION\n" +
+                            "  )";
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 2, true, function1).prepareStepInto(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 3, true, "STATEMENT").prepareStepInto(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 5, false, function1).prepareStepInto(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 10, false, "CALL(inner1)").prepareStepInto(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 2, true, function1).prepareStepOut(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 10, false, "CALL(inner1)").prepareStepInto(1);
+            });
+            String function2 = " ROOT(\n" +
+                            "    EXPRESSION(STATEMENT), STATEMENT(CONSTANT(1))\n" +
+                            "  )";
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 6, true, function2).prepareStepInto(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 7, true, "STATEMENT").prepareStepInto(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 7, true, "STATEMENT(CONSTANT(1))").prepareStepInto(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 8, false, function2).prepareStepInto(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 10, false, "CALL(inner2)").prepareStepInto(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 12, true, "STATEMENT").prepareStepInto(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 13, false, ALL_ELEMENTS_SOURCE).prepareStepInto(1);
+            });
+            expectDone();
+        }
+    }
+
+    @Test
+    public void testRootAndExpressionAndStatementStep() {
+        final Source source = testSource(ALL_ELEMENTS_SOURCE);
+        try (DebuggerSession session = startSession(SourceElement.ROOT, SourceElement.EXPRESSION, SourceElement.STATEMENT)) {
+            startEval(source);
+            session.suspendNextExecution();
+
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 1, true, ALL_ELEMENTS_SOURCE).prepareStepInto(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 9, true, "EXPRESSION").prepareStepOver(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 9, false, "EXPRESSION").prepareStepOver(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 10, true, "STATEMENT(EXPRESSION(CALL(inner1)), EXPRESSION(CALL(inner1)), EXPRESSION(CALL(inner2)))").prepareStepOver(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 10, true, "EXPRESSION(CALL(inner1))").prepareStepInto(1);
+            });
+            String function1 = " ROOT(\n" +
+                            "    STATEMENT,\n" +
+                            "    EXPRESSION\n" +
+                            "  )";
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 2, true, function1).prepareStepInto(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 3, true, "STATEMENT").prepareStepOut(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 10, false, "CALL(inner1)").prepareStepOut(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 10, false, "EXPRESSION(CALL(inner1))").prepareStepOver(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 10, true, "EXPRESSION(CALL(inner1))").prepareStepOver(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 10, false, "EXPRESSION(CALL(inner1))").prepareStepOver(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 10, true, "EXPRESSION(CALL(inner2))").prepareStepInto(1);
+            });
+            String function2 = " ROOT(\n" +
+                            "    EXPRESSION(STATEMENT), STATEMENT(CONSTANT(1))\n" +
+                            "  )";
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 6, true, function2).prepareStepInto(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 7, true, "EXPRESSION(STATEMENT)").prepareStepOver(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 7, true, "STATEMENT").prepareStepOver(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 7, false, "EXPRESSION(STATEMENT)").prepareStepOver(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 7, true, "STATEMENT(CONSTANT(1))").prepareStepOut(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 10, false, "CALL(inner2)").prepareStepOut(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 10, false, "EXPRESSION(CALL(inner2))").prepareStepOver(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 11, true, "EXPRESSION").prepareStepOver(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 11, false, "EXPRESSION").prepareStepOver(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 12, true, "STATEMENT").prepareStepInto(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 13, false, ALL_ELEMENTS_SOURCE).prepareStepInto(1);
+            });
+            expectDone();
+        }
+    }
+
+    @Test
+    public void testStepAnchors() {
+        final Source source = testSource(ALL_ELEMENTS_SOURCE);
+        try (DebuggerSession session = startSession(SourceElement.ROOT, SourceElement.EXPRESSION, SourceElement.STATEMENT)) {
+            startEval(source);
+            session.suspendNextExecution();
+            StepConfig customAnchors = StepConfig.newBuilder().suspendAnchors(SourceElement.ROOT, SuspendAnchor.AFTER).suspendAnchors(SourceElement.EXPRESSION, SuspendAnchor.BEFORE).build();
+
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 1, true, ALL_ELEMENTS_SOURCE).prepareStepInto(customAnchors);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 9, true, "EXPRESSION").prepareStepOver(customAnchors);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 10, true, "STATEMENT(EXPRESSION(CALL(inner1)), EXPRESSION(CALL(inner1)), EXPRESSION(CALL(inner2)))").prepareStepOver(customAnchors);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 10, true, "EXPRESSION(CALL(inner1))").prepareStepInto(customAnchors);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 3, true, "STATEMENT").prepareStepOver(customAnchors);
+            });
+            String function1 = " ROOT(\n" +
+                            "    STATEMENT,\n" +
+                            "    EXPRESSION\n" +
+                            "  )";
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 4, true, "EXPRESSION").prepareStepInto(customAnchors);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 5, false, function1).prepareStepInto(customAnchors);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 10, false, "CALL(inner1)").prepareStepOver(customAnchors);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 10, true, "EXPRESSION(CALL(inner1))").prepareStepOver(customAnchors);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 10, true, "EXPRESSION(CALL(inner2))").prepareStepInto(customAnchors);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 7, true, "EXPRESSION(STATEMENT)").prepareStepOver(customAnchors);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 7, true, "STATEMENT").prepareStepOver(customAnchors);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 7, true, "STATEMENT(CONSTANT(1))").prepareStepOver(customAnchors);
+            });
+            String function2 = " ROOT(\n" +
+                            "    EXPRESSION(STATEMENT), STATEMENT(CONSTANT(1))\n" +
+                            "  )";
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 8, false, function2).prepareStepInto(customAnchors);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 10, false, "CALL(inner2)").prepareStepOver(customAnchors);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 11, true, "EXPRESSION").prepareStepOver(customAnchors);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 12, true, "STATEMENT").prepareStepInto(customAnchors);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkState(event, 13, false, ALL_ELEMENTS_SOURCE).prepareStepInto(customAnchors);
             });
             expectDone();
         }

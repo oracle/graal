@@ -23,6 +23,7 @@ sulong-gateTest-linux: ${sulong-gateCommon} ${linux-amd64} {
     environment: {
         CPPFLAGS: "-g -I$LIBGMP/include"
         LD_LIBRARY_PATH: "$LIBGMP/lib:$LD_LIBRARY_PATH"
+        LDFLAGS: "-L$LIBGMP/lib"
     }
 }
 
@@ -35,6 +36,12 @@ sulong-gateTest38-linux: ${sulong-gateTest-linux} {
 sulong-gateTest40-linux: ${sulong-gateTest-linux} {
     packages: {
         llvm: "==4.0.1"
+    }
+}
+
+sulong-gateTest60-linux: ${sulong-gateTest-linux} {
+    packages: {
+        llvm: "==6.0.1"
     }
 }
 
@@ -91,6 +98,15 @@ sulong-gate-asm-parser: ${sulong-gateCommon} ${linux-amd64} {
   ]
 }
 
+sulong-coverage-linux: ${sulong-gateTest38-linux} ${requireGCC} ${sulong-weekly-notifications} {
+    run: [
+        [mx, --jacoco-whitelist-package, com.oracle.truffle.llvm, --jacoco-exclude-annotation, "@GeneratedBy", gate, --tags, "build,sulongCoverage", --jacoco-zip, report.zip, --jacoco-omit-excluded]
+    ]
+    logs: [*/report.zip]
+    targets: [weekly]
+    timelimit: "1:00:00"
+}
+
 builds += [
   ${sulong-gateStyle} { name: gate-sulong-style, run: [[mx, gate, --tags, "style"]] }
   ${sulong-gateStyle} ${jdt} { name: gate-sulong-fullbuild, run: [[mx, gate, --tags, "fullbuild"]] }
@@ -103,8 +119,11 @@ builds += [
   ${sulong-gateTest38-linux} ${requireGCC} { name: gate-sulong-gcc_fortran, run: [[mx, gate, --tags, "build,gcc_fortran"]] }
   ${sulong-gateTest38-linux} ${requireGCC} { name: gate-sulong-basic_v38, run: [[mx, gate, --tags, "build,sulongBasic,nwcc,llvm"]] }
   ${sulong-gateTest40-linux} ${requireGCC} { name: gate-sulong-basic_v40, run: [[mx, gate, --tags, "build,sulongBasic,nwcc,llvm"]] }
+  ${sulong-gateTest60-linux} ${requireGCC} { name: gate-sulong-basic_v60, run: [[mx, gate, --tags, "build,sulongBasic,nwcc,llvm"]] }
   ${sulong-gateTest40-darwin} { name: gate-sulong-basic_mac, run: [[mx, gate, --tags, "build,sulongBasic,nwcc,llvm"]] }
 
   ${sulong-gateTest38-linux} ${sulong-ruby-downstream-test} { name: gate-sulong-ruby-downstream }
   ${sulong-gateTest38-linux} ${sulong-python-downstream-test} { name: gate-sulong-python-downstream }
+
+  ${sulong-coverage-linux} { name: weekly-sulong-coverage }
 ]

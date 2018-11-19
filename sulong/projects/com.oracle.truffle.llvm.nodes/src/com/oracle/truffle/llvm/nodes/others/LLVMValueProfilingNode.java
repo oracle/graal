@@ -166,7 +166,7 @@ public abstract class LLVMValueProfilingNode extends LLVMExpressionNode {
             if (localState != GENERIC) {
                 if (localState == SPECIALIZED_POINTER) {
                     LLVMPointer v = cachedPointer;
-                    if (value.equals(v)) {
+                    if (v.equals(value)) {
                         return v.export(value.getExportType());
                     }
                 }

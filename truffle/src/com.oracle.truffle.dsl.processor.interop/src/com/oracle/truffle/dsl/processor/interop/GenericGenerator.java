@@ -3,7 +3,7 @@
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
- * 
+ *
  * Subject to the condition set forth below, permission is hereby granted to any
  * person obtaining a copy of this software, associated documentation and/or
  * data (collectively the "Software"), free of charge and under any and all
@@ -11,25 +11,25 @@
  * freely licensable by each licensor hereunder covering either (i) the
  * unmodified Software as contributed to or provided by such licensor, or (ii)
  * the Larger Works (as defined below), to deal in both
- * 
+ *
  * (a) the Software, and
- * 
+ *
  * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
  * one is included with the Software each a "Larger Work" to which the Software
  * is contributed by such licensors),
- * 
+ *
  * without restriction, including without limitation the rights to copy, create
  * derivative works of, display, perform, and distribute the Software and make,
  * use, sell, offer for sale, import, export, have made, and have sold the
  * Software and the Larger Work(s), and to sublicense the foregoing rights on
  * either these or other terms.
- * 
+ *
  * This license is subject to the following condition:
- * 
+ *
  * The above copyright notice and either this complete permission notice or at a
  * minimum a reference to the UPL must be included in all copies or substantial
  * portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -89,18 +89,17 @@ final class GenericGenerator extends MessageGenerator {
         appendGetName(w);
         w.append(indent).append("        @Override\n");
         w.append(indent).append("        public Object execute(VirtualFrame frame) {\n");
-        w.append(indent).append("            try {\n");
-        w.append(indent).append("              Object receiver = ForeignAccess.getReceiver(frame);\n");
+        w.append(indent).append("            Object receiver = ForeignAccess.getReceiver(frame);\n");
         boolean listGenerated = false;
         for (int i = 0; i < getParameterCount() - 1; i++) {
             if (!listGenerated) {
-                w.append("              java.util.List<Object> arguments = ForeignAccess.getArguments(frame);\n");
+                w.append(indent).append("            Object[] arguments = frame.getArguments();\n");
                 listGenerated = true;
             }
-            String index = String.valueOf(i);
-            w.append(indent).append("              Object arg").append(index).append(" = arguments.get(").append(index).append(");\n");
+            w.append(indent).append("            Object arg").append(String.valueOf(i)).append(" = arguments[").append(String.valueOf(i + 1)).append("];\n");
         }
-        w.append(indent).append("              return node.executeWithTarget(frame, receiver");
+        w.append(indent).append("            try {\n");
+        w.append(indent).append("                return node.executeWithTarget(frame, receiver");
         for (int i = 0; i < getParameterCount() - 1; i++) {
             String index = String.valueOf(i);
             w.append(", ").append("arg").append(index);

@@ -3,7 +3,7 @@
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
- * 
+ *
  * Subject to the condition set forth below, permission is hereby granted to any
  * person obtaining a copy of this software, associated documentation and/or
  * data (collectively the "Software"), free of charge and under any and all
@@ -11,25 +11,25 @@
  * freely licensable by each licensor hereunder covering either (i) the
  * unmodified Software as contributed to or provided by such licensor, or (ii)
  * the Larger Works (as defined below), to deal in both
- * 
+ *
  * (a) the Software, and
- * 
+ *
  * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
  * one is included with the Software each a "Larger Work" to which the Software
  * is contributed by such licensors),
- * 
+ *
  * without restriction, including without limitation the rights to copy, create
  * derivative works of, display, perform, and distribute the Software and make,
  * use, sell, offer for sale, import, export, have made, and have sold the
  * Software and the Larger Work(s), and to sublicense the foregoing rights on
  * either these or other terms.
- * 
+ *
  * This license is subject to the following condition:
- * 
+ *
  * The above copyright notice and either this complete permission notice or at a
  * minimum a reference to the UPL must be included in all copies or substantial
  * portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -61,8 +61,7 @@ import org.graalvm.collections.EconomicMap;
 
 /**
  * Descriptor of the slots of frame objects. Multiple frame instances are associated with one such
- * descriptor. The FrameDescriptor is not thread-safe until it's given to a first RootNode's
- * constructor. After that it has thread-safe properties.
+ * descriptor. The FrameDescriptor is thread-safe.
  *
  * @since 0.8 or earlier
  */
@@ -111,8 +110,8 @@ public final class FrameDescriptor implements Cloneable {
         this.defaultValue = defaultValue;
         this.slots = new ArrayList<>();
         this.identifierToSlotMap = EconomicMap.create();
-        this.version = createVersion();
         this.lock = lock == null ? this : lock;
+        newVersion(this);
     }
 
     /**
@@ -336,27 +335,15 @@ public final class FrameDescriptor implements Cloneable {
                  * First, only invalidate before updating kind so it's impossible to read a new kind
                  * and old still valid assumption.
                  */
-                frameSlot.descriptor.version.invalidate();
-                if (frameSlot.sharedWith != null) {
-                    for (FrameDescriptor frameDescriptor : frameSlot.sharedWith.keySet()) {
-                        assert frameDescriptor.lock == lock;
-                        frameDescriptor.version.invalidate();
-                    }
-                }
+                invalidateVersion(this);
                 frameSlot.kind = kind;
-                frameSlot.descriptor.version = createVersion();
-                if (frameSlot.sharedWith != null) {
-                    for (FrameDescriptor frameDescriptor : frameSlot.sharedWith.keySet()) {
-                        assert frameDescriptor.lock == lock;
-                        frameDescriptor.version = createVersion();
-                    }
-                }
+                newVersion(this);
             }
         }
     }
 
     private boolean checkFrameSlotOwnershipUnsafe(FrameSlot frameSlot) {
-        return frameSlot.descriptor == this || (frameSlot.sharedWith != null && frameSlot.sharedWith.containsKey(this));
+        return frameSlot.descriptor == this;
     }
 
     private boolean checkFrameSlotOwnership(FrameSlot frameSlot) {
@@ -367,9 +354,8 @@ public final class FrameDescriptor implements Cloneable {
     }
 
     /**
-     * Returns the size of an array which is needed for storing all the slots in it using their
-     * {@link FrameSlot#getIndex()} as a position in the array. (The number may be bigger than the
-     * number of slots, if some slots are removed.)
+     * Returns the size of an array which is needed for storing all the frame slots. (The number may
+     * be bigger than the number of slots, if some slots are removed.)
      *
      * @return the size of the frame
      * @since 0.8 or earlier
@@ -499,36 +485,19 @@ public final class FrameDescriptor implements Cloneable {
     }
 
     /**
-     * Shallow copy of the descriptor. Re-uses the existing slots in new descriptor. As a result, if
-     * you {@link FrameSlot#setKind(FrameSlotKind) change kind} of one of the slots it is changed in
-     * the original as well as in the shallow copy.
-     *
-     * @return new instance of a descriptor with copies of values from this one
-     * @since 0.8 or earlier
-     * @deprecated in 1.0 without replacement. The implementation is broken and would require a fix
-     *             that is too complex.
-     */
-    @Deprecated
-    public FrameDescriptor shallowCopy() {
-        CompilerAsserts.neverPartOfCompilation(NEVER_PART_OF_COMPILATION_MESSAGE);
-        synchronized (lock) {
-            FrameDescriptor clonedFrameDescriptor = new FrameDescriptor(this.defaultValue, lock);
-            clonedFrameDescriptor.slots.addAll(slots);
-            clonedFrameDescriptor.identifierToSlotMap.putAll(identifierToSlotMap);
-            for (FrameSlot slot : slots) {
-                slot.shareWith(clonedFrameDescriptor);
-            }
-            clonedFrameDescriptor.size = size;
-            return clonedFrameDescriptor;
-        }
-    }
-
-    /**
      * Invalidates the current, and create a new version assumption.
      */
     private void updateVersion() {
-        version.invalidate();
-        version = createVersion();
+        invalidateVersion(this);
+        newVersion(this);
+    }
+
+    private static void newVersion(FrameDescriptor descriptor) {
+        descriptor.version = Truffle.getRuntime().createAssumption("frame version");
+    }
+
+    private static void invalidateVersion(FrameDescriptor descriptor) {
+        descriptor.version.invalidate();
     }
 
     /**
@@ -541,10 +510,6 @@ public final class FrameDescriptor implements Cloneable {
      */
     public Assumption getVersion() {
         return version;
-    }
-
-    private static Assumption createVersion() {
-        return Truffle.getRuntime().createAssumption("frame version");
     }
 
     /**
@@ -612,7 +577,7 @@ public final class FrameDescriptor implements Cloneable {
                 } else {
                     comma = true;
                 }
-                sb.append(slot.getIndex()).append(":").append(slot.getIdentifier());
+                sb.append(slot.index).append(":").append(slot.getIdentifier());
             }
             sb.append("}");
             return sb.toString();

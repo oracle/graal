@@ -71,6 +71,35 @@ public final class PrimitiveType extends Type {
         }
     }
 
+    public static PrimitiveType forKind(PrimitiveKind kind) {
+        switch (kind) {
+            case I1:
+                return PrimitiveType.I1;
+            case I8:
+                return PrimitiveType.I8;
+            case I16:
+                return PrimitiveType.I16;
+            case I32:
+                return PrimitiveType.I32;
+            case I64:
+                return PrimitiveType.I64;
+            case HALF:
+                return PrimitiveType.HALF;
+            case FLOAT:
+                return PrimitiveType.FLOAT;
+            case DOUBLE:
+                return PrimitiveType.DOUBLE;
+            case F128:
+                return PrimitiveType.F128;
+            case X86_FP80:
+                return PrimitiveType.X86_FP80;
+            case PPC_FP128:
+                return PrimitiveType.PPC_FP128;
+            default:
+                throw new IllegalStateException("Unknown type");
+        }
+    }
+
     private final PrimitiveKind kind;
     private final Object constant;
 

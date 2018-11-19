@@ -28,11 +28,11 @@ import java.lang.ref.WeakReference;
 import java.util.function.IntSupplier;
 import java.util.stream.IntStream;
 
-import org.junit.Assert;
-import org.junit.Test;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
+import org.junit.Assert;
+import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -176,6 +176,7 @@ public class CompilationFinalWeakReferencePartialEvaluationTest extends PartialE
             System.gc();
             cleared = witness.get() == null;
         }
+
         assertTrue("Test data should have been garbage collected at this point", cleared);
 
         // Compiled code had the collected reference embedded so it had to be invalidated

@@ -226,7 +226,7 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
                 throw e;
             }
         } catch (IOException e) {
-            throw abort(e);
+            throw abort(String.format("Error loading file '%s' (%s)", file, e.getMessage()));
         }
     }
 
@@ -244,9 +244,9 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
                 break;
             }
         }
-        System.out.println(e.isHostException() ? e.asHostException().toString() : e.getMessage());
+        System.err.println(e.isHostException() ? e.asHostException().toString() : e.getMessage());
         for (PolyglotException.StackFrame s : stackTrace) {
-           System.out.println("\tat " + s);
+           System.err.println("\tat " + s);
         }
     }
 }

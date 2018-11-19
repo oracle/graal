@@ -30,12 +30,12 @@
 package com.oracle.truffle.llvm.nodes.asm.support;
 
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public abstract class LLVMAMD64ToRegisterNode extends LLVMExpressionNode {
-    @NodeChildren({@NodeChild(value = "reg", type = LLVMExpressionNode.class), @NodeChild(value = "from", type = LLVMExpressionNode.class)})
+    @NodeChild(value = "reg", type = LLVMExpressionNode.class)
+    @NodeChild(value = "from", type = LLVMExpressionNode.class)
     public abstract static class LLVMI8ToR64 extends LLVMAMD64ToRegisterNode {
         private final int shift;
         private final long mask;
@@ -66,7 +66,8 @@ public abstract class LLVMAMD64ToRegisterNode extends LLVMExpressionNode {
         }
     }
 
-    @NodeChildren({@NodeChild(value = "reg", type = LLVMExpressionNode.class), @NodeChild(value = "from", type = LLVMExpressionNode.class)})
+    @NodeChild(value = "reg", type = LLVMExpressionNode.class)
+    @NodeChild(value = "from", type = LLVMExpressionNode.class)
     public abstract static class LLVMI16ToR64 extends LLVMAMD64ToRegisterNode {
         private final long mask = ~(long) LLVMExpressionNode.I16_MASK;
 
@@ -91,7 +92,7 @@ public abstract class LLVMAMD64ToRegisterNode extends LLVMExpressionNode {
         }
     }
 
-    @NodeChildren({@NodeChild(value = "from", type = LLVMExpressionNode.class)})
+    @NodeChild(value = "from", type = LLVMExpressionNode.class)
     public abstract static class LLVMI32ToR64 extends LLVMAMD64ToRegisterNode {
         private static final long MASK = 0xFFFFFFFFL;
 

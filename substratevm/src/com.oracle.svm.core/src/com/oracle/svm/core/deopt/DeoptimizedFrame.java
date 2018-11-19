@@ -32,9 +32,10 @@ import java.lang.annotation.Target;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.amd64.FrameAccess;
+import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
@@ -84,6 +85,13 @@ public final class DeoptimizedFrame {
         protected VirtualFrame caller;
         /** The program counter where execution continuous. */
         protected ReturnAddress returnAddress;
+
+        /**
+         * The saved base pointer for the target frame, or null if the architecture does not use
+         * base pointers.
+         */
+        protected SavedBasePointer savedBasePointer;
+
         /**
          * The local variables and expression stack value of this frame. Local variables that are
          * unused at the deoptimization point are {@code null}.
@@ -243,6 +251,24 @@ public final class DeoptimizedFrame {
         }
     }
 
+    /**
+     * The saved base pointer, located between deopt target frames.
+     */
+    static class SavedBasePointer {
+        private final int offset;
+        private final long valueRelativeToNewSp;
+
+        protected SavedBasePointer(int offset, long valueRelativeToNewSp) {
+            this.offset = offset;
+            this.valueRelativeToNewSp = valueRelativeToNewSp;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.")
+        protected void write(Deoptimizer.TargetContent targetContent, Pointer newSp) {
+            targetContent.writeWord(offset, newSp.add(WordFactory.unsigned(valueRelativeToNewSp)));
+        }
+    }
+
     protected static DeoptimizedFrame factory(int targetContentSize, long sourceTotalFrameSize, SubstrateInstalledCode sourceInstalledCode, VirtualFrame topFrame,
                     CodePointer sourcePC) {
         final TargetContent targetContentBuffer = new TargetContent(targetContentSize, ConfigurationValues.getTarget().arch.getByteOrder());
@@ -329,13 +355,18 @@ public final class DeoptimizedFrame {
     /**
      * Fills the target content from the {@link VirtualFrame virtual frame} information. This method
      * must be uninterruptible.
+     *
+     * @param newSp the new stack pointer where execution will eventually continue
      */
     @Uninterruptible(reason = "Reads pointer values from the stack frame to unmanaged storage.")
-    protected void buildContent() {
+    protected void buildContent(Pointer newSp) {
 
         VirtualFrame cur = topFrame;
         do {
             cur.returnAddress.write(targetContent);
+            if (cur.savedBasePointer != null) {
+                cur.savedBasePointer.write(targetContent, newSp);
+            }
             for (int i = 0; i < cur.values.length; i++) {
                 if (cur.values[i] != null) {
                     cur.values[i].write(targetContent);

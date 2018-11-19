@@ -31,10 +31,12 @@ import java.lang.ref.WeakReference;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.heap.ObjectReferenceWalker;
 import com.oracle.svm.core.heap.PinnedAllocator;
+import com.oracle.svm.core.os.CommittedMemoryProvider;
 
 import jdk.vm.ci.code.InstalledCode;
 
@@ -101,5 +103,10 @@ public final class RuntimeMethodInfo extends AbstractCodeInfo {
 
     private static WeakReference<SubstrateInstalledCode> createInstalledCodeReference(SubstrateInstalledCode installedCode) {
         return new WeakReference<>(installedCode);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    void freeInstalledCode() {
+        CommittedMemoryProvider.get().free(getCodeStart(), getCodeSize(), CommittedMemoryProvider.UNALIGNED, true);
     }
 }

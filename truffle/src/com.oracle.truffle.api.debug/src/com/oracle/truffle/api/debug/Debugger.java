@@ -3,7 +3,7 @@
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
- * 
+ *
  * Subject to the condition set forth below, permission is hereby granted to any
  * person obtaining a copy of this software, associated documentation and/or
  * data (collectively the "Software"), free of charge and under any and all
@@ -11,25 +11,25 @@
  * freely licensable by each licensor hereunder covering either (i) the
  * unmodified Software as contributed to or provided by such licensor, or (ii)
  * the Larger Works (as defined below), to deal in both
- * 
+ *
  * (a) the Software, and
- * 
+ *
  * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
  * one is included with the Software each a "Larger Work" to which the Software
  * is contributed by such licensors),
- * 
+ *
  * without restriction, including without limitation the rights to copy, create
  * derivative works of, display, perform, and distribute the Software and make,
  * use, sell, offer for sale, import, export, have made, and have sold the
  * Software and the Larger Work(s), and to sublicense the foregoing rights on
  * either these or other terms.
- * 
+ *
  * This license is subject to the following condition:
- * 
+ *
  * The above copyright notice and either this complete permission notice or at a
  * minimum a reference to the UPL must be included in all copies or substantial
  * portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -56,11 +56,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.impl.DebuggerInstrument;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.impl.Accessor;
-import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
-import com.oracle.truffle.api.instrumentation.LoadSourceEvent;
-import com.oracle.truffle.api.instrumentation.LoadSourceListener;
-import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.nodes.Node;
@@ -93,16 +89,6 @@ import com.oracle.truffle.api.source.Source;
  */
 public final class Debugger {
 
-    /**
-     * Name of a property that is fired when a list of breakpoints changes.
-     *
-     * @since 0.27
-     * @see #getBreakpoints()
-     * @see #addPropertyChangeListener(java.beans.PropertyChangeListener)
-     * @deprecated Use {@link #addBreakpointAddedListener(Consumer)} and
-     *             {@link #addBreakpointRemovedListener(Consumer)}
-     */
-    @Deprecated public static final String PROPERTY_BREAKPOINTS = "breakpoints";
     static final boolean TRACE = Boolean.getBoolean("truffle.debug.trace");
 
     private final Env env;
@@ -203,7 +189,6 @@ public final class Debugger {
         for (DebuggerSession s : ds) {
             s.install(breakpoint, true);
         }
-        BreakpointsPropertyChangeEvent.firePropertyChange(this, null, breakpoint);
         for (Consumer<Breakpoint> listener : breakpointAddedListeners) {
             listener.accept(breakpoint.getROWrapper());
         }
@@ -252,7 +237,6 @@ public final class Debugger {
             removed = breakpoints.remove(breakpoint);
         }
         if (removed) {
-            BreakpointsPropertyChangeEvent.firePropertyChange(this, breakpoint, null);
             for (Consumer<Breakpoint> listener : breakpointRemovedListeners) {
                 listener.accept(breakpoint.getROWrapper());
             }
@@ -260,26 +244,6 @@ public final class Debugger {
         if (Debugger.TRACE) {
             trace("disposed debugger breakpoint %s", breakpoint);
         }
-    }
-
-    /**
-     * Returns a list of all loaded sources. The sources are returned in the order as they have been
-     * loaded by the languages.
-     *
-     * @return an unmodifiable list of sources
-     * @since 0.17
-     * @deprecated not very flexible, polls all sources without any notification about changes.
-     */
-    @Deprecated
-    public List<Source> getLoadedSources() {
-        final List<Source> sources = new ArrayList<>();
-        EventBinding<?> binding = env.getInstrumenter().attachLoadSourceListener(SourceFilter.ANY, new LoadSourceListener() {
-            public void onLoad(LoadSourceEvent event) {
-                sources.add(event.getSource());
-            }
-        }, true);
-        binding.dispose();
-        return Collections.unmodifiableList(sources);
     }
 
     /**
@@ -320,34 +284,6 @@ public final class Debugger {
      */
     public void removeBreakpointRemovedListener(Consumer<Breakpoint> listener) {
         breakpointRemovedListeners.remove(listener);
-    }
-
-    /**
-     * Add a property change listener that is notified when a property of this debugger changes.
-     *
-     * @since 0.27
-     * @see #PROPERTY_BREAKPOINTS
-     * @deprecated Use {@link #addBreakpointAddedListener(Consumer)} and
-     *             {@link #addBreakpointRemovedListener(Consumer)}
-     */
-    @Deprecated
-    public void addPropertyChangeListener(java.beans.PropertyChangeListener listener) {
-        // using FQN to avoid mx to generate dependency on java.desktop module
-        propSupport.add(listener);
-    }
-
-    /**
-     * Remove a property change listener that is notified when state of this debugger changes.
-     *
-     * @since 0.27
-     * @see #addPropertyChangeListener(java.beans.PropertyChangeListener)
-     * @deprecated Use {@link #removeBreakpointAddedListener(Consumer)} and
-     *             {@link #removeBreakpointRemovedListener(Consumer)}
-     */
-    @Deprecated
-    public void removePropertyChangeListener(java.beans.PropertyChangeListener listener) {
-        // using FQN to avoid mx to generate dependency on java.desktop module
-        propSupport.remove(listener);
     }
 
     Env getEnv() {

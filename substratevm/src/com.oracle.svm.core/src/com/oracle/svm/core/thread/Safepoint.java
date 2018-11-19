@@ -34,12 +34,12 @@ import org.graalvm.compiler.nodes.PauseNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.function.CEntryPointContext;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.WordFactory;
 
@@ -49,6 +49,8 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
+import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
@@ -182,7 +184,7 @@ public final class Safepoint {
     /** Stop at a safepoint. */
     @Uninterruptible(reason = "Must not contain safepoint checks.")
     private static void slowPathSafepointCheck() {
-        final IsolateThread myself = CEntryPointContext.getCurrentIsolateThread();
+        final IsolateThread myself = CurrentIsolate.getCurrentThread();
 
         boolean needsCallback = ThreadingSupportImpl.singleton().needsCallbackOnSafepointCheckSlowpath();
         boolean wasFrozen = false;
@@ -231,12 +233,16 @@ public final class Safepoint {
         }
     }
 
-    @Uninterruptible(reason = "Must not contain safepoint checks.", calleeMustBe = false)
+    @Uninterruptible(reason = "Must not contain safepoint checks.")
     private static void freezeAtSafepoint() {
-        /* Grab the safepoint mutex, which will block me after a transition to native. */
-        getMutex().lock();
+        /* Transition to native */
+        CFunctionPrologueNode.cFunctionPrologue();
+        /* Grab the safepoint mutex, which will block me. */
+        getMutex().lockNoTransition();
         /* Then release the mutex when I resume from the safepoint. */
         getMutex().unlock();
+        /* Transition back to Java */
+        CFunctionEpilogueNode.cFunctionEpilogue();
     }
 
     /** Specific values for {@link #safepointRequested}. */
@@ -305,7 +311,7 @@ public final class Safepoint {
     @SubstrateForeignCallTarget
     @Uninterruptible(reason = "Must not contain safepoint checks")
     private static void enterSlowPathSafepointCheck() throws Throwable {
-        if (VMThreads.StatusSupport.isStatusIgnoreSafepoints(CEntryPointContext.getCurrentIsolateThread())) {
+        if (VMThreads.StatusSupport.isStatusIgnoreSafepoints(CurrentIsolate.getCurrentThread())) {
             /* Reset counter so that we do not enter the slow path immediately again. */
             Safepoint.setSafepointRequested(Safepoint.SafepointRequestValues.RESET);
             return;
@@ -364,7 +370,7 @@ public final class Safepoint {
     private static void enterSlowPathNativeToJava() {
         VMError.guarantee(!VMThreads.StatusSupport.isStatusJava(),
                         "Attempting to do a Native-to-Java transition when already in Java mode");
-        VMError.guarantee(!VMThreads.StatusSupport.isStatusIgnoreSafepoints(CEntryPointContext.getCurrentIsolateThread()),
+        VMError.guarantee(!VMThreads.StatusSupport.isStatusIgnoreSafepoints(CurrentIsolate.getCurrentThread()),
                         "When safepoints are disabled, the thread can only be in Native mode, so the fast path transition must succeed and this slow path must not be called");
 
         Statistics.incSlowPathFrozen();
@@ -417,7 +423,7 @@ public final class Safepoint {
              */
             getMutex().assertIsLocked("Should hold mutex when freezing for a safepoint.");
 
-            requestingThread = CEntryPointContext.getCurrentIsolateThread();
+            requestingThread = CurrentIsolate.getCurrentThread();
 
             Statistics.reset();
             Statistics.setStartNanos();
@@ -439,7 +445,7 @@ public final class Safepoint {
         }
 
         private static boolean isMyself(IsolateThread vmThread) {
-            return vmThread == CEntryPointContext.getCurrentIsolateThread();
+            return vmThread == CurrentIsolate.getCurrentThread();
         }
 
         /** Send each of the threads (except myself) a request to come to a safepoint. */
