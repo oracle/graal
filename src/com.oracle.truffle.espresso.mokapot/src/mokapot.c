@@ -23,10 +23,6 @@ void* getJavaVM(TruffleEnv *truffle_env) {
 
 #define IMPLEMENTED(name) do {} while (0);
 
-  // fprintf(stderr, "Calling implemented mokapot %s\n", #name);
-
-
-
 #define JNI_INVOKE_INTERFACE_METHODS(V) \
   V(DestroyJavaVM) \
   V(AttachCurrentThread) \
@@ -213,7 +209,6 @@ void JVM_UnloadLibrary(void *handle) {
 
 void *JVM_FindLibraryEntry(void *handle, const char *name) {
   IMPLEMENTED(JVM_FindLibraryEntry);
-  fprintf(stderr, "JVM_FindLibraryEntry %s\n", name);
   return (*getEnv())->JVM_FindLibraryEntry(handle, name);
 }
 
@@ -418,8 +413,8 @@ jclass JVM_LoadClass0(JNIEnv *env, jobject obj, jclass currClass, jstring currCl
 }
 
 jint JVM_GetArrayLength(JNIEnv *env, jobject arr) {
-  UNIMPLEMENTED(JVM_GetArrayLength);
-  return 0;
+  IMPLEMENTED(JVM_GetArrayLength);  
+  return (*getEnv())->JVM_GetArrayLength(env, arr);
 }
 
 jobject JVM_GetArrayElement(JNIEnv *env, jobject arr, jint index) {
@@ -932,14 +927,13 @@ jint JVM_GetLastErrorString(char *buf, int len) {
 }
 
 char *JVM_NativePath(char *pathname) {
-  fprintf(stderr, "Calling mokapot JVM_NativePath.\n");
+  IMPLEMENTED(JVM_NativePath);
   // TODO(peterssen): This mimics the HotSpot implementation... yet another useless method.
   return pathname;
 }
 
 jint JVM_Open(const char *path, jint oflag, jint mode) {
-  fprintf(stderr, "Calling mokapot JVM_Open.\n");
-
+  IMPLEMENTED(JVM_OPEN);
   FD fd;
   RESTARTABLE(open(path, oflag, mode), fd);
   if (fd != -1) {
@@ -961,7 +955,7 @@ jint JVM_Open(const char *path, jint oflag, jint mode) {
 }
 
 jint JVM_Close(jint fd) {
-  fprintf(stderr, "Calling mokapot JVM_Close.\n");
+  IMPLEMENTED(JVM_Close);
   return close(fd);
 }
 

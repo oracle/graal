@@ -33,6 +33,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -667,6 +668,16 @@ public class VM extends NativeEnv {
         return properties;
     }
 
+    @VmImpl
+    @JniImpl
+    public int JVM_GetArrayLength(Object array) {
+        try {
+            return Array.getLength(MetaUtil.unwrap(array));
+        } catch (IllegalArgumentException | NullPointerException e) {
+            EspressoContext context = EspressoLanguage.getCurrentContext();
+            throw context.getMeta().throwEx(e.getClass(), e.getMessage());
+        }
+    }
 
     public TruffleObject getLibrary(long handle) {
         return handle2Lib.get(handle);

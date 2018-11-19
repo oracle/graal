@@ -53,16 +53,6 @@ public class Target_java_lang_reflect_Array {
     }
 
     @Intrinsic
-    public static int getLength(Object array) {
-        try {
-            return Array.getLength(MetaUtil.unwrap(array));
-        } catch (IllegalArgumentException | NullPointerException e) {
-            EspressoContext context = EspressoLanguage.getCurrentContext();
-            throw context.getMeta().throwEx(e.getClass(), e.getMessage());
-        }
-    }
-
-    @Intrinsic
     public static boolean getBoolean(Object array, int index) {
         try {
             return Array.getBoolean(MetaUtil.unwrap(array), index);
