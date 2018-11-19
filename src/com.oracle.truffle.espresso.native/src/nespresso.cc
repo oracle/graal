@@ -480,13 +480,21 @@ static TruffleContext *truffle_ctx;
 jobject NewObjectV(JNIEnv *env, jclass clazz, jmethodID methodID, va_list args) {
   VarArgsVaList varargs(args);
   NespressoEnv *nespresso_env = (NespressoEnv*) env->functions->reserved0;
-  return nespresso_env->NewObject(env, clazz, methodID, (jlong) &varargs);
+  return nespresso_env->NewObjectVarargs(env, clazz, methodID, (jlong) &varargs);
 }
 
 jobject NewObjectA(JNIEnv *env, jclass clazz, jmethodID methodID, const jvalue *args) {
   VarArgsJValues varargs(args);
   NespressoEnv *nespresso_env = (NespressoEnv*) env->functions->reserved0;
-  return nespresso_env->NewObject(env, clazz, methodID, (jlong) &varargs);
+  return nespresso_env->NewObjectVarargs(env, clazz, methodID, (jlong) &varargs);
+}
+
+jobject NewObject(JNIEnv *env, jclass clazz, jmethodID methodID, ...) {
+  va_list args;
+  va_start(args, methodID);
+  jobject result = env->NewObjectV(clazz, methodID, args);
+  va_end(args);
+  return result;
 }
 
 jint RegisterNatives(JNIEnv *env, jclass clazz, const JNINativeMethod *methods, jint nMethods) {  
