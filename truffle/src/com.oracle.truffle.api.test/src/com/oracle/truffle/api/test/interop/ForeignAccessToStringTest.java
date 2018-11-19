@@ -48,6 +48,8 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.RootNode;
+import java.util.function.Supplier;
 
 public class ForeignAccessToStringTest {
     @Test
@@ -58,7 +60,7 @@ public class ForeignAccessToStringTest {
 
     @Test
     public void check10Factory() {
-        ForeignAccess fa = ForeignAccess.create(new Simple10TestingFactory(), null);
+        ForeignAccess fa = ForeignAccess.create(new Simple10TestingFactory(), (Supplier<RootNode>) null);
         assertEquals("ForeignAccess[" + ForeignAccessToStringTest.class.getName() + "$Simple10TestingFactory]", fa.toString());
     }
 

@@ -46,6 +46,7 @@ import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.interop.ForeignAccess.StandardFactory;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import java.util.function.Supplier;
 
 class InteropAccessor extends Accessor {
 
@@ -216,7 +217,7 @@ final class EmptyTruffleObject implements TruffleObject {
             public CallTarget accessExecute(int argumentsLength) {
                 return null;
             }
-        }, null);
+        }, (Supplier<RootNode>) null);
     }
 
 }
@@ -287,7 +288,7 @@ final class EmptyKeys implements TruffleObject {
             public CallTarget accessExecute(int argumentsLength) {
                 return null;
             }
-        }, null);
+        }, (Supplier<RootNode>) null);
     }
 
 }
