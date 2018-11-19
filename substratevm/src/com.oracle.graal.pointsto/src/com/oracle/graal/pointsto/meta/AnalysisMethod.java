@@ -28,8 +28,6 @@ import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 import static jdk.vm.ci.common.JVMCIError.unimplemented;
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
@@ -138,34 +136,12 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider {
             assert Modifier.isStatic(getModifiers());
             assert getSignature().getParameterCount(false) == 0;
             try {
-                Method switchTableMethod = asReflectionMethod(wrapped);
+                Method switchTableMethod = getDeclaringClass().getJavaClass().getDeclaredMethod(getName());
                 switchTableMethod.setAccessible(true);
                 switchTableMethod.invoke(null);
-            } catch (Throwable ex) {
+            } catch (ReflectiveOperationException ex) {
                 throw GraalError.shouldNotReachHere(ex);
             }
-        }
-    }
-
-    /**
-     * Gets the {@link Method} corresponding to {@code wrapped}. This is a backdoor into the HotSpot
-     * metadata implementation, since there is no official way to invoke a
-     * {@link ResolvedJavaMethod}.
-     */
-    private static Method asReflectionMethod(ResolvedJavaMethod wrapped) throws IllegalArgumentException, IllegalAccessException, NoSuchFieldException, InvocationTargetException {
-        try {
-            Method toJavaMethod = wrapped.getClass().getDeclaredMethod("toJava");
-            toJavaMethod.setAccessible(true);
-            Method reflectionMethod = (Method) toJavaMethod.invoke(wrapped);
-            return reflectionMethod;
-        } catch (NoSuchMethodException e) {
-            // As of GR-5926, extra indirection is used in the JVMCI implementation.
-            wrapped.getAnnotations(); // Triggers initialization of field
-                                      // HotSpotResolvedJavaMethodImpl.toJavaCache
-            Field toJavaCacheField = wrapped.getClass().getDeclaredField("toJavaCache");
-            toJavaCacheField.setAccessible(true);
-            Method reflectionMethod = (Method) toJavaCacheField.get(wrapped);
-            return reflectionMethod;
         }
     }
 
