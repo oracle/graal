@@ -190,7 +190,7 @@ final class ForeignAccessFactoryGenerator {
     private void appendSingletonAndGetter(Writer w) throws IOException {
         String allocation = "ForeignAccess.create(new " + simpleClassName + "(), ";
         if (hasLanguageCheckNode()) {
-            allocation += "new Supplier<RootNode>() { public RootNode get() { return " + languageCheckGenerator.getRootNodeFactoryInvocation() + "; }});";
+            allocation += "new Supplier<RootNode>() { @Override public RootNode get() { return " + languageCheckGenerator.getRootNodeFactoryInvocation() + "; }});";
         } else {
             allocation += "(Supplier<RootNode>) null);";
         }
