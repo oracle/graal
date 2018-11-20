@@ -130,9 +130,6 @@ suite = {
                 "truffle:TRUFFLE_INSTRUMENT_TEST",
                 "mx:JUNIT",
             ],
-            "javaProperties": {
-                "native.test.lib": "<path:ESPRESSO_TESTS_NATIVE>/<lib:nativetest>"
-            },
             "javaCompliance": "1.8+",
             "checkstyle": "com.oracle.truffle.espresso",
         },
@@ -198,7 +195,8 @@ suite = {
                 "truffle:TRUFFLE_NFI",
             ],
             "javaProperties": {
-                "nespresso.library": "<path:ESPRESSO_NATIVE>/bin/<lib:nespresso>"
+                "nespresso.library": "<path:ESPRESSO_NATIVE>/bin/<lib:nespresso>",
+                "mokapot.library": "<path:ESPRESSO_MOKAPOT_NATIVE>/bin/<lib:mokapot>"
             },
         },
 
@@ -213,19 +211,12 @@ suite = {
                 "truffle:TRUFFLE_INSTRUMENT_TEST",
                 "mx:JUNIT",
             ],
+            "javaProperties": {
+                "native.test.lib": "<path:ESPRESSO_TESTS_NATIVE>/bin/<lib:nativetest>"
+            },
             "testDistribution": True,
         },
 
-        "ESPRESSO_TESTS_NATIVE": {
-            "native": True,
-            "platformDependent": True,
-            "output": "<mxbuild>/espresso-test-native",
-            "dependencies": [
-                "com.oracle.truffle.espresso.test.native",
-            ],
-            "testDistribution": True,
-            "maven": False,
-        },
 
         "ESPRESSO_LAUNCHER": {
             "subDir": "src",
@@ -316,6 +307,18 @@ suite = {
                 "com.oracle.truffle.espresso.mokapot",
             ],
             "description": "Espresso libjvm surrogate",
+        },
+
+        "ESPRESSO_TESTS_NATIVE": {
+            "native": True,
+            "relpath": True,
+            "platformDependent": True,
+            "output": "<mxbuild>/espresso-test-native",
+            "dependencies": [
+                "com.oracle.truffle.espresso.test.native",
+            ],
+            "testDistribution": True,
+            "maven": False,
         },
 
 
