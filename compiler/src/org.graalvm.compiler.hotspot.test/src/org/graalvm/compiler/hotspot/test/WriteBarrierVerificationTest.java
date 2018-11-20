@@ -56,7 +56,6 @@ import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.GuardLoweringPhase;
 import org.graalvm.compiler.phases.common.LoopSafepointInsertionPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
-import org.graalvm.compiler.phases.common.inlining.InliningPhase;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
@@ -645,7 +644,7 @@ public class WriteBarrierVerificationTest extends HotSpotGraalCompilerTest {
         try (DebugCloseable d = debug.disableIntercept(); DebugContext.Scope s = debug.scope("WriteBarrierVerificationTest", new DebugDumpScope(snippet))) {
             final StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES, debug);
             HighTierContext highTierContext = getDefaultHighTierContext();
-            new InliningPhase(new CanonicalizerPhase()).apply(graph, highTierContext);
+            createInliningPhase().apply(graph, highTierContext);
 
             MidTierContext midTierContext = new MidTierContext(getProviders(), getTargetProvider(), OptimisticOptimizations.ALL, graph.getProfilingInfo());
 

@@ -139,9 +139,13 @@ def hsdis(args, copyToDir=None):
         overwrite = False
         base = mx.get_jdk().home
         if exists(join(base, 'jre')):
-            copyToDir = join(base, 'jre', 'lib')
-        else:
+            base = join(base, 'jre')
+        if mx.get_os() == 'darwin':
             copyToDir = join(base, 'lib')
+        elif mx.get_os() == 'windows':
+            copyToDir = join(base, 'bin')
+        else:
+            copyToDir = join(base, 'lib', mx.get_arch())
 
     if exists(copyToDir):
         dest = join(copyToDir, mx.add_lib_suffix('hsdis-' + mx.get_arch()))
