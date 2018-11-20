@@ -41,7 +41,7 @@
 package com.oracle.truffle.sl.builtins;
 
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ArrayLibrary;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -55,7 +55,7 @@ import com.oracle.truffle.sl.SLException;
 public abstract class SLGetSizeBuiltin extends SLBuiltinNode {
 
     @Specialization(limit = "3")
-    public Object getSize(Object obj, @CachedLibrary("obj") ArrayLibrary arrays) {
+    public Object getSize(Object obj, @CachedLibrary("obj") InteropLibrary arrays) {
         try {
             return arrays.getArraySize(obj);
         } catch (UnsupportedMessageException e) {

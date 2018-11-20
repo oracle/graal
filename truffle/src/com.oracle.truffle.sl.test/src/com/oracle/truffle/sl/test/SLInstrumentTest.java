@@ -40,9 +40,6 @@
  */
 package com.oracle.truffle.sl.test;
 
-import static com.oracle.truffle.api.interop.InteropLibraries.ARRAYS;
-import static com.oracle.truffle.api.interop.InteropLibraries.OBJECTS;
-import static com.oracle.truffle.api.interop.InteropLibraries.VALUES;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -83,14 +80,14 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.CallTag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.interop.ArrayLibrary;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.ObjectLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.library.Libraries;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
@@ -101,6 +98,8 @@ import com.oracle.truffle.tck.DebuggerTester;
  * Test of SL instrumentation.
  */
 public class SLInstrumentTest {
+
+    static final InteropLibrary INTEROP = Libraries.getUncachedDispatch(InteropLibrary.class);
 
     @Test
     public void testLexicalScopes() throws Exception {
@@ -461,24 +460,24 @@ public class SLInstrumentTest {
     }
 
     private static boolean contains(TruffleObject vars, String key) {
-        return OBJECTS.isMemberExisting(vars, key);
+        return INTEROP.isMemberExisting(vars, key);
     }
 
     private static Object read(TruffleObject vars, String key) {
         try {
-            return OBJECTS.readMember(vars, key);
+            return INTEROP.readMember(vars, key);
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
             throw new AssertionError(e);
         }
     }
 
     private static boolean isNull(TruffleObject vars) {
-        return VALUES.isNull(vars);
+        return INTEROP.isNull(vars);
     }
 
     private static int keySize(TruffleObject vars) {
         try {
-            return (int) ARRAYS.getArraySize(OBJECTS.getMembers(vars));
+            return (int) INTEROP.getArraySize(INTEROP.getMembers(vars));
         } catch (UnsupportedMessageException e) {
             throw new AssertionError(e);
         }
@@ -868,7 +867,7 @@ public class SLInstrumentTest {
             });
         }
 
-        @ExportLibrary(ObjectLibrary.class)
+        @ExportLibrary(InteropLibrary.class)
         @SuppressWarnings("static-method")
         static class ReplacedTruffleObject implements TruffleObject {
 
@@ -894,7 +893,7 @@ public class SLInstrumentTest {
         }
     }
 
-    @ExportLibrary(ArrayLibrary.class)
+    @ExportLibrary(InteropLibrary.class)
     static final class KeysArray implements TruffleObject {
 
         private final String[] keys;

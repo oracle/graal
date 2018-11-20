@@ -41,13 +41,10 @@
 package com.oracle.truffle.sl.nodes.util;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
-import com.oracle.truffle.api.interop.BooleanLibrary;
-import com.oracle.truffle.api.interop.NumberLibrary;
-import com.oracle.truffle.api.interop.StringLibrary;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
@@ -98,49 +95,24 @@ public abstract class SLSimplifyNode extends Node {
         return value;
     }
 
-    @Specialization(replaces = "fromLong", guards = "numbers.fitsInLong(value)", limit = "LIMIT")
-    protected static long fromNumbers(Object value, @CachedLibrary("value") NumberLibrary numbers) {
+    @Specialization(limit = "LIMIT")
+    protected static Object fromForeign(Object value, @CachedLibrary("value") InteropLibrary interop) {
         try {
-            return numbers.asLong(value);
+            if (interop.fitsInLong(value)) {
+                return interop.asLong(value);
+            } else if (interop.fitsInDouble(value)) {
+                return (long) interop.asDouble(value);
+            } else if (interop.isString(value)) {
+                return interop.asString(value);
+            } else if (interop.isBoolean(value)) {
+                return interop.asBoolean(value);
+            } else {
+                return value;
+            }
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
             throw new AssertionError();
         }
-    }
-
-    @Specialization(guards = "numbers.fitsInDouble(value)", limit = "LIMIT")
-    protected static long fromDouble(Object value, @CachedLibrary("value") NumberLibrary numbers) {
-        try {
-            return (long) numbers.asDouble(value);
-        } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new AssertionError();
-        }
-    }
-
-    @Specialization(guards = "strings.isString(value)", limit = "LIMIT")
-    protected static String fromString(Object value, @CachedLibrary("value") StringLibrary strings) {
-        try {
-            return strings.asString(value);
-        } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new AssertionError();
-        }
-    }
-
-    @Specialization(guards = "booleans.isBoolean(value)", limit = "LIMIT")
-    protected static boolean fromBoolean(Object value, @CachedLibrary("value") BooleanLibrary booleans) {
-        try {
-            return booleans.asBoolean(value);
-        } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new AssertionError();
-        }
-    }
-
-    @Fallback
-    protected static Object object(Object value) {
-        return value;
     }
 
 }

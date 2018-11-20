@@ -40,8 +40,8 @@
  */
 package com.oracle.truffle.sl.runtime;
 
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.ValueLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
@@ -53,7 +53,7 @@ import com.oracle.truffle.api.library.ExportMessage;
  * language {@code null} as a singleton, as in {@link #SINGLETON this class}, is the recommended
  * practice.
  */
-@ExportLibrary(ValueLibrary.class)
+@ExportLibrary(InteropLibrary.class)
 @SuppressWarnings("static-method")
 public final class SLNull implements TruffleObject {
 

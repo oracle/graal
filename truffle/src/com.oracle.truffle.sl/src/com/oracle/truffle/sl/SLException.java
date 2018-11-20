@@ -40,11 +40,9 @@
  */
 package com.oracle.truffle.sl;
 
-import static com.oracle.truffle.api.interop.InteropLibraries.STRINGS;
-import static com.oracle.truffle.api.interop.InteropLibraries.VALUES;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.source.SourceSection;
@@ -108,16 +106,16 @@ public class SLException extends RuntimeException implements TruffleException {
             Object value = values[i];
             result.append(sep);
             sep = ", ";
-            if (value == null || VALUES.isNull(value)) {
+            if (value == null || InteropLibrary.getUncached().isNull(value)) {
                 result.append(SLLanguage.toString(value));
             } else {
                 result.append(SLLanguage.getMetaObject(value));
                 result.append(" ");
-                if (STRINGS.isString(value)) {
+                if (InteropLibrary.getUncached().isString(value)) {
                     result.append("\"");
                 }
                 result.append(SLLanguage.toString(value));
-                if (STRINGS.isString(value)) {
+                if (InteropLibrary.getUncached().isString(value)) {
                     result.append("\"");
                 }
             }

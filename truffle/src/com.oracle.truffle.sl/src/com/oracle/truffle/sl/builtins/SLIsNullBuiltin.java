@@ -41,7 +41,7 @@
 package com.oracle.truffle.sl.builtins;
 
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ValueLibrary;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
 
@@ -53,7 +53,7 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 public abstract class SLIsNullBuiltin extends SLBuiltinNode {
 
     @Specialization(limit = "3")
-    public boolean isExecutable(Object obj, @CachedLibrary("obj") ValueLibrary values) {
+    public boolean isExecutable(Object obj, @CachedLibrary("obj") InteropLibrary values) {
         return values.isNull(obj);
     }
 }

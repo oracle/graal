@@ -45,14 +45,13 @@ import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.ArrayLibrary;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.ObjectLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
-@ExportLibrary(ObjectLibrary.class)
+@ExportLibrary(InteropLibrary.class)
 @SuppressWarnings("static-method")
 final class FunctionsObject implements TruffleObject {
 
@@ -87,7 +86,7 @@ final class FunctionsObject implements TruffleObject {
         return obj instanceof FunctionsObject;
     }
 
-    @ExportLibrary(ArrayLibrary.class)
+    @ExportLibrary(InteropLibrary.class)
     static final class FunctionNamesObject implements TruffleObject {
 
         private final Object[] names;

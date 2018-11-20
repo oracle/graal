@@ -43,13 +43,13 @@ package com.oracle.truffle.sl.runtime;
 import java.math.BigInteger;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.NumberLibrary;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
-@ExportLibrary(NumberLibrary.class)
+@ExportLibrary(InteropLibrary.class)
 public final class SLBigNumber implements TruffleObject, Comparable<SLBigNumber> {
 
     private static final long LONG_MAX_SAFE_DOUBLE = 9007199254740991L; // 2 ** 53 - 1

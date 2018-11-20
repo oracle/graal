@@ -42,7 +42,7 @@ package com.oracle.truffle.sl.builtins;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ObjectLibrary;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -58,7 +58,7 @@ public abstract class SLImportBuiltin extends SLBuiltinNode {
 
     @Specialization
     public Object importSymbol(String symbol,
-                    @CachedLibrary(limit = "3") ObjectLibrary arrays,
+                    @CachedLibrary(limit = "3") InteropLibrary arrays,
                     @Cached SLSimplifyNode normalize) {
         try {
             return normalize.executeConvert(arrays.readMember(getContext().getPolyglotBindings(), symbol));

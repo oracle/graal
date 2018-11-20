@@ -66,7 +66,7 @@ import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendAnchor;
 import com.oracle.truffle.api.debug.SuspendedEvent;
-import com.oracle.truffle.api.interop.ObjectLibrary;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -414,7 +414,7 @@ public class SLDebugDirectTest {
         assertTrue("Assuming all requests processed: " + run, run.isEmpty());
     }
 
-    @ExportLibrary(ObjectLibrary.class)
+    @ExportLibrary(InteropLibrary.class)
     @SuppressWarnings({"static-method", "unused"})
     static class ExecNotifyHandler implements TruffleObject {
 

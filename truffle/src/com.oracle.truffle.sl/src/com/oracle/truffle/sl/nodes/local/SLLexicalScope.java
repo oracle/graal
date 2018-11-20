@@ -49,9 +49,8 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.interop.ArrayLibrary;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.ObjectLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -314,7 +313,7 @@ public final class SLLexicalScope {
         return args;
     }
 
-    @ExportLibrary(ObjectLibrary.class)
+    @ExportLibrary(InteropLibrary.class)
     static final class VariablesMapObject implements TruffleObject {
 
         final Map<String, ? extends FrameSlot> slots;
@@ -399,7 +398,7 @@ public final class SLLexicalScope {
 
     }
 
-    @ExportLibrary(ArrayLibrary.class)
+    @ExportLibrary(InteropLibrary.class)
     static final class KeysArray implements TruffleObject {
 
         private final String[] keys;

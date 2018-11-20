@@ -40,13 +40,6 @@
  */
 package com.oracle.truffle.sl;
 
-import static com.oracle.truffle.api.interop.InteropLibraries.BOOLEANS;
-import static com.oracle.truffle.api.interop.InteropLibraries.EXECUTABLES;
-import static com.oracle.truffle.api.interop.InteropLibraries.NUMBERS;
-import static com.oracle.truffle.api.interop.InteropLibraries.OBJECTS;
-import static com.oracle.truffle.api.interop.InteropLibraries.STRINGS;
-import static com.oracle.truffle.api.interop.InteropLibraries.VALUES;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -66,8 +59,10 @@ import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.Libraries;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -274,7 +269,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
 
     @Override
     protected boolean isVisible(SLContext context, Object value) {
-        return !VALUES.isNull(value);
+        return !Libraries.getUncached(InteropLibrary.class, value).isNull(value);
     }
 
     @Override
@@ -299,21 +294,23 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         try {
             if (value == null) {
                 return "ANY";
-            } else if (NUMBERS.fitsInLong(value)) {
-                return Long.toString(NUMBERS.asLong(value));
-            } else if (BOOLEANS.isBoolean(value)) {
-                return Boolean.toString(BOOLEANS.asBoolean(value));
-            } else if (STRINGS.isString(value)) {
-                return STRINGS.asString(value);
-            } else if (VALUES.isNull(value)) {
+            }
+            InteropLibrary interop = Libraries.getUncached(InteropLibrary.class, value);
+            if (interop.fitsInLong(value)) {
+                return Long.toString(interop.asLong(value));
+            } else if (interop.isBoolean(value)) {
+                return Boolean.toString(interop.asBoolean(value));
+            } else if (interop.isString(value)) {
+                return interop.asString(value);
+            } else if (interop.isNull(value)) {
                 return "NULL";
-            } else if (EXECUTABLES.isExecutable(value)) {
+            } else if (interop.isExecutable(value)) {
                 if (value instanceof SLFunction) {
                     return ((SLFunction) value).getName();
                 } else {
                     return "Function";
                 }
-            } else if (OBJECTS.isObject(value)) {
+            } else if (interop.isObject(value)) {
                 return "Object";
             } else {
                 return "Unsupported";
@@ -332,17 +329,19 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     public static String getMetaObject(Object value) {
         if (value == null) {
             return "ANY";
-        } else if (NUMBERS.isNumber(value)) {
+        }
+        InteropLibrary interop = Libraries.getUncached(InteropLibrary.class, value);
+        if (interop.isNumber(value)) {
             return "Number";
-        } else if (BOOLEANS.isBoolean(value)) {
+        } else if (interop.isBoolean(value)) {
             return "Boolean";
-        } else if (STRINGS.isString(value)) {
+        } else if (interop.isString(value)) {
             return "String";
-        } else if (VALUES.isNull(value)) {
+        } else if (interop.isNull(value)) {
             return "NULL";
-        } else if (EXECUTABLES.isExecutable(value)) {
+        } else if (interop.isExecutable(value)) {
             return "Function";
-        } else if (OBJECTS.isObject(value)) {
+        } else if (interop.isObject(value)) {
             return "Object";
         } else {
             return "Unsupported";

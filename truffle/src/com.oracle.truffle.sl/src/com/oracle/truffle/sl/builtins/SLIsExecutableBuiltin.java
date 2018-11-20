@@ -41,7 +41,7 @@
 package com.oracle.truffle.sl.builtins;
 
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ExecutableLibrary;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
 
@@ -53,7 +53,7 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 public abstract class SLIsExecutableBuiltin extends SLBuiltinNode {
 
     @Specialization(limit = "3")
-    public boolean isExecutable(Object obj, @CachedLibrary("obj") ExecutableLibrary executables) {
+    public boolean isExecutable(Object obj, @CachedLibrary("obj") InteropLibrary executables) {
         return executables.isExecutable(obj);
     }
 }

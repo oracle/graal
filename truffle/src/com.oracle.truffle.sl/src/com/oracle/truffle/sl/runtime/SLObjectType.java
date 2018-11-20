@@ -46,9 +46,8 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ArrayLibrary;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.ObjectLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -62,7 +61,7 @@ import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 
-@ExportLibrary(value = ObjectLibrary.class, receiverClass = DynamicObject.class)
+@ExportLibrary(value = InteropLibrary.class, receiverClass = DynamicObject.class)
 public final class SLObjectType extends ObjectType {
 
     protected static final int CACHE_LIMIT = 3;
@@ -112,9 +111,9 @@ public final class SLObjectType extends ObjectType {
         }
     }
 
-    @ExportMessage(library = ObjectLibrary.class, name = "isMemberReadable")
-    @ExportMessage(library = ObjectLibrary.class, name = "isMemberModifiable")
-    @ExportMessage(library = ObjectLibrary.class, name = "isMemberRemovable")
+    @ExportMessage(name = "isMemberReadable")
+    @ExportMessage(name = "isMemberModifiable")
+    @ExportMessage(name = "isMemberRemovable")
     @SuppressWarnings("unused")
     static class ExistsMemberNode extends Node {
 
@@ -148,7 +147,7 @@ public final class SLObjectType extends ObjectType {
         return SLObjectType.class;
     }
 
-    @ExportLibrary(ArrayLibrary.class)
+    @ExportLibrary(InteropLibrary.class)
     static final class Keys implements TruffleObject {
 
         private final Object[] keys;

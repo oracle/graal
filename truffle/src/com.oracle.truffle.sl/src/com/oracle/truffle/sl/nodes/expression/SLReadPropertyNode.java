@@ -43,10 +43,8 @@ package com.oracle.truffle.sl.nodes.expression;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ArrayLibrary;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.NumberLibrary;
-import com.oracle.truffle.api.interop.ObjectLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -72,8 +70,8 @@ public abstract class SLReadPropertyNode extends SLExpressionNode {
 
     @Specialization(guards = "arrays.isArray(receiver)", limit = "LIBRARY_LIMIT")
     protected Object write(Object receiver, Object index,
-                    @CachedLibrary("receiver") ArrayLibrary arrays,
-                    @CachedLibrary("index") NumberLibrary numbers) {
+                    @CachedLibrary("receiver") InteropLibrary arrays,
+                    @CachedLibrary("index") InteropLibrary numbers) {
         try {
             return arrays.readElement(receiver, numbers.asLong(index));
         } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
@@ -84,7 +82,7 @@ public abstract class SLReadPropertyNode extends SLExpressionNode {
 
     @Specialization(guards = "objects.isObject(receiver)", limit = "LIBRARY_LIMIT")
     protected Object write(Object receiver, Object name,
-                    @CachedLibrary("receiver") ObjectLibrary objects,
+                    @CachedLibrary("receiver") InteropLibrary objects,
                     @Cached SLToMemberNode asMember) {
         try {
             return objects.readMember(receiver, asMember.execute(name));

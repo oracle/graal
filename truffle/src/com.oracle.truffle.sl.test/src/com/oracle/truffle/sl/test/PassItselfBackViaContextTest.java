@@ -50,7 +50,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.interop.ExecutableLibrary;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -101,7 +101,7 @@ public class PassItselfBackViaContextTest {
         context.close();
     }
 
-    @ExportLibrary(ExecutableLibrary.class)
+    @ExportLibrary(InteropLibrary.class)
     static final class MyObj implements TruffleObject {
         private Object value;
 

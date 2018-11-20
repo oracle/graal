@@ -704,6 +704,10 @@ public class SLDebugTest {
                 boolean inFac = dsf.getName() != null && !dsf.isInternal();
                 if (inFac) {
                     // Frame in fac function
+                    for (DebugStackFrame s : event.getStackFrames()) {
+                        System.out.println(s.getName());
+                        System.out.println(s.getSourceSection());
+                    }
                     assertEquals("fac", dsf.getName());
                     assertEquals(6, dsf.getSourceSection().getStartLine());
                     assertFalse(dsf.isInternal());

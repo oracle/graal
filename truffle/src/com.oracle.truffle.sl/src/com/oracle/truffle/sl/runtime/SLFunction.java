@@ -49,7 +49,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ExecutableLibrary;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -80,8 +80,11 @@ import com.oracle.truffle.sl.nodes.util.SLSimplifyNode;
  * lookup. A function that has been looked up, i.e., used, but not defined, has a call target that
  * encapsulates a {@link SLUndefinedFunctionRootNode}.
  */
-@ExportLibrary(ExecutableLibrary.class)
+@ExportLibrary(InteropLibrary.class)
 public final class SLFunction implements TruffleObject {
+
+    public static final int INLINE_CACHE_SIZE = 2;
+
     private static final TruffleLogger LOG = TruffleLogger.getLogger(SLLanguage.ID, SLFunction.class);
 
     /** The name of the function. */
@@ -157,8 +160,6 @@ public final class SLFunction implements TruffleObject {
      */
     @ExportMessage
     static abstract class ExecuteNode extends Node {
-
-        public static final int INLINE_CACHE_SIZE = 2;
 
         /**
          * Inline cached specialization of the dispatch.
