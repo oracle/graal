@@ -311,7 +311,7 @@ public class OptionProcessor extends AbstractProcessor {
         processingEnv.getMessager().printMessage(Kind.ERROR, formattedMessage, element, annotation);
     }
 
-    private void generateOptionDescriptor(OptionsInfo info) {
+    private static void generateOptionDescriptor(OptionsInfo info) {
         Element element = info.type;
         ProcessorContext context = ProcessorContext.getInstance();
 
@@ -319,7 +319,7 @@ public class OptionProcessor extends AbstractProcessor {
         DeclaredType overrideType = (DeclaredType) context.getType(Override.class);
         DeclaredType suppressedWarnings = (DeclaredType) context.getType(SuppressWarnings.class);
         unit.accept(new GenerateOverrideVisitor(overrideType), null);
-        unit.accept(new FixWarningsVisitor(context.getEnvironment(), suppressedWarnings, overrideType), null);
+        unit.accept(new FixWarningsVisitor(suppressedWarnings, overrideType), null);
         try {
             unit.accept(new CodeWriter(context.getEnvironment(), element), null);
         } catch (RuntimeException e) {
@@ -338,7 +338,7 @@ public class OptionProcessor extends AbstractProcessor {
         ProcessorContext.getInstance().getEnvironment().getMessager().printMessage(Kind.ERROR, message + ": " + ElementUtils.printException(t), e);
     }
 
-    private CodeTypeElement generateDescriptors(ProcessorContext context, Element element, OptionsInfo model) {
+    private static CodeTypeElement generateDescriptors(ProcessorContext context, Element element, OptionsInfo model) {
         String optionsClassName = ElementUtils.getSimpleName(element.asType()) + OptionDescriptors.class.getSimpleName();
         TypeElement sourceType = (TypeElement) model.type;
         PackageElement pack = context.getEnvironment().getElementUtils().getPackageOf(sourceType);
@@ -349,7 +349,7 @@ public class OptionProcessor extends AbstractProcessor {
         GeneratorUtils.addGeneratedBy(context, descriptors, (TypeElement) element);
 
         ExecutableElement get = ElementUtils.findExecutableElement(optionDescriptorsType, "get");
-        CodeExecutableElement getMethod = CodeExecutableElement.clone(processingEnv, get);
+        CodeExecutableElement getMethod = CodeExecutableElement.clone(get);
         getMethod.getModifiers().remove(ABSTRACT);
         CodeTreeBuilder builder = getMethod.createBuilder();
 
@@ -365,7 +365,7 @@ public class OptionProcessor extends AbstractProcessor {
 
         descriptors.add(getMethod);
 
-        CodeExecutableElement iteratorMethod = CodeExecutableElement.clone(processingEnv, ElementUtils.findExecutableElement(optionDescriptorsType, "iterator"));
+        CodeExecutableElement iteratorMethod = CodeExecutableElement.clone(ElementUtils.findExecutableElement(optionDescriptorsType, "iterator"));
         iteratorMethod.getModifiers().remove(ABSTRACT);
         builder = iteratorMethod.createBuilder();
 

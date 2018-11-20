@@ -40,11 +40,14 @@
  */
 package com.oracle.truffle.api.interop;
 
+import com.oracle.truffle.api.library.ExportLibrary;
+
 /**
  * Interface for any entity of a Truffle guest language implementations that can be shared across
  * other language implementations.
- * 
+ *
  * @since 0.8 or earlier
+ * @see InteropLibrary to access truffle objects.
  */
 public interface TruffleObject {
     /**
@@ -52,6 +55,12 @@ public interface TruffleObject {
      *
      * @return the {@code ForeignAccessFactory} instance for this {@code TruffleObject} instance.
      * @since 0.8 or earlier
+     * @deprecated use {@link ExportLibrary} on the receiver class instead of implementing this
+     *             method. See {@link InteropLibrary} for further details.
      */
-    ForeignAccess getForeignAccess();
+    @SuppressWarnings("deprecation")
+    @Deprecated
+    default ForeignAccess getForeignAccess() {
+        return null;
+    }
 }

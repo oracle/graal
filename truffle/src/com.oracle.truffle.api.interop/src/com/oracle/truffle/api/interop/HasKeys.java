@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.interop;
 
+@SuppressWarnings("deprecation")
 final class HasKeys extends UnaryMessage {
     public static final int HASH = 423441;
     static final Message INSTANCE = new HasKeys();

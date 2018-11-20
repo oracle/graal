@@ -44,9 +44,11 @@ package com.oracle.truffle.api.interop;
 import com.oracle.truffle.api.CompilerDirectives;
 
 /**
- * An exception thrown if a foreign access tries to access a property of a {@link TruffleObject}
- * that is not accessible.
+ * An exception thrown if an object does not contain a member with such an identifier. Interop
+ * exceptions are supposed to be caught and converted into a guest language error by the caller.
  *
+ * @see #getUnknownIdentifier()
+ * @see InteropLibrary
  * @since 0.11
  */
 public final class UnknownIdentifierException extends InteropException {
@@ -56,8 +58,17 @@ public final class UnknownIdentifierException extends InteropException {
     private final String unknownIdentifier;
 
     private UnknownIdentifierException(String unknownIdentifier) {
-        super("Unknown identifier: " + unknownIdentifier);
         this.unknownIdentifier = unknownIdentifier;
+    }
+
+    /**
+     * {@inheritDoc}
+     * 
+     * @since 1.0
+     */
+    @Override
+    public String getMessage() {
+        return "Unknown identifier: " + unknownIdentifier;
     }
 
     /**
@@ -71,19 +82,25 @@ public final class UnknownIdentifierException extends InteropException {
     }
 
     /**
-     * Raises an {@link UnknownIdentifierException}, hidden as a {@link RuntimeException}, which
-     * allows throwing it without an explicit throws declaration. The {@link ForeignAccess} methods
-     * (e.g. <code> ForeignAccess.sendRead </code>) catch the exceptions and re-throw them as
-     * checked exceptions.
-     *
-     * @param unknownIdentifier the identifier that could not be accessed
-     *
-     * @return the exception
      * @since 0.11
+     * @deprecated use {@link #create(String)} instead. Interop exceptions should directly be thrown
+     *             and no longer be hidden as runtime exceptions.
      */
+    @Deprecated
     public static RuntimeException raise(String unknownIdentifier) {
         CompilerDirectives.transferToInterpreter();
         return silenceException(RuntimeException.class, new UnknownIdentifierException(unknownIdentifier));
+    }
+
+    /**
+     * Creates an {@link UnknownIdentifierException} to indicate that an identifier is missing.
+     *
+     * @param unknownIdentifier the identifier that could not be accessed
+     * @since 1.0
+     */
+    public static UnknownIdentifierException create(String unknownIdentifier) {
+        CompilerDirectives.transferToInterpreter();
+        return new UnknownIdentifierException(unknownIdentifier);
     }
 
 }

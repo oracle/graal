@@ -105,6 +105,15 @@ public abstract class PrimitiveValueProfile extends ValueProfile {
         }
     }
 
+    /**
+     * Returns the uncached version of the profile. The uncached version of a profile does nothing.
+     *
+     * @since 1.0
+     */
+    public static PrimitiveValueProfile getUncached() {
+        return Disabled.INSTANCE;
+    }
+
     static final class Enabled extends PrimitiveValueProfile {
 
         private static final Object UNINITIALIZED = new Object();

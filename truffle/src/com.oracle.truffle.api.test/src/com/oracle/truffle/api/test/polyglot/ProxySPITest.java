@@ -116,7 +116,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertUnsupported(Message.REMOVE, proxyInner);
         assertUnsupported(Message.TO_NATIVE, proxyInner);
         assertUnsupported(Message.UNBOX, proxyInner);
-        assertUnsupported(Message.INVOKE, proxyInner);
+        assertUnsupported(Message.INVOKE, proxyInner, "");
         assertUnsupported(Message.EXECUTE, proxyInner);
         assertUnsupported(Message.NEW, proxyInner);
         assertEquals(false, Message.IS_BOXED, proxyInner);
@@ -180,10 +180,10 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertEquals(false, Message.HAS_KEYS, proxyInner);
         assertEmpty(Message.KEYS, proxyInner);
         assertUnsupported(Message.READ, proxyInner, "");
-        assertUnsupported(Message.WRITE, proxyInner, "");
+        assertUnsupported(Message.WRITE, proxyInner, "", "");
         assertUnsupported(Message.TO_NATIVE, proxyInner);
         assertUnsupported(Message.UNBOX, proxyInner);
-        assertUnsupported(Message.INVOKE, proxyInner);
+        assertUnsupported(Message.INVOKE, proxyInner, "");
         assertUnsupported(Message.EXECUTE, proxyInner);
         assertUnsupported(Message.NEW, proxyInner);
         assertEquals(false, Message.IS_BOXED, proxyInner);
@@ -229,15 +229,15 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertEquals(42, Message.READ, proxyInner, "a");
         assertEquals(EXISTING_KEY, Message.KEY_INFO, proxyInner, "a");
         assertEquals(NO_KEY, Message.KEY_INFO, proxyInner, "");
+        assertUnknownIdentifier(Message.INVOKE, proxyInner, "", "");
 
         assertUnsupported(Message.EXECUTE, proxyInner);
         assertUnsupported(Message.GET_SIZE, proxyInner);
         assertUnsupported(Message.READ, proxyInner, 0);
-        assertUnsupported(Message.WRITE, proxyInner, 1);
+        assertUnsupported(Message.WRITE, proxyInner, 1, "");
         assertUnsupported(Message.UNBOX, proxyInner);
         assertUnsupported(Message.TO_NATIVE, proxyInner);
         assertUnsupported(Message.AS_POINTER, proxyInner);
-        assertUnsupported(Message.INVOKE, proxyInner);
         assertUnsupported(Message.EXECUTE, proxyInner);
         assertUnsupported(Message.NEW, proxyInner);
         assertEquals(false, Message.IS_BOXED, proxyInner);
@@ -282,11 +282,11 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertUnsupported(Message.EXECUTE, proxyInner);
         assertUnsupported(Message.GET_SIZE, proxyInner);
         assertUnsupported(Message.READ, proxyInner, 0);
-        assertUnsupported(Message.WRITE, proxyInner, 1);
+        assertUnsupported(Message.WRITE, proxyInner, 1, "");
         assertUnsupported(Message.UNBOX, proxyInner);
         assertUnsupported(Message.TO_NATIVE, proxyInner);
         assertUnsupported(Message.AS_POINTER, proxyInner);
-        assertUnsupported(Message.INVOKE, proxyInner);
+        assertUnsupported(Message.INVOKE, proxyInner, "", "");
         assertUnsupported(Message.EXECUTE, proxyInner);
         assertUnsupported(Message.NEW, proxyInner);
         assertEquals(false, Message.IS_BOXED, proxyInner);
@@ -321,7 +321,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertUnsupported(Message.READ, proxyInner);
         assertUnsupported(Message.WRITE, proxyInner);
         assertUnsupported(Message.TO_NATIVE, proxyInner);
-        assertUnsupported(Message.INVOKE, proxyInner);
+        assertUnsupported(Message.INVOKE, proxyInner, "");
         assertUnsupported(Message.EXECUTE, proxyInner);
         assertUnsupported(Message.NEW, proxyInner);
         assertEquals(false, Message.IS_EXECUTABLE, proxyInner);
@@ -355,7 +355,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertUnsupported(Message.WRITE, proxyInner);
         assertUnsupported(Message.TO_NATIVE, proxyInner);
         assertUnsupported(Message.UNBOX, proxyInner);
-        assertUnsupported(Message.INVOKE, proxyInner);
+        assertUnsupported(Message.INVOKE, proxyInner, "");
         assertUnsupported(Message.EXECUTE, proxyInner);
         assertUnsupported(Message.NEW, proxyInner);
         assertEquals(false, Message.IS_EXECUTABLE, proxyInner);
@@ -388,7 +388,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertUnsupported(Message.WRITE, proxyInner);
         assertUnsupported(Message.TO_NATIVE, proxyInner);
         assertUnsupported(Message.UNBOX, proxyInner);
-        assertUnsupported(Message.INVOKE, proxyInner);
+        assertUnsupported(Message.INVOKE, proxyInner, "");
         assertEquals(false, Message.IS_INSTANTIABLE, proxyInner);
         assertEquals(false, Message.IS_BOXED, proxyInner);
         assertEquals(false, Message.IS_NULL, proxyInner);
@@ -417,11 +417,11 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertUnsupported(Message.AS_POINTER, proxyInner);
         assertUnsupported(Message.GET_SIZE, proxyInner);
         assertEmpty(Message.KEYS, proxyInner);
-        assertUnsupported(Message.READ, proxyInner);
-        assertUnsupported(Message.WRITE, proxyInner);
+        assertUnsupported(Message.READ, proxyInner, "");
+        assertUnsupported(Message.WRITE, proxyInner, "", "");
         assertUnsupported(Message.TO_NATIVE, proxyInner);
         assertUnsupported(Message.UNBOX, proxyInner);
-        assertUnsupported(Message.INVOKE, proxyInner);
+        assertUnsupported(Message.INVOKE, proxyInner, "");
         assertEquals(false, Message.IS_BOXED, proxyInner);
         assertEquals(false, Message.IS_NULL, proxyInner);
         assertEquals(false, Message.HAS_KEYS, proxyInner);
@@ -456,7 +456,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
         }
 
         public Object asPrimitive() {
-            throw new TestError();
+            return 42;
         }
 
         public Object getMember(String key) {
@@ -514,7 +514,6 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertHostError(Message.WRITE, proxyInner, "", 42);
         assertHostError(Message.WRITE, proxyInner, 42, 42);
         assertHostError(Message.REMOVE, proxyInner, 10);
-        assertHostError(Message.UNBOX, proxyInner);
         assertHostError(Message.INVOKE, proxyInner, "");
         assertHostError(Message.EXECUTE, proxyInner);
         assertHostError(Message.NEW, proxyInner);
@@ -567,11 +566,12 @@ public class ProxySPITest extends AbstractPolyglotTest {
 
     private static void assertUnsupported(Message message, TruffleObject proxyInner, Object... args) {
         try {
+
             ForeignAccess.send(message.createNode(), proxyInner, args);
             Assert.fail();
         } catch (UnsupportedMessageException e) {
         } catch (InteropException e) {
-            Assert.fail();
+            Assert.fail(e.toString());
         }
     }
 
@@ -581,7 +581,6 @@ public class ProxySPITest extends AbstractPolyglotTest {
             Assert.fail();
         } catch (UnknownIdentifierException e) {
         } catch (InteropException e) {
-            e.printStackTrace();
             Assert.fail();
         }
     }

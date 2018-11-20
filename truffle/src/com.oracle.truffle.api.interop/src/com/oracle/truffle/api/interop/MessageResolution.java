@@ -46,6 +46,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
@@ -78,9 +79,12 @@ import com.oracle.truffle.api.nodes.Node;
  * {@link com.oracle.truffle.api.dsl.test.interop.Snippets.ExampleTruffleObject#getForeignAccessMethod}
  *
  * @since 0.13
+ * @deprecated use {@link ExportLibrary} to export interop libraries instead. See
+ *             {@link InteropLibrary} for details.
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.SOURCE)
+@Deprecated
 public @interface MessageResolution {
 
     /**

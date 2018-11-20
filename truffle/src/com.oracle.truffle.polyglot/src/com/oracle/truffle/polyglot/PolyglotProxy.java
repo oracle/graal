@@ -291,6 +291,7 @@ final class PolyglotProxy {
             }
             return guestValue;
         }
+
     }
 
     private static final class ProxyKeyInfoNode extends ProxyRootNode {
@@ -351,7 +352,12 @@ final class PolyglotProxy {
         @TruffleBoundary
         Object invoke(PolyglotLanguageContext context, ProxyObject object, String key, Object[] arguments) {
             if (object.hasMember(key)) {
-                Object member = context.toGuestValue(object.getMember(key));
+                Object member;
+                try {
+                    member = context.toGuestValue(object.getMember(key));
+                } catch (UnsupportedOperationException e) {
+                    throw UnsupportedMessageException.raise(Message.INVOKE);
+                }
                 if (member instanceof TruffleObject && ForeignAccess.sendIsExecutable(isExecutable, (TruffleObject) member)) {
                     try {
                         return ForeignAccess.sendExecute(executeNode, ((TruffleObject) member), copyFromStart(arguments, 2));

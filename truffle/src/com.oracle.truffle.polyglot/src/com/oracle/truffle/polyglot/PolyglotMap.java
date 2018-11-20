@@ -421,7 +421,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
             }
         }
 
-        private abstract static class PolyglotMapNode extends HostRootNode<TruffleObject> {
+        private abstract static class PolyglotMapNode extends HostRootNode {
 
             final Cache cache;
             @Child protected Node hasSize = Message.HAS_SIZE.createNode();
@@ -470,7 +470,8 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
             }
 
             @Override
-            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args) {
+            protected Object executeImpl(PolyglotLanguageContext languageContext, Object originalReceiver, Object[] args) {
+                TruffleObject receiver = (TruffleObject) originalReceiver;
                 Object key = args[ARGUMENT_OFFSET];
                 if (isValidKey(receiver, key)) {
                     return KeyInfo.isReadable(sendKeyInfo(keyInfo, receiver, key));
@@ -496,7 +497,8 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
 
             @Override
             @SuppressWarnings("unchecked")
-            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args) {
+            protected Object executeImpl(PolyglotLanguageContext languageContext, Object originalReceiver, Object[] args) {
+                TruffleObject receiver = (TruffleObject) originalReceiver;
                 List<?> keys = null;
                 int keysSize = 0;
                 int elemSize = 0;
@@ -546,7 +548,8 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
             }
 
             @Override
-            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args) {
+            protected Object executeImpl(PolyglotLanguageContext languageContext, Object originalReceiver, Object[] args) {
+                TruffleObject receiver = (TruffleObject) originalReceiver;
                 Object key = args[ARGUMENT_OFFSET];
                 Object result = null;
                 if (isValidKey(receiver, key) && KeyInfo.isReadable(sendKeyInfo(keyInfo, receiver, key))) {
@@ -586,7 +589,8 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
             }
 
             @Override
-            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args) {
+            protected Object executeImpl(PolyglotLanguageContext languageContext, Object originalReceiver, Object[] args) {
+                TruffleObject receiver = (TruffleObject) originalReceiver;
                 Object key = args[ARGUMENT_OFFSET];
                 Object result = null;
 
@@ -644,7 +648,8 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
             }
 
             @Override
-            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args) {
+            protected Object executeImpl(PolyglotLanguageContext languageContext, Object originalReceiver, Object[] args) {
+                TruffleObject receiver = (TruffleObject) originalReceiver;
                 Object key = args[ARGUMENT_OFFSET];
                 Object result = null;
 
@@ -697,7 +702,8 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
             }
 
             @Override
-            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args) {
+            protected Object executeImpl(PolyglotLanguageContext languageContext, Object originalReceiver, Object[] args) {
+                TruffleObject receiver = (TruffleObject) originalReceiver;
                 Object key = args[ARGUMENT_OFFSET];
 
                 if (isValidKey(receiver, key)) {
@@ -737,7 +743,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
 
         private static class Apply extends PolyglotMapNode {
 
-            @Child private PolyglotExecuteNode apply = new PolyglotExecuteNode();
+            @Child private PolyglotExecuteNode apply = PolyglotExecuteNodeGen.create();
 
             Apply(Cache cache) {
                 super(cache);
@@ -749,8 +755,9 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
             }
 
             @Override
-            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject function, Object[] args) {
-                return apply.execute(languageContext, function, args[ARGUMENT_OFFSET], Object.class, Object.class);
+            protected Object executeImpl(PolyglotLanguageContext languageContext, Object originalReceiver, Object[] args) {
+                TruffleObject receiver = (TruffleObject) originalReceiver;
+                return apply.execute(languageContext, receiver, args[ARGUMENT_OFFSET], Object.class, Object.class);
             }
         }
 

@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api;
 
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -102,4 +103,22 @@ public interface Assumption {
      * @since 0.8 or earlier
      */
     String getName();
+
+    public static boolean isValid(Assumption assumption) {
+        return assumption != null && assumption.isValid();
+    }
+
+    @ExplodeLoop
+    public static boolean isValid(Assumption[] assumptions) {
+        if (assumptions == null) {
+            return false;
+        }
+        for (Assumption assumption : assumptions) {
+            if (!isValid(assumption)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
 }

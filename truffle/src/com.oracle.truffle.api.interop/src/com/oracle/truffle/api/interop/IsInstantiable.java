@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.interop;
 
+@SuppressWarnings("deprecation")
 final class IsInstantiable extends UnaryMessage {
     public static final int HASH = 423442;
     static final Message INSTANCE = new IsInstantiable();

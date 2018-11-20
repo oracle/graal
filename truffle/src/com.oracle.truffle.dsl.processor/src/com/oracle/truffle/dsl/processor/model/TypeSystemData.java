@@ -73,7 +73,6 @@ public class TypeSystemData extends Template {
         return isDefault;
     }
 
-    @Override
     public TypeSystemData getTypeSystem() {
         return this;
     }

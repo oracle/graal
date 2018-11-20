@@ -344,13 +344,11 @@ final class HostInteropReflect {
     }
 }
 
-class FunctionProxyNode extends HostRootNode<TruffleObject> {
+@ImportStatic(HostInteropReflect.class)
+abstract class FunctionProxyNode extends HostRootNode {
 
     final Class<?> receiverClass;
     final Method method;
-    @Child private PolyglotExecuteNode executeNode;
-    @CompilationFinal private Class<?> returnClass;
-    @CompilationFinal private Type returnType;
 
     FunctionProxyNode(Class<?> receiverType, Method method) {
         this.receiverClass = receiverType;
@@ -368,14 +366,11 @@ class FunctionProxyNode extends HostRootNode<TruffleObject> {
         return "FunctionalInterfaceProxy<" + receiverClass + ", " + method + ">";
     }
 
-    @Override
-    protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject function, Object[] args) {
-        if (executeNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.returnClass = HostInteropReflect.getMethodReturnType(method);
-            this.returnType = HostInteropReflect.getMethodGenericReturnType(method);
-            this.executeNode = insert(new PolyglotExecuteNode());
-        }
+    @Specialization
+    protected Object doCached(PolyglotLanguageContext languageContext, TruffleObject function, Object[] args,
+                    @Cached("getMethodReturnType(method)") Class<?> returnClass,
+                    @Cached("getMethodGenericReturnType(method)") Type returnType,
+                    @Cached PolyglotExecuteNode executeNode) {
         return executeNode.execute(languageContext, function, args[ARGUMENT_OFFSET], returnClass, returnType);
     }
 
@@ -397,7 +392,7 @@ class FunctionProxyNode extends HostRootNode<TruffleObject> {
     }
 
     static CallTarget lookup(PolyglotLanguageContext languageContext, Class<?> receiverClass, Method method) {
-        FunctionProxyNode node = new FunctionProxyNode(receiverClass, method);
+        FunctionProxyNode node = FunctionProxyNodeGen.create(receiverClass, method);
         CallTarget target = lookupHostCodeCache(languageContext, node, CallTarget.class);
         if (target == null) {
             target = installHostCodeCache(languageContext, node, createTarget(node), CallTarget.class);
@@ -492,7 +487,7 @@ final class FunctionProxyHandler implements InvocationHandler, HostWrapper {
     }
 }
 
-class ObjectProxyNode extends HostRootNode<TruffleObject> {
+class ObjectProxyNode extends HostRootNode {
 
     final Class<?> receiverClass;
     final Class<?> interfaceType;
@@ -517,7 +512,7 @@ class ObjectProxyNode extends HostRootNode<TruffleObject> {
     }
 
     @Override
-    protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args) {
+    protected Object executeImpl(PolyglotLanguageContext languageContext, Object receiver, Object[] args) {
         if (proxyInvoke == null || toGuests == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             toGuests = ToGuestValuesNode.create();
@@ -558,7 +553,7 @@ class ObjectProxyNode extends HostRootNode<TruffleObject> {
 @ImportStatic({Message.class, HostInteropReflect.class})
 abstract class ProxyInvokeNode extends Node {
 
-    public abstract Object execute(PolyglotLanguageContext languageContext, TruffleObject receiver, Method method, Object[] arguments);
+    public abstract Object execute(PolyglotLanguageContext languageContext, Object receiver, Method method, Object[] arguments);
 
     /*
      * The limit of the proxy node is unbounded. There are only so many methods a Java interface can

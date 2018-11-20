@@ -57,9 +57,9 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  *
  * <pre>
  * class SampleNode extends Node {
- * 
+ *
  *     final IntValueProfile profile = IntValueProfile.createIdentityProfile();
- * 
+ *
  *     int execute(int input) {
  *         int profiledValue = profile.profile(input);
  *         // compiler may know now more about profiledValue
@@ -96,6 +96,15 @@ public abstract class IntValueProfile extends Profile {
         } else {
             return Disabled.INSTANCE;
         }
+    }
+
+    /**
+     * Returns the uncached version of the profile. The uncached version of a profile does nothing.
+     *
+     * @since 1.0
+     */
+    public static IntValueProfile getUncached() {
+        return Disabled.INSTANCE;
     }
 
     static final class Enabled extends IntValueProfile {

@@ -188,7 +188,7 @@ public final class InstrumentableProcessor extends AbstractProcessor {
                     DeclaredType overrideType = (DeclaredType) context.getType(Override.class);
                     DeclaredType unusedType = (DeclaredType) context.getType(SuppressWarnings.class);
                     unit.accept(new GenerateOverrideVisitor(overrideType), null);
-                    unit.accept(new FixWarningsVisitor(context.getEnvironment(), unusedType, overrideType), null);
+                    unit.accept(new FixWarningsVisitor(unusedType, overrideType), null);
                     unit.accept(new CodeWriter(context.getEnvironment(), element), null);
                 } catch (Throwable e) {
                     // never throw annotation processor exceptions to the compiler
@@ -261,7 +261,7 @@ public final class InstrumentableProcessor extends AbstractProcessor {
                 DeclaredType overrideType = (DeclaredType) context.getType(Override.class);
                 DeclaredType unusedType = (DeclaredType) context.getType(SuppressWarnings.class);
                 unit.accept(new GenerateOverrideVisitor(overrideType), null);
-                unit.accept(new FixWarningsVisitor(context.getEnvironment(), unusedType, overrideType), null);
+                unit.accept(new FixWarningsVisitor(unusedType, overrideType), null);
                 unit.accept(new CodeWriter(context.getEnvironment(), element), null);
             } catch (Throwable e) {
                 // never throw annotation processor exceptions to the compiler
@@ -551,7 +551,7 @@ public final class InstrumentableProcessor extends AbstractProcessor {
 
         for (ExecutableElement method : wrappedExecuteMethods) {
             ExecutableElement executeMethod = method;
-            CodeExecutableElement wrappedExecute = CodeExecutableElement.clone(processingEnv, executeMethod);
+            CodeExecutableElement wrappedExecute = CodeExecutableElement.clone(executeMethod);
             wrappedExecute.getModifiers().remove(Modifier.ABSTRACT);
             wrappedExecute.getAnnotationMirrors().clear();
 
@@ -693,7 +693,7 @@ public final class InstrumentableProcessor extends AbstractProcessor {
         }
 
         for (ExecutableElement delegateMethod : wrappedMethods) {
-            CodeExecutableElement generatedMethod = CodeExecutableElement.clone(processingEnv, delegateMethod);
+            CodeExecutableElement generatedMethod = CodeExecutableElement.clone(delegateMethod);
 
             generatedMethod.getModifiers().remove(Modifier.ABSTRACT);
 

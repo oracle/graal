@@ -45,6 +45,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import com.oracle.truffle.api.library.Library;
+
 /**
  * Annotation to put on your node to provide a language check for the receiver object.
  *
@@ -57,7 +59,10 @@ import java.lang.annotation.Target;
  * {@link com.oracle.truffle.api.dsl.test.interop.Snippets.ExampleTruffleObjectMR}
  *
  * @since 0.13
+ * @deprecated use {@link com.oracle.truffle.api.library} instead. See
+ *             {@link Library#accepts(Object)} for further details.
  */
+@Deprecated
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.SOURCE)
 public @interface CanResolve {

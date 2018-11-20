@@ -46,11 +46,11 @@ public class HP_invoke01 extends JTTTest {
         return sum;
     }
 
-    public static abstract class Instruction {
+    public abstract static class Instruction {
 
         public abstract void accept(Visitor v);
 
-        public static abstract class Binary extends Instruction {
+        public abstract static class Binary extends Instruction {
 
         }
 

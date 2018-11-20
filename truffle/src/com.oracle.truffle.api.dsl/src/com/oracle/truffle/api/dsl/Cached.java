@@ -250,7 +250,9 @@ public @interface Cached {
      * @see Cached
      * @since 0.8 or earlier
      */
-    String value();
+    String value() default "create($parameters)";
+
+    String uncached() default "getUncached($parameters)";
 
     /**
      * Specifies the number of array dimensions to be marked as {@link CompilationFinal compilation
@@ -269,5 +271,21 @@ public @interface Cached {
      * @see CompilationFinal#dimensions()
      */
     int dimensions() default -1;
+
+    /**
+     * Allows the {@link #value()} to be used for {@link #uncached()}. This is useful if the
+     * expression is the same for {@link #value()} and {@link #uncached()}. By setting
+     * {@link #allowUncached()} to <code>true</code> it is not necessary to repeat the
+     * {@link #value()} expression in the {@link #uncached()} expression. This flag cannot be set in
+     * combination with {@link #uncached()}.
+     *
+     * @since 1.0
+     */
+    boolean allowUncached() default false;
+
+    /**
+     * Specifies the bindings used for the $parameters variable in cached or uncached initializers.
+     */
+    String[] parameters() default {};
 
 }

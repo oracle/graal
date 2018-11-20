@@ -56,6 +56,10 @@ public abstract class InteropException extends Exception {
         super(cause);
     }
 
+    InteropException() {
+        super();
+    }
+
     /**
      * Re-throw an {@link InteropException} as a {@link RuntimeException}, which allows throwing it
      * without an explicit throws declaration.

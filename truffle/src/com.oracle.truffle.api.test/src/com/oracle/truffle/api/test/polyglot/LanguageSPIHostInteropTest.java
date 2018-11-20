@@ -228,9 +228,9 @@ public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
 
         TruffleObject nkio = new NoKeyInfoObject();
         keyInfo = getKeyInfo(nkio, "p1");
-        assertEquals(0b111, keyInfo);
+        assertEquals(0b110, keyInfo);
         keyInfo = getKeyInfo(nkio, "p6");
-        assertEquals(0b111, keyInfo);
+        assertEquals(0b110, keyInfo);
         keyInfo = getKeyInfo(nkio, "p7");
         assertEquals(0, keyInfo);
     }

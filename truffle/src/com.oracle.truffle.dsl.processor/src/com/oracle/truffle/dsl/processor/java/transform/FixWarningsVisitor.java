@@ -40,18 +40,12 @@
  */
 package com.oracle.truffle.dsl.processor.java.transform;
 
-import static com.oracle.truffle.dsl.processor.java.ElementUtils.modifiers;
-import static javax.lang.model.element.Modifier.FINAL;
-import static javax.lang.model.element.Modifier.PRIVATE;
-import static javax.lang.model.element.Modifier.STATIC;
-
 import java.io.Serializable;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.StringTokenizer;
 
-import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.Modifier;
@@ -59,66 +53,79 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 
+import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
-import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
-import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationValue;
 import com.oracle.truffle.dsl.processor.java.model.CodeElementScanner;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
-import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 
 public class FixWarningsVisitor extends CodeElementScanner<Void, Void> {
 
     private final Set<String> symbolsUsed = new HashSet<>();
 
-    private final ProcessingEnvironment processingEnv;
     private final DeclaredType suppressWarnings;
     private final DeclaredType overrideType;
 
-    public FixWarningsVisitor(ProcessingEnvironment processingEnv, DeclaredType suppressWarnings, DeclaredType overrideType) {
-        this.processingEnv = processingEnv;
+    private Set<String> ignoredWarnings = new HashSet<>();
+    private boolean computeSymbols = false;
+
+    public FixWarningsVisitor(DeclaredType suppressWarnings, DeclaredType overrideType) {
         this.suppressWarnings = suppressWarnings;
         this.overrideType = overrideType;
     }
 
     @Override
     public Void visitType(CodeTypeElement e, Void p) {
+        boolean rootType = e.getEnclosingClass() == null;
+        if (rootType) {
+            ignoredWarnings.clear();
+        }
+
         List<TypeElement> superTypes = ElementUtils.getSuperTypes(e);
         for (TypeElement type : superTypes) {
             String qualifiedName = ElementUtils.getQualifiedName(type);
             if (qualifiedName.equals(Serializable.class.getCanonicalName())) {
                 if (!e.containsField("serialVersionUID")) {
-                    e.add(new CodeVariableElement(modifiers(PRIVATE, STATIC, FINAL), ElementUtils.getType(processingEnv, long.class), "serialVersionUID", "1L"));
+                    ignoredWarnings.add("serial");
                 }
                 break;
             }
         }
+
         if (ElementUtils.isDeprecated(e)) {
-            if (e.getEnclosingClass() == null) {
-                e.getAnnotationMirrors().add(createIgnoreDeprecations());
-            }
+            ignoredWarnings.add("deprecation");
         }
-        return super.visitType(e, p);
+        super.visitType(e, p);
+
+        if (rootType && !ignoredWarnings.isEmpty()) {
+            GeneratorUtils.mergeSupressWarnings(e, ignoredWarnings.toArray(new String[0]));
+        }
+        return null;
     }
 
     @Override
     public Void visitExecutable(CodeExecutableElement e, Void p) {
+        boolean checkIgnored = !ignoredWarnings.contains("unused");
         if (e.getParameters().isEmpty()) {
-            return null;
+            checkIgnored = false;
         } else if (e.getModifiers().contains(Modifier.ABSTRACT)) {
-            return null;
+            checkIgnored = false;
         } else if (containsOverride(e)) {
-            return null;
+            checkIgnored = false;
         }
 
         symbolsUsed.clear();
+        computeSymbols = checkIgnored;
+
         super.visitExecutable(e, p);
 
-        for (VariableElement parameter : e.getParameters()) {
-            if (!symbolsUsed.contains(parameter.getSimpleName().toString())) {
-                e.getAnnotationMirrors().add(createUnused());
-                break;
+        if (checkIgnored) {
+            for (VariableElement parameter : e.getParameters()) {
+                if (!symbolsUsed.contains(parameter.getSimpleName().toString())) {
+                    ignoredWarnings.add("unused");
+                    break;
+                }
             }
         }
         return null;
@@ -133,21 +140,9 @@ public class FixWarningsVisitor extends CodeElementScanner<Void, Void> {
         return false;
     }
 
-    private CodeAnnotationMirror createUnused() {
-        CodeAnnotationMirror mirror = new CodeAnnotationMirror(suppressWarnings);
-        mirror.setElementValue(mirror.findExecutableElement("value"), new CodeAnnotationValue("unused"));
-        return mirror;
-    }
-
-    private CodeAnnotationMirror createIgnoreDeprecations() {
-        CodeAnnotationMirror mirror = new CodeAnnotationMirror(suppressWarnings);
-        mirror.setElementValue(mirror.findExecutableElement("value"), new CodeAnnotationValue("deprecation"));
-        return mirror;
-    }
-
     @Override
     public void visitTree(CodeTree e, Void p, Element enclosingElement) {
-        if (e.getString() != null) {
+        if (computeSymbols && e.getString() != null) {
             computeSymbols(e.getString());
         }
         super.visitTree(e, p, enclosingElement);

@@ -90,13 +90,24 @@ public class ObjectType {
     }
 
     /**
+     * Returns the exports class that this object type is dispatched to.
+     *
+     * @since 1.0
+     */
+    public Class<?> dispatch() {
+        return null;
+    }
+
+    /**
      * Create a {@link ForeignAccess} to access a specific {@link DynamicObject}.
      *
      * @param object the object to be accessed
      * @since 0.8 or earlier
+     * @deprecated use {@link #dispatch()} instead.
      */
+    @Deprecated
     public ForeignAccess getForeignAccessFactory(DynamicObject object) {
-        return createDefaultForeignAccess();
+        return null;
     }
 
     static ForeignAccess createDefaultForeignAccess() {

@@ -41,23 +41,64 @@
 package com.oracle.truffle.dsl.processor.model;
 
 import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
 public final class CacheExpression extends MessageContainer {
 
-    private final DSLExpression expression;
     private final Parameter sourceParameter;
     private final AnnotationMirror sourceAnnotationMirror;
     private int dimensions = -1;
+    private DSLExpression defaultExpression;
+    private DSLExpression uncachedExpression;
+    private boolean initializedInFastPath = false;
+    private Message uncachedExpressionError;
 
-    public CacheExpression(Parameter sourceParameter, AnnotationMirror sourceAnnotationMirror, DSLExpression expression) {
+    public CacheExpression(Parameter sourceParameter, AnnotationMirror sourceAnnotationMirror) {
         this.sourceParameter = sourceParameter;
-        this.expression = expression;
         this.sourceAnnotationMirror = sourceAnnotationMirror;
+    }
+
+    public CacheExpression copy() {
+        CacheExpression copy = new CacheExpression(sourceParameter, sourceAnnotationMirror);
+        copy.dimensions = this.dimensions;
+        copy.defaultExpression = this.defaultExpression;
+        copy.uncachedExpression = this.uncachedExpression;
+        copy.initializedInFastPath = this.initializedInFastPath;
+        return copy;
+    }
+
+    public void setDefaultExpression(DSLExpression expression) {
+        this.defaultExpression = expression;
+    }
+
+    public void setUncachedExpressionError(Message message) {
+        this.uncachedExpressionError = message;
+    }
+
+    public void setUncachedExpression(DSLExpression getUncachedExpression) {
+        this.uncachedExpression = getUncachedExpression;
+    }
+
+    public Message getUncachedExpresionError() {
+        return uncachedExpressionError;
+    }
+
+    public DSLExpression getUncachedExpression() {
+        return uncachedExpression;
+    }
+
+    public void setInitializedInFastPath(boolean fastPathCache) {
+        this.initializedInFastPath = fastPathCache;
+    }
+
+    public boolean isInitializedInFastPath() {
+        return initializedInFastPath;
     }
 
     public void setDimensions(int dimensions) {
@@ -72,6 +113,18 @@ public final class CacheExpression extends MessageContainer {
         return sourceParameter;
     }
 
+    public boolean isCached() {
+        return isType(Cached.class);
+    }
+
+    public boolean isCachedLibrary() {
+        return isType(CachedLibrary.class);
+    }
+
+    private boolean isType(Class<?> type) {
+        return ElementUtils.typeEquals(sourceAnnotationMirror.getAnnotationType(), ProcessorContext.getInstance().getType(type));
+    }
+
     @Override
     public Element getMessageElement() {
         return sourceParameter.getVariableElement();
@@ -82,13 +135,8 @@ public final class CacheExpression extends MessageContainer {
         return sourceAnnotationMirror;
     }
 
-    @Override
-    public AnnotationValue getMessageAnnotationValue() {
-        return ElementUtils.getAnnotationValue(getMessageAnnotation(), "value");
-    }
-
-    public DSLExpression getExpression() {
-        return expression;
+    public DSLExpression getDefaultExpression() {
+        return defaultExpression;
     }
 
 }

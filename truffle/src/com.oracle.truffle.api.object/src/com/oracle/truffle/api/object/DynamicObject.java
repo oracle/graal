@@ -45,6 +45,7 @@ import java.lang.reflect.Field;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.DynamicDispatch;
 
 import sun.misc.Unsafe;
 
@@ -55,7 +56,7 @@ import sun.misc.Unsafe;
  * @since 0.8 or earlier
  */
 @SuppressWarnings("deprecation")
-public abstract class DynamicObject implements TruffleObject {
+public abstract class DynamicObject implements DynamicDispatch, TruffleObject {
 
     private Shape shape;
 
@@ -84,6 +85,10 @@ public abstract class DynamicObject implements TruffleObject {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new IllegalArgumentException("Incompatible shape");
         }
+    }
+
+    public final Class<?> dispatch() {
+        return getShape().getObjectType().dispatch();
     }
 
     /**

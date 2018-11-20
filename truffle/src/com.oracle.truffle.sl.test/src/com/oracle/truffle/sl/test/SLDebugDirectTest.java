@@ -70,6 +70,7 @@ import com.oracle.truffle.api.debug.SuspendAnchor;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.ForeignAccess.Factory;
 import com.oracle.truffle.api.interop.ForeignAccess.StandardFactory;
 import com.oracle.truffle.api.interop.Message;
@@ -535,7 +536,7 @@ public class SLDebugDirectTest {
 
         @Override
         public CallTarget accessKeyInfo() {
-            return null;
+            return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(KeyInfo.READABLE));
         }
 
         @Override
@@ -565,7 +566,7 @@ public class SLDebugDirectTest {
 
         @Override
         public CallTarget accessHasKeys() {
-            throw new UnsupportedOperationException("Not supported yet.");
+            return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(Boolean.TRUE));
         }
 
     }

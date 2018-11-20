@@ -71,8 +71,6 @@ public abstract class Template extends MessageContainer {
         return this;
     }
 
-    public abstract TypeSystemData getTypeSystem();
-
     @Override
     public Element getMessageElement() {
         return templateType;

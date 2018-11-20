@@ -43,7 +43,7 @@ package com.oracle.truffle.api.interop;
 import com.oracle.truffle.api.CompilerDirectives;
 
 /**
- * An exception thrown if a foreign function or method invocation provides the wrong number of
+ * An exception thrown if a executable or instantiable object was provided with the wrong number of
  * arguments.
  *
  * @since 0.11
@@ -56,9 +56,13 @@ public final class ArityException extends InteropException {
     private final int actualArity;
 
     private ArityException(int expectedArity, int actualArity) {
-        super("Arity error - expected: " + expectedArity + " actual: " + actualArity);
         this.expectedArity = expectedArity;
         this.actualArity = actualArity;
+    }
+
+    @Override
+    public String getMessage() {
+        return "Arity error - expected: " + expectedArity + " actual: " + actualArity;
     }
 
     /**
@@ -82,17 +86,24 @@ public final class ArityException extends InteropException {
     }
 
     /**
-     * Raises an {@link ArityException}, hidden as a {@link RuntimeException}, which allows throwing
-     * it without an explicit throws declaration. The {@link ForeignAccess} methods (e.g.
-     * <code> ForeignAccess.sendRead </code>) catch the exceptions and re-throw them as checked
-     * exceptions.
+     * Creates an {@link ArityException} to indicate that the wrong number of arguments were
+     * provided.
      *
      * @param expectedArity the number of arguments expected by the foreign object
      * @param actualArity the number of provided by the foreign access
-     *
+     * @since 1.0
+     */
+    public static ArityException create(int expectedArity, int actualArity) {
+        return new ArityException(expectedArity, actualArity);
+    }
+
+    /**
      * @return the exception
      * @since 0.11
+     * @deprecated use {@link #create(int, int)} instead. Interop exceptions should directly be
+     *             thrown and no longer be hidden as runtime exceptions.
      */
+    @Deprecated
     public static RuntimeException raise(int expectedArity, int actualArity) {
         CompilerDirectives.transferToInterpreter();
         return silenceException(RuntimeException.class, new ArityException(expectedArity, actualArity));

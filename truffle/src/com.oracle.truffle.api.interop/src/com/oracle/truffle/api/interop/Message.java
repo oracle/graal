@@ -48,6 +48,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.interop.ForeignAccess.Factory;
+import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
@@ -56,7 +57,12 @@ import com.oracle.truffle.api.nodes.Node;
  * specialized messages.
  *
  * @since 0.8 or earlier
+ * @deprecated message is no longer needed to send interop messages. See {@link InteropLibrary} for
+ *             details. For a reflective message representation see
+ *             {@link com.oracle.truffle.api.library.Message} instead.
  */
+@Deprecated
+@SuppressWarnings("deprecation")
 public abstract class Message {
     /**
      * One can define their own extended message by subclassing. The expectation is that the
@@ -101,8 +107,11 @@ public abstract class Message {
      * {@link Message#createNode() created node}.
      *
      * @since 0.8 or earlier
+     * @deprecated use {@link ObjectLibrary#readMember(Object, String)} or
+     *             {@link ArrayLibrary#readElement(Object, long)} instead. See
+     *             {@link InteropLibrary} for an overview of the new interop messages.
      */
-    public static final Message READ = Read.INSTANCE;
+    @Deprecated public static final Message READ = Read.INSTANCE;
 
     /**
      * Converts {@link TruffleObject truffle value} to Java primitive type. Primitive types are
@@ -128,8 +137,14 @@ public abstract class Message {
      * {@link Message#createNode() created node}.
      *
      * @since 0.8 or earlier
+     * @deprecated use {@link StringLibrary#asString(Object)},
+     *             {@link BooleanLibrary#asBoolean(Object)}, {@link NumberLibrary#asByte(Object)},
+     *             {@link NumberLibrary#asShort(Object)}, {@link NumberLibrary#asInt(Object)},
+     *             {@link NumberLibrary#asLong(Object)}, {@link NumberLibrary#asFloat(Object)} or
+     *             {@link NumberLibrary#asDouble(Object)} instead. See {@link InteropLibrary} for an
+     *             overview of the new interop messages.
      */
-    public static final Message UNBOX = Unbox.INSTANCE;
+    @Deprecated public static final Message UNBOX = Unbox.INSTANCE;
 
     /**
      * Message to write a field. The
@@ -166,8 +181,10 @@ public abstract class Message {
      * {@link Message#createNode() created node}.
      *
      * @since 0.8 or earlier
+     * @deprecated use {@link ObjectLibrary#writeMember(Object, String, Object)} or
+     *             {@link ArrayLibrary#writeElement(Object, long, Object)} instead.
      */
-    public static final Message WRITE = Write.INSTANCE;
+    @Deprecated public static final Message WRITE = Write.INSTANCE;
 
     /**
      * Message to remove a field. The
@@ -198,8 +215,10 @@ public abstract class Message {
      * {@link Message#createNode() created node}.
      *
      * @since 0.32
+     * @deprecated use {@link ObjectLibrary#removeMember(Object, String)} or
+     *             {@link ArrayLibrary#removeElement(Object, long)} instead.
      */
-    public static final Message REMOVE = Remove.INSTANCE;
+    @Deprecated public static final Message REMOVE = Remove.INSTANCE;
 
     /**
      * The non-object oriented execution message. In contrast to the {@link #INVOKE} message, which
@@ -250,8 +269,10 @@ public abstract class Message {
      * <p>
      *
      * @since 1.0
+     * @deprecated use {@link ExecutableLibrary#execute(Object, Object...)} instead. See
+     *             {@link InteropLibrary} for an overview of the new interop messages.
      */
-    public static final Message EXECUTE = Execute.INSTANCE;
+    @Deprecated public static final Message EXECUTE = Execute.INSTANCE;
 
     /**
      * Use {@link Message#EXECUTE} instead.
@@ -285,8 +306,10 @@ public abstract class Message {
      * {@link Message#createNode() created node}.
      *
      * @since 0.8 or earlier
+     * @deprecated use {@link ExecutableLibrary#isExecutable(Object)} instead. See
+     *             {@link InteropLibrary} for an overview of the new interop messages.
      */
-    public static final Message IS_EXECUTABLE = IsExecutable.INSTANCE;
+    @Deprecated public static final Message IS_EXECUTABLE = IsExecutable.INSTANCE;
 
     /**
      * Message to check the ability to create new instances of a
@@ -310,8 +333,10 @@ public abstract class Message {
      * {@link Message#createNode() created node}.
      *
      * @since 0.30
+     * @deprecated use {@link InstantiableLibrary#isInstantiable(Object)} instead. See
+     *             {@link InteropLibrary} for an overview of the new interop messages.
      */
-    public static final Message IS_INSTANTIABLE = IsInstantiable.INSTANCE;
+    @Deprecated public static final Message IS_INSTANTIABLE = IsInstantiable.INSTANCE;
 
     /**
      * The object oriented execute message. Unlike {@link #EXECUTE} the receiver of the message
@@ -384,8 +409,10 @@ public abstract class Message {
      * {@link #EXECUTE} the result.
      *
      * @since 1.0
+     * @deprecated use {@link ObjectLibrary#invokeMember(Object, String, Object...)} instead. See
+     *             {@link InteropLibrary} for an overview of the new interop messages.
      */
-    public static final Message INVOKE = Invoke.INSTANCE;
+    @Deprecated public static final Message INVOKE = Invoke.INSTANCE;
 
     /**
      * Use {@link Message#INVOKE} instead.
@@ -414,8 +441,10 @@ public abstract class Message {
      * <p>
      *
      * @since 1.0
+     * @deprecated use {@link InstantiableLibrary#instantiate(Object, Object...)} instead. See
+     *             {@link InteropLibrary} for an overview of the new interop messages.
      */
-    public static final Message NEW = New.INSTANCE;
+    @Deprecated public static final Message NEW = New.INSTANCE;
 
     /**
      * Use {@link Message#NEW} instead.
@@ -447,8 +476,10 @@ public abstract class Message {
      * {@link Message#createNode() created node}.
      *
      * @since 0.8 or earlier
+     * @deprecated use {@link ValueLibrary#isNull(Object)} instead. See {@link InteropLibrary} for
+     *             an overview of the new interop messages.
      */
-    public static final Message IS_NULL = IsNull.INSTANCE;
+    @Deprecated public static final Message IS_NULL = IsNull.INSTANCE;
 
     /**
      * Message to check for having a size. If a {@link TruffleObject} indicates it <em>has a
@@ -462,8 +493,10 @@ public abstract class Message {
      * @since 0.8 or earlier
      * @see ForeignAccess#sendHasSize(com.oracle.truffle.api.nodes.Node,
      *      com.oracle.truffle.api.interop.TruffleObject)
+     * @deprecated use {@link ArrayLibrary#isArray(Object)} instead. See {@link InteropLibrary} for
+     *             an overview of the new interop messages.
      */
-    public static final Message HAS_SIZE = HasSize.INSTANCE;
+    @Deprecated public static final Message HAS_SIZE = HasSize.INSTANCE;
 
     /**
      * Getter of the size. If {@link #HAS_SIZE supported}, this message has to return size of
@@ -482,8 +515,10 @@ public abstract class Message {
      * @since 0.8 or earlier
      * @see ForeignAccess#sendGetSize(com.oracle.truffle.api.nodes.Node,
      *      com.oracle.truffle.api.interop.TruffleObject)
+     * @deprecated use {@link ArrayLibrary#getArraySize(Object)} instead. See {@link InteropLibrary}
+     *             for an overview of the new interop messages.
      */
-    public static final Message GET_SIZE = GetSize.INSTANCE;
+    @Deprecated public static final Message GET_SIZE = GetSize.INSTANCE;
 
     /**
      * Check for value being boxed. Can the {@link TruffleObject foreign object} be converted to one
@@ -503,8 +538,12 @@ public abstract class Message {
      * {@link Boolean#TRUE}, it is safe to continue by sending it {@link #UNBOX} message.
      *
      * @since 0.8 or earlier
+     * @deprecated use {@link StringLibrary#isString(Object)},
+     *             {@link BooleanLibrary#isBoolean(Object)} or
+     *             {@link NumberLibrary#isNumber(Object)} instead. See {@link InteropLibrary} for an
+     *             overview of the new interop messages.
      */
-    public static final Message IS_BOXED = IsBoxed.INSTANCE;
+    @Deprecated public static final Message IS_BOXED = IsBoxed.INSTANCE;
 
     /**
      * Message to retrieve flags about a particular key (a property name). The returned value is an
@@ -536,8 +575,19 @@ public abstract class Message {
      * {@link Message#createNode() created node}.
      *
      * @since 0.26
+     * @deprecated for {@link ObjectLibrary#isObject(Object) objects} use
+     *             {@link ObjectLibrary#isMemberReadable(Object, String)},
+     *             {@link ObjectLibrary#isMemberWritable(Object, String)},
+     *             {@link ObjectLibrary#isMemberInsertable(Object, String)},
+     *             {@link ObjectLibrary#isMemberRemovable(Object, String)} or
+     *             {@link ObjectLibrary#isMemberInternal(Object, String)} instead. For
+     *             {@link ArrayLibrary#isArray(Object) arras} use
+     *             {@link ArrayLibrary#isElementReadable(Object, long)},
+     *             {@link ArrayLibrary#isElementWritable(Object, long)},
+     *             {@link ArrayLibrary#isElementInsertable(Object, long)} instead. See
+     *             {@link InteropLibrary} for an overview of the new interop messages.
      */
-    public static final Message KEY_INFO = KeyInfoMsg.INSTANCE;
+    @Deprecated public static final Message KEY_INFO = KeyInfoMsg.INSTANCE;
 
     /**
      * Message to check for having properties. If a {@link TruffleObject} indicates it <em>has
@@ -554,8 +604,10 @@ public abstract class Message {
      * @since 0.30
      * @see ForeignAccess#sendHasKeys(com.oracle.truffle.api.nodes.Node,
      *      com.oracle.truffle.api.interop.TruffleObject)
+     * @deprecated use {@link ObjectLibrary#isObject(Object)} instead. See {@link InteropLibrary}
+     *             for an overview of the new interop messages.
      */
-    public static final Message HAS_KEYS = HasKeys.INSTANCE;
+    @Deprecated public static final Message HAS_KEYS = HasKeys.INSTANCE;
 
     /**
      * Obtains list of property names. Checks the properties of a {@link TruffleObject foreign
@@ -575,8 +627,10 @@ public abstract class Message {
      * names of individual properties. The properties should be provided in deterministic order.
      *
      * @since 0.18
+     * @deprecated use {@link ObjectLibrary#getMembers(Object)} instead. See {@link InteropLibrary}
+     *             for an overview of the new interop messages.
      */
-    public static final Message KEYS = Keys.INSTANCE;
+    @Deprecated public static final Message KEYS = Keys.INSTANCE;
 
     /**
      * Check for a value being a native pointer. Can the {@link TruffleObject foreign object} be
@@ -602,8 +656,10 @@ public abstract class Message {
      * and wait for the {@link #TO_NATIVE} message to trigger the transformation.
      *
      * @since 0.26 or earlier
+     * @deprecated use {@link NativeLibrary#isPointer(Object)} instead. See {@link InteropLibrary}
+     *             for an overview of the new interop messages.
      */
-    public static final Message IS_POINTER = IsPointer.INSTANCE;
+    @Deprecated public static final Message IS_POINTER = IsPointer.INSTANCE;
 
     /**
      * Converts {@link TruffleObject truffle value} to a raw 64bit pointer value. Before sending the
@@ -627,8 +683,10 @@ public abstract class Message {
      * {@link Message#createNode() created node}.
      *
      * @since 0.26 or earlier
+     * @deprecated use {@link NativeLibrary#asPointer(Object)} instead. See {@link InteropLibrary}
+     *             for an overview of the new interop messages.
      */
-    public static final Message AS_POINTER = AsPointer.INSTANCE;
+    @Deprecated public static final Message AS_POINTER = AsPointer.INSTANCE;
 
     /**
      * Transforms a {@link TruffleObject truffle value} a new {@link TruffleObject truffle native
@@ -656,8 +714,10 @@ public abstract class Message {
      * {@link Message#createNode() created node}.
      *
      * @since 0.26 or earlier
+     * @deprecated use {@link NativeLibrary#toNative(Object)} instead. See {@link InteropLibrary}
+     *             for an overview of the new interop messages.
      */
-    public static final Message TO_NATIVE = ToNative.INSTANCE;
+    @Deprecated public static final Message TO_NATIVE = ToNative.INSTANCE;
 
     /**
      * Compares types of two messages. Messages are encouraged to implement this method. All
@@ -689,10 +749,19 @@ public abstract class Message {
      *         {@link ForeignAccess#send(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object...)}
      *         method.
      * @since 0.8 or earlier
+     * @deprecated use {@link Library#createCached(Class, Object)} or
+     *             {@link Library#getUncached(Class, Object)} instead. see {@link InteropLibrary}
+     *             for examples.
      */
+    @Deprecated
+    @SuppressWarnings("all")
     public final Node createNode() {
         CompilerAsserts.neverPartOfCompilation();
-        return InteropAccessNode.create(this);
+        if (ForeignAccess.LEGACY_TO_LIBRARY_BRIDGE && this instanceof KnownMessage) {
+            return LegacyToLibraryNode.create(this);
+        } else {
+            return InteropAccessNode.create(this);
+        }
     }
 
     /**
@@ -703,7 +772,9 @@ public abstract class Message {
      * @param message the message to convert
      * @return canonical string representation
      * @since 0.9
+     * @deprecated use {@link com.oracle.truffle.api.library.Message#getSimpleName()} instead.
      */
+    @Deprecated
     public static String toString(Message message) {
         if (Message.READ == message) {
             return "READ"; // NOI18N
@@ -838,6 +909,8 @@ public abstract class Message {
             throw new IllegalArgumentException("Cannot find message for " + message, ex);
         }
     }
+
+    InteropAccessNode uncached;
 
     private static final Map<String, Message> CLASS_TO_MESSAGE = new ConcurrentHashMap<>();
 

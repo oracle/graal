@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.interop;
 
+@SuppressWarnings("deprecation")
 final class IsBoxed extends UnaryMessage {
     public static final int HASH = 423434;
     static final Message INSTANCE = new IsBoxed();

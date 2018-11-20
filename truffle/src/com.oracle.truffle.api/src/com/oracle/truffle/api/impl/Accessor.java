@@ -100,6 +100,10 @@ public abstract class Accessor {
         TruffleLocator.initializeNativeImageTruffleLocator();
     }
 
+    protected ThreadLocal<Object> createFastThreadLocal() {
+        return SUPPORT.createFastThreadLocal();
+    }
+
     public abstract static class Nodes {
 
         public abstract boolean isInstrumentable(RootNode rootNode);
@@ -131,6 +135,8 @@ public abstract class Accessor {
         public void reportPolymorphicSpecialize(Node node) {
             SUPPORT.reportPolymorphicSpecialize(node);
         }
+
+        public abstract Node getCurrentCallLocation();
     }
 
     public abstract static class SourceSupport {
@@ -158,9 +164,6 @@ public abstract class Accessor {
     }
 
     public abstract static class InteropSupport {
-        public abstract boolean canHandle(Object foreignAccess, Object receiver);
-
-        public abstract CallTarget canHandleTarget(Object access);
 
         public abstract boolean isTruffleObject(Object value);
 

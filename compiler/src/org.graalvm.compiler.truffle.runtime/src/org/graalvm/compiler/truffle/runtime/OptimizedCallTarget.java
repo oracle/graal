@@ -49,6 +49,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.DefaultCompilerOptions;
 import com.oracle.truffle.api.nodes.ControlFlowException;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
@@ -202,31 +203,62 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     @Override
     public final Object call(Object... args) {
-        OptimizedCompilationProfile profile = compilationProfile;
-        if (profile != null) {
-            profile.profileIndirectCall();
+        Node prev = IndirectCallNode.pushCallLocation(null);
+        try {
+            return callIndirect(prev, args);
+        } finally {
+            IndirectCallNode.popCallLocation(prev);
         }
+    }
+
+    // Note: {@code PartialEvaluator} looks up this method by name and signature.
+    public final Object callIndirect(Node location, Object... args) {
+        try {
+            assert runtime().getTvmci().getCurrentCallLocation() == null : "Current call location must be clear when direct or indirect call node executed.";
+            OptimizedCompilationProfile profile = compilationProfile;
+            if (profile != null) {
+                profile.profileIndirectCall();
+            }
+            return doInvoke(args);
+        } finally {
+            // this assertion is needed to keep the values from being cleared as non-live locals
+            assert location != null || location == null;
+        }
+    }
+
+    // Note: {@code PartialEvaluator} looks up this method by name and signature.
+    public final Object callDirect(Node location, Object... args) {
+        try {
+            assert runtime().getTvmci().getCurrentCallLocation() == null : "Current call location must be clear when direct or indirect call node executed.";
+            getCompilationProfile().profileDirectCall(args);
+            try {
+                Object result = doInvoke(args);
+                if (CompilerDirectives.inCompiledCode()) {
+                    result = compilationProfile.injectReturnValueProfile(result);
+                }
+                return result;
+            } catch (Throwable t) {
+                throw rethrow(compilationProfile.profileExceptionType(t));
+            }
+        } finally {
+            // this assertion is needed to keep the values from being cleared as non-live locals
+            assert location != null;
+        }
+    }
+
+    public final Object callOSR(Object... args) {
         return doInvoke(args);
     }
 
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
-    public final Object callDirect(Object... args) {
-        getCompilationProfile().profileDirectCall(args);
+    public final Object callInlined(Node location, Object... arguments) {
         try {
-            Object result = doInvoke(args);
-            if (CompilerDirectives.inCompiledCode()) {
-                result = compilationProfile.injectReturnValueProfile(result);
-            }
-            return result;
-        } catch (Throwable t) {
-            throw rethrow(compilationProfile.profileExceptionType(t));
+            getCompilationProfile().profileInlinedCall();
+            return callProxy(createFrame(getRootNode().getFrameDescriptor(), arguments));
+        } finally {
+            // this assertion is needed to keep the values from being cleared as non-live locals
+            assert location != null;
         }
-    }
-
-    // Note: {@code PartialEvaluator} looks up this method by name and signature.
-    public final Object callInlined(Object... arguments) {
-        getCompilationProfile().profileInlinedCall();
-        return callProxy(createFrame(getRootNode().getFrameDescriptor(), arguments));
     }
 
     protected Object doInvoke(Object[] args) {

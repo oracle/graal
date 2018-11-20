@@ -854,7 +854,7 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
         @Override
         public int keyInfo(Number key) {
             if (key.intValue() < array.size() && key.intValue() >= 0) {
-                return KeyInfo.READABLE;
+                return KeyInfo.READABLE | KeyInfo.REMOVABLE;
             }
             return super.keyInfo(key);
         }
@@ -961,6 +961,17 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
                     return true;
                 }
             }
+
+            @Resolve(message = "KEY_INFO")
+            public abstract static class KeyInfoNode extends Node {
+
+                public Object access(RemoveKeysObject receiver, String name) {
+                    if (!receiver.keys.containsKey(name)) {
+                        return KeyInfo.NONE;
+                    }
+                    return KeyInfo.READABLE | KeyInfo.MODIFIABLE | KeyInfo.REMOVABLE;
+                }
+            }
         }
     }
 
@@ -1004,7 +1015,8 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
             @Resolve(message = "READ")
             public abstract static class ArrayReadSizeNode extends Node {
 
-                public Object access(ArrayTruffleObject receiver, int index) {
+                public Object access(ArrayTruffleObject receiver, Number number) {
+                    int index = number.intValue();
                     if (index < 0 || index >= receiver.size) {
                         throw new ArrayIndexOutOfBoundsException(index);
                     }
@@ -1015,12 +1027,25 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
             @Resolve(message = "REMOVE")
             public abstract static class ArrayRemoveNode extends Node {
 
-                public Object access(ArrayTruffleObject receiver, int index) {
+                public Object access(ArrayTruffleObject receiver, Number number) {
+                    int index = number.intValue();
                     if (index < 0 || index >= receiver.size) {
                         throw new ArrayIndexOutOfBoundsException(index);
                     }
                     receiver.size--;
                     return true;
+                }
+            }
+
+            @Resolve(message = "KEY_INFO")
+            public abstract static class KeyInfoNode extends Node {
+
+                public int access(ArrayTruffleObject receiver, Number number) {
+                    int index = number.intValue();
+                    if (index != number.doubleValue() || index < 0 || index >= receiver.size) {
+                        return KeyInfo.NONE;
+                    }
+                    return KeyInfo.MODIFIABLE | KeyInfo.READABLE | KeyInfo.REMOVABLE;
                 }
             }
         }

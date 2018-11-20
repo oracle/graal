@@ -108,7 +108,8 @@ public abstract class ProxyInteropObject implements TruffleObject {
     }
 
     public int getSize() {
-        return 0;
+        CompilerDirectives.transferToInterpreter();
+        throw UnsupportedMessageException.raise(Message.GET_SIZE);
     }
 
     public Object unbox() throws UnsupportedMessageException {

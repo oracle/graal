@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.interop;
 
+@SuppressWarnings("deprecation")
 final class Remove extends KnownMessage {
     public static final int HASH = 423443;
     static final Message INSTANCE = new Remove();

@@ -47,7 +47,7 @@
 
 /**
  * This package contains classes that specify the contract for inter-operability between Truffle
- * languages.
+ * guest languages.
  * <p>
  * Languages can exchange primitive Java type wrapper objects (e.g., {@link java.lang.Byte},
  * {@link java.lang.Short}, {@link java.lang.Integer}, {@link java.lang.Long},
@@ -62,6 +62,7 @@
  * {@link com.oracle.truffle.api.interop.Message#createNode}. The message can then be executed with
  * {@link com.oracle.truffle.api.interop.ForeignAccess} methods.
  *
+ * @see com.oracle.truffle.api.interop.InteropLibrary
  * @since 0.8 or older
  */
 package com.oracle.truffle.api.interop;

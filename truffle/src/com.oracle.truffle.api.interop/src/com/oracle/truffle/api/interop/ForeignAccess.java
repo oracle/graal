@@ -47,8 +47,8 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.impl.ReadOnlyArrayList;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ReflectionLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import java.util.function.Supplier;
@@ -60,13 +60,20 @@ import java.util.function.Supplier;
  * , use one of the factory methods available in this class.
  *
  * @since 0.8 or earlier
+ *
+ * @deprecated This class was replaced and split up into several interop libraries. See the
+ *             individual methods for details on replacements.
  */
+@Deprecated
+@SuppressWarnings("deprecation")
 public final class ForeignAccess {
     private final Factory factory;
     private final Supplier<? extends RootNode> languageCheckSupplier;
 
     // still here for GraalVM intrinsics.
     @SuppressWarnings("unused") private final Thread initThread;
+
+    static final boolean LEGACY_TO_LIBRARY_BRIDGE = true;
 
     private ForeignAccess(Factory faf) {
         this(null, faf);
@@ -87,7 +94,10 @@ public final class ForeignAccess {
      * @param factory the factory that handles access requests to {@link Message}s
      * @return new instance wrapping <code>factory</code>
      * @since 0.30
+     * @deprecated use <code>@{@linkplain ExportLibrary}(ArrayLibrary.class)</code> on the receiver
+     *             type instead to export interop messages.
      */
+    @Deprecated
     public static ForeignAccess create(final Class<? extends TruffleObject> baseClass, final StandardFactory factory) {
         if (baseClass == null) {
             Factory f = (Factory) factory;
@@ -99,36 +109,14 @@ public final class ForeignAccess {
     /**
      * Creates new instance of {@link ForeignAccess} that delegates to provided factory.
      *
-     * @param baseClass the super class of all {@link TruffleObject}s handled by this factory (if
-     *            <code>null</code> then the second interface must also implement {@link Factory})
-     * @param factory the factory that handles access requests to {@link Message}s known as of
-     *            version 0.26
-     * @return new instance wrapping <code>factory</code>
-     * @since 0.26
-     * @deprecated Use {@link StandardFactory} and
-     *             {@link #create(java.lang.Class, com.oracle.truffle.api.interop.ForeignAccess.StandardFactory)}
-     */
-    @Deprecated
-    public static ForeignAccess create(final Class<? extends TruffleObject> baseClass, final Factory26 factory) {
-        if (baseClass == null) {
-            Factory f = (Factory) factory;
-            assert f != null;
-        }
-        return new ForeignAccess(new DelegatingFactory26(baseClass, factory));
-    }
-
-    /**
-     * Creates new instance of {@link ForeignAccess} that delegates to provided factory.
-     *
      * @param factory the factory that handles access requests to {@link Message}s
      * @param languageCheck a {@link RootNode} that performs the language check on receiver objects,
      *            can be <code>null</code>, but then the factory must also implement {@link Factory}
      *            interface
      * @return new instance wrapping <code>factory</code>
      * @since 0.30
-     * @deprecated Use
-     *             {@link #createAccess(com.oracle.truffle.api.interop.ForeignAccess.StandardFactory, java.util.function.Supplier)
-     *             method
+     * @deprecated use <code>@{@linkplain ExportLibrary}(ArrayLibrary.class)</code> on the receiver
+     *             type instead to export interop messages.
      */
     @Deprecated
     public static ForeignAccess create(final StandardFactory factory, final RootNode languageCheck) {
@@ -162,63 +150,15 @@ public final class ForeignAccess {
     /**
      * Creates new instance of {@link ForeignAccess} that delegates to provided factory.
      *
-     * @param factory the factory that handles access requests to {@link Message}s known as of
-     *            version 0.26
-     * @param languageCheck a {@link RootNode} that performs the language check on receiver objects,
-     *            can be <code>null</code>, but then the factory must also implement {@link Factory}
-     *            interface
-     * @return new instance wrapping <code>factory</code>
-     * @since 0.26
-     * @deprecated Use {@link StandardFactory} and
-     *             {@link #create(com.oracle.truffle.api.interop.ForeignAccess.StandardFactory, com.oracle.truffle.api.nodes.RootNode)
-     *             its associated factory} method
-     */
-    @Deprecated
-    public static ForeignAccess create(final Factory26 factory, final RootNode languageCheck) {
-        if (languageCheck == null) {
-            Factory f = (Factory) factory;
-            assert f != null;
-        }
-        return new ForeignAccess(
-                        languageCheck == null ? null : new RootNodeSupplier(languageCheck),
-                        new DelegatingFactory26(null, factory));
-    }
-
-    /**
-     * Creates new instance of {@link ForeignAccess} that delegates to provided factory.
-     *
      * @param factory the factory that handles various access requests {@link Message}s.
      * @return new instance wrapping <code>factory</code>
      * @since 0.8 or earlier
+     * @deprecated use <code>@{@linkplain ExportLibrary}(ArrayLibrary.class)</code> on the receiver
+     *             type instead to export interop messages.
      */
+    @Deprecated
     public static ForeignAccess create(Factory factory) {
         return new ForeignAccess(factory);
-    }
-
-    /**
-     * Executes {@link Message#createNode() foreign node}.
-     *
-     * @deprecated replaced by specialized methods for sending individual messages (e.g.
-     *             {@link #sendRead(Node, VirtualFrame, TruffleObject, Object)}). For sending any
-     *             message use the rare {@link #send(Node, VirtualFrame, TruffleObject, Object...)}
-     *             method.
-     *
-     * @param foreignNode the createNode created by {@link Message#createNode()}
-     * @param frame the call frame
-     * @param receiver foreign object to receive the message passed to {@link Message#createNode()}
-     *            method
-     * @param arguments parameters for the receiver
-     * @return return value, if any
-     * @throws ClassCastException if the createNode has not been created by
-     *             {@link Message#createNode()} method.
-     * @throws IllegalStateException if any error occurred while accessing the <code>receiver</code>
-     *             object
-     * @since 0.8 or earlier
-     */
-    @SuppressWarnings("deprecation")
-    @Deprecated
-    public static Object execute(Node foreignNode, VirtualFrame frame, TruffleObject receiver, Object... arguments) {
-        return ((InteropAccessNode) foreignNode).executeOld(receiver, arguments);
     }
 
     /**
@@ -235,10 +175,17 @@ public final class ForeignAccess {
      * @throws InteropException if any error occurred while accessing the <code>receiver</code>
      *             object
      * @since 0.24
+     * @deprecated use the specific {@link InteropLibrary} or use library {@link ReflectionLibrary
+     *             reflection} instead.
      */
+    @Deprecated
     public static Object send(Node foreignNode, TruffleObject receiver, Object... arguments) throws InteropException {
         try {
-            return ((InteropAccessNode) foreignNode).execute(receiver, arguments);
+            if (LEGACY_TO_LIBRARY_BRIDGE && foreignNode instanceof LegacyToLibraryNode) {
+                return ((LegacyToLibraryNode) foreignNode).send(receiver, arguments);
+            } else {
+                return ((InteropAccessNode) foreignNode).execute(receiver, arguments);
+            }
         } catch (InteropException e) {
             CompilerDirectives.transferToInterpreter();
             throw e;
@@ -261,10 +208,18 @@ public final class ForeignAccess {
      * @throws UnknownIdentifierException if the <code>receiver</code> does not allow reading a
      *             property for the given <code>identifier</code>
      * @since 0.24
+     * @deprecated use {@link ObjectLibrary#readMember(Object, String)} or
+     *             {@link ArrayLibrary#readElement(Object, long)} instead. See
+     *             {@link InteropLibrary} for an overview of the new interop messages.
      */
+    @Deprecated
     public static Object sendRead(Node readNode, TruffleObject receiver, Object identifier) throws UnknownIdentifierException, UnsupportedMessageException {
         try {
-            return ((InteropAccessNode) readNode).execute(receiver, identifier);
+            if (LEGACY_TO_LIBRARY_BRIDGE) {
+                return ((LegacyToLibraryNode) readNode).sendRead(receiver, identifier);
+            } else {
+                return ((InteropAccessNode) readNode).execute(receiver, identifier);
+            }
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
             throw e;
@@ -295,11 +250,19 @@ public final class ForeignAccess {
      *             property for the given <code>identifier</code>
      * @throws UnsupportedTypeException if <code>value</code> has an unsupported type
      * @since 0.24
+     * @deprecated use {@link ObjectLibrary#writeMember(Object, String, Object)} or
+     *             {@link ArrayLibrary#writeElement(Object, long, Object)} instead.
      */
+    @Deprecated
     public static Object sendWrite(Node writeNode, TruffleObject receiver, Object identifier, Object value)
                     throws UnknownIdentifierException, UnsupportedTypeException, UnsupportedMessageException {
         try {
-            return ((InteropAccessNode) writeNode).execute(receiver, identifier, value);
+            if (LEGACY_TO_LIBRARY_BRIDGE) {
+                ((LegacyToLibraryNode) writeNode).sendWrite(receiver, identifier, value);
+                return value;
+            } else {
+                return ((InteropAccessNode) writeNode).execute(receiver, identifier, value);
+            }
         } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
             throw e;
@@ -326,11 +289,21 @@ public final class ForeignAccess {
      * @throws UnknownIdentifierException if the <code>receiver</code> does not allow removing a
      *             property for the given <code>identifier</code>
      * @since 0.32
+     * @deprecated use {@link ObjectLibrary#removeMember(Object, String)} or
+     *             {@link ArrayLibrary#removeElement(Object, long)} instead.
      */
+    @Deprecated
     public static boolean sendRemove(Node removeNode, TruffleObject receiver, Object identifier)
                     throws UnknownIdentifierException, UnsupportedMessageException {
         try {
-            return (boolean) ((InteropAccessNode) removeNode).execute(receiver, identifier);
+            if (LEGACY_TO_LIBRARY_BRIDGE) {
+                return ((LegacyToLibraryNode) removeNode).sendRemove(receiver, identifier);
+            } else {
+                return (boolean) ((InteropAccessNode) removeNode).execute(receiver, identifier);
+            }
+        } catch (UnsupportedTypeException e) {
+            // necessary for legacy support
+            throw UnsupportedMessageException.create();
         } catch (UnsupportedMessageException | UnknownIdentifierException e) {
             CompilerDirectives.transferToInterpreter();
             throw e;
@@ -353,10 +326,21 @@ public final class ForeignAccess {
      * @throws UnsupportedMessageException if the <code>receiver</code> does not support the
      *             {@link Message#createNode() message represented} by <code>unboxNode</code>
      * @since 0.24
+     * @deprecated use {@link StringLibrary#asString(Object)},
+     *             {@link BooleanLibrary#asBoolean(Object)}, {@link NumberLibrary#asByte(Object)},
+     *             {@link NumberLibrary#asShort(Object)}, {@link NumberLibrary#asInt(Object)},
+     *             {@link NumberLibrary#asLong(Object)}, {@link NumberLibrary#asFloat(Object)} or
+     *             {@link NumberLibrary#asDouble(Object)} instead. See {@link InteropLibrary} for an
+     *             overview of the new interop messages.
      */
+    @Deprecated
     public static Object sendUnbox(Node unboxNode, TruffleObject receiver) throws UnsupportedMessageException {
         try {
-            return ((InteropAccessNode) unboxNode).execute(receiver);
+            if (LEGACY_TO_LIBRARY_BRIDGE) {
+                return ((LegacyToLibraryNode) unboxNode).sendUnbox(receiver);
+            } else {
+                return ((InteropAccessNode) unboxNode).execute(receiver);
+            }
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
             throw e;
@@ -377,10 +361,17 @@ public final class ForeignAccess {
      * @throws ClassCastException if the createNode has not been created by
      *             {@link Message#createNode()} method.
      * @since 0.26
+     * @deprecated use {@link NativeLibrary#isPointer(Object)} instead. See {@link InteropLibrary}
+     *             for an overview of the new interop messages.
      */
+    @Deprecated
     public static boolean sendIsPointer(Node isPointerNode, TruffleObject receiver) {
         try {
-            return (boolean) ((InteropAccessNode) isPointerNode).executeOrFalse(receiver);
+            if (LEGACY_TO_LIBRARY_BRIDGE) {
+                return ((LegacyToLibraryNode) isPointerNode).sendIsPointer(receiver);
+            } else {
+                return (boolean) ((InteropAccessNode) isPointerNode).executeOrFalse(receiver);
+            }
         } catch (InteropException e) {
             CompilerDirectives.transferToInterpreter();
             throw new AssertionError("Unexpected exception caught.", e);
@@ -400,10 +391,17 @@ public final class ForeignAccess {
      * @throws UnsupportedMessageException if the <code>receiver</code> does not support the
      *             {@link Message#createNode() message represented} by <code>asPointerNode</code>
      * @since 0.26
+     * @deprecated use {@link NativeLibrary#asPointer(Object)} instead. See {@link InteropLibrary}
+     *             for an overview of the new interop messages.
      */
+    @Deprecated
     public static long sendAsPointer(Node asPointerNode, TruffleObject receiver) throws UnsupportedMessageException {
         try {
-            return (long) ((InteropAccessNode) asPointerNode).execute(receiver);
+            if (LEGACY_TO_LIBRARY_BRIDGE) {
+                return ((LegacyToLibraryNode) asPointerNode).sendAsPointer(receiver);
+            } else {
+                return (long) ((InteropAccessNode) asPointerNode).execute(receiver);
+            }
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
             throw e;
@@ -426,10 +424,17 @@ public final class ForeignAccess {
      * @throws UnsupportedMessageException if the <code>receiver</code> does not support the
      *             {@link Message#createNode() message represented} by <code>toNativeNode</code>
      * @since 0.26
+     * @deprecated use {@link NativeLibrary#toNative(Object)} instead. See {@link InteropLibrary}
+     *             for an overview of the new interop messages.
      */
+    @Deprecated
     public static Object sendToNative(Node toNativeNode, TruffleObject receiver) throws UnsupportedMessageException {
         try {
-            return ((InteropAccessNode) toNativeNode).execute(receiver);
+            if (LEGACY_TO_LIBRARY_BRIDGE) {
+                return ((LegacyToLibraryNode) toNativeNode).sendToNative(receiver);
+            } else {
+                return ((InteropAccessNode) toNativeNode).execute(receiver);
+            }
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
             throw e;
@@ -457,10 +462,17 @@ public final class ForeignAccess {
      * @throws UnsupportedMessageException if the <code>receiver</code> does not support the
      *             {@link Message#createNode() message represented} by <code>executeNode</code>
      * @since 0.24
+     * @deprecated use {@link ExecutableLibrary#execute(Object, Object...)} instead. See
+     *             {@link InteropLibrary} for an overview of the new interop messages.
      */
+    @Deprecated
     public static Object sendExecute(Node executeNode, TruffleObject receiver, Object... arguments) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
         try {
-            return ((InteropAccessNode) executeNode).execute(receiver, arguments);
+            if (LEGACY_TO_LIBRARY_BRIDGE) {
+                return ((LegacyToLibraryNode) executeNode).sendExecute(receiver, arguments);
+            } else {
+                return ((InteropAccessNode) executeNode).execute(receiver, arguments);
+            }
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
             throw e;
@@ -481,10 +493,17 @@ public final class ForeignAccess {
      * @throws ClassCastException if the createNode has not been created by
      *             {@link Message#createNode()} method.
      * @since 0.24
+     * @deprecated use {@link ExecutableLibrary#isExecutable(Object)} instead. See
+     *             {@link InteropLibrary} for an overview of the new interop messages.
      */
+    @Deprecated
     public static boolean sendIsExecutable(Node isExecutableNode, TruffleObject receiver) {
         try {
-            return (boolean) ((InteropAccessNode) isExecutableNode).executeOrFalse(receiver);
+            if (LEGACY_TO_LIBRARY_BRIDGE) {
+                return ((LegacyToLibraryNode) isExecutableNode).sendIsExecutable(receiver);
+            } else {
+                return (boolean) ((InteropAccessNode) isExecutableNode).executeOrFalse(receiver);
+            }
         } catch (InteropException e) {
             CompilerDirectives.transferToInterpreter();
             throw new AssertionError("Unexpected exception caught.", e);
@@ -502,10 +521,17 @@ public final class ForeignAccess {
      * @throws ClassCastException if the createNode has not been created by
      *             {@link Message#createNode()} method.
      * @since 0.30
+     * @deprecated use {@link InstantiableLibrary#isInstantiable(Object)} instead. See
+     *             {@link InteropLibrary} for an overview of the new interop messages.
      */
+    @Deprecated
     public static boolean sendIsInstantiable(Node isInstantiableNode, TruffleObject receiver) {
         try {
-            return (boolean) ((InteropAccessNode) isInstantiableNode).executeOrFalse(receiver);
+            if (LEGACY_TO_LIBRARY_BRIDGE) {
+                return ((LegacyToLibraryNode) isInstantiableNode).sendIsInstantiable(receiver);
+            } else {
+                return (boolean) ((InteropAccessNode) isInstantiableNode).executeOrFalse(receiver);
+            }
         } catch (InteropException e) {
             CompilerDirectives.transferToInterpreter();
             throw new AssertionError("Unexpected exception caught.", e);
@@ -532,11 +558,18 @@ public final class ForeignAccess {
      * @throws UnsupportedMessageException if the <code>receiver</code> does not support the
      *             {@link Message#createNode() message represented} by <code>invokeNode</code>
      * @since 0.24
+     * @deprecated use {@link ObjectLibrary#invokeMember(Object, String, Object...)} instead. See
+     *             {@link InteropLibrary} for an overview of the new interop messages.
      */
+    @Deprecated
     public static Object sendInvoke(Node invokeNode, TruffleObject receiver, String identifier, Object... arguments)
                     throws UnsupportedTypeException, ArityException, UnknownIdentifierException, UnsupportedMessageException {
         try {
-            return ((InteropAccessNode) invokeNode).execute(receiver, identifier, arguments);
+            if (LEGACY_TO_LIBRARY_BRIDGE) {
+                return ((LegacyToLibraryNode) invokeNode).sendInvoke(receiver, identifier, arguments);
+            } else {
+                return ((InteropAccessNode) invokeNode).execute(receiver, identifier, arguments);
+            }
         } catch (UnsupportedTypeException | ArityException | UnknownIdentifierException | UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
             throw e;
@@ -564,10 +597,17 @@ public final class ForeignAccess {
      * @throws UnsupportedMessageException if the <code>receiver</code> does not support the
      *             {@link Message#createNode() message represented} by <code>newNode</code>
      * @since 0.24
+     * @deprecated use {@link InstantiableLibrary#instantiate(Object, Object...)} instead. See
+     *             {@link InteropLibrary} for an overview of the new interop messages.
      */
+    @Deprecated
     public static Object sendNew(Node newNode, TruffleObject receiver, Object... arguments) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
         try {
-            return ((InteropAccessNode) newNode).execute(receiver, arguments);
+            if (LEGACY_TO_LIBRARY_BRIDGE) {
+                return ((LegacyToLibraryNode) newNode).sendNew(receiver, arguments);
+            } else {
+                return ((InteropAccessNode) newNode).execute(receiver, arguments);
+            }
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
             throw e;
@@ -588,10 +628,17 @@ public final class ForeignAccess {
      * @throws ClassCastException if the createNode has not been created by
      *             {@link Message#createNode()} method.
      * @since 0.24
+     * @deprecated use {@link ValueLibrary#isNull(Object)} instead. See {@link InteropLibrary} for
+     *             an overview of the new interop messages.
      */
+    @Deprecated
     public static boolean sendIsNull(Node isNullNode, TruffleObject receiver) {
         try {
-            return (boolean) ((InteropAccessNode) isNullNode).executeOrFalse(receiver);
+            if (LEGACY_TO_LIBRARY_BRIDGE) {
+                return ((LegacyToLibraryNode) isNullNode).sendIsNull(receiver);
+            } else {
+                return (boolean) ((InteropAccessNode) isNullNode).executeOrFalse(receiver);
+            }
         } catch (InteropException e) {
             CompilerDirectives.transferToInterpreter();
             throw new AssertionError("Unexpected exception caught.", e);
@@ -609,10 +656,17 @@ public final class ForeignAccess {
      * @throws ClassCastException if the createNode has not been created by
      *             {@link Message#createNode()} method.
      * @since 0.24
+     * @deprecated use {@link ArrayLibrary#isArray(Object)} instead. See {@link InteropLibrary} for
+     *             an overview of the new interop messages.
      */
+    @Deprecated
     public static boolean sendHasSize(Node hasSizeNode, TruffleObject receiver) {
         try {
-            return (boolean) ((InteropAccessNode) hasSizeNode).executeOrFalse(receiver);
+            if (LEGACY_TO_LIBRARY_BRIDGE) {
+                return ((LegacyToLibraryNode) hasSizeNode).sendHasSize(receiver);
+            } else {
+                return (boolean) ((InteropAccessNode) hasSizeNode).executeOrFalse(receiver);
+            }
         } catch (InteropException e) {
             CompilerDirectives.transferToInterpreter();
             throw new AssertionError("Unexpected exception caught.", e);
@@ -632,10 +686,17 @@ public final class ForeignAccess {
      * @throws UnsupportedMessageException if the <code>receiver</code> does not support the
      *             {@link Message#createNode() message represented} by <code>getSizeNode</code>
      * @since 0.24
+     * @deprecated use {@link ArrayLibrary#getArraySize(Object)} instead. See {@link InteropLibrary}
+     *             for an overview of the new interop messages.
      */
+    @Deprecated
     public static Object sendGetSize(Node getSizeNode, TruffleObject receiver) throws UnsupportedMessageException {
         try {
-            return ((InteropAccessNode) getSizeNode).execute(receiver);
+            if (LEGACY_TO_LIBRARY_BRIDGE) {
+                return ((LegacyToLibraryNode) getSizeNode).sendGetSize(receiver);
+            } else {
+                return ((InteropAccessNode) getSizeNode).execute(receiver);
+            }
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
             throw e;
@@ -656,10 +717,19 @@ public final class ForeignAccess {
      * @throws ClassCastException if the createNode has not been created by
      *             {@link Message#createNode()} method.
      * @since 0.24
+     * @deprecated use {@link StringLibrary#isString(Object)},
+     *             {@link BooleanLibrary#isBoolean(Object)} or
+     *             {@link NumberLibrary#isNumber(Object)} instead. See {@link InteropLibrary} for an
+     *             overview of the new interop messages.
      */
+    @Deprecated
     public static boolean sendIsBoxed(Node isBoxedNode, TruffleObject receiver) {
         try {
-            return (boolean) ((InteropAccessNode) isBoxedNode).executeOrFalse(receiver);
+            if (LEGACY_TO_LIBRARY_BRIDGE) {
+                return ((LegacyToLibraryNode) isBoxedNode).sendIsBoxed(receiver);
+            } else {
+                return (boolean) ((InteropAccessNode) isBoxedNode).executeOrFalse(receiver);
+            }
         } catch (InteropException e) {
             CompilerDirectives.transferToInterpreter();
             throw new AssertionError("Unexpected exception caught.", e);
@@ -679,10 +749,27 @@ public final class ForeignAccess {
      * @throws ClassCastException if the createNode has not been created by
      *             {@link Message#createNode()} method.
      * @since 0.26
+     * @deprecated for {@link ObjectLibrary#isObject(Object) objects} use
+     *             {@link ObjectLibrary#isMemberReadable(Object, String)},
+     *             {@link ObjectLibrary#isMemberWritable(Object, String)},
+     *             {@link ObjectLibrary#isMemberInsertable(Object, String)},
+     *             {@link ObjectLibrary#isMemberRemovable(Object, String)} or
+     *             {@link ObjectLibrary#isMemberInternal(Object, String)} instead. For
+     *             {@link ArrayLibrary#isArray(Object) arras} use
+     *             {@link ArrayLibrary#isElementReadable(Object, long)},
+     *             {@link ArrayLibrary#isElementWritable(Object, long)},
+     *             {@link ArrayLibrary#isElementInsertable(Object, long)} instead. See
+     *             {@link InteropLibrary} for an overview of the new interop messages.
      */
+    @Deprecated
+    @SuppressWarnings("deprecation")
     public static int sendKeyInfo(Node keyInfoNode, TruffleObject receiver, Object identifier) {
         try {
-            return (Integer) send(keyInfoNode, receiver, identifier);
+            if (LEGACY_TO_LIBRARY_BRIDGE) {
+                return ((LegacyToLibraryNode) keyInfoNode).sendKeyInfo(receiver, identifier);
+            } else {
+                return (Integer) send(keyInfoNode, receiver, identifier);
+            }
         } catch (UnsupportedMessageException ex) {
             CompilerDirectives.transferToInterpreter();
             try {
@@ -694,7 +781,7 @@ public final class ForeignAccess {
                     Object key = sendRead(readNode, keys, i);
                     // identifier must not be null
                     if (identifier.equals(key)) {
-                        return 0b111;
+                        return KeyInfo.READABLE | KeyInfo.MODIFIABLE;
                     }
                 }
             } catch (UnsupportedMessageException | UnknownIdentifierException uex) {
@@ -710,7 +797,7 @@ public final class ForeignAccess {
                     Number sizeNumber = (Number) sendGetSize(Message.GET_SIZE.createNode(), receiver);
                     int size = sizeNumber.intValue();
                     if (id < size) {
-                        return 0b111;
+                        return KeyInfo.READABLE | KeyInfo.MODIFIABLE;
                     }
                 }
             } catch (UnsupportedMessageException uex) {
@@ -734,10 +821,18 @@ public final class ForeignAccess {
      * @throws ClassCastException if the createNode has not been created by
      *             {@link Message#createNode()} method.
      * @since 0.30
+     * @deprecated use {@link ObjectLibrary#isObject(Object)} instead. See {@link InteropLibrary}
+     *             for an overview of the new interop messages.
      */
+    @Deprecated
+    @SuppressWarnings("deprecation")
     public static boolean sendHasKeys(Node hasKeysNode, TruffleObject receiver) {
         try {
-            return (boolean) ((InteropAccessNode) hasKeysNode).execute(receiver);
+            if (LEGACY_TO_LIBRARY_BRIDGE) {
+                return ((LegacyToLibraryNode) hasKeysNode).sendHasKeys(receiver);
+            } else {
+                return (boolean) ((InteropAccessNode) hasKeysNode).execute(receiver);
+            }
         } catch (UnsupportedMessageException ex) {
             CompilerDirectives.transferToInterpreter();
             try {
@@ -765,10 +860,17 @@ public final class ForeignAccess {
      * @throws ClassCastException if the createNode has not been created by
      *             {@link Message#createNode()} method.
      * @since 0.24
+     * @deprecated use {@link ObjectLibrary#getMembers(Object)} instead. See {@link InteropLibrary}
+     *             for an overview of the new interop messages.
      */
+    @Deprecated
     public static TruffleObject sendKeys(Node keysNode, TruffleObject receiver) throws UnsupportedMessageException {
         try {
-            return (TruffleObject) send(keysNode, receiver);
+            if (LEGACY_TO_LIBRARY_BRIDGE) {
+                return ((LegacyToLibraryNode) keysNode).sendKeys(receiver);
+            } else {
+                return (TruffleObject) send(keysNode, receiver);
+            }
         } catch (UnsupportedMessageException ex) {
             CompilerDirectives.transferToInterpreter();
             throw ex;
@@ -794,10 +896,17 @@ public final class ForeignAccess {
      * @throws ClassCastException if the createNode has not been created by
      *             {@link Message#createNode()} method.
      * @since 0.26
+     * @deprecated use {@link ObjectLibrary#getMembers(Object, boolean)} instead. See
+     *             {@link InteropLibrary} for an overview of the new interop messages.
      */
+    @Deprecated
     public static TruffleObject sendKeys(Node keysNode, TruffleObject receiver, boolean includeInternal) throws UnsupportedMessageException {
         try {
-            return (TruffleObject) send(keysNode, receiver, includeInternal);
+            if (LEGACY_TO_LIBRARY_BRIDGE) {
+                return ((LegacyToLibraryNode) keysNode).sendKeys(receiver, includeInternal);
+            } else {
+                return (TruffleObject) send(keysNode, receiver, includeInternal);
+            }
         } catch (UnsupportedMessageException ex) {
             CompilerDirectives.transferToInterpreter();
             throw ex;
@@ -814,10 +923,13 @@ public final class ForeignAccess {
      *            {@link #send(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object...) }
      * @return read-only list of parameters passed to the frame
      * @since 0.11
+     * @deprecated without replacement. There is no longer any frame involved for interop calls.
      */
+    @SuppressWarnings("deprecation")
+    @Deprecated
     public static List<Object> getArguments(Frame frame) {
         final Object[] arr = frame.getArguments();
-        return ReadOnlyArrayList.asList(arr, 1, arr.length);
+        return com.oracle.truffle.api.interop.impl.ReadOnlyArrayList.asList(arr, 1, arr.length);
     }
 
     /**
@@ -827,7 +939,9 @@ public final class ForeignAccess {
      *            {@link #send(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object...) }
      * @return the receiver used when invoking the frame
      * @since 0.8 or earlier
+     * @deprecated without replacement. There is no longer any frame involved for interop calls.
      */
+    @Deprecated
     public static TruffleObject getReceiver(Frame frame) {
         return (TruffleObject) frame.getArguments()[InteropAccessNode.ARG0_RECEIVER];
     }
@@ -838,14 +952,13 @@ public final class ForeignAccess {
         Object f;
         if (factory instanceof DelegatingFactory) {
             f = ((DelegatingFactory) factory).factory;
-        } else if (factory instanceof DelegatingFactory26) {
-            f = ((DelegatingFactory26) factory).factory;
         } else {
             f = factory;
         }
         return "ForeignAccess[" + f.getClass().getName() + "]";
     }
 
+    @SuppressWarnings("deprecation")
     CallTarget access(Message message) {
         return factory.accessMessage(message);
     }
@@ -873,7 +986,9 @@ public final class ForeignAccess {
      * set of standard messages each language should implement.
      *
      * @since 0.8 or earlier
+     * @deprecated use {@link ExportLibrary} instead to export message implementations.
      */
+    @Deprecated
     public interface Factory {
 
         /**
@@ -903,7 +1018,9 @@ public final class ForeignAccess {
      * implementations return <code>null</code>.
      *
      * @since 0.30
+     * @deprecated use {@link ExportLibrary} instead to export message implementations.
      */
+    @Deprecated
     public interface StandardFactory {
         /**
          * Handles {@link Message#IS_NULL} message.
@@ -1312,6 +1429,7 @@ public final class ForeignAccess {
         CallTarget accessMessage(Message unknown);
     }
 
+    @SuppressWarnings("deprecation")
     private static class DelegatingFactory implements Factory {
         private final Class<?> baseClass;
         private final StandardFactory factory;
@@ -1365,69 +1483,6 @@ public final class ForeignAccess {
                         return factory.accessWrite();
                     case Remove.HASH:
                         return factory.accessRemove();
-                    case Keys.HASH:
-                        return factory.accessKeys();
-                    case KeyInfoMsg.HASH:
-                        return factory.accessKeyInfo();
-                    case IsPointer.HASH:
-                        return factory.accessIsPointer();
-                    case AsPointer.HASH:
-                        return factory.accessAsPointer();
-                    case ToNative.HASH:
-                        return factory.accessToNative();
-                }
-            }
-            return factory.accessMessage(msg);
-        }
-    }
-
-    private static class DelegatingFactory26 implements Factory {
-        private final Class<?> baseClass;
-        private final Factory26 factory;
-
-        DelegatingFactory26(Class<?> baseClass, Factory26 factory) {
-            this.baseClass = baseClass;
-            this.factory = factory;
-        }
-
-        @Override
-        public boolean canHandle(TruffleObject obj) {
-            if (baseClass == null) {
-                return ((Factory) factory).canHandle(obj);
-            }
-            return baseClass.isInstance(obj);
-        }
-
-        @Override
-        public CallTarget accessMessage(Message msg) {
-            return accessMessage(factory, msg);
-        }
-
-        private static CallTarget accessMessage(Factory26 factory, Message msg) {
-            if (msg instanceof KnownMessage) {
-                switch (msg.hashCode()) {
-                    case Execute.HASH:
-                        return factory.accessExecute(0);
-                    case Invoke.HASH:
-                        return factory.accessInvoke(0);
-                    case New.HASH:
-                        return factory.accessNew(0);
-                    case GetSize.HASH:
-                        return factory.accessGetSize();
-                    case HasSize.HASH:
-                        return factory.accessHasSize();
-                    case IsBoxed.HASH:
-                        return factory.accessIsBoxed();
-                    case IsExecutable.HASH:
-                        return factory.accessIsExecutable();
-                    case IsNull.HASH:
-                        return factory.accessIsNull();
-                    case Read.HASH:
-                        return factory.accessRead();
-                    case Unbox.HASH:
-                        return factory.accessUnbox();
-                    case Write.HASH:
-                        return factory.accessWrite();
                     case Keys.HASH:
                         return factory.accessKeys();
                     case KeyInfoMsg.HASH:

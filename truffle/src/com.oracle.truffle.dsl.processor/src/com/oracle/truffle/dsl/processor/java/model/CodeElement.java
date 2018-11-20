@@ -56,6 +56,7 @@ import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.Modifier;
+import javax.lang.model.element.TypeElement;
 
 import com.oracle.truffle.dsl.processor.java.transform.AbstractCodeWriter;
 
@@ -92,6 +93,12 @@ public abstract class CodeElement<E extends Element> implements Element, Generat
     @Override
     public Element getGeneratorElement() {
         return generatorElement;
+    }
+
+    public <T extends E> void addAll(Collection<? extends T> elements) {
+        for (T t : elements) {
+            add(t);
+        }
     }
 
     public <T extends E> T add(T element) {
@@ -173,12 +180,12 @@ public abstract class CodeElement<E extends Element> implements Element, Generat
         return enclosingElement;
     }
 
-    public CodeTypeElement getEnclosingClass() {
+    public TypeElement getEnclosingClass() {
         Element p = enclosingElement;
-        while (p != null && p.getKind() != ElementKind.CLASS && p.getKind() != ElementKind.ENUM) {
+        while (p != null && p.getKind() != ElementKind.CLASS && p.getKind() != ElementKind.INTERFACE && p.getKind() != ElementKind.ENUM) {
             p = p.getEnclosingElement();
         }
-        return (CodeTypeElement) p;
+        return (TypeElement) p;
     }
 
     <T> List<T> parentableList(Element parent, List<T> list) {

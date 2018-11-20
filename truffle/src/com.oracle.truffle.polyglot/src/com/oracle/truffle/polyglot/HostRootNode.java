@@ -49,7 +49,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.polyglot.PolyglotLanguage.ContextProfile;
 
-abstract class HostRootNode<T> extends RootNode {
+abstract class HostRootNode extends RootNode {
 
     // offset used to indicate where the argument start.
     // first two arguments are language context and receiver.
@@ -64,7 +64,7 @@ abstract class HostRootNode<T> extends RootNode {
         super(null);
     }
 
-    protected abstract Class<? extends T> getReceiverType();
+    protected abstract Class<?> getReceiverType();
 
     @Override
     public final Object execute(VirtualFrame frame) {
@@ -89,7 +89,7 @@ abstract class HostRootNode<T> extends RootNode {
         }
         try {
             Object[] arguments = frame.getArguments();
-            T receiver = getReceiverType().cast(arguments[1]);
+            Object receiver = getReceiverType().cast(arguments[1]);
             Object result;
             result = executeImpl(languageContext, receiver, arguments);
             assert !(result instanceof TruffleObject);
@@ -113,9 +113,9 @@ abstract class HostRootNode<T> extends RootNode {
         return profile.profile(languageContext);
     }
 
-    protected abstract Object executeImpl(PolyglotLanguageContext languageContext, T receiver, Object[] args);
+    protected abstract Object executeImpl(PolyglotLanguageContext languageContext, Object receiver, Object[] args);
 
-    protected static CallTarget createTarget(HostRootNode<?> node) {
+    protected static CallTarget createTarget(HostRootNode node) {
         return Truffle.getRuntime().createCallTarget(node);
     }
 

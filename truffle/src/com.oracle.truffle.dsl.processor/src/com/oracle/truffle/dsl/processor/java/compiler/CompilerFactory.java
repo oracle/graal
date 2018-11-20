@@ -46,9 +46,15 @@ public class CompilerFactory {
 
     private static Compiler javac;
     private static Compiler jdt;
+    private static Compiler generated;
 
     public static Compiler getCompiler(Element currentElement) {
-        if (JavaCCompiler.isValidElement(currentElement)) {
+        if (GeneratedCompiler.isValidElement(currentElement)) {
+            if (generated == null) {
+                generated = new GeneratedCompiler();
+            }
+            return generated;
+        } else if (JavaCCompiler.isValidElement(currentElement)) {
             if (javac == null) {
                 javac = new JavaCCompiler();
             }

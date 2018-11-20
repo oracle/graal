@@ -122,6 +122,11 @@ public class ProcessorContext {
         return ElementUtils.getType(environment, element);
     }
 
+    public TypeElement getTypeElement(Class<?> element) {
+        DeclaredType type = getDeclaredType(element);
+        return (TypeElement) type.asElement();
+    }
+
     public interface ProcessCallback {
 
         void callback(TypeElement template);
@@ -171,5 +176,17 @@ public class ProcessorContext {
 
     public List<TypeMirror> getFrameTypes() {
         return Arrays.asList(getType(VirtualFrame.class), getType(MaterializedFrame.class), getType(Frame.class));
+    }
+
+    private final Map<Class<?>, Map<?, ?>> caches = new HashMap<>();
+
+    @SuppressWarnings("unchecked")
+    public <K, V> Map<K, V> getCacheMap(Class<?> key) {
+        Map<?, ?> cacheMap = caches.get(key);
+        if (cacheMap == null) {
+            cacheMap = new HashMap<>();
+            caches.put(key, cacheMap);
+        }
+        return (Map<K, V>) cacheMap;
     }
 }

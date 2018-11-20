@@ -50,35 +50,41 @@ import java.util.Set;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
-import javax.lang.model.element.TypeElement;
 import javax.tools.Diagnostic.Kind;
 
+import com.oracle.truffle.dsl.processor.ExpectError;
 import com.oracle.truffle.dsl.processor.Log;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.java.model.GeneratedElement;
+import com.oracle.truffle.dsl.processor.library.ExportMessageElement;
 
 public abstract class MessageContainer implements Iterable<MessageContainer> {
 
     private final List<Message> messages = new ArrayList<>();
 
     public final void addWarning(String text, Object... params) {
-        getMessages().add(new Message(null, null, this, String.format(text, params), Kind.WARNING));
+        getMessages().add(new Message(null, null, null, this, String.format(text, params), Kind.WARNING));
     }
 
     public final void addWarning(AnnotationValue value, String text, Object... params) {
-        getMessages().add(new Message(null, value, this, String.format(text, params), Kind.WARNING));
+        getMessages().add(new Message(null, value, null, this, String.format(text, params), Kind.WARNING));
     }
 
     public final void addError(String text, Object... params) {
-        addError(null, text, params);
+        addError((AnnotationValue) null, text, params);
+    }
+
+    public final void addError(Element enclosedElement, String text, Object... params) {
+        getMessages().add(new Message(null, null, enclosedElement, this, String.format(text, params), Kind.ERROR));
     }
 
     public final void addError(AnnotationValue value, String text, Object... params) {
-        getMessages().add(new Message(null, value, this, String.format(text, params), Kind.ERROR));
+        getMessages().add(new Message(null, value, null, this, String.format(text, params), Kind.ERROR));
     }
 
     public final void addError(AnnotationMirror mirror, AnnotationValue value, String text, Object... params) {
-        getMessages().add(new Message(mirror, value, this, String.format(text, params), Kind.ERROR));
+        getMessages().add(new Message(mirror, value, null, this, String.format(text, params), Kind.ERROR));
     }
 
     protected List<MessageContainer> findChildContainers() {
@@ -95,6 +101,21 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
         return findChildContainers().iterator();
     }
 
+    public final void redirectMessagesOnGeneratedElements(ExportMessageElement to) {
+        if (!getMessages().isEmpty()) {
+            Element messageElement = getMessageElement();
+            if (messageElement == null || messageElement instanceof GeneratedElement || messageElement.getEnclosingElement() instanceof GeneratedElement) {
+                for (Message message : getMessages()) {
+                    to.getMessages().add(message.redirect(to.getMessageElement()));
+                }
+                getMessages().clear();
+            }
+        }
+        for (MessageContainer container : findChildContainers()) {
+            container.redirectMessagesOnGeneratedElements(to);
+        }
+    }
+
     public final void emitMessages(ProcessorContext context, Log log) {
         emitMessagesImpl(context, log, new HashSet<MessageContainer>(), null);
     }
@@ -106,6 +127,7 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
         } else {
             childMessages = verifiedMessages;
         }
+
         verifyExpectedMessages(context, log, childMessages);
 
         for (int i = getMessages().size() - 1; i >= 0; i--) {
@@ -143,20 +165,12 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
     }
 
     private void verifyExpectedMessages(ProcessorContext context, Log log, List<Message> msgs) {
-        TypeElement expectError = context.getTruffleTypes().getExpectError();
-        if (expectError != null) {
-            Element element = getMessageElement();
-            if (element != null) {
-                AnnotationMirror mirror = ElementUtils.findAnnotationMirror(element.getAnnotationMirrors(), expectError.asType());
-                if (mirror != null) {
-                    List<String> values = ElementUtils.getAnnotationValueList(String.class, mirror, "value");
-                    if (values == null) {
-                        values = Collections.emptyList();
-                    }
-                    if (values.size() != msgs.size()) {
-                        log.message(Kind.ERROR, element, mirror, ElementUtils.getAnnotationValue(mirror, "value"), String.format("Error count expected %s but was %s.", values.size(), msgs.size()));
-                    }
-                }
+        Element element = getMessageElement();
+        List<String> expectedErrors = ExpectError.getExpectedErrors(context.getEnvironment(), element);
+        if (expectedErrors.size() > 0) {
+            if (expectedErrors.size() != msgs.size()) {
+                log.message(Kind.ERROR, element, null, null, "Error count expected %s but was %s. Expected errors %s but got %s.", expectedErrors.size(), msgs.size(), expectedErrors.toString(),
+                                msgs.toString());
             }
         }
     }
@@ -174,33 +188,25 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
             messageAnnotation = message.getAnnotationMirror();
         }
 
-        String text = message.getText();
-
-        TypeElement expectError = context.getTruffleTypes().getExpectError();
-        if (expectError != null) {
-            AnnotationMirror mirror = ElementUtils.findAnnotationMirror(messageElement.getAnnotationMirrors(), expectError.asType());
-            if (mirror != null) {
-                List<String> expectedTexts = ElementUtils.getAnnotationValueList(String.class, mirror, "value");
-                boolean found = false;
-                for (String expectedText : expectedTexts) {
-                    if (expectedText.endsWith("%") && text.startsWith(expectedText.substring(0, expectedText.length() - 1))) {
-                        found = true;
-                        break;
-                    } else if (text.equals(expectedText)) {
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found) {
-                    log.message(kind, messageElement, mirror, ElementUtils.getAnnotationValue(mirror, "value"), "Message expected one of '%s' but was '%s'.", expectedTexts, text);
-                } else {
-                    return;
-                }
-
-            }
+        Element enclosedElement = message.getEnclosedElement();
+        if (messageElement instanceof GeneratedElement) {
+            throw new AssertionError("Tried to emit message to generated element: " + messageElement + ". Make sure messages are redirected correctly. Message: " + message.getText());
         }
 
-        log.message(kind, messageElement, messageAnnotation, messageValue, text);
+        String text = message.getText();
+        List<String> expectedErrors = ExpectError.getExpectedErrors(context.getEnvironment(), messageElement);
+        if (!expectedErrors.isEmpty()) {
+            if (ExpectError.isExpectedError(context.getEnvironment(), messageElement, text)) {
+                return;
+            }
+            log.message(kind, messageElement, null, null, "Message expected one of '%s' but was '%s'.", expectedErrors, text);
+        } else {
+            if (enclosedElement == null) {
+                log.message(kind, messageElement, messageAnnotation, messageValue, text);
+            } else {
+                log.message(kind, enclosedElement, null, null, text);
+            }
+        }
     }
 
     public AnnotationMirror getMessageAnnotation() {
@@ -260,17 +266,28 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
     public static final class Message {
 
         private final MessageContainer originalContainer;
+        private Element enclosedElement;
+
         private final AnnotationMirror annotationMirror;
         private final AnnotationValue annotationValue;
         private final String text;
         private final Kind kind;
 
-        public Message(AnnotationMirror annotationMirror, AnnotationValue annotationValue, MessageContainer originalContainer, String text, Kind kind) {
+        public Message(AnnotationMirror annotationMirror, AnnotationValue annotationValue, Element enclosedElement, MessageContainer originalContainer, String text, Kind kind) {
             this.annotationMirror = annotationMirror;
             this.annotationValue = annotationValue;
+            this.enclosedElement = enclosedElement;
             this.originalContainer = originalContainer;
             this.text = text;
             this.kind = kind;
+        }
+
+        public Message redirect(Element element) {
+            return new Message(null, null, element, originalContainer, text, kind);
+        }
+
+        public Element getEnclosedElement() {
+            return enclosedElement;
         }
 
         public AnnotationMirror getAnnotationMirror() {

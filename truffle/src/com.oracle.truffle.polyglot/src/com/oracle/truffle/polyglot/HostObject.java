@@ -70,7 +70,6 @@ import com.oracle.truffle.polyglot.HostObjectMRFactory.LookupFieldNodeGen;
 import com.oracle.truffle.polyglot.HostObjectMRFactory.LookupFunctionalMethodNodeGen;
 import com.oracle.truffle.polyglot.HostObjectMRFactory.LookupInnerClassNodeGen;
 import com.oracle.truffle.polyglot.HostObjectMRFactory.LookupMethodNodeGen;
-import com.oracle.truffle.polyglot.HostObjectMRFactory.MapRemoveNodeGen;
 import com.oracle.truffle.polyglot.HostObjectMRFactory.ReadFieldNodeGen;
 import com.oracle.truffle.polyglot.HostObjectMRFactory.WriteFieldNodeGen;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValueNode;
@@ -821,39 +820,9 @@ class HostObjectMR {
         }
     }
 
-    abstract static class MapRemoveNode extends Node {
-
-        protected abstract Object executeWithTarget(HostObject receiver, String name);
-
-        @SuppressWarnings("unchecked")
-        @TruffleBoundary
-        @Specialization(guards = {"isMap(receiver)"})
-        protected Object doMapGeneric(HostObject receiver, String name) {
-            Map<String, Object> map = (Map<String, Object>) receiver.obj;
-            if (!map.containsKey(name)) {
-                throw UnknownIdentifierException.raise(name);
-            }
-            map.remove(name);
-            return true;
-        }
-
-        @SuppressWarnings("unused")
-        @TruffleBoundary
-        @Specialization(guards = {"!isMap(receiver)"})
-        protected static Object notMap(HostObject receiver, String name) {
-            throw UnsupportedMessageException.raise(Message.REMOVE);
-        }
-
-        static boolean isMap(HostObject receiver) {
-            return receiver.obj instanceof Map;
-        }
-
-    }
-
     @Resolve(message = "REMOVE")
     abstract static class RemoveNode extends Node {
         @Child private ArrayRemoveNode arrayRemove;
-        @Child private MapRemoveNode mapRemove;
 
         public Object access(HostObject receiver, Number index) {
             if (arrayRemove == null) {
@@ -863,13 +832,6 @@ class HostObjectMR {
             return arrayRemove.executeWithTarget(receiver, index);
         }
 
-        public Object access(HostObject receiver, String name) {
-            if (mapRemove == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                mapRemove = insert(MapRemoveNodeGen.create());
-            }
-            return mapRemove.executeWithTarget(receiver, name);
-        }
     }
 
     abstract static class ArrayRemoveNode extends Node {

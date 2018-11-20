@@ -687,7 +687,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             return languageContext.asValue(value);
         }
 
-        static ToHostValueNode create(PolyglotImpl polyglot) {
+        public static ToHostValueNode create(PolyglotImpl polyglot) {
             return new ToHostValueNode(polyglot);
         }
     }

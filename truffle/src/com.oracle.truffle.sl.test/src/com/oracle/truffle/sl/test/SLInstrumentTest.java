@@ -889,6 +889,24 @@ public class SLInstrumentTest {
                     }
                 }
 
+                @Resolve(message = "HAS_KEYS")
+                abstract static class HasKeysNode extends Node {
+
+                    @SuppressWarnings("unused")
+                    public Object access(ReplacedTruffleObject ato) {
+                        return true;
+                    }
+                }
+
+                @Resolve(message = "KEY_INFO")
+                abstract static class KeyInfoNode extends Node {
+
+                    @SuppressWarnings("unused")
+                    public Object access(ReplacedTruffleObject ato, String id) {
+                        return KeyInfo.READABLE;
+                    }
+                }
+
                 @Resolve(message = "READ")
                 abstract static class ReplacedReadNode extends Node {
 

@@ -90,6 +90,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.ReflectionUtils;
 import com.oracle.truffle.api.test.polyglot.LanguageSPIHostInteropTest;
+import com.oracle.truffle.api.test.polyglot.ProxyInteropObject;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.api.test.polyglot.ValueHostInteropTest;
 
@@ -700,16 +701,17 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
 
         TruffleObject nkio = new NoKeyInfoObject();
         keyInfo = getKeyInfo(nkio, "p1");
-        assertEquals(0b111, keyInfo);
+        assertEquals(0b110, keyInfo);
         keyInfo = getKeyInfo(nkio, "p6");
-        assertEquals(0b111, keyInfo);
+        assertEquals(0b110, keyInfo);
         keyInfo = getKeyInfo(nkio, "p7");
         assertEquals(0, keyInfo);
     }
 
     @Test
     public void keyInfo() {
-        TruffleObject ipobj = new InternalPropertiesObject(-1, -1, -1, -1, 0, 0);
+        InternalPropertiesObject ipobj = new InternalPropertiesObject();
+        ipobj.keyInfo = KeyInfo.READABLE | KeyInfo.MODIFIABLE | KeyInfo.READ_SIDE_EFFECTS | KeyInfo.WRITE_SIDE_EFFECTS;
         int keyInfo = getKeyInfo(ipobj, "p1");
         assertTrue(KeyInfo.isReadable(keyInfo));
         assertTrue(KeyInfo.isWritable(keyInfo));
@@ -717,14 +719,16 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
         assertTrue(KeyInfo.hasWriteSideEffects(keyInfo));
         assertFalse(KeyInfo.isInvocable(keyInfo));
         assertFalse(KeyInfo.isInternal(keyInfo));
-        keyInfo = getKeyInfo(ipobj, "p6");
+        ipobj.keyInfo = KeyInfo.READABLE | KeyInfo.MODIFIABLE | KeyInfo.READ_SIDE_EFFECTS | KeyInfo.WRITE_SIDE_EFFECTS;
+        keyInfo = getKeyInfo(ipobj, "p1");
         assertTrue(KeyInfo.isReadable(keyInfo));
         assertTrue(KeyInfo.isWritable(keyInfo));
         assertTrue(KeyInfo.hasReadSideEffects(keyInfo));
         assertTrue(KeyInfo.hasWriteSideEffects(keyInfo));
         assertFalse(KeyInfo.isInvocable(keyInfo));
         assertFalse(KeyInfo.isInternal(keyInfo));
-        keyInfo = getKeyInfo(ipobj, "p7");
+        ipobj.keyInfo = KeyInfo.NONE;
+        keyInfo = getKeyInfo(ipobj, "p1");
         assertEquals(0, keyInfo);
         assertFalse(KeyInfo.isReadable(keyInfo));
         assertFalse(KeyInfo.isWritable(keyInfo));
@@ -733,44 +737,58 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
         assertFalse(KeyInfo.isInvocable(keyInfo));
         assertFalse(KeyInfo.isInternal(keyInfo));
 
-        ipobj = new InternalPropertiesObject(0b0100010, 0b0100100, 0b0110000, 0b0100010, 0b0011000, 0);
+        ipobj = new InternalPropertiesObject();
+
+        ipobj.keyInfo = KeyInfo.READABLE | KeyInfo.READ_SIDE_EFFECTS;
         keyInfo = getKeyInfo(ipobj, "p1");
         assertTrue(KeyInfo.isReadable(keyInfo));
         assertFalse(KeyInfo.isWritable(keyInfo));
-        assertFalse(KeyInfo.hasReadSideEffects(keyInfo));
-        assertTrue(KeyInfo.hasWriteSideEffects(keyInfo));
+        assertTrue(KeyInfo.hasReadSideEffects(keyInfo));
+        assertFalse(KeyInfo.hasWriteSideEffects(keyInfo));
         assertFalse(KeyInfo.isInvocable(keyInfo));
-        keyInfo = getKeyInfo(ipobj, "p2");
+
+        ipobj.keyInfo = KeyInfo.MODIFIABLE;
+        keyInfo = getKeyInfo(ipobj, "p1");
         assertFalse(KeyInfo.isReadable(keyInfo));
         assertTrue(KeyInfo.isWritable(keyInfo));
         assertFalse(KeyInfo.hasReadSideEffects(keyInfo));
         assertFalse(KeyInfo.hasWriteSideEffects(keyInfo));
         assertFalse(KeyInfo.isInvocable(keyInfo));
-        keyInfo = getKeyInfo(ipobj, "p3");
+
+        ipobj.keyInfo = KeyInfo.INVOCABLE;
+        keyInfo = getKeyInfo(ipobj, "p1");
         assertFalse(KeyInfo.isReadable(keyInfo));
         assertFalse(KeyInfo.isWritable(keyInfo));
         assertFalse(KeyInfo.hasReadSideEffects(keyInfo));
         assertFalse(KeyInfo.hasWriteSideEffects(keyInfo));
         assertTrue(KeyInfo.isInvocable(keyInfo));
-        keyInfo = getKeyInfo(ipobj, "p4");
-        assertFalse(KeyInfo.isReadable(keyInfo));
+
+        ipobj.keyInfo = KeyInfo.READABLE | KeyInfo.READ_SIDE_EFFECTS | KeyInfo.INVOCABLE;
+        keyInfo = getKeyInfo(ipobj, "p1");
+        assertTrue(KeyInfo.isReadable(keyInfo));
         assertFalse(KeyInfo.isWritable(keyInfo));
         assertTrue(KeyInfo.hasReadSideEffects(keyInfo));
         assertFalse(KeyInfo.hasWriteSideEffects(keyInfo));
         assertTrue(KeyInfo.isInvocable(keyInfo));
-        keyInfo = getKeyInfo(ipobj, "p5");
+
+        ipobj.keyInfo = KeyInfo.READABLE | KeyInfo.READ_SIDE_EFFECTS | KeyInfo.MODIFIABLE | KeyInfo.WRITE_SIDE_EFFECTS;
+        keyInfo = getKeyInfo(ipobj, "p1");
         assertTrue(KeyInfo.isReadable(keyInfo));
         assertTrue(KeyInfo.isWritable(keyInfo));
         assertTrue(KeyInfo.hasReadSideEffects(keyInfo));
         assertTrue(KeyInfo.hasWriteSideEffects(keyInfo));
         assertFalse(KeyInfo.isInvocable(keyInfo));
-        keyInfo = getKeyInfo(ipobj, "p6");
+
+        ipobj.keyInfo = 0;
+        keyInfo = getKeyInfo(ipobj, "p1");
         assertFalse(KeyInfo.isReadable(keyInfo));
         assertFalse(KeyInfo.isWritable(keyInfo));
         assertFalse(KeyInfo.hasReadSideEffects(keyInfo));
         assertFalse(KeyInfo.hasWriteSideEffects(keyInfo));
         assertFalse(KeyInfo.isInvocable(keyInfo));
-        keyInfo = getKeyInfo(ipobj, "p7");
+
+        ipobj.keyInfo = 0;
+        keyInfo = getKeyInfo(ipobj, "p1");
         assertEquals(0, keyInfo);
 
         TruffleObject aobj = new ArrayTruffleObject(100);
@@ -923,6 +941,7 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testRemoveMessage() {
         data.arr = new String[]{"Hello", "World", "!"};
@@ -946,20 +965,6 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
         } catch (Exception e) {
             assertTrue(e.toString(), e instanceof UnsupportedMessageException);
             assertEquals(Message.REMOVE, ((UnsupportedMessageException) e).getUnsupportedMessage());
-        }
-
-        Map<String, String> map = new HashMap<>();
-        map.put("a", "aa");
-        map.put("b", "bb");
-        TruffleObject truffleMap = asTruffleObject(map);
-        assertEquals(true, message(Message.REMOVE, truffleMap, "a"));
-        assertEquals(1, map.size());
-        try {
-            message(Message.REMOVE, truffleMap, "a");
-            fail("UnknownIdentifierException");
-        } catch (Exception e) {
-            assertTrue(e.toString(), e instanceof UnknownIdentifierException);
-            assertEquals("a", ((UnknownIdentifierException) e).getUnknownIdentifier());
         }
     }
 
@@ -1396,6 +1401,18 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
                     return true;
                 }
             }
+
+            @Resolve(message = "KEY_INFO")
+            public abstract static class KeyInfoNode extends Node {
+
+                public Object access(RemoveKeysObject receiver, String name) {
+                    if (receiver.keys.containsKey(name)) {
+                        return KeyInfo.READABLE | KeyInfo.MODIFIABLE | KeyInfo.REMOVABLE;
+                    }
+                    return KeyInfo.NONE;
+                }
+            }
+
         }
     }
 
@@ -1439,133 +1456,66 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
             @Resolve(message = "READ")
             public abstract static class ArrayReadSizeNode extends Node {
 
-                public Object access(ArrayTruffleObject receiver, int index) {
+                public Object access(ArrayTruffleObject receiver, Number number) {
+                    int index = number.intValue();
                     if (index < 0 || index >= receiver.size) {
                         throw new ArrayIndexOutOfBoundsException(index);
                     }
                     return receiver.size - index;
                 }
+
             }
 
             @Resolve(message = "REMOVE")
             public abstract static class ArrayRemoveNode extends Node {
 
-                public Object access(ArrayTruffleObject receiver, int index) {
+                public Object access(ArrayTruffleObject receiver, Number number) {
+                    int index = number.intValue();
                     if (index < 0 || index >= receiver.size) {
                         throw new ArrayIndexOutOfBoundsException(index);
                     }
                     receiver.size--;
                     return true;
                 }
-            }
-        }
-    }
 
-    static final class InternalPropertiesObject implements TruffleObject {
-
-        private final int rBits;    // readable
-        private final int wBits;    // writable
-        private final int rsBits;   // read side-effects
-        private final int wsBits;   // write side-effects
-        private final int iBits;    // invocable
-        private final int nBits;    // internal
-
-        /**
-         * @param iBits bits at property number indexes, where '1' means internal, '0' means
-         *            non-internal.
-         */
-        InternalPropertiesObject(int iBits) {
-            this(-1, -1, -1, -1, -1, iBits);
-        }
-
-        InternalPropertiesObject(int rBits, int wBits, int rsBits, int wsBits, int iBits, int nBits) {
-            this.rBits = rBits;
-            this.wBits = wBits;
-            this.rsBits = rsBits;
-            this.wsBits = wsBits;
-            this.iBits = iBits;
-            this.nBits = nBits;
-        }
-
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return PropertiesVisibilityObjectMessageResolutionForeign.ACCESS;
-        }
-
-        public static boolean isInstance(TruffleObject obj) {
-            return obj instanceof InternalPropertiesObject;
-        }
-
-        @MessageResolution(receiverType = InternalPropertiesObject.class)
-        static final class PropertiesVisibilityObjectMessageResolution {
-
-            @Resolve(message = "HAS_KEYS")
-            public abstract static class HasKeysNode extends Node {
-
-                public Object access(InternalPropertiesObject receiver) {
-                    assert receiver != null;
-                    return true;
-                }
-            }
-
-            @Resolve(message = "KEYS")
-            public abstract static class KeysNode extends Node {
-
-                public Object access(InternalPropertiesObject receiver, boolean includeInternal) {
-                    assert receiver != null;
-                    if (includeInternal) {
-                        return ProxyLanguage.getCurrentContext().getEnv().asGuestValue(new String[]{"p1", "p2", "p3", "p4", "p5", "p6"});
-                    } else {
-                        List<String> propertyNames = new ArrayList<>();
-                        for (int i = 1; i <= 6; i++) {
-                            if ((receiver.nBits & (1 << i)) == 0) {
-                                propertyNames.add("p" + i);
-                            }
-                        }
-                        return ProxyLanguage.getCurrentContext().getEnv().asGuestValue(propertyNames.toArray());
-                    }
-                }
             }
 
             @Resolve(message = "KEY_INFO")
             public abstract static class KeyInfoNode extends Node {
 
-                public int access(InternalPropertiesObject receiver, String propertyName) {
-                    if (propertyName.length() != 2 || propertyName.charAt(0) != 'p' || !Character.isDigit(propertyName.charAt(1))) {
-                        return 0;
+                public Object access(ArrayTruffleObject receiver, Number number) {
+                    int index = number.intValue();
+                    if (number.doubleValue() != index) {
+                        return KeyInfo.NONE;
                     }
-                    int d = Character.digit(propertyName.charAt(1), 10);
-                    if (d > 6) {
-                        return 0;
+                    if (index < 0 || index >= receiver.size) {
+                        return KeyInfo.NONE;
                     }
-                    boolean readable = (receiver.rBits & (1 << d)) > 0;
-                    boolean writable = (receiver.wBits & (1 << d)) > 0;
-                    boolean readSideEffects = (receiver.rsBits & (1 << d)) > 0;
-                    boolean writeSideEffects = (receiver.wsBits & (1 << d)) > 0;
-                    boolean invocable = (receiver.iBits & (1 << d)) > 0;
-                    boolean internal = (receiver.nBits & (1 << d)) > 0;
-                    int info = KeyInfo.NONE;
-                    if (readable) {
-                        info |= KeyInfo.READABLE;
-                    }
-                    if (writable) {
-                        info |= KeyInfo.MODIFIABLE;
-                    }
-                    if (readSideEffects) {
-                        info |= KeyInfo.READ_SIDE_EFFECTS;
-                    }
-                    if (writeSideEffects) {
-                        info |= KeyInfo.WRITE_SIDE_EFFECTS;
-                    }
-                    if (invocable) {
-                        info |= KeyInfo.INVOCABLE;
-                    }
-                    if (internal) {
-                        info |= KeyInfo.INTERNAL;
-                    }
-                    return info;
+                    return KeyInfo.READABLE | KeyInfo.MODIFIABLE | KeyInfo.REMOVABLE;
                 }
+
             }
+
+        }
+    }
+
+    static final class InternalPropertiesObject extends ProxyInteropObject {
+
+        int keyInfo;
+
+        @Override
+        public boolean hasKeys() {
+            return true;
+        }
+
+        @Override
+        public Object keys() throws UnsupportedMessageException {
+            return ProxyLanguage.getCurrentContext().getEnv().asGuestValue(new String[]{"p1"});
+        }
+
+        @Override
+        public int keyInfo(String key) {
+            return key.equals("p1") ? keyInfo : 0;
         }
     }
 

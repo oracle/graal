@@ -58,7 +58,6 @@ import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.model.MethodSpec;
 import com.oracle.truffle.dsl.processor.model.Template;
 import com.oracle.truffle.dsl.processor.model.TemplateMethod;
-import com.oracle.truffle.dsl.processor.model.TypeSystemData;
 
 public abstract class TemplateMethodParser<T extends Template, E extends TemplateMethod> {
 
@@ -66,32 +65,14 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
     private final ProcessorContext context;
     private final MethodSpecParser parser;
 
-    private boolean parseNullOnError;
-
     public TemplateMethodParser(ProcessorContext context, T template) {
         this.template = template;
         this.context = context;
         this.parser = new MethodSpecParser(template);
     }
 
-    public void setParseNullOnError(boolean parseNullOnError) {
-        this.parseNullOnError = parseNullOnError;
-    }
-
-    public boolean isParseNullOnError() {
-        return parseNullOnError;
-    }
-
-    public MethodSpecParser getParser() {
-        return parser;
-    }
-
-    public ProcessorContext getContext() {
+    protected final ProcessorContext getContext() {
         return context;
-    }
-
-    public TypeSystemData getTypeSystem() {
-        return template.getTypeSystem();
     }
 
     public abstract MethodSpec createSpecification(ExecutableElement method, AnnotationMirror mirror);
@@ -109,7 +90,6 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
         methods.addAll(ElementFilter.methodsIn(elements));
 
         List<E> parsedMethods = new ArrayList<>();
-        boolean valid = true;
         int naturalOrder = 0;
         for (ExecutableElement method : methods) {
             if (!isParsable(method)) {
@@ -127,22 +107,15 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
             if (method.getModifiers().contains(Modifier.PRIVATE) && parser.isEmitErrors()) {
                 parsedMethod.addError("Method annotated with @%s must not be private.", getAnnotationType().getSimpleName());
                 parsedMethods.add(parsedMethod);
-                valid = false;
                 continue;
             }
 
             if (parsedMethod != null) {
                 parsedMethods.add(parsedMethod);
-            } else {
-                valid = false;
             }
             naturalOrder++;
         }
         Collections.sort(parsedMethods);
-
-        if (!valid && isParseNullOnError()) {
-            return null;
-        }
         return parsedMethods;
     }
 

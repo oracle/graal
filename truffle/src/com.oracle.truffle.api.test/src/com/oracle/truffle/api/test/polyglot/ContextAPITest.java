@@ -75,6 +75,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -427,6 +428,15 @@ public class ContextAPITest {
                     public Object write(String key, Object value) throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException {
                         values.put(key, value);
                         return value;
+                    }
+
+                    @Override
+                    public int keyInfo(String key) {
+                        if (values.containsKey(key)) {
+                            return KeyInfo.READABLE | KeyInfo.MODIFIABLE;
+                        } else {
+                            return KeyInfo.INSERTABLE;
+                        }
                     }
 
                     @Override

@@ -93,6 +93,13 @@ class LibFFILibraryMessageResolution {
         }
     }
 
+    @Resolve(message = "HAS_KEYS")
+    abstract static class HasKeysNode extends Node {
+        public boolean access(@SuppressWarnings("unused") LibFFILibrary receiver) {
+            return true;
+        }
+    }
+
     @Resolve(message = "KEY_INFO")
     abstract static class KeyInfoNode extends Node {
 

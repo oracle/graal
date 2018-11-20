@@ -222,6 +222,11 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
         }
 
         @Override
+        public boolean hasKeys() {
+            return true;
+        }
+
+        @Override
         public Object keys() throws UnsupportedMessageException {
             if ("KEYS".equals(error)) {
                 throwBug(errNum);

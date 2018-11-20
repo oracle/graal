@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.interop;
 
+@SuppressWarnings("deprecation")
 abstract class UnaryMessage extends KnownMessage {
     protected UnaryMessage() {
     }

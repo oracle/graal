@@ -43,6 +43,7 @@ package com.oracle.truffle.api.interop;
 /**
  * Marker class.
  */
+@SuppressWarnings("deprecation")
 abstract class KnownMessage extends Message {
     @Override
     public final String toString() {

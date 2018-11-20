@@ -80,6 +80,11 @@ public class JDTCompiler extends AbstractCompiler {
         return sortBySourceOrder(newElementList(environment.getElementUtils().getAllMembers(type)));
     }
 
+    @Override
+    public List<? extends Element> getEnclosedElementsInDeclarationOrder(TypeElement type) {
+        return sortBySourceOrder(newElementList(type.getEnclosedElements()));
+    }
+
     private static List<? extends Element> sortBySourceOrder(List<Element> elements) {
         Map<TypeElement, List<Element>> groupedByEnclosing = new HashMap<>();
         for (Element element : elements) {

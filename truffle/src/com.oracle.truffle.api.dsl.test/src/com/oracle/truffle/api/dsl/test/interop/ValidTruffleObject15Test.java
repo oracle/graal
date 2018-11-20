@@ -69,11 +69,14 @@ public class ValidTruffleObject15Test {
         }
     }
 
-    @Test(expected = UnsupportedTypeException.class)
-    public void expectTypeError() throws UnknownIdentifierException, UnsupportedTypeException, UnsupportedMessageException {
+    public void expectTypeError() throws UnknownIdentifierException {
         ValidTruffleObject15 object = new ValidTruffleObject15();
         Node read = Message.WRITE.createNode();
-        ForeignAccess.sendWrite(read, object, new UnknownObject(), new UnknownObject());
+        try {
+            ForeignAccess.sendWrite(read, object, new UnknownObject(), new UnknownObject());
+            Assert.fail();
+        } catch (UnsupportedMessageException | UnsupportedTypeException e) {
+        }
     }
 
     private static final class UnknownObject implements TruffleObject {

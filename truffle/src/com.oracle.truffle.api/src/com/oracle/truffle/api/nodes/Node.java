@@ -177,6 +177,13 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
+     *
+     */
+    protected boolean isAdoptable() {
+        return true;
+    }
+
+    /**
      * Inserts new node children into an AST that was already {@link #adoptChildren() adopted} by a
      * {@link #getParent() parent}. The new children need to be assigned to its {@link Children
      * children} field after insert was called.
@@ -244,7 +251,9 @@ public abstract class Node implements NodeInterface, Cloneable {
     /** @since 0.8 or earlier */
     public final void adoptChildren() {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        NodeUtil.adoptChildrenHelper(this);
+        if (isAdoptable()) {
+            NodeUtil.adoptChildrenHelper(this);
+        }
     }
 
     @SuppressWarnings("deprecation")
@@ -253,12 +262,14 @@ public abstract class Node implements NodeInterface, Cloneable {
         if (newChild == this) {
             throw new IllegalStateException("The parent of a node can never be the node itself.");
         }
-        assert checkSameLanguages(newChild);
-        newChild.parent = this;
-        if (TruffleOptions.TraceASTJSON) {
-            dump(this, newChild, null);
+        if (newChild.isAdoptable()) {
+            assert checkSameLanguages(newChild);
+            newChild.parent = this;
+            if (TruffleOptions.TraceASTJSON) {
+                dump(this, newChild, null);
+            }
+            NodeUtil.adoptChildrenHelper(newChild);
         }
-        NodeUtil.adoptChildrenHelper(newChild);
     }
 
     int adoptChildrenAndCount() {
@@ -272,12 +283,16 @@ public abstract class Node implements NodeInterface, Cloneable {
         if (newChild == this) {
             throw new IllegalStateException("The parent of a node can never be the node itself.");
         }
-        assert checkSameLanguages(newChild);
-        newChild.parent = this;
-        if (TruffleOptions.TraceASTJSON) {
-            dump(this, newChild, null);
+        int count = 1;
+        if (newChild.isAdoptable()) {
+            assert checkSameLanguages(newChild);
+            newChild.parent = this;
+            if (TruffleOptions.TraceASTJSON) {
+                dump(this, newChild, null);
+            }
+            count += NodeUtil.adoptChildrenAndCountHelper(newChild);
         }
-        return 1 + NodeUtil.adoptChildrenAndCountHelper(newChild);
+        return count;
     }
 
     private boolean checkSameLanguages(final Node newChild) {
@@ -305,6 +320,7 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     private void adoptUnadoptedHelper(final Node newChild) {
+        assert isAdoptable();
         assert newChild != null;
         if (newChild == this) {
             throw new IllegalStateException("The parent of a node can never be the node itself.");
@@ -381,7 +397,9 @@ public abstract class Node implements NodeInterface, Cloneable {
         }
         // (aw) need to set parent *before* replace, so that (unsynchronized) getRootNode()
         // will always find the root node
-        newNode.parent = this.parent;
+        if (newNode.isAdoptable()) {
+            newNode.parent = this.parent;
+        }
         if (!NodeUtil.replaceChild(this.parent, this, newNode, true)) {
             this.parent.adoptUnadoptedHelper(newNode);
         }
@@ -625,6 +643,11 @@ public abstract class Node implements NodeInterface, Cloneable {
     static final class AccessorNodes extends Accessor {
 
         @Override
+        protected ThreadLocal<Object> createFastThreadLocal() {
+            return super.createFastThreadLocal();
+        }
+
+        @Override
         protected void onLoopCount(Node source, int iterations) {
             super.onLoopCount(source, iterations);
         }
@@ -660,6 +683,11 @@ public abstract class Node implements NodeInterface, Cloneable {
         }
 
         static final class AccessNodes extends Accessor.Nodes {
+
+            @Override
+            public Node getCurrentCallLocation() {
+                return (Node) IndirectCallNode.CURRENT_CALL_NODE.get();
+            }
 
             @Override
             public boolean isInstrumentable(RootNode rootNode) {

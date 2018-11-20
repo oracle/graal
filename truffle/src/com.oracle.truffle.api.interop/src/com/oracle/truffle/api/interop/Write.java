@@ -40,8 +40,10 @@
  */
 package com.oracle.truffle.api.interop;
 
+@SuppressWarnings("deprecation")
 final class Write extends KnownMessage {
     public static final int HASH = 423431;
+
     static final Message INSTANCE = new Write();
 
     @Override

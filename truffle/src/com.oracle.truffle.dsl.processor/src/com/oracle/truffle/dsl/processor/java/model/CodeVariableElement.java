@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.dsl.processor.java.model;
 
+import java.util.Objects;
 import java.util.Set;
 
 import javax.lang.model.element.AnnotationMirror;
@@ -65,12 +66,16 @@ public final class CodeVariableElement extends CodeElement<Element> implements V
 
     public CodeVariableElement(TypeMirror type, String name) {
         super(ElementUtils.modifiers());
+        Objects.requireNonNull(type);
+        Objects.requireNonNull(name);
         this.type = type;
         this.name = CodeNames.of(name);
     }
 
     public CodeVariableElement(Set<Modifier> modifiers, TypeMirror type, String name) {
         super(modifiers);
+        Objects.requireNonNull(type);
+        Objects.requireNonNull(name);
         this.type = type;
         this.name = CodeNames.of(name);
     }

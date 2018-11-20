@@ -44,9 +44,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
+import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
@@ -54,6 +57,10 @@ import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.java.model.CodeElement;
+import com.oracle.truffle.dsl.processor.java.model.GeneratedElement;
+import com.oracle.truffle.dsl.processor.library.ExportMessageElement;
+import com.oracle.truffle.dsl.processor.model.MessageContainer.Message;
 import com.oracle.truffle.dsl.processor.model.NodeChildData.Cardinality;
 
 public class NodeData extends Template implements Comparable<NodeData> {
@@ -80,6 +87,10 @@ public class NodeData extends Template implements Comparable<NodeData> {
     private boolean reflectable;
 
     private boolean reportPolymorphism;
+    private boolean isUncachable;
+    private boolean isNodeBound;
+    private boolean generateUncached;
+    private Set<String> allowedCheckedExceptions;
 
     public NodeData(ProcessorContext context, TypeElement type, TypeSystemData typeSystem, boolean generateFactory) {
         super(context, type, null);
@@ -95,6 +106,40 @@ public class NodeData extends Template implements Comparable<NodeData> {
 
     public NodeData(ProcessorContext context, TypeElement type) {
         this(context, type, null, false);
+    }
+
+    public void setNodeBound(boolean isNodeBound) {
+        this.isNodeBound = isNodeBound;
+    }
+
+    /**
+     * Returns true if the node instance is bound by any DSL element.
+     */
+    public boolean isNodeBound() {
+        return isNodeBound;
+    }
+
+    public void setUncachable(boolean uncached) {
+        this.isUncachable = uncached;
+    }
+
+    public void setGenerateUncached(boolean generateUncached) {
+        this.generateUncached = generateUncached;
+    }
+
+    /**
+     * Returns true if the generation of an uncached version was requested.
+     */
+    public boolean isGenerateUncached() {
+        return generateUncached;
+    }
+
+    /**
+     * Returns true if the node is uncachable. It is uncachable if it does not require any state to
+     * be implemented. For example inline caches are uncachable.
+     */
+    public boolean isUncachable() {
+        return isUncachable;
     }
 
     public boolean isGenerateFactory() {
@@ -426,7 +471,6 @@ public class NodeData extends Template implements Comparable<NodeData> {
         return null;
     }
 
-    @Override
     public TypeSystemData getTypeSystem() {
         return typeSystem;
     }
@@ -511,6 +555,15 @@ public class NodeData extends Template implements Comparable<NodeData> {
 
     public List<NodeChildData> getChildren() {
         return children;
+    }
+
+    public Collection<SpecializationData> computeUncachedSpecializations(List<SpecializationData> s) {
+        Set<SpecializationData> uncached = new LinkedHashSet<>(s);
+        // remove all replacable specializations
+        for (SpecializationData specialization : s) {
+            uncached.removeAll(specialization.getReplaces());
+        }
+        return uncached;
     }
 
     public List<SpecializationData> getSpecializations() {
@@ -606,4 +659,19 @@ public class NodeData extends Template implements Comparable<NodeData> {
     public boolean isReportPolymorphism() {
         return reportPolymorphism;
     }
+
+    public void setAllowedCheckedExceptions(Set<String> checkedExceptions) {
+        this.allowedCheckedExceptions = checkedExceptions;
+    }
+
+    public Set<String> getAllowedCheckedExceptions() {
+        return allowedCheckedExceptions;
+    }
+
+    private final Set<TypeMirror> libraryTypes = new LinkedHashSet<>();
+
+    public Set<TypeMirror> getLibraryTypes() {
+        return libraryTypes;
+    }
+
 }

@@ -381,8 +381,10 @@ public final class NodeUtil {
      * @since 0.8 or earlier
      */
     public static boolean isReplacementSafe(Node parent, Node oldChild, Node newChild) {
-        Objects.requireNonNull(oldChild);
         if (parent != null) {
+            if (!parent.isAdoptable()) {
+                return false;
+            }
             NodeClass nodeClass = parent.getNodeClass();
             for (Object field : nodeClass.getNodeFields()) {
                 if (nodeClass.isChildField(field)) {
@@ -403,9 +405,10 @@ public final class NodeUtil {
                     break;
                 }
             }
+            return true;
         }
         // if a child was not found the replacement can be considered safe.
-        return true;
+        return false;
     }
 
     /**

@@ -66,6 +66,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
@@ -395,6 +396,19 @@ public class AsCollectionsTest {
                 }
             }
 
+            @Resolve(message = "KEY_INFO")
+            abstract static class KeyInfoNode extends Node {
+
+                @TruffleBoundary
+                public Object access(MapBasedTO mbto, String name) {
+                    if (mbto.map.containsKey(name)) {
+                        return KeyInfo.MODIFIABLE | KeyInfo.READABLE;
+                    } else {
+                        return KeyInfo.INSERTABLE;
+                    }
+                }
+            }
+
             @Resolve(message = "WRITE")
             abstract static class MapBasedWriteNode extends Node {
 
@@ -404,6 +418,7 @@ public class AsCollectionsTest {
                     return value;
                 }
             }
+
         }
     }
 

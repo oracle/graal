@@ -207,7 +207,7 @@ class PolyglotList<T> extends AbstractList<T> implements HostWrapper {
             }
         }
 
-        private abstract static class PolyglotListNode extends HostRootNode<TruffleObject> {
+        private abstract static class PolyglotListNode extends HostRootNode {
 
             final Cache cache;
 
@@ -240,7 +240,8 @@ class PolyglotList<T> extends AbstractList<T> implements HostWrapper {
             }
 
             @Override
-            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args) {
+            protected Object executeImpl(PolyglotLanguageContext languageContext, Object originalReceiver, Object[] args) {
+                TruffleObject receiver = (TruffleObject) originalReceiver;
                 int size = 0;
                 if (sendHasSize(hasSize, receiver)) {
                     try {
@@ -276,7 +277,8 @@ class PolyglotList<T> extends AbstractList<T> implements HostWrapper {
             }
 
             @Override
-            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args) {
+            protected Object executeImpl(PolyglotLanguageContext languageContext, Object originalReceiver, Object[] args) {
+                TruffleObject receiver = (TruffleObject) originalReceiver;
                 Object key = args[ARGUMENT_OFFSET];
                 Object result = null;
                 assert key instanceof Integer;
@@ -322,7 +324,8 @@ class PolyglotList<T> extends AbstractList<T> implements HostWrapper {
             }
 
             @Override
-            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args) {
+            protected Object executeImpl(PolyglotLanguageContext languageContext, Object originalReceiver, Object[] args) {
+                TruffleObject receiver = (TruffleObject) originalReceiver;
                 Object key = args[ARGUMENT_OFFSET];
                 Object result = null;
                 assert key instanceof Integer;
@@ -369,7 +372,8 @@ class PolyglotList<T> extends AbstractList<T> implements HostWrapper {
             }
 
             @Override
-            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject receiver, Object[] args) {
+            protected Object executeImpl(PolyglotLanguageContext languageContext, Object originalReceiver, Object[] args) {
+                TruffleObject receiver = (TruffleObject) originalReceiver;
                 Object key = args[ARGUMENT_OFFSET];
                 Object result = null;
                 assert key instanceof Integer;
@@ -400,7 +404,7 @@ class PolyglotList<T> extends AbstractList<T> implements HostWrapper {
 
         private static class Apply extends PolyglotListNode {
 
-            @Child private PolyglotExecuteNode apply = new PolyglotExecuteNode();
+            @Child private PolyglotExecuteNode apply = PolyglotExecuteNodeGen.create();
 
             Apply(Cache cache) {
                 super(cache);
@@ -412,8 +416,8 @@ class PolyglotList<T> extends AbstractList<T> implements HostWrapper {
             }
 
             @Override
-            protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject function, Object[] args) {
-                return apply.execute(languageContext, function, args[ARGUMENT_OFFSET], Object.class, Object.class);
+            protected Object executeImpl(PolyglotLanguageContext languageContext, Object receiver, Object[] args) {
+                return apply.execute(languageContext, receiver, args[ARGUMENT_OFFSET], Object.class, Object.class);
             }
         }
     }

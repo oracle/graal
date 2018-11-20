@@ -45,7 +45,6 @@ import java.util.List;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
-import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
@@ -69,7 +68,6 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
 /**
  * THIS IS NOT PUBLIC API.
@@ -98,7 +96,6 @@ public final class TruffleTypes {
     private final DeclaredType nodeUtil;
     private final DeclaredType nodeFactory;
     private final DeclaredType generateNodeFactory;
-    private final TypeElement expectError;
 
     private final List<String> errors = new ArrayList<>();
 
@@ -121,7 +118,6 @@ public final class TruffleTypes {
         compilationFinal = getRequired(context, CompilationFinal.class);
         nodeUtil = getRequired(context, NodeUtil.class);
         nodeFactory = getRequired(context, NodeFactory.class);
-        expectError = getOptional(context, EXPECT_ERROR_CLASS_NAME1);
         generateNodeFactory = getRequired(context, GenerateNodeFactory.class);
     }
 
@@ -135,10 +131,6 @@ public final class TruffleTypes {
 
     public DeclaredType getCompilationFinal() {
         return compilationFinal;
-    }
-
-    public TypeElement getExpectError() {
-        return expectError;
     }
 
     public DeclaredType getNodeInfoAnnotation() {
@@ -167,10 +159,6 @@ public final class TruffleTypes {
             errors.add(String.format("Could not find required type: %s", clazz.getSimpleName()));
         }
         return (DeclaredType) type;
-    }
-
-    private static TypeElement getOptional(ProcessorContext context, String name) {
-        return ElementUtils.getTypeElement(context.getEnvironment(), name);
     }
 
     public TypeMirror getInvalidAssumption() {

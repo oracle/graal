@@ -41,9 +41,8 @@ public final class OptimizedIndirectCallNode extends IndirectCallNode {
 
     @Override
     public Object call(CallTarget target, Object... arguments) {
-
         try {
-            return OptimizedDirectCallNode.callProxy(this, target, arguments, false);
+            return ((OptimizedCallTarget) target).callIndirect(this, arguments);
         } catch (Throwable t) {
             if (exceptionProfile == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();

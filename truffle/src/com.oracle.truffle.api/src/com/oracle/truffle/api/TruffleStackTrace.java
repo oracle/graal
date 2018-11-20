@@ -246,7 +246,7 @@ public final class TruffleStackTrace extends Exception {
             topCallSite = te.getLocation();
             stackFrameLimit = te.getStackTraceElementLimit();
         } else {
-            topCallSite = null;
+            topCallSite = TruffleLanguage.API.nodes().getCurrentCallLocation();
             stackFrameLimit = -1;
         }
         // add the lazily captured stack frames above the manually queried ones

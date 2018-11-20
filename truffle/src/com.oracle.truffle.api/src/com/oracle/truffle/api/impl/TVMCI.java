@@ -314,4 +314,13 @@ public abstract class TVMCI {
     @SuppressWarnings("unused")
     protected void reportPolymorphicSpecialize(Node node) {
     }
+
+    protected ThreadLocal<Object> createFastThreadLocal() {
+        return new ThreadLocal<>();
+    }
+
+    protected Node getCurrentCallLocation() {
+        return Accessor.nodesAccess().getCurrentCallLocation();
+    }
+
 }

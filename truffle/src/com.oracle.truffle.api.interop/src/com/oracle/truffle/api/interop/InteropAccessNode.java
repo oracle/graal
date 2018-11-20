@@ -49,20 +49,19 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.InteropAccessNodeFactory.CachedNodeGen;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
 
+@SuppressWarnings("deprecation")
 abstract class InteropAccessNode extends Node {
 
     static final int ARG0_RECEIVER = 0;
-
     protected static final int CACHE_SIZE = 8;
     protected final Message message;
-    @CompilationFinal private int previousLength = -2;
-    private final BranchProfile profileDefaultUnsupported = BranchProfile.create();
 
     protected InteropAccessNode(Message message) {
         this.message = message;
@@ -77,9 +76,12 @@ abstract class InteropAccessNode extends Node {
         try {
             return checkInteropType(executeImplInterop(receiver, new Object[]{receiver}));
         } catch (UnsupportedMessageException ex) {
-            profileDefaultUnsupported.enter();
+            enterDefaultUnsupported();
             return false;
         }
+    }
+
+    protected void enterDefaultUnsupported() {
     }
 
     @SuppressWarnings("unused")
@@ -136,28 +138,12 @@ abstract class InteropAccessNode extends Node {
     }
 
     private static boolean checkInteropTypeImpl(Object obj) {
-        if (obj instanceof TruffleObject) {
+        if (AssertUtils.isInteropValue(obj)) {
             return true;
         }
-        if (obj == null) {
-            CompilerDirectives.transferToInterpreter();
-            return yieldAnError(null);
-        }
-        Class<?> clazz = obj.getClass();
-        if (clazz == Byte.class ||
-                        clazz == Short.class ||
-                        clazz == Integer.class ||
-                        clazz == Long.class ||
-                        clazz == Float.class ||
-                        clazz == Double.class ||
-                        clazz == Character.class ||
-                        clazz == Boolean.class ||
-                        clazz == String.class) {
-            return true;
-        } else {
-            CompilerDirectives.transferToInterpreter();
-            return yieldAnError(obj.getClass());
-        }
+        CompilerDirectives.transferToInterpreter();
+        Class<?> clazz = obj != null ? obj.getClass() : null;
+        return yieldAnError(clazz);
     }
 
     private static boolean yieldAnError(Class<?> clazz) {
@@ -169,76 +155,6 @@ abstract class InteropAccessNode extends Node {
             throw new NullPointerException(sb.toString());
         } else {
             throw new ClassCastException(sb.toString());
-        }
-    }
-
-    private int profileLength(int length) {
-        int returnLength = length;
-        if (previousLength != -1) {
-            if (previousLength == length) {
-                returnLength = previousLength;
-            } else {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                if (previousLength == -2) {
-                    previousLength = length;
-                } else {
-                    previousLength = -1;
-                }
-            }
-        }
-        return returnLength;
-    }
-
-    // Only to declare that it can throw InteropException
-    @SuppressWarnings("unused")
-    private Object executeImplInterop(TruffleObject receiver, Object[] arguments) throws InteropException {
-        return executeImpl(receiver, arguments);
-    }
-
-    protected abstract Object executeImpl(TruffleObject receiver, Object[] arguments);
-
-    @SuppressWarnings("unused")
-    @Specialization(guards = "acceptCached(receiver, foreignAccess, canHandleCall)", limit = "CACHE_SIZE")
-    protected static Object doCached(TruffleObject receiver, Object[] arguments,
-                    @Cached("receiver.getForeignAccess()") ForeignAccess foreignAccess,
-                    @Cached("createInlinedCallNode(createMessageTarget(foreignAccess))") DirectCallNode sendMessageCall,
-                    @Cached("createCanHandleInlinedCallNode(foreignAccess, receiver)") DirectCallNode canHandleCall) {
-        return sendMessageCall.call(arguments);
-    }
-
-    protected static boolean acceptCached(TruffleObject receiver, ForeignAccess foreignAccess, DirectCallNode canHandleCall) {
-        if (canHandleCall != null) {
-            return (boolean) canHandleCall.call(new Object[]{receiver});
-        } else if (foreignAccess != null) {
-            return foreignAccess.canHandle(receiver);
-        } else {
-            return false;
-        }
-    }
-
-    protected static DirectCallNode createInlinedCallNode(CallTarget target) {
-        if (target == null) {
-            return null;
-        }
-        DirectCallNode callNode = DirectCallNode.create(target);
-        callNode.forceInlining();
-        return callNode;
-    }
-
-    @Specialization
-    protected Object doGeneric(TruffleObject receiver, Object[] arguments,
-                    @Cached("create()") IndirectCallNode indirectCall) {
-        return indirectCall.call(createGenericMessageTarget(receiver), arguments);
-    }
-
-    @TruffleBoundary
-    protected static DirectCallNode createCanHandleInlinedCallNode(ForeignAccess access, TruffleObject receiver) {
-        if (access != null) {
-            DirectCallNode callNode = createInlinedCallNode(access.checkLanguage());
-            assert acceptCached(receiver, access, callNode) : "foreign access for " + receiver.getClass() + " (" + access + ") does not handle its own objects";
-            return callNode;
-        } else {
-            return null;
         }
     }
 
@@ -274,7 +190,126 @@ abstract class InteropAccessNode extends Node {
         }
     });
 
+    protected static boolean acceptCached(TruffleObject receiver, ForeignAccess foreignAccess, DirectCallNode canHandleCall) {
+        if (canHandleCall != null) {
+            return (boolean) canHandleCall.call(new Object[]{receiver});
+        } else if (foreignAccess != null) {
+            return foreignAccess.canHandle(receiver);
+        } else {
+            return false;
+        }
+    }
+
+    protected static DirectCallNode createInlinedCallNode(CallTarget target) {
+        if (target == null) {
+            return null;
+        }
+        DirectCallNode callNode = DirectCallNode.create(target);
+        callNode.forceInlining();
+        return callNode;
+    }
+
+    @TruffleBoundary
+    protected static DirectCallNode createCanHandleInlinedCallNode(ForeignAccess access, TruffleObject receiver) {
+        if (access != null) {
+            DirectCallNode callNode = createInlinedCallNode(access.checkLanguage());
+            assert acceptCached(receiver, access, callNode) : "foreign access for " + receiver.getClass() + " (" + access + ") does not handle its own objects";
+            return callNode;
+        } else {
+            return null;
+        }
+    }
+
+    protected abstract int profileLength(int length);
+
+    // Only to declare that it can throw InteropException
+    @SuppressWarnings("unused")
+    private Object executeImplInterop(TruffleObject receiver, Object[] arguments) throws InteropException {
+        return executeImpl(receiver, arguments);
+    }
+
+    protected abstract Object executeImpl(TruffleObject receiver, Object[] arguments);
+
     public static InteropAccessNode create(Message message) {
-        return InteropAccessNodeGen.create(message);
+        return CachedNodeGen.create(message);
+    }
+
+    public static InteropAccessNode getUncached(Message message) {
+        InteropAccessNode node = message.uncached;
+        if (node == null) {
+            // TODO do this eagerly
+            message.uncached = node = new InteropAccessNode.Uncached(message);
+        }
+        return node;
+    }
+
+    static final class Uncached extends InteropAccessNode {
+
+        Uncached(Message message) {
+            super(message);
+        }
+
+        @Override
+        protected int profileLength(int length) {
+            return length;
+        }
+
+        @Override
+        protected Object executeImpl(TruffleObject receiver, Object[] arguments) {
+            return createGenericMessageTarget(receiver).call(arguments);
+        }
+
+    }
+
+    abstract static class CachedNode extends InteropAccessNode {
+
+        static final int ARG0_RECEIVER = 0;
+
+        protected static final int CACHE_SIZE = 8;
+        @CompilationFinal private int previousLength = -2;
+        private final BranchProfile profileDefaultUnsupported = BranchProfile.create();
+
+        protected CachedNode(Message message) {
+            super(message);
+        }
+
+        @Override
+        protected void enterDefaultUnsupported() {
+            profileDefaultUnsupported.enter();
+        }
+
+        @Override
+        protected int profileLength(int length) {
+            int returnLength = length;
+            if (previousLength != -1) {
+                if (previousLength == length) {
+                    returnLength = previousLength;
+                } else {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    if (previousLength == -2) {
+                        previousLength = length;
+                    } else {
+                        previousLength = -1;
+                    }
+                }
+            }
+            return returnLength;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "acceptCached(receiver, foreignAccess, canHandleCall)", limit = "CACHE_SIZE")
+        protected static Object doCached(TruffleObject receiver, Object[] arguments,
+                        @Cached("receiver.getForeignAccess()") ForeignAccess foreignAccess,
+                        @Cached("createInlinedCallNode(createMessageTarget(foreignAccess))") DirectCallNode sendMessageCall,
+                        @Cached("createCanHandleInlinedCallNode(foreignAccess, receiver)") DirectCallNode canHandleCall) {
+            return sendMessageCall.call(arguments);
+        }
+
+        @Specialization
+        protected Object doGeneric(TruffleObject receiver, Object[] arguments,
+                        @Cached("create()") IndirectCallNode indirectCall) {
+            return indirectCall.call(createGenericMessageTarget(receiver), arguments);
+        }
+
     }
 }

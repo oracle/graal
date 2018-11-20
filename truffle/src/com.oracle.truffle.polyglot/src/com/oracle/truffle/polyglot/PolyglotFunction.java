@@ -101,7 +101,7 @@ final class PolyglotFunction<T, R> implements Function<T, R>, HostWrapper {
         return new PolyglotFunction<>(languageContext, function, returnClass, returnType);
     }
 
-    static final class Apply extends HostRootNode<TruffleObject> {
+    static final class Apply extends HostRootNode {
 
         final Class<?> receiverClass;
         final Class<?> returnClass;
@@ -127,12 +127,13 @@ final class PolyglotFunction<T, R> implements Function<T, R>, HostWrapper {
         }
 
         @Override
-        protected Object executeImpl(PolyglotLanguageContext languageContext, TruffleObject function, Object[] args) {
-            if (apply == null) {
+        protected Object executeImpl(PolyglotLanguageContext languageContext, Object function, Object[] args) {
+            PolyglotExecuteNode localApply = this.apply;
+            if (localApply == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                apply = insert(new PolyglotExecuteNode());
+                apply = localApply = insert(PolyglotExecuteNodeGen.create());
             }
-            return apply.execute(languageContext, function, args[ARGUMENT_OFFSET], returnClass, returnType);
+            return localApply.execute(languageContext, function, args[ARGUMENT_OFFSET], returnClass, returnType);
         }
 
         @Override
