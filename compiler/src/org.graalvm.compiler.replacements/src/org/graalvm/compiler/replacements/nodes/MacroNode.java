@@ -86,10 +86,10 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable, 
     public static final NodeClass<MacroNode> TYPE = NodeClass.create(MacroNode.class);
     @Input protected NodeInputList<ValueNode> arguments;
 
-    protected final int bci;
-    protected final ResolvedJavaMethod targetMethod;
+    protected int bci;
+    protected ResolvedJavaMethod targetMethod;
+    protected InvokeKind invokeKind;
     protected final StampPair returnStamp;
-    protected final InvokeKind invokeKind;
 
     protected MacroNode(NodeClass<? extends MacroNode> c, InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, StampPair returnStamp, ValueNode... arguments) {
         super(c, returnStamp.getTrustedStamp());
