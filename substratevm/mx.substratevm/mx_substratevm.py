@@ -64,7 +64,7 @@ GRAAL_COMPILER_FLAGS_BASE = [
 ]
 
 GRAAL_COMPILER_FLAGS_MAP = dict()
-GRAAL_COMPILER_FLAGS_MAP['1.8'] = ['-d64', '-noverify', '-XX:-UseJVMCIClassLoader']
+GRAAL_COMPILER_FLAGS_MAP['1.8'] = ['-d64', '-XX:-UseJVMCIClassLoader']
 GRAAL_COMPILER_FLAGS_MAP['11'] = []
 # Disable the check for JDK-8 graal version.
 GRAAL_COMPILER_FLAGS_MAP['11'] += ['-Dsubstratevm.IgnoreGraalVersionCheck=true']
