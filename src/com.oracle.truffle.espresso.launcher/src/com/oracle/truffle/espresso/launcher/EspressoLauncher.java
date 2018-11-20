@@ -204,7 +204,8 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
             rc = 1;
             e.printStackTrace();
         }
-        System.exit(rc);
+        System.out.println("Exiting launcher");
+        throw exit(rc);
     }
 
     private void eval(Context context) throws IOException {

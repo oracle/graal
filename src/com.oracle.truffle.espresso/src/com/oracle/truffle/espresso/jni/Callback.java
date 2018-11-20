@@ -31,6 +31,7 @@ import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 
 public class Callback implements TruffleObject {
 
@@ -66,8 +67,17 @@ public class Callback implements TruffleObject {
         return new Callback(m.getParameterCount(), args -> {
             try {
                 return m.invoke(receiver, args);
-            } catch (IllegalAccessException | InvocationTargetException e) {
-                throw new RuntimeException(e);
+            } catch (IllegalAccessException e) {
+                throw EspressoError.shouldNotReachHere(e);
+            } catch (InvocationTargetException e) {
+                Throwable targetEx = e.getTargetException();
+                if (targetEx instanceof EspressoException) {
+                    throw (EspressoException) targetEx;
+                }
+                if (targetEx instanceof RuntimeException) {
+                    throw (RuntimeException) targetEx;
+                }
+                throw EspressoError.shouldNotReachHere(e);
             }
         });
     }

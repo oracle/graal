@@ -85,14 +85,10 @@ public abstract class NativeRootNode extends RootNode implements LinkedNode {
             // Having a constant length would help PEA to skip the copying.
             Object[] argsWithEnv = preprocessArgs(frame.getArguments());
             // System.err.println("Calling native " + originalMethod.getName() + Arrays.toString(argsWithEnv));
-
             Object result = ForeignAccess.sendExecute(execute, boundNative, argsWithEnv);
+            // System.err.println("Return from native " + originalMethod.getName() + Arrays.toString(argsWithEnv) + " -> " + result);
             return processResult(result);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-            throw EspressoError.shouldNotReachHere(e);
-        } catch (VirtualMachineError | EspressoException allowed) {
-            throw allowed;
-        } catch (Exception e) {
             throw EspressoError.shouldNotReachHere(e);
         }
     }
@@ -109,23 +105,17 @@ public abstract class NativeRootNode extends RootNode implements LinkedNode {
         }
 
         switch (getOriginalMethod().getReturnType().kind()) {
-            case Boolean:
-            case Byte:
-                result = (int) (byte) result;
-                break;
-            case Char:
-                result = (int) (char) result;
-                break;
-            case Short:
-                result = (int) (short) result;
-                break;
+            case Boolean: return ((byte) result != 0);
+            case Byte: return (byte) result;
+            case Char: return (char) result;
+            case Short: return (short) result;
             case Object:
                 if (result instanceof TruffleObject) {
                     if (ForeignAccess.sendIsNull(Message.IS_NULL.createNode(), (TruffleObject) result)) {
-                        result = StaticObject.NULL;
+                        return StaticObject.NULL;
                     }
                 }
-                break;
+                return result;
         }
         // System.err.println("Return native " + originalMethod.getName() + " -> " + result);
         return result;

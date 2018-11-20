@@ -164,9 +164,12 @@ public class JniEnv extends NativeEnv {
                 Throwable targetEx = e.getTargetException();
                 if (targetEx instanceof EspressoException) {
                     getThreadLocalPendingException().set(((EspressoException) targetEx).getException());
+                    return defaultValue(m.getReturnType());
+                } else if (targetEx instanceof RuntimeException) {
+                    throw (RuntimeException) targetEx;
                 }
                 // FIXME(peterssen): Handle VME exceptions back to guest.
-                return defaultValue(m.getReturnType());
+                throw EspressoError.shouldNotReachHere(targetEx);
             } catch (IllegalAccessException e) {
                 throw EspressoError.shouldNotReachHere(e);
             }
@@ -209,7 +212,6 @@ public class JniEnv extends NativeEnv {
             String signature = jniNativeSignature(m);
             Callback target = jniMethodWrapper(m);
             return (TruffleObject) ForeignAccess.sendExecute(Message.EXECUTE.createNode(), dupClosureRefAndCast(signature), target);
-
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw new RuntimeException(e);
         }

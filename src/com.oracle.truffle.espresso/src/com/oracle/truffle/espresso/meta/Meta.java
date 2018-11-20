@@ -37,7 +37,6 @@ import java.util.function.IntFunction;
 import java.util.stream.Stream;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.FieldInfo;
 import com.oracle.truffle.espresso.impl.MethodInfo;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -712,6 +711,7 @@ public final class Meta {
          */
         @CompilerDirectives.TruffleBoundary
         public Object invokeDirect(Object self, Object... args) {
+            Object result;
             if (isStatic()) {
                 assert args.length == method.getSignature().getParameterCount(false);
                 return method.getCallTarget().call(args);
@@ -959,7 +959,7 @@ public final class Meta {
             STRING_CONSTRUCTOR = String.class.getDeclaredConstructor(char[].class, boolean.class);
             STRING_CONSTRUCTOR.setAccessible(true);
         } catch (NoSuchMethodException | NoSuchFieldException e) {
-            e.printStackTrace();
+            throw EspressoError.shouldNotReachHere(e);
         }
     }
 
@@ -967,7 +967,7 @@ public final class Meta {
         try {
             return (char[]) STRING_VALUE.get(s);
         } catch (IllegalAccessException e) {
-            throw new RuntimeException(e);
+            throw EspressoError.shouldNotReachHere(e);
         }
     }
 
@@ -975,7 +975,7 @@ public final class Meta {
         try {
             return (int) STRING_HASH.get(s);
         } catch (IllegalAccessException e) {
-            throw new RuntimeException(e);
+            throw EspressoError.shouldNotReachHere(e);
         }
     }
 

@@ -60,7 +60,7 @@ public class Target_sun_misc_Unsafe {
             f.setAccessible(true);
             hostUnsafe = (Unsafe) f.get(null);
         } catch (NoSuchFieldException | IllegalAccessException e) {
-            throw new RuntimeException(e);
+            throw EspressoError.shouldNotReachHere(e);
         }
     }
 
