@@ -36,14 +36,14 @@
 # (This suggests a TODO: clean up the needlessly complex makefiles in
 # this project. It should not be necessary to copy makefiles around.)
 
-.PHONY: all strictmath libchelper jni clean
+.PHONY: all strictmath jni clean
 
 ifeq (${OS}, solaris)
 all :	nop # Solaris is unsupported
 else ifeq (${ARCH}, sparcv9)
 all :	nop # SPARC64 is unsupported
 else
-all :	strictmath libchelper jni
+all :	strictmath jni
 endif
 
 ifeq (${OS}, windows)
@@ -55,15 +55,11 @@ endif
 strictmath:
 	$(MAKE) -C $(VPATH)/strictmath
 
-libchelper:
-	$(MAKE) -C $(VPATH)/libchelper
-
 jni:
 	$(MAKE) -C $(VPATH)/jni
 
 clean:
 	$(MAKE) -C $(VPATH)/strictmath $@
-	$(MAKE) -C $(VPATH)/libchelper $@
 	$(MAKE) -C $(VPATH)/jni $@
 
 # for unsupported platforms
