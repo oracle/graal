@@ -87,7 +87,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
 
     @Override
     public boolean shouldFullUnroll(LoopEx loop) {
-        if (!loop.isCounted() || !loop.counted().isConstantMaxTripCount()) {
+        if (!loop.isCounted() || !loop.counted().isConstantMaxTripCount() || !loop.counted().counterNeverOverflows()) {
             return false;
         }
         OptionValues options = loop.entryPoint().getOptions();
