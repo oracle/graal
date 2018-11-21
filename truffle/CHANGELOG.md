@@ -5,9 +5,9 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 ## Version 1.0.0 RC10
 * Added support for setting current working directory for TruffleFiles, see [Env.setCurrentWorkingDirectory](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#setCurrentWorkingDirectory-com.oracle.truffle.api.TruffleFile-)
 * Removed deprecated `TruffleLanguage.Env.newSourceBuilder`.
-
 * Added `TruffleLanguage.Env.isPreInitialization` method to determine whether the context is being pre-initialized.
 * Added `ArrayUtils` API providing additional array and/or string operations that may be intrinsified by the compiler.
+* Added a possibility to obtain a [relative URI](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#toRelativeUri--) for a relative `TruffleFile`.
 
 ## Version 1.0.0 RC9
 
