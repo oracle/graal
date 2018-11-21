@@ -136,8 +136,10 @@ public final class TruffleDebugger extends DebuggerDomain {
     private void doEnable() {
         Debugger tdbg = context.getEnv().lookup(context.getEnv().getInstruments().get("debugger"), Debugger.class);
         ds = tdbg.startSession(new SuspendedCallbackImpl(), SourceElement.ROOT, SourceElement.STATEMENT);
+        ds.setSourcePath(context.getSourcePath());
         ds.setSteppingFilter(SuspensionFilter.newBuilder().ignoreLanguageContextInitialization(!context.isInspectInitialization()).includeInternal(context.isInspectInternal()).build());
         slh = context.acquireScriptsHandler();
+        slh.setDebuggerSession(ds);
         bph = new BreakpointsHandler(ds, slh, () -> eventHandler);
     }
 
@@ -152,6 +154,7 @@ public final class TruffleDebugger extends DebuggerDomain {
     @Override
     public void disable() {
         if (ds != null) {
+            slh.setDebuggerSession(null);
             ds.close();
             ds = null;
             context.releaseScriptsHandler();

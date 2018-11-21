@@ -187,7 +187,9 @@ public final class TruffleRuntime extends RuntimeDomain {
         }
         if (parsed && persistScript) {
             int id = slh.assureLoaded(source);
-            ret.put("scriptId", Integer.toString(id));
+            if (id != -1) {
+                ret.put("scriptId", Integer.toString(id));
+            }
         }
         if (exceptionText[0] != null) {
             fillExceptionDetails(ret, exceptionText[0]);

@@ -659,19 +659,14 @@ public class Breakpoint {
     }
 
     @TruffleBoundary
-    private Object doBreak(DebuggerNode source, DebuggerSession[] breakInSessions, MaterializedFrame frame, boolean onEnter, Object result, Throwable exception, BreakpointConditionFailure failure) {
-        DebugException de;
-        if (exception != null) {
-            de = new DebugException(debugger, exception, null, source, false, null);
-        } else {
-            de = null;
-        }
-        return doBreak(source, breakInSessions, frame, onEnter, result, de, failure);
+    private Object doBreak(DebuggerNode source, DebuggerSession[] breakInSessions, MaterializedFrame frame, boolean onEnter, Object result, Throwable exception,
+                    BreakpointConditionFailure failure) {
+        return doBreak(source, breakInSessions, frame, onEnter, result, exception, source, false, null, failure);
     }
 
     @TruffleBoundary
-    private Object doBreak(DebuggerNode source, DebuggerSession[] breakInSessions, MaterializedFrame frame, boolean onEnter, Object result, DebugException exception,
-                    BreakpointConditionFailure failure) {
+    private Object doBreak(DebuggerNode source, DebuggerSession[] breakInSessions, MaterializedFrame frame, boolean onEnter, Object result, Throwable exception,
+                    Node throwLocation, boolean isCatchNodeComputed, DebugException.CatchLocation catchLocation, BreakpointConditionFailure failure) {
         if (!isEnabled()) {
             // make sure we do not cause break events if we got disabled already
             // the instrumentation framework will make sure that this is not happening if the
@@ -686,7 +681,13 @@ public class Breakpoint {
         Object newResult = result;
         for (DebuggerSession session : breakInSessions) {
             if (session.isBreakpointsActive(getKind())) {
-                newResult = session.notifyCallback(source, frame, anchor, null, newResult, exception, failure);
+                DebugException de;
+                if (exception != null) {
+                    de = new DebugException(session, exception, null, throwLocation, isCatchNodeComputed, catchLocation);
+                } else {
+                    de = null;
+                }
+                newResult = session.notifyCallback(source, frame, anchor, null, newResult, de, failure);
             }
         }
         return newResult;
@@ -1174,8 +1175,7 @@ public class Breakpoint {
         @TruffleBoundary
         void doBreak(MaterializedFrame frame, DebuggerSession[] debuggerSessions, BreakpointConditionFailure conditionError, Throwable exception, BreakpointExceptionFilter.Match matched) {
             Node throwLocation = getContext().getInstrumentedNode();
-            DebugException de = new DebugException(getBreakpoint().debugger, exception, null, throwLocation, matched.isCatchNodeComputed, matched.catchLocation);
-            getBreakpoint().doBreak(this, debuggerSessions, frame, false, null, de, conditionError);
+            getBreakpoint().doBreak(this, debuggerSessions, frame, false, null, exception, throwLocation, matched.isCatchNodeComputed, matched.catchLocation, conditionError);
         }
     }
 

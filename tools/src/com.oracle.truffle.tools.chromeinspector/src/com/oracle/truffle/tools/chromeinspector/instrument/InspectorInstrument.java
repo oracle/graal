@@ -31,6 +31,9 @@ import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -85,6 +88,28 @@ public final class InspectorInstrument extends TruffleInstrument {
         }
     }, (address) -> address.verify());
 
+    static final OptionType<List<URI>> URI_LIST = new OptionType<>("<URI>|<URI>|...", Collections.emptyList(), (str) -> {
+        if (str.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<URI> uris = new ArrayList<>();
+        int i1 = 0;
+        while (i1 < str.length()) {
+            int i2 = str.indexOf('|', i1);
+            if (i2 < 0) {
+                i2 = str.length();
+            }
+            String uriStr = str.substring(i1, i2);
+            try {
+                uris.add(new URI(uriStr));
+            } catch (URISyntaxException ex) {
+                throw new IllegalArgumentException(ex);
+            }
+            i1 = i2 + 1;
+        }
+        return uris;
+    });
+
     @com.oracle.truffle.api.Option(name = "", help = "Start the Chrome inspector on [[host:]port]. (default: <loopback address>:" + DEFAULT_PORT + ")", category = OptionCategory.USER) //
     static final OptionKey<HostAndPort> Inspect = new OptionKey<>(DEFAULT_ADDRESS, ADDRESS_OR_BOOLEAN);
 
@@ -96,6 +121,9 @@ public final class InspectorInstrument extends TruffleInstrument {
 
     @com.oracle.truffle.api.Option(help = "Do not execute any source code until inspector client is attached. (default:false)", category = OptionCategory.EXPERT) //
     static final OptionKey<Boolean> WaitAttached = new OptionKey<>(false);
+
+    @com.oracle.truffle.api.Option(help = "A | separated list of URIs representing source path. (default:none)", category = OptionCategory.EXPERT) //
+    static final OptionKey<List<URI>> SourcePath = new OptionKey<>(Collections.emptyList(), URI_LIST);
 
     @com.oracle.truffle.api.Option(help = "Hide internal errors that can occur as a result of debugger inspection. (default:false)", category = OptionCategory.EXPERT) //
     static final OptionKey<Boolean> HideErrors = new OptionKey<>(false);
@@ -139,7 +167,7 @@ public final class InspectorInstrument extends TruffleInstrument {
             try {
                 InetSocketAddress socketAddress = hostAndPort.createSocket(options.get(Remote));
                 server = new Server(env, "Main Context", socketAddress, options.get(Attach), options.get(Suspend), options.get(WaitAttached), options.get(HideErrors), options.get(Internal),
-                                options.get(Initialization), options.get(Path), options.get(Secure), new KeyStoreOptions(options), connectionWatcher);
+                                options.get(Initialization), options.get(Path), options.get(Secure), new KeyStoreOptions(options), options.get(SourcePath), connectionWatcher);
             } catch (IOException e) {
                 throw new InspectorIOException(hostAndPort.getHostPort(options.get(Remote)), e);
             }
@@ -240,7 +268,7 @@ public final class InspectorInstrument extends TruffleInstrument {
 
         Server(final Env env, final String contextName, final InetSocketAddress socketAdress, final boolean attach, final boolean debugBreak, final boolean waitAttached, final boolean hideErrors,
                         final boolean inspectInternal, final boolean inspectInitialization, final String pathOrNull, final boolean secure, final KeyStoreOptions keyStoreOptions,
-                        final ConnectionWatcher connectionWatcher) throws IOException {
+                        final List<URI> sourcePath, final ConnectionWatcher connectionWatcher) throws IOException {
             PrintWriter info = new PrintWriter(env.err());
             if (pathOrNull == null || pathOrNull.isEmpty()) {
                 wsspath = "/" + Long.toHexString(System.identityHashCode(env)) + "-" + Long.toHexString(System.nanoTime() ^ System.identityHashCode(env));
@@ -250,7 +278,7 @@ public final class InspectorInstrument extends TruffleInstrument {
             }
 
             PrintWriter err = (hideErrors) ? null : info;
-            final TruffleExecutionContext executionContext = new TruffleExecutionContext(contextName, inspectInternal, inspectInitialization, env, err);
+            final TruffleExecutionContext executionContext = new TruffleExecutionContext(contextName, inspectInternal, inspectInitialization, env, sourcePath, err);
             if (attach) {
                 wss = new InspectWSClient(socketAdress, wsspath, executionContext, debugBreak, secure, keyStoreOptions, connectionWatcher, info);
             } else {

@@ -63,7 +63,7 @@ public final class DebugScope {
 
     private final Scope scope;
     private final Iterator<Scope> iterator;
-    private final Debugger debugger;
+    private final DebuggerSession session;
     private final SuspendedEvent event;
     private final MaterializedFrame frame;
     private final RootNode root;
@@ -71,22 +71,22 @@ public final class DebugScope {
     private DebugScope parent;
     private ValuePropertiesCollection variables;
 
-    DebugScope(Scope scope, Iterator<Scope> iterator, Debugger debugger,
+    DebugScope(Scope scope, Iterator<Scope> iterator, DebuggerSession session,
                     SuspendedEvent event, MaterializedFrame frame, RootNode root) {
-        this(scope, iterator, debugger, event, frame, root, null);
+        this(scope, iterator, session, event, frame, root, null);
     }
 
-    DebugScope(Scope scope, Iterator<Scope> iterator, Debugger debugger,
+    DebugScope(Scope scope, Iterator<Scope> iterator, DebuggerSession session,
                     LanguageInfo language) {
-        this(scope, iterator, debugger, null, null, null, language);
+        this(scope, iterator, session, null, null, null, language);
     }
 
-    private DebugScope(Scope scope, Iterator<Scope> iterator, Debugger debugger,
+    private DebugScope(Scope scope, Iterator<Scope> iterator, DebuggerSession session,
                     SuspendedEvent event, MaterializedFrame frame, RootNode root,
                     LanguageInfo language) {
         this.scope = scope;
         this.iterator = iterator;
-        this.debugger = debugger;
+        this.session = session;
         this.event = event;
         this.frame = frame;
         this.root = root;
@@ -113,12 +113,12 @@ public final class DebugScope {
         verifyValidState();
         try {
             if (parent == null && iterator.hasNext()) {
-                parent = new DebugScope(iterator.next(), iterator, debugger, event, frame, root, language);
+                parent = new DebugScope(iterator.next(), iterator, session, event, frame, root, language);
             }
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(debugger, ex, language, null, true, null);
+            throw new DebugException(session, ex, language, null, true, null);
         }
         return parent;
     }
@@ -147,14 +147,14 @@ public final class DebugScope {
         try {
             Node node = scope.getNode();
             if (node != null) {
-                return node.getEncapsulatingSourceSection();
+                return session.resolveSection(node.getEncapsulatingSourceSection());
             } else {
                 return null;
             }
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(debugger, ex, language, null, true, null);
+            throw new DebugException(session, ex, language, null, true, null);
         }
     }
 
@@ -177,16 +177,16 @@ public final class DebugScope {
             Object argumentsObj = scope.getArguments();
             if (argumentsObj != null && argumentsObj instanceof TruffleObject) {
                 TruffleObject argsTO = (TruffleObject) argumentsObj;
-                arguments = DebugValue.getProperties(argumentsObj, debugger, getLanguage(), this);
-                if (arguments == null && ObjectStructures.isArray(debugger.getMessageNodes(), argsTO)) {
-                    List<Object> array = ObjectStructures.asList(debugger.getMessageNodes(), argsTO);
-                    arguments = new ValueInteropList(debugger, getLanguage(), array);
+                arguments = DebugValue.getProperties(argumentsObj, session, getLanguage(), this);
+                if (arguments == null && ObjectStructures.isArray(session.getDebugger().getMessageNodes(), argsTO)) {
+                    List<Object> array = ObjectStructures.asList(session.getDebugger().getMessageNodes(), argsTO);
+                    arguments = new ValueInteropList(session, getLanguage(), array);
                 }
             }
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(debugger, ex, language, null, true, null);
+            throw new DebugException(session, ex, language, null, true, null);
         }
         return arguments;
     }
@@ -226,12 +226,12 @@ public final class DebugScope {
         try {
             if (variables == null) {
                 Object variablesObj = scope.getVariables();
-                variables = DebugValue.getProperties(variablesObj, debugger, getLanguage(), this);
+                variables = DebugValue.getProperties(variablesObj, session, getLanguage(), this);
             }
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(debugger, ex, language, null, true, null);
+            throw new DebugException(session, ex, language, null, true, null);
         }
         return variables;
     }

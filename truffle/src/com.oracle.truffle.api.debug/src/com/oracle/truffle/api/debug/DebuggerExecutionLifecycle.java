@@ -53,7 +53,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 
 final class DebuggerExecutionLifecycle implements ContextsListener, ThreadsListener {
 
-    private final Debugger debugger;
+    private final DebuggerSession session;
     private final Instrumenter lifecycleInstrumenter;
     private EventBinding<ContextsListener> contextsBinding;
     private volatile DebugContextsListener contextsListener;
@@ -61,9 +61,9 @@ final class DebuggerExecutionLifecycle implements ContextsListener, ThreadsListe
     private volatile DebugThreadsListener threadsListener;
     private final Map<TruffleContext, DebugContext> contextMap = new ConcurrentHashMap<>();
 
-    DebuggerExecutionLifecycle(Debugger debugger) {
-        this.debugger = debugger;
-        this.lifecycleInstrumenter = debugger.getEnv().getInstrumenter();
+    DebuggerExecutionLifecycle(DebuggerSession session) {
+        this.session = session;
+        this.lifecycleInstrumenter = session.getDebugger().getEnv().getInstrumenter();
     }
 
     synchronized void setContextsListener(DebugContextsListener listener, boolean includeExistingContexts) {
@@ -106,7 +106,11 @@ final class DebuggerExecutionLifecycle implements ContextsListener, ThreadsListe
     }
 
     Debugger getDebugger() {
-        return debugger;
+        return session.getDebugger();
+    }
+
+    DebuggerSession getSession() {
+        return session;
     }
 
     @Override

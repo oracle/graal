@@ -66,11 +66,13 @@ import java.util.zip.ZipEntry;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Source.Builder;
+import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.test.ReflectionUtils;
 
 public class SourceAPITest {
 
@@ -610,6 +612,36 @@ public class SourceAPITest {
         } catch (NullPointerException ex) {
             // OK
         }
+    }
+
+    @Test
+    @SuppressWarnings("rawtypes")
+    public void testNoContentSource() {
+        com.oracle.truffle.api.source.Source truffleSource = com.oracle.truffle.api.source.Source.newBuilder(ProxyLanguage.ID, "x", "name").content(
+                        com.oracle.truffle.api.source.Source.CONTENT_NONE).build();
+        Class<?>[] sourceConstructorTypes = new Class[]{String.class, Object.class};
+        Source source = ReflectionUtils.newInstance(Source.class, sourceConstructorTypes, ProxyLanguage.ID, truffleSource);
+        assertFalse(source.hasCharacters());
+        assertFalse(source.hasBytes());
+        try {
+            source.getCharacters();
+            fail();
+        } catch (UnsupportedOperationException ex) {
+            // O.K.
+        }
+        try {
+            Context.create().eval(source);
+            fail();
+        } catch (IllegalArgumentException ex) {
+            // O.K.
+        }
+        com.oracle.truffle.api.source.SourceSection truffleSection = truffleSource.createSection(1, 2, 3, 4);
+        Class<?>[] sectionConstructorTypes = new Class[]{Source.class, Object.class};
+        SourceSection section = ReflectionUtils.newInstance(SourceSection.class, sectionConstructorTypes, source, truffleSection);
+        assertFalse(section.hasCharIndex());
+        assertTrue(section.hasLines());
+        assertTrue(section.hasColumns());
+        assertEquals("", section.getCharacters());
     }
 
     @Registration(id = "TestJava", name = "", characterMimeTypes = "text/x-java")
