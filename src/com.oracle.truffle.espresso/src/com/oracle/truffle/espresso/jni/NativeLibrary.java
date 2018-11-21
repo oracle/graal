@@ -33,11 +33,20 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import org.graalvm.nativeimage.ImageInfo;
 
 public class NativeLibrary {
 
     public static TruffleObject loadLibrary(String lib) {
-        Source source = Source.newBuilder("nfi", String.format("with dlmopen load(RTLD_LAZY) '%s'", lib), "loadLibrary").build();
+        // On SVM no need to use dlmopen backend.
+        // Prepend "with dlmopen " in HotSpot.
+        StringBuilder sb = new StringBuilder();
+        if (!ImageInfo.inImageRuntimeCode()) {
+            sb.append("with dlmopen ");
+        }
+        sb.append("load(RTLD_LAZY) '").append(lib).append('\'');
+
+        Source source = Source.newBuilder("nfi", sb.toString(), "loadLibrary").build();
         CallTarget target = EspressoLanguage.getCurrentContext().getEnv().parse(source);
         return (TruffleObject) target.call();
     }
