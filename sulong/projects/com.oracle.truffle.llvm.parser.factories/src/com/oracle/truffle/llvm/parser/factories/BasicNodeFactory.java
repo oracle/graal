@@ -2487,6 +2487,7 @@ public class BasicNodeFactory implements NodeFactory {
 
     private static AssertionError unsupportedCast(PrimitiveKind kind) {
         throw new LLVMParserException("Cannot cast to " + kind);
+    }
 
     @Override
     public LLVMControlFlowNode createLoop(LLVMExpressionNode body, int[] successorIDs) {

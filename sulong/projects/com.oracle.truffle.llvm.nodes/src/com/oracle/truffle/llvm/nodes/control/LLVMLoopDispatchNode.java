@@ -87,8 +87,13 @@ public final class LLVMLoopDispatchNode extends LLVMExpressionNode {
         outer: while (true) {
             CompilerAsserts.partialEvaluationConstant(basicBlockIndex);
             LLVMBasicBlockNode bb = (LLVMBasicBlockNode) bodyNodes[indexMapping[basicBlockIndex]];
+
+            // lazily insert the basic block into the AST
+            bb = bb.initialize();
+
             // execute all statements
             bb.execute(frame);
+
             // execute control flow node, write phis, null stack frame slots, and dispatch to
             // the correct successor block
             LLVMControlFlowNode controlFlowNode = bb.termInstruction;
