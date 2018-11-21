@@ -1325,6 +1325,8 @@ public abstract class GraalCompilerTest extends GraalTest {
         }
     }
 
+    protected static final Object NO_BIND = new Object();
+
     protected void bindArguments(StructuredGraph graph, Object[] argsToBind) {
         ResolvedJavaMethod m = graph.method();
         Object receiver = isStatic(m.getModifiers()) ? null : this;
@@ -1332,9 +1334,12 @@ public abstract class GraalCompilerTest extends GraalTest {
         JavaType[] parameterTypes = m.toParameterTypes();
         assert parameterTypes.length == args.length;
         for (ParameterNode param : graph.getNodes(ParameterNode.TYPE)) {
-            JavaConstant c = getSnippetReflection().forBoxed(parameterTypes[param.index()].getJavaKind(), args[param.index()]);
-            ConstantNode replacement = ConstantNode.forConstant(c, getMetaAccess(), graph);
-            param.replaceAtUsages(replacement);
+            Object arg = args[param.index()];
+            if (arg != NO_BIND) {
+                JavaConstant c = getSnippetReflection().forBoxed(parameterTypes[param.index()].getJavaKind(), arg);
+                ConstantNode replacement = ConstantNode.forConstant(c, getMetaAccess(), graph);
+                param.replaceAtUsages(replacement);
+            }
         }
     }
 
