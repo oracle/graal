@@ -20,24 +20,29 @@
     ]
   },
   {
-    "name": "com.oracle.truffle.espresso.intrinsics.Target_java_io_Console",    
-    "allPublicMethods": true
+    "name": "com.oracle.truffle.nfi.impl.LibFFILibrary",
+    "fields": [
+      {
+        "name": "handle"
+      }
+    ]
   },
   {
-    "name": "com.oracle.truffle.espresso.intrinsics.Target_java_io_FileDescriptor",    
-    "allPublicMethods": true
+    "name": "java.util.concurrent.atomic.AtomicLong",
+    "fields": [
+      { "name": "VM_SUPPORTS_LONG_CAS" }
+    ]
   },
   {
-    "name": "com.oracle.truffle.espresso.intrinsics.Target_java_io_FileInputStream",    
-    "allPublicMethods": true
-  },
-  {
-    "name": "com.oracle.truffle.espresso.intrinsics.Target_java_io_FileOutputStream",    
-    "allPublicMethods": true
-  },
-  {
-    "name": "com.oracle.truffle.espresso.intrinsics.Target_java_io_UnixFileSystem",    
-    "allPublicMethods": true
+    "name": "java.lang.Package",
+    "methods": [
+      {
+        "name": "getSystemPackage0",
+        "parameterTypes": [
+          "java.lang.String"
+        ]
+      }
+    ]
   },
   {
     "name": "com.oracle.truffle.espresso.intrinsics.Target_java_lang_Class",    
@@ -48,23 +53,7 @@
     "allPublicMethods": true
   },
   {
-    "name": "com.oracle.truffle.espresso.intrinsics.Target_java_lang_Double",    
-    "allPublicMethods": true
-  },
-  {
-    "name": "com.oracle.truffle.espresso.intrinsics.Target_java_lang_Float",    
-    "allPublicMethods": true
-  },
-  {
-    "name": "com.oracle.truffle.espresso.intrinsics.Target_java_lang_StrictMath",    
-    "allPublicMethods": true
-  },
-  {
     "name": "com.oracle.truffle.espresso.intrinsics.Target_java_lang_Package",    
-    "allPublicMethods": true
-  },
-  {
-    "name": "com.oracle.truffle.espresso.intrinsics.Target_java_lang_Object",    
     "allPublicMethods": true
   },
   {
@@ -72,19 +61,7 @@
     "allPublicMethods": true
   },
   {
-    "name": "com.oracle.truffle.espresso.intrinsics.Target_java_lang_String",    
-    "allPublicMethods": true
-  },
-  {
-    "name": "com.oracle.truffle.espresso.intrinsics.Target_java_lang_System",    
-    "allPublicMethods": true
-  },
-  {
     "name": "com.oracle.truffle.espresso.intrinsics.Target_java_lang_Thread",    
-    "allPublicMethods": true
-  },
-  {
-    "name": "com.oracle.truffle.espresso.intrinsics.Target_java_lang_Throwable",    
     "allPublicMethods": true
   },
   {
@@ -96,23 +73,7 @@
     "allPublicMethods": true
   },
   {
-    "name": "com.oracle.truffle.espresso.intrinsics.Target_java_util_concurrent_atomic_AtomicLong",    
-    "allPublicMethods": true
-  },
-  {
     "name": "com.oracle.truffle.espresso.intrinsics.Target_java_util_jar_JarFile",    
-    "allPublicMethods": true
-  },
-  {
-    "name": "com.oracle.truffle.espresso.intrinsics.Target_java_util_zip_Inflater",    
-    "allPublicMethods": true
-  },
-  {
-    "name": "com.oracle.truffle.espresso.intrinsics.Target_java_util_zip_ZipFile",    
-    "allPublicMethods": true
-  },
-  {
-    "name": "com.oracle.truffle.espresso.intrinsics.Target_sun_launcher_LauncherHelper",    
     "allPublicMethods": true
   },
   {
@@ -126,9 +87,9 @@
   {
     "name": "com.oracle.truffle.espresso.intrinsics.Target_sun_misc_Unsafe",    
     "allPublicMethods": true
-  },
+  },  
   {
-    "name": "com.oracle.truffle.espresso.intrinsics.Target_sun_misc_URLClassPath",    
+    "name": "com.oracle.truffle.espresso.intrinsics.Target_sun_misc_URLClassPath",
     "allPublicMethods": true
   },
   {
@@ -136,7 +97,7 @@
     "allPublicMethods": true
   },
   {
-    "name": "com.oracle.truffle.espresso.intrinsics.Target_sun_reflect_NativeConstructorAccessorImpl",    
+    "name": "com.oracle.truffle.espresso.intrinsics.Target_sun_reflect_NativeMethodAccessorImpl",    
     "allPublicMethods": true
   },
   {
@@ -144,21 +105,11 @@
     "allPublicMethods": true
   },
   {
-    "name": "com.oracle.truffle.espresso.intrinsics.Target_sun_nio_fs_UnixNativeDispatcher",
+    "name": "com.oracle.truffle.espresso.jni.JniEnv",    
     "allPublicMethods": true
   },
   {
-    "name": "com.oracle.truffle.espresso.intrinsics.Target_sun_nio_fs_UnixNativeDispatcher",
+    "name": "com.oracle.truffle.espresso.vm.VM",
     "allPublicMethods": true
-  },
-  {
-    "name": "sun.nio.fs.UnixFileAttributes",
-    "allDeclaredMethods": true,
-    "allDeclaredFields": true
-  },
-  {
-    "name": "sun.nio.fs.UnixFileStoreAttributes",
-    "allDeclaredMethods": true,
-    "allDeclaredFields": true
-  }
+  }  
 ]
