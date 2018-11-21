@@ -127,7 +127,7 @@ public final class ForeignAccess {
      * @return new instance wrapping <code>factory</code>
      * @since 0.30
      * @deprecated Use
-     *             {@link #create(com.oracle.truffle.api.interop.ForeignAccess.StandardFactory, java.util.function.Supplier)
+     *             {@link #createAccess(com.oracle.truffle.api.interop.ForeignAccess.StandardFactory, java.util.function.Supplier)
      *             method
      */
     @Deprecated
@@ -151,7 +151,7 @@ public final class ForeignAccess {
      * @return new instance wrapping <code>factory</code>
      * @since 1.0
      */
-    public static ForeignAccess create(final StandardFactory factory, final Supplier<? extends RootNode> languageCheckSupplier) {
+    public static ForeignAccess createAccess(final StandardFactory factory, final Supplier<? extends RootNode> languageCheckSupplier) {
         if (languageCheckSupplier == null) {
             Factory f = (Factory) factory;
             assert f != null;

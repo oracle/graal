@@ -8,8 +8,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 * Added `TruffleLanguage.Env.isPreInitialization` method to determine whether the context is being pre-initialized.
 * Added `ArrayUtils` API providing additional array and/or string operations that may be intrinsified by the compiler.
-* Added `ForeignAccess.create` method taking a [supplier of languageCheck node](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/ForeignAccess.html#create-com.oracle.truffle.api.interop.ForeignAccess.StandardFactory-java.util.function.Supplier-), deprecated
-the `ForeignAccess.create` method with languageCheck `RootNode` parameter.
+* Added `ForeignAccess.createAccess` method taking a [supplier of language check node](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/ForeignAccess.html#createAccess-com.oracle.truffle.api.interop.ForeignAccess.StandardFactory-java.util.function.Supplier-), deprecated the `ForeignAccess.create` method with languageCheck `RootNode` parameter.
 
 ## Version 1.0.0 RC9
 
