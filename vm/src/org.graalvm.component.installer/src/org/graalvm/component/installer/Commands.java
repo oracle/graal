@@ -49,8 +49,11 @@ public interface Commands {
     /**
      * Interpret command line parameters as files.
      */
-    String OPTION_FILES = "F"; // NOI18N
-    String LONG_OPTION_FILES = "file"; // NOI18N
+    String OPTION_FILES = "L"; // NOI18N
+    String LONG_OPTION_FILES = "local-file"; // NOI18N
+
+    @Deprecated String OPTION_FILES_OLD = "F"; // NOI18N
+    @Deprecated String LONG_OPTION_FILES_OLD = "file"; // NOI18N
 
     /**
      * Replace different files.

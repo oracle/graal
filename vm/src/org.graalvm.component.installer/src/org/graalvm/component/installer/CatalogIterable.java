@@ -24,6 +24,7 @@
  */
 package org.graalvm.component.installer;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URL;
@@ -74,6 +75,14 @@ public class CatalogIterable implements ComponentIterable {
     }
 
     private class It implements Iterator<ComponentParam> {
+        private void thrownUnknown(String fname, boolean throwUnknown) {
+            File f = new File(fname);
+            if (f.exists() && f.isFile()) {
+                throw feedback.failure("REMOTE_UnknownComponentMaybeFile", null, fname);
+            } else if (throwUnknown) {
+                throw feedback.failure("REMOTE_UnknownComponentId", null, fname);
+            }
+        }
 
         @Override
         public boolean hasNext() {
@@ -83,14 +92,19 @@ public class CatalogIterable implements ComponentIterable {
         @Override
         public ComponentParam next() {
             String s = input.nextParameter();
+            ComponentInfo info;
+            try {
+                if (getRegistry().findComponent(s.toLowerCase()) == null) {
+                    thrownUnknown(s, true);
+                }
 
-            if (getRegistry().findComponent(s.toLowerCase()) == null) {
-                throw feedback.failure("REMOTE_UnknownComponentId", null, s);
-            }
-
-            ComponentInfo info = getRegistry().loadSingleComponent(s.toLowerCase(), false);
-            if (info == null) {
-                throw feedback.failure("REMOTE_UnknownComponentId", null, s);
+                info = getRegistry().loadSingleComponent(s.toLowerCase(), false);
+                if (info == null) {
+                    thrownUnknown(s, true);
+                }
+            } catch (FailedOperationException ex) {
+                thrownUnknown(s, false);
+                throw ex;
             }
             boolean progress = input.optValue(Commands.OPTION_NO_DOWNLOAD_PROGRESS) == null;
             RemoteComponentParam param = new RemoteComponentParam(
