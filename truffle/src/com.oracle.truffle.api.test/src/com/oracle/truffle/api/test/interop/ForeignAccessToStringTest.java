@@ -58,7 +58,7 @@ public class ForeignAccessToStringTest {
 
     @Test
     public void check10Factory() {
-        ForeignAccess fa = ForeignAccess.create(new Simple10TestingFactory(), null);
+        ForeignAccess fa = ForeignAccess.createAccess(new Simple10TestingFactory(), null);
         assertEquals("ForeignAccess[" + ForeignAccessToStringTest.class.getName() + "$Simple10TestingFactory]", fa.toString());
     }
 
