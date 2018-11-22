@@ -51,7 +51,7 @@ public class AMD64HotSpotHelper {
         return new AMD64Address(reg, offset, scale, displacement);
     }
 
-    static AMD64Address ExternalAddress(CompilationResultBuilder crb, ArrayDataPointerConstant ptr) {
+    static AMD64Address recordExternalAddress(CompilationResultBuilder crb, ArrayDataPointerConstant ptr) {
         return (AMD64Address) crb.recordDataReferenceInCode(ptr);
     }
 

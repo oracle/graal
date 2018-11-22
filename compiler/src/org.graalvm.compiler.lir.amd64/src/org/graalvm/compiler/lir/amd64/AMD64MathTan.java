@@ -601,15 +601,15 @@ public class AMD64MathTan extends AMD64HotSpotHelper {
         masm.subl(rax, 16314);
         masm.cmpl(rax, 270);
         masm.jcc(AMD64Assembler.ConditionFlag.Above, block0);
-        masm.movdqu(xmm5, ExternalAddress(crb, onehalf));    // 0x00000000, 0x3fe00000, 0x00000000,
+        masm.movdqu(xmm5, recordExternalAddress(crb, onehalf));    // 0x00000000, 0x3fe00000, 0x00000000,
                                                              // 0x3fe00000
-        masm.movdqu(xmm6, ExternalAddress(crb, mul16));    // 0x00000000, 0x40300000, 0x00000000,
+        masm.movdqu(xmm6, recordExternalAddress(crb, mul16));    // 0x00000000, 0x40300000, 0x00000000,
                                                            // 0x3ff00000
         masm.unpcklpd(xmm0, xmm0);
-        masm.movdqu(xmm4, ExternalAddress(crb, signMask));    // 0x00000000, 0x80000000, 0x00000000,
+        masm.movdqu(xmm4, recordExternalAddress(crb, signMask));    // 0x00000000, 0x80000000, 0x00000000,
                                                               // 0x80000000
         masm.andpd(xmm4, xmm0);
-        masm.movdqu(xmm1, ExternalAddress(crb, pi32Inv));    // 0x6dc9c883, 0x3fe45f30, 0x6dc9c883,
+        masm.movdqu(xmm1, recordExternalAddress(crb, pi32Inv));    // 0x6dc9c883, 0x3fe45f30, 0x6dc9c883,
                                                              // 0x40245f30
         masm.mulpd(xmm1, xmm0);
         masm.por(xmm5, xmm4);
@@ -620,11 +620,11 @@ public class AMD64MathTan extends AMD64HotSpotHelper {
         masm.cvttpd2dq(xmm1, xmm1);
         masm.cvtdq2pd(xmm1, xmm1);
         masm.mulpd(xmm1, xmm6);
-        masm.movdqu(xmm3, ExternalAddress(crb, p1));    // 0x54444000, 0x3fb921fb, 0x54440000,
+        masm.movdqu(xmm3, recordExternalAddress(crb, p1));    // 0x54444000, 0x3fb921fb, 0x54440000,
                                                         // 0x3fb921fb
-        masm.movq(xmm5, ExternalAddress(crb, qq2));    // 0x676733af, 0x3d32e7b9
+        masm.movq(xmm5, recordExternalAddress(crb, qq2));    // 0x676733af, 0x3d32e7b9
         masm.addq(rdx, 469248);
-        masm.movdqu(xmm4, ExternalAddress(crb, p2));    // 0x67674000, 0xbd32e7b9, 0x4c4c0000,
+        masm.movdqu(xmm4, recordExternalAddress(crb, p2));    // 0x67674000, 0xbd32e7b9, 0x4c4c0000,
                                                         // 0x3d468c23
         masm.mulpd(xmm3, xmm1);
         masm.andq(rdx, 31);
@@ -633,7 +633,7 @@ public class AMD64MathTan extends AMD64HotSpotHelper {
         masm.mulpd(xmm4, xmm1);
         masm.shlq(rcx, 1);
         masm.subpd(xmm0, xmm3);
-        masm.mulpd(xmm1, ExternalAddress(crb, p3));    // 0x3707344a, 0x3aa8a2e0, 0x03707345,
+        masm.mulpd(xmm1, recordExternalAddress(crb, p3));    // 0x3707344a, 0x3aa8a2e0, 0x03707345,
                                                        // 0x3ae98a2e
         masm.addq(rdx, rcx);
         masm.shlq(rcx, 2);
@@ -641,10 +641,10 @@ public class AMD64MathTan extends AMD64HotSpotHelper {
         masm.addsd(xmm5, xmm0);
         masm.movdqu(xmm2, xmm0);
         masm.subpd(xmm0, xmm4);
-        masm.movq(xmm6, ExternalAddress(crb, one));    // 0x00000000, 0x3ff00000
+        masm.movq(xmm6, recordExternalAddress(crb, one));    // 0x00000000, 0x3ff00000
         masm.shlq(rdx, 4);
-        masm.leaq(rax, ExternalAddress(crb, ctable));
-        masm.andpd(xmm5, ExternalAddress(crb, mask35));    // 0xfffc0000, 0xffffffff, 0x00000000,
+        masm.leaq(rax, recordExternalAddress(crb, ctable));
+        masm.andpd(xmm5, recordExternalAddress(crb, mask35));    // 0xfffc0000, 0xffffffff, 0x00000000,
                                                            // 0x00000000
         masm.movdqu(xmm3, xmm0);
         masm.addq(rax, rdx);
@@ -698,7 +698,7 @@ public class AMD64MathTan extends AMD64HotSpotHelper {
         masm.addsd(xmm7, new AMD64Address(rax, 136));
         masm.addsd(xmm7, xmm1);
         masm.addsd(xmm0, xmm7);
-        masm.movq(xmm7, ExternalAddress(crb, one));    // 0x00000000, 0x3ff00000
+        masm.movq(xmm7, recordExternalAddress(crb, one));    // 0x00000000, 0x3ff00000
         masm.mulsd(xmm4, xmm6);
         masm.movq(xmm2, new AMD64Address(rax, 168));
         masm.andpd(xmm2, xmm6);
@@ -728,26 +728,26 @@ public class AMD64MathTan extends AMD64HotSpotHelper {
         masm.jcc(AMD64Assembler.ConditionFlag.Below, block3);
         masm.movdqu(xmm2, xmm0);
         masm.movdqu(xmm3, xmm0);
-        masm.movq(xmm1, ExternalAddress(crb, q11));    // 0xb8fe4d77, 0x3f82609a
+        masm.movq(xmm1, recordExternalAddress(crb, q11));    // 0xb8fe4d77, 0x3f82609a
         masm.mulsd(xmm2, xmm0);
         masm.mulsd(xmm3, xmm2);
         masm.mulsd(xmm1, xmm2);
-        masm.addsd(xmm1, ExternalAddress(crb, q9));    // 0xbf847a43, 0x3f9664a0
+        masm.addsd(xmm1, recordExternalAddress(crb, q9));    // 0xbf847a43, 0x3f9664a0
         masm.mulsd(xmm1, xmm2);
-        masm.addsd(xmm1, ExternalAddress(crb, q7));    // 0x52c4c8ab, 0x3faba1ba
+        masm.addsd(xmm1, recordExternalAddress(crb, q7));    // 0x52c4c8ab, 0x3faba1ba
         masm.mulsd(xmm1, xmm2);
-        masm.addsd(xmm1, ExternalAddress(crb, q5));    // 0x11092746, 0x3fc11111
+        masm.addsd(xmm1, recordExternalAddress(crb, q5));    // 0x11092746, 0x3fc11111
         masm.mulsd(xmm1, xmm2);
-        masm.addsd(xmm1, ExternalAddress(crb, q3));    // 0x55555612, 0x3fd55555
+        masm.addsd(xmm1, recordExternalAddress(crb, q3));    // 0x55555612, 0x3fd55555
         masm.mulsd(xmm1, xmm3);
         masm.addsd(xmm0, xmm1);
         masm.jmp(b14);
 
         masm.bind(block3);
-        masm.movq(xmm3, ExternalAddress(crb, twoPow55));    // 0x00000000, 0x43600000
+        masm.movq(xmm3, recordExternalAddress(crb, twoPow55));    // 0x00000000, 0x43600000
         masm.mulsd(xmm3, xmm0);
         masm.addsd(xmm0, xmm3);
-        masm.mulsd(xmm0, ExternalAddress(crb, twoPowM55));    // 0x00000000, 0x3c800000
+        masm.mulsd(xmm0, recordExternalAddress(crb, twoPowM55));    // 0x00000000, 0x3c800000
         masm.jmp(b14);
 
         masm.bind(block2);
@@ -765,7 +765,7 @@ public class AMD64MathTan extends AMD64HotSpotHelper {
         masm.subl(rcx, 16224);
         masm.shrl(rcx, 7);
         masm.andl(rcx, 65532);
-        masm.leaq(r11, ExternalAddress(crb, piInvTable));
+        masm.leaq(r11, recordExternalAddress(crb, piInvTable));
         masm.addq(rcx, r11);
         masm.movdq(rax, xmm0);
         masm.movl(r10, new AMD64Address(rcx, 20));
@@ -836,7 +836,7 @@ public class AMD64MathTan extends AMD64HotSpotHelper {
         masm.addq(r9, rdi);
         masm.imulq(rdx, rax);
         masm.pextrw(rbx, xmm0, 3);
-        masm.leaq(rdi, ExternalAddress(crb, piInvTable));
+        masm.leaq(rdi, recordExternalAddress(crb, piInvTable));
         masm.subq(rcx, rdi);
         masm.addl(rcx, rcx);
         masm.addl(rcx, rcx);
@@ -898,9 +898,9 @@ public class AMD64MathTan extends AMD64HotSpotHelper {
         masm.orl(rdx, rsi);
         masm.xorl(rdx, rbx);
         masm.pinsrw(xmm4, rdx, 3);
-        masm.movq(xmm2, ExternalAddress(crb, pi4));    // 0x00000000, 0x3fe921fb, 0x4611a626,
+        masm.movq(xmm2, recordExternalAddress(crb, pi4));    // 0x00000000, 0x3fe921fb, 0x4611a626,
                                                        // 0x3e85110b
-        masm.movq(xmm7, ExternalAddress(crb, pi48));    // 0x3fe921fb, 0x4611a626, 0x3e85110b
+        masm.movq(xmm7, recordExternalAddress(crb, pi48));    // 0x3fe921fb, 0x4611a626, 0x3e85110b
         masm.xorpd(xmm5, xmm5);
         masm.subl(rdx, 1008);
         masm.pinsrw(xmm5, rdx, 3);
@@ -922,14 +922,14 @@ public class AMD64MathTan extends AMD64HotSpotHelper {
         masm.addsd(xmm0, xmm7);
         masm.subsd(xmm2, xmm0);
         masm.addsd(xmm7, xmm2);
-        masm.movdqu(xmm1, ExternalAddress(crb, pi32Inv));    // 0x6dc9c883, 0x3fe45f30, 0x6dc9c883,
+        masm.movdqu(xmm1, recordExternalAddress(crb, pi32Inv));    // 0x6dc9c883, 0x3fe45f30, 0x6dc9c883,
                                                              // 0x40245f30
         if (masm.supports(AMD64.CPUFeature.SSE3)) {
             masm.movddup(xmm0, xmm0);
         } else {
             masm.movlhps(xmm0, xmm0);
         }
-        masm.movdqu(xmm4, ExternalAddress(crb, signMask));    // 0x00000000, 0x80000000, 0x00000000,
+        masm.movdqu(xmm4, recordExternalAddress(crb, signMask));    // 0x00000000, 0x80000000, 0x00000000,
                                                               // 0x80000000
         masm.andpd(xmm4, xmm0);
         masm.mulpd(xmm1, xmm0);
@@ -938,9 +938,9 @@ public class AMD64MathTan extends AMD64HotSpotHelper {
         } else {
             masm.movlhps(xmm7, xmm7);
         }
-        masm.movdqu(xmm5, ExternalAddress(crb, onehalf));    // 0x00000000, 0x3fe00000, 0x00000000,
+        masm.movdqu(xmm5, recordExternalAddress(crb, onehalf));    // 0x00000000, 0x3fe00000, 0x00000000,
                                                              // 0x3fe00000
-        masm.movdqu(xmm6, ExternalAddress(crb, mul16));    // 0x00000000, 0x40300000, 0x00000000,
+        masm.movdqu(xmm6, recordExternalAddress(crb, mul16));    // 0x00000000, 0x40300000, 0x00000000,
                                                            // 0x3ff00000
         masm.por(xmm5, xmm4);
         masm.addpd(xmm1, xmm5);
@@ -950,12 +950,12 @@ public class AMD64MathTan extends AMD64HotSpotHelper {
         masm.cvttpd2dq(xmm1, xmm1);
         masm.cvtdq2pd(xmm1, xmm1);
         masm.mulpd(xmm1, xmm6);
-        masm.movdqu(xmm3, ExternalAddress(crb, p1));    // 0x54444000, 0x3fb921fb, 0x54440000,
+        masm.movdqu(xmm3, recordExternalAddress(crb, p1));    // 0x54444000, 0x3fb921fb, 0x54440000,
                                                         // 0x3fb921fb
-        masm.movq(xmm5, ExternalAddress(crb, qq2));    // 0x676733af, 0x3d32e7b9
+        masm.movq(xmm5, recordExternalAddress(crb, qq2));    // 0x676733af, 0x3d32e7b9
         masm.shll(rax, 4);
         masm.addl(rdx, 469248);
-        masm.movdqu(xmm4, ExternalAddress(crb, p2));    // 0x67674000, 0xbd32e7b9, 0x4c4c0000,
+        masm.movdqu(xmm4, recordExternalAddress(crb, p2));    // 0x67674000, 0xbd32e7b9, 0x4c4c0000,
                                                         // 0x3d468c23
         masm.mulpd(xmm3, xmm1);
         masm.addl(rdx, rax);
@@ -965,7 +965,7 @@ public class AMD64MathTan extends AMD64HotSpotHelper {
         masm.mulpd(xmm4, xmm1);
         masm.shll(rcx, 1);
         masm.subpd(xmm0, xmm3);
-        masm.mulpd(xmm1, ExternalAddress(crb, p3));    // 0x3707344a, 0x3aa8a2e0, 0x03707345,
+        masm.mulpd(xmm1, recordExternalAddress(crb, p3));    // 0x3707344a, 0x3aa8a2e0, 0x03707345,
                                                        // 0x3ae98a2e
         masm.addl(rdx, rcx);
         masm.shll(rcx, 2);
@@ -973,10 +973,10 @@ public class AMD64MathTan extends AMD64HotSpotHelper {
         masm.addsd(xmm5, xmm0);
         masm.movdqu(xmm2, xmm0);
         masm.subpd(xmm0, xmm4);
-        masm.movq(xmm6, ExternalAddress(crb, one));    // 0x00000000, 0x3ff00000
+        masm.movq(xmm6, recordExternalAddress(crb, one));    // 0x00000000, 0x3ff00000
         masm.shll(rdx, 4);
-        masm.leaq(rax, ExternalAddress(crb, ctable));
-        masm.andpd(xmm5, ExternalAddress(crb, mask35));    // 0xfffc0000, 0xffffffff, 0x00000000,
+        masm.leaq(rax, recordExternalAddress(crb, ctable));
+        masm.andpd(xmm5, recordExternalAddress(crb, mask35));    // 0xfffc0000, 0xffffffff, 0x00000000,
                                                            // 0x00000000
         masm.movdqu(xmm3, xmm0);
         masm.addq(rax, rdx);
@@ -1031,7 +1031,7 @@ public class AMD64MathTan extends AMD64HotSpotHelper {
         masm.addsd(xmm7, new AMD64Address(rax, 136));
         masm.addsd(xmm7, xmm1);
         masm.addsd(xmm0, xmm7);
-        masm.movq(xmm7, ExternalAddress(crb, one));    // 0x00000000, 0x3ff00000
+        masm.movq(xmm7, recordExternalAddress(crb, one));    // 0x00000000, 0x3ff00000
         masm.mulsd(xmm4, xmm6);
         masm.movq(xmm2, new AMD64Address(rax, 168));
         masm.andpd(xmm2, xmm6);
@@ -1128,7 +1128,7 @@ public class AMD64MathTan extends AMD64HotSpotHelper {
 
         masm.bind(block4);
         masm.movq(xmm0, new AMD64Address(rsp, 8));
-        masm.mulsd(xmm0, ExternalAddress(crb, negZero));    // 0x00000000, 0x80000000
+        masm.mulsd(xmm0, recordExternalAddress(crb, negZero));    // 0x00000000, 0x80000000
         masm.movq(new AMD64Address(rsp, 0), xmm0);
 
         masm.bind(block14);

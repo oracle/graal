@@ -269,7 +269,7 @@ public class AMD64MathLog extends AMD64HotSpotHelper {
         masm.por(xmm0, xmm2);
         masm.movl(rcx, 16352);
         masm.psrlq(xmm0, 27);
-        masm.leaq(tmp2, ExternalAddress(crb, lTbl));
+        masm.leaq(tmp2, recordExternalAddress(crb, lTbl));
         masm.psrld(xmm0, 2);
         masm.rcpps(xmm0, xmm0);
         masm.psllq(xmm1, 12);
@@ -292,17 +292,17 @@ public class AMD64MathLog extends AMD64HotSpotHelper {
         masm.subl(rax, rcx);
         masm.cvtsi2sdl(xmm7, rax);
         masm.mulsd(xmm1, xmm0);
-        masm.movq(xmm6, ExternalAddress(crb, log2));       // 0xfefa3800, 0x3fa62e42
-        masm.movdqu(xmm3, ExternalAddress(crb, coeff));    // 0x92492492, 0x3fc24924, 0x00000000,
+        masm.movq(xmm6, recordExternalAddress(crb, log2));       // 0xfefa3800, 0x3fa62e42
+        masm.movdqu(xmm3, recordExternalAddress(crb, coeff));    // 0x92492492, 0x3fc24924, 0x00000000,
                                                            // 0xbfd00000
         masm.subsd(xmm5, xmm2);
         masm.andl(rdx, 16711680);
         masm.shrl(rdx, 12);
         masm.movdqu(xmm0, new AMD64Address(tmp2, rdx, AMD64Address.Scale.Times1));
-        masm.movdqu(xmm4, ExternalAddress(crb, coeff16)); // 0x3d6fb175, 0xbfc5555e, 0x55555555,
+        masm.movdqu(xmm4, recordExternalAddress(crb, coeff16)); // 0x3d6fb175, 0xbfc5555e, 0x55555555,
                                                           // 0x3fd55555
         masm.addsd(xmm1, xmm5);
-        masm.movdqu(xmm2, ExternalAddress(crb, coeff32)); // 0x9999999a, 0x3fc99999, 0x00000000,
+        masm.movdqu(xmm2, recordExternalAddress(crb, coeff32)); // 0x9999999a, 0x3fc99999, 0x00000000,
                                                           // 0xbfe00000
         masm.mulsd(xmm6, xmm7);
         if (masm.supports(AMD64.CPUFeature.SSE3)) {
@@ -311,7 +311,7 @@ public class AMD64MathLog extends AMD64HotSpotHelper {
             masm.movdqu(xmm5, xmm1);
             masm.movlhps(xmm5, xmm5);
         }
-        masm.mulsd(xmm7, ExternalAddress(crb, log28));    // 0x93c76730, 0x3ceef357
+        masm.mulsd(xmm7, recordExternalAddress(crb, log28));    // 0x93c76730, 0x3ceef357
         masm.mulsd(xmm3, xmm1);
         masm.addsd(xmm0, xmm6);
         masm.mulpd(xmm4, xmm5);

@@ -104,6 +104,7 @@ import org.graalvm.compiler.lir.amd64.AMD64ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.lir.amd64.AMD64Binary;
 import org.graalvm.compiler.lir.amd64.AMD64BinaryConsumer;
 import org.graalvm.compiler.lir.amd64.AMD64ClearRegisterOp;
+import org.graalvm.compiler.lir.amd64.AMD64MathCosOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathIntrinsicBinaryOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathIntrinsicUnaryOp;
 import org.graalvm.compiler.lir.amd64.AMD64Move;
@@ -1040,11 +1041,8 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         LIRGenerator gen = getLIRGen();
         Variable result = maths.emitCos(gen, input);
         if (result == null) {
-            RegisterValue xmm0Value = xmm0.asValue(LIRKind.combine(input));
-            getLIRGen().emitMove(xmm0Value, input);
             result = gen.newVariable(LIRKind.combine(input));
-            AllocatableValue stackSlot = gen.getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(AMD64Kind.QWORD));
-            gen.append(new AMD64MathIntrinsicUnaryOp(getAMD64LIRGen(), COS, result, xmm0Value, stackSlot));
+            gen.append(new AMD64MathCosOp(getAMD64LIRGen(), result, input));
         }
         return result;
     }
