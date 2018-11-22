@@ -93,7 +93,7 @@ public class Target_java_lang_Class {
         try {
             Klass klass = context.getRegistries().resolve(context.getTypeDescriptors().make(typeDesc), loader == StaticObject.NULL ? null : loader);
             if (initialize) {
-                klass.initialize();
+                meta(klass).safeInitialize();
             }
             return klass.mirror();
         } catch (NoClassDefFoundError e) {
@@ -236,13 +236,6 @@ public class Target_java_lang_Class {
     @Intrinsic(hasReceiver = true)
     public static boolean isInterface(@Type(Class.class) StaticObjectClass self) {
         return self.getMirror().isInterface();
-    }
-
-    @Intrinsic(hasReceiver = true)
-    public static boolean isAssignableFrom(@Type(Class.class) StaticObjectClass self, @Type(Class.class) StaticObjectClass cls) {
-        Meta.Klass klass = Meta.meta(self.getMirror());
-        return klass.isAssignableFrom(Meta.meta(cls.getMirror()));
-
     }
 
     @Intrinsic(hasReceiver = true)
