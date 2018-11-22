@@ -217,16 +217,17 @@ public final class MethodInfo implements ModifiersProvider {
                     // the native Java library.
                     if (getDeclaringClass().getClassLoader() == null) {
                         // Look in libjava
-                        String mangledName = Mangle.mangleMethod(meta(this), false);
-
                         VM vm = EspressoLanguage.getCurrentContext().getVM();
+                        for (boolean withSignature : new boolean[]{false, true}) {
+                            String mangledName = Mangle.mangleMethod(meta(this), withSignature);
 
-                        try {
-                            TruffleObject nativeMethod = bind(vm.getJavaLibrary(), meta(this), mangledName);
-                            callTarget = Truffle.getRuntime().createCallTarget(new JniNativeNode(getContext().getLanguage(), nativeMethod, meta(this)));
-                            return callTarget;
-                        } catch (UnknownIdentifierException e) {
-                            // native method not found in libjava, safe to ignore
+                            try {
+                                TruffleObject nativeMethod = bind(vm.getJavaLibrary(), meta(this), mangledName);
+                                callTarget = Truffle.getRuntime().createCallTarget(new JniNativeNode(getContext().getLanguage(), nativeMethod, meta(this)));
+                                return callTarget;
+                            } catch (UnknownIdentifierException e) {
+                                // native method not found in libjava, safe to ignore
+                            }
                         }
                     }
 
