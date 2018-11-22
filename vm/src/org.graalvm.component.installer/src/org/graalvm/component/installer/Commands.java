@@ -156,4 +156,11 @@ public interface Commands {
      * on as positionals.
      */
     String DO_NOT_PROCESS_OPTIONS = "*";
+
+    /**
+     * Fails if a component which already exists is to be installed.
+     */
+    String OPTION_FAIL_EXISTING = "e"; // NOI18N
+    String LONG_OPTION_FAIL_EXISTING = "fail-existing"; // NOI18N
+
 }
