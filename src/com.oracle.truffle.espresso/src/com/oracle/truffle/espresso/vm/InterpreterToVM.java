@@ -37,6 +37,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import org.graalvm.nativeimage.ImageInfo;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -51,10 +53,8 @@ import com.oracle.truffle.espresso.intrinsics.Target_java_lang_Class;
 import com.oracle.truffle.espresso.intrinsics.Target_java_lang_ClassLoader;
 import com.oracle.truffle.espresso.intrinsics.Target_java_lang_Package;
 import com.oracle.truffle.espresso.intrinsics.Target_java_lang_Runtime;
-import com.oracle.truffle.espresso.intrinsics.Target_java_lang_System;
 import com.oracle.truffle.espresso.intrinsics.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.intrinsics.Target_java_lang_reflect_Array;
-import com.oracle.truffle.espresso.intrinsics.Target_java_lang_reflect_Field;
 import com.oracle.truffle.espresso.intrinsics.Target_java_security_AccessController;
 import com.oracle.truffle.espresso.intrinsics.Target_java_util_jar_JarFile;
 import com.oracle.truffle.espresso.intrinsics.Target_sun_misc_Perf;
@@ -63,7 +63,6 @@ import com.oracle.truffle.espresso.intrinsics.Target_sun_misc_URLClassPath;
 import com.oracle.truffle.espresso.intrinsics.Target_sun_misc_Unsafe;
 import com.oracle.truffle.espresso.intrinsics.Target_sun_misc_VM;
 import com.oracle.truffle.espresso.intrinsics.Target_sun_reflect_NativeMethodAccessorImpl;
-import com.oracle.truffle.espresso.intrinsics.Target_sun_reflect_Reflection;
 import com.oracle.truffle.espresso.intrinsics.Type;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
@@ -87,7 +86,7 @@ public class InterpreterToVM {
             f.setAccessible(true);
             hostUnsafe = (Unsafe) f.get(null);
         } catch (NoSuchFieldException | IllegalAccessException e) {
-            throw new RuntimeException(e);
+            throw EspressoError.shouldNotReachHere(e);
         }
     }
 
@@ -98,10 +97,8 @@ public class InterpreterToVM {
                     Target_java_lang_ClassLoader.class,
                     Target_java_lang_Package.class,
                     Target_java_lang_Runtime.class,
-                    Target_java_lang_System.class,
                     Target_java_lang_Thread.class,
                     Target_java_lang_reflect_Array.class,
-                    Target_java_lang_reflect_Field.class,
                     Target_java_security_AccessController.class,
                     Target_java_util_jar_JarFile.class,
                     Target_sun_misc_Perf.class,
@@ -109,8 +106,7 @@ public class InterpreterToVM {
                     Target_sun_misc_Unsafe.class,
                     Target_sun_misc_URLClassPath.class,
                     Target_sun_misc_VM.class,
-                    Target_sun_reflect_NativeMethodAccessorImpl.class,
-                    Target_sun_reflect_Reflection.class);
+                    Target_sun_reflect_NativeMethodAccessorImpl.class);
 
     private InterpreterToVM(EspressoLanguage language, List<Class<?>> intrinsics) {
         for (Class<?> clazz : intrinsics) {
@@ -287,9 +283,7 @@ public class InterpreterToVM {
     }
 
     private static RootNode createRootNodeForMethod(EspressoLanguage language, Method method) {
-        if (language.getContextReference().get().getEnv().getOptions().get(EspressoOptions.IntrinsicsViaReflection)) {
-            return new IntrinsicReflectionRootNode(language, method);
-        } else {
+        if (!ImageInfo.inImageRuntimeCode() && language.getContextReference().get().getEnv().getOptions().get(EspressoOptions.IntrinsicsViaMethodHandles)) {
             MethodHandle handle;
             try {
                 handle = MethodHandles.publicLookup().unreflect(method);
@@ -297,6 +291,8 @@ public class InterpreterToVM {
                 throw new RuntimeException(e);
             }
             return new IntrinsicRootNode(language, handle);
+        } else {
+            return new IntrinsicReflectionRootNode(language, method);
         }
     }
 
