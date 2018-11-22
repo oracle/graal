@@ -86,6 +86,9 @@ public class CoverageEventNode extends ExecutionEventNode {
      * section. This is useful for code completion based on coverage data. So, completion can be
      * based on the frame state at the completion's source section.
      *
+     * The frame copying does not perform a deep copy of objects in frame slots, so that we cannot
+     * freeze the state of these objects.
+     *
      * @param frame to copy
      * @return the copy
      */
