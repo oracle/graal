@@ -92,12 +92,21 @@ public class Installer implements Closeable {
     private boolean dryRun;
     private boolean ignoreRequirements;
     private boolean rebuildPolyglot;
+    private boolean failOnExisting;
 
     /**
      * Paths tracked by the component system.
      */
     private Set<String> trackedPaths = new HashSet<>();
     private Set<Path> visitedPaths = new HashSet<>();
+
+    public boolean isFailOnExisting() {
+        return failOnExisting;
+    }
+
+    public void setFailOnExisting(boolean failOnExisting) {
+        this.failOnExisting = failOnExisting;
+    }
 
     public boolean isReplaceDiferentFiles() {
         return replaceDiferentFiles;
@@ -198,17 +207,30 @@ public class Installer implements Closeable {
         return getInstallPath().resolve(rel);
     }
 
-    public void validateRequirements() {
-        new Verifier(feedback, registry, componentInfo)
+    public Verifier validateRequirements() {
+        return new Verifier(feedback, registry, componentInfo)
                         .ignoreRequirements(ignoreRequirements)
                         .replaceComponents(replaceComponents)
+                        .ignoreExisting(!failOnExisting)
                         .validateRequirements();
     }
 
-    public void validateAll() throws IOException {
+    /**
+     * Validates requirements, decides whether to install. Returns false if the component should be
+     * skipped.
+     * 
+     * @return true, if the component should be installed
+     * @throws IOException
+     */
+    public boolean validateAll() throws IOException {
+        validateRequirements();
+        ComponentInfo existing = registry.findComponent(componentInfo.getId());
+        if (existing != null) {
+            return false;
+        }
         validateFiles();
         validateSymlinks();
-        validateRequirements();
+        return true;
     }
 
     public void validateFiles() throws IOException {

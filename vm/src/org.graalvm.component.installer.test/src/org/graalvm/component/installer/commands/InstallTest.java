@@ -174,12 +174,26 @@ public class InstallTest extends CommandTestBase {
 
         inst.execute();
 
+        options.put(Commands.OPTION_FAIL_EXISTING, "");
         inst = new InstallCommand();
         inst.init(this, withBundle(InstallCommand.class));
         files.add(dataFile("truffleruby3.jar").toFile());
 
         exception.expect(DependencyException.class);
         exception.expectMessage("VERIFY_ComponentExists");
+        inst.execute();
+    }
+
+    @Test
+    public void testSkipExistingComponent() throws IOException {
+        inst = new InstallCommand();
+        inst.init(this, withBundle(InstallCommand.class));
+
+        inst.execute();
+
+        inst = new InstallCommand();
+        inst.init(this, withBundle(InstallCommand.class));
+        files.add(dataFile("truffleruby3.jar").toFile());
         inst.execute();
     }
 
@@ -209,6 +223,7 @@ public class InstallTest extends CommandTestBase {
                                         u));
         storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "0.33-dev");
         textParams.add("ruby");
+        options.put(Commands.OPTION_FAIL_EXISTING, "");
         files.clear();
         inst = new InstallCommand();
         inst.init(this, withBundle(InstallCommand.class));
