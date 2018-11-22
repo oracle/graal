@@ -449,8 +449,8 @@ jobject JVM_NewMultiArray(JNIEnv *env, jclass eltClass, jintArray dim) {
 }
 
 jclass JVM_GetCallerClass(JNIEnv *env, int depth) {
-  UNIMPLEMENTED(JVM_GetCallerClass);
-  return NULL;
+  IMPLEMENTED(JVM_GetCallerClass);
+  return (*getEnv())->JVM_GetCallerClass(env, depth);
 }
 
 jclass JVM_FindPrimitiveClass(JNIEnv *env, const char *utf) {
@@ -600,8 +600,8 @@ jobjectArray JVM_GetClassDeclaredConstructors(JNIEnv *env, jclass ofClass, jbool
 }
 
 jint JVM_GetClassAccessFlags(JNIEnv *env, jclass cls) {
-  UNIMPLEMENTED(JVM_GetClassAccessFlags);
-  return 0;
+  IMPLEMENTED(JVM_GetClassAccessFlags);
+  return (*getEnv())->JVM_GetClassAccessFlags(env, cls);
 }
 
 jobject JVM_InvokeMethod(JNIEnv *env, jobject method, jobject obj, jobjectArray args0) {
@@ -725,8 +725,8 @@ jint JVM_FindSignal(const char *name) {
 }
 
 jboolean JVM_DesiredAssertionStatus(JNIEnv *env, jclass unused, jclass cls) {
-  UNIMPLEMENTED(JVM_DesiredAssertionStatus);
-  return 0;
+  IMPLEMENTED(JVM_DesiredAssertionStatus);
+  return (*getEnv())->JVM_DesiredAssertionStatus(env, unused, cls);
 }
 
 jobject JVM_AssertionStatusDirectives(JNIEnv *env, jclass unused) {

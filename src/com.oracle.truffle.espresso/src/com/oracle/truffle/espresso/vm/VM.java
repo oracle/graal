@@ -29,10 +29,6 @@ import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_6;
 import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_8;
 import static com.oracle.truffle.espresso.meta.Meta.meta;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -49,6 +45,9 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.graalvm.options.OptionValues;
+
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameInstance;
@@ -196,12 +195,14 @@ public class VM extends NativeEnv {
         return sb.toString();
     }
 
+    private static final int JVM_CALLER_DEPTH = -1;
+
     public TruffleObject lookupVmImpl(String methodName) {
         Method m = vmMethods.get(methodName);
         try {
             // Dummy placeholder for unimplemented/unknown methods.
             if (m == null) {
-                System.err.println("Fetching unknown/unimplemented VM method: " + methodName);
+                // System.err.println("Fetching unknown/unimplemented VM method: " + methodName);
                 return (TruffleObject) ForeignAccess.sendExecute(Message.EXECUTE.createNode(), jniEnv.dupClosureRefAndCast("(pointer): void"),
                                 new Callback(1, args -> {
                                     System.err.println("Calling unimplemented VM method: " + methodName);
@@ -677,6 +678,59 @@ public class VM extends NativeEnv {
             EspressoContext context = EspressoLanguage.getCurrentContext();
             throw context.getMeta().throwEx(e.getClass(), e.getMessage());
         }
+    }
+
+    @VmImpl
+    @JniImpl
+    public boolean JVM_DesiredAssertionStatus(@Type(Class.class) StaticObject unused, @Type(Class.class) StaticObject cls) {
+        // TODO(peterssen): Assertions are always disabled, use the VM arguments.
+        return false;
+    }
+
+    @VmImpl
+    @JniImpl
+    public @Type(Class.class) StaticObject JVM_GetCallerClass(int depth) {
+        // TODO(peterssen): HotSpot verifies that the method is marked as @CallerSensitive.
+        // Non-Espresso frames (e.g TruffleNFI) are ignored.
+        // The call stack should look like this:
+        // 2 : the @CallerSensitive annotated method.
+        // ... : skipped non-Espresso frames.
+        // 1 : getCallerClass method.
+        // ... :
+        // 0 : the callee.
+        //
+        // JVM_CALLER_DEPTH => the caller.
+        int callerDepth = (depth == JVM_CALLER_DEPTH) ? 2 : depth + 1;
+
+        final int[] depthCounter = new int[]{callerDepth};
+        CallTarget caller = Truffle.getRuntime().iterateFrames(
+                        frameInstance -> {
+                            if (frameInstance.getCallTarget() instanceof RootCallTarget) {
+                                RootCallTarget callTarget = (RootCallTarget) frameInstance.getCallTarget();
+                                RootNode rootNode = callTarget.getRootNode();
+                                if (rootNode instanceof LinkedNode) {
+                                    if (--depthCounter[0] < 0) {
+                                        return frameInstance.getCallTarget();
+                                    }
+                                }
+                            }
+                            return null;
+                        });
+
+        RootCallTarget callTarget = (RootCallTarget) caller;
+        RootNode rootNode = callTarget.getRootNode();
+        if (rootNode instanceof LinkedNode) {
+            return ((LinkedNode) rootNode).getOriginalMethod().getDeclaringClass().rawKlass().mirror();
+        }
+
+        throw EspressoError.shouldNotReachHere();
+    }
+
+    @VmImpl
+    @JniImpl
+    public int JVM_GetClassAccessFlags(@Type(Class.class) StaticObject clazz) {
+        Meta.Klass klass = Meta.meta(((StaticObjectClass) clazz).getMirror());
+        return klass.getModifiers();
     }
 
     public TruffleObject getLibrary(long handle) {
