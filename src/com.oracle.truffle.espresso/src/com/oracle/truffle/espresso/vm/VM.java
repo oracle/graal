@@ -733,6 +733,17 @@ public class VM extends NativeEnv {
         return klass.getModifiers();
     }
 
+    @VmImpl
+    @JniImpl
+    public @Type(Class.class) StaticObject JVM_FindClassFromBootLoader(String name) {
+        EspressoContext context = EspressoLanguage.getCurrentContext();
+        Klass klass = context.getRegistries().findLoadedClass(context.getTypeDescriptors().make(MetaUtil.toInternalName(name)), null);
+        if (klass == null) {
+            return StaticObject.NULL;
+        }
+        return klass.mirror();
+    }
+
     public TruffleObject getLibrary(long handle) {
         return handle2Lib.get(handle);
     }

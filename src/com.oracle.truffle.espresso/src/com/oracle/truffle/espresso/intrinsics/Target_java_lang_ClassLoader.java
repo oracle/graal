@@ -38,17 +38,6 @@ public class Target_java_lang_ClassLoader {
         /* nop */
     }
 
-    @Intrinsic(hasReceiver = true)
-    public static @Type(Class.class) Object findBootstrapClass(Object self, @Type(String.class) StaticObject name) {
-        EspressoContext context = EspressoLanguage.getCurrentContext();
-        TypeDescriptor type = context.getTypeDescriptors().make(MetaUtil.toInternalName(Meta.toHost(name)));
-        Klass klass = EspressoLanguage.getCurrentContext().getRegistries().resolve(type, null);
-        if (klass == null) {
-            return StaticObject.NULL;
-        }
-        return klass.mirror();
-    }
-
     @Intrinsic
     public static @Type(String.class) StaticObject findBuiltinLib(@Type(String.class) StaticObject name) {
         return StaticObject.NULL;

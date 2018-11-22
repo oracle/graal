@@ -464,8 +464,8 @@ void JVM_ResolveClass(JNIEnv *env, jclass cls) {
 }
 
 jclass JVM_FindClassFromBootLoader(JNIEnv *env, const char *name) {
-  UNIMPLEMENTED(JVM_FindClassFromBootLoader);
-  return NULL;
+  IMPLEMENTED(JVM_FindClassFromBootLoader);
+  return (*getEnv())->JVM_FindClassFromBootLoader(env, name);
 }
 
 jclass JVM_FindClassFromCaller(JNIEnv *env, const char *name, jboolean init, jobject loader, jclass caller) {
