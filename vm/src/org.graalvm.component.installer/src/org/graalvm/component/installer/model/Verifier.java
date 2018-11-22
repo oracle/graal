@@ -71,8 +71,8 @@ public class Verifier {
         return ignoreExisting;
     }
 
-    public Verifier ignoreExisting(boolean ignoreExisting) {
-        this.ignoreExisting = ignoreExisting;
+    public Verifier ignoreExisting(boolean ignore) {
+        this.ignoreExisting = ignore;
         return this;
     }
 

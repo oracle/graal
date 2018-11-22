@@ -219,7 +219,7 @@ public class Installer implements Closeable {
      * Validates requirements, decides whether to install. Returns false if the component should be
      * skipped.
      * 
-     * @return
+     * @return true, if the component should be installed
      * @throws IOException
      */
     public boolean validateAll() throws IOException {
