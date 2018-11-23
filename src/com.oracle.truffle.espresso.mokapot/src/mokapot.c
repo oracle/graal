@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <sys/socket.h>
+#include <sys/ioctl.h>
 
 // Global
 JNIEnv *jniEnv = NULL;
@@ -22,6 +24,9 @@ void* getJavaVM(TruffleEnv *truffle_env) {
   fprintf(stderr, "Calling unimplemented mokapot %s\n", #name);
 
 #define IMPLEMENTED(name) do {} while (0);
+
+// Methods implemented in C (not Java call)
+#define NATIVE(name) do {} while (0);
 
 #define JNI_INVOKE_INTERFACE_METHODS(V) \
   V(DestroyJavaVM) \
@@ -933,7 +938,7 @@ char *JVM_NativePath(char *pathname) {
 }
 
 jint JVM_Open(const char *path, jint oflag, jint mode) {
-  IMPLEMENTED(JVM_OPEN);
+  NATIVE(JVM_OPEN);
   FD fd;
   RESTARTABLE(open(path, oflag, mode), fd);
   if (fd != -1) {
@@ -955,7 +960,7 @@ jint JVM_Open(const char *path, jint oflag, jint mode) {
 }
 
 jint JVM_Close(jint fd) {
-  IMPLEMENTED(JVM_Close);
+  NATIVE(JVM_Close);
   return close(fd);
 }
 
@@ -989,24 +994,27 @@ jint JVM_Sync(jint fd) {
   return 0;
 }
 
+// Networking library support
+
 jint JVM_InitializeSocketLibrary(void) {
-  UNIMPLEMENTED(JVM_InitializeSocketLibrary);
-  return 0;
+  IMPLEMENTED(JVM_InitializeSocketLibrary);  
+  return (*getEnv())->JVM_InitializeSocketLibrary();
 }
 
 jint JVM_Socket(jint domain, jint type, jint protocol) {
-  UNIMPLEMENTED(JVM_Socket);
-  return 0;
+  NATIVE(JVM_Socket);
+  return socket(domain, type, protocol);
+  // return (*getEnv())->JVM_Socket(domain, type, protocol);
 }
 
 jint JVM_SocketClose(jint fd) {
-  UNIMPLEMENTED(JVM_SocketClose);
-  return 0;
+  NATIVE(JVM_SocketClose);
+  return close(fd);
 }
 
 jint JVM_SocketShutdown(jint fd, jint howto) {
-  UNIMPLEMENTED(JVM_SocketShutdown);
-  return 0;
+  NATIVE(JVM_SocketShutdown);
+  return shutdown(fd, howto);
 }
 
 jint JVM_Recv(jint fd, char *buf, jint nBytes, jint flags) {
@@ -1025,8 +1033,8 @@ jint JVM_Timeout(int fd, long timeout) {
 }
 
 jint JVM_Listen(jint fd, jint count) {
-  UNIMPLEMENTED(JVM_Listen);
-  return 0;
+  NATIVE(JVM_Listen);
+  return listen(fd, count);
 }
 
 jint JVM_Connect(jint fd, struct sockaddr *him, jint len) {
@@ -1055,8 +1063,13 @@ jint JVM_SendTo(jint fd, char *buf, int len, int flags, struct sockaddr *to, int
 }
 
 jint JVM_SocketAvailable(jint fd, jint *result) {
-  UNIMPLEMENTED(JVM_SocketAvailable);
-  return 0;
+  NATIVE(JVM_SocketAvailable);
+  // Linux doc says EINTR not returned, unlike Solaris
+  int ret = ioctl(fd, FIONREAD, result);
+
+  //%% note ioctl can return 0 when successful, JVM_SocketAvailable
+  // is expected to return 0 on failure and 1 on success to the jdk.
+  return (ret < 0) ? 0 : 1;
 }
 
 jint JVM_GetSockName(jint fd, struct sockaddr *him, int *len) {
@@ -1070,8 +1083,8 @@ jint JVM_GetSockOpt(jint fd, int level, int optname, char *optval, int *optlen) 
 }
 
 jint JVM_SetSockOpt(jint fd, int level, int optname, const char *optval, int optlen) {
-  UNIMPLEMENTED(JVM_SetSockOpt);
-  return 0;
+  NATIVE(JVM_SetSockOpt);
+  return setsockopt(fd, level, optname, optval, optlen);
 }
 
 int JVM_GetHostName(char *name, int namelen) {
