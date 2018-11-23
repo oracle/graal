@@ -83,9 +83,9 @@ public class Target_java_lang_Thread {
     public static void sleep(long millis) {
         try {
             Thread.sleep(millis);
-        } catch (InterruptedException e) {
+        } catch (InterruptedException | IllegalArgumentException e) {
             Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-            throw meta.throwEx(InterruptedException.class);
+            throw meta.throwEx(e.getClass(), e.getMessage());
         }
     }
 }
