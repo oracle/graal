@@ -51,6 +51,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.impl.ReadOnlyArrayList;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import java.util.function.Supplier;
 
 /**
  * Encapsulates types of access to {@link TruffleObject}. If you want to expose your own objects to
@@ -62,7 +63,7 @@ import com.oracle.truffle.api.nodes.RootNode;
  */
 public final class ForeignAccess {
     private final Factory factory;
-    private final RootNode languageCheck;
+    private final Supplier<? extends RootNode> languageCheckSupplier;
 
     // still here for GraalVM intrinsics.
     @SuppressWarnings("unused") private final Thread initThread;
@@ -71,10 +72,10 @@ public final class ForeignAccess {
         this(null, faf);
     }
 
-    private ForeignAccess(RootNode languageCheck, Factory faf) {
+    private ForeignAccess(Supplier<? extends RootNode> languageCheckSupplier, Factory faf) {
         this.factory = faf;
         this.initThread = null;
-        this.languageCheck = languageCheck;
+        this.languageCheckSupplier = languageCheckSupplier;
         CompilerAsserts.neverPartOfCompilation("do not create a ForeignAccess object from compiled code");
     }
 
@@ -125,13 +126,37 @@ public final class ForeignAccess {
      *            interface
      * @return new instance wrapping <code>factory</code>
      * @since 0.30
+     * @deprecated Use
+     *             {@link #createAccess(com.oracle.truffle.api.interop.ForeignAccess.StandardFactory, java.util.function.Supplier)
+     *             method
      */
+    @Deprecated
     public static ForeignAccess create(final StandardFactory factory, final RootNode languageCheck) {
         if (languageCheck == null) {
             Factory f = (Factory) factory;
             assert f != null;
         }
-        return new ForeignAccess(languageCheck, new DelegatingFactory(null, factory));
+        return new ForeignAccess(
+                        languageCheck == null ? null : new RootNodeSupplier(languageCheck),
+                        new DelegatingFactory(null, factory));
+    }
+
+    /**
+     * Creates new instance of {@link ForeignAccess} that delegates to provided factory.
+     *
+     * @param factory the factory that handles access requests to {@link Message}s
+     * @param languageCheckSupplier a {@link Supplier} of {@link RootNode} that performs the
+     *            language check on receiver objects, can be <code>null</code>, but then the factory
+     *            must also implement {@link Factory} interface
+     * @return new instance wrapping <code>factory</code>
+     * @since 1.0
+     */
+    public static ForeignAccess createAccess(final StandardFactory factory, final Supplier<? extends RootNode> languageCheckSupplier) {
+        if (languageCheckSupplier == null) {
+            Factory f = (Factory) factory;
+            assert f != null;
+        }
+        return new ForeignAccess(languageCheckSupplier, new DelegatingFactory(null, factory));
     }
 
     /**
@@ -154,7 +179,9 @@ public final class ForeignAccess {
             Factory f = (Factory) factory;
             assert f != null;
         }
-        return new ForeignAccess(languageCheck, new DelegatingFactory26(null, factory));
+        return new ForeignAccess(
+                        languageCheck == null ? null : new RootNodeSupplier(languageCheck),
+                        new DelegatingFactory26(null, factory));
     }
 
     /**
@@ -824,8 +851,9 @@ public final class ForeignAccess {
     }
 
     CallTarget checkLanguage() {
-        if (languageCheck != null) {
-            return Truffle.getRuntime().createCallTarget((RootNode) languageCheck.deepCopy());
+        if (languageCheckSupplier != null) {
+            RootNode languageCheck = languageCheckSupplier.get();
+            return Truffle.getRuntime().createCallTarget(languageCheck);
         } else {
             return null;
         }
@@ -1413,6 +1441,20 @@ public final class ForeignAccess {
                 }
             }
             return factory.accessMessage(msg);
+        }
+    }
+
+    private static final class RootNodeSupplier implements Supplier<RootNode> {
+        private final RootNode rootNode;
+
+        RootNodeSupplier(RootNode rootNode) {
+            assert rootNode != null : "The rootNode must be non null.";
+            this.rootNode = rootNode;
+        }
+
+        @Override
+        public RootNode get() {
+            return (RootNode) rootNode.deepCopy();
         }
     }
 

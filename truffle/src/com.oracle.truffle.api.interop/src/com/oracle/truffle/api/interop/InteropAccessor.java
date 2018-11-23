@@ -155,7 +155,7 @@ final class EmptyTruffleObject implements TruffleObject {
     static final EmptyTruffleObject INSTANCE = new EmptyTruffleObject();
 
     public ForeignAccess getForeignAccess() {
-        return ForeignAccess.create(new StandardFactory() {
+        return ForeignAccess.createAccess(new StandardFactory() {
 
             public CallTarget accessWrite() {
                 return null;
@@ -226,7 +226,7 @@ final class EmptyKeys implements TruffleObject {
     static final EmptyKeys INSTANCE = new EmptyKeys();
 
     public ForeignAccess getForeignAccess() {
-        return ForeignAccess.create(new StandardFactory() {
+        return ForeignAccess.createAccess(new StandardFactory() {
 
             public CallTarget accessWrite() {
                 return null;

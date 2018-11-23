@@ -516,7 +516,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
         }
 
         CallTargetNode indirectCallTargetNode = b.add(new IndirectCallTargetNode(methodAddress, argsWithoutReceiver,
-                        StampPair.createSingle(returnStamp), parameterTypes, method, callType, InvokeKind.Static));
+                        StampPair.createSingle(returnStamp), parameterTypes, null, callType, InvokeKind.Static));
 
         if (callType == SubstrateCallingConventionType.JavaCall) {
             b.handleReplacedInvoke(indirectCallTargetNode, b.getInvokeReturnType().getJavaKind());
