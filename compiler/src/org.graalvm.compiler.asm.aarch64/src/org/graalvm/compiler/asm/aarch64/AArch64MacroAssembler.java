@@ -504,8 +504,8 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param dst general purpose register. May not be null or stackpointer.
      * @param condition any condition. May not be null.
      */
-    public void cset(Register dst, ConditionFlag condition) {
-        super.csinc(32, dst, zr, zr, condition.negate());
+    public void cset(int size, Register dst, ConditionFlag condition) {
+        super.csinc(size, dst, zr, zr, condition.negate());
     }
 
     /**

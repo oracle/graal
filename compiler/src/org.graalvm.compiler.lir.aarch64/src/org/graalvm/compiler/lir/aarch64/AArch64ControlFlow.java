@@ -159,6 +159,25 @@ public class AArch64ControlFlow {
         }
     }
 
+    public static class CondSetOp extends AArch64LIRInstruction {
+        public static final LIRInstructionClass<CondSetOp> TYPE = LIRInstructionClass.create(CondSetOp.class);
+
+        @Def protected Value result;
+        private final AArch64Assembler.ConditionFlag condition;
+
+        public CondSetOp(Variable result, AArch64Assembler.ConditionFlag condition) {
+            super(TYPE);
+            this.result = result;
+            this.condition = condition;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+            int size = result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            masm.cset(size, asRegister(result), condition);
+        }
+    }
+
     public static class StrategySwitchOp extends AArch64BlockEndOp implements StandardOp.BlockEndOp {
         public static final LIRInstructionClass<StrategySwitchOp> TYPE = LIRInstructionClass.create(StrategySwitchOp.class);
 
