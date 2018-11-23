@@ -309,9 +309,9 @@ public class SLInspectDebugTest {
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":6,\"lineNumber\":2}}]}}\n"));
         // Continue to a location:
-        tester.sendMessage("{\"id\":33,\"method\":\"Debugger.continueToLocation\",\"params\":{\"location\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":5}}}");
+        tester.sendMessage("{\"id\":20,\"method\":\"Debugger.continueToLocation\",\"params\":{\"location\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":5}}}");
         assertTrue(tester.compareReceivedMessages(
-                        "{\"result\":{},\"id\":33}\n" +
+                        "{\"result\":{},\"id\":20}\n" +
                         "{\"method\":\"Debugger.resumed\"}\n" +
                         "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"other\",\"hitBreakpoints\":[]," +
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"main\"," +
@@ -320,6 +320,19 @@ public class SLInspectDebugTest {
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"7\"}}]," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":4,\"lineNumber\":5}}]}}\n"));
+        // Breakpoint on script ID:
+        tester.sendMessage("{\"id\":25,\"method\":\"Debugger.setBreakpoint\",\"params\":{\"location\":{\"scriptId\":\"1\",\"columnNumber\":0,\"lineNumber\":7}}}");
+        tester.sendMessage("{\"id\":26,\"method\":\"Debugger.resume\"}");
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"result\":{\"breakpointId\":\"2\",\"actualLocation\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":7}},\"id\":25}\n" +
+                        "{\"result\":{},\"id\":26}\n" +
+                        "{\"method\":\"Debugger.resumed\"}\n" +
+                        "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"other\",\"hitBreakpoints\":[\"2\"]," +
+                                "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"main\"," +
+                                                 "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"8\"}}," +
+                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"9\"}}]," +
+                                                 "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
+                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":7}}]}}\n"));
         // Resume to finish:
         tester.sendMessage("{\"id\":35,\"method\":\"Debugger.resume\"}");
         assertTrue(tester.compareReceivedMessages(
