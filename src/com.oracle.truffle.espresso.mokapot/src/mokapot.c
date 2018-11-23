@@ -7,6 +7,8 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
+#include <sys/poll.h>
+#include <sys/time.h>
 
 // Global
 JNIEnv *jniEnv = NULL;
@@ -27,6 +29,14 @@ void* getJavaVM(TruffleEnv *truffle_env) {
 
 // Methods implemented in C (not Java call)
 #define NATIVE(name) do {} while (0);
+
+// macros for restartable system calls
+
+#define RESTARTABLE_RETURN_INT(_cmd) do { \
+  int _result; \
+  RESTARTABLE(_cmd, _result); \
+  return _result; \
+} while(0)
 
 #define JNI_INVOKE_INTERFACE_METHODS(V) \
   V(DestroyJavaVM) \
@@ -997,14 +1007,14 @@ jint JVM_Sync(jint fd) {
 // Networking library support
 
 jint JVM_InitializeSocketLibrary(void) {
-  IMPLEMENTED(JVM_InitializeSocketLibrary);  
-  return (*getEnv())->JVM_InitializeSocketLibrary();
+  NATIVE(JVM_InitializeSocketLibrary);  
+  // Mimics HotSpot.
+  return 0;
 }
 
 jint JVM_Socket(jint domain, jint type, jint protocol) {
   NATIVE(JVM_Socket);
   return socket(domain, type, protocol);
-  // return (*getEnv())->JVM_Socket(domain, type, protocol);
 }
 
 jint JVM_SocketClose(jint fd) {
@@ -1017,19 +1027,56 @@ jint JVM_SocketShutdown(jint fd, jint howto) {
   return shutdown(fd, howto);
 }
 
+inline int __recv(int fd, char* buf, size_t nBytes, uint flags) {
+  RESTARTABLE_RETURN_INT(recv(fd, buf, nBytes, flags));
+}
+
 jint JVM_Recv(jint fd, char *buf, jint nBytes, jint flags) {
-  UNIMPLEMENTED(JVM_Recv);
-  return 0;
+  NATIVE(JVM_Recv);
+  return __recv(fd, buf, (size_t)nBytes, (uint)flags);
+}
+
+static inline int __send(int fd, char* buf, size_t nBytes, uint flags) {
+  RESTARTABLE_RETURN_INT(send(fd, buf, nBytes, flags));
 }
 
 jint JVM_Send(jint fd, char *buf, jint nBytes, jint flags) {
-  UNIMPLEMENTED(JVM_Send);
-  return 0;
+  NATIVE(JVM_Send);
+  return __send(fd, buf, (size_t)nBytes, (uint)flags);
 }
 
 jint JVM_Timeout(int fd, long timeout) {
-  UNIMPLEMENTED(JVM_Timeout);
-  return 0;
+  NATIVE(JVM_Timeout);
+
+  julong prevtime,newtime;
+  struct timeval t;
+
+  gettimeofday(&t, NULL);
+  prevtime = ((julong)t.tv_sec * 1000)  +  t.tv_usec / 1000;
+
+  for(;;) {
+    struct pollfd pfd;
+
+    pfd.fd = fd;
+    pfd.events = POLLIN | POLLERR;
+
+    int res = poll(&pfd, 1, timeout);
+
+    if (res == OS_ERR && errno == EINTR) {
+
+      // On Linux any value < 0 means "forever"
+
+      if(timeout >= 0) {
+        gettimeofday(&t, NULL);
+        newtime = ((julong)t.tv_sec * 1000)  +  t.tv_usec / 1000;
+        timeout -= newtime - prevtime;
+        if(timeout <= 0)
+          return OS_OK;
+        prevtime = newtime;
+      }
+    } else
+      return res;
+  }
 }
 
 jint JVM_Listen(jint fd, jint count) {
@@ -1037,29 +1084,52 @@ jint JVM_Listen(jint fd, jint count) {
   return listen(fd, count);
 }
 
+static inline int __connect(int fd, struct sockaddr* him, socklen_t len) {
+  RESTARTABLE_RETURN_INT(connect(fd, him, len));
+}
+
 jint JVM_Connect(jint fd, struct sockaddr *him, jint len) {
-  UNIMPLEMENTED(JVM_Connect);
-  return 0;
+  NATIVE(JVM_Connect);
+  return __connect(fd, him, len);
 }
 
 jint JVM_Bind(jint fd, struct sockaddr *him, jint len) {
-  UNIMPLEMENTED(JVM_Bind);
-  return 0;
+  NATIVE(JVM_Bind);
+  return bind(fd, him, (socklen_t)len);
 }
 
 jint JVM_Accept(jint fd, struct sockaddr *him, jint *len) {
-  UNIMPLEMENTED(JVM_Accept);
-  return 0;
+  NATIVE(JVM_Accept);
+  socklen_t socklen = (socklen_t)(*len);
+  // Linux doc says this can't return EINTR, unlike accept() on Solaris.
+  // But see attachListener_linux.cpp, LinuxAttachListener::dequeue().
+  jint result = (int)accept(fd, him, &socklen);
+  *len = (jint)socklen;
+  return result;
+}
+
+static inline int __recvfrom(int fd, char* buf, size_t nBytes, uint flags,
+                        struct sockaddr* from, socklen_t* fromlen) {
+  RESTARTABLE_RETURN_INT((int)recvfrom(fd, buf, nBytes, flags, from, fromlen));
 }
 
 jint JVM_RecvFrom(jint fd, char *buf, int nBytes, int flags, struct sockaddr *from, int *fromlen) {
-  UNIMPLEMENTED(JVM_RecvFrom);
-  return 0;
+  NATIVE(JVM_RecvFrom);
+  socklen_t socklen = (socklen_t)(*fromlen);
+  jint result = __recvfrom(fd, buf, (size_t)nBytes, (uint)flags, from, &socklen);
+  *fromlen = (int)socklen;
+  return result;
+}
+
+
+static inline int __sendto(int fd, char* buf, size_t len, uint flags,
+                      struct sockaddr* to, socklen_t tolen) {
+  RESTARTABLE_RETURN_INT((int)sendto(fd, buf, len, flags, to, tolen));
 }
 
 jint JVM_SendTo(jint fd, char *buf, int len, int flags, struct sockaddr *to, int tolen) {
-  UNIMPLEMENTED(JVM_SendTo);
-  return 0;
+  NATIVE(JVM_SendTo);
+  return __sendto(fd, buf, len, flags, to, tolen);
 }
 
 jint JVM_SocketAvailable(jint fd, jint *result) {
@@ -1073,13 +1143,19 @@ jint JVM_SocketAvailable(jint fd, jint *result) {
 }
 
 jint JVM_GetSockName(jint fd, struct sockaddr *him, int *len) {
-  UNIMPLEMENTED(JVM_GetSockName);
-  return 0;
+  NATIVE(JVM_GetSockName);
+  socklen_t socklen = (socklen_t)(*len);
+  jint result = getsockname(fd, him, &socklen);
+  *len = (int)socklen;
+  return result;
 }
 
 jint JVM_GetSockOpt(jint fd, int level, int optname, char *optval, int *optlen) {
-  UNIMPLEMENTED(JVM_GetSockOpt);
-  return 0;
+  NATIVE(JVM_GetSockOpt);
+  socklen_t socklen = (socklen_t)(*optlen);
+  jint result = getsockopt(fd, level, optname, optval, &socklen);
+  *optlen = (int)socklen;
+  return result;
 }
 
 jint JVM_SetSockOpt(jint fd, int level, int optname, const char *optval, int optlen) {
@@ -1088,8 +1164,8 @@ jint JVM_SetSockOpt(jint fd, int level, int optname, const char *optval, int opt
 }
 
 int JVM_GetHostName(char *name, int namelen) {
-  UNIMPLEMENTED(JVM_GetHostName);
-  return 0;
+  NATIVE(JVM_GetHostName);
+  return gethostname(name, namelen);
 }
 
 void *JVM_RawMonitorCreate(void) {

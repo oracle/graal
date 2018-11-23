@@ -14,6 +14,23 @@ typedef MokapotEnv_ MokapotEnv;
 typedef const struct MokapotNativeInterface_ *MokapotEnv;
 #endif
 
+// Additional Java basic types
+
+typedef uint8_t  jubyte;
+typedef uint16_t jushort;
+typedef uint32_t juint;
+typedef uint64_t julong;
+
+// Platform-independent error return values from OS functions
+enum OSReturn {
+  OS_OK         =  0,        // Operation was successful
+  OS_ERR        = -1,        // Operation failed
+  OS_INTRPT     = -2,        // Operation was interrupted
+  OS_TIMEOUT    = -3,        // Operation timed out
+  OS_NOMEM      = -5,        // Operation failed for lack of memory
+  OS_NORESOURCE = -6         // Operation failed for lack of nonmemory resource
+};
+
 #define VM_METHOD_LIST(V) \
     V(JVM_GetInterfaceVersion) \
     V(JVM_IHashCode) \
