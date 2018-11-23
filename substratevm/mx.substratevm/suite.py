@@ -193,7 +193,6 @@ suite = {
                 "OS": "<os>"
             },
             "results": [
-                "<os>-<arch>/libstrictmath.a",
                 "<os>-<arch>/include/jni.h",
                 "<os>-<arch>/include/jni_md.h",
             ],
@@ -210,6 +209,39 @@ suite = {
             "results": [
                 "<os>-<arch>/liblibchelper.a",
                 "<os>-<arch>/include/cpufeatures.h",
+            ],
+            "os_arch": {
+                "solaris": {
+                    "<others>": {
+                        "ignore": "solaris is not supported",
+                    },
+                },
+                "windows": {
+                    "<others>": {
+                        "ignore": "windows is not supported",
+                    },
+                },
+                "<others>": {
+                    "sparcv9": {
+                        "ignore": "sparcv9 is not supported",
+                    },
+                    "<others>": {
+                        "ignore": False,
+                    },
+                },
+            },
+        },
+
+        "com.oracle.svm.native.strictmath": {
+            "subDir": "src",
+            "native": True,
+            "vpath": True,
+            "buildEnv": {
+                "ARCH": "<arch>",
+                "OS": "<os>"
+            },
+            "results": [
+                "<os>-<arch>/libstrictmath.a",
             ],
             "os_arch": {
                 "solaris": {
@@ -623,6 +655,7 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.native",
                 "com.oracle.svm.native.libchelper",
+                "com.oracle.svm.native.strictmath",
                 "com.oracle.svm.libffi"
             ],
             "native": True,

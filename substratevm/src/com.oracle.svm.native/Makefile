@@ -36,14 +36,14 @@
 # (This suggests a TODO: clean up the needlessly complex makefiles in
 # this project. It should not be necessary to copy makefiles around.)
 
-.PHONY: all strictmath jni clean
+.PHONY: all jni clean
 
 ifeq (${OS}, solaris)
 all :	nop # Solaris is unsupported
 else ifeq (${ARCH}, sparcv9)
 all :	nop # SPARC64 is unsupported
 else
-all :	strictmath jni
+all :	jni
 endif
 
 ifeq (${OS}, windows)
@@ -52,14 +52,10 @@ else
 export TARGET_DIR := $(shell pwd)/${OS}-${ARCH}
 endif
 
-strictmath:
-	$(MAKE) -C $(VPATH)/strictmath
-
 jni:
 	$(MAKE) -C $(VPATH)/jni
 
 clean:
-	$(MAKE) -C $(VPATH)/strictmath $@
 	$(MAKE) -C $(VPATH)/jni $@
 
 # for unsupported platforms
