@@ -155,8 +155,7 @@ public class EspressoContext {
         // FIXME(peterssen): Contextualize the JniENv, even if shared libraries are isolated,
         // currently
         // we assume a singleton context.
-        ; // initialize native context
-
+        // initialize native context
         // TODO(peterssen): Combine these 2.
         this.interpreterToVM = new InterpreterToVM(language);
         // Spawn JNI first, then the VM.

@@ -30,14 +30,6 @@ import com.oracle.truffle.nfi.types.NativeSimpleType;
 
 public class Utils {
 
-    public static InterpreterToVM getVm() {
-        return EspressoLanguage.getCurrentContext().getInterpreterToVM();
-    }
-
-    public static Object maybeNull(Object obj) {
-        return (obj == null) ? StaticObject.NULL : obj;
-    }
-
     public static NativeSimpleType kindToType(JavaKind kind, boolean javaToNative) {
         switch (kind) {
             case Boolean:

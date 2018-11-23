@@ -43,6 +43,9 @@ public final class EspressoOptions {
     @Option(help = "A \" + java.io.File.pathSeparator + \" separated list of directories, JAR archives, and ZIP archives to search for class files.", category = OptionCategory.USER) //
     public static final OptionKey<String> Classpath = new OptionKey<>("");
 
-    @Option(help = "Use reflection to call method substitutions, otherwise use MethodHandles.", category = OptionCategory.USER) //
-    public static final OptionKey<Boolean> IntrinsicsViaReflection = new OptionKey<>(false);
+    @Option(help = "Use MethodHandless instead of reflection to call substitutions.", category = OptionCategory.USER) //
+    public static final OptionKey<Boolean> IntrinsicsViaMethodHandles = new OptionKey<>(false);
+
+    @Option(help = "Installation directory for Java Runtime Environment (JRE)", category = OptionCategory.USER) //
+    public static final OptionKey<String> JavaHome = new OptionKey<>("");
 }

@@ -620,10 +620,8 @@ jobject NewObject(JNIEnv *env, jclass clazz, jmethodID methodID, ...) {
 }
 
 jint RegisterNatives(JNIEnv *env, jclass clazz, const JNINativeMethod *methods, jint nMethods) {  
-  struct NespressoEnv *nespresso_env = (struct NespressoEnv*) (*env)->reserved0;
-  
-  for (jint i = 0; i < nMethods; ++i) {
-    fprintf(stderr, "RegisterNative %s %s %p\n", methods[i].name, methods[i].signature, methods[i].fnPtr);
+  struct NespressoEnv *nespresso_env = (struct NespressoEnv*) (*env)->reserved0;  
+  for (jint i = 0; i < nMethods; ++i) {    
     nespresso_env->RegisterNative(env, clazz, methods[i].name, methods[i].signature, methods[i].fnPtr);
   }
   // TODO(peterssen): Always OK?.

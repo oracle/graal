@@ -62,6 +62,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.Utils;
+import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.MethodInfo;
 import com.oracle.truffle.espresso.intrinsics.SuppressFBWarnings;
@@ -407,14 +408,8 @@ public class VM extends NativeEnv {
 
     @VmImpl
     public void JVM_Halt(int code) {
-        // TODO(peterssen): Kill the context, not the whole VM; maybe not even the context.
-        Runtime.getRuntime().halt(code);
-    }
-
-    @VmImpl
-    public void JVM_Exit(int code) {
-        // TODO(peterssen): Kill the context, not the whole VM; maybe not even the context.
-        System.exit(code);
+        // Runtime.getRuntime().halt(code);
+        throw new EspressoExitException(code);
     }
 
     @VmImpl
@@ -670,9 +665,8 @@ public class VM extends NativeEnv {
 
     @VmImpl
     public void JVM_Exit(int code) {
-        // TODO(peterssen): Kill the context, not the whole VM; maybe not even the context.
-        // unlike Halt, runs finalizers
         // System.exit(code);
+        // Unlike Halt, runs finalizers
         throw new EspressoExitException(code);
     }
 
