@@ -36,18 +36,17 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 
 import sun.misc.Unsafe;
 
+/**
+ * This class is used for accessing arrays at a specific offset. The most frequent use case is
+ * accessing primitive arrays where the type of the array does not match the type of the read
+ * operation (e.g., accessing a single byte within a long[]).
+ *
+ * The array base offsets (e.g., Unsafe.ARRAY_INT_BASE_OFFSET) that are used by HotSpot and SVM can
+ * be different. Therefore, we must not use static fields to cache those base offsets as they would
+ * be initialized at image build time.
+ */
 @SuppressWarnings("static-method")
 public final class UnsafeArrayAccess {
-    public static final int ARRAY_BOOLEAN_BASE_OFFSET = Unsafe.ARRAY_BOOLEAN_BASE_OFFSET;
-    public static final int ARRAY_BYTE_BASE_OFFSET = Unsafe.ARRAY_BYTE_BASE_OFFSET;
-    public static final int ARRAY_CHAR_BASE_OFFSET = Unsafe.ARRAY_CHAR_BASE_OFFSET;
-    public static final int ARRAY_SHORT_BASE_OFFSET = Unsafe.ARRAY_SHORT_BASE_OFFSET;
-    public static final int ARRAY_INT_BASE_OFFSET = Unsafe.ARRAY_INT_BASE_OFFSET;
-    public static final int ARRAY_LONG_BASE_OFFSET = Unsafe.ARRAY_LONG_BASE_OFFSET;
-    public static final int ARRAY_FLOAT_BASE_OFFSET = Unsafe.ARRAY_FLOAT_BASE_OFFSET;
-    public static final int ARRAY_DOUBLE_BASE_OFFSET = Unsafe.ARRAY_DOUBLE_BASE_OFFSET;
-    public static final int ARRAY_OBJECT_BASE_OFFSET = Unsafe.ARRAY_OBJECT_BASE_OFFSET;
-
     private static final Unsafe unsafe = getUnsafe();
 
     private static final UnsafeArrayAccess INSTANCE = new UnsafeArrayAccess();
@@ -76,115 +75,115 @@ public final class UnsafeArrayAccess {
     }
 
     public void writeI1(int[] arr, long offset, boolean value) {
-        writeI1(arr, ARRAY_INT_BASE_OFFSET, offset, value);
+        writeI1(arr, Unsafe.ARRAY_INT_BASE_OFFSET, offset, value);
     }
 
     public boolean getI1(int[] arr, long offset) {
-        return getI1(arr, ARRAY_INT_BASE_OFFSET, offset);
+        return getI1(arr, Unsafe.ARRAY_INT_BASE_OFFSET, offset);
     }
 
     public void writeI8(int[] arr, long offset, byte value) {
-        writeI8(arr, ARRAY_INT_BASE_OFFSET, offset, value);
+        writeI8(arr, Unsafe.ARRAY_INT_BASE_OFFSET, offset, value);
     }
 
     public byte getI8(int[] arr, long offset) {
-        return getI8(arr, ARRAY_INT_BASE_OFFSET, offset);
+        return getI8(arr, Unsafe.ARRAY_INT_BASE_OFFSET, offset);
     }
 
     public void writeI16(int[] arr, long offset, short value) {
-        writeI16(arr, ARRAY_INT_BASE_OFFSET, offset, value);
+        writeI16(arr, Unsafe.ARRAY_INT_BASE_OFFSET, offset, value);
     }
 
     public short getI16(int[] arr, long offset) {
-        return getI16(arr, ARRAY_INT_BASE_OFFSET, offset);
+        return getI16(arr, Unsafe.ARRAY_INT_BASE_OFFSET, offset);
     }
 
     public void writeI32(int[] arr, long offset, int value) {
-        writeI32(arr, ARRAY_INT_BASE_OFFSET, offset, value);
+        writeI32(arr, Unsafe.ARRAY_INT_BASE_OFFSET, offset, value);
     }
 
     public int getI32(int[] arr, long offset) {
-        return getI32(arr, ARRAY_INT_BASE_OFFSET, offset);
+        return getI32(arr, Unsafe.ARRAY_INT_BASE_OFFSET, offset);
     }
 
     public void writeI64(int[] arr, long offset, long value) {
-        writeI64(arr, ARRAY_INT_BASE_OFFSET, offset, value);
+        writeI64(arr, Unsafe.ARRAY_INT_BASE_OFFSET, offset, value);
     }
 
     public long getI64(int[] arr, long offset) {
-        return getI64(arr, ARRAY_INT_BASE_OFFSET, offset);
+        return getI64(arr, Unsafe.ARRAY_INT_BASE_OFFSET, offset);
     }
 
     public void writeFloat(int[] arr, long offset, float value) {
-        writeFloat(arr, ARRAY_INT_BASE_OFFSET, offset, value);
+        writeFloat(arr, Unsafe.ARRAY_INT_BASE_OFFSET, offset, value);
     }
 
     public float getFloat(int[] arr, long offset) {
-        return getFloat(arr, ARRAY_INT_BASE_OFFSET, offset);
+        return getFloat(arr, Unsafe.ARRAY_INT_BASE_OFFSET, offset);
     }
 
     public void writeDouble(int[] arr, long offset, double value) {
-        writeDouble(arr, ARRAY_INT_BASE_OFFSET, offset, value);
+        writeDouble(arr, Unsafe.ARRAY_INT_BASE_OFFSET, offset, value);
     }
 
     public double getDouble(int[] arr, long offset) {
-        return getDouble(arr, ARRAY_INT_BASE_OFFSET, offset);
+        return getDouble(arr, Unsafe.ARRAY_INT_BASE_OFFSET, offset);
     }
 
     public void writeI1(long[] arr, long offset, boolean value) {
-        writeI1(arr, ARRAY_LONG_BASE_OFFSET, offset, value);
+        writeI1(arr, Unsafe.ARRAY_LONG_BASE_OFFSET, offset, value);
     }
 
     public boolean getI1(long[] arr, long offset) {
-        return getI1(arr, ARRAY_LONG_BASE_OFFSET, offset);
+        return getI1(arr, Unsafe.ARRAY_LONG_BASE_OFFSET, offset);
     }
 
     public void writeI8(long[] arr, long offset, byte value) {
-        writeI8(arr, ARRAY_LONG_BASE_OFFSET, offset, value);
+        writeI8(arr, Unsafe.ARRAY_LONG_BASE_OFFSET, offset, value);
     }
 
     public byte getI8(long[] arr, long offset) {
-        return getI8(arr, ARRAY_LONG_BASE_OFFSET, offset);
+        return getI8(arr, Unsafe.ARRAY_LONG_BASE_OFFSET, offset);
     }
 
     public void writeI16(long[] arr, long offset, short value) {
-        writeI16(arr, ARRAY_LONG_BASE_OFFSET, offset, value);
+        writeI16(arr, Unsafe.ARRAY_LONG_BASE_OFFSET, offset, value);
     }
 
     public short getI16(long[] arr, long offset) {
-        return getI16(arr, ARRAY_LONG_BASE_OFFSET, offset);
+        return getI16(arr, Unsafe.ARRAY_LONG_BASE_OFFSET, offset);
     }
 
     public void writeI32(long[] arr, long offset, int value) {
-        writeI32(arr, ARRAY_LONG_BASE_OFFSET, offset, value);
+        writeI32(arr, Unsafe.ARRAY_LONG_BASE_OFFSET, offset, value);
     }
 
     public int getI32(long[] arr, long offset) {
-        return getI32(arr, ARRAY_LONG_BASE_OFFSET, offset);
+        return getI32(arr, Unsafe.ARRAY_LONG_BASE_OFFSET, offset);
     }
 
     public void writeI64(long[] arr, long offset, long value) {
-        writeI64(arr, ARRAY_LONG_BASE_OFFSET, offset, value);
+        writeI64(arr, Unsafe.ARRAY_LONG_BASE_OFFSET, offset, value);
     }
 
     public long getI64(long[] arr, long offset) {
-        return getI64(arr, ARRAY_LONG_BASE_OFFSET, offset);
+        return getI64(arr, Unsafe.ARRAY_LONG_BASE_OFFSET, offset);
     }
 
     public void writeFloat(long[] arr, long offset, float value) {
-        writeFloat(arr, ARRAY_LONG_BASE_OFFSET, offset, value);
+        writeFloat(arr, Unsafe.ARRAY_LONG_BASE_OFFSET, offset, value);
     }
 
     public float getFloat(long[] arr, long offset) {
-        return getFloat(arr, ARRAY_LONG_BASE_OFFSET, offset);
+        return getFloat(arr, Unsafe.ARRAY_LONG_BASE_OFFSET, offset);
     }
 
     public void writeDouble(long[] arr, long offset, double value) {
-        writeDouble(arr, ARRAY_LONG_BASE_OFFSET, offset, value);
+        writeDouble(arr, Unsafe.ARRAY_LONG_BASE_OFFSET, offset, value);
     }
 
     public double getDouble(long[] arr, long offset) {
-        return getDouble(arr, ARRAY_LONG_BASE_OFFSET, offset);
+        return getDouble(arr, Unsafe.ARRAY_LONG_BASE_OFFSET, offset);
     }
 
     public void writeI1(Object arr, long baseOffset, long offset, boolean value) {
