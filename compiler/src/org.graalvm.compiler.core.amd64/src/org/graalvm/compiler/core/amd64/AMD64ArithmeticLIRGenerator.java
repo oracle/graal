@@ -107,6 +107,8 @@ import org.graalvm.compiler.lir.amd64.AMD64ClearRegisterOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathCosOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathIntrinsicBinaryOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathIntrinsicUnaryOp;
+import org.graalvm.compiler.lir.amd64.AMD64MathLogOp;
+import org.graalvm.compiler.lir.amd64.AMD64MathStubUnaryOp;
 import org.graalvm.compiler.lir.amd64.AMD64Move;
 import org.graalvm.compiler.lir.amd64.AMD64MulDivOp;
 import org.graalvm.compiler.lir.amd64.AMD64ShiftOp;
@@ -1022,16 +1024,31 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         return result;
     }
 
+    private Variable emitLIRWrapperForMathStubs(AMD64MathStubUnaryOp op, Value input) {
+        LIRGenerator gen = getLIRGen();
+        LIRKind kind = LIRKind.combine(input);
+        RegisterValue xmm0Value = xmm0.asValue(kind);
+        gen.emitMove(xmm0Value, input);
+        gen.append(op);
+        Variable result = gen.newVariable(kind);
+        gen.emitMove(result, xmm0Value);
+        return result;
+    }
+
     @Override
     public Value emitMathLog(Value input, boolean base10) {
         LIRGenerator gen = getLIRGen();
         Variable result = maths.emitLog(gen, input, base10);
         if (result == null) {
-            RegisterValue xmm0Value = xmm0.asValue(LIRKind.combine(input));
-            getLIRGen().emitMove(xmm0Value, input);
-            result = gen.newVariable(LIRKind.combine(input));
-            AllocatableValue stackSlot = gen.getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(AMD64Kind.QWORD));
-            gen.append(new AMD64MathIntrinsicUnaryOp(getAMD64LIRGen(), base10 ? LOG10 : LOG, result, xmm0Value, stackSlot));
+            if (base10) {
+                RegisterValue xmm0Value = xmm0.asValue(LIRKind.combine(input));
+                getLIRGen().emitMove(xmm0Value, input);
+                result = gen.newVariable(LIRKind.combine(input));
+                AllocatableValue stackSlot = gen.getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(AMD64Kind.QWORD));
+                gen.append(new AMD64MathIntrinsicUnaryOp(getAMD64LIRGen(), base10 ? LOG10 : LOG, result, xmm0Value, stackSlot));
+            } else {
+                result = emitLIRWrapperForMathStubs(new AMD64MathLogOp(), input);
+            }
         }
         return result;
     }
