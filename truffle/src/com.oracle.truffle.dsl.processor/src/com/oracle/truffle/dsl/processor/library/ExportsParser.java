@@ -64,9 +64,9 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -217,7 +217,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                 continue;
             }
 
-            Set<LibraryMessage> missingAbstractMessage = new HashSet<>();
+            Set<LibraryMessage> missingAbstractMessage = new LinkedHashSet<>();
             for (LibraryMessage message : exportLib.getLibrary().getMethods()) {
                 List<Element> elementsWithSameName = potentiallyMissedOverrides.getOrDefault(message.getName(), Collections.emptyList());
                 if (!elementsWithSameName.isEmpty()) {
@@ -260,7 +260,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                                 String.format("The following message(s) of library %s are abstract and must be exported using:%n",
                                                 getSimpleName(exportLib.getLibrary().getTemplateType())));
                 for (LibraryMessage message : missingAbstractMessage) {
-                    msg.append("  ").append(generateExpectedSignature(message, exportLib.getExplicitReceiver())).append(" {");
+                    msg.append("  ").append(generateExpectedSignature(type, message, exportLib.getExplicitReceiver())).append(" {");
                     if (!ElementUtils.isVoid(message.getExecutable().getReturnType())) {
                         msg.append(" return ");
                         switch (message.getExecutable().getReturnType().getKind()) {
@@ -662,7 +662,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                 realParameterCount++;
             }
         }
-        verifyMethodSignature(message, exportedElement, exportedMethod, exportsLibrary.getReceiverClass(), realParameterCount, true);
+        verifyMethodSignature(model.getTemplateType(), message, exportedElement, exportedMethod, exportsLibrary.getReceiverClass(), realParameterCount, true);
         if (exportedElement.hasErrors()) {
             return;
         }
@@ -804,7 +804,8 @@ public class ExportsParser extends AbstractParser<ExportsData> {
         return name;
     }
 
-    private static boolean verifyMethodSignature(LibraryMessage message, ExportMessageElement exportedMessage, ExecutableElement exportedMethod, TypeMirror receiverType, int realParameterCount,
+    private static boolean verifyMethodSignature(TypeElement type, LibraryMessage message, ExportMessageElement exportedMessage, ExecutableElement exportedMethod, TypeMirror receiverType,
+                    int realParameterCount,
                     boolean emitErrors) {
         ExecutableElement libraryMethod = message.getExecutable();
 
@@ -827,7 +828,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                                 "Expected parameter count %s for exported message, but was %s. Expected signature:\n    %s",
                                 expectedParameters.size(),
                                 exportedParameters.size(),
-                                generateExpectedSignature(message, expectedStaticReceiverType));
+                                generateExpectedSignature(type, message, expectedStaticReceiverType));
             }
             return false;
         }
@@ -837,7 +838,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                 exportedMessage.addError(exportedMethod, "Invalid exported return type. Expected '%s' but was '%s'. Expected signature:\n    %s",
                                 getSimpleName(libraryMethod.getReturnType()),
                                 getSimpleName(exportedMethod.getReturnType()),
-                                generateExpectedSignature(message, expectedStaticReceiverType));
+                                generateExpectedSignature(type, message, expectedStaticReceiverType));
             }
             return false;
         }
@@ -865,7 +866,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                     exportedMessage.addError(exportedArg, "Invalid exported type. Expected '%s' but was '%s'. Expected signature:\n    %s",
                                     getSimpleName(libraryArgType),
                                     getSimpleName(exportedArgType),
-                                    generateExpectedSignature(message, expectedStaticReceiverType));
+                                    generateExpectedSignature(type, message, expectedStaticReceiverType));
                 }
                 return false;
             }
@@ -873,13 +874,15 @@ public class ExportsParser extends AbstractParser<ExportsData> {
         return true;
     }
 
-    private static String generateExpectedSignature(LibraryMessage message, TypeMirror staticReceiverType) {
+    private static String generateExpectedSignature(TypeElement targetType, LibraryMessage message, TypeMirror staticReceiverType) {
         StringBuilder b = new StringBuilder();
         b.append("@").append(ExportMessage.class.getSimpleName()).append(" ");
         if (staticReceiverType != null) {
             b.append("static ");
         } else {
-            b.append("final ");
+            if (!targetType.getModifiers().contains(Modifier.FINAL)) {
+                b.append("final ");
+            }
         }
         b.append(getSimpleName(message.getExecutable().getReturnType()));
         b.append(" ");
@@ -903,6 +906,17 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             b.append(parameter.getSimpleName().toString());
         }
         b.append(")");
+
+        if (!message.getExecutable().getThrownTypes().isEmpty()) {
+            b.append(" throws ");
+            String sep = "";
+            for (TypeMirror thrownType : message.getExecutable().getThrownTypes()) {
+                b.append(sep);
+                b.append(getSimpleName(thrownType));
+                sep = ", ";
+            }
+        }
+
         return b.toString();
 
     }

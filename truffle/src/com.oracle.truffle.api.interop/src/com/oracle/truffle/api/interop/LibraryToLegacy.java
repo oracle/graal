@@ -255,31 +255,30 @@ final class LibraryToLegacy {
             CompilerDirectives.transferToInterpreter();
             try {
                 if (identifier instanceof String) {
-                    TruffleObject keys = sendKeys(InteropAccessNode.getUncached(Message.KEYS), receiver, true);
-                    Number sizeNumber = (Number) sendGetSize(InteropAccessNode.getUncached(Message.GET_SIZE), keys);
-                    int size = sizeNumber.intValue();
-                    InteropAccessNode readNode = InteropAccessNode.getUncached(Message.READ);
-                    for (int i = 0; i < size; i++) {
-                        Object key = sendRead(readNode, keys, i);
+                    InteropLibrary uncached = InteropLibrary.getUncached();
+                    Object keys = uncached.getMembers(receiver);
+                    long size = uncached.getArraySize(keys);
+                    for (long i = 0; i < size; i++) {
+                        Object key = uncached.readElement(keys, i);
                         // identifier must not be null
                         if (identifier.equals(key)) {
                             return 0b111;
                         }
                     }
                 }
-            } catch (UnsupportedMessageException | UnknownIdentifierException uex) {
+            } catch (UnsupportedMessageException | InvalidArrayIndexException uex) {
             }
             try {
                 if (identifier instanceof Number) {
-                    boolean hasSize = sendHasSize(InteropAccessNode.getUncached(Message.HAS_SIZE), receiver);
+                    InteropLibrary uncached = InteropLibrary.getUncached(receiver);
+                    boolean hasSize = uncached.isArray(receiver);
                     if (hasSize) {
                         int id = ((Number) identifier).intValue();
                         if (id < 0 || id != ((Number) identifier).doubleValue()) {
                             // identifier is some wild double number
                             return 0;
                         }
-                        Number sizeNumber = (Number) sendGetSize(InteropAccessNode.getUncached(Message.GET_SIZE), receiver);
-                        int size = sizeNumber.intValue();
+                        long size = uncached.getArraySize(receiver);
                         if (id < size) {
                             return 0b111;
                         }

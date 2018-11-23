@@ -332,7 +332,9 @@ public class CachedNodeTest {
 
         @Specialization
         static Object s0(Object arg0,
-                        @ExpectError("Failed to generate code for @GenerateUncached: The specialization uses @Cached without valid uncached expression. Error parsing expression 'getUncached()': The method getUncached is undefined for the enclosing scope.. To resolve this specify the uncached or allowUncached attribute in @Cached.") //
+                        @ExpectError("Failed to generate code for @GenerateUncached: The specialization uses @Cached without valid uncached expression. " +
+                                        "Error parsing expression 'getUncached()': The method getUncached is undefined for the enclosing scope.. " +
+                                        "To resolve this specify the uncached or allowUncached attribute in @Cached.") //
                         @Cached InvalidNode4 foo) {
             return arg0;
         }

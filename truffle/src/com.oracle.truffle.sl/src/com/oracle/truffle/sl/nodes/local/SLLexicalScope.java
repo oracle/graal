@@ -328,19 +328,19 @@ public final class SLLexicalScope {
 
         @SuppressWarnings("static-method")
         @ExportMessage
-        final boolean isObject() {
+        boolean isObject() {
             return true;
         }
 
         @ExportMessage
         @TruffleBoundary
-        final Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
             return new KeysArray(slots.keySet().toArray(new String[0]));
         }
 
         @ExportMessage
         @TruffleBoundary
-        final void writeMember(String member, Object value) throws UnsupportedMessageException, UnknownIdentifierException {
+        void writeMember(String member, Object value) throws UnsupportedMessageException, UnknownIdentifierException {
             if (frame == null) {
                 throw UnsupportedMessageException.create();
             }
@@ -359,7 +359,7 @@ public final class SLLexicalScope {
 
         @ExportMessage
         @TruffleBoundary
-        final Object readMember(String member) throws UnknownIdentifierException {
+        Object readMember(String member) throws UnknownIdentifierException {
             if (frame == null) {
                 return SLNull.SINGLETON;
             }
@@ -380,19 +380,19 @@ public final class SLLexicalScope {
 
         @SuppressWarnings("static-method")
         @ExportMessage
-        final boolean isMemberInsertable(@SuppressWarnings("unused") String member) {
+        boolean isMemberInsertable(@SuppressWarnings("unused") String member) {
             return false;
         }
 
         @ExportMessage
         @TruffleBoundary
-        final boolean isMemberModifiable(String member) {
+        boolean isMemberModifiable(String member) {
             return slots.containsKey(member);
         }
 
         @ExportMessage
         @TruffleBoundary
-        final boolean isMemberReadable(String member) {
+        boolean isMemberReadable(String member) {
             return frame == null || slots.containsKey(member);
         }
 
@@ -409,22 +409,22 @@ public final class SLLexicalScope {
 
         @SuppressWarnings("static-method")
         @ExportMessage
-        final boolean isArray() {
+        boolean isArray() {
             return true;
         }
 
         @ExportMessage
-        final boolean isElementReadable(long index) {
+        boolean isElementReadable(long index) {
             return index >= 0 && index < keys.length;
         }
 
         @ExportMessage
-        final long getArraySize() {
+        long getArraySize() {
             return keys.length;
         }
 
         @ExportMessage
-        final Object readElement(long index) throws InvalidArrayIndexException {
+        Object readElement(long index) throws InvalidArrayIndexException {
             try {
                 return keys[(int) index];
             } catch (IndexOutOfBoundsException e) {

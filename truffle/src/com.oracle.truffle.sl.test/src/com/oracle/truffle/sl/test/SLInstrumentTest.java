@@ -904,22 +904,22 @@ public class SLInstrumentTest {
 
         @SuppressWarnings("static-method")
         @ExportMessage
-        final boolean isArray() {
+        boolean isArray() {
             return true;
         }
 
         @ExportMessage
-        final boolean isElementReadable(long index) {
+        boolean isElementReadable(long index) {
             return index >= 0 && index < keys.length;
         }
 
         @ExportMessage
-        final long getArraySize() {
+        long getArraySize() {
             return keys.length;
         }
 
         @ExportMessage
-        final Object readElement(long index) throws InvalidArrayIndexException {
+        Object readElement(long index) throws InvalidArrayIndexException {
             try {
                 return keys[(int) index];
             } catch (IndexOutOfBoundsException e) {

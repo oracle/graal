@@ -157,7 +157,7 @@ public final class SLObjectType extends ObjectType {
         }
 
         @ExportMessage
-        final Object readElement(long index) throws InvalidArrayIndexException {
+        Object readElement(long index) throws InvalidArrayIndexException {
             try {
                 return keys[(int) index];
             } catch (IndexOutOfBoundsException e) {
@@ -168,24 +168,24 @@ public final class SLObjectType extends ObjectType {
 
         @SuppressWarnings("static-method")
         @ExportMessage
-        final boolean isArray() {
+        boolean isArray() {
             return true;
         }
 
         @ExportMessage
-        final long getArraySize() {
+        long getArraySize() {
             return keys.length;
         }
 
         @ExportMessage
-        final boolean isElementReadable(long index) {
+        boolean isElementReadable(long index) {
             return index >= 0 && index < keys.length;
         }
     }
 
     @GenerateUncached
     @ExportMessage
-    static abstract class ReadMemberNode extends Node {
+    abstract static class ReadMemberNode extends Node {
 
         /**
          * Polymorphic inline cache for a limited number of distinct property names and shapes.
@@ -241,7 +241,7 @@ public final class SLObjectType extends ObjectType {
 
     @GenerateUncached
     @ExportMessage
-    static abstract class WriteMemberNode extends Node {
+    abstract static class WriteMemberNode extends Node {
 
         /**
          * Polymorphic inline cache for writing a property that already exists (no shape change is

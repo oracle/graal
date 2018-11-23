@@ -73,7 +73,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
  */
 public class ProxySPITest extends AbstractPolyglotTest {
 
-    static class TestFunction extends ProxyInteropObject {
+    static class TestFunction extends ProxyLegacyInteropObject {
 
         TruffleObject lastFunction;
 

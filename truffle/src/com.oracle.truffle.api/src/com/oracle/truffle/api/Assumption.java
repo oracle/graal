@@ -104,17 +104,17 @@ public interface Assumption {
      */
     String getName();
 
-    public static boolean isValid(Assumption assumption) {
+    static boolean isValidAssumption(Assumption assumption) {
         return assumption != null && assumption.isValid();
     }
 
     @ExplodeLoop
-    public static boolean isValid(Assumption[] assumptions) {
+    static boolean isValidAssumption(Assumption[] assumptions) {
         if (assumptions == null) {
             return false;
         }
         for (Assumption assumption : assumptions) {
-            if (!isValid(assumption)) {
+            if (!isValidAssumption(assumption)) {
                 return false;
             }
         }

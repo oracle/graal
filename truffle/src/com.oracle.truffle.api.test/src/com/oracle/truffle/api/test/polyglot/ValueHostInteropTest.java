@@ -843,7 +843,7 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
         List<Data> data();
     }
 
-    static class ListArray extends ProxyInteropObject {
+    static class ListArray extends ProxyLegacyInteropObject {
 
         private final List<String> array;
 

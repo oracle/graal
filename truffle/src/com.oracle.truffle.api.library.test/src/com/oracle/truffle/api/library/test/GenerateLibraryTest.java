@@ -366,7 +366,8 @@ public class GenerateLibraryTest {
         }
     }
 
-    @ExpectError("The annotated type 'InvalidDefaultTypeImpl' is not specified using @DefaultExport in the library 'ExportsTypeLibrary'. Using explicit receiver classes is only supported for default exports or receiver types that implement DynamicDispatch.")
+    @ExpectError("The annotated type 'InvalidDefaultTypeImpl' is not specified using @DefaultExport in the library 'ExportsTypeLibrary'. " +
+                    "Using explicit receiver classes is only supported for default exports or receiver types that implement DynamicDispatch.")
     @ExportLibrary(value = ExportsTypeLibrary.class, receiverClass = Double.class)
     public static class InvalidDefaultTypeImpl {
         @ExportMessage
@@ -391,7 +392,7 @@ public class GenerateLibraryTest {
     }
 
     @GenerateLibrary
-    public static abstract class AbstractErrorLibrary1 extends Library {
+    public abstract static class AbstractErrorLibrary1 extends Library {
         @Abstract
         public int messageVoid(Object receiver) {
             return 42;
@@ -404,7 +405,7 @@ public class GenerateLibraryTest {
     }
 
     @GenerateLibrary
-    public static abstract class AbstractErrorLibrary2 extends Library {
+    public abstract static class AbstractErrorLibrary2 extends Library {
 
         public boolean isType(Object receiver) {
             return false;
@@ -434,7 +435,7 @@ public class GenerateLibraryTest {
     }
 
     @GenerateLibrary
-    public static abstract class AbstractErrorLibrary4 extends Library {
+    public abstract static class AbstractErrorLibrary4 extends Library {
 
         @Abstract
         public boolean isType(Object receiver) {
@@ -450,7 +451,7 @@ public class GenerateLibraryTest {
     }
 
     @GenerateLibrary
-    public static abstract class AbstractErrorLibrary5 extends Library {
+    public abstract static class AbstractErrorLibrary5 extends Library {
 
         @Abstract
         public boolean isType(Object receiver) {

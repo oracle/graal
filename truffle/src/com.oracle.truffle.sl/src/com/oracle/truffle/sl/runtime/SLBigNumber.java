@@ -104,49 +104,49 @@ public final class SLBigNumber implements TruffleObject, Comparable<SLBigNumber>
 
     @SuppressWarnings("static-method")
     @ExportMessage
-    final boolean isNumber() {
+    boolean isNumber() {
         return true;
     }
 
     @ExportMessage
     @TruffleBoundary
-    final boolean fitsInByte() {
+    boolean fitsInByte() {
         return value.bitLength() < 8;
     }
 
     @ExportMessage
     @TruffleBoundary
-    final boolean fitsInShort() {
+    boolean fitsInShort() {
         return value.bitLength() < 16;
     }
 
     @ExportMessage
     @TruffleBoundary
-    final boolean fitsInFloat() {
+    boolean fitsInFloat() {
         return fitsInInt() && inSafeFloatRange(value.intValue());
     }
 
     @ExportMessage
     @TruffleBoundary
-    final boolean fitsInLong() {
+    boolean fitsInLong() {
         return value.bitLength() < 64;
     }
 
     @ExportMessage
     @TruffleBoundary
-    final boolean fitsInInt() {
+    boolean fitsInInt() {
         return value.bitLength() < 32;
     }
 
     @ExportMessage
     @TruffleBoundary
-    final boolean fitsInDouble() {
+    boolean fitsInDouble() {
         return fitsInLong() && inSafeDoubleRange(value.longValue());
     }
 
     @ExportMessage
     @TruffleBoundary
-    final double asDouble() throws UnsupportedMessageException {
+    double asDouble() throws UnsupportedMessageException {
         if (fitsInDouble()) {
             return value.doubleValue();
         } else {
@@ -156,7 +156,7 @@ public final class SLBigNumber implements TruffleObject, Comparable<SLBigNumber>
 
     @ExportMessage
     @TruffleBoundary
-    final long asLong() throws UnsupportedMessageException {
+    long asLong() throws UnsupportedMessageException {
         if (fitsInLong()) {
             return value.longValue();
         } else {
@@ -166,7 +166,7 @@ public final class SLBigNumber implements TruffleObject, Comparable<SLBigNumber>
 
     @ExportMessage
     @TruffleBoundary
-    final byte asByte() throws UnsupportedMessageException {
+    byte asByte() throws UnsupportedMessageException {
         if (fitsInByte()) {
             return value.byteValue();
         } else {
@@ -176,7 +176,7 @@ public final class SLBigNumber implements TruffleObject, Comparable<SLBigNumber>
 
     @ExportMessage
     @TruffleBoundary
-    final int asInt() throws UnsupportedMessageException {
+    int asInt() throws UnsupportedMessageException {
         if (fitsInInt()) {
             return value.intValue();
         } else {
@@ -186,7 +186,7 @@ public final class SLBigNumber implements TruffleObject, Comparable<SLBigNumber>
 
     @ExportMessage
     @TruffleBoundary
-    final float asFloat() throws UnsupportedMessageException {
+    float asFloat() throws UnsupportedMessageException {
         if (fitsInFloat()) {
             return value.floatValue();
         } else {
@@ -196,7 +196,7 @@ public final class SLBigNumber implements TruffleObject, Comparable<SLBigNumber>
 
     @ExportMessage
     @TruffleBoundary
-    final short asShort() throws UnsupportedMessageException {
+    short asShort() throws UnsupportedMessageException {
         if (fitsInShort()) {
             return value.shortValue();
         } else {

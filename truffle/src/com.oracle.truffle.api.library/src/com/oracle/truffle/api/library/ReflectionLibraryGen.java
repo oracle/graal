@@ -85,7 +85,7 @@ final class ReflectionLibraryGen extends ResolvedLibrary<ReflectionLibrary> {
     }
 
     @GeneratedBy(ReflectionLibrary.class)
-    private static class Default extends ResolvedExports<ReflectionLibrary> {
+    private static final class Default extends ResolvedExports<ReflectionLibrary> {
 
         private static final Uncached UNCACHED = new Uncached();
 

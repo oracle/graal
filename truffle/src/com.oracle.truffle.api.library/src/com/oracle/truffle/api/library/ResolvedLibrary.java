@@ -166,6 +166,9 @@ public abstract class ResolvedLibrary<T extends Library> {
             }
             return receiverClass;
         } else {
+            if (receiver == null) {
+                throw new NullPointerException("Null receiver values are not supported by libraries.");
+            }
             return receiver.getClass();
         }
     }

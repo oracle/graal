@@ -105,7 +105,7 @@ public class LibraryParser extends AbstractParser<LibraryData> {
             }
 
             for (LibraryDefaultExportData prev : model.getDefaultExports()) {
-                if (ElementUtils.isAssignable(prev.getReceiverType(), export.getReceiverType())) {
+                if (ElementUtils.isAssignable(export.getReceiverType(), prev.getReceiverType())) {
                     model.addError(defaultExport, null, "The receiver type '%s' of the export '%s' is not reachable. " +
                                     "It is shadowed by receiver type '%s' of export '%s'.",
                                     ElementUtils.getSimpleName(export.getReceiverType()),

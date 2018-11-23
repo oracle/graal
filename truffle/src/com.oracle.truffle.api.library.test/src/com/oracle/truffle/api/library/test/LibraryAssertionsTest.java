@@ -197,7 +197,7 @@ public class LibraryAssertionsTest {
         }
     }
 
-    static class ErrorAssertions4 extends AssertionsErrorLibrary4 {
+    static final class ErrorAssertions4 extends AssertionsErrorLibrary4 {
 
         private ErrorAssertions4(AssertionsErrorLibrary4 delegate) {
         }

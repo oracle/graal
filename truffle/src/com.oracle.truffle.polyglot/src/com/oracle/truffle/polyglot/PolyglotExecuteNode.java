@@ -45,8 +45,7 @@ import java.lang.reflect.Type;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.ExecutableLibrary;
-import com.oracle.truffle.api.interop.InstantiableLibrary;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -83,8 +82,7 @@ abstract class PolyglotExecuteNode extends Node {
     @Specialization(limit = "5")
     Object doCached(PolyglotLanguageContext languageContext, Object function, Object[] functionArgs,
                     Class<?> resultClass, Type resultType,
-                    @CachedLibrary("function") ExecutableLibrary executables,
-                    @CachedLibrary("function") InstantiableLibrary instantiables,
+                    @CachedLibrary("function") InteropLibrary interop,
                     @Cached ToHostNode toHost,
                     @Cached("createBinaryProfile()") ConditionProfile executableCondition,
                     @Cached("createBinaryProfile()") ConditionProfile instantiableCondition,
@@ -93,12 +91,12 @@ abstract class PolyglotExecuteNode extends Node {
                     @Cached BranchProfile unsupportedArgumentError) {
 
         Object result;
-        boolean executable = executableCondition.profile(executables.isExecutable(function));
+        boolean executable = executableCondition.profile(interop.isExecutable(function));
         try {
             if (executable) {
-                result = executables.execute(function, functionArgs);
-            } else if (instantiableCondition.profile(instantiables.isInstantiable(function))) {
-                result = instantiables.instantiate(function, functionArgs);
+                result = interop.execute(function, functionArgs);
+            } else if (instantiableCondition.profile(interop.isInstantiable(function))) {
+                result = interop.instantiate(function, functionArgs);
             } else {
                 throw HostInteropErrors.executeUnsupported(languageContext, function);
             }

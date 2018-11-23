@@ -49,9 +49,11 @@ import com.oracle.truffle.api.nodes.Node;
 @SuppressWarnings("serial")
 final class HostException extends RuntimeException implements TruffleException {
 
+    private final Node location;
     private final Throwable original;
 
-    HostException(Throwable original) {
+    HostException(Node location, Throwable original) {
+        this.location = location;
         this.original = original;
     }
 
@@ -72,7 +74,7 @@ final class HostException extends RuntimeException implements TruffleException {
 
     @Override
     public Node getLocation() {
-        return null;
+        return location;
     }
 
     @Override

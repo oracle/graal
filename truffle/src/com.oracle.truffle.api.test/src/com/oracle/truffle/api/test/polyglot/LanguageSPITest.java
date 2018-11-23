@@ -1385,7 +1385,7 @@ public class LanguageSPITest {
 
     @Test
     public void testBindingsWithInvalidScopes() {
-        setupTopScopes(new ProxyInteropObject() {
+        setupTopScopes(new ProxyLegacyInteropObject() {
         });
         Context c = Context.create();
         assertEquals(0, findScopeInvokes);
@@ -1394,7 +1394,7 @@ public class LanguageSPITest {
         c.close();
     }
 
-    private static class TestScope extends ProxyInteropObject {
+    private static class TestScope extends ProxyLegacyInteropObject {
 
         final Map<String, Object> values = new HashMap<>();
         boolean modifiable;
@@ -1408,7 +1408,7 @@ public class LanguageSPITest {
 
         @Override
         public Object keys() throws UnsupportedMessageException {
-            return new ProxyInteropObject() {
+            return new ProxyLegacyInteropObject() {
 
                 private final String[] keys = values.keySet().toArray(new String[0]);
 

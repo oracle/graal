@@ -155,8 +155,8 @@ final class ResolvedReceiver {
         try {
             Class.forName(generatedClassName);
         } catch (ClassNotFoundException e) {
-            throw new AssertionError(String.format("Generated class '%s' for class '%s' not found but no generated class. " +
-                            "Did the annotation processor run?", currentReceiverClass.getName(), generatedClassName));
+            throw new AssertionError(String.format("Generated class '%s' for class '%s' not found. " +
+                            "Did the Truffle annotation processor run?", generatedClassName, currentReceiverClass.getName()), e);
         }
     }
 

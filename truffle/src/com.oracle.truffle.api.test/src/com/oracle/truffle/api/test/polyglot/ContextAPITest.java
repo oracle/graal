@@ -359,7 +359,7 @@ public class ContextAPITest {
     }
 
     private static void testExecute(Context context) {
-        ContextAPITestLanguage.runinside = (env) -> new ProxyInteropObject() {
+        ContextAPITestLanguage.runinside = (env) -> new ProxyLegacyInteropObject() {
             @Override
             public boolean isExecutable() {
                 return true;
@@ -418,7 +418,7 @@ public class ContextAPITest {
         ProxyLanguage.setDelegate(new ProxyLanguage() {
             @Override
             protected Iterable<Scope> findTopScopes(LanguageContext env) {
-                return Arrays.asList(Scope.newBuilder("top", new ProxyInteropObject() {
+                return Arrays.asList(Scope.newBuilder("top", new ProxyLegacyInteropObject() {
                     @Override
                     public Object read(String key) throws UnsupportedMessageException, UnknownIdentifierException {
                         return values.get(key);

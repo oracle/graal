@@ -27,7 +27,10 @@ package org.graalvm.compiler.truffle.runtime;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.impl.DefaultCallTarget;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.ValueProfile;
 
@@ -53,4 +56,25 @@ public final class OptimizedIndirectCallNode extends IndirectCallNode {
             throw OptimizedCallTarget.rethrow(profiledT);
         }
     }
+
+    static final IndirectCallNode UNCACHED = new IndirectCallNode() {
+
+        @Override
+        protected boolean isAdoptable() {
+            return false;
+        }
+
+        @Override
+        @TruffleBoundary
+        public Object call(CallTarget target, Object[] arguments) {
+            Node prev = IndirectCallNode.pushCallLocation(null);
+            try {
+                return ((OptimizedCallTarget) target).callIndirect(prev, arguments);
+            } finally {
+                IndirectCallNode.popCallLocation(prev);
+            }
+        }
+
+    };
+
 }

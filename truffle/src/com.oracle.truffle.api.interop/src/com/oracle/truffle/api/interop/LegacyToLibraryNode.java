@@ -69,7 +69,7 @@ final class LegacyToLibraryNode extends Node {
         return null;
     }
 
-    final Object sendRead(TruffleObject receiver, Object identifier) throws UnknownIdentifierException, UnsupportedMessageException {
+    Object sendRead(TruffleObject receiver, Object identifier) throws UnknownIdentifierException, UnsupportedMessageException {
         if (identifier instanceof String) {
             return interop.readMember(receiver, (String) identifier);
         } else if (identifier instanceof Number) {
@@ -98,7 +98,7 @@ final class LegacyToLibraryNode extends Node {
         }
     }
 
-    final void sendWrite(TruffleObject receiver, Object identifier, Object value)
+    void sendWrite(TruffleObject receiver, Object identifier, Object value)
                     throws UnknownIdentifierException, UnsupportedTypeException, UnsupportedMessageException {
         if (identifier instanceof String) {
             interop.writeMember(receiver, (String) identifier, value);
@@ -129,7 +129,7 @@ final class LegacyToLibraryNode extends Node {
         }
     }
 
-    final boolean sendRemove(TruffleObject receiver, Object identifier)
+    boolean sendRemove(TruffleObject receiver, Object identifier)
                     throws UnknownIdentifierException, UnsupportedMessageException {
         if (identifier instanceof String) {
             interop.removeMember(receiver, (String) identifier);
@@ -161,7 +161,7 @@ final class LegacyToLibraryNode extends Node {
         }
     }
 
-    final Object sendUnbox(TruffleObject receiver) throws UnsupportedMessageException {
+    Object sendUnbox(TruffleObject receiver) throws UnsupportedMessageException {
         if (receiver.getForeignAccess() != null) {
             // if not yet migrated
             return LibraryToLegacy.sendUnbox(legacyUnbox, receiver);
@@ -175,10 +175,12 @@ final class LegacyToLibraryNode extends Node {
                 return interop.asShort(receiver);
             } else if (interop.fitsInInt(receiver)) {
                 return interop.asInt(receiver);
-            } else if (interop.fitsInDouble(receiver)) {
-                return interop.asDouble(receiver);
             } else if (interop.fitsInLong(receiver)) {
                 return interop.asLong(receiver);
+            } else if (interop.fitsInFloat(receiver)) {
+                return interop.asFloat(receiver);
+            } else if (interop.fitsInDouble(receiver)) {
+                return interop.asDouble(receiver);
             }
         } else if (interop.isString(receiver)) {
             return interop.asString(receiver);
@@ -189,53 +191,53 @@ final class LegacyToLibraryNode extends Node {
         throw UnsupportedMessageException.create();
     }
 
-    final boolean sendIsPointer(TruffleObject receiver) {
+    boolean sendIsPointer(TruffleObject receiver) {
         return interop.isPointer(receiver);
     }
 
-    final long sendAsPointer(TruffleObject receiver) throws UnsupportedMessageException {
+    long sendAsPointer(TruffleObject receiver) throws UnsupportedMessageException {
         return interop.asPointer(receiver);
     }
 
-    final Object sendToNative(TruffleObject receiver) throws UnsupportedMessageException {
+    Object sendToNative(TruffleObject receiver) throws UnsupportedMessageException {
         return interop.toNative(receiver);
     }
 
-    final Object sendExecute(TruffleObject receiver, Object... arguments) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
+    Object sendExecute(TruffleObject receiver, Object... arguments) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
         return interop.execute(receiver, arguments);
     }
 
-    final boolean sendIsExecutable(TruffleObject receiver) {
+    boolean sendIsExecutable(TruffleObject receiver) {
         return interop.isExecutable(receiver);
     }
 
-    final boolean sendIsInstantiable(TruffleObject receiver) {
+    boolean sendIsInstantiable(TruffleObject receiver) {
         return interop.isInstantiable(receiver);
     }
 
-    final Object sendInvoke(TruffleObject receiver, String identifier, Object... arguments)
+    Object sendInvoke(TruffleObject receiver, String identifier, Object... arguments)
                     throws UnsupportedTypeException, ArityException, UnknownIdentifierException, UnsupportedMessageException {
         return interop.invokeMember(receiver, identifier, arguments);
     }
 
-    final Object sendNew(TruffleObject receiver, Object... arguments) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
+    Object sendNew(TruffleObject receiver, Object... arguments) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
         return interop.instantiate(receiver, arguments);
     }
 
-    final boolean sendIsNull(TruffleObject receiver) {
+    boolean sendIsNull(TruffleObject receiver) {
         return interop.isNull(receiver);
     }
 
-    final boolean sendHasSize(TruffleObject receiver) {
+    boolean sendHasSize(TruffleObject receiver) {
         return interop.isArray(receiver);
     }
 
-    final Object sendGetSize(TruffleObject receiver) throws UnsupportedMessageException {
+    Object sendGetSize(TruffleObject receiver) throws UnsupportedMessageException {
         // we use int because current implementations expect that.
         return (int) interop.getArraySize(receiver);
     }
 
-    final boolean sendIsBoxed(TruffleObject receiver) {
+    boolean sendIsBoxed(TruffleObject receiver) {
         if (interop.isNumber(receiver)) {
             if (interop.fitsInLong(receiver)) {
                 return true;
@@ -251,7 +253,7 @@ final class LegacyToLibraryNode extends Node {
         return false;
     }
 
-    final int sendKeyInfo(TruffleObject receiver, Object key) {
+    int sendKeyInfo(TruffleObject receiver, Object key) {
         int keyInfo = KeyInfo.NONE;
         if (key instanceof String) {
             String identifier = ((String) key);
@@ -317,15 +319,15 @@ final class LegacyToLibraryNode extends Node {
         return keyInfo;
     }
 
-    final boolean sendHasKeys(TruffleObject receiver) {
+    boolean sendHasKeys(TruffleObject receiver) {
         return interop.isObject(receiver);
     }
 
-    final TruffleObject sendKeys(TruffleObject receiver) throws UnsupportedMessageException {
+    TruffleObject sendKeys(TruffleObject receiver) throws UnsupportedMessageException {
         return (TruffleObject) interop.getMembers(receiver);
     }
 
-    final TruffleObject sendKeys(TruffleObject receiver, boolean includeInternal) throws UnsupportedMessageException {
+    TruffleObject sendKeys(TruffleObject receiver, boolean includeInternal) throws UnsupportedMessageException {
         return (TruffleObject) interop.getMembers(receiver, includeInternal);
     }
 

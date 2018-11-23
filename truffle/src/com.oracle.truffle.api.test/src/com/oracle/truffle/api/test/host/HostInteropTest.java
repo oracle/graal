@@ -90,7 +90,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.ReflectionUtils;
 import com.oracle.truffle.api.test.polyglot.LanguageSPIHostInteropTest;
-import com.oracle.truffle.api.test.polyglot.ProxyInteropObject;
+import com.oracle.truffle.api.test.polyglot.ProxyLegacyInteropObject;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.api.test.polyglot.ValueHostInteropTest;
 
@@ -673,14 +673,14 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
     public void unbox() {
         assertNull(unbox(null));
         assertNull(unbox(asTruffleObject(new Object())));
-        assertEquals(42, unbox(asTruffleObject(42)));
-        assertEquals((byte) 42, unbox(asTruffleObject((byte) 42)));
-        assertEquals((short) 42, unbox(asTruffleObject((short) 42)));
-        assertEquals(4242424242424242L, unbox(asTruffleObject(4242424242424242L)));
-        assertEquals(42.42f, unbox(asTruffleObject(42.42f)));
-        assertEquals(42.42, unbox(asTruffleObject(42.42)));
+        assertEquals(Integer.MAX_VALUE, unbox(asTruffleObject(Integer.MAX_VALUE)));
+        assertEquals(Byte.MAX_VALUE, unbox(asTruffleObject(Byte.MAX_VALUE)));
+        assertEquals(Short.MAX_VALUE, unbox(asTruffleObject(Short.MAX_VALUE)));
+        assertEquals(Long.MAX_VALUE, unbox(asTruffleObject(Long.MAX_VALUE)));
+        assertEquals(Float.MAX_VALUE, unbox(asTruffleObject(Float.MAX_VALUE)));
+        assertEquals(Double.MAX_VALUE, unbox(asTruffleObject(Double.MAX_VALUE)));
         assertEquals("42", unbox(asTruffleObject("42")));
-        assertEquals('4', unbox(asTruffleObject('4')));
+        assertEquals("4", unbox(asTruffleObject('4')));
         assertEquals(true, unbox(asTruffleObject(true)));
         assertEquals(false, unbox(asTruffleObject(false)));
     }
@@ -964,7 +964,6 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
             fail("Remove of elements of an array is not supported.");
         } catch (Exception e) {
             assertTrue(e.toString(), e instanceof UnsupportedMessageException);
-            assertEquals(Message.REMOVE, ((UnsupportedMessageException) e).getUnsupportedMessage());
         }
     }
 
@@ -1499,7 +1498,7 @@ public class HostInteropTest extends ProxyLanguageEnvTest {
         }
     }
 
-    static final class InternalPropertiesObject extends ProxyInteropObject {
+    static final class InternalPropertiesObject extends ProxyLegacyInteropObject {
 
         int keyInfo;
 

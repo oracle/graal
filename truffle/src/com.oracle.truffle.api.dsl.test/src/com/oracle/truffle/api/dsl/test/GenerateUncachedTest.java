@@ -69,6 +69,7 @@ import com.oracle.truffle.api.dsl.test.GenerateUncachedTestFactory.UncachedTrivi
 import com.oracle.truffle.api.dsl.test.GenerateUncachedTestFactory.UncachedTrivial4NodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateUncachedTestFactory.UncachedTrivial5NodeGen;
 import com.oracle.truffle.api.dsl.test.GenerateUncachedTestFactory.UncachedTrivial6NodeGen;
+import com.oracle.truffle.api.dsl.test.GenerateUncachedTestFactory.UncachedTrivial7NodeGen;
 import com.oracle.truffle.api.nodes.Node;
 
 @SuppressWarnings("unused")
@@ -266,7 +267,7 @@ public class GenerateUncachedTest {
     }
 
     @GenerateUncached
-    static abstract class UncachedTrivial1Node extends Node {
+    abstract static class UncachedTrivial1Node extends Node {
 
         abstract Object execute(Object arg);
 
@@ -284,7 +285,7 @@ public class GenerateUncachedTest {
     }
 
     @GenerateUncached
-    static abstract class UncachedTrivial2Node extends Node {
+    abstract static class UncachedTrivial2Node extends Node {
 
         abstract Object execute(Object arg);
 
@@ -302,7 +303,7 @@ public class GenerateUncachedTest {
     }
 
     @GenerateUncached
-    static abstract class UncachedTrivial3Node extends Node {
+    abstract static class UncachedTrivial3Node extends Node {
 
         abstract Object execute(Object arg);
 
@@ -320,7 +321,7 @@ public class GenerateUncachedTest {
     }
 
     @GenerateUncached
-    static abstract class UncachedTrivial4Node extends Node {
+    abstract static class UncachedTrivial4Node extends Node {
 
         abstract Object execute(Object arg);
 
@@ -338,7 +339,7 @@ public class GenerateUncachedTest {
     }
 
     @GenerateUncached
-    static abstract class UncachedTrivial5Node extends Node {
+    abstract static class UncachedTrivial5Node extends Node {
 
         abstract Object execute(Object arg);
 
@@ -362,7 +363,7 @@ public class GenerateUncachedTest {
     }
 
     @GenerateUncached
-    static abstract class UncachedTrivial6Node extends Node {
+    abstract static class UncachedTrivial6Node extends Node {
 
         abstract Object execute(Object arg);
 
@@ -382,6 +383,30 @@ public class GenerateUncachedTest {
     public void testUncachedTrivial6() {
         UncachedTrivial6Node node = UncachedTrivial6NodeGen.getUncached();
         assertEquals("s1_false", node.execute(42));
+        assertEquals("s1_false", node.execute(43));
+    }
+
+    @GenerateUncached
+    abstract static class UncachedTrivial7Node extends Node {
+
+        abstract Object execute(Object arg);
+
+        @Specialization
+        static String s1(Object v,
+                        @Cached(value = "v == null") boolean cached) {
+            return "s1_" + cached;
+        }
+
+        static boolean foo(Object o) {
+            return o == Integer.valueOf(42);
+        }
+
+    }
+
+    @Test
+    public void testUncachedTrivial7() {
+        UncachedTrivial7Node node = UncachedTrivial7NodeGen.getUncached();
+        assertEquals("s1_true", node.execute(null));
         assertEquals("s1_false", node.execute(43));
     }
 
@@ -407,7 +432,9 @@ public class GenerateUncachedTest {
 
         @Specialization
         static int f0(int v,
-                        @ExpectError("Failed to generate code for @GenerateUncached: The specialization uses @Cached without valid uncached expression. Error parsing expression 'getUncached()': The method getUncached is undefined for the enclosing scope.. To resolve this specify the uncached or allowUncached attribute in @Cached.") //
+                        @ExpectError("Failed to generate code for @GenerateUncached: The specialization uses @Cached without valid uncached expression. " +
+                                        "Error parsing expression 'getUncached()': The method getUncached is undefined for the enclosing scope.. " +
+                                        "To resolve this specify the uncached or allowUncached attribute in @Cached.") //
                         @Cached("nonTrivialCache(v)") int cachedV) {
             return v;
         }
@@ -505,13 +532,15 @@ public class GenerateUncachedTest {
     }
 
     @GenerateUncached
-    static abstract class ErrorNonTrivialNode1 extends Node {
+    abstract static class ErrorNonTrivialNode1 extends Node {
 
         abstract Object execute(Object arg);
 
         @Specialization
         static String s1(Object v,
-                        @ExpectError("Failed to generate code for @GenerateUncached: The specialization uses @Cached without valid uncached expression. Error parsing expression 'getUncached()': The method getUncached is undefined for the enclosing scope.. To resolve this specify the uncached or allowUncached attribute in @Cached.")//
+                        @ExpectError("Failed to generate code for @GenerateUncached: The specialization uses @Cached without valid uncached expression. " +
+                                        "Error parsing expression 'getUncached()': The method getUncached is undefined for the enclosing scope.. " +
+                                        "To resolve this specify the uncached or allowUncached attribute in @Cached.")//
                         @Cached("foo(v)") Object cached) {
             return "s1";
         }
@@ -523,7 +552,7 @@ public class GenerateUncachedTest {
     }
 
     @GenerateUncached
-    static abstract class ErrorNonTrivialNode2 extends Node {
+    abstract static class ErrorNonTrivialNode2 extends Node {
 
         abstract Object execute(Object arg);
 

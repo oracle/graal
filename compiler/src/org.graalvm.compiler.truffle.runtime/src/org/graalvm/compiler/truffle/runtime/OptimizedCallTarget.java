@@ -203,12 +203,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     @Override
     public final Object call(Object... args) {
-        Node prev = IndirectCallNode.pushCallLocation(null);
-        try {
-            return callIndirect(prev, args);
-        } finally {
-            IndirectCallNode.popCallLocation(prev);
-        }
+        return callIndirect(null, args);
     }
 
     // Note: {@code PartialEvaluator} looks up this method by name and signature.

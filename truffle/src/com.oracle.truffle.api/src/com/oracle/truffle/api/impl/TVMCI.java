@@ -52,6 +52,7 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.impl.Accessor.InstrumentSupport;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import java.io.Closeable;
@@ -321,6 +322,10 @@ public abstract class TVMCI {
 
     protected Node getCurrentCallLocation() {
         return Accessor.nodesAccess().getCurrentCallLocation();
+    }
+
+    protected IndirectCallNode getUncachedIndirectCall() {
+        return null;
     }
 
 }

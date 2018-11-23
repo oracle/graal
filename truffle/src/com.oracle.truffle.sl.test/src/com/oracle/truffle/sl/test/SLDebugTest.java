@@ -48,6 +48,7 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -705,8 +706,9 @@ public class SLDebugTest {
                 if (inFac) {
                     // Frame in fac function
                     for (DebugStackFrame s : event.getStackFrames()) {
-                        System.out.println(s.getName());
-                        System.out.println(s.getSourceSection());
+                        PrintStream out = System.out;
+                        out.println(s.getName());
+                        out.println(s.getSourceSection());
                     }
                     assertEquals("fac", dsf.getName());
                     assertEquals(6, dsf.getSourceSection().getStartLine());

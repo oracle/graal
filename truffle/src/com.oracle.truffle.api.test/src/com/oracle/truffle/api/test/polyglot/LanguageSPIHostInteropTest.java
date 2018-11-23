@@ -325,12 +325,12 @@ public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
 
     @Test
     public void testPrimitiveBoxing() {
-        assertNumberMembers((byte) 1, languageEnv.asBoxedGuestValue((byte) 1));
-        assertNumberMembers((short) 1, languageEnv.asBoxedGuestValue((short) 1));
-        assertNumberMembers(1, languageEnv.asBoxedGuestValue(1));
-        assertNumberMembers(1L, languageEnv.asBoxedGuestValue(1L));
-        assertNumberMembers(1F, languageEnv.asBoxedGuestValue(1F));
-        assertNumberMembers(1D, languageEnv.asBoxedGuestValue(1D));
+        assertNumberMembers((byte) 1);
+        assertNumberMembers((short) 1);
+        assertNumberMembers(1);
+        assertNumberMembers(1L);
+        assertNumberMembers(1F);
+        assertNumberMembers(1D);
 
         assertStringMembers("foobarbaz", languageEnv.asBoxedGuestValue("foobarbaz"));
         assertStringMembers("", languageEnv.asBoxedGuestValue(""));
@@ -340,21 +340,23 @@ public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
 
     }
 
-    private void assertNumberMembers(Object unboxValue, Object numberObject) {
-        Number number = (Number) unbox(numberObject);
-        assertEquals(unboxValue, number);
-        assertInvocable(number.intValue(), numberObject, "intValue");
-        assertInvocable(number.longValue(), numberObject, "longValue");
-        assertInvocable(number.floatValue(), numberObject, "floatValue");
-        assertInvocable(number.doubleValue(), numberObject, "doubleValue");
-        assertInvocable(number.byteValue(), numberObject, "byteValue");
-        assertInvocable(number.shortValue(), numberObject, "shortValue");
-        assertInvocable(true, numberObject, "equals", number);
-        assertInvocable(number.hashCode(), numberObject, "hashCode");
-        assertInvocable(number.toString(), numberObject, "toString");
+    private void assertNumberMembers(Number testNumber) {
+        Object guestValue = languageEnv.asBoxedGuestValue(testNumber);
+        assertTrue(guestValue instanceof TruffleObject);
+        Number number = (Number) unbox(guestValue);
+        assertEquals(testNumber.byteValue(), number);
+        assertInvocable(testNumber.intValue(), guestValue, "intValue");
+        assertInvocable(testNumber.longValue(), guestValue, "longValue");
+        assertInvocable(testNumber.floatValue(), guestValue, "floatValue");
+        assertInvocable(testNumber.doubleValue(), guestValue, "doubleValue");
+        assertInvocable(testNumber.byteValue(), guestValue, "byteValue");
+        assertInvocable(testNumber.shortValue(), guestValue, "shortValue");
+        assertInvocable(true, guestValue, "equals", testNumber);
+        assertInvocable(testNumber.hashCode(), guestValue, "hashCode");
+        assertInvocable(testNumber.toString(), guestValue, "toString");
 
-        assertTrue(languageEnv.isHostObject(numberObject));
-        assertEquals(number, languageEnv.asHostObject(numberObject));
+        assertTrue(languageEnv.isHostObject(guestValue));
+        assertEquals(testNumber, languageEnv.asHostObject(guestValue));
     }
 
     private static void assertInvocable(Object expectedValue, Object receiver, String method, Object... args) {
@@ -419,17 +421,17 @@ public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
     }
 
     private void assertCharacterMembers(Character unboxValue, Object charObject) {
-        Character b = (Character) unbox(charObject);
-        assertEquals(unboxValue, b);
+        String b = (String) unbox(charObject);
+        assertEquals(unboxValue.toString(), b);
 
         assertInvocable(unboxValue, charObject, "charValue");
-        assertInvocable(b.equals(unboxValue), charObject, "equals", unboxValue);
-        assertInvocable(b.compareTo(unboxValue), charObject, "compareTo", unboxValue);
+        assertInvocable(b.equals(unboxValue.toString()), charObject, "equals", unboxValue);
+        assertInvocable(b.compareTo(unboxValue.toString()), charObject, "compareTo", unboxValue);
         assertInvocable(b.hashCode(), charObject, "hashCode");
         assertInvocable(b.toString(), charObject, "toString");
 
         assertTrue(languageEnv.isHostObject(charObject));
-        assertEquals(b, languageEnv.asHostObject(charObject));
+        assertEquals(unboxValue, languageEnv.asHostObject(charObject));
     }
 
     @Test
@@ -677,7 +679,7 @@ public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
         }
     }
 
-    static class StringArray extends ProxyInteropObject {
+    static class StringArray extends ProxyLegacyInteropObject {
 
         private final String[] array;
 

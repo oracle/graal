@@ -131,12 +131,12 @@ public class ProxyAPITest {
         assertProxyPrimitive(proxy, value, false, Boolean.class, BOOLEAN, PROXY_OBJECT);
         assertProxyPrimitive(proxy, value, "a", String.class, STRING, PROXY_OBJECT);
         assertProxyPrimitive(proxy, value, 'a', Character.class, STRING, PROXY_OBJECT);
-        assertProxyPrimitive(proxy, value, (byte) 42, Byte.class, NUMBER, PROXY_OBJECT);
-        assertProxyPrimitive(proxy, value, (short) 42, Short.class, NUMBER, PROXY_OBJECT);
-        assertProxyPrimitive(proxy, value, 42, Integer.class, NUMBER, PROXY_OBJECT);
-        assertProxyPrimitive(proxy, value, 42L, Long.class, NUMBER, PROXY_OBJECT);
-        assertProxyPrimitive(proxy, value, 42.0f, Float.class, NUMBER, PROXY_OBJECT);
-        assertProxyPrimitive(proxy, value, 42.0d, Double.class, NUMBER, PROXY_OBJECT);
+        assertProxyPrimitive(proxy, value, Byte.MAX_VALUE, Byte.class, NUMBER, PROXY_OBJECT);
+        assertProxyPrimitive(proxy, value, Short.MAX_VALUE, Short.class, NUMBER, PROXY_OBJECT);
+        assertProxyPrimitive(proxy, value, Integer.MAX_VALUE, Integer.class, NUMBER, PROXY_OBJECT);
+        assertProxyPrimitive(proxy, value, Long.MAX_VALUE, Long.class, NUMBER, PROXY_OBJECT);
+        assertProxyPrimitive(proxy, value, Float.MAX_VALUE, Float.class, NUMBER, PROXY_OBJECT);
+        assertProxyPrimitive(proxy, value, Double.MAX_VALUE, Double.class, NUMBER, PROXY_OBJECT);
 
         // test errors
         proxy.primitive = null;
@@ -277,7 +277,11 @@ public class ProxyAPITest {
         proxy.invocationCounter = 0;
         assertEquals(0, proxy.invocationCounter);
         assertEquals(proxy.primitive, value.as(primitiveType));
-        assertEquals(proxy.primitive, value.as(Object.class));
+        if (proxy.primitive instanceof Character) {
+            assertEquals(proxy.primitive.toString(), value.as(Object.class));
+        } else {
+            assertEquals(proxy.primitive, value.as(Object.class));
+        }
         assertTrue(proxy.invocationCounter >= 2);
         proxy.invocationCounter = 0;
         assertValue(value, traits);

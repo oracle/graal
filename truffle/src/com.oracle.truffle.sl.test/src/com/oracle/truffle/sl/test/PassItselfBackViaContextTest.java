@@ -106,14 +106,14 @@ public class PassItselfBackViaContextTest {
         private Object value;
 
         @ExportMessage
-        final Object execute(Object[] arguments) {
+        Object execute(Object[] arguments) {
             value = arguments[0];
             return "";
         }
 
         @SuppressWarnings("static-method")
         @ExportMessage
-        final boolean isExecutable() {
+        boolean isExecutable() {
             return true;
         }
 

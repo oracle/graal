@@ -79,6 +79,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyArray;
@@ -1492,7 +1493,7 @@ public class ValueAPITest {
 
     @Test
     public void testValueContextPropagation() {
-        ProxyInteropObject o = new ProxyInteropObject() {
+        ProxyLegacyInteropObject o = new ProxyLegacyInteropObject() {
             @Override
             public boolean hasKeys() {
                 return true;
@@ -1622,7 +1623,7 @@ public class ValueAPITest {
         Context context1 = Context.create();
         Context context2 = Context.create();
         List<Object> nonSharables = new ArrayList<>();
-        ProxyInteropObject interopObject = new ProxyInteropObject() {
+        ProxyLegacyInteropObject interopObject = new ProxyLegacyInteropObject() {
 
             @Override
             public boolean isExecutable() {
@@ -1715,7 +1716,7 @@ public class ValueAPITest {
         }
 
         // special case for context less TruffleObject
-        Value contextLessValue = Value.asValue(new ProxyInteropObject() {
+        Value contextLessValue = Value.asValue(new ProxyLegacyInteropObject() {
         });
         context1.getPolyglotBindings().putMember("foo", contextLessValue);
         context2.getPolyglotBindings().putMember("foo", contextLessValue);

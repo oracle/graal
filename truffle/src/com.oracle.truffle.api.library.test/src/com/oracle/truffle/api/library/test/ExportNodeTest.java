@@ -256,7 +256,7 @@ public class ExportNodeTest {
     }
 
     @GenerateLibrary
-    public static abstract class MultiNodeExportLibrary extends Library {
+    public abstract static class MultiNodeExportLibrary extends Library {
 
         public String m0(Object receiver, String argument) {
             return "is0";
@@ -427,11 +427,11 @@ public class ExportNodeTest {
 
     // node constructor must be visible
     @ExportLibrary(ExportNodeLibrary1.class)
-    static class TestObjectError5 {
+    static final class TestObjectError5 {
 
         @ExpectError("At least one constructor must be non-private.")
         @ExportMessage
-        static class FooNode extends Node {
+        static final class FooNode extends Node {
 
             private FooNode() {
             }
@@ -544,7 +544,9 @@ public class ExportNodeTest {
 
             @Specialization
             static void doFoo(TestObjectError13 receiver,
-                            @ExpectError("Failed to generate code for @GenerateUncached: The specialization uses @Cached without valid uncached expression. Error parsing expression 'getUncached()': The method getUncached is undefined for the enclosing scope.. To resolve this specify the uncached or allowUncached attribute in @Cached.") @Cached("nonTrivalInitializer(receiver)") TestObjectError13 cachedReceiver) {
+                            @ExpectError("Failed to generate code for @GenerateUncached: The specialization uses @Cached without valid uncached expression. " +
+                                            "Error parsing expression 'getUncached()': The method getUncached is undefined for the enclosing scope.. " +
+                                            "To resolve this specify the uncached or allowUncached attribute in @Cached.") @Cached("nonTrivalInitializer(receiver)") TestObjectError13 cachedReceiver) {
             }
 
             static TestObjectError13 nonTrivalInitializer(TestObjectError13 v) {

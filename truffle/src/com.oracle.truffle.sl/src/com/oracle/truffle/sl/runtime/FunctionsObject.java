@@ -61,24 +61,24 @@ final class FunctionsObject implements TruffleObject {
     }
 
     @ExportMessage
-    final boolean isObject() {
+    boolean isObject() {
         return true;
     }
 
     @ExportMessage
     @TruffleBoundary
-    final Object readMember(String member) {
+    Object readMember(String member) {
         return functions.get(member);
     }
 
     @ExportMessage
     @TruffleBoundary
-    final boolean isMemberReadable(String member) {
+    boolean isMemberReadable(String member) {
         return functions.containsKey(member);
     }
 
     @ExportMessage
-    final Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
         return new FunctionNamesObject(functions.keySet().toArray());
     }
 
@@ -96,22 +96,22 @@ final class FunctionsObject implements TruffleObject {
         }
 
         @ExportMessage
-        final boolean isArray() {
+        boolean isArray() {
             return true;
         }
 
         @ExportMessage
-        final boolean isElementReadable(long index) {
+        boolean isElementReadable(long index) {
             return index > 0 && index < names.length;
         }
 
         @ExportMessage
-        final long getArraySize() {
+        long getArraySize() {
             return names.length;
         }
 
         @ExportMessage
-        final Object readElement(long index) throws InvalidArrayIndexException {
+        Object readElement(long index) throws InvalidArrayIndexException {
             if (!isElementReadable(index)) {
                 CompilerDirectives.transferToInterpreter();
                 throw InvalidArrayIndexException.create(index);

@@ -40,395 +40,231 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
-import java.util.Arrays;
-
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.ForeignAccess.StandardFactory;
-import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.KeyInfo;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.test.polyglot.ProxySPITest.TestFunction;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
 /**
  * Helper class for tests to simplify the declaration of interop objects.
  */
 @SuppressWarnings("unused")
+@ExportLibrary(InteropLibrary.class)
 public abstract class ProxyInteropObject implements TruffleObject {
 
-    public Object execute(Object[] args) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
-        CompilerDirectives.transferToInterpreter();
-        throw UnsupportedMessageException.raise(Message.EXECUTE);
-    }
-
-    static boolean isInstance(TruffleObject obj) {
-        return obj instanceof ProxyInteropObject;
-    }
-
-    public boolean hasKeys() {
+    @ExportMessage
+    protected boolean isNumber() {
         return false;
     }
 
-    public boolean hasSize() {
+    @ExportMessage
+    protected float asFloat() throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    protected boolean fitsInByte() {
         return false;
     }
 
-    public boolean isNull() {
+    @ExportMessage
+    protected boolean fitsInLong() {
         return false;
     }
 
-    public boolean isBoxed() {
+    @ExportMessage
+    protected boolean fitsInFloat() {
         return false;
     }
 
-    public boolean isPointer() {
+    @ExportMessage
+    protected boolean fitsInShort() {
         return false;
     }
 
-    public boolean isExecutable() {
+    @ExportMessage
+    protected boolean fitsInDouble() {
         return false;
     }
 
-    public boolean isInstantiable() {
+    @ExportMessage
+    protected double asDouble() throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    protected byte asByte() throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    protected short asShort() throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    protected long asLong() throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    protected int asInt() throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    protected boolean fitsInInt() {
         return false;
     }
 
-    public long asPointer() throws UnsupportedMessageException {
-        CompilerDirectives.transferToInterpreter();
-        throw UnsupportedMessageException.raise(Message.AS_POINTER);
+    @ExportMessage
+    protected boolean isNull() {
+        return false;
     }
 
-    public int getSize() {
-        CompilerDirectives.transferToInterpreter();
-        throw UnsupportedMessageException.raise(Message.GET_SIZE);
+    @ExportMessage
+    protected boolean isBoolean() {
+        return false;
     }
 
-    public Object unbox() throws UnsupportedMessageException {
-        CompilerDirectives.transferToInterpreter();
-        throw UnsupportedMessageException.raise(Message.UNBOX);
-
+    @ExportMessage
+    protected boolean asBoolean() throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
     }
 
-    public Object read(String key) throws UnsupportedMessageException, UnknownIdentifierException {
-        CompilerDirectives.transferToInterpreter();
-        throw UnsupportedMessageException.raise(Message.READ);
+    @ExportMessage
+    protected boolean isObject() {
+        return false;
     }
 
-    public Object read(Number key) throws UnsupportedMessageException, UnknownIdentifierException {
-        CompilerDirectives.transferToInterpreter();
-        throw UnsupportedMessageException.raise(Message.READ);
+    @ExportMessage
+    protected boolean isMemberReadable(String member) {
+        return false;
     }
 
-    public Object write(String key, Object value) throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException {
-        CompilerDirectives.transferToInterpreter();
-        throw UnsupportedMessageException.raise(Message.WRITE);
+    @ExportMessage
+    protected boolean isMemberModifiable(String member) {
+        return false;
     }
 
-    public Object write(Number key, Object value) throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException {
-        CompilerDirectives.transferToInterpreter();
-        throw UnsupportedMessageException.raise(Message.WRITE);
+    @ExportMessage
+    protected boolean isMemberRemovable(String member) {
+        return false;
     }
 
-    public boolean remove(String key) throws UnsupportedMessageException, UnknownIdentifierException {
-        CompilerDirectives.transferToInterpreter();
-        throw UnsupportedMessageException.raise(Message.REMOVE);
+    @ExportMessage
+    protected boolean isMemberInternal(String member) {
+        return false;
     }
 
-    public boolean remove(Number key) throws UnsupportedMessageException, UnknownIdentifierException {
-        CompilerDirectives.transferToInterpreter();
-        throw UnsupportedMessageException.raise(Message.REMOVE);
+    @ExportMessage
+    protected boolean isMemberInsertable(String member) {
+        return false;
     }
 
-    public Object invoke(String key, Object[] arguments) throws UnsupportedMessageException, UnsupportedTypeException, ArityException {
-        CompilerDirectives.transferToInterpreter();
-        throw UnsupportedMessageException.raise(Message.INVOKE);
+    @ExportMessage
+    protected void removeMember(String member) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
     }
 
-    public Object newInstance(Object[] arguments) throws UnsupportedMessageException, UnsupportedTypeException, ArityException {
-        CompilerDirectives.transferToInterpreter();
-        throw UnsupportedMessageException.raise(Message.NEW);
+    @ExportMessage
+    protected Object readMember(String member) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
     }
 
-    public Object keys() throws UnsupportedMessageException {
-        CompilerDirectives.transferToInterpreter();
-        throw UnsupportedMessageException.raise(Message.KEYS);
+    @ExportMessage
+    protected Object getMembers(boolean includeInternal) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
     }
 
-    public int keyInfo(String key) {
-        return KeyInfo.NONE;
+    @ExportMessage
+    protected void writeMember(String member, Object value) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
     }
 
-    public int keyInfo(Number key) {
-        return KeyInfo.NONE;
+    @ExportMessage
+    protected boolean isArray() {
+        return false;
     }
 
-    public Object message(Message message, Object[] arguments) {
-        return null;
+    @ExportMessage
+    protected boolean isElementReadable(long index) {
+        return false;
     }
 
-    public Object toNative() throws UnsupportedMessageException {
-        CompilerDirectives.transferToInterpreter();
-        throw UnsupportedMessageException.raise(Message.KEYS);
+    @ExportMessage
+    protected boolean isElementModifiable(long index) {
+        return false;
     }
 
-    public ForeignAccess getForeignAccess() {
-        return TestObjectFactory.INSTANCE;
+    @ExportMessage
+    protected boolean isElementInsertable(long index) {
+        return false;
     }
 
-    private static final class TestObjectFactory implements StandardFactory {
+    @ExportMessage
+    protected boolean isElementRemovable(long index) {
+        return false;
+    }
 
-        private static final ForeignAccess INSTANCE = ForeignAccess.create(ProxyInteropObject.class, new TestObjectFactory());
+    @ExportMessage
+    protected void writeElement(long index, Object value) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
 
-        private abstract static class BaseNode extends RootNode {
+    @ExportMessage
+    protected void removeElement(long index) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
 
-            protected BaseNode() {
-                super(null);
-            }
+    @ExportMessage
+    protected Object readElement(long index) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
 
-            @Override
-            public final Object execute(VirtualFrame frame) {
-                Object[] args = frame.getArguments();
-                try {
-                    return executeImpl((ProxyInteropObject) args[0], args);
-                } catch (InteropException e) {
-                    throw e.raise();
-                }
-            }
+    @ExportMessage
+    protected long getArraySize() {
+        return 0L;
+    }
 
-            protected abstract Object executeImpl(ProxyInteropObject receiver, Object[] arguments) throws InteropException;
+    @ExportMessage
+    protected Object execute(Object[] arguments) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
 
-        }
+    @ExportMessage
+    protected boolean isExecutable() {
+        return false;
+    }
 
-        private static CallTarget create(BaseNode baseNode) {
-            return Truffle.getRuntime().createCallTarget(baseNode);
-        }
+    @ExportMessage
+    protected Object instantiate(Object[] arguments) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
 
-        public CallTarget accessExecute(int argumentsLength) {
-            return create(new BaseNode() {
-                @Override
-                protected Object executeImpl(ProxyInteropObject receiver, Object[] arguments) throws InteropException {
-                    return receiver.execute(Arrays.copyOfRange(arguments, 1, arguments.length));
-                }
-            });
-        }
+    @ExportMessage
+    protected boolean isInstantiable() {
+        return false;
+    }
 
-        public CallTarget accessAsPointer() {
-            return create(new BaseNode() {
-                @Override
-                protected Object executeImpl(ProxyInteropObject receiver, Object[] arguments) throws InteropException {
-                    return receiver.asPointer();
-                }
-            });
-        }
+    @ExportMessage
+    protected boolean isString() {
+        return false;
+    }
 
-        public CallTarget accessGetSize() {
-            return create(new BaseNode() {
-                @Override
-                protected Object executeImpl(ProxyInteropObject receiver, Object[] arguments) throws InteropException {
-                    return receiver.getSize();
-                }
-            });
-        }
+    @ExportMessage
+    protected String asString() throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
 
-        public CallTarget accessHasKeys() {
-            return create(new BaseNode() {
-                @Override
-                protected Object executeImpl(ProxyInteropObject receiver, Object[] arguments) throws InteropException {
-                    return receiver.hasKeys();
-                }
-            });
-        }
+    @ExportMessage
+    protected long asPointer() throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
 
-        public CallTarget accessIsNull() {
-            return create(new BaseNode() {
-                @Override
-                protected Object executeImpl(ProxyInteropObject receiver, Object[] arguments) throws InteropException {
-                    return receiver.isNull();
-                }
-            });
-        }
-
-        public CallTarget accessIsExecutable() {
-            return create(new BaseNode() {
-                @Override
-                protected Object executeImpl(ProxyInteropObject receiver, Object[] arguments) throws InteropException {
-                    return receiver.isExecutable();
-                }
-            });
-        }
-
-        public CallTarget accessIsInstantiable() {
-            return create(new BaseNode() {
-                @Override
-                protected Object executeImpl(ProxyInteropObject receiver, Object[] arguments) throws InteropException {
-                    return receiver.isInstantiable();
-                }
-            });
-        }
-
-        public CallTarget accessIsBoxed() {
-            return create(new BaseNode() {
-                @Override
-                protected Object executeImpl(ProxyInteropObject receiver, Object[] arguments) throws InteropException {
-                    return receiver.isBoxed();
-                }
-            });
-        }
-
-        public CallTarget accessHasSize() {
-            return create(new BaseNode() {
-                @Override
-                protected Object executeImpl(ProxyInteropObject receiver, Object[] arguments) throws InteropException {
-                    return receiver.hasSize();
-                }
-            });
-        }
-
-        public CallTarget accessUnbox() {
-            return create(new BaseNode() {
-                @Override
-                protected Object executeImpl(ProxyInteropObject receiver, Object[] arguments) throws InteropException {
-                    return receiver.unbox();
-                }
-            });
-        }
-
-        public CallTarget accessRead() {
-            return create(new BaseNode() {
-                @Override
-                protected Object executeImpl(ProxyInteropObject receiver, Object[] arguments) throws InteropException {
-                    Object key = arguments[1];
-                    if (key instanceof Number) {
-                        return receiver.read((Number) key);
-                    } else if (key instanceof String) {
-                        return receiver.read((String) key);
-                    } else {
-                        CompilerDirectives.transferToInterpreter();
-                        throw UnsupportedMessageException.raise(Message.READ);
-                    }
-                }
-            });
-        }
-
-        public CallTarget accessWrite() {
-            return create(new BaseNode() {
-                @Override
-                protected Object executeImpl(ProxyInteropObject receiver, Object[] arguments) throws InteropException {
-                    Object key = arguments[1];
-                    Object value = arguments[2];
-                    if (key instanceof Number) {
-                        return receiver.write((Number) key, value);
-                    } else if (key instanceof String) {
-                        return receiver.write((String) key, value);
-                    } else {
-                        CompilerDirectives.transferToInterpreter();
-                        throw UnsupportedMessageException.raise(Message.WRITE);
-                    }
-                }
-            });
-        }
-
-        public CallTarget accessRemove() {
-            return create(new BaseNode() {
-                @Override
-                protected Object executeImpl(ProxyInteropObject receiver, Object[] arguments) throws InteropException {
-                    Object key = arguments[1];
-                    if (key instanceof Number) {
-                        return receiver.remove((Number) key);
-                    } else if (key instanceof String) {
-                        return receiver.remove((String) key);
-                    } else {
-                        CompilerDirectives.transferToInterpreter();
-                        throw UnsupportedMessageException.raise(Message.REMOVE);
-                    }
-                }
-            });
-        }
-
-        public CallTarget accessInvoke(int argumentsLength) {
-            return create(new BaseNode() {
-                @Override
-                protected Object executeImpl(ProxyInteropObject receiver, Object[] arguments) throws InteropException {
-                    Object key = arguments[1];
-                    if (key instanceof String) {
-                        return receiver.invoke((String) key, Arrays.copyOfRange(arguments, 2, arguments.length));
-                    } else {
-                        CompilerDirectives.transferToInterpreter();
-                        throw UnsupportedMessageException.raise(Message.INVOKE);
-                    }
-                }
-            });
-        }
-
-        public CallTarget accessNew(int argumentsLength) {
-            return create(new BaseNode() {
-                @Override
-                protected Object executeImpl(ProxyInteropObject receiver, Object[] arguments) throws InteropException {
-                    return receiver.newInstance(Arrays.copyOfRange(arguments, 1, arguments.length));
-                }
-            });
-        }
-
-        public CallTarget accessKeys() {
-            return create(new BaseNode() {
-                @Override
-                protected Object executeImpl(ProxyInteropObject receiver, Object[] arguments) throws InteropException {
-                    return receiver.keys();
-                }
-            });
-        }
-
-        public CallTarget accessKeyInfo() {
-            return create(new BaseNode() {
-                @Override
-                protected Object executeImpl(ProxyInteropObject receiver, Object[] arguments) throws InteropException {
-                    Object key = arguments[1];
-                    if (key instanceof Number) {
-                        return receiver.keyInfo((Number) key);
-                    } else if (key instanceof String) {
-                        return receiver.keyInfo((String) key);
-                    } else {
-                        CompilerDirectives.transferToInterpreter();
-                        throw UnsupportedMessageException.raise(Message.REMOVE);
-                    }
-                }
-            });
-        }
-
-        public CallTarget accessIsPointer() {
-            return create(new BaseNode() {
-                @Override
-                protected Object executeImpl(ProxyInteropObject receiver, Object[] arguments) throws InteropException {
-                    return receiver.isPointer();
-                }
-            });
-        }
-
-        public CallTarget accessToNative() {
-            return create(new BaseNode() {
-                @Override
-                protected Object executeImpl(ProxyInteropObject receiver, Object[] arguments) throws InteropException {
-                    return receiver.toNative();
-                }
-            });
-        }
-
-        public CallTarget accessMessage(Message unknown) {
-            return create(new BaseNode() {
-                @Override
-                protected Object executeImpl(ProxyInteropObject receiver, Object[] arguments) throws InteropException {
-                    return receiver.message(unknown, arguments);
-                }
-            });
-        }
+    @ExportMessage
+    protected boolean isPointer() {
+        return false;
     }
 }

@@ -515,7 +515,7 @@ public class ExportMethodTest {
         }
     }
 
-    static abstract class DSLNode extends Node {
+    abstract static class DSLNode extends Node {
 
         abstract Object execute(Object arg);
 

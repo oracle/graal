@@ -31,9 +31,12 @@ import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.impl.DefaultCallTarget;
 import com.oracle.truffle.api.impl.TVMCI;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -142,6 +145,11 @@ final class GraalTVMCI extends TVMCI {
     @Override
     public boolean isCloneUninitializedSupported(RootNode root) {
         return super.isCloneUninitializedSupported(root);
+    }
+
+    @Override
+    protected IndirectCallNode getUncachedIndirectCall() {
+        return OptimizedIndirectCallNode.UNCACHED;
     }
 
     @Override

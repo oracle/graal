@@ -46,13 +46,13 @@ import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.ObjectLibrary;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
-@ExportLibrary(ObjectLibrary.class)
+@ExportLibrary(InteropLibrary.class)
 final class PolyglotBindings implements TruffleObject {
 
     // a bindings object for each language.
@@ -67,13 +67,13 @@ final class PolyglotBindings implements TruffleObject {
 
     @SuppressWarnings("static-method")
     @ExportMessage
-    final boolean isObject() {
+    boolean isObject() {
         return true;
     }
 
     @ExportMessage
     @TruffleBoundary
-    final Object readMember(String member) throws UnknownIdentifierException {
+    Object readMember(String member) throws UnknownIdentifierException {
         Value value = bindings.get(member);
         if (value == null) {
             CompilerDirectives.transferToInterpreter();
@@ -89,13 +89,13 @@ final class PolyglotBindings implements TruffleObject {
 
     @ExportMessage
     @TruffleBoundary
-    final void writeMember(String member, Object value) {
+    void writeMember(String member, Object value) {
         bindings.put(member, languageContext.asValue(value));
     }
 
     @ExportMessage
     @TruffleBoundary
-    final void removeMember(String member) throws UnknownIdentifierException {
+    void removeMember(String member) throws UnknownIdentifierException {
         Value ret = bindings.remove(member);
         if (ret == null) {
             throw UnknownIdentifierException.create(member);
@@ -104,7 +104,7 @@ final class PolyglotBindings implements TruffleObject {
 
     @ExportMessage
     @TruffleBoundary
-    final Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
         return new DefaultScope.VariableNamesObject(bindings.keySet());
     }
 
@@ -112,12 +112,12 @@ final class PolyglotBindings implements TruffleObject {
     @ExportMessage(name = "isMemberModifiable")
     @ExportMessage(name = "isMemberRemovable")
     @TruffleBoundary
-    final boolean isMemberExisting(String member) {
+    boolean isMemberExisting(String member) {
         return bindings.containsKey(member);
     }
 
     @ExportMessage
-    final boolean isMemberInsertable(String member) {
+    boolean isMemberInsertable(String member) {
         return !isMemberExisting(member);
     }
 

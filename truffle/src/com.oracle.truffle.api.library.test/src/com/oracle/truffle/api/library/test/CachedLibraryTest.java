@@ -55,6 +55,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.test.CachedLibraryTestFactory.AssumptionNodeGen;
+import com.oracle.truffle.api.library.test.CachedLibraryTestFactory.ConstantLimitNodeGen;
 import com.oracle.truffle.api.library.test.CachedLibraryTestFactory.ConstantNodeGen;
 import com.oracle.truffle.api.library.test.CachedLibraryTestFactory.DoubleNodeGen;
 import com.oracle.truffle.api.library.test.CachedLibraryTestFactory.ExcludeNodeGen;
@@ -409,6 +410,14 @@ public class CachedLibraryTest {
         assertEquals("s2_uncached", uncached.execute(s2));
         assertEquals("s3_uncached", uncached.execute(s3));
 
+        SimpleDispatchedNode.limit = 0;
+        cached = SimpleDispatchedNodeGen.create();
+        assertEquals("s1_uncached", cached.execute(s1));
+        assertEquals("s1_uncached", cached.execute(s1));
+        assertEquals("s2_uncached", cached.execute(s2));
+        assertEquals("s3_uncached", cached.execute(s3));
+        assertEquals("s1_uncached", cached.execute(s1));
+
         SimpleDispatchedNode.limit = 1;
         cached = SimpleDispatchedNodeGen.create();
         assertEquals("s1_cached", cached.execute(s1));
@@ -432,6 +441,30 @@ public class CachedLibraryTest {
         assertEquals("s1_cached", cached.execute(s1));
         assertEquals("s2_cached", cached.execute(s2));
         assertEquals("s3_cached", cached.execute(s3));
+    }
+
+    @SuppressWarnings("unused")
+    public abstract static class ConstantLimitNode extends Node {
+
+        static int limit = 2;
+
+        abstract String execute(Object a0);
+
+        @Specialization
+        public static String s1(Object a0,
+                        @CachedLibrary(limit = "0") SomethingLibrary lib1) {
+            return lib1.call(a0);
+        }
+    }
+
+    @Test
+    public void testZeroConstantLimit() {
+        Something s1 = new Something("s1");
+        Something s2 = new Something("s2");
+
+        ConstantLimitNode cached = ConstantLimitNodeGen.create();
+        assertEquals("s1_uncached", cached.execute(s1));
+        assertEquals("s2_uncached", cached.execute(s2));
     }
 
     @GenerateUncached

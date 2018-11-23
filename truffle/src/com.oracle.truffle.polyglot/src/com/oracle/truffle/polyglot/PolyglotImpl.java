@@ -95,7 +95,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-
 import com.oracle.truffle.polyglot.HostLanguage.HostContext;
 
 /*
@@ -325,12 +324,12 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     }
 
     @TruffleBoundary
-    static <T extends Throwable> RuntimeException wrapHostException(PolyglotLanguageContext languageContext, T e) {
-        throw wrapHostException(languageContext.context, e);
+    static <T extends Throwable> RuntimeException wrapHostException(Node location, PolyglotLanguageContext languageContext, T e) {
+        throw wrapHostException(location, languageContext.context, e);
     }
 
     @TruffleBoundary
-    static <T extends Throwable> RuntimeException wrapHostException(PolyglotContextImpl context, T e) {
+    static <T extends Throwable> RuntimeException wrapHostException(Node location, PolyglotContextImpl context, T e) {
         if (e instanceof ThreadDeath) {
             throw (ThreadDeath) e;
         } else if (e instanceof PolyglotException) {
@@ -357,7 +356,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         } else if (e instanceof InteropException) {
             throw ((InteropException) e).raise();
         }
-        return new HostException(e);
+        return new HostException(location, e);
     }
 
     @TruffleBoundary
@@ -841,8 +840,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
-        public RuntimeException wrapHostException(Object languageContext, Throwable exception) {
-            return PolyglotImpl.wrapHostException((PolyglotLanguageContext) languageContext, exception);
+        public RuntimeException wrapHostException(Node location, Object languageContext, Throwable exception) {
+            return PolyglotImpl.wrapHostException(location, (PolyglotLanguageContext) languageContext, exception);
         }
 
         @Override
@@ -1053,7 +1052,10 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         @Override
         public boolean isHostSymbol(Object obj) {
-            return HostObject.isStaticClass(obj);
+            if (HostObject.isInstance(obj)) {
+                return ((HostObject) obj).isStaticClass();
+            }
+            return false;
         }
 
         @Override

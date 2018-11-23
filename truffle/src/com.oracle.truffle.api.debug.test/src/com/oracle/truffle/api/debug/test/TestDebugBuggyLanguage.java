@@ -63,7 +63,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.api.test.polyglot.ProxyInteropObject;
+import com.oracle.truffle.api.test.polyglot.ProxyLegacyInteropObject;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 /**
@@ -211,7 +211,7 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
 
     }
 
-    private static class ErrorObject extends ProxyInteropObject {
+    private static class ErrorObject extends ProxyLegacyInteropObject {
 
         private final String error;
         private final int errNum;
@@ -293,7 +293,7 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
             return "ErrorObject " + errNum + (error.isEmpty() ? "" : " " + error);
         }
 
-        private static class Keys extends ProxyInteropObject {
+        private static class Keys extends ProxyLegacyInteropObject {
 
             @Override
             public boolean hasSize() {

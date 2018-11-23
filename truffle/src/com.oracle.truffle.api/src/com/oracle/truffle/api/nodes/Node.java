@@ -653,6 +653,11 @@ public abstract class Node implements NodeInterface, Cloneable {
         }
 
         @Override
+        protected IndirectCallNode getUncachedIndirectCall() {
+            return super.getUncachedIndirectCall();
+        }
+
+        @Override
         protected EngineSupport engineSupport() {
             return super.engineSupport();
         }

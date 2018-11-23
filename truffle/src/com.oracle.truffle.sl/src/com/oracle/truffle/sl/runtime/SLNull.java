@@ -82,7 +82,7 @@ public final class SLNull implements TruffleObject {
      * {@link SLNull} values are interpreted as null values by other languages.
      */
     @ExportMessage
-    final boolean isNull() {
+    boolean isNull() {
         return true;
     }
 }

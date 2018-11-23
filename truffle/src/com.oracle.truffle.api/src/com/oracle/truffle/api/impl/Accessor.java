@@ -76,6 +76,7 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.ExecutableNode;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -102,6 +103,10 @@ public abstract class Accessor {
 
     protected ThreadLocal<Object> createFastThreadLocal() {
         return SUPPORT.createFastThreadLocal();
+    }
+
+    protected IndirectCallNode getUncachedIndirectCall() {
+        return SUPPORT.getUncachedIndirectCall();
     }
 
     public abstract static class Nodes {
@@ -285,7 +290,7 @@ public abstract class Accessor {
 
         public abstract Iterable<Scope> createDefaultTopScope(Object global);
 
-        public abstract RuntimeException wrapHostException(Object languageContext, Throwable exception);
+        public abstract RuntimeException wrapHostException(Node callNode, Object languageContext, Throwable exception);
 
         public abstract boolean isHostException(Throwable exception);
 

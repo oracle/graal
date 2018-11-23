@@ -51,11 +51,11 @@ import com.oracle.truffle.api.interop.TruffleObject;
 
 final class PolyglotFunction<T, R> implements Function<T, R>, HostWrapper {
 
-    final TruffleObject guestObject;
+    final Object guestObject;
     final PolyglotLanguageContext languageContext;
     final CallTarget apply;
 
-    PolyglotFunction(PolyglotLanguageContext languageContext, TruffleObject function, Class<?> returnClass, Type returnType) {
+    PolyglotFunction(PolyglotLanguageContext languageContext, Object function, Class<?> returnClass, Type returnType) {
         this.guestObject = function;
         this.languageContext = languageContext;
         this.apply = Apply.lookup(languageContext, function.getClass(), returnClass, returnType);
@@ -97,7 +97,7 @@ final class PolyglotFunction<T, R> implements Function<T, R>, HostWrapper {
     }
 
     @TruffleBoundary
-    public static <T> PolyglotFunction<?, ?> create(PolyglotLanguageContext languageContext, TruffleObject function, Class<?> returnClass, Type returnType) {
+    public static <T> PolyglotFunction<?, ?> create(PolyglotLanguageContext languageContext, Object function, Class<?> returnClass, Type returnType) {
         return new PolyglotFunction<>(languageContext, function, returnClass, returnType);
     }
 

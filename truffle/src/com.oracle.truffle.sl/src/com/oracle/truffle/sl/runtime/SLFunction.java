@@ -141,7 +141,7 @@ public final class SLFunction implements TruffleObject {
      * {@link SLFunction} instances are always visible as executable to other languages.
      */
     @SuppressWarnings("static-method")
-    public final SourceSection getDeclaredLocation() {
+    public SourceSection getDeclaredLocation() {
         return getCallTarget().getRootNode().getSourceSection();
     }
 
@@ -150,7 +150,7 @@ public final class SLFunction implements TruffleObject {
      */
     @SuppressWarnings("static-method")
     @ExportMessage
-    final boolean isExecutable() {
+    boolean isExecutable() {
         return true;
     }
 
@@ -159,7 +159,7 @@ public final class SLFunction implements TruffleObject {
      * forwards to a function dispatch.
      */
     @ExportMessage
-    static abstract class ExecuteNode extends Node {
+    abstract static class ExecuteNode extends Node {
 
         /**
          * Inline cached specialization of the dispatch.

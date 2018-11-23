@@ -83,27 +83,16 @@ public abstract class IndirectCallNode extends Node {
         return Truffle.getRuntime().createIndirectCallNode();
     }
 
-    private static final IndirectCallNode UNCACHED = new IndirectCallNode() {
-
-        @Override
-        protected boolean isAdoptable() {
-            return false;
-        }
-
-        @Override
-        @TruffleBoundary
-        public Object call(CallTarget target, Object... arguments) {
-            return target.call(arguments);
-        }
-
-    };
+    private static final IndirectCallNode UNCACHED = Node.ACCESSOR.getUncachedIndirectCall();
 
     public static IndirectCallNode getUncached() {
+        assert !UNCACHED.isAdoptable();
         return UNCACHED;
     }
 
+    // TODO hide this behind accessor
     /**
-     * Push a current call nodes for call targets that are invoked
+     * Push a current call nodes for call targets that are invoked.
      *
      * @param callNode
      * @return
@@ -115,6 +104,7 @@ public abstract class IndirectCallNode extends Node {
         return (Node) prev;
     }
 
+    // TODO hide this behind accessor
     /**
      *
      * @param prev

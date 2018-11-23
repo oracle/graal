@@ -90,22 +90,29 @@ public final class DefaultCallTarget implements RootCallTarget {
         }
     }
 
+    Object callIndirectUncached(Object... args) {
+        Node callNode = IndirectCallNode.pushCallLocation(null);
+        try {
+            return call(args);
+        } finally {
+            IndirectCallNode.popCallLocation(callNode);
+        }
+    }
+
     @Override
     public Object call(Object... args) {
         if (!this.initialized) {
             initialize();
         }
-        Node callNode = IndirectCallNode.pushCallLocation(null);
         final DefaultVirtualFrame frame = new DefaultVirtualFrame(getRootNode().getFrameDescriptor(), args);
-        getRuntime().pushFrame(frame, this, callNode);
+        getRuntime().pushFrame(frame, this, null);
         try {
             return getRootNode().execute(frame);
         } catch (Throwable t) {
-            getRuntime().getTvmci().onThrowable(callNode, this, t, frame);
+            getRuntime().getTvmci().onThrowable(null, this, t, frame);
             throw t;
         } finally {
             getRuntime().popFrame();
-            IndirectCallNode.popCallLocation(callNode);
         }
     }
 

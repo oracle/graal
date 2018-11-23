@@ -57,7 +57,7 @@ public abstract class SLNormalizeArrayNode extends Node {
 
     public abstract Object[] executeConvert(Object[] args);
 
-    static class Uncached extends SLNormalizeArrayNode {
+    static final class Uncached extends SLNormalizeArrayNode {
 
         static final Uncached INSTANCE = new Uncached();
 
@@ -74,7 +74,7 @@ public abstract class SLNormalizeArrayNode extends Node {
 
     }
 
-    static class Cached extends SLNormalizeArrayNode {
+    static final class Cached extends SLNormalizeArrayNode {
         @CompilationFinal(dimensions = 1) private volatile SLSimplifyNode[] normalizeNodes;
         @CompilationFinal private volatile boolean needsCopy = false;
         @CompilationFinal private volatile boolean generic = false;

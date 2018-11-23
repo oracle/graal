@@ -104,7 +104,6 @@ import javax.lang.model.util.ElementFilter;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Introspection;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
@@ -1244,7 +1243,6 @@ public class FlatNodeGenFactory {
         }
         method.getThrownTypes().addAll(uncaughtExceptions);
 
-        method.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(TruffleBoundary.class)));
         CodeTreeBuilder builder = method.createBuilder();
 
         SpecializationGroup group = SpecializationGroup.create(compatibleSpecializations);
@@ -3204,7 +3202,7 @@ public class FlatNodeGenFactory {
     }
 
     private CodeTree createAssumptionGuard(CodeTree assumptionValue) {
-        return CodeTreeBuilder.createBuilder().startStaticCall(context.getType(Assumption.class), "isValid").tree(assumptionValue).end().build();
+        return CodeTreeBuilder.createBuilder().startStaticCall(context.getType(Assumption.class), "isValidAssumption").tree(assumptionValue).end().build();
     }
 
     private static CodeTree combineTrees(String sep, CodeTree... trees) {
