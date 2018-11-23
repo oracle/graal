@@ -76,12 +76,12 @@ public class NativeVector implements TruffleObject, AutoCloseable {
 
     @TruffleBoundary
     public void transitionToNative() {
-        assert !isPointer() : "is already transitioned";
+        if (!isPointer()) {
+            nativeStorage = unsafe.allocateMemory(vector.length * Double.BYTES);
 
-        nativeStorage = unsafe.allocateMemory(vector.length * Double.BYTES);
-
-        for (int i = 0; i < vector.length; i++) {
-            set(i, vector[i]);
+            for (int i = 0; i < vector.length; i++) {
+                set(i, vector[i]);
+            }
         }
     }
 
