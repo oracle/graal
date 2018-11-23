@@ -418,8 +418,8 @@ jint JVM_GetArrayLength(JNIEnv *env, jobject arr) {
 }
 
 jobject JVM_GetArrayElement(JNIEnv *env, jobject arr, jint index) {
-  UNIMPLEMENTED(JVM_GetArrayElement);
-  return NULL;
+  IMPLEMENTED(JVM_GetArrayElement);
+  return (*getEnv())->JVM_GetArrayElement(env, arr, index);
 }
 
 jvalue JVM_GetPrimitiveArrayElement(JNIEnv *env, jobject arr, jint index, jint wCode) {

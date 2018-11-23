@@ -788,4 +788,67 @@ public class VM extends NativeEnv {
     public TruffleObject getFunction(long handle) {
         return handle2Sym.get(handle);
     }
+
+    /**
+     * Returns the value of the indexed component in the specified array object. The value is
+     * automatically wrapped in an object if it has a primitive type.
+     *
+     * @param array the array
+     * @param index the index
+     * @returns the (possibly wrapped) value of the indexed component in the specified array
+     * @exception NullPointerException If the specified object is null
+     * @exception IllegalArgumentException If the specified object is not an array
+     * @exception ArrayIndexOutOfBoundsException If the specified {@code index} argument is
+     *                negative, or if it is greater than or equal to the length of the specified
+     *                array
+     */
+    @VmImpl
+    @JniImpl
+    public Object JVM_GetArrayElement(Object array, int index) {
+        if (array == StaticObject.NULL) {
+            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(NullPointerException.class);
+        }
+        if (array instanceof StaticObjectArray) {
+            return EspressoLanguage.getCurrentContext().getInterpreterToVM().getArrayObject(index, array);
+        }
+        if (!array.getClass().isArray()) {
+            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(IllegalArgumentException.class, "Argument is not an array");
+        }
+        assert array.getClass().isArray() && array.getClass().getComponentType().isPrimitive();
+        if (index < 0 || index >= JVM_GetArrayLength(array)) {
+            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayIndexOutOfBoundsException.class, "index");
+        }
+        Object elem = Array.get(array, index);
+        return guestBox(elem);
+    }
+
+    private static StaticObject guestBox(Object elem) {
+        assert elem != null && elem != StaticObject.NULL;
+        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+        if (elem instanceof Boolean) {
+            return (StaticObject) meta.BOXED_BOOLEAN.staticMethod("valueOf", Boolean.class, boolean.class).invokeDirect((boolean) elem);
+        }
+        if (elem instanceof Byte) {
+            return (StaticObject) meta.BOXED_BYTE.staticMethod("valueOf", Byte.class, byte.class).invokeDirect((byte) elem);
+        }
+        if (elem instanceof Character) {
+            return (StaticObject) meta.BOXED_CHAR.staticMethod("valueOf", Character.class, char.class).invokeDirect((char) elem);
+        }
+        if (elem instanceof Short) {
+            return (StaticObject) meta.BOXED_SHORT.staticMethod("valueOf", Short.class, short.class).invokeDirect((short) elem);
+        }
+        if (elem instanceof Integer) {
+            return (StaticObject) meta.BOXED_INT.staticMethod("valueOf", Integer.class, int.class).invokeDirect((int) elem);
+        }
+        if (elem instanceof Float) {
+            return (StaticObject) meta.BOXED_FLOAT.staticMethod("valueOf", Float.class, float.class).invokeDirect((float) elem);
+        }
+        if (elem instanceof Double) {
+            return (StaticObject) meta.BOXED_DOUBLE.staticMethod("valueOf", Double.class, double.class).invokeDirect((double) elem);
+        }
+        if (elem instanceof Long) {
+            return (StaticObject) meta.BOXED_LONG.staticMethod("valueOf", Long.class, long.class).invokeDirect((long) elem);
+        }
+        throw EspressoError.shouldNotReachHere("Not a boxed type " + elem);
+    }
 }
