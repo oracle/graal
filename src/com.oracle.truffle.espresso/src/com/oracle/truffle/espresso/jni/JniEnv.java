@@ -61,7 +61,6 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.nodes.VmNativeNode;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
@@ -76,7 +75,6 @@ public class JniEnv extends NativeEnv {
     public static final int JNI_ERR = -1; /* unknown error */
     public static final int JNI_COMMIT = 1;
     public static final int JNI_ABORT = 2;
-
 
     public static final int JVM_INTERFACE_VERSION = 4;
     public static final int JNI_TRUE = 1;
@@ -175,7 +173,6 @@ public class JniEnv extends NativeEnv {
             }
         });
     }
-
 
     public static String jniNativeSignature(Method method) {
         StringBuilder sb = new StringBuilder("(");
@@ -424,61 +421,188 @@ public class JniEnv extends NativeEnv {
         assert jniEnvPtr == 0L;
     }
 
+    /**
+     * <h3>jint GetVersion(JNIEnv *env);</h3>
+     *
+     * Returns the version of the native method interface.
+     *
+     * @returns the major version number in the higher 16 bits and the minor version number in the
+     *          lower 16 bits.
+     *
+     *          <b>Error codes</b>
+     * 
+     *          <pre>
+     * #define JNI_EDETACHED   (-2)             // thread detached from the VM
+     * #define JNI_EVERSION    (-3)             // JNI version error
+     *          </pre>
+     */
     @JniImpl
     public int GetVersion() {
         return JniVersion.JNI_VERSION_ESPRESSO;
     }
 
+    /**
+     * <h3>jsize GetArrayLength(JNIEnv *env, jarray array);</h3>
+     *
+     * Returns the number of elements in the array.
+     *
+     * @param array a Java array object.
+     *
+     * @returns the length of the array.
+     */
     @JniImpl
-    public int GetArrayLength(Object arr) {
-        return EspressoLanguage.getCurrentContext().getInterpreterToVM().arrayLength(arr);
+    public int GetArrayLength(Object array) {
+        return EspressoLanguage.getCurrentContext().getInterpreterToVM().arrayLength(array);
     }
 
+    /**
+     * <h3>jsize GetStringLength(JNIEnv *env, jstring string);</h3>
+     *
+     * Returns the length (the count of Unicode characters) of a Java string.
+     *
+     * @param string a Java string object.
+     *
+     * @returns the length of the Java string.
+     */
     @JniImpl
-    public int GetStringLength(@Type(String.class) StaticObject str) {
-        if (str == StaticObject.NULL) {
+    public int GetStringLength(@Type(String.class) StaticObject string) {
+        if (string == StaticObject.NULL) {
             return 0;
         }
-        return (int) meta(str).method("length", int.class).invokeDirect();
+        return (int) meta(string).method("length", int.class).invokeDirect();
     }
 
     // region Get*ID
 
+    /**
+     * <h3>jfieldID GetFieldID(JNIEnv *env, jclass clazz, const char *name, const char *sig);</h3>
+     *
+     * Returns the field ID for an instance (nonstatic) field of a class. The field is specified by
+     * its name and signature. The Get<type>Field and Set<type>Field families of accessor functions
+     * use field IDs to retrieve object fields. GetFieldID() causes an uninitialized class to be
+     * initialized. GetFieldID() cannot be used to obtain the length field of an array. Use
+     * GetArrayLength() instead.
+     *
+     * @param clazz a Java class object.
+     * @param name the field name in a 0-terminated modified UTF-8 string.
+     * @param signature the field signature in a 0-terminated modified UTF-8 string.
+     * @return a field ID, or NULL if the operation fails.
+     *
+     * @throws NoSuchFieldError: if the specified field cannot be found.
+     * @throws ExceptionInInitializerError: if the class initializer fails due to an exception.
+     * @throws OutOfMemoryError: if the system runs out of memory.
+     */
     @JniImpl
-    public long GetFieldID(StaticObjectClass clazz, String name, String signature) {
-        clazz.getMirror().initialize();
-        Meta.Field field = meta((clazz).getMirror()).declaredField(name);
+    public long GetFieldID(@Type(Class.class) StaticObject clazz, String name, String signature) {
+        Meta.Klass klass = meta(((StaticObjectClass) clazz).getMirror());
+        klass.safeInitialize();
+        Meta.Field field = klass.declaredField(name);
+        if (field == null) {
+            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(NoSuchFieldError.class, name);
+        }
+        assert !field.isStatic();
+        assert field.getType().getInternalName().equals(signature);
         return fieldIds.handlify(field.rawField());
     }
 
+    /**
+     * <h3>jfieldID GetStaticFieldID(JNIEnv *env, jclass clazz, const char *name, const char
+     * *sig);</h3>
+     *
+     * Returns the field ID for a static field of a class. The field is specified by its name and
+     * signature. The GetStatic<type>Field and SetStatic<type>Field families of accessor functions
+     * use field IDs to retrieve static fields.
+     *
+     * GetStaticFieldID() causes an uninitialized class to be initialized.
+     * 
+     * @param clazz a Java class object.
+     * @param name the static field name in a 0-terminated modified UTF-8 string.
+     * @param sig the field signature in a 0-terminated modified UTF-8 string.
+     *
+     * @returns a field ID, or NULL if the specified static field cannot be found.
+     * @throws NoSuchFieldError if the specified static field cannot be found.
+     * @throws ExceptionInInitializerError if the class initializer fails due to an exception.
+     * @throws OutOfMemoryError if the system runs out of memory.
+     */
     @JniImpl
-    public long GetStaticFieldID(StaticObjectClass clazz, String name, String signature) {
-        clazz.getMirror().initialize();
-        return fieldIds.handlify(meta((clazz).getMirror()).staticField(name).getField().rawField());
+    public long GetStaticFieldID(@Type(Class.class) StaticObject clazz, String name, String sig) {
+        Meta.Klass klass = meta(((StaticObjectClass) clazz).getMirror());
+        klass.safeInitialize();
+        Meta.Field field = klass.staticField(name).getField();
+        if (field == null) {
+            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(NoSuchFieldError.class, name);
+        }
+        assert field.isStatic();
+        assert field.getType().getInternalName().equals(sig);
+        return fieldIds.handlify(field.rawField());
     }
 
+    /**
+     * <h3>jmethodID GetMethodID(JNIEnv *env, jclass clazz, const char *name, const char *sig);</h3>
+     *
+     * Returns the method ID for an instance (nonstatic) method of a class or interface. The method
+     * may be defined in one of the clazz’s superclasses and inherited by clazz. The method is
+     * determined by its name and signature.
+     *
+     * GetMethodID() causes an uninitialized class to be initialized.
+     *
+     * To obtain the method ID of a constructor, supply <init> as the method name and void (V) as
+     * the return type.
+     *
+     * @param clazz a Java class object.
+     * @param name the method name in a 0-terminated modified UTF-8 string.
+     * @param sig the method signature in 0-terminated modified UTF-8 string.
+     *
+     * @returns a method ID, or NULL if the specified method cannot be found.
+     *
+     * @throws NoSuchMethodError if the specified method cannot be found.
+     * @throws ExceptionInInitializerError if the class initializer fails due to an exception.
+     * @throws OutOfMemoryError if the system runs out of memory.
+     *
+     */
     @JniImpl
-    public long GetMethodID(StaticObjectClass clazz, String name, String signature) {
-        clazz.getMirror().initialize();
-        Meta.Method[] methods = meta(clazz.getMirror()).methods(true);
+    public long GetMethodID(@Type(Class.class) StaticObject clazz, String name, String sig) {
+        Meta.Klass klass = meta(((StaticObjectClass) clazz).getMirror());
+        klass.safeInitialize();
+        Meta.Method[] methods = klass.methods(true);
         for (Meta.Method m : methods) {
-            if (m.getName().equals(name) && m.rawMethod().getSignature().toString().equals(signature)) {
+            if (m.getName().equals(name) && m.rawMethod().getSignature().toString().equals(sig)) {
                 return methodIds.handlify(m.rawMethod());
             }
         }
-        throw new RuntimeException("Method " + name + " not found");
+        throw EspressoLanguage.getCurrentContext().getMeta().throwEx(NoSuchMethodError.class, name + sig);
     }
 
+    /**
+     * <h3>jmethodID GetStaticMethodID(JNIEnv *env, jclass clazz, const char *name, const char
+     * *sig);</h3>
+     *
+     * Returns the method ID for a static method of a class. The method is specified by its name and
+     * signature.
+     *
+     * GetStaticMethodID() causes an uninitialized class to be initialized.
+     *
+     * @param clazz a Java class object.
+     * @param name the static method name in a 0-terminated modified UTF-8 string.
+     * @param sig the method signature in a 0-terminated modified UTF-8 string.
+     *
+     * @returns a method ID, or NULL if the operation fails.
+     *
+     * @throws NoSuchMethodError if the specified static method cannot be found. *
+     * @throws ExceptionInInitializerError if the class initializer fails due to an exception.
+     * @throws OutOfMemoryError if the system runs out of memory.
+     */
     @JniImpl
-    public long GetStaticMethodID(StaticObjectClass clazz, String name, String signature) {
-        clazz.getMirror().initialize();
-        Meta.Method[] methods = meta(clazz.getMirror()).methods(false);
+    public long GetStaticMethodID(@Type(Class.class) StaticObject clazz, String name, String sig) {
+        Meta.Klass klass = meta(((StaticObjectClass) clazz).getMirror());
+        klass.safeInitialize();
+        Meta.Method[] methods = klass.methods(false);
         for (Meta.Method m : methods) {
-            if (m.getName().equals(name) && m.rawMethod().getSignature().toString().equals(signature)) {
+            if (m.isStatic() && m.getName().equals(name) && m.rawMethod().getSignature().toString().equals(sig)) {
                 return methodIds.handlify(m.rawMethod());
             }
         }
-        throw new RuntimeException("Method " + name + " not found");
+        throw EspressoLanguage.getCurrentContext().getMeta().throwEx(NoSuchMethodError.class, name + sig);
     }
 
     // endregion Get*ID
@@ -1099,6 +1223,47 @@ public class JniEnv extends NativeEnv {
         return EspressoLanguage.getCurrentContext().getMeta().toGuest(str);
     }
 
+    /**
+     * <h3>jclass FindClass(JNIEnv *env, const char *name);</h3>
+     *
+     * <p>
+     * FindClass locates the class loader associated with the current native method; that is, the
+     * class loader of the class that declared the native method. If the native method belongs to a
+     * system class, no class loader will be involved. Otherwise, the proper class loader will be
+     * invoked to load and link the named class. Since Java 2 SDK release 1.2, when FindClass is
+     * called through the Invocation Interface, there is no current native method or its associated
+     * class loader. In that case, the result of {@link ClassLoader#getSystemClassLoader} is used.
+     * This is the class loader the virtual machine creates for applications, and is able to locate
+     * classes listed in the java.class.path property. The name argument is a fully-qualified class
+     * name or an array type signature .
+     * <p>
+     * For example, the fully-qualified class name for the {@code java.lang.String} class is:
+     *
+     * <pre>
+     * "java/lang/String"}
+     * </pre>
+     *
+     * <p>
+     * The array type signature of the array class {@code java.lang.Object[]} is:
+     *
+     * <pre>
+     * "[Ljava/lang/Object;"
+     * </pre>
+     *
+     * @param name a fully-qualified class name (that is, a package name, delimited by "/", followed
+     *            by the class name). If the name begins with "[" (the array signature character),
+     *            it returns an array class. The string is encoded in modified UTF-8.
+     *
+     * @return Returns a class object from a fully-qualified name, or NULL if the class cannot be
+     *         found.
+     *
+     * @throws ClassFormatError if the class data does not specify a valid class.
+     * @throws ClassCircularityError if a class or interface would be its own superclass or
+     *             superinterface.
+     * @throws NoClassDefFoundError if no definition for a requested class or interface can be
+     *             found.
+     * @throws OutOfMemoryError if the system runs out of memory.
+     */
     @JniImpl
     public StaticObject FindClass(String name) {
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
@@ -1106,12 +1271,26 @@ public class JniEnv extends NativeEnv {
         return (StaticObject) meta.knownKlass(Class.class).staticMethod("forName", Class.class, String.class).invokeDirect(internalName);
     }
 
+    /**
+     * <h3>jobject NewLocalRef(JNIEnv *env, jobject ref);</h3>
+     *
+     * Creates a new local reference that refers to the same object as ref. The given ref may be a
+     * global or local reference. Returns NULL if ref refers to null.
+     */
     @JniImpl
-    public Object NewLocalRef(Object obj) {
+    public Object NewLocalRef(Object ref) {
         // Local ref is allocated by host JNI on return.
-        return obj;
+        return ref;
     }
 
+    /**
+     * <h3>jboolean ExceptionCheck(JNIEnv *env);</h3>
+     * 
+     * A convenience function to check for pending exceptions without creating a local reference to
+     * the exception object.
+     *
+     * @returns JNI_TRUE when there is a pending exception; otherwise, returns JNI_FALSE.
+     */
     @JniImpl
     public boolean ExceptionCheck() {
         StaticObject ex = threadLocalPendingException.get();
@@ -1119,6 +1298,33 @@ public class JniEnv extends NativeEnv {
         return ex != null;
     }
 
+    /**
+     * <h3>void ExceptionClear(JNIEnv *env);</h3>
+     *
+     * Clears any exception that is currently being thrown. If no exception is currently being
+     * thrown, this routine has no effect.
+     */
+    @JniImpl
+    public void ExceptionClear() {
+        getThreadLocalPendingException().clear();
+    }
+
+    /**
+     * <h3>const jchar * GetStringCritical(JNIEnv *env, jstring string, jboolean *isCopy);</h3>
+     *
+     * The semantics of these two functions are similar to the existing Get/ReleaseStringChars
+     * functions. If possible, the VM returns a pointer to string elements; otherwise, a copy is
+     * made.
+     *
+     * <p>
+     * However, there are significant restrictions on how these functions can be used. In a code
+     * segment enclosed by Get/ReleaseStringCritical calls, the native code must not issue arbitrary
+     * JNI calls, or cause the current thread to block.
+     *
+     * <p>
+     * The restrictions on Get/ReleaseStringCritical are similar to those on
+     * Get/ReleasePrimitiveArrayCritical.
+     */
     @JniImpl
     public long GetStringCritical(@Type(String.class) StaticObject str, long isCopyPtr) {
         if (isCopyPtr != 0L) {
@@ -1180,22 +1386,55 @@ public class JniEnv extends NativeEnv {
         // nop
     }
 
+    /**
+     * <h3>jint Throw(JNIEnv *env, jthrowable obj);</h3>
+     *
+     * Causes a {@link java.lang.Throwable} object to be thrown.
+     *
+     * @param obj a {@link java.lang.Throwable} object.
+     *
+     * @returns 0 on success; a negative value on failure.
+     */
     @JniImpl
-    public int Throw(StaticObject ex) {
+    public int Throw(@Type(Throwable.class) StaticObject obj) {
         assert EspressoLanguage.getCurrentContext().getMeta() //
-                        .THROWABLE.isAssignableFrom(meta(ex.getKlass()));
-
-        threadLocalPendingException.set(ex);
-        return JNI_OK;
+                        .THROWABLE.isAssignableFrom(meta(obj.getKlass()));
+        // The TLS exception slot will be set by the JNI wrapper.
+        // Throwing methods always return the default value, in this case 0 (success).
+        throw new EspressoException(obj);
     }
 
+    /**
+     * <h3>jint ThrowNew(JNIEnv *env, jclass clazz, const char *message);</h3>
+     *
+     * Constructs an exception object from the specified class with the message specified by message
+     * and causes that exception to be thrown.
+     *
+     * @param clazz a subclass of java.lang.Throwable.
+     * @param message the message used to construct the {@link java.lang.Throwable} object. The
+     *            string is encoded in modified UTF-8.
+     *
+     * @returns 0 on success; a negative value on failure.
+     *
+     * @throws Exception the newly constructed {@link java.lang.Throwable} object.
+     */
     @JniImpl
-    public int ThrowNew(@Type(Class.class) StaticObjectClass clazz, String message) {
-        StaticObject ex = meta(clazz).getMeta().initEx(meta(clazz.getKlass()), message);
-        threadLocalPendingException.set(ex);
-        return JNI_OK;
+    public int ThrowNew(@Type(Class.class) StaticObject clazz, String message) {
+        StaticObject ex = EspressoLanguage.getCurrentContext().getMeta().initEx(meta(clazz.getKlass()), message);
+        // The TLS exception slot will be set by the JNI wrapper.
+        // Throwing methods always return the default value, in this case 0 (success).
+        throw new EspressoException(ex);
     }
 
+    /**
+     * <h3>jthrowable ExceptionOccurred(JNIEnv *env);</h3>
+     *
+     * Determines if an exception is being thrown. The exception stays being thrown until either the
+     * native code calls {@link #ExceptionClear}, or the Java code handles the exception.
+     *
+     * @returns the exception object that is currently in the process of being thrown, or NULL if no
+     *          exception is currently being thrown.
+     */
     @JniImpl
     public StaticObject ExceptionOccurred() {
         StaticObject ex = threadLocalPendingException.get();
@@ -1300,10 +1539,12 @@ public class JniEnv extends NativeEnv {
     }
 
     /**
-     * Loads a class from a buffer of raw class data. The buffer containing the raw class data is not
-     * referenced by the VM after the DefineClass call returns, and it may be discarded if desired.
+     * Loads a class from a buffer of raw class data. The buffer containing the raw class data is
+     * not referenced by the VM after the DefineClass call returns, and it may be discarded if
+     * desired.
      *
-     * @param name the name of the class or interface to be defined. The string is encoded in modified UTF-8.
+     * @param name the name of the class or interface to be defined. The string is encoded in
+     *            modified UTF-8.
      * @param loader a class loader assigned to the defined class.
      * @param bufPtr buffer containing the .class file data.
      * @param bufLen buffer length.
@@ -1324,4 +1565,45 @@ public class JniEnv extends NativeEnv {
         buf.putLong(EspressoLanguage.getCurrentContext().getVM().getJavaVM());
         return JNI_OK;
     }
+
+    /**
+     * <h3>jboolean IsAssignableFrom(JNIEnv *env, jclass clazz1, jclass clazz2);</h3>
+     *
+     * Determines whether an object of clazz1 can be safely cast to clazz2.
+     *
+     * @param clazz1: the first class argument.
+     * @param clazz2 the second class argument.
+     *
+     * @returns Returns JNI_TRUE if either of the following is true:
+     *          <ul>
+     *          <li>The first and second class arguments refer to the same Java class.
+     *          <li>The first class is a subclass of the second class.
+     *          <li>The first class has the second class as one of its interfaces.
+     *          </ul>
+     */
+    @JniImpl
+    public boolean IsAssignableFrom(@Type(Class.class) StaticObject clazz1, @Type(Class.class) StaticObject clazz2) {
+        Meta.Klass klass = Meta.meta(((StaticObjectClass) clazz2).getMirror());
+        return klass.isAssignableFrom(Meta.meta(((StaticObjectClass) clazz1).getMirror()));
+    }
+
+    /**
+     * <h3>jboolean IsInstanceOf(JNIEnv *env, jobject obj, jclass clazz);</h3>
+     *
+     * Tests whether an object is an instance of a class.
+     *
+     * @param obj a Java object.
+     * @param clazz a Java class object.
+     *
+     * @returns Returns {@code JNI_TRUE} if obj can be cast to clazz; otherwise, returns
+     *          {@code JNI_FALSE}. <b>A NULL object can be cast to any class.</b>
+     */
+    @JniImpl
+    public boolean IsInstanceOf(Object obj, @Type(Class.class) StaticObjectClass clazz) {
+        if (obj == StaticObject.NULL) {
+            return true;
+        }
+        return EspressoLanguage.getCurrentContext().getInterpreterToVM().instanceOf(obj, clazz.getMirror());
+    }
+
 }
