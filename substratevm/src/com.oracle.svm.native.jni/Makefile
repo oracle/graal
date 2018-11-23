@@ -24,9 +24,10 @@
 #
 
 INCLUDE_DIR = include
-HEADER_FILES = $(wildcard $(INCLUDE_DIR)/*.h)
+HEADER_FILES = $(wildcard $(VPATH)/$(INCLUDE_DIR)/*.h)
 
-TARGET_HEADERS = $(patsubst %,$(TARGET_DIR)/%,$(HEADER_FILES))
+TARGET_DIR = ${OS}-${ARCH}
+TARGET_HEADERS = $(patsubst $(VPATH)/%,$(TARGET_DIR)/%,$(HEADER_FILES))
 
 all : $(TARGET_HEADERS)
 

@@ -184,7 +184,7 @@ suite = {
             "workingSets": "SVM",
         },
 
-        "com.oracle.svm.native": {
+        "com.oracle.svm.native.jni": {
             "subDir": "src",
             "native": True,
             "vpath": True,
@@ -196,6 +196,26 @@ suite = {
                 "<os>-<arch>/include/jni.h",
                 "<os>-<arch>/include/jni_md.h",
             ],
+            "os_arch": {
+                "solaris": {
+                    "<others>": {
+                        "ignore": "solaris is not supported",
+                    },
+                },
+                "windows": {
+                    "<others>": {
+                        "ignore": "windows is not supported",
+                    },
+                },
+                "<others>": {
+                    "sparcv9": {
+                        "ignore": "sparcv9 is not supported",
+                    },
+                    "<others>": {
+                        "ignore": False,
+                    },
+                },
+            },
         },
 
         "com.oracle.svm.native.libchelper": {
@@ -653,7 +673,7 @@ suite = {
         #
         "SVM_HOSTED_NATIVE": {
             "dependencies": [
-                "com.oracle.svm.native",
+                "com.oracle.svm.native.jni",
                 "com.oracle.svm.native.libchelper",
                 "com.oracle.svm.native.strictmath",
                 "com.oracle.svm.libffi"
