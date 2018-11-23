@@ -356,6 +356,10 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
         return contextAwareExecutor.executeWithDefaultContext(() -> completionHandler.getCompletionTriggerCharactersWithEnteredContext(langId));
     }
 
+    public Future<List<String>> getSignatureHelpTriggerCharactersOfAllLanguages() {
+        return contextAwareExecutor.executeWithDefaultContext(() -> signatureHelpHandler.getSignatureHelpTriggerCharactersWithEnteredContext());
+    }
+
     /**
      * Clears all collected coverage data for all files. See {@link #clearCoverage(URI)} for
      * details.

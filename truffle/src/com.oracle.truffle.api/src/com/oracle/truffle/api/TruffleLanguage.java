@@ -1040,6 +1040,10 @@ public abstract class TruffleLanguage<C> {
         return Collections.emptyList();
     }
 
+    protected List<String> getSignatureHelpTriggerCharacters() {
+        return Collections.emptyList();
+    }
+
     protected Object boxPrimitive(@SuppressWarnings("unused") Object primitive) {
         return null;
     }
@@ -2101,6 +2105,10 @@ public abstract class TruffleLanguage<C> {
             return getSpi().getCompletionTriggerCharacters();
         }
 
+        List<String> getSignatureHelpTriggerCharacters() {
+            return getSpi().getSignatureHelpTriggerCharacters();
+        }
+
         Object boxPrimitive(Object primitive) {
             return getSpi().boxPrimitive(primitive);
         }
@@ -2571,6 +2579,11 @@ public abstract class TruffleLanguage<C> {
         @Override
         public List<String> getCompletionTriggerCharacters(Env env) {
             return env.getCompletionTriggerCharacters();
+        }
+
+        @Override
+        public List<String> getSignatureHelpTriggerCharacters(Env env) {
+            return env.getSignatureHelpTriggerCharacters();
         }
 
         @Override

@@ -405,6 +405,8 @@ public abstract class Accessor {
 
         public abstract List<String> getCompletionTriggerCharacters(Env env);
 
+        public abstract List<String> getSignatureHelpTriggerCharacters(Env env);
+
         public abstract Object boxPrimitive(Env env, Object primitive);
 
         public abstract Iterable<Scope> findTopScopes(Env env);

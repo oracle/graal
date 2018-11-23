@@ -720,6 +720,15 @@ public abstract class TruffleInstrument {
             return AccessorInstrumentHandler.langAccess().getCompletionTriggerCharacters(env);
         }
 
+        public List<String> getSignatureHelpTriggerCharacters(String languageId) {
+            LanguageInfo languageInfo = getLanguages().get(languageId);
+            if (languageInfo == null) {
+                throw new IllegalArgumentException("Unknown language: " + languageId + ". Known languages are: " + getLanguages().keySet());
+            }
+            final TruffleLanguage.Env env = AccessorInstrumentHandler.engineAccess().getEnvForInstrument(languageInfo);
+            return AccessorInstrumentHandler.langAccess().getSignatureHelpTriggerCharacters(env);
+        }
+
         public Object boxPrimitive(String languageId, Object primitive) {
             LanguageInfo languageInfo = getLanguages().get(languageId);
             if (languageInfo == null) {

@@ -4,6 +4,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.eclipse.lsp4j.ParameterInformation;
 import org.eclipse.lsp4j.SignatureHelp;
@@ -81,5 +82,19 @@ public class SignatureHelpRequestHandler extends AbstractRequestHandler {
             }
         }
         return new SignatureHelp();
+    }
+
+    public List<String> getSignatureHelpTriggerCharactersWithEnteredContext() {
+        //@formatter:off
+        return env.getLanguages().values().stream()
+                        .filter(lang -> !lang.isInternal())
+                        .flatMap(info -> env.getSignatureHelpTriggerCharacters(info.getId()).stream())
+                        .distinct()
+                        .collect(Collectors.toList());
+        //@formatter:on
+    }
+
+    public List<String> getSignatureHelpTriggerCharactersWithEnteredContext(String langId) {
+        return env.getSignatureHelpTriggerCharacters(langId);
     }
 }
