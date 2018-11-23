@@ -390,7 +390,7 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
         MarkupContent markup = new MarkupContent();
         String documentation = null;
 
-        if (value instanceof TruffleObject) {
+        if (value instanceof TruffleObject && !ForeignAccess.sendIsNull(IS_NULL, (TruffleObject) value)) {
             documentation = getDocumentation((TruffleObject) value);
             return Either.forLeft(documentation);
         }
