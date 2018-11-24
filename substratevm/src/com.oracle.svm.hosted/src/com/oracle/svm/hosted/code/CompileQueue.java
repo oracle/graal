@@ -68,10 +68,12 @@ import org.graalvm.compiler.lir.asm.DataBuilder;
 import org.graalvm.compiler.lir.asm.FrameContext;
 import org.graalvm.compiler.lir.framemap.FrameMap;
 import org.graalvm.compiler.lir.phases.LIRSuites;
+import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.IndirectCallTargetNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.ParameterNode;
@@ -727,19 +729,17 @@ public class CompileQueue {
                     if (!canBeUsedForInlining(invoke)) {
                         invoke.setUseForInlining(false);
                     }
-                    if (invoke.callTarget() instanceof MethodCallTargetNode) {
-                        MethodCallTargetNode targetNode = (MethodCallTargetNode) invoke.callTarget();
-                        HostedMethod invokeTarget = (HostedMethod) targetNode.targetMethod();
-                        if (targetNode.invokeKind().isDirect()) {
-                            if (invokeTarget.wrapped.isImplementationInvoked()) {
-                                handleSpecialization(method, targetNode, invokeTarget, invokeTarget);
-                                ensureParsed(invokeTarget, new DirectCallReason(method, reason));
-                            }
-                        } else {
-                            for (HostedMethod invokeImplementation : invokeTarget.getImplementations()) {
-                                handleSpecialization(method, targetNode, invokeTarget, invokeImplementation);
-                                ensureParsed(invokeImplementation, new VirtualCallReason(method, invokeImplementation, reason));
-                            }
+                    CallTargetNode targetNode = invoke.callTarget();
+                    HostedMethod invokeTarget = (HostedMethod) targetNode.targetMethod();
+                    if (targetNode.invokeKind().isIndirect() || targetNode instanceof IndirectCallTargetNode) {
+                        for (HostedMethod invokeImplementation : invokeTarget.getImplementations()) {
+                            handleSpecialization(method, targetNode, invokeTarget, invokeImplementation);
+                            ensureParsed(invokeImplementation, new VirtualCallReason(method, invokeImplementation, reason));
+                        }
+                    } else {
+                        if (invokeTarget.wrapped.isImplementationInvoked()) {
+                            handleSpecialization(method, targetNode, invokeTarget, invokeTarget);
+                            ensureParsed(invokeTarget, new DirectCallReason(method, reason));
                         }
                     }
                 }
@@ -823,7 +823,7 @@ public class CompileQueue {
         return invoke.useForInlining();
     }
 
-    private static void handleSpecialization(final HostedMethod method, MethodCallTargetNode targetNode, HostedMethod invokeTarget, HostedMethod invokeImplementation) {
+    private static void handleSpecialization(final HostedMethod method, CallTargetNode targetNode, HostedMethod invokeTarget, HostedMethod invokeImplementation) {
         if (method.getAnnotation(Specialize.class) != null && !method.compilationInfo.isDeoptTarget() && invokeTarget.getAnnotation(DeoptTest.class) != null) {
             /*
              * Collect the constant arguments to a method which should be specialized.
