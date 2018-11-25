@@ -64,7 +64,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-@TruffleLanguage.Registration(id = "llvm", name = "llvm", version = "6.0.0", internal = false, interactive = false, defaultMimeType = Sulong.LLVM_BITCODE_MIME_TYPE, //
+@TruffleLanguage.Registration(id = Sulong.ID, name = Sulong.NAME, version = "6.0.0", internal = false, interactive = false, defaultMimeType = Sulong.LLVM_BITCODE_MIME_TYPE, //
                 byteMimeTypes = {Sulong.LLVM_BITCODE_MIME_TYPE, Sulong.LLVM_ELF_SHARED_MIME_TYPE, Sulong.LLVM_ELF_EXEC_MIME_TYPE}, //
                 characterMimeTypes = {Sulong.LLVM_BITCODE_BASE64_MIME_TYPE, Sulong.LLVM_SULONG_TYPE})
 @ProvidedTags({StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class, DebuggerTags.AlwaysHalt.class})
