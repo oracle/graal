@@ -41,12 +41,15 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.object.DebugCounter;
 
 public abstract class NativeRootNode extends RootNode implements LinkedNode {
 
     private final TruffleObject boundNative;
     private Meta.Method originalMethod;
     @Node.Child Node execute = Message.EXECUTE.createNode();
+
+    public final static DebugCounter nativeCalls = DebugCounter.create("Native calls");
 
     public NativeRootNode(TruffleLanguage<?> language, TruffleObject boundNative) {
         this(language, boundNative, null);
@@ -79,6 +82,7 @@ public abstract class NativeRootNode extends RootNode implements LinkedNode {
     @Override
     public Object execute(VirtualFrame frame) {
         try {
+            nativeCalls.inc();
             // TODO(peterssen): Inject JNIEnv properly, without copying.
             // The frame.getArguments().length must match the arity of the native method, which is
             // constant.
