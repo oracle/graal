@@ -138,8 +138,8 @@ public class JniEnv extends NativeEnv {
             assert args.length - 1 == shiftedArgs.length;
             try {
                 // Substitute raw pointer by proper `this` reference.
-// System.err.print("Call DEFINED method: " + m.getName() +
-// Arrays.toString(shiftedArgs));
+                // System.err.print("Call DEFINED method: " + m.getName() +
+                // Arrays.toString(shiftedArgs));
                 Object ret = m.invoke(this, shiftedArgs);
 
                 if (ret instanceof Boolean) {
@@ -155,7 +155,7 @@ public class JniEnv extends NativeEnv {
                     ret = StaticObject.NULL;
                 }
 
-// System.err.println(" -> " + ret);
+                // System.err.println(" -> " + ret);
 
                 return ret;
             } catch (InvocationTargetException e) {
@@ -429,12 +429,12 @@ public class JniEnv extends NativeEnv {
      * @returns the major version number in the higher 16 bits and the minor version number in the
      *          lower 16 bits.
      *
+     *          <p>
      *          <b>Error codes</b>
-     * 
-     *          <pre>
-     * #define JNI_EDETACHED   (-2)             // thread detached from the VM
-     * #define JNI_EVERSION    (-3)             // JNI version error
-     *          </pre>
+     *          <ul>
+     *          <li>#define JNI_EDETACHED (-2) // thread detached from the VM
+     *          <li>#define JNI_EVERSION (-3) // JNI version error
+     *          </ul>
      */
     @JniImpl
     public int GetVersion() {
@@ -496,7 +496,7 @@ public class JniEnv extends NativeEnv {
     public long GetFieldID(@Type(Class.class) StaticObject clazz, String name, String signature) {
         Meta.Klass klass = meta(((StaticObjectClass) clazz).getMirror());
         klass.safeInitialize();
-        Meta.Field field = klass.declaredField(name);
+        Meta.Field field = klass.field(name);
         if (field == null) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(NoSuchFieldError.class, name);
         }
@@ -506,8 +506,8 @@ public class JniEnv extends NativeEnv {
     }
 
     /**
-     * <h3>jfieldID GetStaticFieldID(JNIEnv *env, jclass clazz, const char *name, const char
-     * *sig);</h3>
+     * <h3>jfieldID GetStaticFieldID(JNIEnv *env, jclass clazz, const char *name, const char *sig);
+     * </h3>
      *
      * Returns the field ID for a static field of a class. The field is specified by its name and
      * signature. The GetStatic<type>Field and SetStatic<type>Field families of accessor functions
