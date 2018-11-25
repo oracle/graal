@@ -80,11 +80,12 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
 
 
 def _run_espresso_playground(args, verbose=False):
+    vm_args, args = mx.extract_VM_args(args, useDoubleDash=False, defaultAllVMArgs=False)
     parser = ArgumentParser(prog='mx espresso-playground')
     parser.add_argument('main_class', action='store', help='Unqualified class name to run.')
     parser.add_argument('main_class_args', nargs='*')
     args = parser.parse_args(args)
-    return _run_espresso(['-cp', mx.distribution("espresso:ESPRESSO_PLAYGROUND").path,
+    return _run_espresso(vm_args + ['-cp', mx.distribution("espresso:ESPRESSO_PLAYGROUND").path,
                           'com.oracle.truffle.espresso.playground.' + args.main_class] + args.main_class_args, verbose)
 
 
