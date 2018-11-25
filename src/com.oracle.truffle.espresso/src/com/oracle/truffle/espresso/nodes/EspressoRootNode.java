@@ -269,10 +269,17 @@ import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.types.SignatureDescriptor;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
+import com.oracle.truffle.object.DebugCounter;
 
 public class EspressoRootNode extends RootNode implements LinkedNode {
     private final MethodInfo method;
     private final InterpreterToVM vm;
+
+    private static final DebugCounter bytecodesExecuted = DebugCounter.create("Bytecodes executed");
+    private static final DebugCounter methodInvokes = DebugCounter.create("Method invokes");
+    private static final DebugCounter newInstances = DebugCounter.create("New instances");
+    private static final DebugCounter fieldWrites = DebugCounter.create("Field writes");
+    private static final DebugCounter fieldReads = DebugCounter.create("Field reads");
 
     @CompilerDirectives.CompilationFinal(dimensions = 1) private final FrameSlot[] locals;
 
@@ -358,6 +365,7 @@ public class EspressoRootNode extends RootNode implements LinkedNode {
 
         loop: while (true) {
             try {
+                bytecodesExecuted.inc();
 
                 CompilerAsserts.partialEvaluationConstant(bs.currentBC(curBCI));
                 CompilerAsserts.partialEvaluationConstant(curBCI);
@@ -956,12 +964,15 @@ public class EspressoRootNode extends RootNode implements LinkedNode {
                         invokeInterface(stack, resolveInterfaceMethod(bs.currentBC(curBCI), bs.readCPI(curBCI)));
                         break;
                     case NEW:
+                        newInstances.inc();
                         stack.pushObject(allocateInstance(resolveType(bs.currentBC(curBCI), bs.readCPI(curBCI))));
                         break;
                     case NEWARRAY:
+                        newInstances.inc();
                         stack.pushObject(InterpreterToVM.allocateNativeArray(bs.readByte(curBCI), stack.popInt()));
                         break;
                     case ANEWARRAY:
+                        newInstances.inc();
                         stack.pushObject(
                                         allocateArray(resolveType(bs.currentBC(curBCI), bs.readCPI(curBCI)), stack.popInt()));
                         break;
@@ -989,6 +1000,7 @@ public class EspressoRootNode extends RootNode implements LinkedNode {
                         // bytecode.
                         throw EspressoError.shouldNotReachHere();
                     case MULTIANEWARRAY:
+                        newInstances.inc();
                         stack.pushObject(
                                         allocateMultiArray(stack,
                                                         resolveType(bs.currentBC(curBCI), bs.readCPI(curBCI)),
@@ -1009,8 +1021,8 @@ public class EspressoRootNode extends RootNode implements LinkedNode {
                     case BREAKPOINT:
                         throw new UnsupportedOperationException("breakpoints not supported.");
                     case INVOKEDYNAMIC:
-                        throw new UnsupportedOperationException("invokedynamic not supported."); // design
-                        // fart
+                        throw new UnsupportedOperationException("invokedynamic not supported.");
+
                 }
             } catch (EspressoException e) {
                 CompilerDirectives.transferToInterpreter();
@@ -1242,6 +1254,7 @@ public class EspressoRootNode extends RootNode implements LinkedNode {
     }
 
     private void invoke(OperandStack stack, MethodInfo targetMethod, Object receiver, boolean hasReceiver, SignatureDescriptor signature) {
+        methodInvokes.inc();
         CallTarget callTarget = targetMethod.getCallTarget();
         // In bytecode boolean, byte, char and short are just plain ints.
         // When a method is intrinsified it will obey Java types, so we need to convert the
@@ -1524,6 +1537,7 @@ public class EspressoRootNode extends RootNode implements LinkedNode {
     }
 
     private void putField(OperandStack stack, FieldInfo field, boolean isStatic) {
+        fieldWrites.inc();
         assert Modifier.isStatic(field.getFlags()) == isStatic;
 
         // Arrays do not have fields, the receiver can only be a StaticObject.
@@ -1570,6 +1584,7 @@ public class EspressoRootNode extends RootNode implements LinkedNode {
     }
 
     private void getField(OperandStack stack, FieldInfo field, boolean isStatic) {
+        fieldReads.inc();
         if (isStatic) {
             field.getDeclaringClass().initialize();
         }
