@@ -101,10 +101,6 @@
     "allPublicMethods": true
   },
   {
-    "name": "com.oracle.truffle.espresso.intrinsics.Target_sun_reflect_Reflection",    
-    "allPublicMethods": true
-  },
-  {
     "name": "com.oracle.truffle.espresso.jni.JniEnv",    
     "allPublicMethods": true
   },
