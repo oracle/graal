@@ -68,8 +68,8 @@ public class GuestClassRegistry implements ClassRegistry {
         }
         assert classLoader != null;
         // TODO(peterssen): Should the class be resolved?
-        StaticObjectClass guestClass = (StaticObjectClass) Meta.meta(classLoader).method("loadClass", Class.class, String.class, boolean.class)
-                .invokeDirect(context.getMeta().toGuest(type.toJavaName()), false);
+        StaticObjectClass guestClass = (StaticObjectClass) Meta.meta(classLoader).method("loadClass", Class.class, String.class, boolean.class).invokeDirect(
+                        context.getMeta().toGuest(type.toJavaName()), false);
         Klass k = guestClass.getMirror();
         meta(classLoader).method("addClass", void.class, Class.class).invokeDirect(guestClass);
         classes.put(type, k);

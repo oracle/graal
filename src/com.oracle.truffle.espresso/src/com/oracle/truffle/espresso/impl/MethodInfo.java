@@ -82,8 +82,8 @@ public final class MethodInfo implements ModifiersProvider {
     @CompilerDirectives.CompilationFinal(dimensions = 1) private Klass[] checkedExceptions;
 
     MethodInfo(Klass declaringClass, String name, SignatureDescriptor signature,
-               byte[] code, int maxStackSize, int maxLocals, int modifiers,
-               ExceptionHandler[] exceptionHandlers, LineNumberTable lineNumberTable, LocalVariableTable localVariableTable, ExceptionsAttribute exceptionsAttribute) {
+                    byte[] code, int maxStackSize, int maxLocals, int modifiers,
+                    ExceptionHandler[] exceptionHandlers, LineNumberTable lineNumberTable, LocalVariableTable localVariableTable, ExceptionsAttribute exceptionsAttribute) {
         this.declaringClass = declaringClass;
         this.name = name;
         this.signature = signature;
@@ -210,7 +210,9 @@ public final class MethodInfo implements ModifiersProvider {
             } else {
                 if (this.isNative()) {
                     // Bind native method.
-                    System.err.println("Linking native method: " + meta(this).getDeclaringClass().getName() + "#" + getName() + " " + getSignature());
+                    // System.err.println("Linking native method: " +
+                    // meta(this).getDeclaringClass().getName() + "#" + getName() + " " +
+                    // getSignature());
                     Meta meta = getContext().getMeta();
 
                     // If the loader is null we have a system class, so we attempt a lookup in

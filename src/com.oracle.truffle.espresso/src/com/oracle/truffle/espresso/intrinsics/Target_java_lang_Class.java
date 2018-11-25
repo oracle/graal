@@ -172,8 +172,7 @@ public class Target_java_lang_Class {
                             Meta.Field.set("clazz", m.getDeclaringClass().rawKlass().mirror()),
                             Meta.Field.set("slot", i),
                             Meta.Field.set("exceptionTypes", checkedExceptions),
-                            Meta.Field.set("parameterTypes", parameterTypes))
-                    .getInstance();
+                            Meta.Field.set("parameterTypes", parameterTypes)).getInstance();
 
             constructor.setHiddenField(HIDDEN_METHOD_KEY, m.rawMethod());
 

@@ -171,8 +171,8 @@ public class Target_sun_misc_Unsafe {
 
     @Intrinsic(hasReceiver = true)
     public static @Type(Class.class) StaticObject defineClass(Object self, @Type(String.class) StaticObject name,
-                                                              byte[] buf, int offset, int len, @Type(ClassLoader.class) StaticObject loader,
-                                                              @Type(ProtectionDomain.class) StaticObject pd) {
+                    byte[] buf, int offset, int len, @Type(ClassLoader.class) StaticObject loader,
+                    @Type(ProtectionDomain.class) StaticObject pd) {
         byte[] bytes = Arrays.copyOfRange(buf, offset, len);
         return EspressoLanguage.getCurrentContext().getRegistries().defineKlass(Meta.toHost(name), bytes, loader).mirror();
 
@@ -292,7 +292,8 @@ public class Target_sun_misc_Unsafe {
     }
 
     @Intrinsic(hasReceiver = true)
-    public static Object allocateInstance(Object self, @Type(Class.class) StaticObject clazz) { // throws InstantiationException;
+    public static Object allocateInstance(Object self, @Type(Class.class) StaticObject clazz) { // throws
+                                                                                                // InstantiationException;
         assert !((StaticObjectClass) clazz).getMirror().isAbstract();
         return EspressoLanguage.getCurrentContext().getInterpreterToVM().newObject(((StaticObjectClass) clazz).getMirror());
     }
