@@ -106,9 +106,16 @@ implemented in C/C++ and will be compiled to a shared library or a bitcode
 file. For a successful build you need to have LLVM (incl. `CLANG` and `OPT`
 tool) v3.8 - v7.0 installed.
 
-MacOS: Apple's default LLVM does not contain the `opt` tool, which a Sulong
-build needs. We recommend installing LLVM via `homebrew` and appending the
-bin path to the `PATH`. For best experience we suggest to install LLVM 4.0.
+#### MacOS
+Apple's default LLVM does not contain the `opt` tool, which a Sulong
+build needs. On macOS Mojave, please also ensure that the macOS SDK headers
+are installed:
+
+    xcode-select --install
+    open /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg
+
+Furthermore, we recommend installing LLVM via `homebrew` and appending the
+bin path to the `PATH`. For best experience we suggest to install LLVM 4.0:
 
     brew install llvm@4
     export PATH="/usr/local/opt/llvm@4/bin:$PATH"
