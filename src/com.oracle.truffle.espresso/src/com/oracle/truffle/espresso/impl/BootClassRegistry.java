@@ -120,8 +120,11 @@ public class BootClassRegistry implements ClassRegistry {
 
     @Override
     public Klass defineKlass(TypeDescriptor type, Klass klass) {
-        assert !classes.containsValue(type);
-        classes.putIfAbsent(type, klass);
+        assert !classes.containsKey(type);
+        Klass prevKlass = classes.putIfAbsent(type, klass);
+        if (prevKlass != null) {
+            return prevKlass;
+        }
         return klass;
     }
 }

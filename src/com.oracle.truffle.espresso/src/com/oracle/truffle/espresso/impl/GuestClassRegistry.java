@@ -91,7 +91,10 @@ public class GuestClassRegistry implements ClassRegistry {
     @Override
     public Klass defineKlass(TypeDescriptor type, Klass klass) {
         assert !classes.contains(type);
-        classes.putIfAbsent(type, klass);
+        Klass prevKlass = classes.putIfAbsent(type, klass);
+        if (prevKlass != null) {
+            return prevKlass;
+        }
         // Register class in guest CL. Mimics HotSpot behavior.
         meta(classLoader).method("addClass", void.class, Class.class).invokeDirect(klass.mirror());
         return klass;

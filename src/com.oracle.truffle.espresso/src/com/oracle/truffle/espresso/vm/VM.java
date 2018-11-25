@@ -611,7 +611,7 @@ public class VM extends NativeEnv {
             Field f = lib.getClass().getDeclaredField("handle");
             f.setAccessible(true);
             long handle = (long) f.get(lib);
-            if (!handle2Lib.contains(handle)) {
+            if (!handle2Lib.containsKey((Long) handle)) {
                 handle2Lib.put(handle, lib);
             }
             return handle;
@@ -635,9 +635,7 @@ public class VM extends NativeEnv {
         try {
             TruffleObject function = NativeLibrary.lookup(handle2Lib.get(libHandle), name);
             long handle = (long) ForeignAccess.sendUnbox(Message.UNBOX.createNode(), function);
-            if (!handle2Sym.contains(handle)) {
-                handle2Sym.put(handle, function);
-            }
+            handle2Sym.put(handle, function);
             return handle;
         } catch (UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere(e);
