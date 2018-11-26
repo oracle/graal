@@ -25,6 +25,7 @@
 
 package org.graalvm.compiler.core.aarch64;
 
+import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.core.gen.NodeMatchRules;
 import org.graalvm.compiler.core.match.ComplexMatchResult;
@@ -90,6 +91,22 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
             return emitAddSubShift(AArch64ArithmeticOp.ADD, a, shift);
         }
         return emitAddSubShift(AArch64ArithmeticOp.SUB, a, shift);
+    }
+
+    @MatchRule("(Add=binary (Mul a b) c)")
+    @MatchRule("(Sub=binary c (Mul a b))")
+    public ComplexMatchResult multiplyAddSub(BinaryNode binary, ValueNode a, ValueNode b, ValueNode c) {
+        JavaKind kindA = a.getStackKind();
+        JavaKind kindB = b.getStackKind();
+        JavaKind kindC = c.getStackKind();
+        if (!kindA.isNumericInteger() || !kindB.isNumericInteger() || !kindC.isNumericInteger()) {
+            return null;
+        }
+
+        if (binary instanceof AddNode) {
+            return builder -> getArithmeticLIRGenerator().emitMAdd(operand(a), operand(b), operand(c));
+        }
+        return builder -> getArithmeticLIRGenerator().emitMSub(operand(a), operand(b), operand(c));
     }
 
     @Override
