@@ -83,10 +83,7 @@ import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 import static org.graalvm.compiler.lir.amd64.AMD64Arithmetic.DREM;
 import static org.graalvm.compiler.lir.amd64.AMD64Arithmetic.FREM;
 import static org.graalvm.compiler.lir.amd64.AMD64MathIntrinsicBinaryOp.BinaryIntrinsicOpcode.POW;
-import static org.graalvm.compiler.lir.amd64.AMD64MathIntrinsicUnaryOp.UnaryIntrinsicOpcode.COS;
 import static org.graalvm.compiler.lir.amd64.AMD64MathIntrinsicUnaryOp.UnaryIntrinsicOpcode.EXP;
-import static org.graalvm.compiler.lir.amd64.AMD64MathIntrinsicUnaryOp.UnaryIntrinsicOpcode.LOG;
-import static org.graalvm.compiler.lir.amd64.AMD64MathIntrinsicUnaryOp.UnaryIntrinsicOpcode.LOG10;
 import static org.graalvm.compiler.lir.amd64.AMD64MathIntrinsicUnaryOp.UnaryIntrinsicOpcode.SIN;
 import static org.graalvm.compiler.lir.amd64.AMD64MathIntrinsicUnaryOp.UnaryIntrinsicOpcode.TAN;
 
@@ -121,6 +118,7 @@ import org.graalvm.compiler.lir.amd64.AMD64ClearRegisterOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathCosOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathIntrinsicBinaryOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathIntrinsicUnaryOp;
+import org.graalvm.compiler.lir.amd64.AMD64MathLog10Op;
 import org.graalvm.compiler.lir.amd64.AMD64MathLogOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathStubUnaryOp;
 import org.graalvm.compiler.lir.amd64.AMD64Move;
@@ -1122,15 +1120,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         LIRGenerator gen = getLIRGen();
         Variable result = maths.emitLog(gen, input, base10);
         if (result == null) {
-            if (base10) {
-                RegisterValue xmm0Value = xmm0.asValue(LIRKind.combine(input));
-                getLIRGen().emitMove(xmm0Value, input);
-                result = gen.newVariable(LIRKind.combine(input));
-                AllocatableValue stackSlot = gen.getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(AMD64Kind.QWORD));
-                gen.append(new AMD64MathIntrinsicUnaryOp(getAMD64LIRGen(), base10 ? LOG10 : LOG, result, xmm0Value, stackSlot));
-            } else {
-                result = emitLIRWrapperForMathStubs(new AMD64MathLogOp(), input);
-            }
+            result = emitLIRWrapperForMathStubs(base10 ? new AMD64MathLog10Op() : new AMD64MathLogOp(), input);
         }
         return result;
     }

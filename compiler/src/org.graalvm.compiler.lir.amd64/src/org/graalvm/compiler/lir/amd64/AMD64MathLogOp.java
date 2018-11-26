@@ -57,8 +57,8 @@ public class AMD64MathLogOp extends AMD64MathStubUnaryOp {
     public static final LIRInstructionClass<AMD64MathLogOp> TYPE = LIRInstructionClass.create(AMD64MathLogOp.class);
 
     public AMD64MathLogOp() {
-        super(TYPE, /* GPR temps */ rax, rcx, rdx, r8, r11,
-                        /* XMM temps */ xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7);
+        super(TYPE, /* GPR */ rax, rcx, rdx, r8, r11,
+                        /* XMM */ xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7);
     }
 
     /******************************************************************************/
@@ -86,7 +86,6 @@ public class AMD64MathLogOp extends AMD64MathStubUnaryOp {
 //
     /******************************************************************************/
 
-// The 64 bit code is at most SSE2 compliant
     private ArrayDataPointerConstant lTbl = pointerConstant(16, new int[]{
             // @formatter:off
             0xfefa3800, 0x3fe62e42, 0x93c76730, 0x3d2ef357, 0xaa241800,
@@ -217,13 +216,12 @@ public class AMD64MathLogOp extends AMD64MathStubUnaryOp {
             // @formatter:on
     });
 
-// registers,
-// input: xmm0
-// scratch: xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7
-// rax, rdx, rcx, r8, r11
-
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+        // registers,
+        // input: xmm0
+        // scratch: xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7
+        // rax, rdx, rcx, r8, r11
         Label block0 = new Label();
         Label block1 = new Label();
         Label block2 = new Label();
@@ -234,9 +232,7 @@ public class AMD64MathLogOp extends AMD64MathStubUnaryOp {
         Label block7 = new Label();
         Label block8 = new Label();
         Label block9 = new Label();
-        Label start = new Label();
 
-        masm.bind(start);
         masm.subq(rsp, 24);
         masm.movsd(new AMD64Address(rsp, 0), xmm0);
         masm.movq(rax, 0x3ff0000000000000L);
