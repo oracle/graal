@@ -184,7 +184,75 @@ suite = {
             "workingSets": "SVM",
         },
 
-        "com.oracle.svm.native": {
+        "com.oracle.svm.native.jni": {
+            "subDir": "src",
+            "native": True,
+            "vpath": True,
+            "buildEnv": {
+                "ARCH": "<arch>",
+                "OS": "<os>"
+            },
+            "results": [
+                "<os>-<arch>/include/jni.h",
+                "<os>-<arch>/include/jni_md.h",
+            ],
+            "os_arch": {
+                "solaris": {
+                    "<others>": {
+                        "ignore": "solaris is not supported",
+                    },
+                },
+                "windows": {
+                    "<others>": {
+                        "ignore": "windows is not supported",
+                    },
+                },
+                "<others>": {
+                    "sparcv9": {
+                        "ignore": "sparcv9 is not supported",
+                    },
+                    "<others>": {
+                        "ignore": False,
+                    },
+                },
+            },
+        },
+
+        "com.oracle.svm.native.libchelper": {
+            "subDir": "src",
+            "native": True,
+            "vpath": True,
+            "buildEnv": {
+                "ARCH": "<arch>",
+                "OS": "<os>"
+            },
+            "results": [
+                "<os>-<arch>/liblibchelper.a",
+                "<os>-<arch>/include/cpufeatures.h",
+            ],
+            "os_arch": {
+                "solaris": {
+                    "<others>": {
+                        "ignore": "solaris is not supported",
+                    },
+                },
+                "windows": {
+                    "<others>": {
+                        "ignore": "windows is not supported",
+                    },
+                },
+                "<others>": {
+                    "sparcv9": {
+                        "ignore": "sparcv9 is not supported",
+                    },
+                    "<others>": {
+                        "ignore": False,
+                    },
+                },
+            },
+        },
+
+        "com.oracle.svm.native.strictmath": {
             "subDir": "src",
             "native": True,
             "vpath": True,
@@ -194,11 +262,27 @@ suite = {
             },
             "results": [
                 "<os>-<arch>/libstrictmath.a",
-                "<os>-<arch>/liblibchelper.a",
-                "<os>-<arch>/include/cpufeatures.h",
-                "<os>-<arch>/include/jni.h",
-                "<os>-<arch>/include/jni_md.h",
             ],
+            "os_arch": {
+                "solaris": {
+                    "<others>": {
+                        "ignore": "solaris is not supported",
+                    },
+                },
+                "windows": {
+                    "<others>": {
+                        "ignore": "windows is not supported",
+                    },
+                },
+                "<others>": {
+                    "sparcv9": {
+                        "ignore": "sparcv9 is not supported",
+                    },
+                    "<others>": {
+                        "ignore": False,
+                    },
+                },
+            },
         },
 
         "com.oracle.svm.jni": {
@@ -589,7 +673,9 @@ suite = {
         #
         "SVM_HOSTED_NATIVE": {
             "dependencies": [
-                "com.oracle.svm.native",
+                "com.oracle.svm.native.jni",
+                "com.oracle.svm.native.libchelper",
+                "com.oracle.svm.native.strictmath",
                 "com.oracle.svm.libffi"
             ],
             "native": True,

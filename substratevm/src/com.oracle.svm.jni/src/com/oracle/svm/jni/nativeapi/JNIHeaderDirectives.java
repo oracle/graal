@@ -27,20 +27,14 @@ package com.oracle.svm.jni.nativeapi;
 import java.util.Collections;
 import java.util.List;
 
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.CContext;
 
 import com.oracle.svm.core.c.ProjectHeaderFile;
 
 public class JNIHeaderDirectives implements CContext.Directives {
-    @Override
-    public boolean isInConfiguration() {
-        /* Necessary until GR-7932 is resolved. */
-        return !Platform.includedIn(Platform.WINDOWS.class);
-    }
 
     @Override
     public List<String> getHeaderFiles() {
-        return Collections.singletonList(ProjectHeaderFile.resolve("com.oracle.svm.native", "include/jni.h"));
+        return Collections.singletonList(ProjectHeaderFile.resolve("com.oracle.svm.native.jni", "include/jni.h"));
     }
 }
