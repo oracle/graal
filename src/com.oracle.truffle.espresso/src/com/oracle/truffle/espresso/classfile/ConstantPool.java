@@ -28,6 +28,7 @@ import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.FIELD_REF;
 import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.FLOAT;
 import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.INTEGER;
 import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.INTERFACE_METHOD_REF;
+import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.INVOKEDYNAMIC;
 import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.LONG;
 import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.METHOD_REF;
 import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.NAME_AND_TYPE;
@@ -442,6 +443,14 @@ public final class ConstantPool {
             return (StringConstant) at(index);
         } catch (ClassCastException e) {
             throw unexpectedEntry(index, null, STRING);
+        }
+    }
+
+    public InvokeDynamicConstant indyAt(int index) {
+        try {
+            return (InvokeDynamicConstant) at(index);
+        } catch (ClassCastException e) {
+            throw unexpectedEntry(index, null, INVOKEDYNAMIC);
         }
     }
 

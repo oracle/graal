@@ -134,14 +134,14 @@ suite = {
             "checkstyle": "com.oracle.truffle.espresso",
         },
 
-        "com.oracle.truffle.espresso.bench": {
-            "subDir": "src",            
-            "sourceDirs": ["src"],
-            "dependencies": [
-            ],
-            "javaCompliance": "1.8+",
-            "checkstyle": "com.oracle.truffle.espresso",
-        },
+        # "com.oracle.truffle.espresso.bench": {
+        #     "subDir": "src",
+        #     "sourceDirs": ["src"],
+        #     "dependencies": [
+        #     ],
+        #     "javaCompliance": "1.8+",
+        #     "checkstyle": "com.oracle.truffle.espresso",
+        # },
 
         # Native library for tests
         "com.oracle.truffle.espresso.test.native": {
@@ -322,15 +322,15 @@ suite = {
         },
 
 
-        "ESPRESSO_BENCH": {
-            "subDir": "src",
-            "dependencies": [
-                "com.oracle.truffle.espresso.bench"
-            ],
-            "distDependencies": [
-            ],
-            "description": "Espresso benchmarks",
-        },
+        # "ESPRESSO_BENCH": {
+        #     "subDir": "src",
+        #     "dependencies": [
+        #         "com.oracle.truffle.espresso.bench"
+        #     ],
+        #     "distDependencies": [
+        #     ],
+        #     "description": "Espresso benchmarks",
+        # },
 
     }
 }

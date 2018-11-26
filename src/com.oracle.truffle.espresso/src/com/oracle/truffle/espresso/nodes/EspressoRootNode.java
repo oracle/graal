@@ -1054,6 +1054,46 @@ public class EspressoRootNode extends RootNode implements LinkedNode {
         }
     }
 
+    private Object resolveInvokeDynamic(int currentBC, char cpi) {
+        ConstantPool pool = getConstantPool();
+        InvokeDynamicConstant indy = pool.indyAt(cpi);
+        return pool.classAt(cpi).resolve(pool, cpi);
+    }
+
+//    private CallSite linkIndySite(Frame f, Insn insn) throws InterpreterError {
+//        CallSite cs = indyLinkageState.get(insn);
+//        int index = f.read16u(1);
+//
+//        if (cs == null) {
+//            ClassModel.IndyDesc indy = f.curClass().cpIndy(index);
+//            MethodType methodType = MethodType.fromMethodDescriptorString(indy.invokeDesc,
+//                            f.curClassLoader());
+//            MethodHandle bsm = (MethodHandle) loadConstant(f, indy.bootstrapCPIndex);
+//            int[] bsmArgs = indy.bootstrapArgCPIndexes;
+//            Object[] args = new Object[bsmArgs.length + 3];
+//            for (int i = 0; i < bsmArgs.length; i++)
+//                args[i + 3] = loadConstant(f, bsmArgs[i]);
+//            args[0] = f.getLookup();
+//            args[1] = indy.invokeName;
+//            args[2] = methodType;
+//            try {
+//                cs = (CallSite) interpretOrExecute(f, bsm, args).getReturnValueOrThrow();
+//                if (!cs.getTarget().type().equals(methodType))
+//                    throw new BootstrapMethodError("wrong type of call site: " + cs.getTarget().type());
+//            } catch (AssertionError | InterpreterError ex) {
+//                throw ex;
+//            } catch (Throwable ex) {
+//                cs = new FailedCallSite(methodType, ex);
+//                assert (cs.getTarget().type().equals(methodType));
+//            }
+//            CallSite oldcs = indyLinkageState.putIfAbsent(insn, cs);
+//            if (oldcs != null)
+//                cs = oldcs;
+//        }
+//        return cs;
+//    }
+
+    @CompilerDirectives.TruffleBoundary
     private ExceptionHandler resolveExceptionHandlers(int bci, StaticObject ex) {
         ExceptionHandler[] handlers = getMethod().getExceptionHandlers();
         for (ExceptionHandler handler : handlers) {
