@@ -70,7 +70,10 @@ public abstract class InteropException extends Exception {
      *
      * @return the exception
      * @since 0.14
+     * @deprecated without replacement. Instead always handle interop exceptions directly or rethrow
+     *             them where it is allowed.
      */
+    @Deprecated
     public final RuntimeException raise() {
         return silenceException(RuntimeException.class, this);
     }

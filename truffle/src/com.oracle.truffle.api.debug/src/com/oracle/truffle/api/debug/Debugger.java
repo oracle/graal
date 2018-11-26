@@ -95,14 +95,12 @@ public final class Debugger {
     final List<Object> propSupport = new CopyOnWriteArrayList<>();
     private final List<Consumer<Breakpoint>> breakpointAddedListeners = new CopyOnWriteArrayList<>();
     private final List<Consumer<Breakpoint>> breakpointRemovedListeners = new CopyOnWriteArrayList<>();
-    final ObjectStructures.MessageNodes msgNodes;
     private final Set<DebuggerSession> sessions = new HashSet<>();
     private final List<Breakpoint> breakpoints = new ArrayList<>();
     final Breakpoint alwaysHaltBreakpoint;
 
     Debugger(Env env) {
         this.env = env;
-        this.msgNodes = new ObjectStructures.MessageNodes();
         this.alwaysHaltBreakpoint = new Breakpoint(BreakpointLocation.ANY, SuspendAnchor.BEFORE);
         this.alwaysHaltBreakpoint.setEnabled(true);
     }
@@ -304,10 +302,6 @@ public final class Debugger {
         return env.getInstrumenter();
     }
 
-    ObjectStructures.MessageNodes getMessageNodes() {
-        return msgNodes;
-    }
-
     static void trace(String message, Object... parameters) {
         if (TRACE) {
             PrintStream out = System.out;
@@ -356,6 +350,11 @@ public final class Debugger {
         @Override
         protected Nodes nodes() {
             return super.nodes();
+        }
+
+        @Override
+        protected EngineSupport engineSupport() {
+            return super.engineSupport();
         }
 
         /*

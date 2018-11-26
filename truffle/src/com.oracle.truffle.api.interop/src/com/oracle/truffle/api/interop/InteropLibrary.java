@@ -258,12 +258,12 @@ public abstract class InteropLibrary extends Library {
         return getMembers(receiver, false);
     }
 
-    @Abstract(ifExported = "isObject")
+    @Abstract(ifExported = "readMember")
     public boolean isMemberReadable(Object receiver, String member) {
         return false;
     }
 
-    @Abstract(ifExported = "isObject")
+    @Abstract(ifExported = "isMemberReadable")
     public Object readMember(Object receiver, String member) throws UnsupportedMessageException, UnknownIdentifierException {
         throw UnsupportedMessageException.create();
     }
@@ -326,8 +326,7 @@ public abstract class InteropLibrary extends Library {
 
     // Array Messages
 
-    @Abstract(ifExported = {"readElement", "writeElement", "removeElement", "isElementModifiable", "isElementRemovable", "hasElementReadSideEffects", "isElementReadable",
-                    "hasElementWriteSideEffects"})
+    @Abstract(ifExported = {"readElement", "writeElement", "removeElement", "isElementModifiable", "isElementRemovable", "isElementReadable"})
     public boolean isArray(Object receiver) {
         return false;
     }
@@ -369,14 +368,6 @@ public abstract class InteropLibrary extends Library {
 
     @Abstract(ifExported = "removeElement")
     public boolean isElementRemovable(Object receiver, long index) {
-        return false;
-    }
-
-    public boolean hasElementReadSideEffects(Object receiver, String member) {
-        return false;
-    }
-
-    public boolean hasElementWriteSideEffects(Object receiver, String member) {
         return false;
     }
 

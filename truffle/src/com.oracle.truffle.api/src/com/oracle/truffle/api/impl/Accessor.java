@@ -347,6 +347,9 @@ public abstract class Accessor {
         public abstract boolean isHostSymbol(Object guestObject);
 
         public abstract <S> S lookupService(Object languageContextVMObject, LanguageInfo language, LanguageInfo accessingLanguage, Class<S> type);
+
+        public abstract Object convertPrimitive(Object value, Class<?> requestedType);
+
     }
 
     public abstract static class LanguageSupport {

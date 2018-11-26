@@ -41,11 +41,9 @@
 package com.oracle.truffle.api.debug;
 
 import java.util.Iterator;
-import java.util.List;
 
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -172,15 +170,15 @@ public final class DebugScope {
      */
     public Iterable<DebugValue> getArguments() throws DebugException {
         verifyValidState();
-        Iterable<DebugValue> arguments = null;
         try {
             Object argumentsObj = scope.getArguments();
-            if (argumentsObj != null && argumentsObj instanceof TruffleObject) {
-                TruffleObject argsTO = (TruffleObject) argumentsObj;
-                arguments = DebugValue.getProperties(argumentsObj, session, getLanguage(), this);
-                if (arguments == null && ObjectStructures.isArray(session.getDebugger().getMessageNodes(), argsTO)) {
-                    List<Object> array = ObjectStructures.asList(session.getDebugger().getMessageNodes(), argsTO);
-                    arguments = new ValueInteropList(session, getLanguage(), array);
+            if (argumentsObj != null) {
+                ValuePropertiesCollection properties = DebugValue.getProperties(argumentsObj, debugger, getLanguage(), this);
+                if (properties != null) {
+                    return properties;
+                }
+                if (ValueInteropList.INTEROP.isArray(argumentsObj)) {
+                    return new ValueInteropList(debugger, getLanguage(), argumentsObj);
                 }
             }
         } catch (ThreadDeath td) {
@@ -188,7 +186,7 @@ public final class DebugScope {
         } catch (Throwable ex) {
             throw new DebugException(session, ex, language, null, true, null);
         }
-        return arguments;
+        return null;
     }
 
     /**
