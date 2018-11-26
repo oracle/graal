@@ -44,8 +44,6 @@ import static jdk.vm.ci.amd64.AMD64.xmm4;
 import static jdk.vm.ci.amd64.AMD64.xmm5;
 import static jdk.vm.ci.amd64.AMD64.xmm6;
 import static jdk.vm.ci.amd64.AMD64.xmm7;
-import static org.graalvm.compiler.lir.amd64.AMD64HotSpotHelper.pointerConstant;
-import static org.graalvm.compiler.lir.amd64.AMD64HotSpotHelper.recordExternalAddress;
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
@@ -55,7 +53,7 @@ import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.asm.ArrayDataPointerConstant;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
-public final class AMD64MathCosOp extends AMD64MathIntrinsicUnaryOp {
+public final class AMD64MathCosOp extends AMD64MathIntrinsicOp {
 
     public static final LIRInstructionClass<AMD64MathCosOp> TYPE = LIRInstructionClass.create(AMD64MathCosOp.class);
 

@@ -82,7 +82,6 @@ import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
 import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 import static org.graalvm.compiler.lir.amd64.AMD64Arithmetic.DREM;
 import static org.graalvm.compiler.lir.amd64.AMD64Arithmetic.FREM;
-import static org.graalvm.compiler.lir.amd64.AMD64MathIntrinsicBinaryOp.BinaryIntrinsicOpcode.POW;
 
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MIOp;
@@ -114,11 +113,11 @@ import org.graalvm.compiler.lir.amd64.AMD64BinaryConsumer;
 import org.graalvm.compiler.lir.amd64.AMD64ClearRegisterOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathCosOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathExpOp;
-import org.graalvm.compiler.lir.amd64.AMD64MathIntrinsicBinaryOp;
+import org.graalvm.compiler.lir.amd64.AMD64MathIntrinsicOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathLog10Op;
 import org.graalvm.compiler.lir.amd64.AMD64MathLogOp;
+import org.graalvm.compiler.lir.amd64.AMD64MathPowOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathSinOp;
-import org.graalvm.compiler.lir.amd64.AMD64MathIntrinsicUnaryOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathTanOp;
 import org.graalvm.compiler.lir.amd64.AMD64Move;
 import org.graalvm.compiler.lir.amd64.AMD64MulDivOp;
@@ -1103,7 +1102,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         return result;
     }
 
-    private Variable emitLIRWrapperForMathStubs(AMD64MathIntrinsicUnaryOp op, Value input) {
+    private Variable emitLIRWrapperForUnaryMathStubs(AMD64MathIntrinsicOp op, Value input) {
         LIRGenerator gen = getLIRGen();
         LIRKind kind = LIRKind.combine(input);
         RegisterValue xmm0Value = xmm0.asValue(kind);
@@ -1119,7 +1118,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         LIRGenerator gen = getLIRGen();
         Variable result = maths.emitLog(gen, input, base10);
         if (result == null) {
-            result = emitLIRWrapperForMathStubs(base10 ? new AMD64MathLog10Op() : new AMD64MathLogOp(), input);
+            result = emitLIRWrapperForUnaryMathStubs(base10 ? new AMD64MathLog10Op() : new AMD64MathLogOp(), input);
         }
         return result;
     }
@@ -1129,7 +1128,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         LIRGenerator gen = getLIRGen();
         Variable result = maths.emitCos(gen, input);
         if (result == null) {
-            result = emitLIRWrapperForMathStubs(new AMD64MathCosOp(), input);
+            result = emitLIRWrapperForUnaryMathStubs(new AMD64MathCosOp(), input);
         }
         return result;
     }
@@ -1139,7 +1138,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         LIRGenerator gen = getLIRGen();
         Variable result = maths.emitSin(gen, input);
         if (result == null) {
-            result = emitLIRWrapperForMathStubs(new AMD64MathSinOp(), input);
+            result = emitLIRWrapperForUnaryMathStubs(new AMD64MathSinOp(), input);
         }
         return result;
     }
@@ -1149,25 +1148,32 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         LIRGenerator gen = getLIRGen();
         Variable result = maths.emitTan(gen, input);
         if (result == null) {
-            result = emitLIRWrapperForMathStubs(new AMD64MathTanOp(), input);
+            result = emitLIRWrapperForUnaryMathStubs(new AMD64MathTanOp(), input);
         }
         return result;
     }
 
     @Override
     public Value emitMathExp(Value input) {
-        return emitLIRWrapperForMathStubs(new AMD64MathExpOp(), input);
+        return emitLIRWrapperForUnaryMathStubs(new AMD64MathExpOp(), input);
+    }
+
+    private Variable emitLIRWrapperForBinaryMathStubs(AMD64MathIntrinsicOp op, Value input0, Value input1) {
+        LIRGenerator gen = getLIRGen();
+        LIRKind kind = LIRKind.combine(input0, input1);
+        RegisterValue xmm0Value = xmm0.asValue(kind);
+        gen.emitMove(xmm0Value, input0);
+        RegisterValue xmm1Value = xmm1.asValue(kind);
+        gen.emitMove(xmm1Value, input1);
+        gen.append(op);
+        Variable result = gen.newVariable(kind);
+        gen.emitMove(result, xmm0Value);
+        return result;
     }
 
     @Override
-    public Value emitMathPow(Value input1, Value input2) {
-        RegisterValue xmm0Value = xmm0.asValue(LIRKind.combine(input1));
-        getLIRGen().emitMove(xmm0Value, input1);
-        RegisterValue xmm1Value = xmm1.asValue(LIRKind.combine(input2));
-        getLIRGen().emitMove(xmm1Value, input2);
-        Variable result = getLIRGen().newVariable(LIRKind.combine(input1));
-        getLIRGen().append(new AMD64MathIntrinsicBinaryOp(getAMD64LIRGen(), POW, result, xmm0Value, xmm1Value));
-        return result;
+    public Value emitMathPow(Value x, Value y) {
+        return emitLIRWrapperForBinaryMathStubs(new AMD64MathPowOp(), x, y);
     }
 
     protected AMD64LIRGenerator getAMD64LIRGen() {

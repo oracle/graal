@@ -24,25 +24,29 @@
  */
 package org.graalvm.compiler.lir.amd64;
 
-import jdk.vm.ci.amd64.AMD64;
+import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
+import org.graalvm.compiler.lir.asm.ArrayDataPointerConstant;
+import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
+import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
 
 /**
- * This is the base class for all unary math intrinsics. It assumes both input and output are xmm0.
- * Users are responsible for adding two mov LIRs before and after this LIR instruction, to move the
- * input to xmm0, and to move the result from xmm0.
+ * This is the base class for all math intrinsics (stubs). It does not specify input or output, but
+ * instead assumes input(s) being xmm0 (and xmm1), and output being xmm0 as well. Users are
+ * responsible for adding mov LIRs before and after this LIR instruction, to move the inputs to
+ * aforementioned registers, and to move the result from xmm0.
  */
-public abstract class AMD64MathIntrinsicUnaryOp extends AMD64LIRInstruction {
+public abstract class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
 
     @Temp protected Value[] temps;
 
-    public AMD64MathIntrinsicUnaryOp(LIRInstructionClass<? extends AMD64MathIntrinsicUnaryOp> type, Register... registers) {
+    public AMD64MathIntrinsicOp(LIRInstructionClass<? extends AMD64MathIntrinsicOp> type, Register... registers) {
         super(type);
 
         temps = new Value[registers.length];
@@ -58,4 +62,11 @@ public abstract class AMD64MathIntrinsicUnaryOp extends AMD64LIRInstruction {
         }
     }
 
+    protected AMD64Address recordExternalAddress(CompilationResultBuilder crb, ArrayDataPointerConstant ptr) {
+        return (AMD64Address) crb.recordDataReferenceInCode(ptr);
+    }
+
+    protected ArrayDataPointerConstant pointerConstant(int alignment, int[] ints) {
+        return new ArrayDataPointerConstant(ints, alignment);
+    }
 }
