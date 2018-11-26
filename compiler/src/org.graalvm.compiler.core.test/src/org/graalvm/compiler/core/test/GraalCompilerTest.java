@@ -597,11 +597,11 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected HighTierContext getDefaultHighTierContext() {
-        return new HighTierContext(getProviders(), getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL);
+        return new HighTierContext(getProviders(), getDefaultGraphBuilderSuite(), getOptimisticOptimizations());
     }
 
     protected MidTierContext getDefaultMidTierContext() {
-        return new MidTierContext(getProviders(), getTargetProvider(), OptimisticOptimizations.ALL, null);
+        return new MidTierContext(getProviders(), getTargetProvider(), getOptimisticOptimizations(), null);
     }
 
     protected SnippetReflectionProvider getSnippetReflection() {
@@ -1039,6 +1039,10 @@ public abstract class GraalCompilerTest extends GraalTest {
         return compile(installedCodeOwner, graph, new CompilationResult(compilationId), compilationId, options);
     }
 
+    protected OptimisticOptimizations getOptimisticOptimizations() {
+        return OptimisticOptimizations.ALL;
+    }
+
     /**
      * Compiles a given method.
      *
@@ -1055,7 +1059,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         DebugContext debug = graphToCompile.getDebug();
         try (DebugContext.Scope s = debug.scope("Compile", graphToCompile)) {
             assert options != null;
-            Request<CompilationResult> request = new Request<>(graphToCompile, installedCodeOwner, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL,
+            Request<CompilationResult> request = new Request<>(graphToCompile, installedCodeOwner, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), getOptimisticOptimizations(),
                             graphToCompile.getProfilingInfo(), createSuites(options), createLIRSuites(options), compilationResult, CompilationResultBuilderFactory.Default, true);
             return GraalCompiler.compile(request);
         } catch (Throwable e) {
@@ -1074,7 +1078,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected void applyFrontEnd(StructuredGraph graph) {
-        GraalCompiler.emitFrontEnd(getProviders(), getBackend(), graph, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, graph.getProfilingInfo(), createSuites(graph.getOptions()));
+        GraalCompiler.emitFrontEnd(getProviders(), getBackend(), graph, getDefaultGraphBuilderSuite(), getOptimisticOptimizations(), graph.getProfilingInfo(), createSuites(graph.getOptions()));
     }
 
     protected StructuredGraph lastCompiledGraph;
