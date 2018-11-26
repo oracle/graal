@@ -24,8 +24,6 @@ V(ExceptionClear) \
 V(FatalError) \
 V(PushLocalFrame) \
 V(PopLocalFrame) \
-V(NewGlobalRef) \
-V(DeleteGlobalRef) \
 V(DeleteLocalRef) \
 V(IsSameObject) \
 V(NewLocalRef) \
@@ -125,7 +123,6 @@ V(SetIntArrayRegion) \
 V(SetLongArrayRegion) \
 V(SetFloatArrayRegion) \
 V(SetDoubleArrayRegion) \
-V(RegisterNatives) \
 V(UnregisterNatives) \
 V(MonitorEnter) \
 V(MonitorExit) \
@@ -139,13 +136,17 @@ V(ReleaseStringCritical) \
 V(NewWeakGlobalRef) \
 V(DeleteWeakGlobalRef) \
 V(ExceptionCheck) \
-V(NewDirectByteBuffer) \
 V(GetDirectBufferAddress) \
 V(GetDirectBufferCapacity) \
 V(GetObjectRefType)
 
 // Varargs
 #define NON_JAVA_IMPL(V) \
+V(NewDirectByteBuffer) \
+V(RegisterNatives) \
+V(NewGlobalRef) \
+V(DeleteGlobalRef) \
+V(RegisterNatives) \
 V(NewObject) \
 V(NewObjectV) \
 V(NewObjectA) \
@@ -567,7 +568,7 @@ TYPE_LIST2(CALL_NON_VIRTUAL_METHOD_BRIDGE)
 // Spawn a "guest" direct byte buffer.
 // This ByteBuffer is set to BIG_ENDIAN by default.
 jobject NewDirectByteBuffer(JNIEnv* env, void* address, jlong capacity) {
-  jclass java_nio_DirectByteBuffer = (*env)->FindClass(env, "java.nio.DirectByteBuffer");
+  jclass java_nio_DirectByteBuffer = (*env)->FindClass(env, "java/nio/DirectByteBuffer");
   // TODO(peterssen): Cache class and constructor.
   jmethodID constructor = (*env)->GetMethodID(env, java_nio_DirectByteBuffer, "<init>", "(JI)V");
   // TODO(peterssen): Check narrowing conversion.
@@ -678,11 +679,12 @@ jlong initializeNativeContext(TruffleEnv* truffle_env, void* (*fetch_by_name)(co
   return (jlong) env;
 }
 
-void disposeNativeContext(TruffleEnv* truffle_env, jlong envPtr) {
- /*  JNIEnv *env = (JNIEnv*) envPtr;
+void disposeNativeContext(TruffleEnv* truffle_env, jlong env_ptr) {
+  JNIEnv *env = (JNIEnv*) env_ptr;
   struct JNINativeInterface_* jni_impl = (struct JNINativeInterface_*) *env;
   struct NespressoEnv *nespresso_env = (struct NespressoEnv *) (*env)->reserved0;
 
+  // Dispose methods implemented in Java.
   #define DISPOSE__(fn_name) \
      (*truffle_env)->releaseClosureRef(truffle_env, jni_impl->fn_name); \
      jni_impl->fn_name = NULL;
@@ -690,6 +692,14 @@ void disposeNativeContext(TruffleEnv* truffle_env, jlong envPtr) {
   JNI_FUNCTION_LIST(DISPOSE__)
   #undef DISPOSE__
 
+  // Dispose (nullify) native methods (bridges).
+  #define DISPOSE_BRIDGE__(fn_name) \
+     jni_impl->fn_name = NULL;
+
+    BRIDGE_METHOD_LIST(DISPOSE_BRIDGE__)
+  #undef DISPOSE_BRIDGE__
+
+  // Dispose Nespresso-specific methods implemented in Java (e.g. Java varargs).
   #define DISPOSE_VARARGS_METHOD__(fn_name) \
     (*truffle_env)->releaseClosureRef(truffle_env, nespresso_env->fn_name); \
     *(void**)(&nespresso_env->fn_name) = NULL;
@@ -698,9 +708,14 @@ void disposeNativeContext(TruffleEnv* truffle_env, jlong envPtr) {
   #undef DISPOSE_VARARG_METHOD__
 
   free(nespresso_env);
+  jni_impl->reserved0 = NULL;
+
   free(jni_impl);
+  *env = NULL;
+
   free(env);
-  truffle_ctx = NULL; */
+
+  truffle_ctx = NULL;
 }
 
 void* dupClosureRef(TruffleEnv *truffle_env, void* closure) {
