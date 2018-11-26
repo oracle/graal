@@ -4,6 +4,7 @@
 #include <jni.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
@@ -86,19 +87,21 @@ MokapotEnv* getEnv() {
 }
 
 void disposeMokapotContext(TruffleEnv *truffle_env, jlong moka_env_ptr) {
-  // MokapotEnv *moka_env = (MokapotEnv *) moka_env_ptr;
+  MokapotEnv *moka_env = (MokapotEnv *) moka_env_ptr;
+  struct MokapotNativeInterface_ *functions = (struct MokapotNativeInterface_*) *moka_env;
 
-  // FIXME(peterssen): Leak.
-
-/*
   #define DISPOSE__(name) \
-       (*truffle_env)->releaseClosureRef(truffle_env, (*moka_env)->name);
-*/
-  // VM_METHOD_LIST(DISPOSE__)
-  // #undef DISPOSE__
-  // free((*moka_env)->vm);
-  // free((void*) *moka_env);
-  // free(moka_env);
+       (*truffle_env)->releaseClosureRef(truffle_env, functions->name); \
+       functions->name = NULL;
+
+  VM_METHOD_LIST(DISPOSE__)
+  #undef DISPOSE__
+
+  free((*moka_env)->vm);
+  functions->vm = NULL;
+  free(functions);
+  *moka_env = NULL;
+  free(moka_env);
 }
 
 jint JVM_GetInterfaceVersion(void) {
@@ -1169,7 +1172,7 @@ int JVM_GetHostName(char *name, int namelen) {
 }
 
 void *JVM_RawMonitorCreate(void) {
-  IMPLEMENTED(JVM_RawMonitorCreate);
+  NATIVE(JVM_RawMonitorCreate);
   // TODO(peterssen): Cache class and method.
   jclass java_lang_Object = (*jniEnv)->FindClass(jniEnv, "java.lang.Object");
   jmethodID constructor = (*jniEnv)->GetMethodID(jniEnv, java_lang_Object, "<init>", "()V");
@@ -1178,18 +1181,18 @@ void *JVM_RawMonitorCreate(void) {
 }
 
 void JVM_RawMonitorDestroy(void *mon) {
-  IMPLEMENTED(JVM_RawMonitorDestroy);
+  NATIVE(JVM_RawMonitorDestroy);
   jobject lock = (jobject) mon;
   (*jniEnv)->DeleteGlobalRef(jniEnv, lock);
 }
 
 jint JVM_RawMonitorEnter(void *mon) {
-  IMPLEMENTED(JVM_RawMonitorEnter);
+  NATIVE(JVM_RawMonitorEnter);
   return (*jniEnv)->MonitorEnter(jniEnv, (jobject) mon);
 }
 
 void JVM_RawMonitorExit(void *mon) {
-  IMPLEMENTED(JVM_RawMonitorExit);
+  NATIVE(JVM_RawMonitorExit);
   (*jniEnv)->MonitorExit(jniEnv, (jobject) mon);
 }
 
@@ -1244,12 +1247,12 @@ void JVM_GetVersionInfo(JNIEnv *env, jvm_version_info *info, size_t info_size) {
 }
 
 int jio_vsnprintf(char *str, size_t count, const char *fmt, va_list args) {
-    IMPLEMENTED(jio_vsnprintf);
+    NATIVE(jio_vsnprintf);
     return vsnprintf(str, count, fmt, args);
 }
 
 int jio_snprintf(char *str, size_t count, const char *fmt, ...) {
-  IMPLEMENTED(jio_snprintf);
+  NATIVE(jio_snprintf);
   int len;
   va_list args;
   va_start(args, fmt);
@@ -1259,7 +1262,7 @@ int jio_snprintf(char *str, size_t count, const char *fmt, ...) {
 }
 
 int jio_fprintf(FILE *file, const char *fmt, ...) {
-  IMPLEMENTED(jio_fprintf);
+  NATIVE(jio_fprintf);
   int len;
   va_list args;
   va_start(args, fmt);
@@ -1269,6 +1272,6 @@ int jio_fprintf(FILE *file, const char *fmt, ...) {
 }
 
 int jio_vfprintf(FILE *file, const char *fmt, va_list args) {
-    IMPLEMENTED(jio_vfprintf);
+    NATIVE(jio_vfprintf);
     return vfprintf(file, fmt, args);
 }
