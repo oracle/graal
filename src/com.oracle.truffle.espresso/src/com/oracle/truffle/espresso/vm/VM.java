@@ -611,9 +611,7 @@ public class VM extends NativeEnv {
             Field f = lib.getClass().getDeclaredField("handle");
             f.setAccessible(true);
             long handle = (long) f.get(lib);
-            if (!handle2Lib.containsKey((Long) handle)) {
-                handle2Lib.put(handle, lib);
-            }
+            handle2Lib.put(handle, lib);
             return handle;
         } catch (IllegalAccessException | NoSuchFieldException e) {
             throw EspressoError.shouldNotReachHere(e);
