@@ -270,7 +270,7 @@ public class Target_sun_misc_Unsafe {
 
     @Intrinsic(hasReceiver = true)
     public static void ensureClassInitialized(Object self, @Type(Class.class) StaticObject clazz) {
-        ((StaticObjectClass) clazz).getMirror().initialize();
+        meta(((StaticObjectClass) clazz).getMirror()).safeInitialize();
     }
 
     @Intrinsic(hasReceiver = true)
