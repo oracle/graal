@@ -53,11 +53,15 @@ import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Files;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystemAlreadyExistsException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.spi.FileSystemProvider;
 import java.nio.file.spi.FileTypeDetector;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.Set;
@@ -66,13 +70,13 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.io.ByteSequence;
+import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.nodes.LanguageInfo;
-import org.graalvm.polyglot.io.FileSystem;
 
 /**
  * Representation of a source code unit and its contents that can be evaluated in a language. Each
@@ -1349,10 +1353,35 @@ public abstract class Source {
     static String findMimeType(final URL url, URLConnection connection, Set<String> validMimeTypes) throws IOException {
         Path path;
         try {
-            path = Paths.get(url.toURI());
-            String firstGuess = findMimeType(path, validMimeTypes);
-            if (firstGuess != null) {
-                return firstGuess;
+            URI uri = url.toURI();
+            FileSystemProvider fsProvider = null;
+            String scheme = uri.getScheme();
+            if (scheme != null && !scheme.equals("file")) {
+                for (FileSystemProvider fsp : FileSystemProvider.installedProviders()) {
+                    if (scheme.equals(fsp.getScheme())) {
+                        fsProvider = fsp;
+                        break;
+                    }
+                }
+            }
+            FileSystem fs = null;
+            if (fsProvider != null) {
+                try {
+                    fs = fsProvider.newFileSystem(uri, Collections.emptyMap());
+                } catch (FileSystemAlreadyExistsException | IOException | IllegalArgumentException e) {
+                    // continue with null fs, newFileSystem may not be needed
+                }
+            }
+            try {
+                path = Paths.get(uri);
+                String firstGuess = findMimeType(path, validMimeTypes);
+                if (firstGuess != null) {
+                    return firstGuess;
+                }
+            } finally {
+                if (fs != null) {
+                    fs.close();
+                }
             }
         } catch (URISyntaxException | IllegalArgumentException | FileSystemNotFoundException ex) {
             // swallow and go on
