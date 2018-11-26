@@ -15,10 +15,6 @@
 JNIEnv *jniEnv = NULL;
 MokapotEnv *mokaEnv = NULL;
 
-void Mokapot_SetJNIEnv(JNIEnv *env) {
-  jniEnv = env;
-}
-
 void* getJavaVM(TruffleEnv *truffle_env) {
   return (*mokaEnv)->vm;
 }
