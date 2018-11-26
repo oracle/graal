@@ -33,11 +33,16 @@ import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
 
-public abstract class AMD64MathStubUnaryOp extends AMD64LIRInstruction {
+/**
+ * This is the base class for all unary math intrinsics. It assumes both input and output are xmm0.
+ * Users are responsible for adding two mov LIRs before and after this LIR instruction, to move the
+ * input to xmm0, and to move the result from xmm0.
+ */
+public abstract class AMD64MathIntrinsicUnaryOp extends AMD64LIRInstruction {
 
     @Temp protected Value[] temps;
 
-    public AMD64MathStubUnaryOp(LIRInstructionClass<? extends AMD64MathStubUnaryOp> type, Register... registers) {
+    public AMD64MathIntrinsicUnaryOp(LIRInstructionClass<? extends AMD64MathIntrinsicUnaryOp> type, Register... registers) {
         super(type);
 
         temps = new Value[registers.length];
@@ -51,7 +56,6 @@ public abstract class AMD64MathStubUnaryOp extends AMD64LIRInstruction {
                 throw GraalError.shouldNotReachHere("Unsupported register type in math stubs.");
             }
         }
-
     }
 
 }
