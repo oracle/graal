@@ -53,7 +53,6 @@ import org.graalvm.compiler.phases.common.FloatingReadPhase;
 import org.graalvm.compiler.phases.common.GuardLoweringPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.common.RemoveValueProxyPhase;
-import org.graalvm.compiler.phases.common.inlining.InliningPhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
@@ -712,7 +711,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
             CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
             canonicalizer.apply(graph, context);
             if (mode == TestMode.INLINED_WITHOUT_FRAMESTATES) {
-                new InliningPhase(canonicalizer).apply(graph, context);
+                createInliningPhase(canonicalizer).apply(graph, context);
             }
             new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
             if (mode == TestMode.WITHOUT_FRAMESTATES || mode == TestMode.INLINED_WITHOUT_FRAMESTATES) {

@@ -79,6 +79,7 @@ import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.compiler.core.common.SuppressSVMWarnings;
 
 public class Inflation extends BigBang {
     private Set<AnalysisField> handledUnknownValueFields;
@@ -606,6 +607,20 @@ public class Inflation extends BigBang {
         if (illegalCalleesPattern.matcher(calleeName).find()) {
             String callerName = caller.format("%H.%n");
             if (targetCallersPattern.matcher(callerName).find()) {
+                SuppressSVMWarnings suppress = caller.getAnnotation(SuppressSVMWarnings.class);
+                AnalysisType callerType = caller.getDeclaringClass();
+                while (suppress == null && callerType != null) {
+                    suppress = callerType.getAnnotation(SuppressSVMWarnings.class);
+                    callerType = callerType.getEnclosingType();
+                }
+                if (suppress != null) {
+                    String[] reasons = suppress.value();
+                    for (String r : reasons) {
+                        if (r.equals("AllowUseOfStreamAPI")) {
+                            return true;
+                        }
+                    }
+                }
                 String message = "Illegal: Graal/Truffle use of Stream API: " + calleeName;
                 int bci = srcPosition.getBCI();
                 String trace = caller.asStackTraceElement(bci).toString();

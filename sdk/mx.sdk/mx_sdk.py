@@ -70,14 +70,14 @@ def javadoc(args):
     mx.javadoc(['--unified', '--exclude-packages', 'org.graalvm.polyglot.tck'] + args)
 
 
-def add_graalvm_hostvm_config(name, java_args=None, lang_args=None, priority=0):
+def add_graalvm_hostvm_config(name, java_args=None, launcher_args=None, priority=0):
     """
     :type name: str
     :type java_args: list[str] | None
-    :type lang_args: list[str] | None
+    :type launcher_args: list[str] | None
     :type priority: int
     """
-    graalvm_hostvm_configs.append((name, java_args, lang_args, priority))
+    graalvm_hostvm_configs.append((name, java_args, launcher_args, priority))
 
 
 class AbstractNativeImageConfig(object):

@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2018, Arm Limited and affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,19 +22,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package org.graalvm.compiler.core.common;
 
-package org.graalvm.compiler.core.aarch64.test;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 
-import jdk.vm.ci.aarch64.AArch64;
-import org.graalvm.compiler.core.test.MatchRuleTest;
-import org.junit.Before;
-
-import static org.junit.Assume.assumeTrue;
-
-public abstract class AArch64MatchRuleTest extends MatchRuleTest {
-    @Before
-    public void checkAArch64() {
-        assumeTrue("skipping AArch64 specific test", getTarget().arch instanceof AArch64);
-    }
-
+@Retention(RetentionPolicy.RUNTIME)
+public @interface SuppressSVMWarnings {
+    String[] value();
 }

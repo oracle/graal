@@ -57,7 +57,7 @@ public class TruffleBoundaryPhase extends Phase {
                 ExceptionObjectNode exceptionObject = (ExceptionObjectNode) invoke.exceptionEdge();
 
                 FixedNode originalNext = exceptionObject.next();
-                if (!(originalNext instanceof DeoptimizeNode)) {
+                if (!(originalNext instanceof DeoptimizeNode) && invoke.callTarget().targetMethod() != null) {
                     TruffleBoundary truffleBoundary = invoke.callTarget().targetMethod().getAnnotation(TruffleBoundary.class);
                     if (truffleBoundary != null) {
                         if (!truffleBoundary.throwsControlFlowException() && truffleBoundary.transferToInterpreterOnException()) {

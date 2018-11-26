@@ -28,13 +28,16 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 
+import java.util.logging.Level;
+
+import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_BAILOUT_MESSAGES;
+import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_COMPILER_FALLBACK;
+import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_TOTAL_COMPILATION_TIME;
+
 public class RegexCompilerWithFallback extends RegexCompiler {
 
     private final RegexCompiler mainCompiler;
     private final RegexCompiler fallbackCompiler;
-
-    private final DebugUtil.DebugLogger logBailout = new DebugUtil.DebugLogger("Bailout: ", DebugUtil.LOG_BAILOUT_MESSAGES);
-    private final DebugUtil.Timer timer = DebugUtil.LOG_TOTAL_COMPILATION_TIME ? new DebugUtil.Timer() : null;
 
     public RegexCompilerWithFallback(TruffleObject mainCompiler, TruffleObject fallbackCompiler) {
         this.mainCompiler = ForeignRegexCompiler.importRegexCompiler(mainCompiler);
@@ -47,40 +50,54 @@ public class RegexCompilerWithFallback extends RegexCompiler {
         TruffleObject regex;
         long elapsedTimeMain = 0;
         long elapsedTimeFallback = 0;
+        DebugUtil.Timer timer = null;
+        final boolean shouldLog = shouldLogCompilationTime();
+        if (shouldLog) {
+            timer = new DebugUtil.Timer();
+        }
         try {
-            if (DebugUtil.LOG_TOTAL_COMPILATION_TIME) {
+            if (shouldLog) {
                 timer.start();
             }
             regex = mainCompiler.compile(regexSource);
-            if (DebugUtil.LOG_TOTAL_COMPILATION_TIME) {
+            if (shouldLog) {
                 elapsedTimeMain = timer.getElapsed();
             }
+            LOG_COMPILER_FALLBACK.finer(() -> "Primary compiler used: " + regexSource);
         } catch (UnsupportedRegexException mainBailout) {
-            logBailout.log(mainBailout.getMessage() + ": " + regexSource);
+            LOG_BAILOUT_MESSAGES.fine(() -> mainBailout.getReason() + ": " + regexSource);
             try {
-                if (DebugUtil.LOG_TOTAL_COMPILATION_TIME) {
+                if (shouldLog) {
                     timer.start();
                 }
                 regex = fallbackCompiler.compile(regexSource);
-                if (DebugUtil.LOG_TOTAL_COMPILATION_TIME) {
+                if (shouldLog) {
                     elapsedTimeFallback = timer.getElapsed();
                 }
+                LOG_COMPILER_FALLBACK.fine(() -> String.format("Secondary compiler used (primary bailout due to '%s'): %s", mainBailout.getReason(), regexSource));
             } catch (UnsupportedRegexException fallbackBailout) {
+                LOG_COMPILER_FALLBACK.fine(() -> String.format("No compiler handled following regex (primary bailout: '%s'; secondary bailout: '%s'): %s", mainBailout.getReason(),
+                                fallbackBailout.getReason(), regexSource));
                 String bailoutReasons = String.format("%s; %s", mainBailout.getReason(), fallbackBailout.getReason());
                 throw new UnsupportedRegexException(bailoutReasons, regexSource);
             }
         }
-        if (DebugUtil.LOG_TOTAL_COMPILATION_TIME) {
+        if (shouldLog) {
             logCompilationTime(regexSource, elapsedTimeMain, elapsedTimeFallback);
         }
         return regex;
     }
 
+    private static boolean shouldLogCompilationTime() {
+        return LOG_TOTAL_COMPILATION_TIME.isLoggable(Level.FINE);
+    }
+
     private static void logCompilationTime(RegexSource regexSource, long elapsedTimeMain, long elapsedTimeFallback) {
-        System.out.println(String.format("%s, %s, %s, %s",
+        LOG_TOTAL_COMPILATION_TIME.log(Level.FINE, "{0}, {1}, {2}, {3}", new Object[]{
                         DebugUtil.Timer.elapsedToString(elapsedTimeMain + elapsedTimeFallback),
                         DebugUtil.Timer.elapsedToString(elapsedTimeMain),
                         DebugUtil.Timer.elapsedToString(elapsedTimeFallback),
-                        DebugUtil.jsStringEscape(regexSource.toString())));
+                        DebugUtil.jsStringEscape(regexSource.toString())
+        });
     }
 }

@@ -243,8 +243,8 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
     def run(self, cwd, args):
         bench_file = args[-1]
         launcher_args = self.launcher_args(args[:-1]) + [bench_file]
-        if hasattr(self.host_vm(), 'run_lang'):
-            result = self.host_vm().run_lang('lli', launcher_args, cwd)
+        if hasattr(self.host_vm(), 'run_launcher'):
+            result = self.host_vm().run_launcher('lli', launcher_args, cwd)
         else:
             def _filter_properties(args):
                 props = []

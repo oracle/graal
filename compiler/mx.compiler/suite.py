@@ -111,11 +111,6 @@ suite = {
       "sha1" : "305a772ccbdc0e42dfa233b0ce6762d0dd1de6de",
     },
 
-    "IDEALGRAPHVISUALIZER_DIST" : {
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/idealgraphvisualizer/idealgraphvisualizer-619.zip"],
-      "sha1" : "7fa6906c7898e736396f7143a173c53ca4e2a831",
-    },
-
     "JOL_CLI" : {
       "sha1" : "45dd0cf195b16e70710a8d6d763cda614cf6f31e",
       "maven" : {
