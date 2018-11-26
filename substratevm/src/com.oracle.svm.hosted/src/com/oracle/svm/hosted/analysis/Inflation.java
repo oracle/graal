@@ -45,6 +45,7 @@ import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 import java.util.regex.Pattern;
 
+import org.graalvm.compiler.core.common.SuppressSVMWarnings;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.word.WordBase;
@@ -79,7 +80,7 @@ import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.compiler.core.common.SuppressSVMWarnings;
+import sun.reflect.generics.reflectiveObjects.ParameterizedTypeImpl;
 
 public class Inflation extends BigBang {
     private Set<AnalysisField> handledUnknownValueFields;
@@ -287,7 +288,7 @@ public class Inflation extends BigBang {
         Type[] allGenericInterfaces;
         try {
             allGenericInterfaces = javaClass.getGenericInterfaces();
-        } catch (MalformedParameterizedTypeException t) {
+        } catch (MalformedParameterizedTypeException | TypeNotPresentException t) {
             /*
              * Loading generic interfaces can fail due to missing types. Ignore the exception and
              * return an empty array.
@@ -295,21 +296,45 @@ public class Inflation extends BigBang {
             allGenericInterfaces = new Type[0];
         }
 
-        Type[] genericInterfaces = Arrays.stream(allGenericInterfaces).filter(this::filterGenericInterfaces).toArray(Type[]::new);
+        Type[] genericInterfaces = Arrays.stream(allGenericInterfaces).filter(this::isTypeAllowed).toArray(Type[]::new);
         Type[] cachedGenericInterfaces = genericInterfacesMap.computeIfAbsent(new GenericInterfacesEncodingKey(genericInterfaces), k -> genericInterfaces);
-        Type genericSuperClass = javaClass.getGenericSuperclass();
+        Type genericSuperClass;
+        try {
+            genericSuperClass = javaClass.getGenericSuperclass();
+        } catch (MalformedParameterizedTypeException | TypeNotPresentException t) {
+            /*
+             * Loading the generic super class can fail due to missing types. Ignore the exception
+             * and return null.
+             */
+            genericSuperClass = null;
+        }
+        if (!isTypeAllowed(genericSuperClass)) {
+            genericSuperClass = null;
+        }
         hub.setGenericInfo(GenericInfo.factory(typeParameters, cachedGenericInterfaces, genericSuperClass));
     }
 
     private void fillAnnotatedSuperInfo(AnalysisType type, DynamicHub hub) {
         Class<?> javaClass = type.getJavaClass();
 
-        AnnotatedType annotatedSuperclass = javaClass.getAnnotatedSuperclass();
+        AnnotatedType annotatedSuperclass;
+        try {
+            annotatedSuperclass = javaClass.getAnnotatedSuperclass();
+        } catch (MalformedParameterizedTypeException | TypeNotPresentException t) {
+            /*
+             * Loading the annotated super class can fail due to missing types. Ignore the exception
+             * and return null.
+             */
+            annotatedSuperclass = null;
+        }
+        if (annotatedSuperclass != null && !isTypeAllowed(annotatedSuperclass.getType())) {
+            annotatedSuperclass = null;
+        }
 
         AnnotatedType[] allAnnotatedInterfaces;
         try {
             allAnnotatedInterfaces = javaClass.getAnnotatedInterfaces();
-        } catch (MalformedParameterizedTypeException t) {
+        } catch (MalformedParameterizedTypeException | TypeNotPresentException t) {
             /*
              * Loading annotated interfaces can fail due to missing types. Ignore the exception and
              * return an empty array.
@@ -318,18 +343,29 @@ public class Inflation extends BigBang {
         }
 
         AnnotatedType[] annotatedInterfaces = Arrays.stream(allAnnotatedInterfaces)
-                        .filter(ai -> filterGenericInterfaces(ai.getType())).toArray(AnnotatedType[]::new);
+                        .filter(ai -> isTypeAllowed(ai.getType())).toArray(AnnotatedType[]::new);
         AnnotatedType[] cachedAnnotatedInterfaces = annotatedInterfacesMap.computeIfAbsent(
                         new AnnotatedInterfacesEncodingKey(annotatedInterfaces), k -> annotatedInterfaces);
         hub.setAnnotatedSuperInfo(AnnotatedSuperInfo.factory(annotatedSuperclass, cachedAnnotatedInterfaces));
     }
 
-    private boolean filterGenericInterfaces(Type t) {
+    private boolean isTypeAllowed(Type t) {
         if (t instanceof Class) {
             Optional<? extends ResolvedJavaType> resolved = metaAccess.optionalLookupJavaType((Class<?>) t);
             return resolved.isPresent() && universe.hostVM().platformSupported(resolved.get());
+        } else if (t instanceof ParameterizedTypeImpl) {
+            ParameterizedTypeImpl paramType = (ParameterizedTypeImpl) t;
+            Type[] typeArgs = paramType.getActualTypeArguments();
+            for (Type typeArg : typeArgs) {
+                if (typeArg instanceof Class<?>) {
+                    Class<?> typeArgAsClass = (Class<?>) typeArg;
+                    if (NativeImageClassLoader.classIsMissing(typeArgAsClass)) {
+                        /* The type argument is a missing class. */
+                        return false;
+                    }
+                }
+            }
         }
-
         return true;
     }
 
