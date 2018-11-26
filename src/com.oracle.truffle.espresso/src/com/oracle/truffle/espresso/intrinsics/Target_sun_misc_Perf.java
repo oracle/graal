@@ -54,12 +54,12 @@ public class Target_sun_misc_Perf {
 
     @Intrinsic(hasReceiver = true)
     public static long highResCounter(Object self) {
-        return Perf.getPerf().highResCounter();
+        return hostPerf.highResCounter();
     }
 
     @Intrinsic(hasReceiver = true)
     public static long highResFrequency(Object self) {
-        return Perf.getPerf().highResFrequency();
+        return hostPerf.highResFrequency();
     }
 
     @Intrinsic(hasReceiver = true)

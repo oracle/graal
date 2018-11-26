@@ -73,10 +73,6 @@
     "allPublicMethods": true
   },
   {
-    "name": "com.oracle.truffle.espresso.intrinsics.Target_java_util_jar_JarFile",    
-    "allPublicMethods": true
-  },
-  {
     "name": "com.oracle.truffle.espresso.intrinsics.Target_sun_misc_Perf",    
     "allPublicMethods": true
   },
