@@ -55,17 +55,19 @@ import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.asm.ArrayDataPointerConstant;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
-public final class AMD64MathCosOp extends AMD64MathStubUnaryOp {
+import jdk.vm.ci.amd64.AMD64;
 
-    public static final LIRInstructionClass<AMD64MathCosOp> TYPE = LIRInstructionClass.create(AMD64MathCosOp.class);
+public final class AMD64MathSinOp extends AMD64MathStubUnaryOp {
 
-    public AMD64MathCosOp() {
-        super(TYPE, /* GPR */ rax, rcx, rdx, rbx, rsi, rdi, r8, r9, r10, r11,
+    public static final LIRInstructionClass<AMD64MathSinOp> TYPE = LIRInstructionClass.create(AMD64MathSinOp.class);
+
+    public AMD64MathSinOp() {
+        super(TYPE, /* GPR */ rax, rcx, rdx, rbx, rsp, rsi, rdi, r8, r9, r10, r11,
                         /* XMM */ xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7);
     }
 
     /******************************************************************************/
-// ALGORITHM DESCRIPTION - COS()
+// ALGORITHM DESCRIPTION - SIN()
 // ---------------------
 //
 // 1. RANGE REDUCTION
@@ -197,16 +199,18 @@ public final class AMD64MathCosOp extends AMD64MathStubUnaryOp {
 //
 // 7. SMALL ARGUMENTS
 //
-// Inputs with |X| < 2^-252 are treated specially as
-// 1 - |x|.
+// If |x| < SNN (SNN meaning the smallest normal number), we
+// simply perform 0.1111111 cdots 1111 * x. For SNN <= |x|, we
+// do 2^-55 * (2^55 * x - x).
 //
 // Special cases:
-// cos(NaN) = quiet NaN, and raise invalid exception
-// cos(INF) = NaN and raise invalid exception
-// cos(0) = 1
+// sin(NaN) = quiet NaN, and raise invalid exception
+// sin(INF) = NaN and raise invalid exception
+// sin(+/-0) = +/-0
 //
     /******************************************************************************/
 
+// The 64 bit code is at most SSE2 compliant
     private ArrayDataPointerConstant onehalf = pointerConstant(16, new int[]{
             // @formatter:off
             0x00000000, 0x3fe00000, 0x00000000, 0x3fe00000
@@ -367,12 +371,9 @@ public final class AMD64MathCosOp extends AMD64MathStubUnaryOp {
 
     private ArrayDataPointerConstant pi4 = pointerConstant(8, new int[]{
             // @formatter:off
-            0x40000000, 0x3fe921fb, 0x18469899, 0x3e64442d
-            // @formatter:on
+            0x40000000, 0x3fe921fb,
     });
-
     private ArrayDataPointerConstant pi48 = pointerConstant(8, new int[]{
-            // @formatter:off
             0x18469899, 0x3e64442d
             // @formatter:on
     });
@@ -380,6 +381,12 @@ public final class AMD64MathCosOp extends AMD64MathStubUnaryOp {
     private ArrayDataPointerConstant pi32Inv = pointerConstant(8, new int[]{
             // @formatter:off
             0x6dc9c883, 0x40245f30
+            // @formatter:on
+    });
+
+    private ArrayDataPointerConstant shifter = pointerConstant(8, new int[]{
+            // @formatter:off
+            0x00000000, 0x43380000
             // @formatter:on
     });
 
@@ -395,6 +402,24 @@ public final class AMD64MathCosOp extends AMD64MathStubUnaryOp {
             // @formatter:on
     });
 
+    private ArrayDataPointerConstant allOnes = pointerConstant(8, new int[]{
+            // @formatter:off
+            0xffffffff, 0x3fefffff
+            // @formatter:on
+    });
+
+    private ArrayDataPointerConstant twoPow55 = pointerConstant(8, new int[]{
+            // @formatter:off
+            0x00000000, 0x43600000
+            // @formatter:on
+    });
+
+    private ArrayDataPointerConstant twoPowM55 = pointerConstant(8, new int[]{
+            // @formatter:off
+            0x00000000, 0x3c800000
+            // @formatter:on
+    });
+
     private ArrayDataPointerConstant p1 = pointerConstant(8, new int[]{
             // @formatter:off
             0x54400000, 0x3fb921fb
@@ -404,13 +429,6 @@ public final class AMD64MathCosOp extends AMD64MathStubUnaryOp {
     private ArrayDataPointerConstant negZero = pointerConstant(8, new int[]{
             // @formatter:off
             0x00000000, 0x80000000
-            // @formatter:on
-    });
-
-    // The 64 bit code is at most SSE2 compliant
-    private ArrayDataPointerConstant one = pointerConstant(8, new int[]{
-            // @formatter:off
-            0x00000000, 0x3ff00000
             // @formatter:on
     });
 
@@ -430,13 +448,14 @@ public final class AMD64MathCosOp extends AMD64MathStubUnaryOp {
         Label block11 = new Label();
         Label block12 = new Label();
         Label block13 = new Label();
+        Label block14 = new Label();
 
-        masm.push(rbx);
+        masm.push(AMD64.rbx);
         masm.subq(rsp, 16);
         masm.movsd(new AMD64Address(rsp, 8), xmm0);
-
         masm.movl(rax, new AMD64Address(rsp, 12));
         masm.movq(xmm1, recordExternalAddress(crb, pi32Inv));          // 0x6dc9c883, 0x40245f30
+        masm.movq(xmm2, recordExternalAddress(crb, shifter));          // 0x00000000, 0x43380000
         masm.andl(rax, 2147418112);
         masm.subl(rax, 808452096);
         masm.cmpl(rax, 281346048);
@@ -450,39 +469,48 @@ public final class AMD64MathCosOp extends AMD64MathStubUnaryOp {
         masm.addpd(xmm1, xmm5);
         masm.cvttsd2sil(rdx, xmm1);
         masm.cvtsi2sdl(xmm1, rdx);
-        masm.movdqu(xmm2, recordExternalAddress(crb, p2));             // 0x1a600000, 0x3d90b461,
+        masm.movdqu(xmm6, recordExternalAddress(crb, p2));             // 0x1a600000, 0x3d90b461,
                                                                        // 0x1a600000, 0x3d90b461
-        masm.movq(xmm3, recordExternalAddress(crb, p1));               // 0x54400000, 0x3fb921fb
-        masm.mulsd(xmm3, xmm1);
-        masm.unpcklpd(xmm1, xmm1);
-        masm.addq(rdx, 1865232);
-        masm.movdqu(xmm4, xmm0);
-        masm.andq(rdx, 63);
+        masm.movq(r8, 0x3fb921fb54400000L);
+        masm.movdq(xmm3, r8);
         masm.movdqu(xmm5, recordExternalAddress(crb, sc4));            // 0xa556c734, 0x3ec71de3,
                                                                        // 0x1a01a01a, 0x3efa01a0
-        masm.leaq(rax, recordExternalAddress(crb, ctable));
-        masm.shlq(rdx, 5);
-        masm.addq(rax, rdx);
-        masm.mulpd(xmm2, xmm1);
-        masm.subsd(xmm0, xmm3);
+        masm.pshufd(xmm4, xmm0, 68);
+        masm.mulsd(xmm3, xmm1);
+        if (masm.supports(AMD64.CPUFeature.SSE3)) {
+            masm.movddup(xmm1, xmm1);
+        } else {
+            masm.movlhps(xmm1, xmm1);
+        }
+        masm.andl(rdx, 63);
+        masm.shll(rdx, 5);
+        masm.leaq(AMD64.rax, recordExternalAddress(crb, ctable));
+        masm.addq(AMD64.rax, AMD64.rdx);
+        masm.mulpd(xmm6, xmm1);
         masm.mulsd(xmm1, recordExternalAddress(crb, p3));              // 0x2e037073, 0x3b63198a
         masm.subsd(xmm4, xmm3);
-        masm.movq(xmm7, new AMD64Address(rax, 8));
-        masm.unpcklpd(xmm0, xmm0);
-        masm.movdqu(xmm3, xmm4);
-        masm.subsd(xmm4, xmm2);
+        masm.movq(xmm7, new AMD64Address(AMD64.rax, 8));
+        masm.subsd(xmm0, xmm3);
+        if (masm.supports(AMD64.CPUFeature.SSE3)) {
+            masm.movddup(xmm3, xmm4);
+        } else {
+            masm.movdqu(xmm3, xmm4);
+            masm.movlhps(xmm3, xmm3);
+        }
+        masm.subsd(xmm4, xmm6);
+        masm.pshufd(xmm0, xmm0, 68);
+        masm.movdqu(xmm2, new AMD64Address(AMD64.rax, 0));
         masm.mulpd(xmm5, xmm0);
-        masm.subpd(xmm0, xmm2);
-        masm.movdqu(xmm6, recordExternalAddress(crb, sc2));            // 0x11111111, 0x3f811111,
-                                                                       // 0x55555555, 0x3fa55555
+        masm.subpd(xmm0, xmm6);
         masm.mulsd(xmm7, xmm4);
         masm.subsd(xmm3, xmm4);
         masm.mulpd(xmm5, xmm0);
         masm.mulpd(xmm0, xmm0);
-        masm.subsd(xmm3, xmm2);
-        masm.movdqu(xmm2, new AMD64Address(rax, 0));
+        masm.subsd(xmm3, xmm6);
+        masm.movdqu(xmm6, recordExternalAddress(crb, sc2));            // 0x11111111, 0x3f811111,
+                                                                       // 0x55555555, 0x3fa55555
         masm.subsd(xmm1, xmm3);
-        masm.movq(xmm3, new AMD64Address(rax, 24));
+        masm.movq(xmm3, new AMD64Address(AMD64.rax, 24));
         masm.addsd(xmm2, xmm3);
         masm.subsd(xmm7, xmm2);
         masm.mulsd(xmm2, xmm4);
@@ -492,66 +520,72 @@ public final class AMD64MathCosOp extends AMD64MathStubUnaryOp {
         masm.mulpd(xmm0, xmm0);
         masm.addpd(xmm5, recordExternalAddress(crb, sc3));             // 0x1a01a01a, 0xbf2a01a0,
                                                                        // 0x16c16c17, 0xbf56c16c
-        masm.mulsd(xmm4, new AMD64Address(rax, 0));
+        masm.mulsd(xmm4, new AMD64Address(AMD64.rax, 0));
         masm.addpd(xmm6, recordExternalAddress(crb, sc1));             // 0x55555555, 0xbfc55555,
                                                                        // 0x00000000, 0xbfe00000
         masm.mulpd(xmm5, xmm0);
         masm.movdqu(xmm0, xmm3);
-        masm.addsd(xmm3, new AMD64Address(rax, 8));
+        masm.addsd(xmm3, new AMD64Address(AMD64.rax, 8));
         masm.mulpd(xmm1, xmm7);
         masm.movdqu(xmm7, xmm4);
         masm.addsd(xmm4, xmm3);
         masm.addpd(xmm6, xmm5);
-        masm.movq(xmm5, new AMD64Address(rax, 8));
+        masm.movq(xmm5, new AMD64Address(AMD64.rax, 8));
         masm.subsd(xmm5, xmm3);
         masm.subsd(xmm3, xmm4);
-        masm.addsd(xmm1, new AMD64Address(rax, 16));
+        masm.addsd(xmm1, new AMD64Address(AMD64.rax, 16));
         masm.mulpd(xmm6, xmm2);
-        masm.addsd(xmm0, xmm5);
+        masm.addsd(xmm5, xmm0);
         masm.addsd(xmm3, xmm7);
-        masm.addsd(xmm0, xmm1);
-        masm.addsd(xmm0, xmm3);
-        masm.addsd(xmm0, xmm6);
+        masm.addsd(xmm1, xmm5);
+        masm.addsd(xmm1, xmm3);
+        masm.addsd(xmm1, xmm6);
         masm.unpckhpd(xmm6, xmm6);
-        masm.addsd(xmm0, xmm6);
-        masm.addsd(xmm0, xmm4);
-        masm.jmp(block13);
+        masm.movdqu(xmm0, xmm4);
+        masm.addsd(xmm1, xmm6);
+        masm.addsd(xmm0, xmm1);
+        masm.jmp(block14);
 
         masm.bind(block0);
         masm.jcc(ConditionFlag.Greater, block1);
-        masm.pextrw(rax, xmm0, 3);
-        masm.andl(rax, 32767);
-        masm.pinsrw(xmm0, rax, 3);
-        masm.movq(xmm1, recordExternalAddress(crb, one));              // 0x00000000, 0x3ff00000
-        masm.subsd(xmm1, xmm0);
-        masm.movdqu(xmm0, xmm1);
-        masm.jmp(block13);
+        masm.shrl(rax, 20);
+        masm.cmpl(rax, 3325);
+        masm.jcc(ConditionFlag.NotEqual, block2);
+        masm.mulsd(xmm0, recordExternalAddress(crb, allOnes));         // 0xffffffff, 0x3fefffff
+        masm.jmp(block14);
+
+        masm.bind(block2);
+        masm.movq(xmm3, recordExternalAddress(crb, twoPow55));         // 0x00000000, 0x43600000
+        masm.mulsd(xmm3, xmm0);
+        masm.subsd(xmm3, xmm0);
+        masm.mulsd(xmm3, recordExternalAddress(crb, twoPowM55));       // 0x00000000, 0x3c800000
+        masm.jmp(block14);
 
         masm.bind(block1);
         masm.pextrw(rax, xmm0, 3);
         masm.andl(rax, 32752);
         masm.cmpl(rax, 32752);
-        masm.jcc(ConditionFlag.Equal, block2);
+        masm.jcc(ConditionFlag.Equal, block3);
         masm.pextrw(rcx, xmm0, 3);
         masm.andl(rcx, 32752);
         masm.subl(rcx, 16224);
         masm.shrl(rcx, 7);
         masm.andl(rcx, 65532);
         masm.leaq(r11, recordExternalAddress(crb, piInvTable));
-        masm.addq(rcx, r11);
-        masm.movdq(rax, xmm0);
-        masm.movl(r10, new AMD64Address(rcx, 20));
-        masm.movl(r8, new AMD64Address(rcx, 24));
+        masm.addq(AMD64.rcx, r11);
+        masm.movdq(AMD64.rax, xmm0);
+        masm.movl(r10, new AMD64Address(AMD64.rcx, 20));
+        masm.movl(r8, new AMD64Address(AMD64.rcx, 24));
         masm.movl(rdx, rax);
-        masm.shrq(rax, 21);
+        masm.shrq(AMD64.rax, 21);
         masm.orl(rax, Integer.MIN_VALUE);
         masm.shrl(rax, 11);
         masm.movl(r9, r10);
-        masm.imulq(r10, rdx);
-        masm.imulq(r9, rax);
-        masm.imulq(r8, rax);
-        masm.movl(rsi, new AMD64Address(rcx, 16));
-        masm.movl(rdi, new AMD64Address(rcx, 12));
+        masm.imulq(r10, AMD64.rdx);
+        masm.imulq(r9, AMD64.rax);
+        masm.imulq(r8, AMD64.rax);
+        masm.movl(rsi, new AMD64Address(AMD64.rcx, 16));
+        masm.movl(rdi, new AMD64Address(AMD64.rcx, 12));
         masm.movl(r11, r10);
         masm.shrq(r10, 32);
         masm.addq(r9, r10);
@@ -560,32 +594,32 @@ public final class AMD64MathCosOp extends AMD64MathStubUnaryOp {
         masm.shrq(r11, 32);
         masm.addq(r9, r11);
         masm.movl(r10, rsi);
-        masm.imulq(rsi, rdx);
-        masm.imulq(r10, rax);
+        masm.imulq(rsi, AMD64.rdx);
+        masm.imulq(r10, AMD64.rax);
         masm.movl(r11, rdi);
-        masm.imulq(rdi, rdx);
+        masm.imulq(rdi, AMD64.rdx);
         masm.movl(rbx, rsi);
         masm.shrq(rsi, 32);
-        masm.addq(r9, rbx);
+        masm.addq(r9, AMD64.rbx);
         masm.movl(rbx, r9);
         masm.shrq(r9, 32);
         masm.addq(r10, rsi);
         masm.addq(r10, r9);
-        masm.shlq(rbx, 32);
-        masm.orq(r8, rbx);
-        masm.imulq(r11, rax);
-        masm.movl(r9, new AMD64Address(rcx, 8));
-        masm.movl(rsi, new AMD64Address(rcx, 4));
+        masm.shlq(AMD64.rbx, 32);
+        masm.orq(r8, AMD64.rbx);
+        masm.imulq(r11, AMD64.rax);
+        masm.movl(r9, new AMD64Address(AMD64.rcx, 8));
+        masm.movl(rsi, new AMD64Address(AMD64.rcx, 4));
         masm.movl(rbx, rdi);
         masm.shrq(rdi, 32);
-        masm.addq(r10, rbx);
+        masm.addq(r10, AMD64.rbx);
         masm.movl(rbx, r10);
         masm.shrq(r10, 32);
         masm.addq(r11, rdi);
         masm.addq(r11, r10);
         masm.movq(rdi, r9);
-        masm.imulq(r9, rdx);
-        masm.imulq(rdi, rax);
+        masm.imulq(r9, AMD64.rdx);
+        masm.imulq(rdi, AMD64.rax);
         masm.movl(r10, r9);
         masm.shrq(r9, 32);
         masm.addq(r11, r10);
@@ -594,11 +628,11 @@ public final class AMD64MathCosOp extends AMD64MathStubUnaryOp {
         masm.addq(rdi, r9);
         masm.addq(rdi, r11);
         masm.movq(r9, rsi);
-        masm.imulq(rsi, rdx);
-        masm.imulq(r9, rax);
+        masm.imulq(rsi, AMD64.rdx);
+        masm.imulq(r9, AMD64.rax);
         masm.shlq(r10, 32);
-        masm.orq(r10, rbx);
-        masm.movl(rax, new AMD64Address(rcx, 0));
+        masm.orq(r10, AMD64.rbx);
+        masm.movl(rax, new AMD64Address(AMD64.rcx, 0));
         masm.movl(r11, rsi);
         masm.shrq(rsi, 32);
         masm.addq(rdi, r11);
@@ -606,10 +640,10 @@ public final class AMD64MathCosOp extends AMD64MathStubUnaryOp {
         masm.shrq(rdi, 32);
         masm.addq(r9, rsi);
         masm.addq(r9, rdi);
-        masm.imulq(rdx, rax);
+        masm.imulq(AMD64.rdx, AMD64.rax);
         masm.pextrw(rbx, xmm0, 3);
         masm.leaq(rdi, recordExternalAddress(crb, piInvTable));
-        masm.subq(rcx, rdi);
+        masm.subq(AMD64.rcx, rdi);
         masm.addl(rcx, rcx);
         masm.addl(rcx, rcx);
         masm.addl(rcx, rcx);
@@ -620,46 +654,47 @@ public final class AMD64MathCosOp extends AMD64MathStubUnaryOp {
         masm.andl(rbx, 2047);
         masm.subl(rbx, 1023);
         masm.subl(rcx, rbx);
-        masm.addq(r9, rdx);
+        masm.addq(r9, AMD64.rdx);
         masm.movl(rdx, rcx);
         masm.addl(rdx, 32);
         masm.cmpl(rcx, 1);
-        masm.jcc(ConditionFlag.Less, block3);
+        masm.jcc(ConditionFlag.Less, block4);
         masm.negl(rcx);
         masm.addl(rcx, 29);
         masm.shll(r9);
         masm.movl(rdi, r9);
         masm.andl(r9, 536870911);
         masm.testl(r9, 268435456);
-        masm.jcc(ConditionFlag.NotEqual, block4);
+        masm.jcc(ConditionFlag.NotEqual, block5);
         masm.shrl(r9);
         masm.movl(rbx, 0);
         masm.shlq(r9, 32);
         masm.orq(r9, r11);
 
-        masm.bind(block5);
-
         masm.bind(block6);
-        masm.cmpq(r9, 0);
-        masm.jcc(ConditionFlag.Equal, block7);
 
-        masm.bind(block8);
+        masm.bind(block7);
+
+        masm.cmpq(r9, 0);
+        masm.jcc(ConditionFlag.Equal, block8);
+
+        masm.bind(block9);
         masm.bsrq(r11, r9);
         masm.movl(rcx, 29);
         masm.subl(rcx, r11);
-        masm.jcc(ConditionFlag.LessEqual, block9);
+        masm.jcc(ConditionFlag.LessEqual, block10);
         masm.shlq(r9);
-        masm.movq(rax, r10);
+        masm.movq(AMD64.rax, r10);
         masm.shlq(r10);
         masm.addl(rdx, rcx);
         masm.negl(rcx);
         masm.addl(rcx, 64);
-        masm.shrq(rax);
+        masm.shrq(AMD64.rax);
         masm.shrq(r8);
-        masm.orq(r9, rax);
+        masm.orq(r9, AMD64.rax);
         masm.orq(r10, r8);
 
-        masm.bind(block10);
+        masm.bind(block11);
         masm.cvtsi2sdq(xmm0, r9);
         masm.shrq(r10, 1);
         masm.cvtsi2sdq(xmm3, r10);
@@ -696,7 +731,7 @@ public final class AMD64MathCosOp extends AMD64MathStubUnaryOp {
         masm.subsd(xmm2, xmm0);
         masm.addsd(xmm6, xmm2);
 
-        masm.bind(block11);
+        masm.bind(block12);
         masm.movq(xmm1, recordExternalAddress(crb, pi32Inv));          // 0x6dc9c883, 0x40245f30
         masm.mulsd(xmm1, xmm0);
         masm.movq(xmm5, recordExternalAddress(crb, onehalf));          // 0x00000000, 0x3fe00000,
@@ -705,28 +740,27 @@ public final class AMD64MathCosOp extends AMD64MathStubUnaryOp {
         masm.pand(xmm4, xmm0);
         masm.por(xmm5, xmm4);
         masm.addpd(xmm1, xmm5);
-        masm.cvttsd2siq(rdx, xmm1);
-        masm.cvtsi2sdq(xmm1, rdx);
+        masm.cvttsd2sil(rdx, xmm1);
+        masm.cvtsi2sdl(xmm1, rdx);
         masm.movq(xmm3, recordExternalAddress(crb, p1));               // 0x54400000, 0x3fb921fb
         masm.movdqu(xmm2, recordExternalAddress(crb, p2));             // 0x1a600000, 0x3d90b461,
                                                                        // 0x1a600000, 0x3d90b461
         masm.mulsd(xmm3, xmm1);
         masm.unpcklpd(xmm1, xmm1);
         masm.shll(rax, 3);
-        masm.addl(rdx, 1865232);
+        masm.addl(rdx, 1865216);
         masm.movdqu(xmm4, xmm0);
         masm.addl(rdx, rax);
         masm.andl(rdx, 63);
-        masm.movdqu(xmm5, recordExternalAddress(crb, sc4));            // 0xa556c734, 0x3ec71de3,
-                                                                       // 0x1a01a01a, 0x3efa01a0
-        masm.leaq(rax, recordExternalAddress(crb, ctable));
+        masm.movdqu(xmm5, recordExternalAddress(crb, sc4));            // 0x54400000, 0x3fb921fb
+        masm.leaq(AMD64.rax, recordExternalAddress(crb, ctable));
         masm.shll(rdx, 5);
-        masm.addq(rax, rdx);
+        masm.addq(AMD64.rax, AMD64.rdx);
         masm.mulpd(xmm2, xmm1);
         masm.subsd(xmm0, xmm3);
         masm.mulsd(xmm1, recordExternalAddress(crb, p3));              // 0x2e037073, 0x3b63198a
         masm.subsd(xmm4, xmm3);
-        masm.movq(xmm7, new AMD64Address(rax, 8));
+        masm.movq(xmm7, new AMD64Address(AMD64.rax, 8));
         masm.unpcklpd(xmm0, xmm0);
         masm.movdqu(xmm3, xmm4);
         masm.subsd(xmm4, xmm2);
@@ -737,9 +771,9 @@ public final class AMD64MathCosOp extends AMD64MathStubUnaryOp {
         masm.mulpd(xmm5, xmm0);
         masm.mulpd(xmm0, xmm0);
         masm.subsd(xmm3, xmm2);
-        masm.movdqu(xmm2, new AMD64Address(rax, 0));
+        masm.movdqu(xmm2, new AMD64Address(AMD64.rax, 0));
         masm.subsd(xmm1, xmm3);
-        masm.movq(xmm3, new AMD64Address(rax, 24));
+        masm.movq(xmm3, new AMD64Address(AMD64.rax, 24));
         masm.addsd(xmm2, xmm3);
         masm.subsd(xmm7, xmm2);
         masm.subsd(xmm1, xmm6);
@@ -752,20 +786,20 @@ public final class AMD64MathCosOp extends AMD64MathStubUnaryOp {
         masm.mulpd(xmm0, xmm0);
         masm.addpd(xmm5, recordExternalAddress(crb, sc3));             // 0x1a01a01a, 0xbf2a01a0,
                                                                        // 0x16c16c17, 0xbf56c16c
-        masm.mulsd(xmm4, new AMD64Address(rax, 0));
+        masm.mulsd(xmm4, new AMD64Address(AMD64.rax, 0));
         masm.addpd(xmm6, recordExternalAddress(crb, sc1));             // 0x55555555, 0xbfc55555,
                                                                        // 0x00000000, 0xbfe00000
         masm.mulpd(xmm5, xmm0);
         masm.movdqu(xmm0, xmm3);
-        masm.addsd(xmm3, new AMD64Address(rax, 8));
+        masm.addsd(xmm3, new AMD64Address(AMD64.rax, 8));
         masm.mulpd(xmm1, xmm7);
         masm.movdqu(xmm7, xmm4);
         masm.addsd(xmm4, xmm3);
         masm.addpd(xmm6, xmm5);
-        masm.movq(xmm5, new AMD64Address(rax, 8));
+        masm.movq(xmm5, new AMD64Address(AMD64.rax, 8));
         masm.subsd(xmm5, xmm3);
         masm.subsd(xmm3, xmm4);
-        masm.addsd(xmm1, new AMD64Address(rax, 16));
+        masm.addsd(xmm1, new AMD64Address(AMD64.rax, 16));
         masm.mulpd(xmm6, xmm2);
         masm.addsd(xmm5, xmm0);
         masm.addsd(xmm3, xmm7);
@@ -776,93 +810,93 @@ public final class AMD64MathCosOp extends AMD64MathStubUnaryOp {
         masm.movdqu(xmm0, xmm4);
         masm.addsd(xmm1, xmm6);
         masm.addsd(xmm0, xmm1);
-        masm.jmp(block13);
+        masm.jmp(block14);
 
-        masm.bind(block7);
+        masm.bind(block8);
         masm.addl(rdx, 64);
         masm.movq(r9, r10);
         masm.movq(r10, r8);
         masm.movl(r8, 0);
         masm.cmpq(r9, 0);
-        masm.jcc(ConditionFlag.NotEqual, block8);
+        masm.jcc(ConditionFlag.NotEqual, block9);
         masm.addl(rdx, 64);
         masm.movq(r9, r10);
         masm.movq(r10, r8);
         masm.cmpq(r9, 0);
-        masm.jcc(ConditionFlag.NotEqual, block8);
+        masm.jcc(ConditionFlag.NotEqual, block9);
         masm.xorpd(xmm0, xmm0);
         masm.xorpd(xmm6, xmm6);
-        masm.jmp(block11);
+        masm.jmp(block12);
 
-        masm.bind(block9);
-        masm.jcc(ConditionFlag.Equal, block10);
+        masm.bind(block10);
+        masm.jcc(ConditionFlag.Equal, block11);
         masm.negl(rcx);
         masm.shrq(r10);
-        masm.movq(rax, r9);
+        masm.movq(AMD64.rax, r9);
         masm.shrq(r9);
         masm.subl(rdx, rcx);
         masm.negl(rcx);
         masm.addl(rcx, 64);
-        masm.shlq(rax);
-        masm.orq(r10, rax);
-        masm.jmp(block10);
-        masm.bind(block3);
+        masm.shlq(AMD64.rax);
+        masm.orq(r10, AMD64.rax);
+        masm.jmp(block11);
+
+        masm.bind(block4);
         masm.negl(rcx);
         masm.shlq(r9, 32);
         masm.orq(r9, r11);
         masm.shlq(r9);
         masm.movq(rdi, r9);
         masm.testl(r9, Integer.MIN_VALUE);
-        masm.jcc(ConditionFlag.NotEqual, block12);
+        masm.jcc(ConditionFlag.NotEqual, block13);
         masm.shrl(r9);
         masm.movl(rbx, 0);
         masm.shrq(rdi, 3);
-        masm.jmp(block6);
+        masm.jmp(block7);
 
-        masm.bind(block4);
+        masm.bind(block5);
         masm.shrl(r9);
         masm.movl(rbx, 536870912);
         masm.shrl(rbx);
         masm.shlq(r9, 32);
         masm.orq(r9, r11);
-        masm.shlq(rbx, 32);
+        masm.shlq(AMD64.rbx, 32);
         masm.addl(rdi, 536870912);
-        masm.movl(rcx, 0);
+        masm.movl(AMD64.rcx, 0);
         masm.movl(r11, 0);
-        masm.subq(rcx, r8);
+        masm.subq(AMD64.rcx, r8);
         masm.sbbq(r11, r10);
-        masm.sbbq(rbx, r9);
-        masm.movq(r8, rcx);
+        masm.sbbq(AMD64.rbx, r9);
+        masm.movq(r8, AMD64.rcx);
         masm.movq(r10, r11);
-        masm.movq(r9, rbx);
+        masm.movq(r9, AMD64.rbx);
         masm.movl(rbx, 32768);
-        masm.jmp(block5);
+        masm.jmp(block6);
 
-        masm.bind(block12);
+        masm.bind(block13);
         masm.shrl(r9);
-        masm.movq(rbx, 0x100000000L);
-        masm.shrq(rbx);
-        masm.movl(rcx, 0);
+        masm.movq(AMD64.rbx, 0x100000000L);
+        masm.shrq(AMD64.rbx);
+        masm.movl(AMD64.rcx, 0);
         masm.movl(r11, 0);
-        masm.subq(rcx, r8);
+        masm.subq(AMD64.rcx, r8);
         masm.sbbq(r11, r10);
-        masm.sbbq(rbx, r9);
-        masm.movq(r8, rcx);
+        masm.sbbq(AMD64.rbx, r9);
+        masm.movq(r8, AMD64.rcx);
         masm.movq(r10, r11);
-        masm.movq(r9, rbx);
+        masm.movq(r9, AMD64.rbx);
         masm.movl(rbx, 32768);
         masm.shrq(rdi, 3);
         masm.addl(rdi, 536870912);
-        masm.jmp(block6);
+        masm.jmp(block7);
 
-        masm.bind(block2);
-        masm.movsd(xmm0, new AMD64Address(rsp, 8));
+        masm.bind(block3);
+        masm.movq(xmm0, new AMD64Address(rsp, 8));
         masm.mulsd(xmm0, recordExternalAddress(crb, negZero));         // 0x00000000, 0x80000000
         masm.movq(new AMD64Address(rsp, 0), xmm0);
 
-        masm.bind(block13);
+        masm.bind(block14);
         masm.addq(rsp, 16);
-        masm.pop(rbx);
+        masm.pop(AMD64.rbx);
     }
-
 }

@@ -26,20 +26,19 @@ package org.graalvm.compiler.hotspot.amd64.test;
 
 import static org.junit.Assume.assumeTrue;
 
-import jdk.vm.ci.code.TargetDescription;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.junit.Before;
 import org.junit.Test;
-
-import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.code.Architecture;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import java.util.ArrayList;
-import java.util.List;
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Architecture;
 
 @RunWith(Parameterized.class)
 public class MathStubTest extends GraalCompilerTest {
@@ -47,9 +46,10 @@ public class MathStubTest extends GraalCompilerTest {
     @Parameterized.Parameters(name = "{0}")
     public static List<Object[]> data() {
         ArrayList<Object[]> ret = new ArrayList<>();
-        // ret.add(new Object[]{"sin"});
+        ret.add(new Object[]{"sin"});
         ret.add(new Object[]{"cos"});
-        // ret.add(new Object[]{"tan"});
+        ret.add(new Object[]{"tan"});
+        ret.add(new Object[]{"exp"});
         ret.add(new Object[]{"log"});
         ret.add(new Object[]{"log10"});
         return ret;
@@ -68,8 +68,20 @@ public class MathStubTest extends GraalCompilerTest {
         assumeTrue("skipping AMD64 specific test", arch instanceof AMD64);
     }
 
+    public static double sin(double value) {
+        return Math.sin(value);
+    }
+
     public static double cos(double value) {
         return Math.cos(value);
+    }
+
+    public static double tan(double value) {
+        return Math.tan(value);
+    }
+
+    public static double exp(double value) {
+        return Math.exp(value);
     }
 
     public static double log(double value) {
@@ -77,7 +89,7 @@ public class MathStubTest extends GraalCompilerTest {
     }
 
     public static double log10(double value) {
-        return Math.log(value);
+        return Math.log10(value);
     }
 
     @Test

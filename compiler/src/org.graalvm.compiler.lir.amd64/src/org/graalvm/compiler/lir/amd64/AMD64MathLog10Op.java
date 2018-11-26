@@ -264,14 +264,13 @@ public final class AMD64MathLog10Op extends AMD64MathStubUnaryOp {
         masm.movl(rdx, 32768);
         masm.movdl(xmm4, rdx);
         masm.movdqu(xmm5, recordExternalAddress(crb, highsigmask));    // 0xf8000000, 0xffffffff,
-        // 0x00000000, 0xffffe000
+                                                                       // 0x00000000, 0xffffe000
         masm.pextrw(rax, xmm0, 3);
         masm.por(xmm0, xmm2);
         masm.movl(rcx, 16352);
         masm.psrlq(xmm0, 27);
-        masm.movdqu(xmm2, recordExternalAddress(crb, log10E));    // 0x00000000, 0x3fdbc000,
-                                                                  // 0xbf2e4108,
-        // 0x3f5a7a6c
+        masm.movdqu(xmm2, recordExternalAddress(crb, log10E));         // 0x00000000, 0x3fdbc000,
+                                                                       // 0xbf2e4108, 0x3f5a7a6c
         masm.psrld(xmm0, 2);
         masm.rcpps(xmm0, xmm0);
         masm.psllq(xmm1, 12);
@@ -296,29 +295,26 @@ public final class AMD64MathLog10Op extends AMD64MathStubUnaryOp {
         masm.cvtsi2sdl(xmm7, rax);
         masm.mulpd(xmm5, xmm0);
         masm.mulsd(xmm1, xmm0);
-        masm.movq(xmm6, recordExternalAddress(crb, log2));    // 0x509f7800, 0x3f934413, 0x1f12b358,
-        // 0x3cdfef31
-        masm.movdqu(xmm3, recordExternalAddress(crb, coeff));    // 0xc1a5f12e, 0x40358874,
-                                                                 // 0x64d4ef0d,
-        // 0xc0089309
+        masm.movq(xmm6, recordExternalAddress(crb, log2));             // 0x509f7800, 0x3f934413,
+                                                                       // 0x1f12b358, 0x3cdfef31
+        masm.movdqu(xmm3, recordExternalAddress(crb, coeff));          // 0xc1a5f12e, 0x40358874,
+                                                                       // 0x64d4ef0d, 0xc0089309
         masm.subsd(xmm5, xmm2);
         masm.andl(rdx, 16711680);
         masm.shrl(rdx, 12);
         masm.movdqu(xmm0, new AMD64Address(r11, rdx, AMD64Address.Scale.Times1, -1504));
-        masm.movdqu(xmm4, recordExternalAddress(crb, coeff16));    // 0x385593b1, 0xc025c917,
-                                                                   // 0xdc963467,
-        // 0x3ffc6a02
+        masm.movdqu(xmm4, recordExternalAddress(crb, coeff16));        // 0x385593b1, 0xc025c917,
+                                                                       // 0xdc963467, 0x3ffc6a02
         masm.addsd(xmm1, xmm5);
-        masm.movdqu(xmm2, recordExternalAddress(crb, coeff32));    // 0x7f9d3aa1, 0x4016ab9f,
-                                                                   // 0xdc77b115,
-        // 0xbff27af2
+        masm.movdqu(xmm2, recordExternalAddress(crb, coeff32));        // 0x7f9d3aa1, 0x4016ab9f,
+                                                                       // 0xdc77b115, 0xbff27af2
         masm.mulsd(xmm6, xmm7);
         masm.pshufd(xmm5, xmm1, 68);
-        masm.mulsd(xmm7, recordExternalAddress(crb, log28));    // 0x1f12b358, 0x3cdfef31
+        masm.mulsd(xmm7, recordExternalAddress(crb, log28));           // 0x1f12b358, 0x3cdfef31
         masm.mulsd(xmm3, xmm1);
         masm.addsd(xmm0, xmm6);
         masm.mulpd(xmm4, xmm5);
-        masm.movq(xmm6, recordExternalAddress(crb, log10E8));    // 0xbf2e4108, 0x3f5a7a6c
+        masm.movq(xmm6, recordExternalAddress(crb, log10E8));          // 0xbf2e4108, 0x3f5a7a6c
         masm.mulpd(xmm5, xmm5);
         masm.addpd(xmm4, xmm2);
         masm.mulpd(xmm3, xmm5);
@@ -381,9 +377,8 @@ public final class AMD64MathLog10Op extends AMD64MathStubUnaryOp {
         masm.por(xmm0, xmm2);
         masm.movl(rcx, 18416);
         masm.psrlq(xmm0, 27);
-        masm.movdqu(xmm2, recordExternalAddress(crb, log10E));    // 0x00000000, 0x3fdbc000,
-                                                                  // 0xbf2e4108,
-        // 0x3f5a7a6c
+        masm.movdqu(xmm2, recordExternalAddress(crb, log10E));         // 0x00000000, 0x3fdbc000,
+                                                                       // 0xbf2e4108, 0x3f5a7a6c
         masm.psrld(xmm0, 2);
         masm.rcpps(xmm0, xmm0);
         masm.psllq(xmm1, 12);

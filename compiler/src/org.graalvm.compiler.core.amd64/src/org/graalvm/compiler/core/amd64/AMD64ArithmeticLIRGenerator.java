@@ -84,7 +84,6 @@ import static org.graalvm.compiler.lir.amd64.AMD64Arithmetic.DREM;
 import static org.graalvm.compiler.lir.amd64.AMD64Arithmetic.FREM;
 import static org.graalvm.compiler.lir.amd64.AMD64MathIntrinsicBinaryOp.BinaryIntrinsicOpcode.POW;
 import static org.graalvm.compiler.lir.amd64.AMD64MathIntrinsicUnaryOp.UnaryIntrinsicOpcode.EXP;
-import static org.graalvm.compiler.lir.amd64.AMD64MathIntrinsicUnaryOp.UnaryIntrinsicOpcode.SIN;
 import static org.graalvm.compiler.lir.amd64.AMD64MathIntrinsicUnaryOp.UnaryIntrinsicOpcode.TAN;
 
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic;
@@ -116,11 +115,14 @@ import org.graalvm.compiler.lir.amd64.AMD64Binary;
 import org.graalvm.compiler.lir.amd64.AMD64BinaryConsumer;
 import org.graalvm.compiler.lir.amd64.AMD64ClearRegisterOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathCosOp;
+import org.graalvm.compiler.lir.amd64.AMD64MathExpOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathIntrinsicBinaryOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathIntrinsicUnaryOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathLog10Op;
 import org.graalvm.compiler.lir.amd64.AMD64MathLogOp;
+import org.graalvm.compiler.lir.amd64.AMD64MathSinOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathStubUnaryOp;
+import org.graalvm.compiler.lir.amd64.AMD64MathTanOp;
 import org.graalvm.compiler.lir.amd64.AMD64Move;
 import org.graalvm.compiler.lir.amd64.AMD64MulDivOp;
 import org.graalvm.compiler.lir.amd64.AMD64ShiftOp;
@@ -1130,8 +1132,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         LIRGenerator gen = getLIRGen();
         Variable result = maths.emitCos(gen, input);
         if (result == null) {
-            result = gen.newVariable(LIRKind.combine(input));
-            gen.append(new AMD64MathCosOp(getAMD64LIRGen(), result, input));
+            result = emitLIRWrapperForMathStubs(new AMD64MathCosOp(), input);
         }
         return result;
     }
@@ -1141,12 +1142,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         LIRGenerator gen = getLIRGen();
         Variable result = maths.emitSin(gen, input);
         if (result == null) {
-            RegisterValue xmm0Value = xmm0.asValue(LIRKind.combine(input));
-            getLIRGen().emitMove(xmm0Value, input);
-            result = gen.newVariable(LIRKind.combine(input));
-            AllocatableValue stackSlot = gen.getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(AMD64Kind.QWORD));
-            gen.append(new AMD64MathIntrinsicUnaryOp(getAMD64LIRGen(), SIN, result, xmm0Value, stackSlot));
-            return result;
+            result = emitLIRWrapperForMathStubs(new AMD64MathSinOp(), input);
         }
         return result;
     }
@@ -1156,23 +1152,14 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         LIRGenerator gen = getLIRGen();
         Variable result = maths.emitTan(gen, input);
         if (result == null) {
-            RegisterValue xmm0Value = xmm0.asValue(LIRKind.combine(input));
-            getLIRGen().emitMove(xmm0Value, input);
-            result = gen.newVariable(LIRKind.combine(input));
-            AllocatableValue stackSlot = gen.getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(AMD64Kind.QWORD));
-            gen.append(new AMD64MathIntrinsicUnaryOp(getAMD64LIRGen(), TAN, result, xmm0Value, stackSlot));
+            result = emitLIRWrapperForMathStubs(new AMD64MathTanOp(), input);
         }
         return result;
     }
 
     @Override
     public Value emitMathExp(Value input) {
-        RegisterValue xmm0Value = xmm0.asValue(LIRKind.combine(input));
-        getLIRGen().emitMove(xmm0Value, input);
-        Variable result = getLIRGen().newVariable(LIRKind.combine(input));
-        AllocatableValue stackSlot = getLIRGen().getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(AMD64Kind.QWORD));
-        getLIRGen().append(new AMD64MathIntrinsicUnaryOp(getAMD64LIRGen(), EXP, result, xmm0Value, stackSlot));
-        return result;
+        return emitLIRWrapperForMathStubs(new AMD64MathExpOp(), input);
     }
 
     @Override
