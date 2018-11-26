@@ -83,8 +83,6 @@ import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 import static org.graalvm.compiler.lir.amd64.AMD64Arithmetic.DREM;
 import static org.graalvm.compiler.lir.amd64.AMD64Arithmetic.FREM;
 import static org.graalvm.compiler.lir.amd64.AMD64MathIntrinsicBinaryOp.BinaryIntrinsicOpcode.POW;
-import static org.graalvm.compiler.lir.amd64.AMD64MathIntrinsicUnaryOp.UnaryIntrinsicOpcode.EXP;
-import static org.graalvm.compiler.lir.amd64.AMD64MathIntrinsicUnaryOp.UnaryIntrinsicOpcode.TAN;
 
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MIOp;
@@ -117,7 +115,6 @@ import org.graalvm.compiler.lir.amd64.AMD64ClearRegisterOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathCosOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathExpOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathIntrinsicBinaryOp;
-import org.graalvm.compiler.lir.amd64.AMD64MathIntrinsicUnaryOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathLog10Op;
 import org.graalvm.compiler.lir.amd64.AMD64MathLogOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathSinOp;
