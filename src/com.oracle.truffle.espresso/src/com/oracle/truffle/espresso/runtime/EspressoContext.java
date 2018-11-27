@@ -28,6 +28,8 @@ import java.lang.reflect.Method;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
@@ -64,7 +66,10 @@ public class EspressoContext {
     private Meta meta;
     private StaticObject mainThread;
 
+    @CompilerDirectives.CompilationFinal
     private JniEnv jniEnv;
+
+    @CompilerDirectives.CompilationFinal
     private VM vm;
 
     public EspressoContext(TruffleLanguage.Env env, EspressoLanguage language) {
@@ -250,6 +255,7 @@ public class EspressoContext {
 
     public JniEnv getJNI() {
         if (jniEnv == null) {
+            CompilerAsserts.neverPartOfCompilation();
             jniEnv = JniEnv.create();
         }
         return jniEnv;

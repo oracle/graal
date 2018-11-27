@@ -22,16 +22,22 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.espresso.impl.Klass;
 
-public final class StaticObjectArray extends StaticObjectWrapper<Object[]> {
+public final class StaticObjectArray extends StaticObjectWrapper {
     public StaticObjectArray(Klass componentType, Object[] arr) {
         super(componentType.getArrayClass(), arr);
     }
 
     public StaticObjectArray copy() {
         return new StaticObjectArray(getKlass().getComponentType(), getWrapped().clone());
+    }
+
+    @Override
+    public Object[] getWrapped() {
+        return CompilerDirectives.castExact(super.getWrapped(), Object[].class);
     }
 
     @Override
