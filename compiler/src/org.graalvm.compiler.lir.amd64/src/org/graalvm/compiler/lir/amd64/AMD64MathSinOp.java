@@ -60,7 +60,7 @@ public final class AMD64MathSinOp extends AMD64MathIntrinsicOp {
     public static final LIRInstructionClass<AMD64MathSinOp> TYPE = LIRInstructionClass.create(AMD64MathSinOp.class);
 
     public AMD64MathSinOp() {
-        super(TYPE, /* GPR */ rax, rcx, rdx, rbx, rsp, rsi, rdi, r8, r9, r10, r11,
+        super(TYPE, /* GPR */ rax, rcx, rdx, rbx, rsi, rdi, r8, r9, r10, r11,
                         /* XMM */ xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7);
     }
 
