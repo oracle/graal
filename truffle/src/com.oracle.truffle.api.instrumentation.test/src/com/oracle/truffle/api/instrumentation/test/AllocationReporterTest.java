@@ -66,7 +66,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.AllocationEvent;
 import com.oracle.truffle.api.instrumentation.AllocationEventFilter;
@@ -76,6 +75,7 @@ import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -770,7 +770,7 @@ public class AllocationReporterTest {
                 AllocationReporter reporter = contextRef.get().getEnv().lookup(AllocationReporter.class);
                 if (newValue == null) { // No allocation
                     value = InstrumentationTestLanguage.Null.INSTANCE;
-                    execChildren(frame.materialize());
+                    execChildren(frame);
                 } else if (oldValue == null) {
                     // new allocation
                     if (reporter.isActive()) {
@@ -779,7 +779,7 @@ public class AllocationReporterTest {
                             reporter.onEnter(null, 0, getAllocationSizeEstimate(newValue));
                         }
                     }
-                    execChildren(frame.materialize());
+                    execChildren(frame);
                     value = allocateValue(newValue);
                     if (reporter.isActive()) {
                         reporter.onReturnValue(value, 0, computeValueSize(newValue, value));
@@ -794,7 +794,7 @@ public class AllocationReporterTest {
                         newSize = getAllocationSizeEstimate(newValue);
                         reporter.onEnter(value, oldSize, newSize);
                     }
-                    execChildren(frame.materialize());
+                    execChildren(frame);
                     // Re-allocate, oldValue -> newValue
                     if (reporter.isActive()) {
                         if (newSize == AllocationReporter.SIZE_UNKNOWN) {
@@ -810,8 +810,8 @@ public class AllocationReporterTest {
                 return value;
             }
 
-            @TruffleBoundary
-            private void execChildren(MaterializedFrame frame) {
+            @ExplodeLoop
+            private void execChildren(VirtualFrame frame) {
                 if (children != null) {
                     for (AllocNode ch : children) {
                         ch.execute(frame);
