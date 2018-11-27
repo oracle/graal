@@ -170,6 +170,7 @@ public class FrameTest {
             }
         }
     }
+
     @Test
     public void framesCanBeMaterialized() {
         Assume.assumeFalse(CompileImmediatelyCheck.isCompileImmediately());
