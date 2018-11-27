@@ -34,9 +34,7 @@ import java.util.Collections;
 import java.util.List;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.Utils;
 import com.oracle.truffle.espresso.impl.FieldInfo;
-import com.oracle.truffle.espresso.impl.MethodInfo;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
@@ -52,13 +50,13 @@ public class Target_sun_misc_Unsafe {
 
     private static final int SAFETY_FIELD_OFFSET = 123456789;
 
-    private static Unsafe hostUnsafe;
+    private static Unsafe U;
 
     static {
         try {
             Field f = Unsafe.class.getDeclaredField("theUnsafe");
             f.setAccessible(true);
-            hostUnsafe = (Unsafe) f.get(null);
+            U = (Unsafe) f.get(null);
         } catch (NoSuchFieldException | IllegalAccessException e) {
             throw EspressoError.shouldNotReachHere(e);
         }
@@ -69,10 +67,10 @@ public class Target_sun_misc_Unsafe {
         assert clazz.getMirror().isArray();
         if (clazz.getMirror().getComponentType().isPrimitive()) {
             Class<?> hostPrimitive = clazz.getMirror().getComponentType().getJavaKind().toJavaClass();
-            return hostUnsafe.arrayBaseOffset(Array.newInstance(hostPrimitive, 0).getClass());
+            return U.arrayBaseOffset(Array.newInstance(hostPrimitive, 0).getClass());
         } else {
             // Just a reference type.
-            return hostUnsafe.arrayBaseOffset(Object[].class);
+            return U.arrayBaseOffset(Object[].class);
         }
     }
 
@@ -81,10 +79,10 @@ public class Target_sun_misc_Unsafe {
         assert clazz.getMirror().isArray();
         if (clazz.getMirror().getComponentType().isPrimitive()) {
             Class<?> hostPrimitive = clazz.getMirror().getComponentType().getJavaKind().toJavaClass();
-            return hostUnsafe.arrayIndexScale(Array.newInstance(hostPrimitive, 0).getClass());
+            return U.arrayIndexScale(Array.newInstance(hostPrimitive, 0).getClass());
         } else {
             // Just a reference type.
-            return hostUnsafe.arrayIndexScale(Object[].class);
+            return U.arrayIndexScale(Object[].class);
         }
     }
 
@@ -111,7 +109,7 @@ public class Target_sun_misc_Unsafe {
     @Intrinsic(hasReceiver = true)
     public static final boolean compareAndSwapObject(Object self, @Type(Object.class) StaticObject holder, long offset, Object before, Object after) {
         if (holder instanceof StaticObjectArray) {
-            return hostUnsafe.compareAndSwapObject(((StaticObjectArray) holder).getWrapped(), offset, before, after);
+            return U.compareAndSwapObject(((StaticObjectArray) holder).getWrapped(), offset, before, after);
         }
         // TODO(peterssen): Current workaround assumes it's a field access, offset <-> field index.
         Meta.Field f = getInstanceFieldFromOffset(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
@@ -211,12 +209,12 @@ public class Target_sun_misc_Unsafe {
 
     @Intrinsic(hasReceiver = true)
     public static long allocateMemory(Object self, long length) {
-        return hostUnsafe.allocateMemory(length);
+        return U.allocateMemory(length);
     }
 
     @Intrinsic(hasReceiver = true)
     public static void freeMemory(Object self, long address) {
-        hostUnsafe.freeMemory(address);
+        U.freeMemory(address);
     }
 
     @Intrinsic(hasReceiver = true)
@@ -228,7 +226,7 @@ public class Target_sun_misc_Unsafe {
 
     @Intrinsic(hasReceiver = true)
     public static void putLong(Object self, long offset, long x) {
-        hostUnsafe.putLong(offset, x);
+        U.putLong(offset, x);
     }
 
     @Intrinsic(hasReceiver = true)
@@ -239,14 +237,26 @@ public class Target_sun_misc_Unsafe {
     }
 
     @Intrinsic(hasReceiver = true)
+    public static int getInt(Object self, Object holder, long offset) {
+        // TODO(peterssen): Use holder.getKlass().findInstanceFieldWithOffset
+        Meta.Field f = getInstanceFieldFromOffset((StaticObject) holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        return (int) f.get((StaticObject) holder);
+    }
+
+    @Intrinsic(hasReceiver = true)
     public static byte getByte(Object self, long offset) {
-        return hostUnsafe.getByte(offset);
+        return U.getByte(offset);
+    }
+
+    @Intrinsic(hasReceiver = true)
+    public static int getInt(Object self, long offset) {
+        return U.getInt(offset);
     }
 
     @Intrinsic(hasReceiver = true)
     public static Object getObjectVolatile(Object self, Object holder, long offset) {
         if (holder instanceof StaticObjectArray) {
-            return hostUnsafe.getObjectVolatile(((StaticObjectArray) holder).getWrapped(), offset);
+            return U.getObjectVolatile(((StaticObjectArray) holder).getWrapped(), offset);
         }
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
@@ -258,7 +268,7 @@ public class Target_sun_misc_Unsafe {
     @Intrinsic(hasReceiver = true)
     public static void putObjectVolatile(Object self, Object holder, long offset, Object value) {
         if (holder instanceof StaticObjectArray) {
-            hostUnsafe.putObjectVolatile(((StaticObjectArray) holder).getWrapped(), offset, value);
+            U.putObjectVolatile(((StaticObjectArray) holder).getWrapped(), offset, value);
             return;
         }
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
@@ -278,17 +288,17 @@ public class Target_sun_misc_Unsafe {
         if (bytes == 0) {
             return;
         }
-        hostUnsafe.copyMemory(MetaUtil.unwrap(srcBase), srcOffset, MetaUtil.unwrap(destBase), destOffset, bytes);
+        U.copyMemory(MetaUtil.unwrap(srcBase), srcOffset, MetaUtil.unwrap(destBase), destOffset, bytes);
     }
 
     @Intrinsic(hasReceiver = true)
     public static void putByte(Object self, long offset, byte value) {
-        hostUnsafe.putByte(offset, value);
+        U.putByte(offset, value);
     }
 
     @Intrinsic(hasReceiver = true)
     public static void putByte(Object self, Object object, long offset, byte value) {
-        hostUnsafe.putByte(MetaUtil.unwrap(object), offset, value);
+        U.putByte(MetaUtil.unwrap(object), offset, value);
     }
 
     @Intrinsic(hasReceiver = true)
