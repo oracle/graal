@@ -39,10 +39,14 @@ public class Target_java_lang_Thread {
             Meta meta = context.getMeta();
             Meta.Klass threadGroupKlass = meta.knownKlass(ThreadGroup.class);
             Meta.Klass threadKlass = meta.knownKlass(Thread.class);
+
             StaticObject mainThread = threadKlass.metaNew().fields(
-                            Meta.Field.set("priority", 5),
+                            Meta.Field.set("group", threadGroupKlass.allocateInstance()),
                             Meta.Field.set("name", meta.toGuest("mainThread")),
-                            Meta.Field.set("group", threadGroupKlass.allocateInstance())).getInstance();
+                            Meta.Field.set("priority", 5),
+                            // Lock object used by NIO.
+                            Meta.Field.set("blockerLock", meta.OBJECT.allocateInstance())).getInstance();
+
             context.setMainThread(mainThread);
         }
         return context.getMainThread();
