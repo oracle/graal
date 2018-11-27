@@ -42,6 +42,7 @@ import com.oracle.truffle.espresso.impl.MethodInfo;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.runtime.AttributeInfo;
+import com.oracle.truffle.espresso.runtime.BootstrapMethodsAttribute;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -309,6 +310,8 @@ public class ClassfileParser {
                 return parseInnerClasses(name);
             case "Exceptions":
                 return parseExceptions(name);
+            case "BootstrapMethods":
+                return parseBootstrapMethods(name);
             default:
                 int length = stream.readS4();
                 byte[] info = stream.readByteArray(length);
@@ -326,6 +329,23 @@ public class ClassfileParser {
         }
         return new ExceptionsAttribute(name, entries);
     }
+
+    private BootstrapMethodsAttribute parseBootstrapMethods(String name) {
+        int length = stream.readS4();
+        int entryCount = stream.readU2();
+        BootstrapMethodsAttribute.Entry[] entries = new BootstrapMethodsAttribute.Entry[entryCount];
+        for (int i = 0; i < entryCount; ++i) {
+            int bootstrapMethodRef = stream.readU2();
+            int numBootstrapArguments = stream.readU2();
+            char[] bootstrapArguments = new char[numBootstrapArguments];
+            for (int j = 0; j < numBootstrapArguments; ++j) {
+                bootstrapArguments[j] = (char) stream.readU2();
+            }
+            entries[i] = new BootstrapMethodsAttribute.Entry((char) bootstrapMethodRef, bootstrapArguments);
+        }
+        return new BootstrapMethodsAttribute(name, entries);
+    }
+
 
     private InnerClassesAttribute parseInnerClasses(String name) {
         int length = stream.readS4();
