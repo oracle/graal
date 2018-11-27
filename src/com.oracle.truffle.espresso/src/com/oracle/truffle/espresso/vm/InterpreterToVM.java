@@ -445,7 +445,7 @@ public class InterpreterToVM {
     }
 
     private Object arrayStoreExCheck(Object value, Klass componentType) {
-        if (value == StaticObject.NULL || instanceOf(value, componentType)) {
+        if (StaticObject.isNull(value) || instanceOf(value, componentType)) {
             return value;
         } else {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayStoreException.class);
@@ -628,7 +628,7 @@ public class InterpreterToVM {
      */
     public boolean instanceOf(Object instance, Klass typeToCheck) {
         assert instance != null : "use StaticObject.NULL";
-        if (instance == StaticObject.NULL) {
+        if (StaticObject.isNull(instance)) {
             return false;
         }
         Meta meta = meta(typeToCheck).getMeta();
@@ -636,7 +636,7 @@ public class InterpreterToVM {
     }
 
     public Object checkCast(Object instance, Klass klass) {
-        if (instance == StaticObject.NULL || instanceOf(instance, klass)) {
+        if (StaticObject.isNull(instance) || instanceOf(instance, klass)) {
             return instance;
         }
         Meta meta = klass.getContext().getMeta();

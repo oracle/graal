@@ -252,6 +252,7 @@ import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.DoubleConstant;
 import com.oracle.truffle.espresso.classfile.FloatConstant;
 import com.oracle.truffle.espresso.classfile.IntegerConstant;
+import com.oracle.truffle.espresso.classfile.InvokeDynamicConstant;
 import com.oracle.truffle.espresso.classfile.LongConstant;
 import com.oracle.truffle.espresso.classfile.PoolConstant;
 import com.oracle.truffle.espresso.classfile.StringConstant;
@@ -1007,13 +1008,13 @@ public class EspressoRootNode extends RootNode implements LinkedNode {
                                                         bs.readUByte(bs.currentBCI(curBCI) + 3)));
                         break;
                     case IFNULL:
-                        if (stack.popObject() == StaticObject.NULL) {
+                        if (StaticObject.isNull(stack.popObject())) {
                             curBCI = bs.readBranchDest(curBCI);
                             continue loop;
                         }
                         break;
                     case IFNONNULL:
-                        if (stack.popObject() != StaticObject.NULL) {
+                        if (StaticObject.notNull(stack.popObject())) {
                             curBCI = bs.readBranchDest(curBCI);
                             continue loop;
                         }
@@ -1021,6 +1022,7 @@ public class EspressoRootNode extends RootNode implements LinkedNode {
                     case BREAKPOINT:
                         throw new UnsupportedOperationException("breakpoints not supported.");
                     case INVOKEDYNAMIC:
+                        //resolveInvokeDynamic(bs.currentBC(curBCI), bs.readCPI(curBCI));
                         throw new UnsupportedOperationException("invokedynamic not supported.");
 
                 }
@@ -1060,41 +1062,9 @@ public class EspressoRootNode extends RootNode implements LinkedNode {
         return pool.classAt(cpi).resolve(pool, cpi);
     }
 
-//    private CallSite linkIndySite(Frame f, Insn insn) throws InterpreterError {
-//        CallSite cs = indyLinkageState.get(insn);
-//        int index = f.read16u(1);
-//
-//        if (cs == null) {
-//            ClassModel.IndyDesc indy = f.curClass().cpIndy(index);
-//            MethodType methodType = MethodType.fromMethodDescriptorString(indy.invokeDesc,
-//                            f.curClassLoader());
-//            MethodHandle bsm = (MethodHandle) loadConstant(f, indy.bootstrapCPIndex);
-//            int[] bsmArgs = indy.bootstrapArgCPIndexes;
-//            Object[] args = new Object[bsmArgs.length + 3];
-//            for (int i = 0; i < bsmArgs.length; i++)
-//                args[i + 3] = loadConstant(f, bsmArgs[i]);
-//            args[0] = f.getLookup();
-//            args[1] = indy.invokeName;
-//            args[2] = methodType;
-//            try {
-//                cs = (CallSite) interpretOrExecute(f, bsm, args).getReturnValueOrThrow();
-//                if (!cs.getTarget().type().equals(methodType))
-//                    throw new BootstrapMethodError("wrong type of call site: " + cs.getTarget().type());
-//            } catch (AssertionError | InterpreterError ex) {
-//                throw ex;
-//            } catch (Throwable ex) {
-//                cs = new FailedCallSite(methodType, ex);
-//                assert (cs.getTarget().type().equals(methodType));
-//            }
-//            CallSite oldcs = indyLinkageState.putIfAbsent(insn, cs);
-//            if (oldcs != null)
-//                cs = oldcs;
-//        }
-//        return cs;
-//    }
-
-    @CompilerDirectives.TruffleBoundary
+    @ExplodeLoop
     private ExceptionHandler resolveExceptionHandlers(int bci, StaticObject ex) {
+        CompilerAsserts.partialEvaluationConstant(bci);
         ExceptionHandler[] handlers = getMethod().getExceptionHandlers();
         for (ExceptionHandler handler : handlers) {
             if (bci >= handler.getStartBCI() && bci < handler.getEndBCI()) {
@@ -1252,7 +1222,7 @@ public class EspressoRootNode extends RootNode implements LinkedNode {
     private void invokeSpecial(OperandStack stack, MethodInfo method) {
         if (!Modifier.isStatic(method.getModifiers())) {
             // TODO(peterssen): Intercept/hook methods on primitive arrays e.g. int[].clone().
-            StaticObject receiver = (StaticObject) nullCheck(stack.peekReceiver(method));
+            Object receiver = nullCheck(stack.peekReceiver(method));
             invoke(stack, method, receiver, !method.isStatic(), method.getSignature());
         } else {
             invoke(stack, method, null, !method.isStatic(), method.getSignature());
@@ -1276,13 +1246,16 @@ public class EspressoRootNode extends RootNode implements LinkedNode {
     }
 
     private MethodInfo resolveMethod(int opcode, char cpi) {
+        CompilerAsserts.partialEvaluationConstant(cpi);
+        CompilerAsserts.partialEvaluationConstant(opcode);
         ConstantPool pool = getConstantPool();
         MethodInfo methodInfo = pool.methodAt(cpi).resolve(pool, cpi);
         return methodInfo;
     }
 
     private MethodInfo resolveInterfaceMethod(int opcode, char cpi) {
-        assert opcode == INVOKEINTERFACE;
+        CompilerAsserts.partialEvaluationConstant(cpi);
+        CompilerAsserts.partialEvaluationConstant(opcode);
         ConstantPool pool = getConstantPool();
         MethodInfo methodInfo = pool.interfaceMethodAt(cpi).resolve(pool, cpi);
         CompilerAsserts.partialEvaluationConstant(methodInfo);
@@ -1324,11 +1297,13 @@ public class EspressoRootNode extends RootNode implements LinkedNode {
         return clazz.getMirror().findConcreteMethod(originalMethod.getName(), originalMethod.getSignature());
     }
 
+    @CompilerDirectives.TruffleBoundary
     private StaticObject allocateArray(Klass componentType, int length) {
         assert !componentType.isPrimitive();
         return vm.newArray(componentType, length);
     }
 
+    @CompilerDirectives.TruffleBoundary
     private StaticObject allocateMultiArray(OperandStack stack, Klass klass, int allocatedDimensions) {
         assert klass.isArray();
         int[] dimensions = new int[allocatedDimensions];
@@ -1466,6 +1441,7 @@ public class EspressoRootNode extends RootNode implements LinkedNode {
     /**
      * Binary search implementation for the lookup switch.
      */
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE)
     private static int lookupSearch(BytecodeLookupSwitch switchHelper, int key) {
         int low = 0;
         int high = switchHelper.numberOfCases() - 1;
@@ -1538,8 +1514,7 @@ public class EspressoRootNode extends RootNode implements LinkedNode {
     }
 
     private Object nullCheck(Object value) {
-        assert value != null;
-        if (value == StaticObject.NULL) {
+        if (StaticObject.isNull(value)) {
             CompilerDirectives.transferToInterpreter();
             // TODO(peterssen): Profile whether null was hit or not.
             Meta meta = method.getDeclaringClass().getContext().getMeta();

@@ -201,7 +201,7 @@ public class Target_java_lang_reflect_Array {
         if (array instanceof StaticObjectArray) {
             EspressoLanguage.getCurrentContext().getInterpreterToVM().setArrayObject(value, index, (StaticObjectArray) array);
         } else {
-            if (array == StaticObject.NULL) {
+            if (StaticObject.isNull(array)) {
                 throw EspressoLanguage.getCurrentContext().getMeta().throwEx(NullPointerException.class);
             } else {
                 throw EspressoLanguage.getCurrentContext().getMeta().throwEx(IllegalArgumentException.class);

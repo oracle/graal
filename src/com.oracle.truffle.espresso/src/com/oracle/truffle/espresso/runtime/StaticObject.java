@@ -32,6 +32,16 @@ public interface StaticObject extends TruffleObject {
     StaticObject VOID = new Void();
 
     Klass getKlass();
+
+
+    static boolean isNull(Object object) {
+        assert object != null;
+        return object == StaticObject.NULL;
+    }
+
+    static boolean notNull(Object object) {
+        return !isNull(object);
+    }
 }
 
 class Void implements StaticObject {
@@ -52,6 +62,7 @@ class Void implements StaticObject {
 }
 
 class Null implements StaticObject {
+
     @Override
     public Klass getKlass() {
         return null;

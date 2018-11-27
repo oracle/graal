@@ -32,8 +32,7 @@ public class EspressoException extends RuntimeException implements TruffleExcept
     private final StaticObject exception;
 
     public EspressoException(StaticObject exception) {
-        assert exception != null;
-        assert exception != StaticObject.NULL;
+        assert StaticObject.notNull(exception);
         // TODO(peterssen): Check that exception is a real exception object (e.g. exception
         // instanceof Exception)
         this.exception = exception;
