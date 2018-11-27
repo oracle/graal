@@ -68,6 +68,13 @@ public class ValueToHostClassCastExceptionDeoptTest {
 
     }
 
+    /**
+     * Tests an issue that arose when (with immediate compiling) an interop value (a java method) is
+     * converted to anything via the "as" methods (asNativePointer in this case). The issue use to
+     * manifest with repeated compilations caused by an exception being thrown (from
+     * {@link com.oracle.truffle.api.interop.InteropAccessNode} during specialisation, causing the
+     * state to constantly be 0.
+     */
     @Test
     public void test() {
         final GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
