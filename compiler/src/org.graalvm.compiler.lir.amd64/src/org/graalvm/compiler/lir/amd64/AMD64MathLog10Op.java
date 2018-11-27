@@ -48,13 +48,13 @@ import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.asm.ArrayDataPointerConstant;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
-public final class AMD64MathLog10Op extends AMD64MathIntrinsicOp {
+public final class AMD64MathLog10Op extends AMD64MathIntrinsicUnaryOp {
 
     public static final LIRInstructionClass<AMD64MathLog10Op> TYPE = LIRInstructionClass.create(AMD64MathLog10Op.class);
 
     public AMD64MathLog10Op() {
         super(TYPE, /* GPR */ rax, rcx, rdx, r8, r11,
-                        /* XMM */ xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7);
+                        /* XMM */ xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7);
     }
 
     /******************************************************************************/

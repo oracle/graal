@@ -25,8 +25,6 @@
 
 package org.graalvm.compiler.core.amd64;
 
-import static jdk.vm.ci.amd64.AMD64.xmm0;
-import static jdk.vm.ci.amd64.AMD64.xmm1;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.ADD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.AND;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.CMP;
@@ -113,7 +111,6 @@ import org.graalvm.compiler.lir.amd64.AMD64BinaryConsumer;
 import org.graalvm.compiler.lir.amd64.AMD64ClearRegisterOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathCosOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathExpOp;
-import org.graalvm.compiler.lir.amd64.AMD64MathIntrinsicOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathLog10Op;
 import org.graalvm.compiler.lir.amd64.AMD64MathLogOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathPowOp;
@@ -1102,25 +1099,18 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         return result;
     }
 
-    private Variable emitLIRWrapperForUnaryMathStubs(AMD64MathIntrinsicOp op, Value input) {
-        LIRGenerator gen = getLIRGen();
-        LIRKind kind = LIRKind.combine(input);
-        RegisterValue xmm0Value = xmm0.asValue(kind);
-        gen.emitMove(xmm0Value, input);
-        gen.append(op);
-        Variable result = gen.newVariable(kind);
-        gen.emitMove(result, xmm0Value);
-        return result;
-    }
-
     @Override
     public Value emitMathLog(Value input, boolean base10) {
         LIRGenerator gen = getLIRGen();
         Variable result = maths.emitLog(gen, input, base10);
-        if (result == null) {
-            result = emitLIRWrapperForUnaryMathStubs(base10 ? new AMD64MathLog10Op() : new AMD64MathLogOp(), input);
+        if (result != null) {
+            return result;
         }
-        return result;
+        if (base10) {
+            return new AMD64MathLog10Op().emitLIRWrapper(gen, input);
+        } else {
+            return new AMD64MathLogOp().emitLIRWrapper(gen, input);
+        }
     }
 
     @Override
@@ -1128,7 +1118,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         LIRGenerator gen = getLIRGen();
         Variable result = maths.emitCos(gen, input);
         if (result == null) {
-            result = emitLIRWrapperForUnaryMathStubs(new AMD64MathCosOp(), input);
+            return new AMD64MathCosOp().emitLIRWrapper(gen, input);
         }
         return result;
     }
@@ -1138,7 +1128,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         LIRGenerator gen = getLIRGen();
         Variable result = maths.emitSin(gen, input);
         if (result == null) {
-            result = emitLIRWrapperForUnaryMathStubs(new AMD64MathSinOp(), input);
+            return new AMD64MathSinOp().emitLIRWrapper(gen, input);
         }
         return result;
     }
@@ -1148,32 +1138,19 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         LIRGenerator gen = getLIRGen();
         Variable result = maths.emitTan(gen, input);
         if (result == null) {
-            result = emitLIRWrapperForUnaryMathStubs(new AMD64MathTanOp(), input);
+            return new AMD64MathTanOp().emitLIRWrapper(gen, input);
         }
         return result;
     }
 
     @Override
     public Value emitMathExp(Value input) {
-        return emitLIRWrapperForUnaryMathStubs(new AMD64MathExpOp(), input);
-    }
-
-    private Variable emitLIRWrapperForBinaryMathStubs(AMD64MathIntrinsicOp op, Value input0, Value input1) {
-        LIRGenerator gen = getLIRGen();
-        LIRKind kind = LIRKind.combine(input0, input1);
-        RegisterValue xmm0Value = xmm0.asValue(kind);
-        gen.emitMove(xmm0Value, input0);
-        RegisterValue xmm1Value = xmm1.asValue(kind);
-        gen.emitMove(xmm1Value, input1);
-        gen.append(op);
-        Variable result = gen.newVariable(kind);
-        gen.emitMove(result, xmm0Value);
-        return result;
+        return new AMD64MathExpOp().emitLIRWrapper(getLIRGen(), input);
     }
 
     @Override
     public Value emitMathPow(Value x, Value y) {
-        return emitLIRWrapperForBinaryMathStubs(new AMD64MathPowOp(), x, y);
+        return new AMD64MathPowOp().emitLIRWrapper(getLIRGen(), x, y);
     }
 
     protected AMD64LIRGenerator getAMD64LIRGen() {

@@ -24,44 +24,47 @@
  */
 package org.graalvm.compiler.lir.amd64;
 
-import org.graalvm.compiler.asm.amd64.AMD64Address;
-import org.graalvm.compiler.core.common.LIRKind;
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.lir.LIRInstructionClass;
-import org.graalvm.compiler.lir.asm.ArrayDataPointerConstant;
-import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
+import static jdk.vm.ci.amd64.AMD64.xmm0;
 
-import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.RegisterValue;
+import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.lir.LIRInstructionClass;
+
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
+import org.graalvm.compiler.lir.Variable;
+import org.graalvm.compiler.lir.gen.LIRGenerator;
 
-public abstract class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
+/**
+ * This is the base class for all math intrinsics (stubs). It does not specify input or output, but
+ * instead assumes input(s) being xmm0 (and xmm1), and output being xmm0 as well. Users are
+ * responsible for adding mov LIRs before and after this LIR instruction, to move the inputs to
+ * aforementioned registers, and to move the result from xmm0.
+ */
+public abstract class AMD64MathIntrinsicUnaryOp extends AMD64MathIntrinsicOp {
 
-    public AMD64MathIntrinsicOp(LIRInstructionClass<? extends AMD64MathIntrinsicOp> type) {
+    @Def protected Value output;
+    @Use protected Value input;
+    @Temp protected Value[] temps;
+
+    public AMD64MathIntrinsicUnaryOp(LIRInstructionClass<? extends AMD64MathIntrinsicUnaryOp> type, Register... registers) {
         super(type);
+
+        input = xmm0.asValue(LIRKind.value(AMD64Kind.DOUBLE));
+        output = xmm0.asValue(LIRKind.value(AMD64Kind.DOUBLE));
+
+        temps = registersToValues(registers);
     }
 
-    protected final Value[] registersToValues(Register[] registers) {
-        Value[] temps = new Value[registers.length];
-        for (int i = 0; i < registers.length; i++) {
-            Register register = registers[i];
-            if (AMD64.CPU.equals(register.getRegisterCategory())) {
-                temps[i] = register.asValue(LIRKind.value(AMD64Kind.QWORD));
-            } else if (AMD64.XMM.equals(register.getRegisterCategory())) {
-                temps[i] = register.asValue(LIRKind.value(AMD64Kind.DOUBLE));
-            } else {
-                throw GraalError.shouldNotReachHere("Unsupported register type in math stubs.");
-            }
-        }
-        return temps;
+    public final Variable emitLIRWrapper(LIRGenerator gen, Value input) {
+        LIRKind kind = LIRKind.combine(input);
+        RegisterValue xmm0Value = xmm0.asValue(kind);
+        gen.emitMove(xmm0Value, input);
+        gen.append(this);
+        Variable result = gen.newVariable(kind);
+        gen.emitMove(result, xmm0Value);
+        return result;
     }
 
-    protected final AMD64Address recordExternalAddress(CompilationResultBuilder crb, ArrayDataPointerConstant ptr) {
-        return (AMD64Address) crb.recordDataReferenceInCode(ptr);
-    }
-
-    protected final ArrayDataPointerConstant pointerConstant(int alignment, int[] ints) {
-        return new ArrayDataPointerConstant(ints, alignment);
-    }
 }

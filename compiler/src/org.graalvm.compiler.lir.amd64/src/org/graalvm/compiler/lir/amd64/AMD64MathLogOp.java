@@ -50,13 +50,13 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.amd64.AMD64;
 
-public final class AMD64MathLogOp extends AMD64MathIntrinsicOp {
+public final class AMD64MathLogOp extends AMD64MathIntrinsicUnaryOp {
 
     public static final LIRInstructionClass<AMD64MathLogOp> TYPE = LIRInstructionClass.create(AMD64MathLogOp.class);
 
     public AMD64MathLogOp() {
         super(TYPE, /* GPR */ rax, rcx, rdx, r8, r11,
-                        /* XMM */ xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7);
+                        /* XMM */ xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7);
     }
 
     /******************************************************************************/
