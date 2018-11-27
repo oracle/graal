@@ -297,4 +297,17 @@ public class Target_sun_misc_Unsafe {
         assert !((StaticObjectClass) clazz).getMirror().isAbstract();
         return EspressoLanguage.getCurrentContext().getInterpreterToVM().newObject(((StaticObjectClass) clazz).getMirror());
     }
+
+    @Intrinsic(hasReceiver = true)
+    public static int pageSize(Object self) {
+        return U.pageSize();
+    }
+
+    @Intrinsic(hasReceiver = true)
+    public static void setMemory(Object self, Object o, long offset, long bytes, byte value) {
+        if (o == StaticObject.NULL) {
+            o = null;
+        }
+        U.setMemory(o, offset, bytes, value);
+    }
 }
