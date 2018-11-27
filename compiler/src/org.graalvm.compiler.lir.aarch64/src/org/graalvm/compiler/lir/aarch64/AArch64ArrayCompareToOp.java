@@ -107,7 +107,11 @@ public final class AArch64ArrayCompareToOp extends AArch64LIRInstruction {
 
     @Override
     protected void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-
+        /*
+         * Note: AArch64StringUTF16Substitutions.compareToLatin1 and
+         * AArch64StringUTF16Substitutions.compareToLatin1 swap input to array1=byte[] and
+         * array2=char[] but kind1==Char and kind2==Byte remains
+         */
         Register result = asRegister(resultValue);
         Register length1 = asRegister(length1Value);
         Register length2 = asRegister(length2Value);
@@ -189,7 +193,7 @@ public final class AArch64ArrayCompareToOp extends AArch64LIRInstruction {
         // MAIN_LOOP - read strings by 8 byte.
         masm.bind(MAIN_LOOP_LABEL);
         if (isLU || isUL) {
-            // Load 32 bits ad unpack it to entire 64bit register.
+            // Load 32 bits and unpack it to entire 64bit register.
             masm.ldr(32, result, AArch64Address.createRegisterOffsetAddress(array1, vecCount, false));
             masm.ubfm(64, temp, result, 0, 7);
             masm.lshr(64, result, result, 8);
