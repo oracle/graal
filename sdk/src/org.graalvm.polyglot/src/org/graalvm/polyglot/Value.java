@@ -83,8 +83,8 @@ import org.graalvm.polyglot.proxy.Proxy;
  * elements of an object. For example, the members of a Java object are all public methods and
  * fields. Members are accessible using {@link #getMember(String)}.
  * <li>{@link #canExecute() Executable}: This value can be {@link #execute(Object...) executed}.
- * This indicates that the value represents that can be executed. Guest language examples for
- * executable elements are functions, methods, closures or promises.
+ * This indicates that the value represents an element that can be executed. Guest language examples
+ * for executable elements are functions, methods, closures or promises.
  * <li>{@link #canInstantiate() Instantiable}: This value can be {@link #newInstance(Object...)
  * instantiated}. For example, Java classes are instantiable.
  * </ul>
@@ -97,7 +97,7 @@ import org.graalvm.polyglot.proxy.Proxy;
  * {@link #toString() string} for debugging, formatted by the original language.
  * <p>
  * Polyglot values may be converted to host objects using {@link #as(Class)}. In addition values may
- * be created form Java values using {@link Context#asValue(Object)}.
+ * be created from Java values using {@link Context#asValue(Object)}.
  *
  * @see Context
  * @see Engine
@@ -143,7 +143,7 @@ public final class Value {
 
     /**
      * Returns the array element of a given index. Polyglot arrays start with index <code>0</code>,
-     * independent of the guest language. The given array index must be greater or equal 0.
+     * independent of the guest language. The given array index must be greater or equal to 0.
      *
      * @throws ArrayIndexOutOfBoundsException if the array index does not exist.
      * @throws UnsupportedOperationException if the value does not have any
@@ -158,7 +158,7 @@ public final class Value {
     }
 
     /**
-     * Sets the value at a given index. Polyglot array start with index <code>0</code>, independent
+     * Sets the value at a given index. Polyglot arrays start with index <code>0</code>, independent
      * of the guest language. The array element value is subject to polyglot value mapping rules as
      * described in {@link Context#asValue(Object)}.
      *
@@ -254,12 +254,12 @@ public final class Value {
 
     /**
      * Returns a set of all member keys. Calling {@link Set#contains(Object)} with a string key is
-     * equivalent of calling {@link #hasMember(String)}. Removing an element from the returned set
+     * equivalent to calling {@link #hasMember(String)}. Removing an element from the returned set
      * is equivalent to calling {@link #removeMember(String)}. Adding an element to the set is
      * equivalent to calling {@linkplain #putMember(String, Object) putMember(key, null)}. If the
      * value does not support {@link #hasMembers() members} then an empty unmodifiable set is
      * returned. If the context gets closed while the returned set is still alive, then the set will
-     * throw an {@link IllegalStateException} if any method except Object methods is invoked.
+     * throw an {@link IllegalStateException} if any methods except Object methods are invoked.
      *
      * @throws IllegalStateException if the context is already {@link Context#close() closed}.
      * @throws PolyglotException if a guest language error occurred during execution.
@@ -408,7 +408,7 @@ public final class Value {
     /**
      * Invokes the given member of this value. Unlike {@link #execute(Object...)}, this is an object
      * oriented execution of a member of an object. To test whether invocation is supported, call
-     * {@link #canInvokeMember(String)}. When object oriented semantics is not supported, use
+     * {@link #canInvokeMember(String)}. When object oriented semantics are not supported, use
      * <code>{@link #getMember(String)}.{@link #execute(Object...) execute(Object...)}</code>
      * instead.
      *
@@ -468,7 +468,7 @@ public final class Value {
     }
 
     /**
-     * Returns an <code>int</code> representation if this value if it is {@link #isNumber() number}
+     * Returns an <code>int</code> representation of this value if it is {@link #isNumber() number}
      * and the value {@link #fitsInInt() fits}.
      *
      * @throws NullPointerException if this value represents {@link #isNull() null}.
@@ -494,7 +494,7 @@ public final class Value {
     }
 
     /**
-     * Returns an <code>boolean</code> representation if this value if it is {@link #isBoolean()
+     * Returns a <code>boolean</code> representation of this value if it is {@link #isBoolean()
      * boolean}.
      *
      * @throws NullPointerException if this value represents {@link #isNull() null}
@@ -535,7 +535,7 @@ public final class Value {
     }
 
     /**
-     * Returns an <code>long</code> representation if this value if it is {@link #isNumber() number}
+     * Returns a <code>long</code> representation of this value if it is {@link #isNumber() number}
      * and the value {@link #fitsInLong() fits}.
      *
      * @throws NullPointerException if this value represents {@link #isNull() null}.
@@ -562,7 +562,7 @@ public final class Value {
     }
 
     /**
-     * Returns an <code>double</code> representation if this value if it is {@link #isNumber()
+     * Returns a <code>double</code> representation of this value if it is {@link #isNumber()
      * number} and the value {@link #fitsInDouble() fits}.
      *
      * @throws NullPointerException if this value represents {@link #isNull() null}.
@@ -589,7 +589,7 @@ public final class Value {
     }
 
     /**
-     * Returns an <code>float</code> representation if this value if it is {@link #isNumber()
+     * Returns a <code>float</code> representation of this value if it is {@link #isNumber()
      * number} and the value {@link #fitsInFloat() fits}.
      *
      * @throws NullPointerException if this value represents {@link #isNull() null}.
@@ -616,7 +616,7 @@ public final class Value {
     }
 
     /**
-     * Returns an <code>byte</code> representation if this value if it is {@link #isNumber() number}
+     * Returns a <code>byte</code> representation of this value if it is {@link #isNumber() number}
      * and the value {@link #fitsInByte() fits}.
      *
      * @throws NullPointerException if this value represents {@link #isNull() null}.
@@ -643,7 +643,7 @@ public final class Value {
     }
 
     /**
-     * Returns an <code>short</code> representation if this value if it is {@link #isNumber()
+     * Returns a <code>short</code> representation of this value if it is {@link #isNumber()
      * number} and the value {@link #fitsInShort() fits}.
      *
      * @throws NullPointerException if this value represents {@link #isNull() null}.
@@ -717,7 +717,7 @@ public final class Value {
     }
 
     /**
-     * Returns <code>true</code> whether this value represents a {@link Proxy}. The proxy instance
+     * Returns <code>true</code> if this value represents a {@link Proxy}. The proxy instance
      * can be unboxed using {@link #asProxyObject()}.
      *
      * @throws PolyglotException if a guest language error occurred during execution.
@@ -793,7 +793,7 @@ public final class Value {
      * be executed and instantiated then the returned implementation of the interface will be
      * {@link #execute(Object...) executed}. The coercion to the parameter types of functional
      * interface method is converted using the semantics of {@link #as(Class)}. If a standard
-     * functional interface like {@link Function} are used, is recommended to use
+     * functional interface like {@link Function} is used, it is recommended to use
      * {@link #as(TypeLiteral) type literals} to specify the expected generic method parameter and
      * return type.
      * <li>Any interface if the value {@link #hasMembers()}. Each method or field name maps to one
@@ -857,8 +857,8 @@ public final class Value {
      * <li>If the value can be {@link #canExecute() executed} or {@link #canInstantiate()
      * instantiated} then the result value implements {@link Function Function}. By default the
      * argument of the function will be used as single argument to the function when executed. If a
-     * value of type {@link Object Object[]} is provided then the function will executed with those
-     * arguments. The returned function may also implement {@link Map} if the value has
+     * value of type {@link Object Object[]} is provided then the function will be executed with
+     * those arguments. The returned function may also implement {@link Map} if the value has
      * {@link #hasArrayElements() array elements} or {@link #hasMembers() members}.
      * <li>If none of the above rules apply then this {@link Value} instance is returned.
      * </ol>
