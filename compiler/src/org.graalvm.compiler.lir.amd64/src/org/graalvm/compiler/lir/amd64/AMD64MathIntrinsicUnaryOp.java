@@ -37,10 +37,10 @@ import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.gen.LIRGenerator;
 
 /**
- * This is the base class for all math intrinsics (stubs). It does not specify input or output, but
- * instead assumes input(s) being xmm0 (and xmm1), and output being xmm0 as well. Users are
- * responsible for adding mov LIRs before and after this LIR instruction, to move the inputs to
- * aforementioned registers, and to move the result from xmm0.
+ * AMD64MathIntrinsicUnaryOp assumes that the input value is stored at the xmm0 register, and will
+ * emit the output value into the xmm0 register as well.
+ * {{@link #emitLIRWrapper(LIRGenerator, Value)}} is provided for emitting necessary mov LIRs before
+ * and after this LIR instruction.
  */
 public abstract class AMD64MathIntrinsicUnaryOp extends AMD64MathIntrinsicOp {
 

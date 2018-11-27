@@ -38,10 +38,10 @@ import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.Value;
 
 /**
- * This is the base class for all binary math intrinsics (stubs). It does not specify input or
- * output, but instead assumes input(s) being xmm0 (and xmm1), and output being xmm0 as well. Users
- * are responsible for adding mov LIRs before and after this LIR instruction, to move the inputs to
- * aforementioned registers, and to move the result from xmm0.
+ * AMD64MathIntrinsicUnaryOp assumes that the input values are stored in the xmm0 and xmm1
+ * registers, and it will emit the output value into the xmm0 register.
+ * {{@link #emitLIRWrapper(LIRGenerator, Value, Value)}} is provided for emitting necessary mov LIRs
+ * before and after this LIR instruction.
  */
 public abstract class AMD64MathIntrinsicBinaryOp extends AMD64MathIntrinsicOp {
 
