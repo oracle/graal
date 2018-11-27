@@ -751,8 +751,8 @@ public class AllocationReporterTest {
 
             private final AllocValue oldValue;
             private final AllocValue newValue;
-            private final ContextReference<LanguageContext> contextRef;
             @Children private final AllocNode[] children;
+            private final AllocationReporter reporter;
 
             AllocNode(AllocValue oldValue, AllocValue newValue, ContextReference<LanguageContext> contextRef) {
                 this(oldValue, newValue, contextRef, null);
@@ -761,13 +761,12 @@ public class AllocationReporterTest {
             AllocNode(AllocValue oldValue, AllocValue newValue, ContextReference<LanguageContext> contextRef, AllocNode[] children) {
                 this.oldValue = oldValue;
                 this.newValue = newValue;
-                this.contextRef = contextRef;
                 this.children = children;
+                this.reporter = contextRef.get().getEnv().lookup(AllocationReporter.class);
             }
 
             public Object execute(VirtualFrame frame) {
                 Object value;
-                AllocationReporter reporter = contextRef.get().getEnv().lookup(AllocationReporter.class);
                 if (newValue == null) { // No allocation
                     value = InstrumentationTestLanguage.Null.INSTANCE;
                     execChildren(frame);
