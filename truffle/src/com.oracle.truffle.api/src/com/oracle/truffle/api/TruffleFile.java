@@ -1408,9 +1408,7 @@ public final class TruffleFile {
         } else {
             Path root = fileSystem.parsePath("/");
             boolean emptyPath = normalizedPath.getFileName().getNameCount() == 1 && normalizedPath.getFileName().toString().isEmpty();
-            Path absolute = root.resolve(
-                            root.compareTo(normalizedAbsolute) == 0 ? root
-                                            : normalizedAbsolute.subpath(0, normalizedAbsolute.getNameCount() - (emptyPath ? 0 : normalizedPath.getNameCount()))).resolve(path);
+            Path absolute = root.equals(normalizedAbsolute) ? root : root.resolve(normalizedAbsolute.subpath(0, normalizedAbsolute.getNameCount() - (emptyPath ? 0 : normalizedPath.getNameCount()))).resolve(path);
             return new Path[]{absolute, normalizedAbsolute};
         }
     }
