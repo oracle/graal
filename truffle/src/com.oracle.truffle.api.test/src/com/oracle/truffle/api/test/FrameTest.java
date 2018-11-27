@@ -48,7 +48,6 @@ import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.Frame;
@@ -171,20 +170,9 @@ public class FrameTest {
             }
         }
     }
-
-    static boolean isCompileImmediately() {
-        CallTarget target = Truffle.getRuntime().createCallTarget(new RootNode(null) {
-            @Override
-            public Object execute(VirtualFrame frame) {
-                return CompilerDirectives.inCompiledCode();
-            }
-        });
-        return (boolean) target.call();
-    }
-
     @Test
     public void framesCanBeMaterialized() {
-        Assume.assumeFalse(isCompileImmediately());
+        Assume.assumeFalse(CompileImmediatelyCheck.isCompileImmediately());
         final TruffleRuntime runtime = Truffle.getRuntime();
 
         class FrameRootNode extends RootNode {
