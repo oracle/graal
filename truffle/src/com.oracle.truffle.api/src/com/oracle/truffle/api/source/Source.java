@@ -1077,8 +1077,8 @@ public abstract class Source {
             }
             usePath = usePath == null ? url.toExternalForm() : usePath;
             URLConnection connection = url.openConnection();
-            useMimeType = useMimeType == null ? findMimeType(url, connection, getValidMimeTypes(language)) : useMimeType;
             if (legacy) {
+                useMimeType = useMimeType == null ? findMimeType(url, connection, getValidMimeTypes(language)) : useMimeType;
                 useMimeType = useMimeType == null ? UNKNOWN_MIME_TYPE : useMimeType;
                 useContent = useContent == CONTENT_UNSET ? read(new InputStreamReader(connection.getInputStream())) : useContent;
             } else {
