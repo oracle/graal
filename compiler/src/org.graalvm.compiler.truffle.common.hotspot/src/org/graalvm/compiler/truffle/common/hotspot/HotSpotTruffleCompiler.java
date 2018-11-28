@@ -25,7 +25,6 @@
 package org.graalvm.compiler.truffle.common.hotspot;
 
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 
 public interface HotSpotTruffleCompiler extends TruffleCompiler {
 
@@ -35,7 +34,5 @@ public interface HotSpotTruffleCompiler extends TruffleCompiler {
      */
     void installTruffleCallBoundaryMethods();
 
-    abstract class Factory {
-        public abstract HotSpotTruffleCompiler create(TruffleCompilerRuntime runtime);
-    }
+    int pendingTransferToInterpreterOffset();
 }

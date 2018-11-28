@@ -1,5 +1,5 @@
 
-x52.c2 : ${labsjdk8} {
+x52.c2-jfr : ${labsjdk8} {
   capabilities: [linux, x52, no_frequency_scaling]
   environment : {
     XMX          : "64g"
@@ -12,14 +12,14 @@ x52.c2 : ${labsjdk8} {
   targets: [bench, weekly]
 }
 
-x52.c2-tmpfs10g : ${x52.c2} {
+x52.c2-tmpfs10g-jfr : ${x52.c2-jfr} {
   capabilities: [linux, x52, no_frequency_scaling, tmpfs10g]
 }
 
 builds += [
-  ${x52.c2-tmpfs10g} ${bench-dacapo-jfr}          { targets: [bench, weekly], name: "bench-compiler-dacapo-linux-x52-c2-jfr" }
-  ${x52.c2-tmpfs10g} ${bench-scala-dacapo-jfr}    { targets: [bench, weekly], name: "bench-compiler-scala-dacapo-linux-x52-c2-jfr" }
-  ${x52.c2} ${bench-specjvm2008-Single-jfr}       { targets: [bench, weekly], name: "bench-compiler-specjvm2008-Single-linux-x52-c2-jfr" }
-  ${x52.c2} ${bench-specjbb2015-jfr}              { targets: [bench, weekly], name: "bench-compiler-specjbb2015-linux-x52-c2-jfr" }
-  ${x52.c2} ${bench-renaissance-jfr}              { targets: [bench, weekly], name: "bench-compiler-renaissance-linux-x52-c2-jfr" }
+  ${x52.c2-tmpfs10g-jfr} ${bench-dacapo-jfr}          { targets: [bench, weekly], name: "bench-compiler-dacapo-linux-x52-c2-jfr" }
+  ${x52.c2-tmpfs10g-jfr} ${bench-scala-dacapo-jfr}    { targets: [bench, weekly], name: "bench-compiler-scala-dacapo-linux-x52-c2-jfr" }
+  ${x52.c2-jfr} ${bench-specjvm2008-Single-jfr}       { targets: [bench, weekly], name: "bench-compiler-specjvm2008-Single-linux-x52-c2-jfr" }
+  ${x52.c2-jfr} ${bench-specjbb2015-jfr}              { targets: [bench, weekly], name: "bench-compiler-specjbb2015-linux-x52-c2-jfr" }
+  ${x52.c2-jfr} ${bench-renaissance-jfr}              { targets: [bench, weekly], name: "bench-compiler-renaissance-linux-x52-c2-jfr" }
 ]

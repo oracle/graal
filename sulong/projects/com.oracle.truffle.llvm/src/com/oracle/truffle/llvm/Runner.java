@@ -338,21 +338,21 @@ public final class Runner {
         if (source.hasBytes()) {
             bytes = source.getBytes();
             if (source.getPath() != null) {
-                library = new ExternalLibrary(Paths.get(source.getPath()), false);
+                library = new ExternalLibrary(Paths.get(source.getPath()), false, source.isInternal());
             } else {
-                library = new ExternalLibrary("<STREAM-" + UUID.randomUUID().toString() + ">", false);
+                library = new ExternalLibrary("<STREAM-" + UUID.randomUUID().toString() + ">", false, source.isInternal());
             }
         } else if (source.hasCharacters()) {
             switch (source.getMimeType()) {
                 case LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE:
                     bytes = ByteSequence.create(decodeBase64(source.getCharacters()));
-                    library = new ExternalLibrary("<STREAM-" + UUID.randomUUID().toString() + ">", false);
+                    library = new ExternalLibrary("<STREAM-" + UUID.randomUUID().toString() + ">", false, source.isInternal());
                     break;
                 case LLVMLanguage.LLVM_SULONG_TYPE:
                     NativeLibraryDescriptor descriptor = Parser.parseLibraryDescriptor(source.getCharacters());
                     String filename = descriptor.getFilename();
                     bytes = read(filename);
-                    library = new ExternalLibrary(Paths.get(filename), false);
+                    library = new ExternalLibrary(Paths.get(filename), false, source.isInternal());
                     break;
                 default:
                     throw new LLVMParserException("Character-based source with unexpected mime type: " + source.getMimeType());
@@ -497,7 +497,7 @@ public final class Runner {
             String[] sulongLibraryNames = context.getContextExtension(SystemContextExtension.class).getSulongDefaultLibraries();
             sulongLibraries = new ExternalLibrary[sulongLibraryNames.length];
             for (int i = 0; i < sulongLibraries.length; i++) {
-                sulongLibraries[i] = context.addExternalLibrary(sulongLibraryNames[i], false);
+                sulongLibraries[i] = context.addInternalLibrary(sulongLibraryNames[i], false);
             }
 
             // parse all libraries that were passed on the command-line
@@ -630,7 +630,7 @@ public final class Runner {
         TruffleFile file = context.getEnv().getTruffleFile(path.toUri());
         Source source;
         try {
-            source = Source.newBuilder("llvm", file).build();
+            source = Source.newBuilder("llvm", file).internal(lib.isInternal()).build();
         } catch (IOException | SecurityException | OutOfMemoryError ex) {
             throw new LLVMParserException("Error reading file " + path + ".");
         }

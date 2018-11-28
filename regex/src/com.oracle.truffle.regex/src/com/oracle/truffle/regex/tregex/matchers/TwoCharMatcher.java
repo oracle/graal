@@ -30,7 +30,7 @@ import com.oracle.truffle.regex.tregex.util.DebugUtil;
 /**
  * Matcher that matches two characters. Used for things like dot (.) or ignore-case.
  */
-public final class TwoCharMatcher extends ProfiledCharMatcher {
+public final class TwoCharMatcher extends InvertibleCharMatcher {
 
     private final char c1;
     private final char c2;
@@ -38,7 +38,7 @@ public final class TwoCharMatcher extends ProfiledCharMatcher {
     /**
      * Constructs a new {@link TwoCharMatcher}.
      * 
-     * @param invert see {@link ProfiledCharMatcher}.
+     * @param invert see {@link InvertibleCharMatcher}.
      * @param c1 first character to match.
      * @param c2 second character to match.
      */

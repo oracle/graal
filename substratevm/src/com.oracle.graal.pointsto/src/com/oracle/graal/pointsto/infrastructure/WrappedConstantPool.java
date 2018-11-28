@@ -26,6 +26,7 @@ package com.oracle.graal.pointsto.infrastructure;
 
 import static jdk.vm.ci.common.JVMCIError.unimplemented;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 import org.graalvm.compiler.debug.GraalError;
@@ -76,13 +77,23 @@ public class WrappedConstantPool implements ConstantPool {
         }
     }
 
-    @Override
-    public void loadReferencedType(int cpi, int opcode) {
+    public static void loadReferencedType(ConstantPool cp, int cpi, int opcode, boolean initialize) {
+        ConstantPool root = cp;
+        while (root instanceof WrappedConstantPool) {
+            root = ((WrappedConstantPool) root).wrapped;
+        }
+
         try {
-            if (wrapped instanceof WrappedConstantPool) {
-                wrapped.loadReferencedType(cpi, opcode);
+            hsLoadReferencedType.invoke(root, cpi, opcode, initialize);
+        } catch (InvocationTargetException ex) {
+            if (ex.getCause() instanceof java.lang.BootstrapMethodError) {
+                /*
+                 * This can happen when JVMCI tries to resolve a invoke dyanmic target on a ghost
+                 * type. We ignore the exception. JVMCI should just swallow this exception at this
+                 * point and return an UnresolvedJavaMethod at a later stage.
+                 */
             } else {
-                hsLoadReferencedType.invoke(wrapped, cpi, opcode, false);
+                throw new UnsupportedFeatureException("Error loading a referenced type: " + ex.toString(), ex);
             }
         } catch (Throwable ex) {
             Throwable cause = ex;
@@ -91,6 +102,11 @@ public class WrappedConstantPool implements ConstantPool {
             }
             throw new UnsupportedFeatureException("Error loading a referenced type: " + cause.toString(), cause);
         }
+    }
+
+    @Override
+    public void loadReferencedType(int cpi, int opcode) {
+        loadReferencedType(wrapped, cpi, opcode, false);
     }
 
     @Override

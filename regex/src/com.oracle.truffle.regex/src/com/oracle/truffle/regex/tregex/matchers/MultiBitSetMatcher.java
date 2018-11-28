@@ -34,7 +34,7 @@ import java.util.Arrays;
  * This matcher can take up to 8 kilobytes of space, so it should be used only when the set of
  * characters to match is very large and sparse.
  */
-public final class MultiBitSetMatcher extends ProfiledCharMatcher {
+public final class MultiBitSetMatcher extends InvertibleCharMatcher {
 
     private static final int BYTE_RANGE = 256;
     private static final int BYTE_MAX_VALUE = 255;
@@ -50,7 +50,7 @@ public final class MultiBitSetMatcher extends ProfiledCharMatcher {
     /**
      * Constructs a new {@link MultiBitSetMatcher}.
      * 
-     * @param inverse see {@link ProfiledCharMatcher}.
+     * @param inverse see {@link InvertibleCharMatcher}.
      * @param ranges a sorted array of character ranges in the form [lower inclusive bound of range
      *            0, higher inclusive bound of range 0, lower inclusive bound of range 1, higher
      *            inclusive bound of range 1, ...]. The array contents are not modified by this

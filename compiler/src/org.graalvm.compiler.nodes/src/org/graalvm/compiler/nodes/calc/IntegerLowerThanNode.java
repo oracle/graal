@@ -40,7 +40,9 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
 
+import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.TriState;
 
@@ -236,6 +238,70 @@ public abstract class IntegerLowerThanNode extends CompareNode {
                     if (canonical != null) {
                         return canonical;
                     }
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Exploit the fact that adding the (signed) MIN_VALUE on both side flips signed and
+         * unsigned comparison.
+         *
+         * In particular:
+         * <ul>
+         * <li>{@code x + MIN_VALUE < y + MIN_VALUE <=> x |<| y}</li>
+         * <li>{@code x + MIN_VALUE |<| y + MIN_VALUE <=> x < y}</li>
+         * </ul>
+         */
+        protected static LogicNode canonicalizeRangeFlip(ValueNode forX, ValueNode forY, int bits, boolean signed, NodeView view) {
+            long min = CodeUtil.minValue(bits);
+            long xResidue = 0;
+            ValueNode left = null;
+            JavaConstant leftCst = null;
+            if (forX instanceof AddNode) {
+                AddNode xAdd = (AddNode) forX;
+                if (xAdd.getY().isJavaConstant() && !xAdd.getY().asJavaConstant().isDefaultForKind()) {
+                    long xCst = xAdd.getY().asJavaConstant().asLong();
+                    xResidue = xCst - min;
+                    left = xAdd.getX();
+                }
+            } else if (forX.isJavaConstant()) {
+                leftCst = forX.asJavaConstant();
+            }
+            if (left == null && leftCst == null) {
+                return null;
+            }
+            long yResidue = 0;
+            ValueNode right = null;
+            JavaConstant rightCst = null;
+            if (forY instanceof AddNode) {
+                AddNode yAdd = (AddNode) forY;
+                if (yAdd.getY().isJavaConstant() && !yAdd.getY().asJavaConstant().isDefaultForKind()) {
+                    long yCst = yAdd.getY().asJavaConstant().asLong();
+                    yResidue = yCst - min;
+                    right = yAdd.getX();
+                }
+            } else if (forY.isJavaConstant()) {
+                rightCst = forY.asJavaConstant();
+            }
+            if (right == null && rightCst == null) {
+                return null;
+            }
+            if ((xResidue == 0 && left != null) || (yResidue == 0 && right != null)) {
+                if (left == null) {
+                    left = ConstantNode.forIntegerBits(bits, leftCst.asLong() - min);
+                } else if (xResidue != 0) {
+                    left = AddNode.create(left, ConstantNode.forIntegerBits(bits, xResidue), view);
+                }
+                if (right == null) {
+                    right = ConstantNode.forIntegerBits(bits, rightCst.asLong() - min);
+                } else if (yResidue != 0) {
+                    right = AddNode.create(right, ConstantNode.forIntegerBits(bits, yResidue), view);
+                }
+                if (signed) {
+                    return new IntegerBelowNode(left, right);
+                } else {
+                    return new IntegerLessThanNode(left, right);
                 }
             }
             return null;

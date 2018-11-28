@@ -73,6 +73,7 @@ public class GraalTest {
     }
 
     public static final boolean Java8OrEarlier = GraalServices.Java8OrEarlier;
+    public static final boolean Java11OrEarlier = GraalServices.Java11OrEarlier;
 
     protected Method getMethod(String methodName) {
         return getMethod(getClass(), methodName);
@@ -244,7 +245,7 @@ public class GraalTest {
         try {
             /* Trigger loading of the management library using the bootstrap class loader. */
             GraalServices.getCurrentThreadAllocatedBytes();
-        } catch (UnsatisfiedLinkError | NoClassDefFoundError e) {
+        } catch (UnsatisfiedLinkError | NoClassDefFoundError | UnsupportedOperationException e) {
             throw new AssumptionViolatedException("Management interface is unavailable: " + e);
         }
     }

@@ -32,6 +32,7 @@ import java.util.BitSet;
 
 import org.graalvm.word.WordBase;
 
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -45,7 +46,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public abstract class HostedType implements SharedType, WrappedJavaType, Comparable<HostedType> {
+public abstract class HostedType implements SharedType, WrappedJavaType, Comparable<HostedType>, OriginalClassProvider {
 
     protected final HostedUniverse universe;
     protected final AnalysisType wrapped;
@@ -430,6 +431,11 @@ public abstract class HostedType implements SharedType, WrappedJavaType, Compara
 
     public void setEnclosingType(HostedType enclosingType) {
         this.enclosingType = enclosingType;
+    }
+
+    @Override
+    public Class<?> getJavaClass() {
+        return OriginalClassProvider.getJavaClass(universe.getSnippetReflection(), wrapped);
     }
 
     @Override

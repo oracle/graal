@@ -2515,6 +2515,14 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         emitModRM(dst, src);
     }
 
+    public final void pcmpeqd(Register dst, Register src) {
+        assert supports(CPUFeature.SSE2);
+        assert dst.getRegisterCategory().equals(XMM) && src.getRegisterCategory().equals(XMM);
+        simdPrefix(dst, dst, src, PD, P_0F, false);
+        emitByte(0x76);
+        emitModRM(dst, src);
+    }
+
     public final void pcmpestri(Register dst, AMD64Address src, int imm8) {
         assert supports(CPUFeature.SSE4_2);
         assert inRC(XMM, dst);
@@ -2716,6 +2724,14 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         assert inRC(XMM, dst) && inRC(XMM, src);
         simdPrefix(dst, dst, src, PD, P_0F, false);
         emitByte(0xFA);
+        emitModRM(dst, src);
+    }
+
+    public final void punpcklbw(Register dst, Register src) {
+        assert supports(CPUFeature.SSE2);
+        assert inRC(XMM, dst) && inRC(XMM, src);
+        simdPrefix(dst, dst, src, PD, P_0F, false);
+        emitByte(0x60);
         emitModRM(dst, src);
     }
 

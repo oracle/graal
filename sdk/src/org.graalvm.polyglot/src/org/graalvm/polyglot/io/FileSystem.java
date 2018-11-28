@@ -318,4 +318,20 @@ public interface FileSystem {
     default Path readSymbolicLink(Path link) throws IOException {
         throw new UnsupportedOperationException("Links are not supported");
     }
+
+    /**
+     * Sets the current working directory. The current working directory is used to resolve non
+     * absolute paths in {@link FileSystem} operations.
+     *
+     * @param currentWorkingDirectory the new current working directory
+     * @throws UnsupportedOperationException if setting of the current working directory is not
+     *             supported
+     * @throws IllegalArgumentException if the {@code currentWorkingDirectory} is not a valid
+     *             current working directory
+     * @throws SecurityException if {@code currentWorkingDirectory} is not readable
+     * @since 1.0
+     */
+    default void setCurrentWorkingDirectory(Path currentWorkingDirectory) {
+        throw new UnsupportedOperationException("Setting current working directory is not supported.");
+    }
 }

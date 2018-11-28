@@ -124,6 +124,7 @@ public class InstallerTest extends TestBase {
         storage.installed.add(fakeInfo);
         exception.expect(DependencyException.Conflict.class);
         exception.expectMessage("VERIFY_ComponentExists");
+        installer.setFailOnExisting(true);
         installer.validateRequirements();
     }
 
@@ -149,7 +150,18 @@ public class InstallerTest extends TestBase {
 
         exception.expect(DependencyException.Conflict.class);
         exception.expectMessage("VERIFY_ComponentExists");
+        installer.setFailOnExisting(true);
         installer.validateRequirements();
+    }
+
+    @Test
+    public void testSkipExistingComponent() throws IOException {
+        setupComponentInstall("truffleruby2.jar");
+        ComponentInfo fakeInfo = new ComponentInfo("org.graalvm.ruby", "Fake ruby", "1.0");
+        storage.installed.add(fakeInfo);
+
+        installer.setFailOnExisting(false);
+        assertFalse("Must refuse installation", installer.validateAll());
     }
 
     /**

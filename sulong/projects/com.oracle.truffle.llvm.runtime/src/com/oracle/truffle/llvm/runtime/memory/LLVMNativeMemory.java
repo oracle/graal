@@ -119,11 +119,6 @@ public final class LLVMNativeMemory extends LLVMMemory {
     }
 
     @Override
-    public void free(LLVMNativePointer address) {
-        free(address.asNative());
-    }
-
-    @Override
     public void free(long address) {
         if (!noDerefHandleAssumption.isValid() && derefHandleContainer.accept(address)) {
             derefHandleContainer.free(address);
@@ -176,19 +171,9 @@ public final class LLVMNativeMemory extends LLVMMemory {
     }
 
     @Override
-    public boolean getI1(LLVMNativePointer addr) {
-        return getI1(addr.asNative());
-    }
-
-    @Override
     public boolean getI1(long ptr) {
         assert checkPointer(ptr);
         return unsafe.getByte(ptr) != 0;
-    }
-
-    @Override
-    public byte getI8(LLVMNativePointer addr) {
-        return getI8(addr.asNative());
     }
 
     @Override
@@ -198,19 +183,9 @@ public final class LLVMNativeMemory extends LLVMMemory {
     }
 
     @Override
-    public short getI16(LLVMNativePointer addr) {
-        return getI16(addr.asNative());
-    }
-
-    @Override
     public short getI16(long ptr) {
         assert checkPointer(ptr);
         return unsafe.getShort(ptr);
-    }
-
-    @Override
-    public int getI32(LLVMNativePointer addr) {
-        return getI32(addr.asNative());
     }
 
     @Override
@@ -236,30 +211,15 @@ public final class LLVMNativeMemory extends LLVMMemory {
     }
 
     @Override
-    public long getI64(LLVMNativePointer addr) {
-        return getI64(addr.asNative());
-    }
-
-    @Override
     public long getI64(long ptr) {
         assert checkPointer(ptr);
         return unsafe.getLong(ptr);
     }
 
     @Override
-    public float getFloat(LLVMNativePointer addr) {
-        return getFloat(addr.asNative());
-    }
-
-    @Override
     public float getFloat(long ptr) {
         assert checkPointer(ptr);
         return unsafe.getFloat(ptr);
-    }
-
-    @Override
-    public double getDouble(LLVMNativePointer addr) {
-        return getDouble(addr.asNative());
     }
 
     @Override
@@ -280,19 +240,9 @@ public final class LLVMNativeMemory extends LLVMMemory {
     }
 
     @Override
-    public LLVMNativePointer getPointer(LLVMNativePointer addr) {
-        return getPointer(addr.asNative());
-    }
-
-    @Override
     public LLVMNativePointer getPointer(long ptr) {
         assert checkPointer(ptr);
         return LLVMNativePointer.create(unsafe.getAddress(ptr));
-    }
-
-    @Override
-    public void putI1(LLVMNativePointer addr, boolean value) {
-        putI1(addr.asNative(), value);
     }
 
     @Override
@@ -302,19 +252,9 @@ public final class LLVMNativeMemory extends LLVMMemory {
     }
 
     @Override
-    public void putI8(LLVMNativePointer addr, byte value) {
-        putI8(addr.asNative(), value);
-    }
-
-    @Override
     public void putI8(long ptr, byte value) {
         assert checkPointer(ptr);
         unsafe.putByte(ptr, value);
-    }
-
-    @Override
-    public void putI16(LLVMNativePointer addr, short value) {
-        putI16(addr.asNative(), value);
     }
 
     @Override
@@ -324,19 +264,9 @@ public final class LLVMNativeMemory extends LLVMMemory {
     }
 
     @Override
-    public void putI32(LLVMNativePointer addr, int value) {
-        putI32(addr.asNative(), value);
-    }
-
-    @Override
     public void putI32(long ptr, int value) {
         assert checkPointer(ptr);
         unsafe.putInt(ptr, value);
-    }
-
-    @Override
-    public void putI64(LLVMNativePointer addr, long value) {
-        putI64(addr.asNative(), value);
     }
 
     @Override
@@ -356,11 +286,6 @@ public final class LLVMNativeMemory extends LLVMMemory {
     }
 
     @Override
-    public void putByteArray(LLVMNativePointer addr, byte[] bytes) {
-        putByteArray(addr.asNative(), bytes);
-    }
-
-    @Override
     public void putByteArray(long ptr, byte[] bytes) {
         long currentptr = ptr;
         for (int i = 0; i < bytes.length; i++) {
@@ -370,19 +295,9 @@ public final class LLVMNativeMemory extends LLVMMemory {
     }
 
     @Override
-    public void putFloat(LLVMNativePointer addr, float value) {
-        putFloat(addr.asNative(), value);
-    }
-
-    @Override
     public void putFloat(long ptr, float value) {
         assert checkPointer(ptr);
         unsafe.putFloat(ptr, value);
-    }
-
-    @Override
-    public void putDouble(LLVMNativePointer addr, double value) {
-        putDouble(addr.asNative(), value);
     }
 
     @Override
@@ -392,28 +307,8 @@ public final class LLVMNativeMemory extends LLVMMemory {
     }
 
     @Override
-    public void put80BitFloat(LLVMNativePointer addr, LLVM80BitFloat value) {
-        putByteArray(addr, value.getBytes());
-    }
-
-    @Override
     public void put80BitFloat(long ptr, LLVM80BitFloat value) {
         putByteArray(ptr, value.getBytes());
-    }
-
-    @Override
-    public void putPointer(LLVMNativePointer addr, LLVMNativePointer value) {
-        putPointer(addr.asNative(), value);
-    }
-
-    @Override
-    public void putPointer(LLVMNativePointer addr, long ptrValue) {
-        putPointer(addr.asNative(), ptrValue);
-    }
-
-    @Override
-    public void putPointer(long ptr, LLVMNativePointer value) {
-        putPointer(ptr, value.asNative());
     }
 
     @Override

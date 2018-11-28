@@ -1023,7 +1023,7 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
         }
         newNode.graph = into;
         newNode.id = INITIAL_ID;
-        if (getNodeSourcePosition() != null && (into == null || into.updateNodeSourcePosition())) {
+        if (getNodeSourcePosition() != null && (into == null || into.trackNodeSourcePosition())) {
             newNode.setNodeSourcePosition(getNodeSourcePosition());
         }
         if (into != null) {

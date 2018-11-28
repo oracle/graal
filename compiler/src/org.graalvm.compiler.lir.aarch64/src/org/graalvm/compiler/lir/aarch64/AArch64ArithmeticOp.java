@@ -437,4 +437,42 @@ public enum AArch64ArithmeticOp {
         }
     }
 
+    public static class MultiplyAddSubOp extends AArch64LIRInstruction {
+        private static final LIRInstructionClass<MultiplyAddSubOp> TYPE = LIRInstructionClass.create(MultiplyAddSubOp.class);
+
+        @Opcode private final AArch64ArithmeticOp op;
+        @Def(REG) protected AllocatableValue result;
+        @Use(REG) protected AllocatableValue src1;
+        @Use(REG) protected AllocatableValue src2;
+        @Use(REG) protected AllocatableValue src3;
+
+        /**
+         * Computes <code>result = src3 <op> src1 * src2</code>.
+         */
+        public MultiplyAddSubOp(AArch64ArithmeticOp op, AllocatableValue result, AllocatableValue src1, AllocatableValue src2, AllocatableValue src3) {
+            super(TYPE);
+            assert op == ADD || op == SUB;
+            this.op = op;
+            this.result = result;
+            this.src1 = src1;
+            this.src2 = src2;
+            this.src3 = src3;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+            int size = result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            switch (op) {
+                case ADD:
+                    masm.madd(size, asRegister(result), asRegister(src1), asRegister(src2), asRegister(src3));
+                    break;
+                case SUB:
+                    masm.msub(size, asRegister(result), asRegister(src1), asRegister(src2), asRegister(src3));
+                    break;
+                default:
+                    throw GraalError.shouldNotReachHere();
+            }
+        }
+    }
+
 }

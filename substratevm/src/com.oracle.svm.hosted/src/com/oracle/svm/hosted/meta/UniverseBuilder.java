@@ -1008,13 +1008,13 @@ public class UniverseBuilder {
         if (type.wrapped.isInstantiated()) {
             assert (type.isInstanceClass() && !type.isAbstract()) || type.isArray();
 
-            ArrayList<HostedMethod> vtable = vtablesMap.get(type);
-            if (slot < vtable.size() && vtable.get(slot) != null) {
-                /* We already have a vtable entry from a supertype. Check that it is correct. */
-                assert vtable.get(slot).equals(resolveMethod(type, method));
-            } else {
-                HostedMethod resolvedMethod = resolveMethod(type, method);
-                if (resolvedMethod != null) {
+            HostedMethod resolvedMethod = resolveMethod(type, method);
+            if (resolvedMethod != null) {
+                ArrayList<HostedMethod> vtable = vtablesMap.get(type);
+                if (slot < vtable.size() && vtable.get(slot) != null) {
+                    /* We already have a vtable entry from a supertype. Check that it is correct. */
+                    assert vtable.get(slot).equals(resolvedMethod);
+                } else {
                     resize(vtable, slot + 1);
                     assert vtable.get(slot) == null;
                     vtable.set(slot, resolvedMethod);

@@ -24,23 +24,46 @@
  */
 package org.graalvm.compiler.truffle.common;
 
-import org.graalvm.compiler.debug.GraalError;
+import java.lang.reflect.Method;
 
 /**
- * Initializes and stores the singleton {@link TruffleCompilerRuntime} instance.
+ * Manages the singleton {@link TruffleCompilerRuntime} instance.
  */
-final class TruffleCompilerRuntimeInstance {
+public final class TruffleCompilerRuntimeInstance {
     /**
      * The singleton instance.
      */
-    static final TruffleCompilerRuntime INSTANCE = init();
+    static TruffleCompilerRuntime truffleCompilerRuntime;
 
-    private static TruffleCompilerRuntime init() {
-        Object truffleRuntime = TruffleRuntimeInstance.INSTANCE;
-        if (truffleRuntime instanceof TruffleCompilerRuntime) {
-            return (TruffleCompilerRuntime) truffleRuntime;
+    static final Object TRUFFLE_RUNTIME = init();
+
+    /**
+     * Support for re-initializing the singleton in a native-image.
+     */
+    public static synchronized void initialize(TruffleCompilerRuntime runtime) {
+        if (truffleCompilerRuntime != null) {
+            throw new InternalError(String.format("Cannot re-initialize %s singleton", TruffleCompilerRuntime.class.getName()));
         }
-        throw new GraalError("Truffle runtime %s (loader: %s) is not a %s (loader: %s)", truffleRuntime, truffleRuntime.getClass().getClassLoader(),
-                        TruffleCompilerRuntime.class.getName(), TruffleCompilerRuntime.class.getClassLoader());
+        truffleCompilerRuntime = runtime;
+    }
+
+    /**
+     * Accesses the Truffle runtime via reflection to avoid a dependency on Truffle that will expose
+     * Truffle types to all classes depending on {@code org.graalvm.compiler.truffle.common}.
+     */
+    private static Object init() {
+        try {
+            Class<?> truffleClass = Class.forName("com.oracle.truffle.api.Truffle");
+            Method getRuntime = truffleClass.getMethod("getRuntime");
+            Object truffleRuntime = getRuntime.invoke(null);
+            if (truffleRuntime instanceof TruffleCompilerRuntime) {
+                initialize((TruffleCompilerRuntime) truffleRuntime);
+            }
+            return truffleRuntime;
+        } catch (Error e) {
+            throw e;
+        } catch (Exception e) {
+            throw new ExceptionInInitializerError(e);
+        }
     }
 }

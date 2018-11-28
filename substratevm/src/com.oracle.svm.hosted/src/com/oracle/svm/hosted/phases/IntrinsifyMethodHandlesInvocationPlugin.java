@@ -300,6 +300,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         graphBuilderPlugins.appendTypePlugin(wordOperationPlugin);
         graphBuilderPlugins.appendTypePlugin(new TrustedInterfaceTypePlugin());
         graphBuilderPlugins.appendNodePlugin(wordOperationPlugin);
+        graphBuilderPlugins.setClassInitializationPlugin(new NoClassInitializationPlugin());
 
         GraphBuilderConfiguration graphBuilderConfig = GraphBuilderConfiguration.getSnippetDefault(graphBuilderPlugins);
         GraphBuilderPhase.Instance graphBuilder = new GraphBuilderPhase.Instance(originalProviders.getMetaAccess(), originalProviders.getStampProvider(), originalProviders.getConstantReflection(),

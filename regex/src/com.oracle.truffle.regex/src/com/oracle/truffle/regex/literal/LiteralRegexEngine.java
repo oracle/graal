@@ -90,7 +90,7 @@ public final class LiteralRegexEngine {
         if (preCalcResultVisitor.getLiteral().length() == 1) {
             return new IndexOfChar(language, source, preCalcResultVisitor);
         }
-        if (preCalcResultVisitor.getLiteral().length() <= 8) {
+        if (preCalcResultVisitor.getLiteral().length() <= 64) {
             return new IndexOfString(language, source, preCalcResultVisitor);
         }
         return null;

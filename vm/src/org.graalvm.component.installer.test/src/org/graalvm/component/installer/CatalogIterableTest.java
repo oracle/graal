@@ -24,6 +24,7 @@
  */
 package org.graalvm.component.installer;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -166,6 +167,22 @@ public class CatalogIterableTest extends CommandTestBase implements Supplier<Com
         exception.expectMessage("REMOTE_UnknownComponentId");
         addRemoteComponent("persist/data/truffleruby3.jar", "test://graalvm.io/download/truffleruby.zip", false);
         textParams.add("r");
+        CatalogIterable cit = new CatalogIterable(this, this, this);
+        assertTrue(cit.iterator().hasNext());
+        cit.iterator().next();
+    }
+
+    /**
+     * Checks that if user mistypes a filename instead of component ID, an informative note is
+     * printed.
+     */
+    @Test
+    public void testUnknownComponentButExistingFile() throws Exception {
+        exception.expect(FailedOperationException.class);
+        exception.expectMessage("REMOTE_UnknownComponentMaybeFile");
+        addRemoteComponent("persist/data/truffleruby3.jar", "test://graalvm.io/download/truffleruby.zip", false);
+        File mistyped = folder.newFile("mistyped-component.jar");
+        textParams.add(mistyped.getPath());
         CatalogIterable cit = new CatalogIterable(this, this, this);
         assertTrue(cit.iterator().hasNext());
         cit.iterator().next();

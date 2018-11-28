@@ -27,18 +27,15 @@ package com.oracle.svm.reflect.hosted;
 /* Allow imports of java.lang.reflect and sun.misc.ProxyGenerator: Checkstyle: allow reflection. */
 
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.stream.Collectors;
 
 import org.graalvm.compiler.serviceprovider.GraalServices;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicInteger;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
@@ -85,42 +82,8 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
         imageClassLoader = classLoader;
     }
 
-    private static String getProxyTypeName(String typeName) {
-        return typeName.replaceAll("[$.\\[;]", PROXY_NAME_SEPARATOR);
-    }
-
     static String getStableProxyName(Member member) {
-        String className = getProxyTypeName(member.getDeclaringClass().getName());
-        String memberName = uniqueMemberName(member);
-        return "com.oracle.svm.reflect.proxies.Proxy" + PROXY_NAME_SEPARATOR + className + PROXY_NAME_SEPARATOR + memberName;
-    }
-
-    private static String uniqueMemberName(Member member) {
-        String uniqueMemberName;
-        if (member instanceof Field) {
-            uniqueMemberName = member.getName();
-        } else if (member instanceof Executable) {
-            if (member instanceof Constructor) {
-                uniqueMemberName = "constructor";
-            } else if (member instanceof Method) {
-                uniqueMemberName = member.getName();
-                uniqueMemberName += PROXY_NAME_SEPARATOR;
-                uniqueMemberName += getProxyTypeName(((Method) member).getReturnType().getName());
-            } else {
-                throw VMError.shouldNotReachHere();
-            }
-
-            uniqueMemberName += PROXY_NAME_SEPARATOR;
-            uniqueMemberName += Arrays.stream(((Executable) member).getParameters())
-                            .map(Parameter::getType)
-                            .map(Class::getName)
-                            .map(ReflectionSubstitution::getProxyTypeName)
-                            .collect(Collectors.joining(PROXY_NAME_SEPARATOR));
-        } else {
-            throw VMError.shouldNotReachHere("Proxies are defined only for Fields, Methods, and Constructors.");
-        }
-
-        return uniqueMemberName;
+        return "com.oracle.svm.reflect." + SubstrateUtil.uniqueShortName(member);
     }
 
     private static Class<?> getAccessorInterface(Member member) {

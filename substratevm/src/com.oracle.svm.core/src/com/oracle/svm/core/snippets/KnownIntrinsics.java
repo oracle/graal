@@ -81,12 +81,6 @@ public class KnownIntrinsics {
     public static native Pointer readStackPointer();
 
     /**
-     * Writes the stack pointer. Note that this is very dangerous. You have to know what you are
-     * doing.
-     */
-    public static native void writeStackPointer(Pointer value);
-
-    /**
      * Returns the value of the native instruction pointer.
      */
     public static native CodePointer readInstructionPointer();

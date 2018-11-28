@@ -46,6 +46,8 @@ import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.svm.core.deopt.DeoptimizationRuntime;
+import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.nodes.UnreachableNode;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
@@ -99,8 +101,10 @@ public final class DeoptHostedSnippets extends SubstrateTemplates implements Sni
         } else if (reason == DeoptimizationReason.UnreachedCode || reason == DeoptimizationReason.TypeCheckedInliningViolated || reason == DeoptimizationReason.NotCompiledExceptionHandler) {
             runtimeCall(SnippetRuntime.UNREACHED_CODE);
         } else if (reason == DeoptimizationReason.TransferToInterpreter) {
-            /* We use this reason in TestDeoptimizeNode for deoptimization testing. */
-            runtimeCall(SnippetRuntime.DEOPTIMIZE, Deoptimizer.encodeDeoptActionAndReasonToLong(DeoptimizationAction.None, DeoptimizationReason.TransferToInterpreter, 0), null);
+            if (DeoptimizationSupport.enabled()) {
+                /* We use this reason in TestDeoptimizeNode for deoptimization testing. */
+                runtimeCall(DeoptimizationRuntime.DEOPTIMIZE, Deoptimizer.encodeDeoptActionAndReasonToLong(DeoptimizationAction.None, DeoptimizationReason.TransferToInterpreter, 0), null);
+            }
         } else if (reason == DeoptimizationReason.Unresolved) {
             runtimeCall(SnippetRuntime.UNRESOLVED, sourcePosition);
         }

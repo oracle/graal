@@ -24,11 +24,9 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import org.graalvm.compiler.serviceprovider.ServiceProvider;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 
-@ServiceProvider(LoopNodeFactory.class)
 public class DefaultLoopNodeFactory implements LoopNodeFactory {
 
     @Override

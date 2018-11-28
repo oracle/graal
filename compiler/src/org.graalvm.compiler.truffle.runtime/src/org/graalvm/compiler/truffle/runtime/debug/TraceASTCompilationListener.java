@@ -24,18 +24,18 @@
  */
 package org.graalvm.compiler.truffle.runtime.debug;
 
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TraceTruffleCompilationAST;
+import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TraceTruffleCompilationAST;
 
 import java.util.List;
 
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.AbstractGraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining.CallTreeNodeVisitor;
+import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeClass;
@@ -50,7 +50,7 @@ public final class TraceASTCompilationListener extends AbstractGraalTruffleRunti
     }
 
     public static void install(GraalTruffleRuntime runtime) {
-        if (TruffleCompilerOptions.getValue(TraceTruffleCompilationAST)) {
+        if (TruffleRuntimeOptions.getValue(TraceTruffleCompilationAST)) {
             runtime.addListener(new TraceASTCompilationListener(runtime));
         }
     }

@@ -24,23 +24,22 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import org.graalvm.compiler.core.CompilerThreadFactory;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
+import static org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.getOptions;
+import static org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.overrideOptions;
 
 import java.lang.ref.WeakReference;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.RunnableFuture;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilerThreads;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getOptions;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.overrideOptions;
+import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
+import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope;
+import org.graalvm.options.OptionValues;
 
 /**
  * The compilation queue accepts compilation requests, and schedules compilations.
@@ -78,7 +77,7 @@ public class BackgroundCompileQueue {
         public void run() {
             OptimizedCallTarget callTarget = weakCallTarget.get();
             if (callTarget != null) {
-                try (TruffleCompilerOptions.TruffleOptionsOverrideScope scope = optionOverrides != null ? overrideOptions(optionOverrides.getMap()) : null) {
+                try (TruffleRuntimeOptionsOverrideScope scope = optionOverrides != null ? overrideOptions(optionOverrides) : null) {
                     if (!task.isCancelled()) {
                         OptionValues options = getOptions();
                         runtime.doCompile(options, callTarget, task);
@@ -129,8 +128,8 @@ public class BackgroundCompileQueue {
     public BackgroundCompileQueue() {
         this.idCounter = new AtomicLong();
 
-        CompilerThreadFactory factory = new CompilerThreadFactory("TruffleCompilerThread");
-        int selectedProcessors = TruffleCompilerOptions.getValue(TruffleCompilerThreads);
+        TruffleCompilerThreadFactory factory = new TruffleCompilerThreadFactory("TruffleCompilerThread");
+        int selectedProcessors = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompilerThreads);
         if (selectedProcessors == 0) {
             // No manual selection made, check how many processors are available.
             int availableProcessors = Runtime.getRuntime().availableProcessors();
@@ -148,8 +147,31 @@ public class BackgroundCompileQueue {
         };
     }
 
+    private static final class TruffleCompilerThreadFactory implements ThreadFactory {
+        private final String namePrefix;
+
+        TruffleCompilerThreadFactory(final String namePrefix) {
+            this.namePrefix = namePrefix;
+        }
+
+        @Override
+        public Thread newThread(Runnable r) {
+            final Thread t = new Thread(r) {
+                @Override
+                public void run() {
+                    setContextClassLoader(getClass().getClassLoader());
+                    super.run();
+                }
+            };
+            t.setName(namePrefix + "-" + t.getId());
+            t.setPriority(Thread.MAX_PRIORITY);
+            t.setDaemon(true);
+            return t;
+        }
+    }
+
     public CancellableCompileTask submitCompilationRequest(GraalTruffleRuntime runtime, OptimizedCallTarget optimizedCallTarget, boolean lastTierCompilation) {
-        final OptionValues optionOverrides = TruffleCompilerOptions.getCurrentOptionOverrides();
+        final OptionValues optionOverrides = TruffleRuntimeOptions.getCurrentOptionOverrides();
         CancellableCompileTask cancellable = new CancellableCompileTask(lastTierCompilation);
         Request request = new Request(runtime, optionOverrides, optimizedCallTarget, cancellable);
         cancellable.setFuture(compilationExecutorService.submit(request));

@@ -50,12 +50,19 @@ import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 
+import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+/**
+ * Wraps a field whose value is recomputed when added to an image.
+ *
+ * @see RecomputeFieldValue
+ * @see NativeImageReinitialize
+ */
 public class ComputedValueField implements ReadableJavaField, ComputedValue {
 
     private final ResolvedJavaField original;

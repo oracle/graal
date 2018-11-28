@@ -26,7 +26,6 @@ package org.graalvm.compiler.truffle.runtime;
 
 import java.util.function.Supplier;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
@@ -149,18 +148,20 @@ final class GraalTVMCI extends TVMCI {
         int splitCount;
     }
 
+    private static final Supplier<EngineData> engineDataConstructor = new Supplier<EngineData>() {
+        @Override
+        public EngineData get() {
+            return new EngineData();
+        }
+    };
+
     EngineData getEngineData(RootNode rootNode) {
-        return getOrCreateRuntimeData(rootNode, new Supplier<EngineData>() {
-            @Override
-            public EngineData get() {
-                return new EngineData();
-            }
-        });
+        return getOrCreateRuntimeData(rootNode, engineDataConstructor);
     }
 
     @Override
     protected void reportPolymorphicSpecialize(Node source) {
-        if (TruffleCompilerOptions.getValue(TruffleCompilerOptions.TruffleExperimentalSplitting)) {
+        if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplitting)) {
             TruffleSplittingStrategy.newPolymorphicSpecialize(source);
             final RootNode rootNode = source.getRootNode();
             final OptimizedCallTarget callTarget = rootNode == null ? null : (OptimizedCallTarget) rootNode.getCallTarget();

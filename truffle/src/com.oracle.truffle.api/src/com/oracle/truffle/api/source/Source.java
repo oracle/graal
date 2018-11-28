@@ -721,7 +721,7 @@ public abstract class Source {
      * @since 1.0
      */
     public static SourceBuilder newBuilder(String language, TruffleFile file) {
-        return newBuilder(language, SourceAccessor.asFile(file));
+        return EMPTY.new LiteralBuilder(language, file);
     }
 
     /*
@@ -858,7 +858,7 @@ public abstract class Source {
      * @since 1.0
      */
     public static String findMimeType(TruffleFile file) throws IOException {
-        return findMimeType(SourceAccessor.asFile(file).toPath(), null);
+        return findMimeType(SourceAccessor.getPath(file), null);
     }
 
     /**
@@ -918,7 +918,21 @@ public abstract class Source {
         String useMimeType = mimeType;
         String usePath = null;
         URL useUrl = null;
-        if (origin instanceof File) {
+        if (origin instanceof TruffleFile) {
+            TruffleFile file = (TruffleFile) origin;
+            TruffleFile absoluteFile = file.exists() ? file.getCanonicalFile() : file;
+            useName = useName == null ? file.getName() : useName;
+            usePath = usePath == null ? absoluteFile.getPath() : usePath;
+            useUri = useUri == null ? absoluteFile.toUri() : useUri;
+            useMimeType = useMimeType == null ? findMimeType(SourceAccessor.getPath(absoluteFile), getValidMimeTypes(language)) : useMimeType;
+            if (useContent == null) {
+                if (isCharacterBased(language, useMimeType)) {
+                    useContent = new String(file.readAllBytes(), StandardCharsets.UTF_8);
+                } else {
+                    useContent = ByteSequence.create(file.readAllBytes());
+                }
+            }
+        } else if (origin instanceof File) {
             final File file = (File) origin;
             File absoluteFile = file.exists() ? file.getCanonicalFile() : file;
             useName = useName == null ? file.getName() : useName;
@@ -984,7 +998,7 @@ public abstract class Source {
     }
 
     static byte[] readBytes(File file) throws IOException {
-        return SourceAccessor.isTruffleFile(file) ? SourceAccessor.readTruffleFile(file) : Files.readAllBytes(file.toPath());
+        return Files.readAllBytes(file.toPath());
     }
 
     static byte[] readBytes(URLConnection connection) throws IOException {

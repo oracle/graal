@@ -26,9 +26,8 @@
  */
 package org.graalvm.compiler.jtt.lang;
 
-import org.junit.Test;
-
 import org.graalvm.compiler.jtt.JTTTest;
+import org.junit.Test;
 
 public final class Class_cast01 extends JTTTest {
 
@@ -54,6 +53,11 @@ public final class Class_cast01 extends JTTTest {
         }
         if (i == 3) {
             if (DummyTestClass.class.cast(object) == null) {
+                return -1;
+            }
+        }
+        if (i == 4) {
+            if (int.class.cast(object) == null) {
                 return -1;
             }
         }

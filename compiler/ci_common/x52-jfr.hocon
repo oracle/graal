@@ -6,7 +6,7 @@ bench-dacapo-jfr: ${bench-common} ${jfr-bench-notifications} {
     ${bench-jvmci.mx-dacapo} ${bench-arguments} ${JFR.jvm-opts}
   ]
   setup: ${bench-common.setup} ${JFR.setup}
-  teardown: ${bench-common.teardown} ${JFR.teardown}
+  teardown: ${JFR.teardown} # NOTE : Exclude branch-common to avoid polluting bench server with slower runs
 }
 
 bench-scala-dacapo-jfr: ${bench-common} ${jfr-bench-notifications} {
@@ -17,7 +17,7 @@ bench-scala-dacapo-jfr: ${bench-common} ${jfr-bench-notifications} {
     ${bench-jvmci.mx-scala-dacapo} ${bench-arguments} ${JFR.jvm-opts}
   ]
   setup: ${bench-common.setup} ${JFR.setup}
-  teardown: ${bench-common.teardown} ${JFR.teardown}
+  teardown: ${JFR.teardown} # NOTE : Exclude branch-common to avoid polluting bench server with slower runs
 }
 
 bench-specjvm2008-Single-jfr: ${bench-specjvm2008} ${jfr-bench-notifications} {
@@ -30,7 +30,9 @@ bench-specjvm2008-Single-jfr: ${bench-specjvm2008} ${jfr-bench-notifications} {
     ]
   ]
   setup: ${bench-specjvm2008.setup} ${JFR.setup}
-  teardown: ${bench-specjvm2008.teardown} ${JFR.teardown}
+  teardown: [
+    [rm, "-r", "${SPECJVM2008}/results"]
+  ] ${JFR.teardown} # NOTE : Exclude branch-common to avoid polluting bench server with slower runs
   timelimit: "3:30:00"
 }
 
@@ -42,7 +44,7 @@ bench-specjbb2015-jfr: ${bench-common} ${jfr-bench-notifications} {
     ${bench-jvmci.mx-specjbb2015} ${bench-arguments} ${JFR.jvm-opts}
   ]
   setup: ${bench-common.setup} ${JFR.setup}
-  teardown: ${bench-common.teardown} ${JFR.teardown}
+  teardown: ${JFR.teardown} # NOTE : Exclude branch-common to avoid polluting bench server with slower runs
   downloads: {
     SPECJBB2015: { name: specjbb2015, version: "1.00" }
   }
@@ -57,7 +59,7 @@ bench-renaissance-jfr: ${bench-common} ${jfr-bench-notifications} {
     ${bench-jvmci.mx-renaissance} ${bench-arguments} ${JFR.jvm-opts}
   ]
   setup: ${bench-common.setup} ${JFR.setup}
-  teardown: ${bench-common.teardown} ${JFR.teardown}
+  teardown: ${JFR.teardown} # NOTE : Exclude branch-common to avoid polluting bench server with slower runs
   downloads: {
     RENAISSANCE: { name: renaissance, version: "0.1" }
   }
@@ -72,14 +74,14 @@ bench-spark-sql-perf-jfr: ${bench-common} ${jfr-bench-notifications} {
     ${bench-jvmci.mx-spark-sql-perf} ${bench-arguments} ${JFR.jvm-opts}
   ]
   setup: ${bench-common.setup} ${JFR.setup}
-  teardown: ${bench-common.teardown} ${JFR.teardown}
+  teardown: ${JFR.teardown} # NOTE : Exclude branch-common to avoid polluting bench server with slower runs
   downloads: {
     SPARK_SQL_PERF: { name: spark-sql-perf, version: "0.1" }
   }
   timelimit: "0:30:00"
 }
 
-x52.default : ${linux-amd64} {
+x52.default-jfr : ${linux-amd64} {
   capabilities: ${linux-amd64.capabilities} [x52, no_frequency_scaling]
   environment : {
     XMX         : "64g"
@@ -92,15 +94,15 @@ x52.default : ${linux-amd64} {
   targets: [bench, weekly]
 }
 
-x52.tmpfs10g : ${x52.default} {
-  capabilities: ${x52.default.capabilities} [tmpfs10g]
+x52.tmpfs10g-jfr : ${x52.default-jfr} {
+  capabilities: ${x52.default-jfr.capabilities} [tmpfs10g]
 }
 
 builds += [
-  ${x52.tmpfs10g} ${bench-dacapo-jfr}                        ${labsjdk8} { name: "bench-compiler-dacapo-linux-x52-jfr" }
-  ${x52.tmpfs10g} ${bench-scala-dacapo-jfr}                  ${labsjdk8} { name: "bench-compiler-scala-dacapo-linux-x52-jfr" }
-  ${x52.default} ${bench-specjvm2008-Single-jfr}             ${labsjdk8} { name: "bench-compiler-specjvm2008-Single-linux-x52-jfr" }
-  ${x52.default} ${bench-specjbb2015-jfr}                    ${labsjdk8} { name: "bench-compiler-specjbb2015-linux-x52-jfr" }
-  ${x52.default} ${bench-renaissance-jfr}                    ${labsjdk8} { name: "bench-compiler-renaissance-linux-x52-jfr" }
-  ${x52.default} ${bench-spark-sql-perf-jfr}                 ${labsjdk8} { name: "bench-compiler-spark-sql-perf-linux-x52-jfr" }
+  ${x52.tmpfs10g-jfr} ${bench-dacapo-jfr}                        ${labsjdk8} { name: "bench-compiler-dacapo-linux-x52-jfr" }
+  ${x52.tmpfs10g-jfr} ${bench-scala-dacapo-jfr}                  ${labsjdk8} { name: "bench-compiler-scala-dacapo-linux-x52-jfr" }
+  ${x52.default-jfr} ${bench-specjvm2008-Single-jfr}             ${labsjdk8} { name: "bench-compiler-specjvm2008-Single-linux-x52-jfr" }
+  ${x52.default-jfr} ${bench-specjbb2015-jfr}                    ${labsjdk8} { name: "bench-compiler-specjbb2015-linux-x52-jfr" }
+  ${x52.default-jfr} ${bench-renaissance-jfr}                    ${labsjdk8} { name: "bench-compiler-renaissance-linux-x52-jfr" }
+  ${x52.default-jfr} ${bench-spark-sql-perf-jfr}                 ${labsjdk8} { name: "bench-compiler-spark-sql-perf-linux-x52-jfr" }
 ]
