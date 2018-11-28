@@ -55,7 +55,7 @@ public class AArch64MNegTest extends AArch64MatchRuleTest {
     }
 
     public static int multiplyNegateInt(int x, int y) {
-        return mulNegInt(x, y) + mulZeroSubInt(y, x) + mulSubZeroInt(x, y);
+        return mulNegInt(x, y) | mulZeroSubInt(y, x) | mulSubZeroInt(x, y);
     }
 
     @Test
@@ -88,7 +88,7 @@ public class AArch64MNegTest extends AArch64MatchRuleTest {
     }
 
     public static long multiplyNegateLong(long x, long y) {
-        return mulNegLong(x, y) + mulZeroSubLong(y, x) + mulSubZeroLong(x, y);
+        return mulNegLong(x, y) | mulZeroSubLong(y, x) | mulSubZeroLong(x, y);
     }
 
     @Test
