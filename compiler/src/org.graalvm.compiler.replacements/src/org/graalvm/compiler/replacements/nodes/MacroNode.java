@@ -102,8 +102,8 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable, 
         assert !isPlaceholderBci(bci);
     }
 
-    protected void assertArgumentCount(ResolvedJavaMethod targetMethod, ValueNode... arguments) {
-        assert targetMethod.getSignature().getParameterCount(!targetMethod.isStatic()) == arguments.length;
+    protected void assertArgumentCount(ResolvedJavaMethod method, ValueNode... args) {
+        assert method.getSignature().getParameterCount(!method.isStatic()) == args.length;
     }
 
     public ValueNode getArgument(int i) {
