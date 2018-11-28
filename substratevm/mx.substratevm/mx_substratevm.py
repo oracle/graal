@@ -114,6 +114,8 @@ GRAAL_COMPILER_FLAGS_MAP['11'].extend(add_opens_from_packages(jdk_opens_packages
 java_base_opens_packages = [
     # Reflective access to jdk.internal.ref.CleanerImpl$PhantomCleanableRef.
     'java.base/jdk.internal.ref',
+    # Reflective access to jdk.internal.reflect.MethodAccessor.
+    'java.base/jdk.internal.reflect',
     # Reflective access to private fields of java.lang.Class.
     'java.base/java.lang',
     # Reflective access to java.lang.invoke.VarHandle*.
