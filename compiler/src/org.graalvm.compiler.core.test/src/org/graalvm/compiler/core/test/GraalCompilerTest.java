@@ -83,6 +83,7 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.FullInfopointNode;
+import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.ParameterNode;
@@ -111,6 +112,9 @@ import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.ConvertDeoptimizeToGuardPhase;
+import org.graalvm.compiler.phases.common.inlining.InliningPhase;
+import org.graalvm.compiler.phases.common.inlining.info.InlineInfo;
+import org.graalvm.compiler.phases.common.inlining.policy.GreedyInliningPolicy;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
@@ -630,6 +634,30 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     protected LoweringProvider getLowerer() {
         return getProviders().getLowerer();
+    }
+
+    protected final BasePhase<HighTierContext> createInliningPhase() {
+        return createInliningPhase(new CanonicalizerPhase());
+    }
+
+    protected BasePhase<HighTierContext> createInliningPhase(CanonicalizerPhase canonicalizer) {
+        return createInliningPhase(null, canonicalizer);
+    }
+
+    static class GreedyTestInliningPolicy extends GreedyInliningPolicy {
+        GreedyTestInliningPolicy(Map<Invoke, Double> hints) {
+            super(hints);
+        }
+
+        @Override
+        protected int previousLowLevelGraphSize(InlineInfo info) {
+            // Ignore previous compiles for tests
+            return 0;
+        }
+    }
+
+    protected BasePhase<HighTierContext> createInliningPhase(Map<Invoke, Double> hints, CanonicalizerPhase canonicalizer) {
+        return new InliningPhase(new GreedyTestInliningPolicy(hints), canonicalizer);
     }
 
     protected CompilationIdentifier getCompilationId(ResolvedJavaMethod method) {

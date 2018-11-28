@@ -64,4 +64,5 @@ include "ci_includes/publish-javadoc.hocon"
 # ------------------- VM ----------------------
 include "vm/ci_common/common.hocon"
 include "vm/ci_includes/vm.hocon"
+include "vm/ci_includes/vm-bench.hocon"
 include "vm/ci_includes/vm-bench-sulong.hocon"

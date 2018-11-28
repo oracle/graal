@@ -274,7 +274,15 @@ public class NFAState implements IndexedState, JsonConvertible {
     }
 
     public void removeNext(NFAState state) {
+        NFAStateTransition transitionToAFS = hasTransitionToAnchoredFinalState(true) ? getTransitionToAnchoredFinalState(true) : null;
+        NFAStateTransition transitionToUFS = hasTransitionToUnAnchoredFinalState(true) ? getTransitionToUnAnchoredFinalState(true) : null;
         next.removeIf(x -> x.getTarget() == state);
+        if (hasTransitionToAnchoredFinalState(true)) {
+            this.transitionToAnchoredFinalState = (short) next.indexOf(transitionToAFS);
+        }
+        if (hasTransitionToUnAnchoredFinalState(true)) {
+            this.transitionToUnAnchoredFinalState = (short) next.indexOf(transitionToUFS);
+        }
     }
 
     public void setPrev(ArrayList<NFAStateTransition> transitions) {
@@ -356,7 +364,7 @@ public class NFAState implements IndexedState, JsonConvertible {
                         Json.prop("reverseAnchoredFinalState", isReverseAnchoredFinalState()),
                         Json.prop("reverseUnAnchoredFinalState", isReverseUnAnchoredFinalState()),
                         Json.prop("next", next.stream().map(x -> Json.val(x.getId()))),
-                        Json.prop("prev", next.stream().map(x -> Json.val(x.getId()))));
+                        Json.prop("prev", prev.stream().map(x -> Json.val(x.getId()))));
     }
 
     @TruffleBoundary

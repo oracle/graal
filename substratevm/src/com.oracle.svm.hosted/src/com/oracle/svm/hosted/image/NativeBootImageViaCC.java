@@ -152,7 +152,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             cmd.addAll(inputFilenames);
 
             // We could add a .drectve section instead of doing this
-            cmd.add("/link /DEFAULTLIB:LIBCMT /DEFAULTLIB:OLDNAMES");
+            cmd.add("/link /DEFAULTLIB:LIBCMT /DEFAULTLIB:OLDNAMES /INCREMENTAL:NO");
             return cmd;
         }
     }

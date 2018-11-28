@@ -25,6 +25,7 @@
 package org.graalvm.component.installer;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
 import static org.junit.Assert.assertEquals;
@@ -44,7 +45,9 @@ public class SimpleGetoptTest extends TestBase {
 
     @Before
     public void setUp() {
-        getopt = new SimpleGetopt(ComponentInstaller.globalOptions) {
+        Map<String, String> g = new HashMap<>(ComponentInstaller.globalOptions);
+        g.put("8", "=C");
+        getopt = new SimpleGetopt(g) {
             @Override
             RuntimeException err(String messageKey, Object... args) {
                 errorKey = messageKey;
@@ -365,4 +368,28 @@ public class SimpleGetoptTest extends TestBase {
         assertEquals("bubu", opts.get("C"));
     }
 
+    @Test
+    public void testOptionAliasesNoParam() {
+        setParams("install -F bubu");
+        getopt.process();
+        Map<String, String> opts = getopt.getOptValues();
+        assertEquals("", opts.get("L"));
+    }
+
+    @Test
+    public void testOptionAliasesParamsCommand() {
+        setParams("install -9 bubu");
+        getopt.addCommandOption("install", "9", "=C");
+        getopt.process();
+        Map<String, String> opts = getopt.getOptValues();
+        assertEquals("bubu", opts.get("C"));
+    }
+
+    @Test
+    public void testOptionAliasesParamsGlobal() {
+        setParams("install -8 bubu");
+        getopt.process();
+        Map<String, String> opts = getopt.getOptValues();
+        assertEquals("bubu", opts.get("C"));
+    }
 }
