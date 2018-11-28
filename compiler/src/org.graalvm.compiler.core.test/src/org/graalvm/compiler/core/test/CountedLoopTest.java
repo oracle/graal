@@ -43,6 +43,8 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.phases.OptimisticOptimizations;
+import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.junit.Test;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -411,6 +413,7 @@ public class CountedLoopTest extends GraalCompilerTest {
         public void rewrite(LoopsData loops) {
             InductionVariable inductionVariable = loops.getInductionVariable(iv);
             assert inductionVariable != null;
+            assertTrue(inductionVariable.getLoop().isCounted(), "must be counted");
             ValueNode node = null;
             if (staticCheck != null) {
                 assert staticProperty != null;
@@ -488,6 +491,12 @@ public class CountedLoopTest extends GraalCompilerTest {
         }
         assert graph.getNodes().filter(IVPropertyNode.class).isEmpty();
         return true;
+    }
+
+    @Override
+    protected HighTierContext getDefaultHighTierContext() {
+        // Don't convert unreached paths into Guard
+        return new HighTierContext(getProviders(), getDefaultGraphBuilderSuite(), OptimisticOptimizations.NONE);
     }
 
     private Object[] argsToBind;
