@@ -766,6 +766,18 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
+     * dst = 0 - src1 * src2.
+     *
+     * @param size register size. Has to be 32 or 64.
+     * @param dst general purpose register. May not be null or the stackpointer.
+     * @param src1 general purpose register. May not be null or the stackpointer.
+     * @param src2 general purpose register. May not be null or the stackpointer.
+     */
+    public void mneg(int size, Register dst, Register src1, Register src2) {
+        super.msub(size, dst, src1, src2, zr);
+    }
+
+    /**
      * unsigned multiply high. dst = (src1 * src2) >> size
      *
      * @param size register size. Has to be 32 or 64.

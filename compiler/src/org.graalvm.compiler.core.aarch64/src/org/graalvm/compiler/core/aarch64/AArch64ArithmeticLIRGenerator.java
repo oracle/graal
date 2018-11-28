@@ -134,6 +134,11 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
         return emitBinary(LIRKind.combine(a, b), AArch64ArithmeticOp.UMULH, true, a, b);
     }
 
+    public Value emitMNeg(Value a, Value b) {
+        assert isNumericInteger(a.getPlatformKind()) && isNumericInteger(b.getPlatformKind());
+        return emitBinary(LIRKind.combine(a, b), AArch64ArithmeticOp.MNEG, true, a, b);
+    }
+
     @Override
     public Value emitDiv(Value a, Value b, LIRFrameState state) {
         return emitBinary(LIRKind.combine(a, b), getOpCode(a, AArch64ArithmeticOp.DIV, AArch64ArithmeticOp.FDIV), false, asAllocatable(a), asAllocatable(b));
