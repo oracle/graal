@@ -136,6 +136,7 @@ public final class TestDebugNoContentLanguage extends ProxyLanguage {
         @Node.Child private TestStatementNoContentNode statement;
         private final String name;
         private final SourceSection rootSection;
+        private final FrameSlot slotA;
 
         TestRootNode(TruffleLanguage<?> language, Source parsedSource, SourceInfo sourceInfo) {
             super(language);
@@ -151,6 +152,7 @@ public final class TestDebugNoContentLanguage extends ProxyLanguage {
             statement = new TestStatementNoContentNode(statementSection);
             name = word(parseRootSection.getCharacters().toString());
             insert(statement);
+            slotA = getFrameDescriptor().findOrAddFrameSlot("a", FrameSlotKind.Object);
         }
 
         private static String word(String str) {
@@ -173,8 +175,7 @@ public final class TestDebugNoContentLanguage extends ProxyLanguage {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            FrameSlot slot = frame.getFrameDescriptor().findOrAddFrameSlot("a", FrameSlotKind.Object);
-            frame.setObject(slot, "A");
+            frame.setObject(slotA, "A");
             return statement.execute(frame);
         }
 

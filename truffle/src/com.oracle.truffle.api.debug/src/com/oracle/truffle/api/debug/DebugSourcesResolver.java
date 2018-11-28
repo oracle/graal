@@ -70,14 +70,21 @@ final class DebugSourcesResolver {
         } else {
             List<URI> list = new ArrayList<>();
             for (URI uri : uris) {
-                if (!uri.isAbsolute()) {
-                    throw new IllegalArgumentException("URI " + uri + " is not absolute.");
-                }
                 list.add(uri);
             }
             collection = list;
         }
-        sourcePath = collection.toArray(new URI[collection.size()]);
+        URI[] array = collection.toArray(new URI[collection.size()]);
+        for (int i = 0; i < array.length; i++) {
+            if (!array[i].isAbsolute()) {
+                try {
+                    array[i] = new URI("file://" + array[i].toString());
+                } catch (URISyntaxException ex) {
+                    throw new IllegalArgumentException("URI " + array[i] + " is not absolute and can not be converted to a file: " + ex.getLocalizedMessage());
+                }
+            }
+        }
+        sourcePath = array;
     }
 
     Source resolve(Source source) {

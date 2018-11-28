@@ -334,8 +334,11 @@ public final class TruffleDebugger extends DebuggerDomain {
                 // should not be, double-check
                 continue;
             }
-            slh.assureLoaded(source);
-            Script script = slh.getScript(slh.getScriptId(source));
+            int scriptId = slh.assureLoaded(source);
+            if (scriptId < 0) {
+                continue;
+            }
+            Script script = slh.getScript(scriptId);
             List<Scope> scopes = new ArrayList<>();
             DebugScope dscope;
             try {
