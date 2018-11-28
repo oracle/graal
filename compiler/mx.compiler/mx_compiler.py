@@ -1150,25 +1150,6 @@ def makegraaljdk(args):
     else:
         mx.abort('Can only make GraalJDK for JDK 8 currently')
 
-_original_build = mx.command_function('build')
-_original_clean = mx.command_function('clean')
-
-
-def _no_native(action):
-    if mx.get_os() == 'windows':
-        # necessary until Truffle is fully supported (GR-7941)
-        mx.log('{} of native projects is disabled on Windows.'.format(action))
-        return ['--no-native']
-    return []
-
-
-def build(cmd_args, parser=None):
-    _original_build(_no_native('Building') + cmd_args, parser)
-
-
-def clean(args, parser=None):
-    _original_clean(_no_native('Cleaning') + args, parser)
-
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmJvmciComponent(
     suite=_suite,
@@ -1203,8 +1184,6 @@ mx.update_commands(_suite, {
     'microbench': [microbench, ''],
     'javadoc': [javadoc, ''],
     'makegraaljdk': [makegraaljdk, '[options]'],
-    'build': [build, ''],
-    'clean': [clean, ''],
 })
 
 def mx_post_parse_cmd_line(opts):
