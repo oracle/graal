@@ -589,8 +589,8 @@ public final class Value {
     }
 
     /**
-     * Returns a <code>float</code> representation of this value if it is {@link #isNumber()
-     * number} and the value {@link #fitsInFloat() fits}.
+     * Returns a <code>float</code> representation of this value if it is {@link #isNumber() number}
+     * and the value {@link #fitsInFloat() fits}.
      *
      * @throws NullPointerException if this value represents {@link #isNull() null}.
      * @throws ClassCastException if this value could not be converted.
@@ -643,8 +643,8 @@ public final class Value {
     }
 
     /**
-     * Returns a <code>short</code> representation of this value if it is {@link #isNumber()
-     * number} and the value {@link #fitsInShort() fits}.
+     * Returns a <code>short</code> representation of this value if it is {@link #isNumber() number}
+     * and the value {@link #fitsInShort() fits}.
      *
      * @throws NullPointerException if this value represents {@link #isNull() null}.
      * @throws ClassCastException if this value could not be converted.
@@ -717,8 +717,8 @@ public final class Value {
     }
 
     /**
-     * Returns <code>true</code> if this value represents a {@link Proxy}. The proxy instance
-     * can be unboxed using {@link #asProxyObject()}.
+     * Returns <code>true</code> if this value represents a {@link Proxy}. The proxy instance can be
+     * unboxed using {@link #asProxyObject()}.
      *
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws IllegalStateException if the underlying context was closed.
