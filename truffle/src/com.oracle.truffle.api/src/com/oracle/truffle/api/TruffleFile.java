@@ -42,7 +42,6 @@ package com.oracle.truffle.api;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -121,6 +120,10 @@ public final class TruffleFile {
         this.fileSystem = fileSystem;
         this.path = path;
         this.normalizedPath = normalizedPath;
+    }
+
+    Path getSPIPath() {
+        return normalizedPath;
     }
 
     /**
@@ -309,7 +312,7 @@ public final class TruffleFile {
     }
 
     /**
-     * Returns the {@link URI} representation of this {@link TruffleFile}.
+     * Returns the absolute {@link URI} representation of this {@link TruffleFile}.
      *
      * @return the absolute {@link URI} representing the {@link TruffleFile}
      * @throws SecurityException if the {@link FileSystem} denied a resolution of an absolute path
@@ -322,6 +325,27 @@ public final class TruffleFile {
             return absolutePath.toUri();
         } catch (SecurityException se) {
             throw se;
+        } catch (Throwable t) {
+            throw wrapHostException(t);
+        }
+    }
+
+    /**
+     * Returns a relative {@link URI} representation of non absolute {@link TruffleFile}. If this
+     * {@link TruffleFile} is relative it returns a relative {@link URI}. For an
+     * {@link #isAbsolute() absolute} {@link TruffleFile} it returns an absolute {@link URI}.
+     *
+     * @return the {@link URI} representing the {@link TruffleFile}
+     * @since 1.0
+     */
+    @TruffleBoundary
+    public URI toRelativeUri() {
+        if (isAbsolute()) {
+            return toUri();
+        }
+        try {
+            String strPath = "/".equals(path.getFileSystem().getSeparator()) ? path.toString() : path.toString().replace(path.getFileSystem().getSeparator(), "/");
+            return new URI(null, null, strPath, null);
         } catch (Throwable t) {
             throw wrapHostException(t);
         }
@@ -1043,7 +1067,7 @@ public final class TruffleFile {
     @TruffleBoundary
     public TruffleFile relativize(TruffleFile other) {
         try {
-            return new TruffleFile(fileSystem, path.relativize(other.path), other.normalizedPath);
+            return new TruffleFile(fileSystem, path.relativize(other.path));
         } catch (IllegalArgumentException e) {
             throw e;
         } catch (Throwable t) {
@@ -1384,7 +1408,8 @@ public final class TruffleFile {
         } else {
             Path root = fileSystem.parsePath("/");
             boolean emptyPath = normalizedPath.getFileName().getNameCount() == 1 && normalizedPath.getFileName().toString().isEmpty();
-            Path absolute = root.resolve(normalizedAbsolute.subpath(0, normalizedAbsolute.getNameCount() - (emptyPath ? 0 : normalizedPath.getNameCount()))).resolve(path);
+            Path absolute = root.equals(normalizedAbsolute) ? root
+                            : root.resolve(normalizedAbsolute.subpath(0, normalizedAbsolute.getNameCount() - (emptyPath ? 0 : normalizedPath.getNameCount()))).resolve(path);
             return new Path[]{absolute, normalizedAbsolute};
         }
     }
@@ -1531,45 +1556,6 @@ public final class TruffleFile {
         static SeekableByteChannel create(final SeekableByteChannel delegate) {
             Objects.requireNonNull(delegate, "Delegate must be non null.");
             return new ByteChannelDecorator(delegate);
-        }
-    }
-
-    @SuppressWarnings("serial")
-    static final class FileAdapter extends File {
-        private final TruffleFile truffleFile;
-
-        FileAdapter(TruffleFile truffleFile) {
-            super(truffleFile.getPath());
-            this.truffleFile = truffleFile;
-        }
-
-        TruffleFile getTruffleFile() {
-            return truffleFile;
-        }
-
-        @Override
-        public String getName() {
-            return truffleFile.getName();
-        }
-
-        @Override
-        public String getPath() {
-            return truffleFile.getPath();
-        }
-
-        @Override
-        public File getAbsoluteFile() {
-            return new FileAdapter(truffleFile.getAbsoluteFile());
-        }
-
-        @Override
-        public File getCanonicalFile() throws IOException {
-            return new FileAdapter(truffleFile.getCanonicalFile());
-        }
-
-        @Override
-        public URI toURI() {
-            return truffleFile.toUri();
         }
     }
 

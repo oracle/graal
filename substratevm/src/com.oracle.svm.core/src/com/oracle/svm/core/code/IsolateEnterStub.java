@@ -32,12 +32,12 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 /**
  * Holder class for generated call stubs for {@link CEntryPoint} methods.
  */
-public final class CEntryPointCallStubs {
+public final class IsolateEnterStub {
     public static ConstantPool getConstantPool(MetaAccessProvider metaAccess) {
         // Generated call wrappers need a valid constant pool, so we provide that of our constructor
-        return metaAccess.lookupJavaType(CEntryPointCallStubs.class).getDeclaredConstructors()[0].getConstantPool();
+        return metaAccess.lookupJavaType(IsolateEnterStub.class).getDeclaredConstructors()[0].getConstantPool();
     }
 
-    private CEntryPointCallStubs() {
+    private IsolateEnterStub() {
     }
 }

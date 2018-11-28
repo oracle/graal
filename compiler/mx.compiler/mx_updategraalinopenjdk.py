@@ -30,10 +30,15 @@ import os
 import shutil
 from collections import namedtuple
 from argparse import ArgumentParser
-from os.path import join, exists
+from os.path import join, exists, dirname
 
 import mx
 import mx_compiler
+
+def _read_sibling_file(basename):
+    path = join(dirname(__file__), basename)
+    with open(path, 'r') as fp:
+        return fp.read()
 
 def _find_version_base_project(versioned_project):
     extended_packages = versioned_project.extended_java_packages()
@@ -98,7 +103,8 @@ def updategraalinopenjdk(args):
 
     # Strings to be replaced in files copied to OpenJDK.
     replacements = {
-        'published by the Free Software Foundation.  Oracle designates this\n * particular file as subject to the "Classpath" exception as provided\n * by Oracle in the LICENSE file that accompanied this code.' : 'published by the Free Software Foundation.'
+        'published by the Free Software Foundation.  Oracle designates this\n * particular file as subject to the "Classpath" exception as provided\n * by Oracle in the LICENSE file that accompanied this code.' : 'published by the Free Software Foundation.',
+        _read_sibling_file('upl_substring.txt') : _read_sibling_file('gplv2_substring.txt')
     }
 
     # Strings that must not exist in OpenJDK source files. This is applied after replacements are made.
@@ -139,6 +145,11 @@ def updategraalinopenjdk(args):
 
     copied_source_dirs = []
     jdk_internal_vm_compiler_EXCLUDES = set() # pylint: disable=invalid-name
+    jdk_internal_vm_compiler_test_SRC = set() # pylint: disable=invalid-name
+    # Add org.graalvm.compiler.processor since it is only a dependency
+    # for (most) Graal annotation processors and is not needed to
+    # run Graal.
+    jdk_internal_vm_compiler_EXCLUDES.add('org.graalvm.compiler.processor')
     for m in graal_modules:
         classes_dir = join(jdkrepo, 'src', m.name, 'share', 'classes')
         for info in m.suites:
@@ -225,41 +236,76 @@ def updategraalinopenjdk(args):
                                         to_exclude = new_name + sfx
                                         break
                                 jdk_internal_vm_compiler_EXCLUDES.add(to_exclude)
+                                if p.testProject:
+                                    jdk_internal_vm_compiler_test_SRC.add(to_exclude)
                             first_file = False
                         with open(dst_file, 'w') as fp:
                             fp.write(contents)
+
+    def replace_lines(filename, begin_lines, end_line, replace_lines, old_line_check):
+        mx.log('Updating ' + filename + '...')
+        old_lines = []
+        new_lines = []
+        with open(filename) as fp:
+            for begin_line in begin_lines:
+                line = fp.readline()
+                while line:
+                    stripped_line = line.strip()
+                    if stripped_line == begin_line:
+                        new_lines.append(line)
+                        break
+                    new_lines.append(line)
+                    line = fp.readline()
+                assert line, begin_line + ' not found'
+
+            line_in_def = True
+            for replace in replace_lines:
+                new_lines.append(replace)
+
+            for line in fp.readlines():
+                stripped_line = line.strip()
+                if line_in_def:
+                    if stripped_line == end_line:
+                        line_in_def = False
+                        new_lines.append(line)
+                    else:
+                        old_line_check(line)
+                else:
+                    new_lines.append(line)
+        with open(filename, 'w') as fp:
+            for line in new_lines:
+                fp.write(line)
+        return old_lines
+
+    def single_column_with_continuation(line):
+        parts = line.split()
+        assert len(parts) == 2 and parts[1] == '\\', line
 
     # Update jdk.internal.vm.compiler.EXCLUDES in make/CompileJavaModules.gmk
     # to exclude all test, benchmark and annotation processor packages.
     CompileJavaModules_gmk = join(jdkrepo, 'make', 'CompileJavaModules.gmk') # pylint: disable=invalid-name
     new_lines = []
-    with open(CompileJavaModules_gmk) as fp:
-        line_in_def = False
-        for line in fp.readlines():
-            stripped_line = line.strip()
-            if line_in_def:
-                if stripped_line == '#':
-                    line_in_def = False
-                    new_lines.append(line)
-                else:
-                    parts = stripped_line.split()
-                    assert len(parts) == 2 and parts[1] == '\\', line
-            elif stripped_line == 'jdk.internal.vm.compiler_EXCLUDES += \\':
-                line_in_def = True
-                new_lines.append(line)
+    for pkg in sorted(jdk_internal_vm_compiler_EXCLUDES):
+        new_lines.append('    ' + pkg + ' \\\n')
+    begin_lines = ['jdk.internal.vm.compiler_EXCLUDES += \\']
+    end_line = '#'
+    old_line_check = single_column_with_continuation
+    replace_lines(CompileJavaModules_gmk, begin_lines, end_line, new_lines, old_line_check)
 
-                # Add org.graalvm.compiler.processor since it is only a dependency
-                # for (most) Graal annotation processors and is not needed to
-                # run Graal.
-                jdk_internal_vm_compiler_EXCLUDES.add('org.graalvm.compiler.processor')
-
-                for pkg in sorted(jdk_internal_vm_compiler_EXCLUDES):
-                    new_lines.append('    ' + pkg + ' \\\n')
-            else:
-                new_lines.append(line)
-    with open(CompileJavaModules_gmk, 'w') as fp:
-        for line in new_lines:
-            fp.write(line)
+    # Update 'SRC' in the 'Compile graalunit tests' section of make/test/JtregGraalUnit.gmk
+    # to include all test packages.
+    JtregGraalUnit_gmk = join(jdkrepo, 'make', 'test', 'JtregGraalUnit.gmk') # pylint: disable=invalid-name
+    new_lines = []
+    jdk_internal_vm_compiler_test_SRC.discard('jdk.tools.jaotc.test')
+    jdk_internal_vm_compiler_test_SRC.discard('org.graalvm.compiler.microbenchmarks')
+    jdk_internal_vm_compiler_test_SRC.discard('org.graalvm.compiler.virtual.bench')
+    jdk_internal_vm_compiler_test_SRC.discard('org.graalvm.micro.benchmarks')
+    for pkg in sorted(jdk_internal_vm_compiler_test_SRC):
+        new_lines.append('            $(SRC_DIR)/' + pkg + '/src \\\n')
+    begin_lines = ['### Compile graalunit tests', 'SRC := \\']
+    end_line = ', \\'
+    old_line_check = single_column_with_continuation
+    replace_lines(JtregGraalUnit_gmk, begin_lines, end_line, new_lines, old_line_check)
 
     mx.log('Adding new files to HG...')
     overwritten = ''

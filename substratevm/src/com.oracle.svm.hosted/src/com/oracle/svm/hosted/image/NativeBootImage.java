@@ -70,6 +70,7 @@ import com.oracle.objectfile.macho.MachOObjectFile;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.CConst;
 import com.oracle.svm.core.c.CGlobalDataImpl;
 import com.oracle.svm.core.c.CHeader;
@@ -588,30 +589,6 @@ public abstract class NativeBootImage extends AbstractBootImage {
     }
 
     /**
-     * Given a {@link ResolvedJavaMethod}, compute a "full name" including its classname and method
-     * descriptor.
-     *
-     * @param sm a substrate method
-     * @param includeReturnType TODO
-     * @return the full name (including classname and descriptor) of sm
-     */
-    private static String methodFullNameAndDescriptor(ResolvedJavaMethod sm, boolean includeReturnType) {
-        return sm.format("%H.%n(%P)" + (includeReturnType ? "%R" : "")).replace(" ", "");
-    }
-
-    /**
-     * Given a java.lang.reflect.Method, compute a "full name" including its classname and method
-     * descriptor.
-     *
-     * @param m a method
-     * @param includeReturnType TODO
-     * @return the full name (including classname and descriptor) of m
-     */
-    public static String methodFullNameAndDescriptor(java.lang.reflect.Method m, boolean includeReturnType) {
-        return m.getDeclaringClass().getCanonicalName() + "." + m.getName() + getMethodDescriptor(m, includeReturnType);
-    }
-
-    /**
      * Given a java.lang.reflect.Method, compute the symbol name of its start address (if any) in
      * the image. The symbol name returned is the one that would be used for local references (e.g.
      * for relocation), so is guaranteed to exist if the method is in the image. However, it is not
@@ -623,7 +600,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
      */
     public static String localSymbolNameForMethod(java.lang.reflect.Method m) {
         /* We don't mangle local symbols, because they never need be referenced by an assembler. */
-        return methodFullNameAndDescriptor(m, true);
+        return SubstrateUtil.uniqueShortName(m);
     }
 
     /**
@@ -638,7 +615,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
      */
     public static String localSymbolNameForMethod(ResolvedJavaMethod sm) {
         /* We don't mangle local symbols, because they never need be referenced by an assembler. */
-        return methodFullNameAndDescriptor(sm, true);
+        return SubstrateUtil.uniqueShortName(sm);
     }
 
     /**
@@ -653,7 +630,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
      *         does)
      */
     public static String globalSymbolNameForMethod(java.lang.reflect.Method m) {
-        return mangleName(methodFullNameAndDescriptor(m, false));
+        return mangleName(SubstrateUtil.uniqueShortName(m));
     }
 
     /**
@@ -668,51 +645,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
      *         does)
      */
     public static String globalSymbolNameForMethod(ResolvedJavaMethod sm) {
-        return mangleName(methodFullNameAndDescriptor(sm, false));
-    }
-
-    /**
-     * Return the Java bytecode method descriptor for a java.lang.reflect.Method. (Perhaps
-     * surprisingly, this seems not to be exposed by java.lang.reflect, so we implement it here.)
-     *
-     * @param m a method
-     * @param includeReturnType whether the descriptor string should include the return type
-     * @return its descriptor (as defined by the Java class file format), describing its argument
-     *         and, if includeReturnType is true, its return type. Does not include the name of the
-     *         method, class or package.
-     */
-    public static String getMethodDescriptor(java.lang.reflect.Method m, boolean includeReturnType) {
-        // this is based on com.oracle.graal.api.meta.MetaUtil.signatureToMethodDescriptor
-        StringBuilder sb = new StringBuilder("(");
-        for (Class<?> c : m.getParameterTypes()) {
-            sb.append(getTypeFragment(c));
-        }
-        sb.append(')');
-        if (includeReturnType) {
-            sb.append(getTypeFragment(m.getReturnType()));
-        }
-        return sb.toString();
-
-    }
-
-    private static String getTypeFragment(Class<?> c) {
-        /*
-         * HACK: java.lang.reflect does not expose method descriptors directly, *BUT* the
-         * specification of getName() for array types indirectly does so. So we use this to our
-         * advantage in the following monster.
-         */
-        if (c.isArray()) {
-            return c.getName();
-        } else if (c == void.class) {
-            return "V";
-        } else {
-            Class<?> arrayOfC = java.lang.reflect.Array.newInstance(c, new int[]{0}).getClass();
-            String nameOfArrayType = arrayOfC.getName();
-            String nameOfC = nameOfArrayType.substring(1); // trim the leading '['
-            // the multidimensional case doesn't reach here
-            assert nameOfC.charAt(0) != '[';
-            return nameOfC;
-        }
+        return mangleName(SubstrateUtil.uniqueShortName(sm));
     }
 
     /**
@@ -734,6 +667,8 @@ public abstract class NativeBootImage extends AbstractBootImage {
             if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (i == 0 && c == '.') || (i > 0 && c >= '0' && c <= '9')) {
                 // it's legal in this position
                 out.append(c);
+            } else if (c == '_') {
+                out.append("__");
             } else {
                 out.append('_');
                 out.append(String.format("%04x", (int) c));
@@ -875,7 +810,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
                 // 1. fq with return type
                 for (Map.Entry<HostedMethod, CompilationResult> ent : codeCache.getCompilations().entrySet()) {
                     final String symName = localSymbolNameForMethod(ent.getKey());
-                    final String signatureString = methodFullNameAndDescriptor(ent.getKey(), false);
+                    final String signatureString = SubstrateUtil.uniqueShortName(ent.getKey());
                     final HostedMethod existing = methodsBySignature.get(signatureString);
                     HostedMethod current = ent.getKey();
                     if (existing != null) {

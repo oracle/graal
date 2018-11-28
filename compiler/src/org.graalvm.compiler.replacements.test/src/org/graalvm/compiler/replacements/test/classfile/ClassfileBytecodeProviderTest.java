@@ -168,6 +168,10 @@ public class ClassfileBytecodeProviderTest extends GraalCompilerTest {
                                  */
                                 continue;
                             }
+                            if (isGSON(className)) {
+                                /* uses old class format */
+                                continue;
+                            }
                             try {
                                 checkClass(metaAccess, getSnippetReflection(), className);
                             } catch (ClassNotFoundException e) {
@@ -184,6 +188,10 @@ public class ClassfileBytecodeProviderTest extends GraalCompilerTest {
 
     private static boolean isInNativeImage(String className) {
         return className.startsWith("org.graalvm.nativeimage");
+    }
+
+    private static boolean isGSON(String className) {
+        return className.contains("com.google.gson");
     }
 
     protected void checkClass(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, String className) throws ClassNotFoundException {

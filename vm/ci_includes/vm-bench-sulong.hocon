@@ -1,0 +1,111 @@
+bench-llvm-common: {
+  packages: {
+    llvm: "==3.8"
+  }
+  downloads: {
+    LIBGMP: {name: libgmp, version: "6.1.0", platformspecific: true}
+  }
+  environment: {
+    BENCH_REPO_NAME: sulong-benchmarks
+    BENCHMARK: csuite
+    CPPFLAGS: "-I$LIBGMP/include"
+    LD_LIBRARY_PATH: "$LIBGMP/lib:$LD_LIBRARY_PATH"
+    LIBRARY_PATH: "$LIBGMP/lib:$LIBRARY_PATH"
+  }
+}
+
+bench-llvm-sulong-common: ${bench-llvm-common} {
+  packages: {
+    "pip:wllvm": "==1.2.2"
+  }
+}
+
+sulong_logs: [
+    "*/svmbuild/*.log"
+    "*/svmbuild/images/*.log"
+]
+sulong_logs_bc: ${sulong_logs} [
+    "../sulong-benchmarks/*/*/*.bc"
+]
+
+bench-llvm-linux: ${x52.default} ${labsjdk8} {
+  capabilities: ${x52.default.capabilities} [tmpfs25g]
+  environment: {
+    RESULTS_FILE_PREFIX: results-
+    RESULTS_FILE_SUFFIX: .json
+    RESULTS_FILE: "${RESULTS_FILE_PREFIX}${BENCHMARK}${RESULTS_FILE_SUFFIX}"
+  }
+  cmd: [mx, --dynamicimport, "/sulong", benchmark, --results-file, "${RESULTS_FILE}", "csuite:*"]
+  setup: [
+    [git, clone, --depth, "1", ${repoBase}"${BENCH_REPO_NAME}.git",  "../${BENCH_REPO_NAME}"]
+  ]
+  teardown: [
+    [bench-uploader.py, "${RESULTS_FILE}"]
+  ]
+  timelimit: "10:00:01"
+  logs: ${sulong_logs}
+}
+
+bench-llvm-sulong-core: ${bench-llvm-sulong-common} ${bench-llvm-linux} {
+  targets: [bench, post-merge],
+  environment: {
+    JVM_CONFIG: ${jvm-config.default}
+  }
+  setup: ${bench-llvm-linux.setup} [
+    [cd, ${compiler-suite-root}]
+    [mx, --dynamicimport, "/sulong", build]
+  ]
+  run: [
+    ${bench-llvm-linux.cmd} [--, --native-vm, sulong, --native-vm-config, default, --jvm, server, --jvm-config, "hosted-${JVM_CONFIG}"]
+  ]
+}
+
+bench_vm_ce_linux_base: ${svm-common-linux-amd64} ${sulong_linux} ${custom_vm_linux} ${common_vm_linux} ${openjdk8} { # repeat 'common_vm_linux' to override packages loaded by 'svm-common-linux'
+  resultFile: results.json
+  setup: [
+    [set-export, SNAPSHOT_CATALOG, [mx, urlrewrite, "http://www.graalvm.org/catalog"]]
+    [cd, vm]
+    [mx, --no-sources, --env, ce, build]
+  ]
+  teardown: [
+    [bench-uploader.py, --url, "$BENCH_SERVER_URL", ${bench_vm_ce_linux_base.resultFile}]
+  ]
+  logs: ${sulong_logs}
+  capabilities: [no_frequency_scaling, tmpfs25g, x52, linux, amd64]
+}
+
+bench-llvm-sulong-graalvm-ce: ${bench_vm_ce_linux_base} ${bench-llvm-sulong-common} ${sulong-weekly-notifications} {
+  setup: ${bench_vm_ce_linux_base.setup} [
+    [git, clone, --depth, "1", ${repoBase}"${BENCH_REPO_NAME}.git", "../../${BENCH_REPO_NAME}"]
+  ]
+  run: [
+    [mx, --no-sources, --env, ce, benchmark, --results-file, ${bench_vm_ce_linux_base.resultFile}, "csuite:*", --, --native-vm, sulong, --native-vm-config, default, --jvm, graalvm-ce, --jvm-config, "${JVM_CONFIG}"]
+  ]
+  timelimit: "10:00:01"
+}
+
+bench-llvm-native: ${bench-llvm-common} ${bench-llvm-linux} ${sulong-weekly-notifications} {
+  targets: [daily, bench]
+  run: [
+    [cd, ${compiler-suite-root}]
+    ${bench-llvm-linux.cmd} [--, --native-vm, clang, --native-vm-config, O3]
+  ]
+}
+
+builds += [
+  ${bench-llvm-sulong-graalvm-ce} {targets: [daily, bench], name: "daily-bench-sulong-graalvm-ce-jvm-csuite", environment: { JVM_CONFIG: jvm } }
+  ${bench-llvm-sulong-graalvm-ce} {targets: [daily, bench], name: "daily-bench-sulong-graalvm-ce-native-csuite", environment: { JVM_CONFIG: native } }
+  ${bench-llvm-sulong-core} {name: bench-sulong-graal-core-csuite}
+  # sulong reference benchmark
+  ${bench-llvm-native} {name: "daily-bench-clangO3-csuite"}
+
+  # upload bitcode files
+  ${bench-llvm-sulong-graalvm-ce} {
+    targets: [bench]
+    environment: {
+      JVM_CONFIG: jvm
+    }
+    name: "bench-sulong-graalvm-ce-jvm-csuite-upload-bitcode-files"
+    logs: ${sulong_logs_bc}
+  }
+]

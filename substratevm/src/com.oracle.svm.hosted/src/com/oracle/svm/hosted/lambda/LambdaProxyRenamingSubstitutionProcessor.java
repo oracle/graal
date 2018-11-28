@@ -47,6 +47,7 @@ import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.phases.NoClassInitializationPlugin;
@@ -112,9 +113,7 @@ public class LambdaProxyRenamingSubstitutionProcessor extends SubstitutionProces
     private static String createStableLambdaName(ResolvedJavaType lambdaType, ResolvedJavaMethod targetMethod) {
         assert lambdaMatcher(lambdaType.getName()).find() : "Stable name should be created only for lambda types.";
         Matcher m = lambdaMatcher(lambdaType.getName());
-        String stableTargetMethod = targetMethod.format("%H.%n(%P)%R").replaceAll("[$.()]", "_")
-                        .replaceAll("\\[]", "_arr")
-                        .replaceAll(", ", "_");
+        String stableTargetMethod = SubstrateUtil.digest(targetMethod.format("%H.%n(%P)%R"));
         return m.replaceFirst("\\$\\$Lambda\\$" + stableTargetMethod);
     }
 

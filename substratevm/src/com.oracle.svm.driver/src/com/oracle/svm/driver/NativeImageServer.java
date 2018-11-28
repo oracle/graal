@@ -44,6 +44,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
@@ -372,7 +373,7 @@ final class NativeImageServer extends NativeImage {
     }
 
     @SuppressWarnings("try")
-    private Server getServerInstance(LinkedHashSet<Path> classpath, LinkedHashSet<Path> bootClasspath, LinkedHashSet<String> javaArgs) {
+    private Server getServerInstance(LinkedHashSet<Path> classpath, LinkedHashSet<Path> bootClasspath, List<String> javaArgs) {
         Server[] result = {null};
         /* Important - Creating new servers is a machine-exclusive operation */
         withFileChannel(getMachineDir().resolve("create-server.lock"), lockFileChannel -> {
@@ -404,7 +405,11 @@ final class NativeImageServer extends NativeImage {
                 replaceArg(javaArgs, oXms, xmsValueStr);
 
                 Path sessionDir = getSessionDir();
-                String serverUID = imageServerUID(classpath, bootClasspath, javaArgs);
+                List<Collection<Path>> builderPaths = new ArrayList<>(Arrays.asList(classpath, bootClasspath));
+                if (config.useJavaModules()) {
+                    builderPaths.addAll(Arrays.asList(config.getBuilderModulePath(), config.getBuilderUpgradeModulePath()));
+                }
+                String serverUID = imageServerUID(javaArgs, builderPaths);
                 Path serverDir = sessionDir.resolve(serverDirPrefix + serverUID);
                 Optional<Server> reusableServer = aliveServers.stream().filter(s -> s.serverDir.equals(serverDir)).findFirst();
                 if (reusableServer.isPresent()) {
@@ -537,7 +542,7 @@ final class NativeImageServer extends NativeImage {
         return aliveServers;
     }
 
-    private Server startServer(Path serverDir, int serverPort, LinkedHashSet<Path> classpath, LinkedHashSet<Path> bootClasspath, LinkedHashSet<String> javaArgs) {
+    private Server startServer(Path serverDir, int serverPort, LinkedHashSet<Path> classpath, LinkedHashSet<Path> bootClasspath, List<String> javaArgs) {
         ProcessBuilder pb = new ProcessBuilder();
         pb.directory(serverDir.toFile());
         List<String> command = pb.command();
@@ -630,7 +635,7 @@ final class NativeImageServer extends NativeImage {
         return Paths.get(URI.create(s));
     }
 
-    private static void writeServerFile(Path serverDir, int port, long pid, LinkedHashSet<Path> classpath, LinkedHashSet<Path> bootClasspath, LinkedHashSet<String> javaArgs) throws Exception {
+    private static void writeServerFile(Path serverDir, int port, long pid, LinkedHashSet<Path> classpath, LinkedHashSet<Path> bootClasspath, List<String> javaArgs) throws Exception {
         Properties sp = new Properties();
         sp.setProperty(Server.pKeyPort, String.valueOf(port));
         sp.setProperty(Server.pKeyPID, String.valueOf(pid));
@@ -728,7 +733,7 @@ final class NativeImageServer extends NativeImage {
     }
 
     @Override
-    protected void buildImage(LinkedHashSet<String> javaArgs, LinkedHashSet<Path> bcp, LinkedHashSet<Path> cp, LinkedHashSet<String> imageArgs, LinkedHashSet<Path> imagecp) {
+    protected void buildImage(List<String> javaArgs, LinkedHashSet<Path> bcp, LinkedHashSet<Path> cp, LinkedHashSet<String> imageArgs, LinkedHashSet<Path> imagecp) {
         boolean printFlags = imageArgs.stream().anyMatch(arg -> arg.contains(enablePrintFlags));
         if (useServer && !printFlags && !javaArgs.contains("-Xdebug")) {
             AbortBuildSignalHandler signalHandler = new AbortBuildSignalHandler();
@@ -752,26 +757,22 @@ final class NativeImageServer extends NativeImage {
         super.buildImage(javaArgs, bcp, cp, imageArgs, imagecp);
     }
 
-    private static String imageServerUID(LinkedHashSet<Path> classpath, LinkedHashSet<Path> bootClasspath, LinkedHashSet<String> vmArgs) {
+    private static String imageServerUID(List<String> vmArgs, List<Collection<Path>> builderPaths) {
         MessageDigest digest;
         try {
             digest = MessageDigest.getInstance("SHA-512");
         } catch (NoSuchAlgorithmException e) {
             throw showError("SHA-512 digest is not available", e);
         }
-        for (Path path : classpath) {
-            digest.update(path.toString().getBytes());
-        }
-        for (Path path : bootClasspath) {
-            digest.update(path.toString().getBytes());
+        for (Collection<Path> paths : builderPaths) {
+            for (Path path : paths) {
+                digest.update(path.toString().getBytes());
+                updateHash(digest, path);
+            }
         }
         for (String string : vmArgs) {
             digest.update(string.getBytes());
         }
-
-        classpath.forEach(pathElement -> updateHash(digest, pathElement));
-        bootClasspath.forEach(pathElement -> updateHash(digest, pathElement));
-        vmArgs.stream().map(String::getBytes).forEach(digest::update);
 
         byte[] digestBytes = digest.digest();
         StringBuilder sb = new StringBuilder(digestBytes.length * 2);

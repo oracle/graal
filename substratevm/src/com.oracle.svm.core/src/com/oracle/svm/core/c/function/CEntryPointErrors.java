@@ -85,6 +85,9 @@ public final class CEntryPointErrors {
     @Description("Initialization of threading in the isolate failed.") //
     public static final int THREADING_INITIALIZATION_FAILED = 11;
 
+    @Description("Some exception is not caught.") //
+    public static final int UNCAUGHT_EXCEPTION = 12;
+
     static String getDescription(int code) {
         String result = null;
         if (code >= 0 && code < DESCRIPTIONS.length) {

@@ -348,6 +348,9 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                     debug.log(DebugContext.VERBOSE_LEVEL, "Canonicalizer: simplifying %s", node);
                     COUNTER_SIMPLIFICATION_CONSIDERED_NODES.increment(debug);
                     node.simplify(tool);
+                    if (node.isDeleted()) {
+                        debug.log("Canonicalizer: simplified %s", node);
+                    }
                     return node.isDeleted();
                 }
                 return false;

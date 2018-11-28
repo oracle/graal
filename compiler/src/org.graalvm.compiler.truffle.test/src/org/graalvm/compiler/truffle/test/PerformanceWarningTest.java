@@ -127,7 +127,7 @@ public class PerformanceWarningTest {
             } catch (AssertionError e) {
                 seenException = true;
                 if (!expectException) {
-                    throw new AssertionError("Unexpected exception caught", e);
+                    throw new AssertionError("Unexpected exception caught." + (outContent.size() > 0 ? '\n' + outContent.toString() : ""), e);
                 }
             }
         }

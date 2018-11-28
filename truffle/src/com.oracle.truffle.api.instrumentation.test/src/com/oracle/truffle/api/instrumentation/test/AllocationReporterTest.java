@@ -75,6 +75,7 @@ import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -750,8 +751,8 @@ public class AllocationReporterTest {
 
             private final AllocValue oldValue;
             private final AllocValue newValue;
-            private final ContextReference<LanguageContext> contextRef;
             @Children private final AllocNode[] children;
+            private final AllocationReporter reporter;
 
             AllocNode(AllocValue oldValue, AllocValue newValue, ContextReference<LanguageContext> contextRef) {
                 this(oldValue, newValue, contextRef, null);
@@ -760,13 +761,12 @@ public class AllocationReporterTest {
             AllocNode(AllocValue oldValue, AllocValue newValue, ContextReference<LanguageContext> contextRef, AllocNode[] children) {
                 this.oldValue = oldValue;
                 this.newValue = newValue;
-                this.contextRef = contextRef;
                 this.children = children;
+                this.reporter = contextRef.get().getEnv().lookup(AllocationReporter.class);
             }
 
             public Object execute(VirtualFrame frame) {
                 Object value;
-                AllocationReporter reporter = contextRef.get().getEnv().lookup(AllocationReporter.class);
                 if (newValue == null) { // No allocation
                     value = InstrumentationTestLanguage.Null.INSTANCE;
                     execChildren(frame);
@@ -809,6 +809,7 @@ public class AllocationReporterTest {
                 return value;
             }
 
+            @ExplodeLoop
             private void execChildren(VirtualFrame frame) {
                 if (children != null) {
                     for (AllocNode ch : children) {

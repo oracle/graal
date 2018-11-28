@@ -4,6 +4,7 @@
 *.bgv
 *.cfg
 *.class
+*.config
 *.csv
 *.dot
 *.hprof

@@ -43,8 +43,8 @@ import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
 
+import com.oracle.svm.core.deopt.DeoptimizationRuntime;
 import com.oracle.svm.core.graal.nodes.UnreachableNode;
-import com.oracle.svm.core.snippets.SnippetRuntime;
 
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 
@@ -52,7 +52,7 @@ public final class DeoptRuntimeSnippets extends SubstrateTemplates implements Sn
 
     @Snippet
     protected static void deoptSnippet(long actionAndReason, SpeculationReason speculation) {
-        runtimeCall(SnippetRuntime.DEOPTIMIZE, actionAndReason, speculation);
+        runtimeCall(DeoptimizationRuntime.DEOPTIMIZE, actionAndReason, speculation);
         throw UnreachableNode.unreachable();
     }
 

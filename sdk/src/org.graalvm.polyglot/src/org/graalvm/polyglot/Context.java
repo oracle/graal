@@ -221,10 +221,10 @@ import org.graalvm.polyglot.io.MessageTransport;
  * JavaRecord record = new JavaRecord();
  * context.getBindings("js").putMember("javaRecord", record);
  *
- * context.eval("js", "record.x = 42");
+ * context.eval("js", "javaRecord.x = 42");
  * assert record.x == 42;
  *
- * context.eval("js", "record.name()").asString().equals("foo");
+ * context.eval("js", "javaRecord.name()").asString().equals("foo");
  * </pre>
  *
  * <h3>Error Handling</h3>

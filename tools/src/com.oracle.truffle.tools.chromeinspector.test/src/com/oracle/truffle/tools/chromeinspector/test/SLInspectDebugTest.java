@@ -167,8 +167,8 @@ public class SLInspectDebugTest {
         assertEquals("{\"result\":{},\"id\":2}", tester.getMessages(true).trim());
         tester.sendMessage("{\"id\":3,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
         assertTrue(tester.compareReceivedMessages(
-                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n" +
-                        "{\"result\":{},\"id\":3}\n"));
+                        "{\"result\":{},\"id\":3}\n" +
+                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
         tester.eval(source);
         long id = tester.getContextId();
         // Suspend at the beginning of the script:
@@ -206,8 +206,8 @@ public class SLInspectDebugTest {
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":1}\n" +
                         "{\"result\":{},\"id\":2}\n" +
-                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n" +
-                        "{\"result\":{},\"id\":3}\n"));
+                        "{\"result\":{},\"id\":3}\n" +
+                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
         tester.eval(source);
         long id = tester.getContextId();
         // Suspend at the beginning of the script:
@@ -284,8 +284,8 @@ public class SLInspectDebugTest {
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":1}\n" +
                         "{\"result\":{},\"id\":2}\n" +
-                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n" +
-                        "{\"result\":{},\"id\":3}\n"));
+                        "{\"result\":{},\"id\":3}\n" +
+                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
 
         tester.sendMessage("{\"id\":3,\"method\":\"Debugger.setBreakpointByUrl\",\"params\":{\"lineNumber\":11,\"url\":\"" + slTestURI + "\",\"columnNumber\":0,\"condition\":\"\"}}");
 
@@ -309,9 +309,9 @@ public class SLInspectDebugTest {
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":6,\"lineNumber\":2}}]}}\n"));
         // Continue to a location:
-        tester.sendMessage("{\"id\":33,\"method\":\"Debugger.continueToLocation\",\"params\":{\"location\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":5}}}");
+        tester.sendMessage("{\"id\":20,\"method\":\"Debugger.continueToLocation\",\"params\":{\"location\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":5}}}");
         assertTrue(tester.compareReceivedMessages(
-                        "{\"result\":{},\"id\":33}\n" +
+                        "{\"result\":{},\"id\":20}\n" +
                         "{\"method\":\"Debugger.resumed\"}\n" +
                         "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"other\",\"hitBreakpoints\":[]," +
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"main\"," +
@@ -320,6 +320,19 @@ public class SLInspectDebugTest {
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"7\"}}]," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":4,\"lineNumber\":5}}]}}\n"));
+        // Breakpoint on script ID:
+        tester.sendMessage("{\"id\":25,\"method\":\"Debugger.setBreakpoint\",\"params\":{\"location\":{\"scriptId\":\"1\",\"columnNumber\":0,\"lineNumber\":7}}}");
+        tester.sendMessage("{\"id\":26,\"method\":\"Debugger.resume\"}");
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"result\":{\"breakpointId\":\"2\",\"actualLocation\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":7}},\"id\":25}\n" +
+                        "{\"result\":{},\"id\":26}\n" +
+                        "{\"method\":\"Debugger.resumed\"}\n" +
+                        "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"other\",\"hitBreakpoints\":[\"2\"]," +
+                                "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"main\"," +
+                                                 "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"8\"}}," +
+                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"9\"}}]," +
+                                                 "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
+                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":7}}]}}\n"));
         // Resume to finish:
         tester.sendMessage("{\"id\":35,\"method\":\"Debugger.resume\"}");
         assertTrue(tester.compareReceivedMessages(
@@ -340,8 +353,8 @@ public class SLInspectDebugTest {
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":1}\n" +
                         "{\"result\":{},\"id\":2}\n" +
-                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n" +
-                        "{\"result\":{},\"id\":3}\n"));
+                        "{\"result\":{},\"id\":3}\n" +
+                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
         tester.sendMessage("{\"id\":3,\"method\":\"Debugger.setBreakpointByUrl\",\"params\":{\"lineNumber\":9,\"url\":\"" + srcURL + "\",\"columnNumber\":0,\"condition\":\"\"}}");
         assertEquals("{\"result\":{\"breakpointId\":\"1\",\"locations\":[]},\"id\":3}", tester.getMessages(true).trim());
         tester.sendMessage("{\"id\":4,\"method\":\"Debugger.setBreakpointByUrl\",\"params\":{\"lineNumber\":10,\"url\":\"" + srcURL + "\",\"columnNumber\":0,\"condition\":\"\"}}");
@@ -474,8 +487,8 @@ public class SLInspectDebugTest {
         tester.sendMessage("{\"id\":3,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
         assertTrue(tester.compareReceivedMessages("{\"result\":{},\"id\":1}\n" +
                         "{\"result\":{},\"id\":2}\n" +
-                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n" +
-                        "{\"result\":{},\"id\":3}\n"));
+                        "{\"result\":{},\"id\":3}\n" +
+                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
         tester.eval(source);
         long id = tester.getContextId();
 
@@ -545,8 +558,8 @@ public class SLInspectDebugTest {
         tester.sendMessage("{\"id\":3,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
         assertTrue(tester.compareReceivedMessages("{\"result\":{},\"id\":1}\n" +
                         "{\"result\":{},\"id\":2}\n" +
-                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n" +
-                        "{\"result\":{},\"id\":3}\n"));
+                        "{\"result\":{},\"id\":3}\n" +
+                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
         tester.eval(source);
         long id = tester.getContextId();
 
@@ -604,8 +617,8 @@ public class SLInspectDebugTest {
         tester.sendMessage("{\"id\":3,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
         assertTrue(tester.compareReceivedMessages("{\"result\":{},\"id\":1}\n" +
                         "{\"result\":{},\"id\":2}\n" +
-                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n" +
-                        "{\"result\":{},\"id\":3}\n"));
+                        "{\"result\":{},\"id\":3}\n" +
+                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
         long id = tester.getContextId();
         tester.eval(internSource);
         assertTrue(tester.compareReceivedMessages(
@@ -837,8 +850,8 @@ public class SLInspectDebugTest {
         assertTrue(tester.compareReceivedMessages("{\"result\":{},\"id\":1}\n" +
                         "{\"result\":{},\"id\":2}\n" +
                         "{\"result\":{},\"id\":3}\n" +
-                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n" +
-                        "{\"result\":{},\"id\":4}\n"));
+                        "{\"result\":{},\"id\":4}\n" +
+                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
         long id = tester.getContextId();
         tester.eval(blackboxedSource);
         assertTrue(tester.compareReceivedMessages(
@@ -939,8 +952,8 @@ public class SLInspectDebugTest {
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":1}\n" +
                         "{\"result\":{},\"id\":2}\n" +
-                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n" +
-                        "{\"result\":{},\"id\":3}\n"));
+                        "{\"result\":{},\"id\":3}\n" +
+                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
         tester.sendMessage("{\"id\":3,\"method\":\"Debugger.setBreakpointByUrl\",\"params\":{\"lineNumber\":6,\"url\":\"" + srcURL + "\",\"columnNumber\":0,\"condition\":\"\"}}");
         assertEquals("{\"result\":{\"breakpointId\":\"1\",\"locations\":[]},\"id\":3}", tester.getMessages(true).trim());
 
@@ -1046,8 +1059,8 @@ public class SLInspectDebugTest {
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":1}\n" +
                         "{\"result\":{},\"id\":2}\n" +
-                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n" +
-                        "{\"result\":{},\"id\":3}\n"));
+                        "{\"result\":{},\"id\":3}\n" +
+                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
         tester.eval(source);
         long id = tester.getContextId();
         assertTrue(tester.compareReceivedMessages(
@@ -1220,8 +1233,8 @@ public class SLInspectDebugTest {
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":1}\n" +
                         "{\"result\":{},\"id\":2}\n" +
-                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n" +
-                        "{\"result\":{},\"id\":3}\n"));
+                        "{\"result\":{},\"id\":3}\n" +
+                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
 
         tester.eval(source);
         long id = tester.getContextId();
@@ -1295,8 +1308,8 @@ public class SLInspectDebugTest {
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":1}\n" +
                         "{\"result\":{},\"id\":2}\n" +
-                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n" +
-                        "{\"result\":{},\"id\":3}\n"));
+                        "{\"result\":{},\"id\":3}\n" +
+                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
 
         tester.eval(source);
         long id = tester.getContextId();
@@ -1342,8 +1355,8 @@ public class SLInspectDebugTest {
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":1}\n" +
                         "{\"result\":{},\"id\":2}\n" +
-                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n" +
-                        "{\"result\":{},\"id\":3}\n"));
+                        "{\"result\":{},\"id\":3}\n" +
+                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
         tester.sendMessage("{\"id\":3,\"method\":\"Debugger.setPauseOnExceptions\",\"params\":{\"state\":\"uncaught\"}}");
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":3}\n"));
@@ -1386,8 +1399,8 @@ public class SLInspectDebugTest {
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":1}\n" +
                         "{\"result\":{},\"id\":2}\n" +
-                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n" +
-                        "{\"result\":{},\"id\":3}\n"));
+                        "{\"result\":{},\"id\":3}\n" +
+                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
         int suspendLine = 15;
         tester.sendMessage("{\"id\":4,\"method\":\"Debugger.setBreakpointByUrl\",\"params\":{\"lineNumber\":" + suspendLine + ",\"url\":\"" + srcURL + "\",\"columnNumber\":0,\"condition\":\"\"}}");
         assertEquals("{\"result\":{\"breakpointId\":\"1\",\"locations\":[]},\"id\":4}", tester.getMessages(true).trim());

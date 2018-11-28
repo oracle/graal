@@ -87,7 +87,9 @@ import org.graalvm.polyglot.proxy.ProxyInstantiable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 import org.junit.After;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.ComparisonFailure;
 import org.junit.Test;
 
@@ -101,11 +103,17 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.CompileImmediatelyCheck;
 import com.oracle.truffle.api.test.polyglot.ValueAssert.Trait;
 
 public class ValueAPITest {
 
     private Context context;
+
+    @BeforeClass
+    public static void beforeClass() {
+        Assume.assumeFalse(CompileImmediatelyCheck.isCompileImmediately());
+    }
 
     @Before
     public void setUp() {

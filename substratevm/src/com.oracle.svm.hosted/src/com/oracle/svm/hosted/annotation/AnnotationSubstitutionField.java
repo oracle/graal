@@ -106,8 +106,21 @@ public class AnnotationSubstitutionField extends CustomSubstitutionField {
                 Method reflectionMethod = proxy.getClass().getDeclaredMethod(accessorMethod.getName());
                 reflectionMethod.setAccessible(true);
                 annotationFieldValue = reflectionMethod.invoke(proxy);
-            } catch (InvocationTargetException | IllegalAccessException | IllegalArgumentException | NoSuchMethodException ex) {
+            } catch (IllegalAccessException | IllegalArgumentException | NoSuchMethodException ex) {
                 throw VMError.shouldNotReachHere(ex);
+            } catch (InvocationTargetException ex) {
+                Throwable cause = ex.getCause();
+                if (cause instanceof TypeNotPresentException) {
+                    /*
+                     * Depending on the class loading order the ghost interface for the missing
+                     * class may not have been created yet when the annotation signature was parsed.
+                     * Thus a TypeNotPresentException was cached. We catch and repackage it here.
+                     */
+                    TypeNotPresentException tnpe = (TypeNotPresentException) cause;
+                    annotationFieldValue = new TypeNotPresentExceptionProxy(tnpe.typeName(), new NoClassDefFoundError(tnpe.typeName()));
+                } else {
+                    throw VMError.shouldNotReachHere(ex);
+                }
             }
 
             if (annotationFieldValue instanceof Class) {

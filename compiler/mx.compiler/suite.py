@@ -1,10 +1,10 @@
 suite = {
-  "mxversion" : "5.187.0",
+  "mxversion" : "5.192.10",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
   "groupId" : "org.graalvm.compiler",
-  "version" : "1.0.0-rc10",
+  "version" : "1.0.0-rc11",
   "release" : False,
   "url" : "http://www.graalvm.org/",
   "developer" : {
@@ -109,11 +109,6 @@ suite = {
     "C1VISUALIZER_DIST" : {
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/c1visualizer/c1visualizer-1.7.zip"],
       "sha1" : "305a772ccbdc0e42dfa233b0ce6762d0dd1de6de",
-    },
-
-    "IDEALGRAPHVISUALIZER_DIST" : {
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/idealgraphvisualizer/idealgraphvisualizer-619.zip"],
-      "sha1" : "7fa6906c7898e736396f7143a173c53ca4e2a831",
     },
 
     "JOL_CLI" : {

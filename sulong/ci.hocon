@@ -39,6 +39,12 @@ sulong-gateTest40-linux: ${sulong-gateTest-linux} {
     }
 }
 
+sulong-gateTest60-linux: ${sulong-gateTest-linux} {
+    packages: {
+        llvm: "==6.0.1"
+    }
+}
+
 darwin-llvm : {
     packages: {
         llvm: "==4.0.1"
@@ -113,6 +119,7 @@ builds += [
   ${sulong-gateTest38-linux} ${requireGCC} { name: gate-sulong-gcc_fortran, run: [[mx, gate, --tags, "build,gcc_fortran"]] }
   ${sulong-gateTest38-linux} ${requireGCC} { name: gate-sulong-basic_v38, run: [[mx, gate, --tags, "build,sulongBasic,nwcc,llvm"]] }
   ${sulong-gateTest40-linux} ${requireGCC} { name: gate-sulong-basic_v40, run: [[mx, gate, --tags, "build,sulongBasic,nwcc,llvm"]] }
+  ${sulong-gateTest60-linux} ${requireGCC} { name: gate-sulong-basic_v60, run: [[mx, gate, --tags, "build,sulongBasic,nwcc,llvm"]] }
   ${sulong-gateTest40-darwin} { name: gate-sulong-basic_mac, run: [[mx, gate, --tags, "build,sulongBasic,nwcc,llvm"]] }
 
   ${sulong-gateTest38-linux} ${sulong-ruby-downstream-test} { name: gate-sulong-ruby-downstream }

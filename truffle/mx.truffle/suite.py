@@ -548,6 +548,18 @@ suite = {
       "javaCompliance" : "8+",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR_INTEROP_INTERNAL"],
       "workingSets" : "Truffle",
+      "os_arch" : {
+        "windows" : {
+          "<others>" : {
+            "ignore" : "windows is not supported",  # necessary until Truffle is fully supported (GR-7941)
+          },
+        },
+        "<others>" : {
+          "<others>" : {
+            "ignore" : False,
+          },
+        },
+      },
     },
 
     "com.oracle.truffle.nfi.types" : {
@@ -588,6 +600,7 @@ suite = {
         "mx:JUNIT",
         "TRUFFLE_NFI",
         "TRUFFLE_TCK",
+        "TRUFFLE_TEST_NATIVE",
       ],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "8+",

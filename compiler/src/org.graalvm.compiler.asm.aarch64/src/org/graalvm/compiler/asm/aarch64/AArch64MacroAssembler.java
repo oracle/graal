@@ -738,6 +738,34 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
+     * dst = src3 + src1 * src2.
+     *
+     * @param size register size. Has to be 32 or 64.
+     * @param dst general purpose register. May not be null or the stackpointer.
+     * @param src1 general purpose register. May not be null or the stackpointer.
+     * @param src2 general purpose register. May not be null or the stackpointer.
+     * @param src3 general purpose register. May not be null or the stackpointer.
+     */
+    @Override
+    public void madd(int size, Register dst, Register src1, Register src2, Register src3) {
+        super.madd(size, dst, src1, src2, src3);
+    }
+
+    /**
+     * dst = src3 - src1 * src2.
+     *
+     * @param size register size. Has to be 32 or 64.
+     * @param dst general purpose register. May not be null or the stackpointer.
+     * @param src1 general purpose register. May not be null or the stackpointer.
+     * @param src2 general purpose register. May not be null or the stackpointer.
+     * @param src3 general purpose register. May not be null or the stackpointer.
+     */
+    @Override
+    public void msub(int size, Register dst, Register src1, Register src2, Register src3) {
+        super.msub(size, dst, src1, src2, src3);
+    }
+
+    /**
      * dst = 0 - src1 * src2.
      *
      * @param size register size. Has to be 32 or 64.

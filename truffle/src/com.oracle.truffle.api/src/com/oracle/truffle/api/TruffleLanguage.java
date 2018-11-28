@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -72,7 +71,6 @@ import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleFile.FileAdapter;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleStackTrace.LazyStackTrace;
 import com.oracle.truffle.api.frame.Frame;
@@ -88,6 +86,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import java.nio.file.Path;
 
 /**
  * A Truffle language implementation contains all the services a language should provide to make it
@@ -1943,6 +1942,20 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
+         * Returns <code>true</code> if this {@link org.graalvm.polyglot.Context} is being
+         * pre-initialized. For a given {@link Env environment}, the return value of this method
+         * never changes.
+         *
+         * @see #initializeContext(Object)
+         * @see #patchContext(Object, Env)
+         * @since 1.0
+         */
+        @TruffleBoundary
+        public boolean isPreInitialization() {
+            return AccessAPI.engineAccess().inContextPreInitialization(vmObject);
+        }
+
+        /**
          * Returns a {@link TruffleFile} for given path.
          *
          * @param path the absolute or relative path to create {@link TruffleFile} for
@@ -1972,14 +1985,41 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
+         * Gets the current working directory. The current working directory is used to resolve non
+         * absolute paths in {@link TruffleFile} methods.
+         *
+         * @return the current working directory
+         * @throws SecurityException if the {@link FileSystem filesystem} denies reading of the
+         *             current working directory
          * @since 1.0
-         * @deprecated use {@link Source#newBuilder(String, TruffleFile)} instead.
          */
-        @SuppressWarnings({"static-method", "deprecation"})
-        @Deprecated
-        public Source.Builder<IOException, RuntimeException, RuntimeException> newSourceBuilder(final TruffleFile file) {
-            Objects.requireNonNull(file, "File must be non null");
-            return Source.newBuilder(new TruffleFile.FileAdapter(file));
+        @TruffleBoundary
+        public TruffleFile getCurrentWorkingDirectory() {
+            return getTruffleFile("").getAbsoluteFile();
+        }
+
+        /**
+         * Sets the current working directory. The current working directory is used to resolve non
+         * absolute paths in {@link TruffleFile} methods.
+         *
+         * @param currentWorkingDirectory the new current working directory
+         * @throws UnsupportedOperationException if setting of the current working directory is not
+         *             supported
+         * @throws IllegalArgumentException if the {@code currentWorkingDirectory} is not a valid
+         *             current working directory
+         * @throws SecurityException if {@code currentWorkingDirectory} is not readable
+         * @since 1.0
+         */
+        @TruffleBoundary
+        public void setCurrentWorkingDirectory(TruffleFile currentWorkingDirectory) {
+            Objects.requireNonNull(currentWorkingDirectory, "Current working directory must be non null.");
+            if (!currentWorkingDirectory.isAbsolute()) {
+                throw new IllegalArgumentException("Current working directory must be absolute.");
+            }
+            if (!currentWorkingDirectory.isDirectory()) {
+                throw new IllegalArgumentException("Current working directory must be directory.");
+            }
+            fileSystem.setCurrentWorkingDirectory(currentWorkingDirectory.getSPIPath());
         }
 
         @SuppressWarnings("rawtypes")
@@ -2543,20 +2583,8 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        public boolean checkTruffleFile(File file) {
-            return file instanceof FileAdapter;
-        }
-
-        @Override
-        public byte[] truffleFileContent(File file) throws IOException {
-            assert file instanceof FileAdapter : "File must be " + FileAdapter.class.getSimpleName();
-            final TruffleFile tf = ((FileAdapter) file).getTruffleFile();
-            return tf.readAllBytes();
-        }
-
-        @Override
-        public File asFile(TruffleFile file) {
-            return new FileAdapter(file);
+        public Path getPath(TruffleFile file) {
+            return file.getSPIPath();
         }
 
         @Override

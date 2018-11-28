@@ -31,6 +31,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
 import com.oracle.truffle.regex.tregex.nodes.input.InputIndexOfNode;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
@@ -74,6 +75,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
     private final byte flags;
     @Child private LoopOptimizationNode loopOptimizationNode;
     @CompilationFinal(dimensions = 1) protected final CharMatcher[] matchers;
+    private final BranchProfile stateReachedProfile = BranchProfile.create();
 
     DFAStateNode(DFAStateNode nodeSplitCopy, short copyID) {
         this(copyID, nodeSplitCopy.flags, nodeSplitCopy.loopOptimizationNode.nodeSplitCopy(),
@@ -120,6 +122,10 @@ public class DFAStateNode extends DFAAbstractStateNode {
 
     public CharMatcher[] getMatchers() {
         return matchers;
+    }
+
+    public BranchProfile getStateReachedProfile() {
+        return stateReachedProfile;
     }
 
     public boolean isFinalState() {

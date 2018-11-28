@@ -379,6 +379,9 @@ class AsmFactory {
             } else if (isOutput) {
                 type = retType;
                 if (isMemory) {
+                    if (type instanceof VoidType) {
+                        type = argTypes[index];
+                    }
                     idOut = index++;
                 }
             } else {
@@ -1612,30 +1615,28 @@ class AsmFactory {
     void addFrameSlot(String reg, Type type) {
         if (!registers.contains(reg)) {
             registers.add(reg);
-            FrameSlotKind kind;
-            if (type instanceof PrimitiveType) {
-                PrimitiveKind primitiveKind = ((PrimitiveType) type).getPrimitiveKind();
-                switch (primitiveKind) {
-                    case I8:
-                        kind = FrameSlotKind.Byte;
-                        break;
-                    case I32:
-                        kind = FrameSlotKind.Int;
-                        break;
-                    case I64:
-                        kind = FrameSlotKind.Long;
-                        break;
-                    default:
-                        kind = FrameSlotKind.Illegal;
-                        break;
-                }
-            } else if (type instanceof PointerType) {
-                kind = FrameSlotKind.Object;
-            } else {
-                kind = FrameSlotKind.Illegal;
-            }
+            FrameSlotKind kind = computeFrameSlotKind(type);
             this.frameDescriptor.addFrameSlot(reg, type, kind);
         }
+    }
+
+    private static FrameSlotKind computeFrameSlotKind(Type type) {
+        if (type instanceof PrimitiveType) {
+            PrimitiveKind primitiveKind = ((PrimitiveType) type).getPrimitiveKind();
+            switch (primitiveKind) {
+                case I1:
+                case I8:
+                    return FrameSlotKind.Byte;
+                case I32:
+                    return FrameSlotKind.Int;
+                case I64:
+                    return FrameSlotKind.Long;
+            }
+        } else if (type instanceof PointerType) {
+            return FrameSlotKind.Object;
+        }
+
+        throw new AsmParseException("unexpected type: " + type);
     }
 
     private static PrimitiveKind getPrimitiveKind(Argument arg) {

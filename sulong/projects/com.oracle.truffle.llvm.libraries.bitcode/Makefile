@@ -45,7 +45,8 @@ CXX_BC_FILES=${CXX_SOURCE_FILES:${VPATH}/libcxxabi/%.cpp=bin/%.bc}
 
 OPT_FLAGS=-mem2reg -globalopt -simplifycfg -constprop -instcombine -dse -loop-simplify -reassociate -licm -gvn
 
-CXXFLAGS=-std=c++11 -stdlib=libc++ -DLIBCXXABI_SILENT_TERMINATE
+CFLAGS+=-g -fdebug-prefix-map=${VPATH}=com.oracle.truffle.llvm.libraries.bitcode
+CXXFLAGS+=-std=c++11 -stdlib=libc++ -DLIBCXXABI_SILENT_TERMINATE
 
 DEPFLAGS = -MT $@ -MMD -MP -MF deps/$*.Td
 POSTCOMPILE = @mv -f deps/$*.Td deps/$*.d && touch $@

@@ -225,7 +225,7 @@ public final class Deoptimizer {
     public static DeoptimizedFrame checkDeoptimized(Pointer sourceSp) {
         CodePointer returnAddress = FrameAccess.singleton().readReturnAddress(sourceSp);
         /* A frame is deoptimized when the return address was patched to the deoptStub. */
-        if (returnAddress.equal(DeoptimizationSupport.getDeoptStubPointer())) {
+        if (DeoptimizationSupport.enabled() && returnAddress.equal(DeoptimizationSupport.getDeoptStubPointer())) {
             /* The DeoptimizedFrame instance is stored above the return address. */
             DeoptimizedFrame result = KnownIntrinsics.convertUnknownValue(sourceSp.readObject(0), DeoptimizedFrame.class);
             assert result != null;

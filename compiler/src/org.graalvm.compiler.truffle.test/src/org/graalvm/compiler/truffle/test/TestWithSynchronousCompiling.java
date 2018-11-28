@@ -49,15 +49,18 @@ public abstract class TestWithSynchronousCompiling {
 
     private static TruffleRuntimeOptionsOverrideScope backgroundCompilationScope;
     private static TruffleRuntimeOptionsOverrideScope compilationThresholdScope;
+    private static TruffleRuntimeOptionsOverrideScope immediateCompilationScope;
 
     @BeforeClass
     public static void before() {
         backgroundCompilationScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleBackgroundCompilation, false);
         compilationThresholdScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleCompilationThreshold, 10);
+        immediateCompilationScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleCompileImmediately, false);
     }
 
     @AfterClass
     public static void after() {
+        immediateCompilationScope.close();
         backgroundCompilationScope.close();
         compilationThresholdScope.close();
     }

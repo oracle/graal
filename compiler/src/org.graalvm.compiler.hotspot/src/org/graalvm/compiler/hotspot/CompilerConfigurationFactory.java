@@ -67,7 +67,7 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
 
     static class Options {
         // @formatter:off
-        @Option(help = "Names the Graal compiler configuration to use. If ommitted, the compiler configuration " +
+        @Option(help = "Names the Graal compiler configuration to use. If omitted, the compiler configuration " +
                        "with the highest auto-selection priority is used. To see the set of available configurations, " +
                        "supply the value 'help' to this option.", type = OptionType.Expert)
         public static final OptionKey<String> CompilerConfiguration = new OptionKey<>(null);

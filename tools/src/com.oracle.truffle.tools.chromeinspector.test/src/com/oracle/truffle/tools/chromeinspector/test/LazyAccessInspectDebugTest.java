@@ -77,8 +77,8 @@ public class LazyAccessInspectDebugTest {
                         "{\"result\":{},\"id\":2}\n"));
         tester.sendMessage("{\"id\":3,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
         assertTrue(tester.compareReceivedMessages(
-                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n" +
-                        "{\"result\":{},\"id\":3}\n"));
+                        "{\"result\":{},\"id\":3}\n" +
+                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
         ProxyLanguage.setDelegate(new ReadWithSideEffectsLanguage(readLazyFlag));
         Source source = Source.newBuilder(ProxyLanguage.ID, "1", "ReadWithSideEffects.test").build();
         String sourceURI = ScriptsHandler.getNiceStringFromURI(source.getURI());

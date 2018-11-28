@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.core.sparc.test;
+package org.graalvm.compiler.hotspot.sparc.test;
 
 import static org.graalvm.compiler.core.common.GraalOptions.RegisterPressure;
 import static org.graalvm.compiler.core.common.GraalOptions.TraceRA;

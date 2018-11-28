@@ -33,7 +33,6 @@ import com.oracle.truffle.regex.tregex.matchers.MatcherBuilder;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
 import com.oracle.truffle.regex.tregex.nodes.DFACaptureGroupLazyTransitionNode;
 import com.oracle.truffle.regex.tregex.nodes.DFACaptureGroupPartialTransitionNode;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonObject;
@@ -88,8 +87,8 @@ public class DFACaptureGroupTransitionBuilder extends DFAStateTransitionBuilder 
 
     private DFACaptureGroupPartialTransitionNode createPartialTransition(NFAStateSet targetStates, CompilationBuffer compilationBuffer) {
         int numberOfNFAStates = Math.max(getRequiredStates().size(), targetStates.size());
-        PartialTransitionDebugInfo partialTransitionDebugInfo;
-        if (DebugUtil.DEBUG) {
+        PartialTransitionDebugInfo partialTransitionDebugInfo = null;
+        if (dfaGen.getLanguageOptions().isDumpAutomata()) {
             partialTransitionDebugInfo = new PartialTransitionDebugInfo(numberOfNFAStates);
         }
         dfaGen.updateMaxNumberOfNFAStatesInOneTransition(numberOfNFAStates);
@@ -104,7 +103,7 @@ public class DFACaptureGroupTransitionBuilder extends DFAStateTransitionBuilder 
             if (targetStates.contains(nfaTransition.getTarget())) {
                 int sourceIndex = getRequiredStates().getStateIndex(nfaTransition.getSource());
                 int targetIndex = targetStates.getStateIndex(nfaTransition.getTarget());
-                if (DebugUtil.DEBUG) {
+                if (dfaGen.getLanguageOptions().isDumpAutomata()) {
                     partialTransitionDebugInfo.mapResultToNFATransition(targetIndex, nfaTransition);
                 }
                 assert !(nfaTransition.getTarget().isForwardFinalState()) || targetIndex == DFACaptureGroupPartialTransitionNode.FINAL_STATE_RESULT_INDEX;
@@ -145,7 +144,7 @@ public class DFACaptureGroupTransitionBuilder extends DFAStateTransitionBuilder 
                         indexUpdates.toArray(DFACaptureGroupPartialTransitionNode.EMPTY_INDEX_UPDATES),
                         indexClears.toArray(DFACaptureGroupPartialTransitionNode.EMPTY_INDEX_CLEARS),
                         preReorderFinalStateResultIndex);
-        if (DebugUtil.DEBUG) {
+        if (dfaGen.getLanguageOptions().isDumpAutomata()) {
             partialTransitionDebugInfo.node = dfaCaptureGroupPartialTransitionNode;
             dfaGen.registerCGPartialTransitionDebugInfo(partialTransitionDebugInfo);
         }

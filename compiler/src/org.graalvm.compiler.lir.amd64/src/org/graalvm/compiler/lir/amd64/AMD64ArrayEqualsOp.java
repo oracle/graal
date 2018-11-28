@@ -81,7 +81,8 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
     @Temp({REG, ILLEGAL}) private Value vectorTemp3;
     @Temp({REG, ILLEGAL}) private Value vectorTemp4;
 
-    public AMD64ArrayEqualsOp(LIRGeneratorTool tool, JavaKind kind, Value result, Value array1, Value array2, Value length, int constantLength, boolean directPointers) {
+    public AMD64ArrayEqualsOp(LIRGeneratorTool tool, JavaKind kind, Value result, Value array1, Value array2, Value length,
+                    int constantLength, boolean directPointers, int maxVectorSize) {
         super(TYPE);
         this.kind = kind;
 
@@ -118,7 +119,7 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
         // We only need the vector temporaries if we generate SSE code.
         if (supportsSSE41(tool.target())) {
             if (canGenerateConstantLengthCompare(tool.target())) {
-                LIRKind lirKind = LIRKind.value(supportsAVX2(tool.target()) ? AMD64Kind.V256_BYTE : AMD64Kind.V128_BYTE);
+                LIRKind lirKind = LIRKind.value(supportsAVX2(tool.target()) && (maxVectorSize < 0 || maxVectorSize >= 32) ? AMD64Kind.V256_BYTE : AMD64Kind.V128_BYTE);
                 this.vectorTemp1 = tool.newVariable(lirKind);
                 this.vectorTemp2 = tool.newVariable(lirKind);
                 this.vectorTemp3 = tool.newVariable(lirKind);

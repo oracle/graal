@@ -82,7 +82,7 @@ public abstract class CCallStubMethod extends CustomSubstitutionMethod {
         List<ValueNode> arguments = kit.loadArguments(method.toParameterTypes());
         Signature signature = adaptSignatureAndConvertArguments(providers, nativeLibraries, kit, method.getSignature(), arguments);
         state.clearLocals();
-        ValueNode returnValue = kit.createCFunctionCall(callAddress, method, arguments, signature, needsTransition, deoptimizationTarget);
+        ValueNode returnValue = kit.createCFunctionCall(callAddress, arguments, signature, needsTransition, deoptimizationTarget);
         returnValue = adaptReturnValue(method, providers, nativeLibraries, kit, returnValue);
         kit.createReturn(returnValue, signature.getReturnKind());
 
