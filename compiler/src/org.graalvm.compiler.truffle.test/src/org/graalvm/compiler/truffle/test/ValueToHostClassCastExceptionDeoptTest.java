@@ -24,56 +24,69 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-
+import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
+import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope;
-import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Value;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.Test;
 
-/**
- * Base class for Truffle unit tests that require that there be no background compilation.
- *
- * Please note that this applies only to single threaded tests, if you need parallel execution, you
- * need to make sure each thread has the OptionValue overridden.
- *
- * This class also provides helper methods for asserting if a target has or has not been compiled.
- *
- * These tests will be run by the {@code mx unittest} command.
- */
-public abstract class TestWithSynchronousCompiling {
+import com.oracle.truffle.api.Truffle;
 
+public class ValueToHostClassCastExceptionDeoptTest {
     private static TruffleRuntimeOptionsOverrideScope backgroundCompilationScope;
-    private static TruffleRuntimeOptionsOverrideScope compilationThresholdScope;
     private static TruffleRuntimeOptionsOverrideScope immediateCompilationScope;
 
     @BeforeClass
     public static void before() {
         backgroundCompilationScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleBackgroundCompilation, false);
-        compilationThresholdScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleCompilationThreshold, 10);
-        immediateCompilationScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleCompileImmediately, false);
+        immediateCompilationScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleCompileImmediately, true);
     }
 
     @AfterClass
     public static void after() {
         immediateCompilationScope.close();
         backgroundCompilationScope.close();
-        compilationThresholdScope.close();
     }
 
-    protected static void assertCompiled(OptimizedCallTarget target) {
-        assertNotNull(target);
-        assertTrue(target.isValid());
-    }
+    class CompilationCountingListener implements GraalTruffleRuntimeListener {
 
-    protected static void assertNotCompiled(OptimizedCallTarget target) {
-        if (target != null) {
-            assertFalse(target.isValid());
-            assertFalse(target.isCompiling());
+        int count = 0;
+
+        @Override
+        public void onCompilationStarted(OptimizedCallTarget target) {
+            if (target.getName().equals("org.graalvm.polyglot.Value<HostFunction>.asNativePointer")) {
+                count++;
+            }
         }
+
+    }
+
+    /**
+     * Tests an issue that arose when (with immediate compiling) an interop value (a java method) is
+     * converted to anything via the "as" methods (asNativePointer in this case). The issue use to
+     * manifest with repeated compilations caused by an exception being thrown (from
+     * InteropAccessNode} during specialisation, causing the state to constantly be 0.
+     */
+    @Test
+    public void test() {
+        final GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
+        final CompilationCountingListener listener = new CompilationCountingListener();
+        runtime.addListener(listener);
+        final Value toString = Context.create().asValue(String.class).getMember("toString");
+        for (int i = 0; i < 10; i++) {
+            try {
+                toString.asNativePointer();
+            } catch (ClassCastException e) {
+                // Expected and ignored
+            }
+        }
+        Assert.assertEquals("Too many compilations!", 2, listener.count);
     }
 }

@@ -67,6 +67,7 @@ import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -502,11 +503,16 @@ public class ContextAPITest {
                     @Override
                     public Object execute(VirtualFrame frame) {
                         try {
-                            TruffleObject o = (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), (TruffleObject) ProxyLanguage.getCurrentContext().env.getPolyglotBindings(), "test");
-                            return ForeignAccess.sendExecute(Message.EXECUTE.createNode(), o);
+                            return boundary();
                         } catch (Exception e) {
                             throw new RuntimeException(e);
                         }
+                    }
+
+                    @TruffleBoundary
+                    private Object boundary() throws UnknownIdentifierException, UnsupportedMessageException, UnsupportedTypeException, ArityException {
+                        TruffleObject o = (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), (TruffleObject) ProxyLanguage.getCurrentContext().env.getPolyglotBindings(), "test");
+                        return ForeignAccess.sendExecute(Message.EXECUTE.createNode(), o);
                     }
                 });
             }
