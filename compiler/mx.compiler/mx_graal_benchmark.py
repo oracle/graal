@@ -1673,7 +1673,8 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
     def benchmarkList(self, bmSuiteArgs):
         self.validateEnvironment()
         out = mx.OutputCapture()
-        mx.run_java(self.classpathAndMainClass() + ["listraw"], out=out)
+        args = ["listraw", "--list-raw-hidden"] if "--list-hidden" in bmSuiteArgs else ["listraw"]
+        mx.run_java(self.classpathAndMainClass() + args, out=out)
         return str.splitlines(out.data)
 
     def successPatterns(self):

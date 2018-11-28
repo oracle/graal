@@ -1,7 +1,7 @@
 suite = {
-    "mxversion": "5.189.0",
+    "mxversion": "5.194.4",
     "name": "substratevm",
-    "version" : "1.0.0-rc10",
+    "version" : "1.0.0-rc11",
     "release" : False,
     "url" : "https://github.com/oracle/graal/tree/master/substratevm",
 
@@ -549,26 +549,30 @@ suite = {
             "subDir" : "src",
             "native" : True,
             "vpath": True,
-            "os_arch" : {
-                "linux": {
-                    "amd64" : {
-                        "results" : ["<os>-<arch>/polyglot-nativeapi.o"],
-                    },
-                },
-                "darwin": {
-                    "amd64" : {
-                        "results" : ["<os>-<arch>/polyglot-nativeapi.o"],
-                    },
-                },
-                "windows": {
-                    "amd64" : {
-                        "results" : ["<os>-<arch>/polyglot-nativeapi.obj"],
-                    },
-                },
-            },
+            "results" : ["<os>-<arch>/polyglot-nativeapi.o"],
             "buildEnv": {
                 "ARCH": "<arch>",
                 "OS": "<os>"
+            },
+            "os_arch": {
+                "solaris": {
+                    "<others>": {
+                        "ignore": "solaris is not supported",
+                    },
+                },
+                "windows": {
+                    "<others>": {
+                        "ignore": "windows is not supported",  # necessary until GR-12705 is resolved
+                    },
+                },
+                "<others>": {
+                    "sparcv9": {
+                        "ignore": "sparcv9 is not supported",
+                    },
+                    "<others>": {
+                        "ignore": False,
+                    },
+                },
             },
         },
     },
@@ -581,6 +585,8 @@ suite = {
             "subDir": "src",
             "description" : "SubstrateVM image builder components",
             "dependencies": [
+                "com.oracle.svm.graal",  # necessary until Truffle is fully supported on Windows (GR-7941)
+                "com.oracle.svm.truffle",  # necessary until Truffle is fully supported on Windows (GR-7941)
                 "com.oracle.svm.hosted",
                 "com.oracle.svm.truffle.nfi",
                 "com.oracle.svm.core",
@@ -747,7 +753,7 @@ suite = {
             "description" : "polyglot.nativeapi header files for the GraalVM build process",
             "layout" : {
                 "./" : [
-                    "file:<path:org.graalvm.polyglot.nativeapi>/resources/*.h",
+                    "extracted-dependency:POLYGLOT_NATIVE_API/*.h",
                 ],
             },
         },
