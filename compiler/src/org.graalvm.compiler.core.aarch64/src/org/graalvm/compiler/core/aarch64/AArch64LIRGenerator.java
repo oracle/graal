@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.core.aarch64;
 
+import static jdk.vm.ci.aarch64.AArch64.sp;
 import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 
@@ -97,6 +98,18 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         // not we can inline a constant without knowing what kind of operation we execute. Let's be
         // optimistic here and fix up mistakes later.
         return true;
+    }
+
+    /**
+     * If val denotes the stackpointer, move it to another location. This is necessary since most
+     * ops cannot handle the stackpointer as input or output.
+     */
+    public AllocatableValue moveSp(AllocatableValue val) {
+        if (val instanceof RegisterValue && ((RegisterValue) val).getRegister().equals(sp)) {
+            assert val.getPlatformKind() == AArch64Kind.QWORD : "Stackpointer must be long";
+            return emitMove(val);
+        }
+        return val;
     }
 
     /**
