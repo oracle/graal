@@ -472,7 +472,7 @@ public class InliningUtil extends ValueMergeUtil {
             Invoke dup = (Invoke) duplicates.get(exit.asNode());
             if (dup instanceof InvokeNode) {
                 InvokeNode repl = graph.add(new InvokeNode(invoke.callTarget(), invoke.bci(), invoke.getLocationIdentity()));
-                dup.intrinsify(repl.asNode());
+                ((InvokeNode) dup).intrinsify(repl.asNode());
             } else {
                 ((InvokeWithExceptionNode) dup).replaceWithNewBci(invoke.bci());
             }

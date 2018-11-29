@@ -39,6 +39,7 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
 import java.util.Map;
 
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.InputType;
@@ -111,6 +112,10 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
         return invoke;
     }
 
+    public void replaceWithNewBci(int newBci) {
+        // TODO: Implement.
+    }
+
     @Override
     protected void afterClone(Node other) {
         updateInliningLogAfterClone(other);
@@ -178,7 +183,6 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
         return identity;
     }
 
-
     @Override
     public void lower(LoweringTool tool) {
         tool.getLowerer().lower(this, tool);
@@ -205,32 +209,20 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
         return bci;
     }
 
-    @Override
     public void intrinsify(Node node) {
         assert !(node instanceof ValueNode) || node.isAllowedUsageType(InputType.Value) == isAllowedUsageType(InputType.Value) : "replacing " + this + " with " + node;
         CallTargetNode call = callTarget;
         FrameState currentStateAfter = stateAfter();
-        if (node instanceof StateSplit) {
-            StateSplit stateSplit = (StateSplit) node;
-            stateSplit.setStateAfter(currentStateAfter);
-        }
-        if (node instanceof ForeignCallNode) {
-            ForeignCallNode foreign = (ForeignCallNode) node;
-            foreign.setBci(bci());
-        }
+        StateSplit stateSplit = (StateSplit) node;
+        stateSplit.setStateAfter(currentStateAfter);
         if (node instanceof FixedWithNextNode) {
             graph().replaceFixedWithFixed(this, (FixedWithNextNode) node);
-        } else if (node instanceof ControlSinkNode) {
-            this.replaceAtPredecessor(node);
-            this.replaceAtUsages(null);
-            GraphUtil.killCFG(this);
-            return;
-        } else {
-            graph().replaceFixed(this, node);
         }
         GraphUtil.killWithUnusedFloatingInputs(call);
         if (currentStateAfter.hasNoUsages()) {
             GraphUtil.killWithUnusedFloatingInputs(currentStateAfter);
+        } else {
+            GraalError.shouldNotReachHere();
         }
     }
 

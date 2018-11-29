@@ -51,8 +51,6 @@ public interface Invoke extends StateSplit, Lowerable, MemoryCheckpoint.Single, 
 
     void setClassInit(ValueNode node);
 
-    void intrinsify(Node node);
-
     boolean useForInlining();
 
     void setUseForInlining(boolean value);
