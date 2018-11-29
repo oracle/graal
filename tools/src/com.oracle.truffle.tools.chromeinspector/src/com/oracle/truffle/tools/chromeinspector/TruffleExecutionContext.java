@@ -29,6 +29,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.PrintWriter;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -37,12 +38,12 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.debug.DebugException;
 import com.oracle.truffle.api.debug.DebugValue;
+import com.oracle.truffle.api.instrumentation.EventBinding;
+import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 
-import com.oracle.truffle.tools.chromeinspector.instrument.SourceLoadInstrument;
 import com.oracle.truffle.tools.chromeinspector.server.CommandProcessException;
 import com.oracle.truffle.tools.chromeinspector.types.CallArgument;
 import com.oracle.truffle.tools.chromeinspector.types.RemoteObject;
@@ -63,21 +64,23 @@ public final class TruffleExecutionContext {
     private final boolean[] runPermission = new boolean[]{false};
     private final boolean inspectInternal;
     private final boolean inspectInitialization;
+    private final List<URI> sourceRoots;
 
     private volatile DebuggerSuspendedInfo suspendedInfo;
     private volatile SuspendedThreadExecutor suspendThreadExecutor;
     private RemoteObjectsHandler roh;
     private ScriptsHandler sch;
-    private SourceLoadInstrument sourceLoadInstrument;
+    private EventBinding<ScriptsHandler> schBinding;
     private AtomicInteger schCounter;
     private volatile String lastMimeType = "text/javascript";   // Default JS
     private volatile String lastLanguage = "js";
 
-    public TruffleExecutionContext(String name, boolean inspectInternal, boolean inspectInitialization, TruffleInstrument.Env env, PrintWriter err) throws IOException {
+    public TruffleExecutionContext(String name, boolean inspectInternal, boolean inspectInitialization, TruffleInstrument.Env env, List<URI> sourceRoots, PrintWriter err) throws IOException {
         this.name = name;
         this.inspectInternal = inspectInternal;
         this.inspectInitialization = inspectInitialization;
         this.env = env;
+        this.sourceRoots = sourceRoots;
         this.err = err;
         this.traceLogger = createTraceLogger();
     }
@@ -123,6 +126,10 @@ public final class TruffleExecutionContext {
         return traceLogger;
     }
 
+    Iterable<URI> getSourcePath() {
+        return sourceRoots;
+    }
+
     public void doRunIfWaitingForDebugger() {
         fireContextCreated();
         synchronized (runPermission) {
@@ -139,11 +146,8 @@ public final class TruffleExecutionContext {
 
     public ScriptsHandler acquireScriptsHandler() {
         if (sch == null) {
-            InstrumentInfo instrumentInfo = getEnv().getInstruments().get(SourceLoadInstrument.ID);
-            SourceLoadInstrument sli = getEnv().lookup(instrumentInfo, SourceLoadInstrument.class);
-            sli.enable(inspectInternal);
-            sch = sli.getScriptsHandler();
-            sourceLoadInstrument = sli;
+            sch = new ScriptsHandler(inspectInternal);
+            schBinding = env.getInstrumenter().attachLoadSourceListener(SourceFilter.ANY, sch, true);
             schCounter = new AtomicInteger(0);
         }
         schCounter.incrementAndGet();
@@ -152,8 +156,8 @@ public final class TruffleExecutionContext {
 
     public void releaseScriptsHandler() {
         if (schCounter.decrementAndGet() == 0) {
-            sourceLoadInstrument.disable();
-            sourceLoadInstrument = null;
+            schBinding.dispose();
+            schBinding = null;
             sch = null;
             schCounter = null;
         }

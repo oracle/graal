@@ -56,9 +56,11 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Objects;
-import java.util.concurrent.Callable;
 import java.util.jar.JarOutputStream;
 import java.util.zip.ZipEntry;
 
@@ -68,12 +70,14 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.Source.LiteralBuilder;
 import com.oracle.truffle.api.source.Source.SourceBuilder;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import static com.oracle.truffle.api.test.polyglot.ValueAssert.assertFails;
 
 public class SourceBuilderTest extends AbstractPolyglotTest {
 
@@ -101,6 +105,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
 
         assertTrue(source.hasBytes());
         assertFalse(source.hasCharacters());
+        assertEquals(4, source.getLength());
         assertFails(() -> source.createSection(0), UnsupportedOperationException.class);
         assertFails(() -> source.createSection(0, 0), UnsupportedOperationException.class);
         assertFails(() -> source.createSection(0, 0, 0), UnsupportedOperationException.class);
@@ -177,13 +182,56 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         assertTrue(source.hasCharacters());
     }
 
-    private static void assertFails(Callable<?> callable, Class<? extends Exception> exception) {
-        try {
-            callable.call();
-            fail("Expected " + exception.getSimpleName() + " but no exception was thrown");
-        } catch (Exception e) {
-            assertTrue(exception.toString(), exception.isInstance(e));
-        }
+    @Test
+    public void testNoContentSource() throws Exception {
+        setupEnv();
+        // Relative file
+        TruffleFile truffleFile = languageEnv.getTruffleFile("some/path");
+        URI uri = new URI("some/path");
+        Source source = Source.newBuilder("", truffleFile).content(Source.CONTENT_NONE).build();
+        assertFalse(source.hasBytes());
+        assertFalse(source.hasCharacters());
+        assertEquals("some/path", source.getPath());
+        assertEquals("path", source.getName());
+        assertEquals(uri, source.getURI());
+        assertFalse(source.getURI().isAbsolute());
+        assertFails(() -> source.getLength(), UnsupportedOperationException.class);
+        assertFails(() -> source.getBytes(), UnsupportedOperationException.class);
+        assertFails(() -> source.getCharacters(), UnsupportedOperationException.class);
+        // Absolute file
+        Path tempFile = Files.createTempFile("Test", ".java");
+        tempFile.toFile().deleteOnExit();
+        String content = "// Test";
+        Files.write(tempFile, content.getBytes("UTF-8"));
+        truffleFile = languageEnv.getTruffleFile(tempFile.toString());
+        Source source2 = Source.newBuilder("", truffleFile).content(Source.CONTENT_NONE).mimeType("text/x-java").build();
+        assertFalse(source2.hasBytes());
+        assertFalse(source2.hasCharacters());
+        assertEquals(tempFile.toString(), source2.getPath());
+        assertEquals(tempFile.getFileName().toString(), source2.getName());
+        assertTrue(source2.getURI().toString(), source2.getURI().isAbsolute());
+        assertFails(() -> source2.getLength(), UnsupportedOperationException.class);
+        assertFails(() -> source2.getBytes(), UnsupportedOperationException.class);
+        assertFails(() -> source2.getCharacters(), UnsupportedOperationException.class);
+    }
+
+    @Test
+    public void testRelativeSourceWithContent() throws Exception {
+        setupEnv();
+        TruffleFile cwd = languageEnv.getCurrentWorkingDirectory();
+        Path cwdPath = TestAPIAccessor.languageAccess().getPath(cwd);
+        Path tempFile = Files.createTempFile(cwdPath, "Test", ".java");
+        tempFile.toFile().deleteOnExit();
+        String content = "// Test";
+        Files.write(tempFile, content.getBytes("UTF-8"));
+        String relativeName = tempFile.getFileName().toString();
+        TruffleFile relativeFile = languageEnv.getTruffleFile(relativeName);
+        Source source = Source.newBuilder("", relativeFile).build();
+        assertFalse(source.hasBytes());
+        assertTrue(source.hasCharacters());
+        // Constructed from relativeFile TruffleFile, but loads content and should be absolute
+        assertTrue(source.getURI().toString(), source.getURI().isAbsolute());
+        assertEquals(content, source.getCharacters().toString());
     }
 
     @Test
@@ -716,4 +764,11 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         assertTrue(source1.equals(source2));
     }
 
+    private static final TestAPIAccessor API = new TestAPIAccessor();
+
+    private static final class TestAPIAccessor extends Accessor {
+        static LanguageSupport languageAccess() {
+            return API.languageSupport();
+        }
+    }
 }
