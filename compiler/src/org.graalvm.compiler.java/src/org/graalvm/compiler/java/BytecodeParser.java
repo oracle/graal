@@ -3384,43 +3384,35 @@ public class BytecodeParser implements GraphBuilderContext {
                 condition = genUnique(condition);
             }
 
-            NodeSourcePosition currentPosition = graph.currentNodeSourcePosition();
+            BciBlock deoptBlock = null;
+            BciBlock noDeoptBlock = null;
             if (isNeverExecutedCode(probability)) {
-                NodeSourcePosition survivingSuccessorPosition = graph.trackNodeSourcePosition()
-                        ? new NodeSourcePosition(currentPosition.getCaller(), currentPosition.getMethod(), falseBlock.startBci)
-                        : null;
-                if (!isPotentialCountedLoopExit(condition, trueBlock)) {
-                    if (profilingPlugin != null && profilingPlugin.shouldProfile(this, method)) {
-                        profilingPlugin.profileGoto(this, method, bci(), falseBlock.startBci, stateBefore);
-                    }
-                    append(new FixedGuardNode(condition, UnreachedCode, InvalidateReprofile, true, survivingSuccessorPosition));
-                    appendGoto(falseBlock);
-                } else {
-                    this.controlFlowSplit = true;
-                    FixedNode falseSuccessor = createTarget(falseBlock, frameState, false, true);
-                    DeoptimizeNode deopt = graph.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
-                    FixedNode trueSuccessor = checkLoopExit(deopt, trueBlock, frameState).fixed;
-                    ValueNode ifNode = genIfNode(condition, trueSuccessor, falseSuccessor, probability);
-                    postProcessIfNode(ifNode);
-                    append(ifNode);
-                }
-                return;
+                deoptBlock = trueBlock;
+                noDeoptBlock = falseBlock;
             } else if (isNeverExecutedCode(1 - probability)) {
-                NodeSourcePosition survivingSuccessorPosition = graph.trackNodeSourcePosition()
-                        ? new NodeSourcePosition(currentPosition.getCaller(), currentPosition.getMethod(), trueBlock.startBci)
-                        : null;
-                if (!isPotentialCountedLoopExit(condition, falseBlock)) {
+                deoptBlock = falseBlock;
+                noDeoptBlock = trueBlock;
+            }
+
+            if (deoptBlock != null) {
+                NodeSourcePosition currentPosition = graph.currentNodeSourcePosition();
+                NodeSourcePosition survivingSuccessorPosition = null;
+                if (graph.trackNodeSourcePosition()) {
+                    survivingSuccessorPosition = new NodeSourcePosition(currentPosition.getCaller(), currentPosition.getMethod(), noDeoptBlock.startBci);
+                }
+                boolean negated = deoptBlock == trueBlock;
+                if (!isPotentialCountedLoopExit(condition, deoptBlock)) {
                     if (profilingPlugin != null && profilingPlugin.shouldProfile(this, method)) {
-                        profilingPlugin.profileGoto(this, method, bci(), trueBlock.startBci, stateBefore);
+                        profilingPlugin.profileGoto(this, method, bci(), noDeoptBlock.startBci, stateBefore);
                     }
-                    append(new FixedGuardNode(condition, UnreachedCode, InvalidateReprofile, false, survivingSuccessorPosition));
-                    appendGoto(trueBlock);
+                    append(new FixedGuardNode(condition, UnreachedCode, InvalidateReprofile, negated, survivingSuccessorPosition));
+                    appendGoto(noDeoptBlock);
                 } else {
                     this.controlFlowSplit = true;
-                    FixedNode trueSuccessor = createTarget(trueBlock, frameState, false, false);
+                    FixedNode noDeoptSuccessor = createTarget(noDeoptBlock, frameState, false, true);
                     DeoptimizeNode deopt = graph.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
-                    FixedNode falseSuccessor = checkLoopExit(deopt, falseBlock, frameState).fixed;
-                    ValueNode ifNode = genIfNode(condition, trueSuccessor, falseSuccessor, probability);
+                    FixedNode deoptSuccessor = checkLoopExit(deopt, deoptBlock, frameState).fixed;
+                    ValueNode ifNode = genIfNode(condition, negated ? deoptSuccessor : noDeoptSuccessor, negated ? noDeoptSuccessor : deoptSuccessor, negated ? 1 - probability : probability);
                     postProcessIfNode(ifNode);
                     append(ifNode);
                 }
