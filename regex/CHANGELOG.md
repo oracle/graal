@@ -4,6 +4,5 @@ This changelog summarizes major changes between TRegex versions relevant to lang
 
 ## Version 1.0.0 RC10
 
-* Added debugging options and loggers to TRegex.
-     * TRegex now accepts the `--regex.always-eager`, `--regex.dump-automata` and `--regex.step-execution` debugging options, which can be used in client language launchers.
-     * Introduced `regex` loggers `SwitchToEager`, `TotalCompilationTime`, `Phases`, `BailoutMessages`, `AutomatonSizes`, `CompilerFallback`, `InternalErrors` and `TRegexCompilations`. These can be enabled in the launchers by setting, e.g., `--log.regex.Phases.level=ALL`.
+* Added the possibility to log the actions of the compiler.
+     * Introduced the `regex` loggers `SwitchToEager`, `TotalCompilationTime`, `Phases`, `BailoutMessages`, `AutomatonSizes`, `CompilerFallback`, `InternalErrors` and `TRegexCompilations`. These can be enabled in your launchers by setting, e.g., `--log.regex.Phases.level=ALL`.
