@@ -110,7 +110,7 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<PhaseContext> {
         new DeadCodeEliminationPhase(Optional).apply(graph);
     }
 
-    private void trySplitFixedGuard(FixedGuardNode fixedGuard, PhaseContext context, LazyValue<LoopsData> lazyLoops) {
+    private static void trySplitFixedGuard(FixedGuardNode fixedGuard, PhaseContext context, LazyValue<LoopsData> lazyLoops) {
         LogicNode condition = fixedGuard.condition();
         if (condition instanceof CompareNode) {
             CompareNode compare = (CompareNode) condition;
@@ -126,7 +126,7 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<PhaseContext> {
         }
     }
 
-    private void processFixedGuardAndPhis(FixedGuardNode fixedGuard, PhaseContext context, CompareNode compare, ValueNode x, ValuePhiNode xPhi, ValueNode y, ValuePhiNode yPhi,
+    private static void processFixedGuardAndPhis(FixedGuardNode fixedGuard, PhaseContext context, CompareNode compare, ValueNode x, ValuePhiNode xPhi, ValueNode y, ValuePhiNode yPhi,
                     LazyValue<LoopsData> lazyLoops) {
         AbstractBeginNode pred = AbstractBeginNode.prevBegin(fixedGuard);
         if (pred instanceof AbstractMergeNode) {
@@ -143,11 +143,10 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<PhaseContext> {
     }
 
     @SuppressWarnings("try")
-    private void processFixedGuardAndMerge(FixedGuardNode fixedGuard, PhaseContext context, CompareNode compare, ValueNode x, ValuePhiNode xPhi, ValueNode y, ValuePhiNode yPhi,
+    private static void processFixedGuardAndMerge(FixedGuardNode fixedGuard, PhaseContext context, CompareNode compare, ValueNode x, ValuePhiNode xPhi, ValueNode y, ValuePhiNode yPhi,
                     AbstractMergeNode merge, LazyValue<LoopsData> lazyLoops) {
         List<EndNode> mergePredecessors = merge.cfgPredecessors().snapshot();
-        for (int i = 0; i < mergePredecessors.size(); ++i) {
-            AbstractEndNode mergePredecessor = mergePredecessors.get(i);
+        for (AbstractEndNode mergePredecessor : mergePredecessors) {
             if (!mergePredecessor.isAlive()) {
                 break;
             }
@@ -172,7 +171,7 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<PhaseContext> {
     }
 
     @SuppressWarnings("try")
-    private void propagateFixed(FixedNode from, StaticDeoptimizingNode deopt, LoweringProvider loweringProvider, LazyValue<LoopsData> lazyLoops) {
+    private static void propagateFixed(FixedNode from, StaticDeoptimizingNode deopt, LoweringProvider loweringProvider, LazyValue<LoopsData> lazyLoops) {
         Node current = from;
         while (current != null) {
             if (GraalOptions.GuardPriorities.getValue(from.getOptions()) && current instanceof FixedGuardNode) {
@@ -203,7 +202,7 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<PhaseContext> {
                             boolean negateGuardCondition = current == ifNode.trueSuccessor();
                             NodeSourcePosition survivingSuccessorPosition = negateGuardCondition ? ifNode.falseSuccessor().getNodeSourcePosition() : ifNode.trueSuccessor().getNodeSourcePosition();
                             FixedGuardNode guard = graph.add(
-                                    new FixedGuardNode(conditionNode, deopt.getReason(), deopt.getAction(), deopt.getSpeculation(), negateGuardCondition, survivingSuccessorPosition));
+                                            new FixedGuardNode(conditionNode, deopt.getReason(), deopt.getAction(), deopt.getSpeculation(), negateGuardCondition, survivingSuccessorPosition));
 
                             FixedWithNextNode pred = (FixedWithNextNode) ifNode.predecessor();
                             AbstractBeginNode survivingSuccessor;
@@ -250,7 +249,7 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<PhaseContext> {
         }
     }
 
-    private boolean isLoopExit(IfNode ifNode, LazyValue<LoopsData> lazyLoops) {
+    private static boolean isLoopExit(IfNode ifNode, LazyValue<LoopsData> lazyLoops) {
         LoopsData loopsData = lazyLoops.get();
         Loop<Block> loop = loopsData.getCFG().getNodeToBlock().get(ifNode).getLoop();
         if (loop != null) {
