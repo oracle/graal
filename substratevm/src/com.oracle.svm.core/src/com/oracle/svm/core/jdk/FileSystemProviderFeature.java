@@ -51,7 +51,8 @@ public final class FileSystemProviderFeature implements Feature {
          * provider to be initialized (if not already initialized) and loads any other installed
          * providers as described by the {@link FileSystems} class.
          */
-        List<FileSystemProvider> providers = FileSystemProvider.installedProviders();
+        ArrayList<FileSystemProvider> providers = new ArrayList<>(FileSystemProvider.installedProviders());
+        providers.removeIf(p -> p.getScheme().equals("jrt"));
         providers.forEach(p -> addFileSystemProvider(p));
     }
 
