@@ -539,14 +539,15 @@ public class ArrayCopySnippets implements Snippets {
                         throw new GraalError("unexpected invoke %s in snippet", call.targetMethod());
                     }
                     // Here we need to fix the bci of the invoke
-                    InvokeNode newInvoke = graph.add(invoke.copyWithBci(arraycopy.getBci()));
+                    InvokeNode newInvoke = invoke.replaceWithNewBci(arraycopy.getBci());
+                    newInvoke.setStateDuring(null);
+                    newInvoke.setStateAfter(null);
                     if (arraycopy.stateDuring() != null) {
                         newInvoke.setStateDuring(arraycopy.stateDuring());
                     } else {
                         assert arraycopy.stateAfter() != null : arraycopy;
                         newInvoke.setStateAfter(arraycopy.stateAfter());
                     }
-                    graph.replaceFixedWithFixed(invoke.asNode(), newInvoke);
                 } else if (originalNode instanceof InvokeWithExceptionNode) {
                     throw new GraalError("unexpected invoke with exception %s in snippet", originalNode);
                 } else if (originalNode instanceof ArrayCopyWithSlowPathNode) {

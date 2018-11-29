@@ -105,15 +105,12 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
         this.identity = identity;
     }
 
-    public InvokeNode copyWithBci(int newBci) {
-        InvokeNode invoke = new InvokeNode(callTarget, newBci, stamp, identity);
-        invoke.setUseForInlining(useForInlining);
-        invoke.setPolymorphic(polymorphic);
-        return invoke;
-    }
-
-    public void replaceWithNewBci(int newBci) {
-        // TODO: Implement.
+    public InvokeNode replaceWithNewBci(int newBci) {
+        InvokeNode newInvoke = graph().add(new InvokeNode(callTarget, newBci, stamp, identity));
+        newInvoke.setUseForInlining(useForInlining);
+        newInvoke.setPolymorphic(polymorphic);
+        graph().replaceFixedWithFixed(this, newInvoke);
+        return newInvoke;
     }
 
     @Override
@@ -207,23 +204,6 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
     @Override
     public int bci() {
         return bci;
-    }
-
-    public void intrinsify(Node node) {
-        assert !(node instanceof ValueNode) || node.isAllowedUsageType(InputType.Value) == isAllowedUsageType(InputType.Value) : "replacing " + this + " with " + node;
-        CallTargetNode call = callTarget;
-        FrameState currentStateAfter = stateAfter();
-        StateSplit stateSplit = (StateSplit) node;
-        stateSplit.setStateAfter(currentStateAfter);
-        if (node instanceof FixedWithNextNode) {
-            graph().replaceFixedWithFixed(this, (FixedWithNextNode) node);
-        }
-        GraphUtil.killWithUnusedFloatingInputs(call);
-        if (currentStateAfter.hasNoUsages()) {
-            GraphUtil.killWithUnusedFloatingInputs(currentStateAfter);
-        } else {
-            GraalError.shouldNotReachHere();
-        }
     }
 
     @Override
