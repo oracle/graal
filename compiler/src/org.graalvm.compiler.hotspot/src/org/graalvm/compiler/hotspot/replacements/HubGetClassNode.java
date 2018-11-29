@@ -40,6 +40,7 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.ConvertNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
+import org.graalvm.compiler.nodes.extended.HubGetClassNodeInterface;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 
@@ -54,7 +55,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * also used by {@link ClassGetHubNode} to eliminate chains of {@code klass._java_mirror._klass}.
  */
 @NodeInfo(cycles = CYCLES_1, size = SIZE_1)
-public final class HubGetClassNode extends FloatingNode implements Lowerable, Canonicalizable, ConvertNode {
+public final class HubGetClassNode extends FloatingNode implements Lowerable, Canonicalizable, ConvertNode, HubGetClassNodeInterface {
     public static final NodeClass<HubGetClassNode> TYPE = NodeClass.create(HubGetClassNode.class);
     @Input protected ValueNode hub;
 
@@ -63,6 +64,7 @@ public final class HubGetClassNode extends FloatingNode implements Lowerable, Ca
         this.hub = hub;
     }
 
+    @Override
     public ValueNode getHub() {
         return hub;
     }

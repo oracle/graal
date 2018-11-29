@@ -80,6 +80,7 @@ import org.graalvm.compiler.nodes.spi.LimitedValueProxy;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.ValueProxy;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
+import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.Option;
@@ -1049,11 +1050,26 @@ public class GraphUtil {
         if (sourceAlias instanceof VirtualObjectNode) {
             /* The source array is virtualized, just copy over the values. */
             VirtualObjectNode sourceVirtual = (VirtualObjectNode) sourceAlias;
+            boolean alwaysAssignable = newComponentType.getJavaKind() == JavaKind.Object && newComponentType.isJavaLangObject();
             for (int i = 0; i < readLength; i++) {
-                newEntryState[i] = tool.getEntry(sourceVirtual, fromInt + i);
+                ValueNode entry = tool.getEntry(sourceVirtual, fromInt + i);
+                if (!alwaysAssignable) {
+                    ResolvedJavaType entryType = StampTool.typeOrNull(entry, tool.getMetaAccess());
+                    if (entryType == null) {
+                        return;
+                    }
+                    if (!newComponentType.isAssignableFrom(entryType)) {
+                        return;
+                    }
+                }
+                newEntryState[i] = entry;
             }
         } else {
             /* The source array is not virtualized, emit index loads. */
+            ResolvedJavaType sourceType = StampTool.typeOrNull(sourceAlias, tool.getMetaAccess());
+            if (sourceType == null || !sourceType.isArray() || !newComponentType.isAssignableFrom(sourceType.getElementalType())) {
+                return;
+            }
             for (int i = 0; i < readLength; i++) {
                 LoadIndexedNode load = new LoadIndexedNode(null, sourceAlias, ConstantNode.forInt(i + fromInt, graph), null, elementKind);
                 tool.addNode(load);
