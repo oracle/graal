@@ -33,7 +33,6 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -49,6 +48,7 @@ import java.util.stream.Stream;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 
@@ -99,18 +99,18 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             timer.scheduleAtFixedRate(timerTask, 0, 1000);
 
         }
-        URLClassLoader bootImageClassLoader = installURLClassLoader(classpath);
+        NativeImageClassLoader nativeImageClassLoader = installNativeImageClassLoader(classpath);
 
-        int exitStatus = new NativeImageGeneratorRunner().build(arguments.toArray(new String[arguments.size()]), classpath, bootImageClassLoader);
+        int exitStatus = new NativeImageGeneratorRunner().build(arguments.toArray(new String[arguments.size()]), classpath, nativeImageClassLoader);
         System.exit(exitStatus == 0 ? 0 : 1);
     }
 
-    public static URLClassLoader installURLClassLoader(String[] classpath) {
-        URLClassLoader bootImageClassLoader;
+    public static NativeImageClassLoader installNativeImageClassLoader(String[] classpath) {
+        NativeImageClassLoader nativeImageClassLoader;
         ClassLoader applicationClassLoader = Thread.currentThread().getContextClassLoader();
-        bootImageClassLoader = new URLClassLoader(verifyClassPathAndConvertToURLs(classpath), applicationClassLoader);
-        Thread.currentThread().setContextClassLoader(bootImageClassLoader);
-        return bootImageClassLoader;
+        nativeImageClassLoader = new NativeImageClassLoader(verifyClassPathAndConvertToURLs(classpath), applicationClassLoader);
+        Thread.currentThread().setContextClassLoader(nativeImageClassLoader);
+        return nativeImageClassLoader;
     }
 
     public static String[] extractImageClassPath(List<String> arguments) {
@@ -153,15 +153,9 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
         }).toArray(URL[]::new);
     }
 
+    /** Unless the check should be ignored, check that I am running on JDK-8. */
     public static boolean isValidJavaVersion() {
-        String versionString = getJavaVersion();
-        if (versionString.startsWith("1.8")) {
-            String[] splitVersion = versionString.split("_");
-            int update = Integer.valueOf(splitVersion[1]);
-            return update > 40;
-        } else {
-            return false;
-        }
+        return (Boolean.getBoolean("substratevm.IgnoreGraalVersionCheck") || GraalServices.Java8OrEarlier);
     }
 
     private static void reportToolUserError(String msg) {
@@ -188,7 +182,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             ImageClassLoader imageClassLoader;
             Timer classlistTimer = new Timer("classlist", false);
             try (StopTimer ignored1 = classlistTimer.start()) {
-                imageClassLoader = ImageClassLoader.create(defaultPlatform(), classpath, classLoader);
+                imageClassLoader = ImageClassLoader.create(defaultPlatform(classLoader), classpath, classLoader);
             }
 
             HostedOptionParser optionParser = new HostedOptionParser(imageClassLoader);
@@ -209,6 +203,9 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
                 throw UserError.abort("No output file name specified. " +
                                 "Use '" + SubstrateOptionsParser.commandArgument(NativeImageOptions.Name, "<output-file>") + "'.");
             }
+
+            totalTimer.setPrefix(imageName);
+            classlistTimer.setPrefix(imageName);
 
             // print the time here to avoid interactions with flags processing
             classlistTimer.print();
@@ -374,8 +371,8 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
     }
 
     @Override
-    public int build(String[] args, String[] classpath, ClassLoader compilationClassLoader) {
-        return buildImage(args, classpath, compilationClassLoader);
+    public int build(String[] args, String[] classpath, ClassLoader imageClassLoader) {
+        return buildImage(args, classpath, imageClassLoader);
     }
 
     @Override

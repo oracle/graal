@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,10 +28,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import org.junit.Test;
-import org.graalvm.polyglot.Context;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.polyglot.Context;
+import org.junit.Test;
 
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -84,8 +84,8 @@ public class AllocationReporterPartialEvaluationTest extends TestWithSynchronous
         assertNotCompiled(returnTarget);
         returnTarget.call();
         value[0]++;
-        enterTarget.compile();
-        returnTarget.compile();
+        enterTarget.compile(true);
+        returnTarget.compile(true);
         assertCompiled(enterTarget);
         assertCompiled(returnTarget);
         long expectedCounters = allocCounter(value[0]);
@@ -112,8 +112,8 @@ public class AllocationReporterPartialEvaluationTest extends TestWithSynchronous
             assertCompiled(returnTarget);
             returnTarget.call();
             value[0]++;
-            enterTarget.compile();
-            returnTarget.compile();
+            enterTarget.compile(true);
+            returnTarget.compile(true);
             assertCompiled(enterTarget);
             assertCompiled(returnTarget);
 
@@ -124,8 +124,8 @@ public class AllocationReporterPartialEvaluationTest extends TestWithSynchronous
             assertNotCompiled(returnTarget);
             returnTarget.call();
             value[0]++;
-            enterTarget.compile();
-            returnTarget.compile();
+            enterTarget.compile(true);
+            returnTarget.compile(true);
             assertCompiled(enterTarget);
             assertCompiled(returnTarget);
 
@@ -137,8 +137,8 @@ public class AllocationReporterPartialEvaluationTest extends TestWithSynchronous
             assertNotCompiled(returnTarget);
             returnTarget.call();
             value[0]++;
-            enterTarget.compile();
-            returnTarget.compile();
+            enterTarget.compile(true);
+            returnTarget.compile(true);
             assertCompiled(enterTarget);
             assertCompiled(returnTarget);
         }
@@ -180,16 +180,15 @@ public class AllocationReporterPartialEvaluationTest extends TestWithSynchronous
         return n * (n - 1) / 2;
     }
 
-    @TruffleLanguage.Registration(mimeType = AllocationReporterLanguage.MIME_TYPE, name = "Allocation Reporter PE Test Language", id = AllocationReporterLanguage.ID, version = "1.0")
+    @TruffleLanguage.Registration(id = AllocationReporterLanguage.ID, name = "Allocation Reporter PE Test Language")
     public static class AllocationReporterLanguage extends TruffleLanguage<AllocationReporter> {
 
         static final String ID = "truffle-allocation-reporter-pe-test-language";
-        static final String MIME_TYPE = "application/x-truffle-allocation-reporter-pe-test-language";
 
         @Override
         protected AllocationReporter createContext(TruffleLanguage.Env env) {
             AllocationReporter reporter = env.lookup(AllocationReporter.class);
-            env.exportSymbol(AllocationReporter.class.getSimpleName(), reporter);
+            env.exportSymbol(AllocationReporter.class.getSimpleName(), env.asGuestValue(reporter));
             return reporter;
         }
 

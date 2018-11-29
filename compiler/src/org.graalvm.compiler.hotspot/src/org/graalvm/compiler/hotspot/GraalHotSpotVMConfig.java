@@ -26,12 +26,15 @@ package org.graalvm.compiler.hotspot;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.util.List;
 
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.hotspot.nodes.GraalHotSpotVMConfigNode;
 
 import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Used to access native configuration details.
@@ -315,6 +318,17 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigBase {
     public final int jvmciCountersThreadOffset = getFieldOffset("JavaThread::_jvmci_counters", Integer.class, "jlong*");
     public final int javaThreadReservedStackActivationOffset = versioned.javaThreadReservedStackActivationOffset;
 
+    public boolean requiresReservedStackCheck(List<ResolvedJavaMethod> methods) {
+        if (enableStackReservedZoneAddress != 0 && methods != null) {
+            for (ResolvedJavaMethod method : methods) {
+                if (((HotSpotResolvedJavaMethod) method).hasReservedStackAccess()) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     /**
      * An invalid value for {@link #rtldDefault}.
      */
@@ -355,7 +369,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigBase {
     public final int pendingExceptionOffset = getFieldOffset("ThreadShadow::_pending_exception", Integer.class, "oop");
 
     public final int pendingDeoptimizationOffset = getFieldOffset("JavaThread::_pending_deoptimization", Integer.class, "int");
-    public final int pendingFailedSpeculationOffset = getFieldOffset("JavaThread::_pending_failed_speculation", Integer.class, "oop");
+    public final int pendingFailedSpeculationOffset = getFieldOffset("JavaThread::_pending_failed_speculation", Integer.class, "long");
     public final int pendingTransferToInterpreterOffset = getFieldOffset("JavaThread::_pending_transfer_to_interpreter", Integer.class, "bool");
 
     private final int javaFrameAnchorLastJavaSpOffset = getFieldOffset("JavaFrameAnchor::_last_Java_sp", Integer.class, "intptr_t*");
@@ -634,11 +648,37 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigBase {
     public final long unsafeArraycopy = getFieldValue("StubRoutines::_unsafe_arraycopy", Long.class, "address");
     public final long genericArraycopy = getFieldValue("StubRoutines::_generic_arraycopy", Long.class, "address");
 
+    // Allocation stubs that throw an exception when allocation fails
     public final long newInstanceAddress = getAddress("JVMCIRuntime::new_instance");
     public final long newArrayAddress = getAddress("JVMCIRuntime::new_array");
     public final long newMultiArrayAddress = getAddress("JVMCIRuntime::new_multi_array");
-    public final long dynamicNewArrayAddress = getAddress("JVMCIRuntime::dynamic_new_array");
     public final long dynamicNewInstanceAddress = getAddress("JVMCIRuntime::dynamic_new_instance");
+
+    // Allocation stubs that return null when allocation fails
+    public final long newInstanceOrNullAddress = getAddress("JVMCIRuntime::new_instance_or_null", 0L);
+    public final long newArrayOrNullAddress = getAddress("JVMCIRuntime::new_array_or_null", 0L);
+    public final long newMultiArrayOrNullAddress = getAddress("JVMCIRuntime::new_multi_array_or_null", 0L);
+    public final long dynamicNewInstanceOrNullAddress = getAddress("JVMCIRuntime::dynamic_new_instance_or_null", 0L);
+
+    public boolean areNullAllocationStubsAvailable() {
+        return newInstanceOrNullAddress != 0L;
+    }
+
+    /**
+     * Checks that HotSpot implements all or none of the allocate-or-null stubs.
+     */
+    private boolean checkNullAllocationStubs() {
+        if (newInstanceOrNullAddress == 0L) {
+            assert newArrayOrNullAddress == 0L;
+            assert newMultiArrayOrNullAddress == 0L;
+            assert dynamicNewInstanceOrNullAddress == 0L;
+        } else {
+            assert newArrayOrNullAddress != 0L;
+            assert newMultiArrayOrNullAddress != 0L;
+            assert dynamicNewInstanceOrNullAddress != 0L;
+        }
+        return true;
+    }
 
     public final long threadIsInterruptedAddress = getAddress("JVMCIRuntime::thread_is_interrupted");
     public final long vmMessageAddress = getAddress("JVMCIRuntime::vm_message");
@@ -743,6 +783,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigBase {
         }
 
         assert codeEntryAlignment > 0 : codeEntryAlignment;
+        assert checkNullAllocationStubs();
         return true;
     }
 }

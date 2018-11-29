@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.nodes.spi;
 
-import org.graalvm.compiler.core.common.spi.ArrayOffsetProvider;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
@@ -34,7 +33,7 @@ import jdk.vm.ci.meta.JavaKind;
 /**
  * Provides a capability for replacing a higher node with one or more lower level nodes.
  */
-public interface LoweringProvider extends ArrayOffsetProvider {
+public interface LoweringProvider {
 
     void lower(Node n, LoweringTool tool);
 

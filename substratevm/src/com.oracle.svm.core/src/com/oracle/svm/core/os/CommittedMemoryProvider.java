@@ -73,7 +73,10 @@ public interface CommittedMemoryProvider {
      * Returns the granularity of committed memory management, which is typically the same as that
      * of {@linkplain VirtualMemoryProvider#getGranularity() virtual memory management}.
      */
-    UnsignedWord getGranularity();
+    @Uninterruptible(reason = "Still being initialized.", mayBeInlined = true)
+    default UnsignedWord getGranularity() {
+        return VirtualMemoryProvider.get().getGranularity();
+    }
 
     /**
      * Allocate a block of committed memory.
@@ -97,6 +100,7 @@ public interface CommittedMemoryProvider {
      * @param executable Whether the block was requested to be executable.
      * @return true on success, or false otherwise.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     boolean free(PointerBase start, UnsignedWord nbytes, UnsignedWord alignment, boolean executable);
 
     /**

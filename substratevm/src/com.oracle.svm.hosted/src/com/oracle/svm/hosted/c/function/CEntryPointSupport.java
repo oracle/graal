@@ -33,14 +33,14 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.nativeimage.c.function.CEntryPointContext;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.WordBase;
 
+import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.amd64.FrameAccess;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
@@ -61,9 +61,9 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 @AutomaticFeature
 public class CEntryPointSupport implements GraalFeature {
     @Override
-    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, InvocationPlugins invocationPlugins, boolean hosted) {
+    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, InvocationPlugins invocationPlugins, boolean analysis, boolean hosted) {
         registerEntryPointActionsPlugins(invocationPlugins);
-        registerEntryPointContextPlugins(invocationPlugins);
+        registerCurrentIsolatePlugins(invocationPlugins);
     }
 
     private static void registerEntryPointActionsPlugins(InvocationPlugins plugins) {
@@ -151,9 +151,9 @@ public class CEntryPointSupport implements GraalFeature {
         });
     }
 
-    private static void registerEntryPointContextPlugins(InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, CEntryPointContext.class);
-        r.register0("getCurrentIsolateThread", new InvocationPlugin() {
+    private static void registerCurrentIsolatePlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, CurrentIsolate.class);
+        r.register0("getCurrentThread", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 if (SubstrateOptions.MultiThreaded.getValue()) {
@@ -168,7 +168,7 @@ public class CEntryPointSupport implements GraalFeature {
                 return true;
             }
         });
-        r.register0("getCurrentIsolate", new InvocationPlugin() {
+        r.register0("getIsolate", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 if (SubstrateOptions.SpawnIsolates.getValue()) {

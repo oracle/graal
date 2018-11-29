@@ -28,23 +28,15 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.graalvm.nativeimage.Feature;
-import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.c.struct.SizeOf;
-import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.c.type.CIntPointer;
-import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.CompilerCommandPlugin;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.RuntimeFeature;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.posix.PosixExecutableName;
-import com.oracle.svm.core.posix.headers.darwin.DarwinDyld;
-import com.oracle.svm.core.util.VMError;
+import org.graalvm.nativeimage.ProcessProperties;
 
 @Platforms(Platform.DARWIN.class)
 public class DarwinExecutableName extends PosixExecutableName {
@@ -55,24 +47,7 @@ public class DarwinExecutableName extends PosixExecutableName {
      */
     @Override
     public Object apply(Object[] args) {
-        /* Find out how long the executable path is. */
-        final CIntPointer sizePointer = StackValue.get(SizeOf.get(CIntPointer.class));
-        sizePointer.write(0);
-        if (DarwinDyld._NSGetExecutablePath(WordFactory.nullPointer(), sizePointer) != -1) {
-            VMError.shouldNotReachHere("DarwinExecutableName.getExecutableName: Executable path length is 0?");
-        }
-        /* Allocate a correctly-sized buffer and ask again. */
-        final byte[] byteBuffer = new byte[sizePointer.read()];
-        try (PinnedObject pinnedBuffer = PinnedObject.create(byteBuffer)) {
-            final CCharPointer bufferPointer = pinnedBuffer.addressOfArrayElement(0);
-            if (DarwinDyld._NSGetExecutablePath(bufferPointer, sizePointer) == -1) {
-                /* Failure to find executable path. */
-                return null;
-            }
-            final String executableString = CTypeConversion.toJavaString(bufferPointer);
-            final String result = realpath(executableString);
-            return result;
-        }
+        return ProcessProperties.getExecutableName();
     }
 
     @AutomaticFeature

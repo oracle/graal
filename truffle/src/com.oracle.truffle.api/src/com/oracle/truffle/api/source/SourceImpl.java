@@ -2,31 +2,49 @@
  * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * The Universal Permissive License (UPL), Version 1.0
  *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
  *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ * (a) the Software, and
  *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 package com.oracle.truffle.api.source;
 
 import java.net.URI;
 import java.net.URL;
 import java.util.Objects;
+
+import org.graalvm.polyglot.io.ByteSequence;
 
 final class SourceImpl extends Source {
 
@@ -54,7 +72,30 @@ final class SourceImpl extends Source {
 
     @Override
     public CharSequence getCharacters() {
-        return key.characters;
+        if (hasCharacters()) {
+            return (CharSequence) key.content;
+        } else {
+            throw new UnsupportedOperationException();
+        }
+    }
+
+    @Override
+    public ByteSequence getBytes() {
+        if (hasBytes()) {
+            return (ByteSequence) key.content;
+        } else {
+            throw new UnsupportedOperationException();
+        }
+    }
+
+    @Override
+    public boolean hasBytes() {
+        return key.content instanceof ByteSequence;
+    }
+
+    @Override
+    public boolean hasCharacters() {
+        return key.content instanceof CharSequence;
     }
 
     @Override
@@ -80,6 +121,11 @@ final class SourceImpl extends Source {
     @Override
     public boolean isInternal() {
         return key.internal;
+    }
+
+    @Override
+    boolean isLegacy() {
+        return key.legacy;
     }
 
     @Override
@@ -136,7 +182,7 @@ final class SourceImpl extends Source {
 
     static final class Key {
 
-        final CharSequence characters;
+        final Object content;
         final URI uri;
         final URL url;
         final String name;
@@ -146,9 +192,11 @@ final class SourceImpl extends Source {
         final boolean internal;
         final boolean interactive;
         final boolean cached;
+        // TODO remove legacy field with deprecated Source builders.
+        final boolean legacy;
 
-        Key(CharSequence characters, String mimeType, String languageId, URL url, URI uri, String name, String path, boolean internal, boolean interactive, boolean cached) {
-            this.characters = characters;
+        Key(Object content, String mimeType, String languageId, URL url, URI uri, String name, String path, boolean internal, boolean interactive, boolean cached, boolean legacy) {
+            this.content = content;
             this.mimeType = mimeType;
             this.language = languageId;
             this.name = name;
@@ -158,11 +206,12 @@ final class SourceImpl extends Source {
             this.cached = cached;
             this.url = url;
             this.uri = uri;
+            this.legacy = legacy;
         }
 
         @Override
         public int hashCode() {
-            int result = 31 * 1 + ((characters == null) ? 0 : characters.hashCode());
+            int result = 31 * 1 + ((content == null) ? 0 : content.hashCode());
             result = 31 * result + (interactive ? 1231 : 1237);
             result = 31 * result + (internal ? 1231 : 1237);
             result = 31 * result + (cached ? 1231 : 1237);
@@ -182,7 +231,7 @@ final class SourceImpl extends Source {
             } else if (!(obj instanceof Key)) {
                 return false;
             }
-            assert characters != null;
+            assert content != null;
             Key other = (Key) obj;
             /*
              * Compare characters last as it is likely the most expensive comparison in the worst
@@ -197,25 +246,54 @@ final class SourceImpl extends Source {
                             interactive == other.interactive && //
                             internal == other.internal &&
                             cached == other.cached &&
-                            compareCharacters(other);
+                            compareContent(other);
         }
 
-        private boolean compareCharacters(Key other) {
-            CharSequence otherCharacters = other.characters;
-            if (characters == otherCharacters) {
-                return true;
-            } else if (characters == null) {
-                return false;
-            } else if (characters.length() != otherCharacters.length()) {
-                return false;
+        private boolean compareContent(Key other) {
+            Object otherContent = other.content;
+            if (content instanceof CharSequence && otherContent instanceof CharSequence) {
+                return compareCharacters((CharSequence) content, (CharSequence) otherContent);
+            } else if (content instanceof ByteSequence && otherContent instanceof ByteSequence) {
+                return compareBytes((ByteSequence) content, (ByteSequence) otherContent);
             } else {
-                assert otherCharacters != null;
-                return Objects.equals(characters.toString(), otherCharacters.toString());
+                return false;
             }
         }
 
-        SourceImpl toSource() {
+        private static boolean compareBytes(ByteSequence bytes, ByteSequence other) {
+            if (bytes == other) {
+                return true;
+            } else if (bytes == null) {
+                return false;
+            } else if (bytes.length() != other.length()) {
+                return false;
+            } else {
+                // trusted class
+                return bytes.equals(other);
+            }
+        }
+
+        private static boolean compareCharacters(CharSequence characters, CharSequence other) {
+            if (characters == other) {
+                return true;
+            } else if (characters == null) {
+                return false;
+            } else if (characters.length() != other.length()) {
+                return false;
+            } else {
+                assert other != null;
+                return Objects.equals(characters.toString(), other.toString());
+            }
+        }
+
+        SourceImpl toSourceInterned() {
+            assert cached;
             return new SourceImpl(this);
+        }
+
+        SourceImpl toSourceNotInterned() {
+            assert !cached;
+            return new SourceImpl(this, this);
         }
 
     }

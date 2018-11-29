@@ -1,26 +1,42 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * The Universal Permissive License (UPL), Version 1.0
  *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
  *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ * (a) the Software, and
  *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 package com.oracle.truffle.nfi.test;
 
@@ -104,7 +120,7 @@ public class ObjectNFITest extends NFITest {
 
         TruffleObject initializeAPI = lookupAndBind("initialize_api", "( env, ():object, (object,string):sint32, (object,string,sint32):void ) : pointer");
         try {
-            nativeAPI = (TruffleObject) ForeignAccess.sendExecute(Message.createExecute(3).createNode(), initializeAPI, createNewObject, readIntField, writeIntField);
+            nativeAPI = (TruffleObject) ForeignAccess.sendExecute(Message.EXECUTE.createNode(), initializeAPI, createNewObject, readIntField, writeIntField);
         } catch (InteropException ex) {
             throw new AssertionError(ex);
         }
@@ -114,7 +130,7 @@ public class ObjectNFITest extends NFITest {
     public static void deleteAPI() {
         TruffleObject deleteAPI = lookupAndBind("delete_api", "(env, pointer):void");
         try {
-            ForeignAccess.sendExecute(Message.createExecute(1).createNode(), deleteAPI, nativeAPI);
+            ForeignAccess.sendExecute(Message.EXECUTE.createNode(), deleteAPI, nativeAPI);
             nativeAPI = null;
         } catch (InteropException ex) {
             throw new AssertionError(ex);
@@ -124,7 +140,7 @@ public class ObjectNFITest extends NFITest {
     public static class CopyAndIncrementNode extends SendExecuteNode {
 
         public CopyAndIncrementNode() {
-            super("copy_and_increment", "(env, pointer, object) : object", 2);
+            super("copy_and_increment", "(env, pointer, object) : object");
         }
     }
 
@@ -148,9 +164,9 @@ public class ObjectNFITest extends NFITest {
         final TruffleObject freeAndGetObject = lookupAndBind("free_and_get_object", "(env, pointer):object");
         final TruffleObject freeAndGetContent = lookupAndBind("free_and_get_content", "(env, pointer, pointer):sint32");
 
-        @Child Node executeKeepExistingObject = Message.createExecute(1).createNode();
-        @Child Node executeFreeAndGetObject = Message.createExecute(1).createNode();
-        @Child Node executeFreeAndGetContent = Message.createExecute(2).createNode();
+        @Child Node executeKeepExistingObject = Message.EXECUTE.createNode();
+        @Child Node executeFreeAndGetObject = Message.EXECUTE.createNode();
+        @Child Node executeFreeAndGetContent = Message.EXECUTE.createNode();
 
         @Override
         public Object executeTest(VirtualFrame frame) throws InteropException {
@@ -189,8 +205,8 @@ public class ObjectNFITest extends NFITest {
         final TruffleObject keepNewObject = lookupAndBind("keep_new_object", "(pointer):pointer");
         final TruffleObject freeAndGetObject = lookupAndBind("free_and_get_object", "(env, pointer):object");
 
-        @Child Node executeKeepNewObject = Message.createExecute(1).createNode();
-        @Child Node executeFreeAndGetObject = Message.createExecute(1).createNode();
+        @Child Node executeKeepNewObject = Message.EXECUTE.createNode();
+        @Child Node executeFreeAndGetObject = Message.EXECUTE.createNode();
 
         @Override
         public Object executeTest(VirtualFrame frame) throws InteropException {
@@ -212,9 +228,9 @@ public class ObjectNFITest extends NFITest {
         final TruffleObject keepExistingObject = lookupAndBind("keep_existing_object", "(env, object):pointer");
         final TruffleObject compareExistingObject = lookupAndBind("compare_existing_object", "(env, pointer, pointer):sint32");
 
-        @Child Node executeKeepExistingObject = Message.createExecute(1).createNode();
-        @Child Node executeCompareExistingObject = Message.createExecute(1).createNode();
-        @Child Node executeFreeAndGetContent = Message.createExecute(2).createNode();
+        @Child Node executeKeepExistingObject = Message.EXECUTE.createNode();
+        @Child Node executeCompareExistingObject = Message.EXECUTE.createNode();
+        @Child Node executeFreeAndGetContent = Message.EXECUTE.createNode();
 
         @Override
         public Object executeTest(VirtualFrame frame) throws InteropException {

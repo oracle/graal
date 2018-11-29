@@ -43,8 +43,10 @@ public final class ScriptsHandler implements LoadSourceListener {
     private final Map<Source, Integer> sourceIDs = new HashMap<>(100);
     private final List<Script> scripts = new ArrayList<>(100);
     private final List<LoadScriptListener> listeners = new ArrayList<>();
+    private final boolean reportInternal;
 
-    public ScriptsHandler() {
+    public ScriptsHandler(boolean reportInternal) {
+        this.reportInternal = reportInternal;
     }
 
     public int getScriptId(Source source) {
@@ -292,13 +294,17 @@ public final class ScriptsHandler implements LoadSourceListener {
     @Override
     public void onLoad(LoadSourceEvent event) {
         Source source = event.getSource();
-        if (!source.isInternal()) {
+        if (reportInternal || !source.isInternal()) {
             assureLoaded(source);
         }
     }
 
     static boolean compareURLs(String url1, String url2) {
-        return stripScheme(url1).equals(stripScheme(url2));
+        String surl1 = stripScheme(url1);
+        String surl2 = stripScheme(url2);
+        // Either equals,
+        // or equals while ignoring the initial slash (workaround for Chromium bug #851853)
+        return surl1.equals(surl2) || surl1.startsWith("/") && surl1.substring(1).equals(surl2);
     }
 
     private static String stripScheme(String url) {
@@ -314,8 +320,4 @@ public final class ScriptsHandler implements LoadSourceListener {
         void loadedScript(Script script);
     }
 
-    public interface Provider {
-
-        ScriptsHandler getScriptsHandler();
-    }
 }

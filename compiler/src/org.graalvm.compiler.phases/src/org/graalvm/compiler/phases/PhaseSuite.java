@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -89,7 +89,7 @@ public class PhaseSuite<C> extends BasePhase<C> {
      * Returns a {@link ListIterator} at the position of the last phase in the suite. If the suite
      * has no phases then it will return an empty iterator.
      */
-    private ListIterator<BasePhase<? super C>> findLastPhase() {
+    public ListIterator<BasePhase<? super C>> findLastPhase() {
         ListIterator<BasePhase<? super C>> it = phases.listIterator();
         while (it.hasNext()) {
             it.next();

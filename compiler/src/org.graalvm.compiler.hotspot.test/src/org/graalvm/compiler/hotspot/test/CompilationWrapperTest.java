@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,11 +54,14 @@ public class CompilationWrapperTest extends GraalCompilerTest {
      */
     @Test
     public void testVMCompilation1() throws IOException, InterruptedException {
-        testHelper(Collections.emptyList(), Arrays.asList("-XX:+BootstrapJVMCI",
+        assumeManagementLibraryIsLoadable();
+        testHelper(Collections.emptyList(), Arrays.asList("-XX:-TieredCompilation",
                         "-XX:+UseJVMCICompiler",
                         "-Dgraal.CompilationFailureAction=ExitVM",
-                        "-Dgraal.CrashAt=Object.*,String.*",
-                        "-version"));
+                        "-Dgraal.CrashAt=TestProgram.*",
+                        "-Xcomp",
+                        "-XX:CompileCommand=compileonly,*/TestProgram.print*",
+                        TestProgram.class.getName()));
     }
 
     /**
@@ -67,11 +70,14 @@ public class CompilationWrapperTest extends GraalCompilerTest {
      */
     @Test
     public void testVMCompilation2() throws IOException, InterruptedException {
-        testHelper(Collections.emptyList(), Arrays.asList("-XX:+BootstrapJVMCI",
+        assumeManagementLibraryIsLoadable();
+        testHelper(Collections.emptyList(), Arrays.asList("-XX:-TieredCompilation",
                         "-XX:+UseJVMCICompiler",
                         "-Dgraal.ExitVMOnException=true",
-                        "-Dgraal.CrashAt=Object.*,String.*",
-                        "-version"));
+                        "-Dgraal.CrashAt=TestProgram.*",
+                        "-Xcomp",
+                        "-XX:CompileCommand=compileonly,*/TestProgram.print*",
+                        TestProgram.class.getName()));
     }
 
     static class Probe {
@@ -105,23 +111,37 @@ public class CompilationWrapperTest extends GraalCompilerTest {
      */
     @Test
     public void testVMCompilation3() throws IOException, InterruptedException {
-        final int maxProblems = 4;
-        Probe[] probes = {
-                        new Probe("Retrying compilation of", maxProblems) {
-                            @Override
-                            String test() {
-                                return actualOccurrences > 0 && actualOccurrences <= maxProblems ? null : String.format("expected occurrences to be in [1 .. %d]", maxProblems);
-                            }
-                        },
-                        new Probe("adjusting CompilationFailureAction from Diagnose to Print", 1),
-                        new Probe("adjusting CompilationFailureAction from Print to Silent", 1),
+        assumeManagementLibraryIsLoadable();
+        final int maxProblems = 2;
+        Probe retryingProbe = new Probe("Retrying compilation of", maxProblems) {
+            @Override
+            String test() {
+                return actualOccurrences > 0 && actualOccurrences <= maxProblems ? null : String.format("expected occurrences to be in [1 .. %d]", maxProblems);
+            }
         };
-        testHelper(Arrays.asList(probes), Arrays.asList("-XX:+BootstrapJVMCI",
+        Probe adjustmentProbe = new Probe("adjusting CompilationFailureAction from Diagnose to Print", 1) {
+            @Override
+            String test() {
+                if (retryingProbe.actualOccurrences >= maxProblems) {
+                    if (actualOccurrences == 0) {
+                        return "expected at least one occurrence";
+                    }
+                }
+                return null;
+            }
+        };
+        Probe[] probes = {
+                        retryingProbe,
+                        adjustmentProbe
+        };
+        testHelper(Arrays.asList(probes), Arrays.asList("-XX:-TieredCompilation",
                         "-XX:+UseJVMCICompiler",
                         "-Dgraal.CompilationFailureAction=Diagnose",
                         "-Dgraal.MaxCompilationProblemsPerAction=" + maxProblems,
-                        "-Dgraal.CrashAt=Object.*,String.*",
-                        "-version"));
+                        "-Dgraal.CrashAt=TestProgram.*",
+                        "-Xcomp",
+                        "-XX:CompileCommand=compileonly,*/TestProgram.print*",
+                        TestProgram.class.getName()));
     }
 
     /**
@@ -129,6 +149,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
      */
     @Test
     public void testTruffleCompilation1() throws IOException, InterruptedException {
+        assumeManagementLibraryIsLoadable();
         testHelper(Collections.emptyList(),
                         Arrays.asList(
                                         "-Dgraal.CompilationFailureAction=ExitVM",
@@ -158,6 +179,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
      */
     @Test
     public void testTruffleCompilation3() throws IOException, InterruptedException {
+        assumeManagementLibraryIsLoadable();
         Probe[] probes = {
                         new Probe("Exiting VM due to TrufflePerformanceWarningsAreFatal=true", 1),
         };
@@ -244,5 +266,40 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                 dumpPath.delete();
             }
         }
+    }
+}
+
+class TestProgram {
+    public static void main(String[] args) {
+        printHello1();
+        printWorld1();
+        printHello2();
+        printWorld2();
+        printHello3();
+        printWorld3();
+    }
+
+    private static void printHello1() {
+        System.out.println("Hello1");
+    }
+
+    private static void printWorld1() {
+        System.out.println("World1");
+    }
+
+    private static void printHello2() {
+        System.out.println("Hello2");
+    }
+
+    private static void printWorld2() {
+        System.out.println("World2");
+    }
+
+    private static void printHello3() {
+        System.out.println("Hello3");
+    }
+
+    private static void printWorld3() {
+        System.out.println("World3");
     }
 }

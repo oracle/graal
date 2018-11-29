@@ -27,17 +27,18 @@ package com.oracle.svm.core.thread;
 import java.util.Collections;
 import java.util.List;
 
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.function.CEntryPointContext;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.thread.Safepoint.SafepointRequestValues;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.util.VMError;
@@ -134,7 +135,12 @@ public final class VMOperationControl {
                  * that we can restore it below after releasing the lock again.
                  */
                 callbackTime = System.nanoTime();
-                callbackValue = Safepoint.getSafepointRequested(CEntryPointContext.getCurrentIsolateThread());
+                callbackValue = Safepoint.getSafepointRequested(CurrentIsolate.getCurrentThread());
+                /*
+                 * Reset the counter so that we do not run into a callback immediately while
+                 * acquiring the lock.
+                 */
+                Safepoint.setSafepointRequested(CurrentIsolate.getCurrentThread(), SafepointRequestValues.RESET);
             }
 
             getVMOperationControl().acquireLock();

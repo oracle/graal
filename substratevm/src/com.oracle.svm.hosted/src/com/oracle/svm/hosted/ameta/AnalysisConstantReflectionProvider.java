@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.ameta;
 
 import java.lang.reflect.Modifier;
 
+import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordBase;
@@ -39,6 +40,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.ReadableJavaField;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.ClassInitializationFeature;
 import com.oracle.svm.hosted.SVMHost;
 
 import jdk.vm.ci.meta.Constant;
@@ -54,11 +56,13 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     private final SVMHost hostVM;
     private final AnalysisUniverse universe;
     private final ConstantReflectionProvider originalConstantReflection;
+    private final ClassInitializationFeature classInitializationFeature;
 
     public AnalysisConstantReflectionProvider(SVMHost hostVM, AnalysisUniverse universe, ConstantReflectionProvider originalConstantReflection) {
         this.hostVM = hostVM;
         this.universe = universe;
         this.originalConstantReflection = originalConstantReflection;
+        this.classInitializationFeature = ClassInitializationFeature.singleton();
     }
 
     @Override
@@ -76,20 +80,46 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     }
 
     public JavaConstant readValue(AnalysisField field, JavaConstant receiver) {
-        return interceptValue(field, receiver, replaceObject(universe.lookup(ReadableJavaField.readFieldValue(originalConstantReflection, field.wrapped, universe.toHosted(receiver)))));
+        if (classInitializationFeature.shouldInitializeAtRuntime(field.getDeclaringClass())) {
+            if (field.isStatic()) {
+                /*
+                 * Static fields of classes that are initialized at run time have the default
+                 * (uninitialized) value in the image heap.
+                 */
+                return JavaConstant.defaultForKind(field.getStorageKind());
+            } else {
+                /*
+                 * Classes that are initialized at run time must not have instances in the image
+                 * heap. Invoking instance methods would miss the class initialization checks. Image
+                 * generation should have been aborted earlier with a user-friendly message, this is
+                 * just a safeguard.
+                 */
+                throw VMError.shouldNotReachHere("Cannot read instance field of a class that is initialized at run time: " + field.format("%H.%n"));
+            }
+        }
+
+        return interceptValue(field, universe.lookup(ReadableJavaField.readFieldValue(originalConstantReflection, field.wrapped, universe.toHosted(receiver))));
     }
 
+    public JavaConstant interceptValue(AnalysisField field, JavaConstant value) {
+        JavaConstant result = value;
+        if (result != null) {
+            result = replaceObject(result);
+            result = interceptAssertionStatus(field, result);
+            result = interceptWordType(field, result);
+        }
+        return result;
+    }
+
+    /**
+     * Run all registered object replacers.
+     */
     private JavaConstant replaceObject(JavaConstant value) {
         if (value == JavaConstant.NULL_POINTER) {
             return JavaConstant.NULL_POINTER;
         }
-        if (value != null && value.getJavaKind() == JavaKind.Object) {
+        if (value.getJavaKind() == JavaKind.Object) {
             Object oldObject = universe.getSnippetReflection().asObject(Object.class, value);
-            /*
-             * During analysis (= at this place) most of the heap object replacements are done, e.g.
-             * Hosted metadata with Substrate metadata. The remaining replacements are done directly
-             * in BootImageHeap.
-             */
             Object newObject = universe.replaceObject(oldObject);
             if (newObject != oldObject) {
                 return universe.getSnippetReflection().forObject(newObject);
@@ -98,10 +128,13 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
         return value;
     }
 
-    private JavaConstant interceptValue(AnalysisField field, JavaConstant receiver, JavaConstant value) {
+    /**
+     * Intercept assertion status: the value of the field during image generation does not matter at
+     * all (because it is the hosted assertion status), we instead return the appropriate runtime
+     * assertion status.
+     */
+    private static JavaConstant interceptAssertionStatus(AnalysisField field, JavaConstant value) {
         if (Modifier.isStatic(field.getModifiers()) && field.isSynthetic() && field.getName().startsWith("$assertionsDisabled")) {
-            assert receiver == null;
-
             String unsubstitutedName = field.wrapped.getDeclaringClass().toJavaName();
             if (unsubstitutedName.startsWith("java.") || unsubstitutedName.startsWith("javax.") || unsubstitutedName.startsWith("sun.")) {
                 /*
@@ -118,7 +151,15 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
             }
             return JavaConstant.TRUE;
         }
-        if (value != null && value.getJavaKind() == JavaKind.Object) {
+        return value;
+    }
+
+    /**
+     * Intercept {@link Word} types. They are boxed objects in the hosted world, but primitive
+     * values in the runtime world.
+     */
+    private JavaConstant interceptWordType(AnalysisField field, JavaConstant value) {
+        if (value.getJavaKind() == JavaKind.Object) {
             Object originalObject = universe.getSnippetReflection().asObject(Object.class, value);
             if (universe.hostVM().isRelocatedPointer(originalObject)) {
                 /*

@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.core.thread;
 
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.nativeimage.c.function.CEntryPointContext;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -91,7 +91,7 @@ public abstract class VMOperation extends VMOperationControl.AllocationFreeStack
                 execute();
             } else {
                 // If I am multi-threaded, then I have to bring the system to a safepoint, etc.
-                setQueuingVMThread(CEntryPointContext.getCurrentIsolateThread());
+                setQueuingVMThread(CurrentIsolate.getCurrentThread());
                 VMOperationControl.enqueue(this);
                 setQueuingVMThread(WordFactory.nullPointer());
             }
@@ -136,7 +136,7 @@ public abstract class VMOperation extends VMOperationControl.AllocationFreeStack
         final VMOperationControl control = ImageSingletons.lookup(VMOperationControl.class);
         final VMOperation previousInProgress = control.getInProgress();
         try {
-            executingVMThread = CEntryPointContext.getCurrentIsolateThread();
+            executingVMThread = CurrentIsolate.getCurrentThread();
             control.setInProgress(this);
             operate();
         } finally {
@@ -147,7 +147,7 @@ public abstract class VMOperation extends VMOperationControl.AllocationFreeStack
 
     public static boolean isInProgress() {
         VMOperation cur = ImageSingletons.lookup(VMOperationControl.class).getInProgress();
-        return cur != null && cur.executingVMThread == CEntryPointContext.getCurrentIsolateThread();
+        return cur != null && cur.executingVMThread == CurrentIsolate.getCurrentThread();
     }
 
     /** Check that there is a VMOperation in progress. */
@@ -188,7 +188,7 @@ public abstract class VMOperation extends VMOperationControl.AllocationFreeStack
         return systemEffect == SystemEffect.CAUSES_SAFEPOINT;
     }
 
-    final IsolateThread getQueuingVMThread() {
+    protected final IsolateThread getQueuingVMThread() {
         return queuingVMThread;
     }
 

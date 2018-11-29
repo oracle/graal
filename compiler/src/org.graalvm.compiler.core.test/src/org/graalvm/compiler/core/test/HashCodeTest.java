@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package org.graalvm.compiler.core.test;
 
 import java.util.HashMap;
+import java.util.List;
 
 import org.graalvm.compiler.core.phases.HighTier;
 import org.graalvm.compiler.core.phases.MidTier;
@@ -36,7 +37,9 @@ import org.graalvm.compiler.nodes.extended.LoadMethodNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
+import org.graalvm.compiler.test.SubprocessUtil;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 public class HashCodeTest extends GraalCompilerTest {
@@ -141,6 +144,11 @@ public class HashCodeTest extends GraalCompilerTest {
 
     @Test
     public void test08() {
+        // This test requires profiling information which does not work reliable across platforms
+        // when running with -Xcomp
+        List<String> commandLine = SubprocessUtil.getVMCommandLine();
+        Assume.assumeTrue(commandLine != null);
+        Assume.assumeFalse(commandLine.contains("-Xcomp"));
         initialize(Appendable.class);
         checkForGuardedIntrinsicPattern("hashCodeInterface");
 

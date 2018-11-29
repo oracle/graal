@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,9 +57,7 @@ public abstract class SLDefineFunctionBuiltin extends SLBuiltinNode {
     @Specialization
     public String defineFunction(String code) {
         // @formatter:off
-        Source source = Source.newBuilder(code).
-            name("[defineFunction]").
-            language(SLLanguage.ID).
+        Source source = Source.newBuilder(SLLanguage.ID, code, "[defineFunction]").
             build();
         // @formatter:on
         /* The same parsing code as for parsing the initial source. */

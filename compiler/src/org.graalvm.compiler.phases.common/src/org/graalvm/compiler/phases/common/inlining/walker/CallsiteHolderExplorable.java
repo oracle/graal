@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,7 +36,7 @@ import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.phases.common.inlining.policy.AbstractInliningPolicy;
-import org.graalvm.compiler.phases.graph.FixedNodeProbabilityCache;
+import org.graalvm.compiler.phases.graph.FixedNodeRelativeFrequencyCache;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -87,7 +87,7 @@ public final class CallsiteHolderExplorable extends CallsiteHolder {
             probabilities = null;
             computeInliningRelevance = null;
         } else {
-            probabilities = new FixedNodeProbabilityCache();
+            probabilities = new FixedNodeRelativeFrequencyCache();
             computeInliningRelevance = new ComputeInliningRelevance(graph, probabilities);
             computeProbabilities();
         }

@@ -41,6 +41,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.word.WordBase;
 
@@ -153,25 +154,6 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         if (universe.hostVM.analysisPolicy().needsConstantCache()) {
             this.constantObjectsCache = new ConcurrentHashMap<>();
         }
-
-        /*
-         * Eagerly ask the wrapped type to lookup the declared constructors. This will discover
-         * early any class resolution problems caused by missing parameter types. We cannot cache
-         * the result as AnalysisMethod[], i.e., by calling universe.lookup(JavaMethod[]), because
-         * that would lead to a deadlock, but we could cache it as ResolvedJavaMethod[] which we can
-         * later use in AnalysisType.getDeclaredConstructors().
-         */
-        wrapped.getDeclaredConstructors();
-        /*
-         * Eagerly resolve the enclosing type. It is possible that we are dealing with an incomplete
-         * classpath. While normally JVM doesn't care about missing classes unless they are really
-         * used the analysis is eager to load all reachable classes. The analysis client should deal
-         * with type resolution problems.
-         * 
-         * We cannot cache the result as an AnalysisType, i.e., by calling
-         * universe.lookup(JavaType), because that could lead to a deadlock.
-         */
-        wrapped.getEnclosingType();
 
         /* Ensure the super types as well as the component type (for arrays) is created too. */
         getSuperclass();
@@ -511,7 +493,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
      * @param node For future use and debugging
      */
     public void registerAsAllocated(Node node) {
-        assert isArray() || (isInstanceClass() && !Modifier.isAbstract(getModifiers()));
+        assert isArray() || (isInstanceClass() && !Modifier.isAbstract(getModifiers())) : this;
         if (!isAllocated) {
             isAllocated = true;
         }
@@ -692,13 +674,14 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
 
     @Override
     public final boolean isInitialized() {
-        assert wrapped.isInitialized();
-        return true;
+        return universe.hostVM.isInitialized(this);
     }
 
     @Override
     public void initialize() {
-        assert wrapped.isInitialized();
+        if (!wrapped.isInitialized()) {
+            throw GraalError.shouldNotReachHere("Classes can only be initialized using methods in ClassInitializationFeature");
+        }
     }
 
     @Override
@@ -709,6 +692,11 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     @Override
     public boolean isInterface() {
         return wrapped.isInterface();
+    }
+
+    @Override
+    public boolean isEnum() {
+        return wrapped.isEnum();
     }
 
     @Override
@@ -940,7 +928,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     }
 
     @Override
-    public ResolvedJavaMethod getClassInitializer() {
+    public AnalysisMethod getClassInitializer() {
         return universe.lookup(wrapped.getClassInitializer());
     }
 

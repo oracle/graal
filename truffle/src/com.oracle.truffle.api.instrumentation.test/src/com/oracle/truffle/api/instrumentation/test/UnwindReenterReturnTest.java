@@ -1,28 +1,49 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * The Universal Permissive License (UPL), Version 1.0
  *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
  *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ * (a) the Software, and
  *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 package com.oracle.truffle.api.instrumentation.test;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -35,11 +56,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.locks.ReentrantLock;
 
+import org.graalvm.polyglot.PolyglotException;
 import org.junit.After;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -53,12 +71,13 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.instrumentation.test.UnwindReenterReturnTest.TestControlFlow.CodeAction;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 
-import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Value;
 
 /**
  * Test of {@link EventBinding#throwUnwind()}, followed by reenter or return.
@@ -475,8 +494,9 @@ public class UnwindReenterReturnTest extends AbstractInstrumentationTest {
 
     @Test
     public void testParallelUnwindOneForAll() throws Exception {
+        cleanup();
+        context = newContext();
         // Throw a single UnwindException in multiple threads and test that it fails.
-        context = org.graalvm.polyglot.Context.newBuilder().engine(engine).allowCreateThread(true).out(out).err(out).build();
         UnwindParallel unwindParallel = engine.getInstruments().get("testUnwindParallel").lookup(UnwindParallel.class);
         int n = 5;
         StringBuilder codeBuilder = new StringBuilder("ROOT(");
@@ -496,6 +516,7 @@ public class UnwindReenterReturnTest extends AbstractInstrumentationTest {
         } catch (Exception ex) {
         }
         context.close(true);
+        context = null;
         String message = failure.get().getMessage();
         assertTrue(message, message.contains("A single instance of UnwindException thrown in two threads"));
     }
@@ -510,8 +531,23 @@ public class UnwindReenterReturnTest extends AbstractInstrumentationTest {
         doParallelUnwind(false);
     }
 
+    @Test
+    public void testUnexpectedTypeAndUnwind() throws Exception {
+        UnexpectedTypeAndUnwind unwindThrows = engine.getInstruments().get("testUnexpectedTypeAndUnwind").lookup(UnexpectedTypeAndUnwind.class);
+        int expectedResult = 43;
+        unwindThrows.submit(expectedResult);
+        Value value = context.eval(lines("EXPRESSION(UNEXPECTED_RESULT(42))"));
+
+        assertTrue(value.isNumber());
+        assertEquals(expectedResult, value.asInt());
+        assertEquals("[UNEXPECTED_RESULT(42), UnexpectedResultException(42)]", testControlFlow.nodesEntered.toString());
+        assertEquals("[UnexpectedResultException(42), UNEXPECTED_RESULT(42)]", testControlFlow.nodesReturned.toString());
+        assertEquals("[42, 42]", testControlFlow.returnValuesExceptions.toString());
+    }
+
     private void doParallelUnwind(boolean concurrent) throws Exception {
-        context = org.graalvm.polyglot.Context.newBuilder().engine(engine).allowCreateThread(true).out(out).err(out).build();
+        cleanup();
+        context = newContext();
         UnwindParallel unwindParallel = engine.getInstruments().get("testUnwindParallel").lookup(UnwindParallel.class);
         int n = 5;
         StringBuilder codeBuilder = new StringBuilder("ROOT(");
@@ -548,6 +584,8 @@ public class UnwindReenterReturnTest extends AbstractInstrumentationTest {
         }
         assertEquals(3, numUnwinds);
         assertEquals(5 * 3, numOnes);
+        context.close();
+        context = null;
     }
 
     @Registration(id = "testControlFlow", services = TestControlFlow.class)
@@ -1035,6 +1073,56 @@ public class UnwindReenterReturnTest extends AbstractInstrumentationTest {
                                 @Override
                                 public Object onUnwind(EventContext context, VirtualFrame frame, Object info) {
                                     return 1;
+                                }
+                            });
+        }
+    }
+
+    @Registration(id = "testUnexpectedTypeAndUnwind", services = UnexpectedTypeAndUnwind.class)
+    public static class UnexpectedTypeAndUnwind extends TruffleInstrument {
+
+        private Env env;
+        private EventBinding<? extends ExecutionEventListener> bindingExec;
+
+        @Override
+        @SuppressWarnings("hiding")
+        protected void onCreate(Env env) {
+            this.env = env;
+            env.registerService(this);
+        }
+
+        @Override
+        @SuppressWarnings("hiding")
+        protected void onDispose(Env env) {
+            if (bindingExec != null) {
+                bindingExec.dispose();
+                bindingExec = null;
+            }
+            super.onDispose(env);
+        }
+
+        void submit(final Object unwindValue) {
+            bindingExec = env.getInstrumenter().attachExecutionEventListener(
+                            SourceSectionFilter.newBuilder().tagIs(ExpressionTag.class).build(),
+                            new ExecutionEventListener() {
+
+                                @Override
+                                public void onEnter(EventContext context, VirtualFrame frame) {
+                                }
+
+                                @Override
+                                public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+                                    throw context.createUnwind(unwindValue);
+                                }
+
+                                @Override
+                                public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+                                    throw new AssertionError("No exception expected. Got: " + exception);
+                                }
+
+                                @Override
+                                public Object onUnwind(EventContext context, VirtualFrame frame, Object info) {
+                                    return info;
                                 }
                             });
         }

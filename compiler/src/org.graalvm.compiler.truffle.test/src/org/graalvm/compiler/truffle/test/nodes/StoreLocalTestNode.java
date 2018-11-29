@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,7 +42,7 @@ public class StoreLocalTestNode extends AbstractTestNode {
 
     @Override
     public int execute(VirtualFrame frame) {
-        slot.setKind(FrameSlotKind.Int);
+        frame.getFrameDescriptor().setFrameSlotKind(slot, FrameSlotKind.Int);
         int value = valueNode.execute(frame);
         frame.setInt(slot, value);
         return value;

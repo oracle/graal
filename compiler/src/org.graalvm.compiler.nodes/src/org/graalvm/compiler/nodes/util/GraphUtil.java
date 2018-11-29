@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -677,7 +677,7 @@ public class GraphUtil {
      * @param mode The mode as documented in {@link FindLengthMode}.
      * @return The array length if one was found, or null otherwise.
      */
-    public static ValueNode arrayLength(ValueNode value, ArrayLengthProvider.FindLengthMode mode) {
+    public static ValueNode arrayLength(ValueNode value, FindLengthMode mode, ConstantReflectionProvider constantReflection) {
         Objects.requireNonNull(mode);
 
         ValueNode current = value;
@@ -687,14 +687,14 @@ public class GraphUtil {
              * ArrayLengthProvider, therefore we check this case first.
              */
             if (current instanceof ArrayLengthProvider) {
-                return ((ArrayLengthProvider) current).findLength(mode);
+                return ((ArrayLengthProvider) current).findLength(mode, constantReflection);
 
             } else if (current instanceof ValuePhiNode) {
-                return phiArrayLength((ValuePhiNode) current, mode);
+                return phiArrayLength((ValuePhiNode) current, mode, constantReflection);
 
             } else if (current instanceof ValueProxyNode) {
                 ValueProxyNode proxy = (ValueProxyNode) current;
-                ValueNode length = arrayLength(proxy.getOriginalNode(), mode);
+                ValueNode length = arrayLength(proxy.getOriginalNode(), mode, constantReflection);
                 if (mode == ArrayLengthProvider.FindLengthMode.CANONICALIZE_READ && length != null && !length.isConstant()) {
                     length = new ValueProxyNode(length, proxy.proxyPoint());
                 }
@@ -710,7 +710,7 @@ public class GraphUtil {
         } while (true);
     }
 
-    private static ValueNode phiArrayLength(ValuePhiNode phi, ArrayLengthProvider.FindLengthMode mode) {
+    private static ValueNode phiArrayLength(ValuePhiNode phi, ArrayLengthProvider.FindLengthMode mode, ConstantReflectionProvider constantReflection) {
         if (phi.merge() instanceof LoopBeginNode) {
             /* Avoid cycle detection by not processing phi functions that could introduce cycles. */
             return null;
@@ -719,7 +719,7 @@ public class GraphUtil {
         ValueNode singleLength = null;
         for (int i = 0; i < phi.values().count(); i++) {
             ValueNode input = phi.values().get(i);
-            ValueNode length = arrayLength(input, mode);
+            ValueNode length = arrayLength(input, mode, constantReflection);
             if (length == null) {
                 return null;
             }

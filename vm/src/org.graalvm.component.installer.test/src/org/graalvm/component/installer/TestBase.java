@@ -125,7 +125,7 @@ public class TestBase implements Feedback {
         expandedJarPath = expandedFolder.newFolder("expanded-data").toPath();
         JarFile jf = new JarFile(f);
         for (JarEntry en : Collections.list(jf.entries())) {
-            Path target = expandedJarPath.resolve(en.getName());
+            Path target = expandedJarPath.resolve(SystemUtils.fromCommonString(en.getName()));
             if (en.isDirectory()) {
                 Files.createDirectories(target);
             } else {
@@ -144,7 +144,7 @@ public class TestBase implements Feedback {
         if (expandedJarPath != null) {
             String n = getClass().getName();
             n = n.substring(0, n.lastIndexOf('.')).replace('.', '/');
-            basePath = expandedJarPath.resolve(Paths.get(n));
+            basePath = expandedJarPath.resolve(SystemUtils.fromCommonString(n));
         } else {
             try {
                 basePath = Paths.get(u.toURI()).getParent();
@@ -153,7 +153,7 @@ public class TestBase implements Feedback {
                 return null;
             }
         }
-        return basePath.resolve(Paths.get(relative));
+        return basePath.resolve(SystemUtils.fromCommonString(relative));
     }
 
     protected InputStream dataStream(String relative) {
@@ -264,11 +264,19 @@ public class TestBase implements Feedback {
         return key;
     }
 
+    public String reallyl10n(ResourceBundle bundle, String key, Object... params) {
+        ResourceBundle b = bundle != null ? bundle : defaultBundle;
+        return MessageFormat.format(b.getString(key), params);
+    }
+
     @Override
     public boolean verbatimOut(String msg, boolean verboseOutput) {
         if (verboseOutput) {
             verboseOutput((ResourceBundle) null, msg);
         } else {
+            if (feedbackDelegate != null) {
+                feedbackDelegate.verbatimOut(msg, verboseOutput);
+            }
             output((ResourceBundle) null, msg);
         }
         return verboseOutput;
@@ -498,4 +506,7 @@ public class TestBase implements Feedback {
 
     }
 
+    public static boolean isWindows() {
+        return SystemUtils.isWindows();
+    }
 }

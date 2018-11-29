@@ -95,6 +95,7 @@ import com.oracle.svm.core.graal.nodes.SubstrateNewArrayNode;
 import com.oracle.svm.core.graal.nodes.SubstrateNewInstanceNode;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
+import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.meta.SharedType;
@@ -113,13 +114,14 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
                     AllocationCounter.COUNT_FIELD, AllocationCounter.SIZE_FIELD, PinnedAllocatorImpl.OPEN_PINNED_ALLOCATOR_IDENTITY};
 
     private static final SubstrateForeignCallDescriptor CHECK_DYNAMIC_HUB = SnippetRuntime.findForeignCall(AllocationSnippets.class, "checkDynamicHub", true);
+    private static final SubstrateForeignCallDescriptor CHECK_ARRAY_HUB = SnippetRuntime.findForeignCall(AllocationSnippets.class, "checkArrayHub", true);
     private static final SubstrateForeignCallDescriptor SLOW_NEW_INSTANCE = SnippetRuntime.findForeignCall(ThreadLocalAllocation.class, "slowPathNewInstance", true);
     private static final SubstrateForeignCallDescriptor SLOW_NEW_ARRAY = SnippetRuntime.findForeignCall(ThreadLocalAllocation.class, "slowPathNewArray", true);
     private static final SubstrateForeignCallDescriptor NEW_MULTI_ARRAY = SnippetRuntime.findForeignCall(AllocationSnippets.class, "newMultiArray", true);
     private static final SubstrateForeignCallDescriptor SLOW_NEW_PINNED_INSTANCE = SnippetRuntime.findForeignCall(PinnedAllocatorImpl.class, "slowPathNewInstance", true);
     private static final SubstrateForeignCallDescriptor SLOW_NEW_PINNED_ARRAY = SnippetRuntime.findForeignCall(PinnedAllocatorImpl.class, "slowPathNewArray", true);
 
-    private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{CHECK_DYNAMIC_HUB, SLOW_NEW_INSTANCE, SLOW_NEW_ARRAY, NEW_MULTI_ARRAY,
+    private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{CHECK_DYNAMIC_HUB, CHECK_ARRAY_HUB, SLOW_NEW_INSTANCE, SLOW_NEW_ARRAY, NEW_MULTI_ARRAY,
                     SLOW_NEW_PINNED_INSTANCE, SLOW_NEW_PINNED_ARRAY};
 
     public static Object newInstance(DynamicHub hub, int encoding, @ConstantParameter boolean constantSize, @ConstantParameter boolean fillContents, AllocationCounter counter) {
@@ -134,7 +136,7 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
         if (BranchProbabilityNode.probability(BranchProbabilityNode.FAST_PATH_PROBABILITY, memory.isNonNull())) {
             result = formatObjectImpl(memory, hub, size, constantSize, fillContents, false);
         } else {
-            result = callSlowNewInstance(SLOW_NEW_INSTANCE, hub.asClass());
+            result = callSlowNewInstance(SLOW_NEW_INSTANCE, DynamicHub.toClass(hub));
         }
 
         return PiNode.piCastToSnippetReplaceeStamp(result);
@@ -142,7 +144,7 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
 
     private static void checkHub(DynamicHub hub) {
         if (BranchProbabilityNode.probability(BranchProbabilityNode.SLOW_PATH_PROBABILITY, hub == null || !hub.isInstantiated())) {
-            callCheckDynamicHub(CHECK_DYNAMIC_HUB, hub.asClass());
+            callCheckDynamicHub(CHECK_DYNAMIC_HUB, DynamicHub.toClass(hub));
         }
     }
 
@@ -158,9 +160,27 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
         if (hub == null) {
             throw new NullPointerException("Allocation type is null.");
         } else if (!hub.isInstantiated()) {
-            throw new IllegalArgumentException("Class " + hub.asClass().getCanonicalName() +
+            throw new IllegalArgumentException("Class " + DynamicHub.toClass(hub).getTypeName() +
                             " is instantiated reflectively but was never registered. Register the class by using " + runtimeReflectionTypeName);
         }
+    }
+
+    private static DynamicHub getCheckedArrayHub(DynamicHub elementType) {
+        DynamicHub arrayHub = elementType.getArrayHub();
+        if (BranchProbabilityNode.probability(BranchProbabilityNode.SLOW_PATH_PROBABILITY, arrayHub == null || !arrayHub.isInstantiated())) {
+            callCheckArrayHub(CHECK_ARRAY_HUB, DynamicHub.toClass(elementType));
+        }
+        return arrayHub;
+    }
+
+    @NodeIntrinsic(value = ForeignCallNode.class)
+    private static native void callCheckArrayHub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Class<?> elementType);
+
+    /** Foreign call: {@link #CHECK_DYNAMIC_HUB}. */
+    @SubstrateForeignCallTarget
+    private static void checkArrayHub(DynamicHub elementType) {
+        throw new IllegalArgumentException("Class " + DynamicHub.toClass(elementType).getTypeName() + "[]" +
+                        " is instantiated reflectively but was never registered. Register the class by using " + runtimeReflectionTypeName);
     }
 
     @NodeIntrinsic(value = ForeignCallNode.class)
@@ -194,7 +214,7 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
         if (BranchProbabilityNode.probability(BranchProbabilityNode.FAST_PATH_PROBABILITY, memory.isNonNull())) {
             result = formatObjectImpl(memory, hub, size, true, fillContents, false);
         } else {
-            result = callSlowNewPinnedInstance(SLOW_NEW_PINNED_INSTANCE, pinnedAllocator, hub.asClass());
+            result = callSlowNewPinnedInstance(SLOW_NEW_PINNED_INSTANCE, pinnedAllocator, DynamicHub.toClass(hub));
         }
 
         return PiNode.piCastToSnippetReplaceeStamp(result);
@@ -212,13 +232,16 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
 
     @Snippet
     public static Object newArraySnippet(DynamicHub hub, int length, @ConstantParameter int layoutEncoding, @ConstantParameter boolean fillContents, AllocationCounter counter) {
+        checkHub(hub);
+        return fastNewArrayWithPiCast(hub, length, layoutEncoding, fillContents, counter);
+    }
+
+    private static Object fastNewArrayWithPiCast(DynamicHub hub, int length, @ConstantParameter int layoutEncoding, @ConstantParameter boolean fillContents, AllocationCounter counter) {
         Object result = fastNewArray(hub, length, layoutEncoding, fillContents, counter);
         return PiArrayNode.piArrayCastToSnippetReplaceeStamp(result, length);
     }
 
     public static Object fastNewArray(DynamicHub hub, int length, int layoutEncoding, boolean fillContents, AllocationCounter counter) {
-        checkHub(hub);
-
         /*
          * Note: layoutEncoding is passed in as a @ConstantParameter so that much of the array size
          * computation can be folded away early when preparing the snippet.
@@ -228,7 +251,7 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
 
         Object result = fastNewArrayUninterruptibly(hub, length, layoutEncoding, fillContents, size);
         if (result == null) {
-            result = callSlowNewArray(SLOW_NEW_ARRAY, hub.asClass(), length);
+            result = callSlowNewArray(SLOW_NEW_ARRAY, DynamicHub.toClass(hub), length);
         }
         return result;
     }
@@ -257,8 +280,8 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
         if (elementType == DynamicHub.fromClass(void.class)) {
             throw VOID_ARRAY;
         }
-        DynamicHub hub = elementType.getArrayHub();
-        return newArraySnippet(hub, length, hub.getLayoutEncoding(), fillContents, counter);
+        DynamicHub hub = getCheckedArrayHub(elementType);
+        return fastNewArrayWithPiCast(hub, length, hub.getLayoutEncoding(), fillContents, counter);
     }
 
     @Snippet
@@ -278,7 +301,7 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
         if (BranchProbabilityNode.probability(BranchProbabilityNode.FAST_PATH_PROBABILITY, memory.isNonNull())) {
             result = formatArrayImpl(memory, hub, length, layoutEncoding, size, fillContents, false, false);
         } else {
-            result = callSlowNewPinnedArray(SLOW_NEW_PINNED_ARRAY, pinnedAllocator, hub.asClass(), length);
+            result = callSlowNewPinnedArray(SLOW_NEW_PINNED_ARRAY, pinnedAllocator, DynamicHub.toClass(hub), length);
         }
 
         return PiArrayNode.piArrayCastToSnippetReplaceeStamp(result, length);
@@ -315,7 +338,7 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
             dims.writeInt(i * sizeOfDimensionElement, dimensions[i], LocationIdentity.INIT_LOCATION);
         }
 
-        return callNewMultiArray(NEW_MULTI_ARRAY, hub.asClass(), rank, dims, counter);
+        return callNewMultiArray(NEW_MULTI_ARRAY, DynamicHub.toClass(hub), rank, dims, counter);
     }
 
     @NodeIntrinsic(value = ForeignCallNode.class)
@@ -339,14 +362,15 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
 
     private static Object newMultiArrayRecursion(DynamicHub hub, int rank, Pointer dimensionsStackValue, AllocationCounter counter) {
 
+        checkHub(hub);
         int length = dimensionsStackValue.readInt(0);
         Object result = fastNewArray(hub, length, hub.getLayoutEncoding(), true, counter);
 
         if (rank > 1) {
             UnsignedWord offset = LayoutEncoding.getArrayBaseOffset(hub.getLayoutEncoding());
-            UnsignedWord size = LayoutEncoding.getArraySize(hub.getLayoutEncoding(), length);
+            UnsignedWord endOffset = LayoutEncoding.getArrayElementOffset(hub.getLayoutEncoding(), length);
 
-            while (offset.belowThan(size)) {
+            while (offset.belowThan(endOffset)) {
                 // Each newMultiArrayRecursion could create a cross-generational reference.
                 BarrieredAccess.writeObject(result, offset,
                                 newMultiArrayRecursion(hub.getComponentHub(), rank - 1, dimensionsStackValue.add(sizeOfDimensionElement), counter));
@@ -358,34 +382,29 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
 
     @Snippet
     public static Object arraysCopyOfSnippet(DynamicHub hub, Object original, int originalLength, int newLength, AllocationCounter counter) {
+        checkHub(hub);
         int layoutEncoding = hub.getLayoutEncoding();
         // allocate new array without initializing the new array
-        Object copy = newArraySnippet(hub, newLength, layoutEncoding, false, counter);
+        Object newArray = fastNewArrayWithPiCast(hub, newLength, layoutEncoding, false, counter);
 
-        // copy elements from original
+        int copiedLength = originalLength < newLength ? originalLength : newLength;
+        UnsignedWord copiedEndOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, copiedLength);
+        UnsignedWord newArrayEndOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, newLength);
 
-        // The length of the copied section
-        int length = originalLength < newLength ? originalLength : newLength;
-        // The size of the copied section(obtained from the length of the copied section)
-        UnsignedWord size = LayoutEncoding.getArraySize(layoutEncoding, length);
-        // The size of the new array (obtained from the length of the new array)
-        UnsignedWord newSize = LayoutEncoding.getArraySize(layoutEncoding, newLength);
-
-        // We know that the offset is always word aligned
         UnsignedWord offset = LayoutEncoding.getArrayBaseOffset(layoutEncoding);
-        while (offset.belowThan(size)) {
+        while (offset.belowThan(copiedEndOffset)) {
             Object val = ObjectAccess.readObject(original, offset);
-            ObjectAccess.writeObject(copy, offset, val, LocationIdentity.INIT_LOCATION);
+            ObjectAccess.writeObject(newArray, offset, val, LocationIdentity.INIT_LOCATION);
 
-            offset = offset.add(ConfigurationValues.getTarget().wordSize);
+            offset = offset.add(ConfigurationValues.getObjectLayout().getReferenceSize());
         }
 
-        while (offset.belowThan(newSize)) {
-            ObjectAccess.writeObject(copy, offset, null, LocationIdentity.INIT_LOCATION);
-            offset = offset.add(ConfigurationValues.getTarget().wordSize);
+        while (offset.belowThan(newArrayEndOffset)) {
+            ObjectAccess.writeObject(newArray, offset, null, LocationIdentity.INIT_LOCATION);
+            offset = offset.add(ConfigurationValues.getObjectLayout().getReferenceSize());
         }
 
-        return FixedValueAnchorNode.getObject(copy);
+        return FixedValueAnchorNode.getObject(newArray);
     }
 
     private static final CloneNotSupportedException CLONE_NOT_SUPPORTED_EXCEPTION = new CloneNotSupportedException("Object is not instance of Cloneable.");
@@ -416,7 +435,7 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
         Object thatObject = null;
         if (BranchProbabilityNode.probability(BranchProbabilityNode.FAST_PATH_PROBABILITY, memory.isNonNull())) {
             WordBase header = ObjectHeaderImpl.getObjectHeaderImpl().formatHub(hub, false, false);
-            memory.writeWord(ConfigurationValues.getObjectLayout().getHubOffset(), header, LocationIdentity.INIT_LOCATION);
+            ObjectHeader.initializeHeaderOfNewObject(memory, header);
             /*
              * For arrays the length initialization is handled by doCloneUninterruptibly since the
              * array length offset is the same as the first field offset.
@@ -425,9 +444,9 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
         } else {
             if (LayoutEncoding.isArray(layoutEncoding)) {
                 int length = KnownIntrinsics.readArrayLength(thisObj);
-                thatObject = callSlowNewArray(SLOW_NEW_ARRAY, hub.asClass(), length);
+                thatObject = callSlowNewArray(SLOW_NEW_ARRAY, DynamicHub.toClass(hub), length);
             } else {
-                thatObject = callSlowNewInstance(SLOW_NEW_INSTANCE, hub.asClass());
+                thatObject = callSlowNewInstance(SLOW_NEW_INSTANCE, DynamicHub.toClass(hub));
             }
         }
 
@@ -454,12 +473,15 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
          */
         Pointer thisMemory = Word.objectToUntrackedPointer(thisObject);
         UnsignedWord offset = firstFieldOffset;
+        if (!isWordAligned(offset) && offset.belowThan(size)) { // narrow references
+            thatMemory.writeInt(offset, thisMemory.readInt(offset));
+            offset = offset.add(Integer.BYTES);
+        }
         while (offset.belowThan(size)) {
             thatMemory.writeWord(offset, thisMemory.readWord(offset));
             offset = offset.add(ConfigurationValues.getTarget().wordSize);
         }
-        final Object result = thatMemory.toObjectNonNull();
-        return result;
+        return thatMemory.toObjectNonNull();
     }
 
     private static Object formatObjectImpl(Pointer memory, DynamicHub hub, UnsignedWord size, @ConstantParameter boolean constantSize, @ConstantParameter boolean fillContents, boolean rememberedSet) {
@@ -468,15 +490,25 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
         }
 
         WordBase header = ObjectHeaderImpl.getObjectHeaderImpl().formatHub(hub, rememberedSet, false);
-        memory.writeWord(ConfigurationValues.getObjectLayout().getHubOffset(), header, LocationIdentity.INIT_LOCATION);
+        ObjectHeaderImpl.initializeHeaderOfNewObject(memory, header);
         if (fillContents) {
+            int wordSize = ConfigurationValues.getTarget().wordSize;
             UnsignedWord offset = WordFactory.unsigned(ConfigurationValues.getObjectLayout().getFirstFieldOffset());
-            if (constantSize && ((size.subtract(offset).unsignedDivide(ConfigurationValues.getTarget().wordSize)).belowOrEqual(SubstrateOptions.MaxUnrolledObjectZeroingStores.getValue()))) {
-                ExplodeLoopNode.explodeLoop();
+            Word zeroingStores = WordFactory.zero();
+            if (!isWordAligned(offset) && offset.belowThan(size)) { // narrow references
+                memory.writeInt(offset, 0, LocationIdentity.INIT_LOCATION);
+                offset = offset.add(Integer.BYTES);
+                zeroingStores = zeroingStores.add(1);
+            }
+            if (constantSize) {
+                zeroingStores = zeroingStores.add(size.subtract(offset).unsignedDivide(wordSize));
+                if (zeroingStores.belowOrEqual(SubstrateOptions.MaxUnrolledObjectZeroingStores.getValue())) {
+                    ExplodeLoopNode.explodeLoop();
+                }
             }
             while (offset.belowThan(size)) {
                 memory.writeWord(offset, WordFactory.zero(), LocationIdentity.INIT_LOCATION);
-                offset = offset.add(ConfigurationValues.getTarget().wordSize);
+                offset = offset.add(wordSize);
             }
         }
         return memory.toObjectNonNull();
@@ -498,7 +530,7 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
     @Uninterruptible(reason = "Manipulates Objects via Pointers", callerMustBe = true)
     private static Object formatArrayImpl(Pointer memory, DynamicHub hub, int length, int layoutEncoding, UnsignedWord size, boolean fillContents, boolean rememberedSet, boolean unaligned) {
         WordBase header = ObjectHeaderImpl.getObjectHeaderImpl().formatHub(hub, rememberedSet, unaligned);
-        memory.writeWord(ConfigurationValues.getObjectLayout().getHubOffset(), header, LocationIdentity.INIT_LOCATION);
+        ObjectHeader.initializeHeaderOfNewObject(memory, header);
         memory.writeInt(ConfigurationValues.getObjectLayout().getArrayLengthOffset(), length, LocationIdentity.INIT_LOCATION);
         if (fillContents) {
             UnsignedWord offset = LayoutEncoding.getArrayBaseOffset(layoutEncoding);

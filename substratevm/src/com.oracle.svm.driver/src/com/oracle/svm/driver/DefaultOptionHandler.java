@@ -59,8 +59,6 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 return true;
             case "--version":
                 args.poll();
-                nativeImage.showMessage("SubstrateVM Version Info");
-                nativeImage.showMessage(NativeImage.svmVersion.replace(',', '\n'));
                 nativeImage.showMessage("GraalVM Version " + NativeImage.graalvmVersion);
                 System.exit(0);
                 return true;
@@ -88,7 +86,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                     NativeImage.showError(headArg + " requires a " + File.pathSeparator + " separated list of directories");
                 }
                 for (String configDir : configPath.split(File.pathSeparator)) {
-                    nativeImage.addMacroOptionRoot(Paths.get(configDir));
+                    nativeImage.addMacroOptionRoot(nativeImage.canonicalize(Paths.get(configDir)));
                 }
                 return true;
             case "-jar":
@@ -109,14 +107,11 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 return true;
             case "--expert-options":
                 args.poll();
-                String expertUserOption = OptionType.User.name();
-                nativeImage.addImageBuilderArg(NativeImage.oH + NativeImage.enablePrintFlags + expertUserOption);
-                nativeImage.addImageBuilderArg(NativeImage.oR + NativeImage.enablePrintFlags + expertUserOption);
+                nativeImage.setQueryOption(OptionType.User.name());
                 return true;
             case "--expert-options-all":
                 args.poll();
-                nativeImage.addImageBuilderArg(NativeImage.oH + NativeImage.enablePrintFlags);
-                nativeImage.addImageBuilderArg(NativeImage.oR + NativeImage.enablePrintFlags);
+                nativeImage.setQueryOption("");
                 return true;
         }
 
@@ -147,6 +142,17 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             nativeImage.addCustomJavaArgs(headArg);
             return true;
         }
+        String optionKeyPrefix = "-V";
+        if (headArg.startsWith(optionKeyPrefix)) {
+            args.poll();
+            String keyValueStr = headArg.substring(optionKeyPrefix.length());
+            String[] keyValue = keyValueStr.split("=");
+            if (keyValue.length != 2) {
+                throw NativeImage.showError("Use " + optionKeyPrefix + "<key>=<value>");
+            }
+            nativeImage.addOptionKeyValue(keyValue[0], keyValue[1]);
+            return true;
+        }
         if (headArg.startsWith("-J")) {
             args.poll();
             if (headArg.equals("-J")) {
@@ -162,7 +168,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             if (headArg.equals(optimizeOption)) {
                 NativeImage.showError("The " + optimizeOption + " option should not be followed by a space");
             } else {
-                nativeImage.addImageBuilderArg(NativeImage.oHOptimize + headArg.substring(2));
+                nativeImage.addPlainImageBuilderArg(nativeImage.oHOptimize + headArg.substring(2));
             }
             return true;
         }
@@ -177,8 +183,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             if (mainClass == null) {
                 NativeImage.showError("No main manifest attribute, in " + filePath);
             }
-            nativeImage.addImageClasspath(filePath);
-            nativeImage.addImageBuilderArg(NativeImage.oHClass + mainClass);
+            nativeImage.addPlainImageBuilderArg(nativeImage.oHClass + mainClass);
             String jarFileName = filePath.getFileName().toString();
             String jarSuffix = ".jar";
             String jarFileNameBase;
@@ -188,7 +193,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 jarFileNameBase = jarFileName;
             }
             if (!jarFileNameBase.isEmpty()) {
-                nativeImage.addImageBuilderArg(NativeImage.oHName + jarFileNameBase);
+                nativeImage.addPlainImageBuilderArg(nativeImage.oHName + jarFileNameBase);
             }
             String classPath = mainAttributes.getValue("Class-Path");
             /* Missing Class-Path Attribute is tolerable */
@@ -202,6 +207,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                     nativeImage.addImageProvidedClasspath(manifestClassPath);
                 }
             }
+            nativeImage.addImageClasspath(filePath);
         } catch (NativeImage.NativeImageError ex) {
             throw ex;
         } catch (Throwable ex) {

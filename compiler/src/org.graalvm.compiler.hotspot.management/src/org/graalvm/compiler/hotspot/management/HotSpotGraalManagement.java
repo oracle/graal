@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -150,10 +150,16 @@ public final class HotSpotGraalManagement implements HotSpotGraalManagementRegis
          */
         synchronized void poll() {
             if (platformMBeanServer == null) {
-                ArrayList<MBeanServer> servers = MBeanServerFactory.findMBeanServer(null);
-                if (!servers.isEmpty()) {
-                    platformMBeanServer = ManagementFactory.getPlatformMBeanServer();
-                    process();
+                try {
+                    ArrayList<MBeanServer> servers = MBeanServerFactory.findMBeanServer(null);
+                    if (!servers.isEmpty()) {
+                        platformMBeanServer = ManagementFactory.getPlatformMBeanServer();
+                        process();
+                    }
+                } catch (SecurityException e) {
+                    // Without permission to find or create the MBeanServer,
+                    // we cannot process any Graal mbeans.
+                    deferred = null;
                 }
             } else {
                 process();

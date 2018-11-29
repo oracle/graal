@@ -29,6 +29,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -36,49 +37,70 @@ import com.oracle.svm.core.util.ByteArrayReader;
 
 public class ReferenceMapDecoder {
 
-    protected static final int GAP_END_OF_TABLE = 0xFF;
-
     /**
      * Walk the reference map encoding from a Pointer, applying a visitor to each Object reference.
      *
      * @param baseAddress A Pointer to a collections of primitives and Object references.
      * @param referenceMapEncoding The encoding for the Object references in the collection.
      * @param referenceMapIndex The start index for the particular reference map in the encoding.
-     * @param visitor The ObjectRefernceVisitor to be applied to each Object reference.
+     * @param visitor The visitor to be applied to each Object reference.
      * @return false if any of the visits returned false, true otherwise.
      */
     @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
     public static boolean walkOffsetsFromPointer(PointerBase baseAddress, byte[] referenceMapEncoding, long referenceMapIndex, ObjectReferenceVisitor visitor) {
         assert referenceMapIndex != CodeInfoQueryResult.NO_REFERENCE_MAP;
         assert referenceMapEncoding != null;
-        UnsignedWord uncompressedSize = WordFactory.unsigned(ConfigurationValues.getObjectLayout().getReferenceSize());
-        UnsignedWord compressedSize = WordFactory.unsigned(ConfigurationValues.getObjectLayout().getCompressedReferenceSize());
-        UnsignedWord slotSize = WordFactory.unsigned(SubstrateReferenceMap.getSlotSizeInBytes());
+        UnsignedWord uncompressedSize = WordFactory.unsigned(FrameAccess.uncompressedReferenceSize());
+        UnsignedWord compressedSize = WordFactory.unsigned(ConfigurationValues.getObjectLayout().getReferenceSize());
 
         Pointer objRef = (Pointer) baseAddress;
         long idx = referenceMapIndex;
         while (true) {
-            int gap = ByteArrayReader.getU1(referenceMapEncoding, idx);
-            if (gap == GAP_END_OF_TABLE) {
-                break;
+            /*
+             * The following code is copied from TypeReader.getUV() and .getSV() because we cannot
+             * allocate a TypeReader here which, in addition to returning the read variable-sized
+             * values, can keep track of the index in the byte array. Even with an instance of
+             * ReusableTypeReader, we would need to worry about this method being reentrant.
+             */
+            int shift;
+            long b;
+            // Size of gap in bytes
+            long gap = 0;
+            shift = 0;
+            do {
+                b = ByteArrayReader.getU1(referenceMapEncoding, idx);
+                gap |= (b & 0x7f) << shift;
+                shift += 7;
+                idx++;
+            } while ((b & 0x80) != 0);
+            // Number of pointers (sign distinguishes between compression and uncompression)
+            long count = 0;
+            shift = 0;
+            do {
+                b = ByteArrayReader.getU1(referenceMapEncoding, idx);
+                count |= (b & 0x7f) << shift;
+                shift += 7;
+                idx++;
+            } while ((b & 0x80) != 0);
+            if ((b & 0x40) != 0 && shift < 64) {
+                count |= -1L << shift;
             }
-            int count = ByteArrayReader.getS1(referenceMapEncoding, idx + 1);
 
-            // Skip a gap.
-            objRef = objRef.add(slotSize.multiply(gap));
-            // Visit the offsets.
+            if (gap == 0 && count == 0) {
+                break; // reached end of table
+            }
+
+            objRef = objRef.add(WordFactory.unsigned(gap));
             boolean compressed = (count < 0);
             UnsignedWord refSize = compressed ? compressedSize : uncompressedSize;
             count = (count < 0) ? -count : count;
-            for (int c = 0; c < count; c += 1) {
+            for (long c = 0; c < count; c += 1) {
                 final boolean visitResult = visitor.visitObjectReferenceInline(objRef, compressed);
                 if (!visitResult) {
                     return false;
                 }
                 objRef = objRef.add(refSize);
             }
-
-            idx += 2;
         }
         return true;
     }

@@ -1,26 +1,42 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * The Universal Permissive License (UPL), Version 1.0
  *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
  *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ * (a) the Software, and
  *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 package com.oracle.truffle.nfi.impl;
 
@@ -67,7 +83,7 @@ final class LibFFIClosure implements TruffleObject {
     }
 
     private LibFFIClosure(NFIContext context, LibFFISignature signature, TruffleObject executable) {
-        Message message = Message.createExecute(signature.getArgTypes().length);
+        Message message = Message.EXECUTE;
 
         LibFFIType retType = signature.getRetType();
         if (retType instanceof LibFFIType.ObjectType) {
@@ -114,7 +130,7 @@ final class LibFFIClosure implements TruffleObject {
     private static final class CallClosureNode extends Node {
 
         private final TruffleObject receiver;
-        @Child Node messageNode;
+        @Child private Node messageNode;
 
         @Children final ClosureArgumentNode[] argNodes;
 
@@ -214,7 +230,8 @@ final class LibFFIClosure implements TruffleObject {
 
         @SuppressWarnings("unused")
         @Specialization(guards = "checkIsNull(isNull, str)")
-        protected Object unboxNull(TruffleObject str, @Cached("createIsNull()") Node isNull) {
+        protected Object unboxNull(TruffleObject str,
+                        @Cached("createIsNull()") Node isNull) {
             return null;
         }
 
@@ -224,7 +241,9 @@ final class LibFFIClosure implements TruffleObject {
         }
 
         @Specialization(guards = "checkNeedUnbox(str)")
-        protected Object unboxBoxed(TruffleObject str, @Cached("createUnbox()") Node unbox, @Cached("createRecursive()") UnboxStringNode recursive) {
+        protected Object unboxBoxed(TruffleObject str,
+                        @Cached("createUnbox()") Node unbox,
+                        @Cached("createRecursive()") UnboxStringNode recursive) {
             try {
                 Object unboxed = ForeignAccess.sendUnbox(unbox, str);
                 return recursive.execute(unboxed);
@@ -257,8 +276,8 @@ final class LibFFIClosure implements TruffleObject {
 
     private static final class StringRetClosureRootNode extends RootNode {
 
-        @Child CallClosureNode callClosure;
-        @Child UnboxStringNode unboxString;
+        @Child private CallClosureNode callClosure;
+        @Child private UnboxStringNode unboxString;
 
         private StringRetClosureRootNode(LibFFISignature signature, TruffleObject receiver, Message message) {
             super(null);

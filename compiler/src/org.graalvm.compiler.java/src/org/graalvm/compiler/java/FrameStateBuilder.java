@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -223,7 +223,12 @@ public final class FrameStateBuilder implements SideEffectsState {
                 stamp = plugins.getOverridingStamp(tool, type, false);
             }
             if (stamp == null) {
-                stamp = StampFactory.forDeclaredType(assumptions, type, false);
+                // GR-714: subword inputs cannot be trusted
+                if (kind.getStackKind() != kind) {
+                    stamp = StampPair.createSingle(StampFactory.forKind(JavaKind.Int));
+                } else {
+                    stamp = StampFactory.forDeclaredType(assumptions, type, false);
+                }
             }
 
             FloatingNode param = null;
@@ -365,7 +370,15 @@ public final class FrameStateBuilder implements SideEffectsState {
         if (bci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
             throw shouldNotReachHere();
         }
-        return new NodeSourcePosition(outerSourcePosition, code.getMethod(), bci);
+        if (parser.intrinsicContext != null && (parent == null || parent.intrinsicContext != parser.intrinsicContext)) {
+            // When parsing an intrinsic put in a substitution marker showing the original method as
+            // the caller. This keeps the relationship between the method and the method
+            // substitution clear in resulting NodeSourcePosition.
+            NodeSourcePosition original = new NodeSourcePosition(outerSourcePosition, parser.intrinsicContext.getOriginalMethod(), -1);
+            return NodeSourcePosition.substitution(original, code.getMethod(), bci);
+        } else {
+            return new NodeSourcePosition(outerSourcePosition, code.getMethod(), bci);
+        }
     }
 
     public FrameStateBuilder copy() {

@@ -1,46 +1,44 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * The Universal Permissive License (UPL), Version 1.0
  *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
  *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ * (a) the Software, and
  *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 package org.graalvm.polyglot;
-
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.Reader;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
-import java.net.URI;
-import java.net.URL;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Objects;
-import java.util.ServiceLoader;
-import java.util.concurrent.TimeUnit;
 
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -53,6 +51,35 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractInstrumentImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractStackFrameImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
+import org.graalvm.polyglot.io.ByteSequence;
+import org.graalvm.polyglot.io.MessageTransport;
+import org.graalvm.polyglot.management.ExecutionEvent;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.Reader;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
+import java.net.URI;
+import java.net.URL;
+import java.nio.file.Path;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.ServiceLoader;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
+import java.util.logging.Handler;
+import java.util.logging.Level;
 
 /**
  * An execution engine for Graal {@linkplain Language guest languages} that allows to inspect the
@@ -220,6 +247,16 @@ public final class Engine implements AutoCloseable {
         return EMPTY.new Builder();
     }
 
+    /**
+     * Finds the GraalVM home folder.
+     *
+     * @return the path to a folder containing the GraalVM or {@code null} if it cannot be found
+     * @since 1.0
+     */
+    public static Path findHome() {
+        return getImpl().findHome();
+    }
+
     static AbstractPolyglotImpl getImpl() {
         return ImplHolder.IMPL;
     }
@@ -229,6 +266,14 @@ public final class Engine implements AutoCloseable {
      */
     static Class<?> loadLanguageClass(String className) {
         return getImpl().loadLanguageClass(className);
+    }
+
+    /*
+     * Used internally to find all active engines. Do not hold on to the returned collection
+     * permanently as this may cause memory leaks.
+     */
+    static Collection<Engine> findActiveEngines() {
+        return getImpl().findActiveEngines();
     }
 
     private static final Engine EMPTY = new Engine(null);
@@ -246,6 +291,8 @@ public final class Engine implements AutoCloseable {
         private Map<String, String> options = new HashMap<>();
         private boolean useSystemProperties = true;
         private boolean boundEngine;
+        private MessageTransport messageTransport;
+        private Object customLogHandler;
 
         Builder() {
         }
@@ -354,6 +401,81 @@ public final class Engine implements AutoCloseable {
         }
 
         /**
+         * Take over transport of message communication with a server peer. Provide an
+         * implementation of {@link MessageTransport} to virtualize a transport of messages to a
+         * server endpoint.
+         * {@link MessageTransport#open(java.net.URI, org.graalvm.polyglot.io.MessageEndpoint)}
+         * corresponds to accept of a server socket.
+         *
+         * @param serverTransport an implementation of message transport interceptor
+         * @see MessageTransport
+         * @since 1.0
+         */
+        public Builder serverTransport(final MessageTransport serverTransport) {
+            Objects.requireNonNull(serverTransport, "MessageTransport must be non null.");
+            this.messageTransport = serverTransport;
+            return this;
+        }
+
+        /**
+         * Installs a new logging {@link Handler}. The logger's {@link Level} configuration is done
+         * using the {@link #options(java.util.Map) Engine's options}. The level option key has the
+         * following format: {@code log.languageId.loggerName.level} or
+         * {@code log.instrumentId.loggerName.level}. The value is either the name of pre-defined
+         * {@link Level} constant or a numeric {@link Level} value. If not explicitly set in options
+         * the level is inherited from the parent logger.
+         * <p>
+         * <b>Examples</b> of setting log level options:<br>
+         * {@code builder.option("log.level","FINE");} sets the {@link Level#FINE FINE level} to all
+         * {@code TruffleLogger}s.<br>
+         * {@code builder.option("log.js.level","FINE");} sets the {@link Level#FINE FINE level} to
+         * JavaScript {@code TruffleLogger}s.<br>
+         * {@code builder.option("log.js.com.oracle.truffle.js.parser.JavaScriptLanguage.level","FINE");}
+         * sets the {@link Level#FINE FINE level} to {@code TruffleLogger} for the
+         * {@code JavaScriptLanguage} class.<br>
+         *
+         * @param logHandler the {@link Handler} to use for logging in engine's {@link Context}s.
+         *            The passed {@code logHandler} is closed when the engine is
+         *            {@link Engine#close() closed}.
+         * @return the {@link Builder}
+         * @since 1.0
+         */
+        public Builder logHandler(final Handler logHandler) {
+            Objects.requireNonNull(logHandler, "Handler must be non null.");
+            this.customLogHandler = logHandler;
+            return this;
+        }
+
+        /**
+         * Installs a new logging {@link Handler} using given {@link OutputStream}. The logger's
+         * {@link Level} configuration is done using the {@link #options(java.util.Map) Engine's
+         * options}. The level option key has the following format:
+         * {@code log.languageId.loggerName.level} or {@code log.instrumentId.loggerName.level}. The
+         * value is either the name of pre-defined {@link Level} constant or a numeric {@link Level}
+         * value. If not explicitly set in options the level is inherited from the parent logger.
+         * <p>
+         * <b>Examples</b> of setting log level options:<br>
+         * {@code builder.option("log.level","FINE");} sets the {@link Level#FINE FINE level} to all
+         * {@code TruffleLogger}s.<br>
+         * {@code builder.option("log.js.level","FINE");} sets the {@link Level#FINE FINE level} to
+         * JavaScript {@code TruffleLogger}s.<br>
+         * {@code builder.option("log.js.com.oracle.truffle.js.parser.JavaScriptLanguage.level","FINE");}
+         * sets the {@link Level#FINE FINE level} to {@code TruffleLogger} for the
+         * {@code JavaScriptLanguage} class.<br>
+         *
+         * @param logOut the {@link OutputStream} to use for logging in engine's {@link Context}s.
+         *            The passed {@code logOut} stream is closed when the engine is
+         *            {@link Engine#close() closed}.
+         * @return the {@link Builder}
+         * @since 1.0
+         */
+        public Builder logHandler(final OutputStream logOut) {
+            Objects.requireNonNull(logOut, "LogOut must be non null.");
+            this.customLogHandler = logOut;
+            return this;
+        }
+
+        /**
          *
          *
          * @since 1.0
@@ -364,7 +486,7 @@ public final class Engine implements AutoCloseable {
                 throw new IllegalStateException("The Polyglot API implementation failed to load.");
             }
             return loadedImpl.buildEngine(out, err, in, options, 0, null,
-                            false, 0, useSystemProperties, boundEngine);
+                            false, 0, useSystemProperties, boundEngine, messageTransport, customLogHandler);
         }
 
     }
@@ -417,6 +539,11 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public AbstractEngineImpl getImpl(Engine value) {
+            return value.impl;
+        }
+
+        @Override
         public AbstractValueImpl getImpl(Value value) {
             return value.impl;
         }
@@ -445,7 +572,6 @@ public final class Engine implements AutoCloseable {
         public StackFrame newPolyglotStackTraceElement(PolyglotException e, AbstractStackFrameImpl impl) {
             return e.new StackFrame(impl);
         }
-
     }
 
     private static final boolean JDK8_OR_EARLIER = System.getProperty("java.specification.version").compareTo("1.9") < 0;
@@ -486,7 +612,7 @@ public final class Engine implements AutoCloseable {
 
                 if (engine == null) {
                     try {
-                        Class<? extends AbstractPolyglotImpl> polyglotClass = Class.forName("com.oracle.truffle.api.vm.PolyglotImpl").asSubclass(AbstractPolyglotImpl.class);
+                        Class<? extends AbstractPolyglotImpl> polyglotClass = Class.forName("com.oracle.truffle.polyglot.PolyglotImpl").asSubclass(AbstractPolyglotImpl.class);
                         Constructor<? extends AbstractPolyglotImpl> constructor = polyglotClass.getDeclaredConstructor();
                         constructor.setAccessible(true);
                         engine = constructor.newInstance();
@@ -538,8 +664,66 @@ public final class Engine implements AutoCloseable {
 
         @Override
         public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
-                        long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean boundEngine) {
+                        long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean boundEngine, MessageTransport messageInterceptor, Object logHandlerOrStream) {
             throw noPolyglotImplementationFound();
+        }
+
+        @Override
+        public AbstractExecutionListenerImpl getExecutionListenerImpl() {
+            return new AbstractExecutionListenerImpl(this) {
+
+                @Override
+                public boolean isStatement(Object impl) {
+                    return false;
+                }
+
+                @Override
+                public boolean isRoot(Object impl) {
+                    return false;
+                }
+
+                @Override
+                public boolean isExpression(Object impl) {
+                    return false;
+                }
+
+                @Override
+                public String getRootName(Object impl) {
+                    throw noPolyglotImplementationFound();
+                }
+
+                @Override
+                public PolyglotException getException(Object impl) {
+                    throw noPolyglotImplementationFound();
+                }
+
+                @Override
+                public Value getReturnValue(Object impl) {
+                    throw noPolyglotImplementationFound();
+                }
+
+                @Override
+                public SourceSection getLocation(Object impl) {
+                    throw noPolyglotImplementationFound();
+                }
+
+                @Override
+                public List<Value> getInputValues(Object impl) {
+                    throw noPolyglotImplementationFound();
+                }
+
+                @Override
+                public void closeExecutionListener(Object impl) {
+                    throw noPolyglotImplementationFound();
+                }
+
+                @Override
+                public Object attachExecutionListener(Engine engine, Consumer<ExecutionEvent> onEnter, Consumer<ExecutionEvent> onReturn, boolean expressions, boolean statements,
+                                boolean roots,
+                                Predicate<Source> sourceFilter, Predicate<String> rootFilter, boolean collectInputValues, boolean collectReturnValues, boolean collectErrors) {
+                    throw noPolyglotImplementationFound();
+                }
+            };
         }
 
         private static RuntimeException noPolyglotImplementationFound() {
@@ -568,11 +752,26 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public Collection<Engine> findActiveEngines() {
+            return Collections.emptyList();
+        }
+
+        @Override
         public void preInitializeEngine() {
         }
 
         @Override
         public void resetPreInitializedEngine() {
+        }
+
+        @Override
+        public Path findHome() {
+            return null;
+        }
+
+        @Override
+        public Value asValue(Object o) {
+            throw noPolyglotImplementationFound();
         }
 
         static class EmptySource extends AbstractSourceImpl {
@@ -582,13 +781,33 @@ public final class Engine implements AutoCloseable {
             }
 
             @Override
-            public Source build(String language, Object origin, URI uri, String name, CharSequence content, boolean interactive, boolean internal, boolean cached) throws IOException {
+            public Source build(String language, Object origin, URI uri, String name, String mimeType, Object content, boolean interactive, boolean internal, boolean cached) throws IOException {
                 throw noPolyglotImplementationFound();
             }
 
             @Override
             public String findLanguage(File file) throws IOException {
                 return null;
+            }
+
+            @Override
+            public String findLanguage(URL url) throws IOException {
+                return null;
+            }
+
+            @Override
+            public String findMimeType(File file) throws IOException {
+                return null;
+            }
+
+            @Override
+            public String findMimeType(URL url) throws IOException {
+                return null;
+            }
+
+            @Override
+            public String getMimeType(Object impl) {
+                throw new UnsupportedOperationException();
             }
 
             @Override
@@ -688,6 +907,21 @@ public final class Engine implements AutoCloseable {
 
             @Override
             public boolean isInternal(Object impl) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public ByteSequence getBytes(Object impl) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public boolean hasCharacters(Object impl) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public boolean hasBytes(Object impl) {
                 throw new UnsupportedOperationException();
             }
 

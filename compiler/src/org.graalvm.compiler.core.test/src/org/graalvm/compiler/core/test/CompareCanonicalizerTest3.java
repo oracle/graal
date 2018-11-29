@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,11 @@ import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
+import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.phases.common.FrameStateAssignmentPhase;
+import org.graalvm.compiler.phases.common.GuardLoweringPhase;
+import org.graalvm.compiler.phases.tiers.MidTierContext;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -41,6 +45,7 @@ public class CompareCanonicalizerTest3 extends GraalCompilerTest {
     @SuppressWarnings("unused") private static int sink0;
     @SuppressWarnings("unused") private static int sink1;
 
+    @Ignore("Subword input cannot be trusted.")
     @Test
     public void test00() {
         assertCanonicallyEqual("integerTestCanonicalization00", "referenceSnippet00");
@@ -87,16 +92,18 @@ public class CompareCanonicalizerTest3 extends GraalCompilerTest {
         assertCanonicallyEqual("integerTestCanonicalization1", "referenceSnippet1");
     }
 
-    public static void integerTestCanonicalization1(char a) {
-        if (Integer.compareUnsigned(a - 2, a) < 0) {
+    public static void integerTestCanonicalization1(char[] a) {
+        int len = a.length;
+        if (Integer.compareUnsigned(len - 2, len) < 0) {
             sink1 = 0;
         } else {
             sink0 = -1;
         }
     }
 
-    public static void referenceSnippet1(char a) {
-        if (Integer.compareUnsigned(a, 2) >= 0) {
+    public static void referenceSnippet1(char[] a) {
+        int len = a.length;
+        if (Integer.compareUnsigned(len, 2) >= 0) {
             sink1 = 0;
         } else {
             sink0 = -1;
@@ -233,10 +240,18 @@ public class CompareCanonicalizerTest3 extends GraalCompilerTest {
         StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
         PhaseContext context = new PhaseContext(getProviders());
         CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
+
         canonicalizer.apply(graph, context);
+        new GuardLoweringPhase().apply(graph, new MidTierContext(getProviders(), getTargetProvider(), OptimisticOptimizations.ALL, graph.getProfilingInfo()));
+        new FrameStateAssignmentPhase().apply(graph);
         canonicalizer.apply(graph, context);
+
         StructuredGraph referenceGraph = parseEager(reference, AllowAssumptions.YES);
         canonicalizer.apply(referenceGraph, context);
+        new GuardLoweringPhase().apply(referenceGraph, new MidTierContext(getProviders(), getTargetProvider(), OptimisticOptimizations.ALL, graph.getProfilingInfo()));
+        new FrameStateAssignmentPhase().apply(referenceGraph);
+        canonicalizer.apply(referenceGraph, context);
+
         canonicalizer.apply(referenceGraph, context);
         assertEquals(referenceGraph, graph, true, true);
     }

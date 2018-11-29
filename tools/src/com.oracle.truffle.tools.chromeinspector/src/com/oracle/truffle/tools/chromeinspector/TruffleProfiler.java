@@ -76,6 +76,7 @@ public final class TruffleProfiler extends ProfilerDomain {
 
     private final TruffleExecutionContext context;
     private final ConnectionWatcher connectionWatcher;
+    private Enabler enabler;
 
     public TruffleProfiler(TruffleExecutionContext context, ConnectionWatcher connectionWatcher) {
         this.context = context;
@@ -87,7 +88,8 @@ public final class TruffleProfiler extends ProfilerDomain {
         sampler = context.getEnv().lookup(context.getEnv().getInstruments().get(CPUSamplerInstrument.ID), CPUSampler.class);
         tracer = context.getEnv().lookup(context.getEnv().getInstruments().get(CPUTracerInstrument.ID), CPUTracer.class);
         InstrumentInfo instrumentInfo = context.getEnv().getInstruments().get(TypeProfileInstrument.ID);
-        context.getEnv().lookup(instrumentInfo, Enabler.class).enable();
+        this.enabler = context.getEnv().lookup(instrumentInfo, Enabler.class);
+        enabler.enable();
         typeHandler = context.getEnv().lookup(instrumentInfo, TypeHandler.Provider.class).getTypeHandler();
     }
 
@@ -106,7 +108,8 @@ public final class TruffleProfiler extends ProfilerDomain {
             sampler = null;
             tracer = null;
             typeHandler = null;
-            context.getEnv().lookup(context.getEnv().getInstruments().get(TypeProfileInstrument.ID), Enabler.class).disable();
+            enabler.disable();
+            enabler = null;
         }
     }
 
@@ -122,7 +125,7 @@ public final class TruffleProfiler extends ProfilerDomain {
             oldGatherSelfHitTimes = sampler.isGatherSelfHitTimes();
             sampler.setGatherSelfHitTimes(true);
             sampler.setMode(CPUSampler.Mode.ROOTS);
-            sampler.setFilter(SourceSectionFilter.newBuilder().includeInternal(false).build());
+            sampler.setFilter(SourceSectionFilter.newBuilder().includeInternal(context.isInspectInternal()).build());
             sampler.setCollecting(true);
         }
         startTimestamp = System.currentTimeMillis();
@@ -145,7 +148,7 @@ public final class TruffleProfiler extends ProfilerDomain {
     public void startPreciseCoverage(boolean callCount, boolean detailed) {
         connectionWatcher.setWaitForClose();
         synchronized (tracer) {
-            tracer.setFilter(SourceSectionFilter.newBuilder().tagIs(detailed ? StandardTags.StatementTag.class : StandardTags.RootTag.class).includeInternal(false).build());
+            tracer.setFilter(SourceSectionFilter.newBuilder().tagIs(detailed ? StandardTags.StatementTag.class : StandardTags.RootTag.class).includeInternal(context.isInspectInternal()).build());
             tracer.setCollecting(true);
         }
     }
@@ -179,7 +182,7 @@ public final class TruffleProfiler extends ProfilerDomain {
     @Override
     public void startTypeProfile() {
         connectionWatcher.setWaitForClose();
-        typeHandler.start();
+        typeHandler.start(context.isInspectInternal());
     }
 
     @Override

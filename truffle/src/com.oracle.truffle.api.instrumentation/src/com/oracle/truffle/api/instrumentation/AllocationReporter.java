@@ -1,26 +1,42 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * The Universal Permissive License (UPL), Version 1.0
  *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
  *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ * (a) the Software, and
  *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 package com.oracle.truffle.api.instrumentation;
 
@@ -28,6 +44,9 @@ import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.util.Arrays;
 import java.util.LinkedList;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Consumer;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -61,18 +80,8 @@ public final class AllocationReporter {
      */
     public static final long SIZE_UNKNOWN = Long.MIN_VALUE;
 
-    /**
-     * Name of a property that is fired when an {@link #isActive() active} property of this reporter
-     * changes.
-     *
-     * @since 0.27
-     * @see #isActive()
-     * @see #addPropertyChangeListener(java.beans.PropertyChangeListener)
-     */
-    public static final String PROPERTY_ACTIVE = "active";
-
     final LanguageInfo language;
-    private final PropChangeSupport propSupport = new PropChangeSupport(this);
+    private final List<Consumer<Boolean>> activeListeners = new CopyOnWriteArrayList<>();
     private final ThreadLocal<LinkedList<Reference<Object>>> valueCheck;
 
     @CompilationFinal private volatile Assumption listenersNotChangedAssumption = Truffle.getRuntime().createAssumption();
@@ -86,35 +95,32 @@ public final class AllocationReporter {
     }
 
     /**
-     * Add a property change listener that is notified when a property of this reporter changes. Use
-     * it to get notified when {@link #isActive()} changes.
+     * Add a listener that is notified when {@link #isActive() active} value of this reporter
+     * changes. The listener {@link Consumer#accept(Object) accept} method is called with the new
+     * value of {@link #isActive()}.
      *
-     * @since 0.27
-     * @see #PROPERTY_ACTIVE
+     * @since 1.0
      */
-    public void addPropertyChangeListener(java.beans.PropertyChangeListener listener) {
-        // Using FQN to avoid mx to generate dependency on java.desktop JDK9 module
-        propSupport.addPropertyChangeListener(listener);
+    public void addActiveListener(Consumer<Boolean> listener) {
+        activeListeners.add(listener);
     }
 
     /**
-     * Remove a property change listener that is notified when state of this reporter changes.
+     * Remove a listener that is notified when {@link #isActive() active} value of this reporter
+     * changes.
      *
-     * @since 0.27
-     * @see #addPropertyChangeListener(java.beans.PropertyChangeListener)
+     * @since 1.0
      */
-    public void removePropertyChangeListener(java.beans.PropertyChangeListener listener) {
-        // Using FQN to avoid mx to generate dependency on java.desktop JDK9 module
-        propSupport.removePropertyChangeListener(listener);
+    public void removeActiveListener(Consumer<Boolean> listener) {
+        activeListeners.remove(listener);
     }
 
     /**
      * Test if the reporter instance is actually doing some reporting when notify methods are
      * called. Methods {@link #onEnter(java.lang.Object, long, long)} and
      * {@link #onReturnValue(java.lang.Object, long, long)} have no effect when this method returns
-     * false. A {@link java.beans.PropertyChangeListener} can be
-     * {@link #addPropertyChangeListener(java.beans.PropertyChangeListener) added} to listen on
-     * changes of this property.
+     * false. A listener can be {@link #addActiveListener(Consumer) added} to listen on changes of
+     * this value.
      *
      * @return <code>true</code> when there are some {@link AllocationListener}s attached,
      *         <code>false</code> otherwise.
@@ -146,7 +152,9 @@ public final class AllocationReporter {
             assumption.invalidate();
         }
         if (!hadListeners) {
-            propSupport.firePropertyChange(PROPERTY_ACTIVE, false, true);
+            for (Consumer<Boolean> listener : activeListeners) {
+                listener.accept(true);
+            }
         }
     }
 
@@ -182,7 +190,9 @@ public final class AllocationReporter {
             assumption.invalidate();
         }
         if (!hasListeners) {
-            propSupport.firePropertyChange(PROPERTY_ACTIVE, true, false);
+            for (Consumer<Boolean> listener : activeListeners) {
+                listener.accept(false);
+            }
         }
     }
 
@@ -213,19 +223,22 @@ public final class AllocationReporter {
      */
     public void onEnter(Object valueToReallocate, long oldSize, long newSizeEstimate) {
         if (valueCheck != null) {
-            enterSizeCheck(valueToReallocate, oldSize, newSizeEstimate);
-            if (valueToReallocate != null) {
-                allocateValueCheck(valueToReallocate);
-            }
+            onEnterCheck(valueToReallocate, oldSize, newSizeEstimate);
         }
         notifyAllocateOrReallocate(valueToReallocate, oldSize, newSizeEstimate);
     }
 
+    @TruffleBoundary
+    private void onEnterCheck(Object valueToReallocate, long oldSize, long newSizeEstimate) {
+        enterSizeCheck(valueToReallocate, oldSize, newSizeEstimate);
+        if (valueToReallocate != null) {
+            allocateValueCheck(valueToReallocate);
+        }
+        setValueCheck(valueToReallocate);
+    }
+
     @ExplodeLoop
     private void notifyAllocateOrReallocate(Object value, long oldSize, long newSizeEstimate) {
-        if (valueCheck != null) {
-            setValueCheck(value);
-        }
         CompilerAsserts.partialEvaluationConstant(this);
         if (!listenersNotChangedAssumption.isValid()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -265,10 +278,15 @@ public final class AllocationReporter {
      */
     public void onReturnValue(Object value, long oldSize, long newSize) {
         if (valueCheck != null) {
-            allocateValueCheck(value);
-            allocatedCheck(value, oldSize, newSize);
+            onReturnValueCheck(value, oldSize, newSize);
         }
         notifyAllocated(value, oldSize, newSize);
+    }
+
+    @TruffleBoundary
+    private void onReturnValueCheck(Object value, long oldSize, long newSize) {
+        allocateValueCheck(value);
+        allocatedCheck(value, oldSize, newSize);
     }
 
     @ExplodeLoop
@@ -286,15 +304,15 @@ public final class AllocationReporter {
         }
     }
 
-    @TruffleBoundary
     private static void enterSizeCheck(Object valueToReallocate, long oldSize, long newSizeEstimate) {
+        CompilerAsserts.neverPartOfCompilation();
         assert (newSizeEstimate == SIZE_UNKNOWN || newSizeEstimate > 0) : "Wrong new size estimate = " + newSizeEstimate;
         assert valueToReallocate != null || oldSize == 0 : "Old size must be 0 for new allocations. Was: " + oldSize;
         assert valueToReallocate == null || (oldSize > 0 || oldSize == SIZE_UNKNOWN) : "Old size of a re-allocated value must be positive or unknown. Was: " + oldSize;
     }
 
-    @TruffleBoundary
     private boolean setValueCheck(Object value) {
+        CompilerAsserts.neverPartOfCompilation();
         LinkedList<Reference<Object>> list = valueCheck.get();
         if (list == null) {
             list = new LinkedList<>();
@@ -304,8 +322,8 @@ public final class AllocationReporter {
         return true;
     }
 
-    @TruffleBoundary
     private static void allocateValueCheck(Object value) {
+        CompilerAsserts.neverPartOfCompilation();
         if (value == null) {
             throw new NullPointerException("No allocated value.");
         }
@@ -324,8 +342,8 @@ public final class AllocationReporter {
         assert isTO : "Wrong value class, TruffleObject is required. Was: " + value.getClass().getName();
     }
 
-    @TruffleBoundary
     private void allocatedCheck(Object value, long oldSize, long newSize) {
+        CompilerAsserts.neverPartOfCompilation();
         assert value != null : "Allocated value must not be null.";
         LinkedList<Reference<Object>> list = valueCheck.get();
         assert list != null && !list.isEmpty() : "onEnter() was not called";
@@ -335,6 +353,7 @@ public final class AllocationReporter {
         assert orig != null && (oldSize > 0 || oldSize == SIZE_UNKNOWN) || orig == null : "Old size of a re-allocated value must be positive or unknown. Was: " + oldSize;
         assert newSize == SIZE_UNKNOWN || newSize > 0 : "New value size must be positive or unknown. Was: " + newSize;
     }
+
 }
 
 class AllocationReporterSnippets extends TruffleLanguage<ContextObject> {

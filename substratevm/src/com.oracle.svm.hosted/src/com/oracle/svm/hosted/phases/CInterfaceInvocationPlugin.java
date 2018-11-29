@@ -59,11 +59,13 @@ import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.nodes.memory.HeapAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.word.WordTypes;
+import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.word.LocationIdentity;
 
-import com.oracle.svm.core.amd64.FrameAccess;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.annotate.InvokeJavaFunctionPointer;
 import com.oracle.svm.core.c.struct.CInterfaceLocationIdentity;
 import com.oracle.svm.core.graal.code.amd64.SubstrateCallingConventionType;
@@ -84,6 +86,10 @@ import com.oracle.svm.hosted.c.info.SizableInfo;
 import com.oracle.svm.hosted.c.info.StructBitfieldInfo;
 import com.oracle.svm.hosted.c.info.StructFieldInfo;
 import com.oracle.svm.hosted.c.info.StructInfo;
+import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
+import com.oracle.svm.hosted.code.CEntryPointJavaCallStubMethod;
+import com.oracle.svm.hosted.meta.HostedMetaAccess;
+import com.oracle.svm.hosted.meta.HostedMethod;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.meta.JavaKind;
@@ -130,6 +136,17 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
             return replaceFunctionPointerInvoke(b, method, args, SubstrateCallingConventionType.NativeCall);
         } else if (method.getAnnotation(InvokeJavaFunctionPointer.class) != null) {
             return replaceFunctionPointerInvoke(b, method, args, SubstrateCallingConventionType.JavaCall);
+        } else if (method.getAnnotation(CEntryPoint.class) != null) {
+            AnalysisMethod aMethod = (AnalysisMethod) (method instanceof HostedMethod ? ((HostedMethod) method).getWrapped() : method);
+            assert !(aMethod.getWrapped() instanceof CEntryPointJavaCallStubMethod) : "Call stub should never have a @CEntryPoint annotation";
+            ResolvedJavaMethod stub = CEntryPointCallStubSupport.singleton().registerJavaStubForMethod(aMethod);
+            if (method instanceof HostedMethod) {
+                HostedMetaAccess hMetaAccess = (HostedMetaAccess) b.getMetaAccess();
+                stub = hMetaAccess.getUniverse().lookup(stub);
+            }
+            assert !b.getMethod().equals(stub) : "Plugin should not be called for the invoke in the stub itself";
+            b.handleReplacedInvoke(InvokeKind.Static, stub, args, false);
+            return true;
         } else {
             return false;
         }
@@ -499,7 +516,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
         }
 
         CallTargetNode indirectCallTargetNode = b.add(new IndirectCallTargetNode(methodAddress, argsWithoutReceiver,
-                        StampPair.createSingle(returnStamp), parameterTypes, method, callType, InvokeKind.Static));
+                        StampPair.createSingle(returnStamp), parameterTypes, null, callType, InvokeKind.Static));
 
         if (callType == SubstrateCallingConventionType.JavaCall) {
             b.handleReplacedInvoke(indirectCallTargetNode, b.getInvokeReturnType().getJavaKind());

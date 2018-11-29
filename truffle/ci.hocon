@@ -16,7 +16,7 @@ benchCommon: ${linux-amd64} ${labsjdk8} {
   environment: {
     BENCH_RESULTS_FILE_PATH: "bench-results.json"
   },
-  targets: [weekly],
+  targets: [bench, weekly],
   timelimit: "1:00:00",
   setup : [
     ["cd", "./compiler"],
@@ -33,8 +33,7 @@ truffleWeekly: ${truffle-weekly-notifications} {
 
 builds += [
   ${linux-amd64} ${labsjdk8}    ${truffleCommon} ${eclipse} ${jdt} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-truffle-8"},
-  ${linux-amd64} ${oraclejdk9}  ${truffleCommon} ${eclipse} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-truffle-9"},
-  ${linux-amd64} ${oraclejdk10} ${truffleCommon} ${eclipse} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-truffle-10"},
+  ${linux-amd64} ${oraclejdk11}  ${truffleCommon} ${eclipse} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-truffle-11"},
   ${linux-amd64} ${labsjdk8}    ${truffleCommon} {
     run : [
         ["mx", "build"],
@@ -43,24 +42,17 @@ builds += [
     targets : [gate],
     name: "gate-truffle-javadoc"
   },
-  ${linux-amd64} ${linux-deploy} ${maven-deploy-dry-run} ${truffleCommon} {name: "gate-truffle-maven-dry-run"}
   ${solaris-sparcv9} ${labsjdk8} ${gateLite} ${truffleWeekly} {
     name: "gate-truffle-solaris-lite-8"
   }
-  ${solaris-sparcv9} ${oraclejdk9} ${gateLite} ${truffleWeekly} {
-    name: "gate-truffle-solaris-lite-9"
-  }
-  ${solaris-sparcv9} ${oraclejdk10} ${gateLite} ${truffleWeekly} {
-    name: "gate-truffle-solaris-lite-10"
+  ${solaris-sparcv9} ${oraclejdk11} ${gateLite} ${truffleWeekly} {
+    name: "gate-truffle-solaris-lite-11"
   }
   ${darwin-amd64} ${labsjdk8} ${gateLite} ${truffleWeekly} {
     name: "gate-truffle-mac-lite-8"
   }
-  ${darwin-amd64} ${oraclejdk9} ${gateLite} ${truffleWeekly} {
-    name: "gate-truffle-mac-lite-9"
-  }
-  ${darwin-amd64} ${oraclejdk10} ${gateLite} ${truffleWeekly} {
-    name: "gate-truffle-mac-lite-10"
+  ${darwin-amd64} ${oraclejdk11} ${gateLite} ${truffleWeekly} {
+    name: "gate-truffle-mac-lite-11"
   }
   # BENCHMARKS
   ${benchCommon} ${truffle-bench-notifications} {

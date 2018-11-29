@@ -34,16 +34,9 @@ public class TraceFinderDFAStateNode extends BackwardDFAStateNode {
     private final byte preCalculatedUnAnchoredResult;
     private final byte preCalculatedAnchoredResult;
 
-    public TraceFinderDFAStateNode(short id,
-                    boolean finalState,
-                    boolean anchoredFinalState,
-                    boolean hasBackwardPrefixState,
-                    short loopToSelf,
-                    short[] successors,
-                    CharMatcher[] matchers,
-                    byte preCalculatedUnAnchoredResult,
-                    byte preCalculatedAnchoredResult) {
-        super(id, finalState, anchoredFinalState, hasBackwardPrefixState, loopToSelf, successors, matchers);
+    public TraceFinderDFAStateNode(short id, byte flags, LoopOptimizationNode loopOptimizationNode, short[] successors, CharMatcher[] matchers,
+                    byte preCalculatedUnAnchoredResult, byte preCalculatedAnchoredResult) {
+        super(id, flags, loopOptimizationNode, successors, matchers);
         this.preCalculatedUnAnchoredResult = preCalculatedUnAnchoredResult;
         this.preCalculatedAnchoredResult = preCalculatedAnchoredResult;
     }
@@ -59,19 +52,19 @@ public class TraceFinderDFAStateNode extends BackwardDFAStateNode {
         return new TraceFinderDFAStateNode(this, copyID);
     }
 
-    public boolean hasPreCalculatedUnAnchoredResult() {
+    private boolean hasPreCalculatedUnAnchoredResult() {
         return preCalculatedUnAnchoredResult != NO_PRE_CALC_RESULT;
     }
 
-    public int getPreCalculatedUnAnchoredResult() {
+    private int getPreCalculatedUnAnchoredResult() {
         return Byte.toUnsignedInt(preCalculatedUnAnchoredResult);
     }
 
-    public boolean hasPreCalculatedAnchoredResult() {
+    private boolean hasPreCalculatedAnchoredResult() {
         return preCalculatedAnchoredResult != NO_PRE_CALC_RESULT;
     }
 
-    public int getPreCalculatedAnchoredResult() {
+    private int getPreCalculatedAnchoredResult() {
         return Byte.toUnsignedInt(preCalculatedAnchoredResult);
     }
 

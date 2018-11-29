@@ -136,16 +136,10 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider {
             assert Modifier.isStatic(getModifiers());
             assert getSignature().getParameterCount(false) == 0;
             try {
-                /*
-                 * Backdoor into the HotSpot metadata implementation, since there is no official way
-                 * to invoke a Graal method.
-                 */
-                Method toJavaMethod = wrapped.getClass().getDeclaredMethod("toJava");
-                toJavaMethod.setAccessible(true);
-                Method switchTableMethod = (Method) toJavaMethod.invoke(wrapped);
+                Method switchTableMethod = getDeclaringClass().getJavaClass().getDeclaredMethod(getName());
                 switchTableMethod.setAccessible(true);
                 switchTableMethod.invoke(null);
-            } catch (Throwable ex) {
+            } catch (ReflectiveOperationException ex) {
                 throw GraalError.shouldNotReachHere(ex);
             }
         }
@@ -457,7 +451,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider {
 
     @Override
     public boolean isDefault() {
-        throw unimplemented();
+        return wrapped.isDefault();
     }
 
     @Override

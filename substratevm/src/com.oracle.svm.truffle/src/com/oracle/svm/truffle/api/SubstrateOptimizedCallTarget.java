@@ -64,13 +64,19 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
     }
 
     @Override
-    protected void invalidateCode() {
+    public void invalidateCode() {
         CodeInfoTable.invalidateInstalledCode(this);
     }
 
     @Override
     public boolean isValid() {
         return address != 0;
+    }
+
+    @Override
+    public boolean isValidLastTier() {
+        // TODO: GR-11926 Support multi-tier compilation in SVM.
+        return true;
     }
 
     @Override

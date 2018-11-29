@@ -29,19 +29,33 @@ package com.oracle.truffle.tools.chromeinspector.server;
  */
 public final class ConnectionWatcher {
 
-    private boolean closed = true; // The connection is initially closed (no connection)
+    private volatile Boolean opened = null; // Initially not closed nor opened (no connection)
     private volatile boolean doWaitForClose = false; // Do not wait for close by default
 
     public boolean shouldWaitForClose() {
-        return !closed && doWaitForClose;
+        return !isClosed() && doWaitForClose;
     }
 
     public synchronized void waitForClose() {
-        while (!closed) {
+        while (!isClosed()) {
             try {
                 wait();
             } catch (InterruptedException ex) {
                 break;
+            }
+        }
+    }
+
+    void waitForOpen() {
+        if (!isOpened()) {
+            synchronized (this) {
+                while (!isOpened()) {
+                    try {
+                        wait();
+                    } catch (InterruptedException ex) {
+                        break;
+                    }
+                }
             }
         }
     }
@@ -53,12 +67,21 @@ public final class ConnectionWatcher {
         doWaitForClose = true;
     }
 
-    synchronized void notifyOpen() {
-        closed = false;
+    public synchronized void notifyOpen() {
+        opened = Boolean.TRUE;
+        notifyAll();
     }
 
-    synchronized void notifyClosing() {
-        closed = true;
+    public synchronized void notifyClosing() {
+        opened = Boolean.FALSE;
         notifyAll();
+    }
+
+    private boolean isOpened() {
+        return opened == Boolean.TRUE;
+    }
+
+    private boolean isClosed() {
+        return opened == Boolean.FALSE;
     }
 }

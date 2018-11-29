@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,14 +27,16 @@ package org.graalvm.compiler.debug.test;
 import static org.graalvm.compiler.debug.DebugContext.NO_DESCRIPTION;
 import static org.graalvm.compiler.debug.DebugContext.NO_GLOBAL_METRIC_VALUES;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Formatter;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.debug.Assertions;
@@ -158,14 +160,13 @@ public class DebugContextTest {
                 }
             }
         }
-        DataInputStream in = new DataInputStream(getClass().getResourceAsStream(getClass().getSimpleName() + ".testLogging.input"));
-        byte[] buf = new byte[in.available()];
-        in.readFully(buf);
-        String threadLabel = "[thread:" + Thread.currentThread().getId() + "]";
-        String expect = new String(buf).replace("[thread:1]", threadLabel);
-
-        String log = setup.logOutput.toString();
-        Assert.assertEquals(expect, log);
+        String expected;
+        try (BufferedReader input = new BufferedReader(new InputStreamReader(getClass().getResourceAsStream(getClass().getSimpleName() + ".testLogging.input")))) {
+            String threadLabel = "[thread:" + Thread.currentThread().getId() + "]";
+            expected = input.lines().collect(Collectors.joining(System.lineSeparator(), "", System.lineSeparator())).replace("[thread:1]", threadLabel);
+        }
+        String logged = setup.logOutput.toString();
+        Assert.assertEquals(expected, logged);
     }
 
     @Test
@@ -196,6 +197,7 @@ public class DebugContextTest {
 
     @Test
     public void testEnabledSandbox() {
+        TimerKeyTest.assumeManagementLibraryIsLoadable();
         EconomicMap<OptionKey<?>, Object> map = EconomicMap.create();
         // Configure with an option that enables scopes
         map.put(DebugOptions.DumpOnError, true);
@@ -225,6 +227,7 @@ public class DebugContextTest {
 
     @Test
     public void testDisabledSandbox() {
+        TimerKeyTest.assumeManagementLibraryIsLoadable();
         EconomicMap<OptionKey<?>, Object> map = EconomicMap.create();
         // Configure with an option that enables scopes
         map.put(DebugOptions.DumpOnError, true);
@@ -282,6 +285,7 @@ public class DebugContextTest {
 
     @Test
     public void testDisableIntercept() {
+        TimerKeyTest.assumeManagementLibraryIsLoadable();
         EconomicMap<OptionKey<?>, Object> map = EconomicMap.create();
         // Configure with an option that enables scopes
         map.put(DebugOptions.DumpOnError, true);

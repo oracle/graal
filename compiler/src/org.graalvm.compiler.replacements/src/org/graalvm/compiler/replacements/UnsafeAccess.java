@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,7 +33,9 @@ import sun.misc.Unsafe;
  */
 class UnsafeAccess {
 
-    static final Unsafe UNSAFE = initUnsafe();
+    private static final Unsafe THE_UNSAFE = initUnsafe();
+
+    static final UnsafeAccess UNSAFE = new UnsafeAccess();
 
     private static Unsafe initUnsafe() {
         try {
@@ -49,5 +51,13 @@ class UnsafeAccess {
                 throw new RuntimeException("exception while trying to get Unsafe", e);
             }
         }
+    }
+
+    public char getChar(Object target, long l) {
+        return THE_UNSAFE.getChar(target, l);
+    }
+
+    public byte getByte(Object target, long l) {
+        return THE_UNSAFE.getByte(target, l);
     }
 }

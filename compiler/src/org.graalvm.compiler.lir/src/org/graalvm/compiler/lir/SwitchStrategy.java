@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -441,7 +441,7 @@ public abstract class SwitchStrategy {
             }
             double probabilityStart = probabilitySums[left];
             double probabilityMiddle = (probabilityStart + probabilitySums[right + 1]) / 2;
-            assert probabilityStart >= probabilityStart;
+            assert probabilityMiddle >= probabilityStart;
             int middle = left;
             while (getSliceEnd(closure, middle + 1) < right && probabilitySums[getSliceEnd(closure, middle + 1)] < probabilityMiddle) {
                 middle = getSliceEnd(closure, middle + 1);

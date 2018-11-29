@@ -2,25 +2,41 @@
  * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * The Universal Permissive License (UPL), Version 1.0
  *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
  *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ * (a) the Software, and
  *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 package com.oracle.truffle.api.debug;
 
@@ -39,7 +55,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
@@ -51,6 +66,7 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -138,7 +154,9 @@ public class Breakpoint {
          *
          * @since 1.0
          */
-        EXCEPTION,
+        EXCEPTION;
+
+        static final Kind[] VALUES = values();
     }
 
     private static final Breakpoint BUILDER_INSTANCE = new Breakpoint();
@@ -621,7 +639,7 @@ public class Breakpoint {
                 return false;
             }
             if (exceptionFilter != null && exception != null) {
-                Throwable throwable = (Throwable) exception.getTruffleException();
+                Throwable throwable = exception.getRawException();
                 assert throwable != null;
                 BreakpointExceptionFilter.Match matched = exceptionFilter.matchException(node, throwable);
                 if (!matched.isMatched) {
@@ -641,35 +659,37 @@ public class Breakpoint {
     }
 
     @TruffleBoundary
-    private void doBreak(DebuggerNode source, DebuggerSession[] breakInSessions, MaterializedFrame frame, boolean onEnter, Object result, Throwable exception, BreakpointConditionFailure failure) {
+    private Object doBreak(DebuggerNode source, DebuggerSession[] breakInSessions, MaterializedFrame frame, boolean onEnter, Object result, Throwable exception, BreakpointConditionFailure failure) {
         DebugException de;
         if (exception != null) {
-            de = new DebugException(debugger, (TruffleException) exception, null, source, false, null);
+            de = new DebugException(debugger, exception, null, source, false, null);
         } else {
             de = null;
         }
-        doBreak(source, breakInSessions, frame, onEnter, result, de, failure);
+        return doBreak(source, breakInSessions, frame, onEnter, result, de, failure);
     }
 
     @TruffleBoundary
-    private void doBreak(DebuggerNode source, DebuggerSession[] breakInSessions, MaterializedFrame frame, boolean onEnter, Object result, DebugException exception,
+    private Object doBreak(DebuggerNode source, DebuggerSession[] breakInSessions, MaterializedFrame frame, boolean onEnter, Object result, DebugException exception,
                     BreakpointConditionFailure failure) {
         if (!isEnabled()) {
             // make sure we do not cause break events if we got disabled already
             // the instrumentation framework will make sure that this is not happening if the
             // binding was disposed.
-            return;
+            return result;
         }
         if (this.hitCount.incrementAndGet() <= ignoreCount) {
             // breakpoint hit was ignored
-            return;
+            return result;
         }
         SuspendAnchor anchor = onEnter ? SuspendAnchor.BEFORE : SuspendAnchor.AFTER;
+        Object newResult = result;
         for (DebuggerSession session : breakInSessions) {
             if (session.isBreakpointsActive(getKind())) {
-                session.notifyCallback(source, frame, anchor, null, result, exception, failure);
+                newResult = session.notifyCallback(source, frame, anchor, null, newResult, exception, failure);
             }
         }
+        return newResult;
     }
 
     Breakpoint getROWrapper() {
@@ -1064,12 +1084,16 @@ public class Breakpoint {
 
         @Override
         protected void onReturnValue(VirtualFrame frame, Object result) {
-            onNode(frame, false, result, null);
+            Object newResult = onNode(frame, false, result, null);
+            if (newResult != result) {
+                CompilerDirectives.transferToInterpreter();
+                throw getContext().createUnwind(new ChangedReturnInfo(newResult));
+            }
         }
 
         @Override
         protected void onReturnExceptional(VirtualFrame frame, Throwable exception) {
-            if (exception instanceof TruffleException) {
+            if (!(exception instanceof ControlFlowException || exception instanceof ThreadDeath)) {
                 onNode(frame, false, null, exception);
             }
         }
@@ -1105,7 +1129,7 @@ public class Breakpoint {
         @Override
         @ExplodeLoop
         protected void onReturnExceptional(VirtualFrame frame, Throwable exception) {
-            if (exception instanceof TruffleException) {
+            if (!(exception instanceof ControlFlowException || exception instanceof ThreadDeath)) {
                 DebuggerSession[] debuggerSessions = getSessions();
                 boolean active = false;
                 List<DebuggerSession> nonDuplicateSessions = null;
@@ -1150,7 +1174,7 @@ public class Breakpoint {
         @TruffleBoundary
         void doBreak(MaterializedFrame frame, DebuggerSession[] debuggerSessions, BreakpointConditionFailure conditionError, Throwable exception, BreakpointExceptionFilter.Match matched) {
             Node throwLocation = getContext().getInstrumentedNode();
-            DebugException de = new DebugException(getBreakpoint().debugger, (TruffleException) exception, null, throwLocation, matched.isCatchNodeComputed, matched.catchLocation);
+            DebugException de = new DebugException(getBreakpoint().debugger, exception, null, throwLocation, matched.isCatchNodeComputed, matched.catchLocation);
             getBreakpoint().doBreak(this, debuggerSessions, frame, false, null, de, conditionError);
         }
     }
@@ -1200,7 +1224,7 @@ public class Breakpoint {
         }
 
         @ExplodeLoop
-        protected final void onNode(VirtualFrame frame, boolean onEnter, Object result, Throwable exception) {
+        protected final Object onNode(VirtualFrame frame, boolean onEnter, Object result, Throwable exception) {
             if (!sessionsUnchanged.isValid()) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 initializeSessions();
@@ -1213,7 +1237,7 @@ public class Breakpoint {
                     if (sessionsWithUniqueNodes == null) {
                         if (debuggerSessions.length == 1) {
                             // This node is marked as duplicate in the only session that's there.
-                            return;
+                            return result;
                         }
                     }
                     sessionsWithUniqueNodes = removeDuplicateSession(debuggerSessions, session, sessionsWithUniqueNodes);
@@ -1222,11 +1246,11 @@ public class Breakpoint {
                 }
             }
             if (!active) {
-                return;
+                return result;
             }
             if (sessionsWithUniqueNodes != null) {
                 if (sessionsWithUniqueNodes.isEmpty()) {
-                    return;
+                    return result;
                 }
                 debuggerSessions = toSessionsArray(sessionsWithUniqueNodes);
             }
@@ -1243,13 +1267,13 @@ public class Breakpoint {
             BreakpointConditionFailure conditionError = null;
             try {
                 if (!testCondition(frame)) {
-                    return;
+                    return result;
                 }
             } catch (BreakpointConditionFailure e) {
                 conditionError = e;
             }
             breakBranch.enter();
-            breakpoint.doBreak(this, debuggerSessions, frame.materialize(), onEnter, result, exception, conditionError);
+            return breakpoint.doBreak(this, debuggerSessions, frame.materialize(), onEnter, result, exception, conditionError);
         }
 
         final DebuggerSession[] getSessions() {
@@ -1376,8 +1400,7 @@ public class Breakpoint {
             Source instrumentedSource = context.getInstrumentedSourceSection().getSource();
             Source conditionSource;
             synchronized (breakpoint) {
-                conditionSource = Source.newBuilder(breakpoint.condition).language(instrumentedSource.getLanguage()).mimeType(instrumentedSource.getMimeType()).name(
-                                "breakpoint condition").build();
+                conditionSource = Source.newBuilder(instrumentedSource.getLanguage(), breakpoint.condition, "breakpoint condition").mimeType(instrumentedSource.getMimeType()).build();
                 if (conditionSource == null) {
                     throw new IllegalStateException("Condition is not resolved " + rootNode);
                 }
@@ -1493,7 +1516,7 @@ class BreakpointSnippets {
             public void onSuspend(SuspendedEvent event) {
             }
         };
-        Source someCode = Source.newBuilder("").mimeType("").name("").build();
+        Source someCode = Source.newBuilder("", "", "").build();
         TruffleInstrument.Env instrumentEnvironment = null;
         // @formatter:off
         // BEGIN: BreakpointSnippets.example

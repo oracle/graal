@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,6 +43,10 @@ public abstract class ArithmeticLIRGenerator implements ArithmeticLIRGeneratorTo
         return lirGen;
     }
 
+    protected final AllocatableValue asAllocatable(Value value) {
+        return lirGen.asAllocatable(value);
+    }
+
     public OptionValues getOptions() {
         return getLIRGen().getResult().getLIR().getOptions();
     }
@@ -84,7 +88,7 @@ public abstract class ArithmeticLIRGenerator implements ArithmeticLIRGeneratorTo
                 if (bKind.isDerivedReference()) {
                     resultKind = bKind;
                 } else {
-                    AllocatableValue allocatable = getLIRGen().asAllocatable(b);
+                    AllocatableValue allocatable = asAllocatable(b);
                     resultKind = bKind.makeDerivedReference(allocatable);
                     b = allocatable;
                 }
@@ -92,7 +96,7 @@ public abstract class ArithmeticLIRGenerator implements ArithmeticLIRGeneratorTo
                 if (aKind.isDerivedReference()) {
                     resultKind = aKind;
                 } else {
-                    AllocatableValue allocatable = getLIRGen().asAllocatable(a);
+                    AllocatableValue allocatable = asAllocatable(a);
                     resultKind = aKind.makeDerivedReference(allocatable);
                     a = allocatable;
                 }

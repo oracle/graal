@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Queue;
+import java.util.ServiceLoader;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.function.Consumer;
@@ -37,7 +38,6 @@ import java.util.stream.Collectors;
 
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionDescriptors;
-import org.graalvm.compiler.options.OptionsParser;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -76,11 +76,12 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         if (NativeImage.IS_AOT) {
             apiOptions = ImageSingletons.lookup(APIOptionCollector.class).options;
         } else {
-            List<Class<? extends OptionDescriptors>> optionsClasses = new ArrayList<>();
-            for (OptionDescriptors set : OptionsParser.getOptionsLoader()) {
-                optionsClasses.add(set.getClass());
+            List<Class<? extends OptionDescriptors>> optionDescriptorsList = new ArrayList<>();
+            ServiceLoader<OptionDescriptors> serviceLoader = ServiceLoader.load(OptionDescriptors.class, OptionDescriptors.class.getClassLoader());
+            for (OptionDescriptors optionDescriptors : serviceLoader) {
+                optionDescriptorsList.add(optionDescriptors.getClass());
             }
-            apiOptions = extractOptions(optionsClasses);
+            apiOptions = extractOptions(optionDescriptorsList);
         }
     }
 
@@ -100,7 +101,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             APIOption[] apiAnnotations = optionField.getAnnotationsByType(APIOption.class);
             for (APIOption apiAnnotation : apiAnnotations) {
                 String builderOption = optionPrefix;
-                String apiOptionName = apiAnnotation.name();
+                String apiOptionName = APIOption.Utils.name(apiAnnotation);
                 String rawOptionName = optionDescriptor.getName();
                 boolean booleanOption = false;
                 if (optionDescriptor.getOptionValueType().equals(Boolean.class)) {
@@ -134,9 +135,6 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 VMError.guarantee(helpText != null && !helpText.isEmpty(),
                                 String.format("APIOption %s(%s) needs to provide help text", apiOptionName, rawOptionName));
                 helpText = helpText.substring(0, 1).toLowerCase() + helpText.substring(1);
-                if (!apiOptionName.startsWith("-")) {
-                    apiOptionName = "--" + apiOptionName;
-                }
 
                 String defaultValue = null;
                 if (apiAnnotation.defaultValue().length > 0) {
@@ -158,10 +156,19 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     @Override
     boolean consume(Queue<String> args) {
         String headArg = args.peek();
-        String[] optionParts = headArg.split("=", 2);
+        String translatedOption = translateOption(headArg);
+        if (translatedOption != null) {
+            args.poll();
+            nativeImage.addPlainImageBuilderArg(translatedOption);
+            return true;
+        }
+        return false;
+    }
+
+    String translateOption(String arg) {
+        String[] optionParts = arg.split("=", 2);
         OptionInfo option = apiOptions.get(optionParts[0]);
         if (option != null) {
-            args.poll();
             String builderOption = option.builderOption;
             String optionValue = option.defaultValue;
             if (optionParts.length == 2) {
@@ -174,21 +181,27 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 if (option.hasPathArguments) {
                     optionValue = Arrays.stream(optionValue.split(","))
                                     .filter(s -> !s.isEmpty())
-                                    .map(s -> nativeImage.canonicalize(Paths.get(s)).toString())
+                                    .map(this::tryCanonicalize)
                                     .collect(Collectors.joining(","));
                 }
                 builderOption += optionValue;
             }
-            nativeImage.addImageBuilderArg(builderOption);
-            return true;
+            return builderOption;
         }
-        return false;
+        return null;
+    }
+
+    private String tryCanonicalize(String path) {
+        try {
+            return nativeImage.canonicalize(Paths.get(path)).toString();
+        } catch (NativeImage.NativeImageError e) {
+            /* Allow features to handle the path string. */
+            return path;
+        }
     }
 
     void printOptions(Consumer<String> println) {
-        apiOptions.forEach((optionName, optionInfo) -> {
-            SubstrateOptionsParser.printOption(println, optionName, optionInfo.helpText, 4, 22, 66);
-        });
+        apiOptions.forEach((optionName, optionInfo) -> SubstrateOptionsParser.printOption(println, optionName, optionInfo.helpText, 4, 22, 66));
     }
 }
 

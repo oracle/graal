@@ -1,7 +1,23 @@
 suite = {
-  "mxversion" : "5.149.0",
+  "mxversion" : "5.176.0",
 
   "name" : "regex",
+
+  "version" : "1.0.0-rc11",
+  "release" : False,
+  "groupId" : "org.graalvm.regex",
+  "url" : "http://www.graalvm.org/",
+  "developer" : {
+    "name" : "Truffle and Graal developers",
+    "email" : "graalvm-users@oss.oracle.com",
+    "organization" : "Graal",
+    "organizationUrl" : "http://www.graalvm.org/",
+  },
+  "scm" : {
+    "url" : "https://github.com/oracle/graal",
+    "read" : "https://github.com/oracle/graal.git",
+    "write" : "git@github.com:oracle/graal.git",
+  },
 
   "imports" : {
     "suites": [
@@ -13,13 +29,6 @@ suite = {
          ]
       },
     ]
-  },
-
-  "repositories" : {
-    "lafo-snapshots" : {
-      "url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots",
-      "licenses" : ["GPLv2-CPE", "UPL", "BSD-new"]
-    },
   },
 
   "defaultLicense" : "GPLv2-CPE",
@@ -34,8 +43,13 @@ suite = {
         "truffle:TRUFFLE_API",
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+      "exports" : [
+        "com.oracle.truffle.regex",
+        "com.oracle.truffle.regex.chardata",
+        "com.oracle.truffle.regex.result",
+      ],
       "checkstyleVersion" : "8.8",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "workingSets" : "Truffle,Regex",
     },
 
@@ -47,18 +61,24 @@ suite = {
         "mx:JUNIT",
       ],
       "checkstyle" : "com.oracle.truffle.regex",
-      "javaCompliance" : "1.8",
+      "javaCompliance" : "8+",
       "workingSets" : "Truffle,Regex",
     },
   },
 
   "distributions" : {
     "TREGEX" : {
+      "moduleName" : "com.oracle.truffle.regex",
       "subDir" : "src",
       "dependencies" : ["com.oracle.truffle.regex"],
       "distDependencies" : [
         "truffle:TRUFFLE_API",
       ],
+      "maven" : {
+        "artifactId" : "regex",
+      },
+      "description" : "Truffle regular expressions language.",
+      "allowsJavadocWarnings": True,
     },
 
     "TREGEX_UNIT_TESTS" : {

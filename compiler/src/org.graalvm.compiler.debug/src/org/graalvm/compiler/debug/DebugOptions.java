@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -127,8 +127,6 @@ public class DebugOptions {
     @Option(help = "Enable dumping LIR, register allocation and code generation info to the C1Visualizer.", type = OptionType.Debug)
     public static final OptionKey<Boolean> PrintBackendCFG = new OptionKey<>(true);
 
-    @Option(help = "Output probabilities for fixed nodes during binary graph dumping.", type = OptionType.Debug)
-    public static final OptionKey<Boolean> PrintGraphProbabilities = new OptionKey<>(false);
     @Option(help = "Enable dumping to the IdealGraphVisualizer.", type = OptionType.Debug)
     public static final OptionKey<Boolean> PrintGraph = new OptionKey<>(true);
     @Option(help = "Print graphs to files instead of sending them over the network.", type = OptionType.Debug)

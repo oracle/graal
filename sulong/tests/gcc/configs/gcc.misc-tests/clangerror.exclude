@@ -1,0 +1,6 @@
+gcc-5.2.0/gcc/testsuite/gcc.misc-tests/linkage-y.c
+gcc-5.2.0/gcc/testsuite/gcc.misc-tests/gcovpart-13b.c
+gcc-5.2.0/gcc/testsuite/gcc.misc-tests/linkage-x.c
+gcc-5.2.0/gcc/testsuite/gcc.misc-tests/godump-1.c
+gcc-5.2.0/gcc/testsuite/gcc.misc-tests/dhry.c
+gcc-5.2.0/gcc/testsuite/gcc.misc-tests/arm-isr.c

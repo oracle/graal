@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,17 +33,15 @@ import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmeti
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.MOVSX;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.MOVSXB;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.MOVSXD;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.OperandSize.DWORD;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.OperandSize.QWORD;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.OperandSize.SD;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.OperandSize.SS;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.DWORD;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.QWORD;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.SD;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.SS;
 
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MIOp;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp;
-import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RRMOp;
-import org.graalvm.compiler.asm.amd64.AMD64Assembler.AVXOp;
-import org.graalvm.compiler.asm.amd64.AMD64Assembler.OperandSize;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.SSEOp;
+import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
@@ -83,9 +81,9 @@ import org.graalvm.compiler.nodes.util.GraphUtil;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
-import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
@@ -277,6 +275,81 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
         return getArithmeticLIRGenerator().emitLoad(to, address, state);
     }
 
+    private boolean supports(CPUFeature feature) {
+        return ((AMD64) getLIRGeneratorTool().target().arch).getFeatures().contains(feature);
+    }
+
+    @MatchRule("(And (Not a) b)")
+    public ComplexMatchResult logicalAndNot(ValueNode a, ValueNode b) {
+        if (!supports(CPUFeature.BMI1)) {
+            return null;
+        }
+        return builder -> getArithmeticLIRGenerator().emitLogicalAndNot(operand(a), operand(b));
+    }
+
+    @MatchRule("(And a (Negate a))")
+    public ComplexMatchResult lowestSetIsolatedBit(ValueNode a) {
+        if (!supports(CPUFeature.BMI1)) {
+            return null;
+        }
+        return builder -> getArithmeticLIRGenerator().emitLowestSetIsolatedBit(operand(a));
+    }
+
+    @MatchRule("(Xor a (Add a b))")
+    public ComplexMatchResult getMaskUpToLowestSetBit(ValueNode a, ValueNode b) {
+        if (!supports(CPUFeature.BMI1)) {
+            return null;
+        }
+
+        // Make sure that the pattern matches a subtraction by one.
+        if (!b.isJavaConstant()) {
+            return null;
+        }
+
+        JavaConstant bCst = b.asJavaConstant();
+        long bValue;
+        if (bCst.getJavaKind() == JavaKind.Int) {
+            bValue = bCst.asInt();
+        } else if (bCst.getJavaKind() == JavaKind.Long) {
+            bValue = bCst.asLong();
+        } else {
+            return null;
+        }
+
+        if (bValue == -1) {
+            return builder -> getArithmeticLIRGenerator().emitGetMaskUpToLowestSetBit(operand(a));
+        } else {
+            return null;
+        }
+    }
+
+    @MatchRule("(And a (Add a b))")
+    public ComplexMatchResult resetLowestSetBit(ValueNode a, ValueNode b) {
+        if (!supports(CPUFeature.BMI1)) {
+            return null;
+        }
+        // Make sure that the pattern matches a subtraction by one.
+        if (!b.isJavaConstant()) {
+            return null;
+        }
+
+        JavaConstant bCst = b.asJavaConstant();
+        long bValue;
+        if (bCst.getJavaKind() == JavaKind.Int) {
+            bValue = bCst.asInt();
+        } else if (bCst.getJavaKind() == JavaKind.Long) {
+            bValue = bCst.asLong();
+        } else {
+            return null;
+        }
+
+        if (bValue == -1) {
+            return builder -> getArithmeticLIRGenerator().emitResetLowestSetBit(operand(a));
+        } else {
+            return null;
+        }
+    }
+
     @MatchRule("(If (IntegerTest Read=access value))")
     @MatchRule("(If (IntegerTest FloatingRead=access value))")
     public ComplexMatchResult integerTestBranchMemory(IfNode root, LIRLowerableAccess access, ValueNode value) {
@@ -390,23 +463,12 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
                         getState(access));
     }
 
-    private ComplexMatchResult binaryRead(AMD64RRMOp op, OperandSize size, ValueNode value, LIRLowerableAccess access) {
-        return builder -> getArithmeticLIRGenerator().emitBinaryMemory(op, size, getLIRGeneratorTool().asAllocatable(operand(value)), (AMD64AddressValue) operand(access.getAddress()),
-                        getState(access));
-    }
-
     @MatchRule("(Add value Read=access)")
     @MatchRule("(Add value FloatingRead=access)")
     public ComplexMatchResult addMemory(ValueNode value, LIRLowerableAccess access) {
         OperandSize size = getMemorySize(access);
         if (size.isXmmType()) {
-            TargetDescription target = getLIRGeneratorTool().target();
-            boolean isAvx = ((AMD64) target.arch).getFeatures().contains(CPUFeature.AVX);
-            if (isAvx) {
-                return binaryRead(AVXOp.ADD, size, value, access);
-            } else {
-                return binaryRead(SSEOp.ADD, size, value, access);
-            }
+            return binaryRead(SSEOp.ADD, size, value, access);
         } else {
             return binaryRead(ADD.getRMOpcode(size), size, value, access);
         }
@@ -417,13 +479,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
     public ComplexMatchResult subMemory(ValueNode value, LIRLowerableAccess access) {
         OperandSize size = getMemorySize(access);
         if (size.isXmmType()) {
-            TargetDescription target = getLIRGeneratorTool().target();
-            boolean isAvx = ((AMD64) target.arch).getFeatures().contains(CPUFeature.AVX);
-            if (isAvx) {
-                return binaryRead(AVXOp.SUB, size, value, access);
-            } else {
-                return binaryRead(SSEOp.SUB, size, value, access);
-            }
+            return binaryRead(SSEOp.SUB, size, value, access);
         } else {
             return binaryRead(SUB.getRMOpcode(size), size, value, access);
         }
@@ -434,13 +490,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
     public ComplexMatchResult mulMemory(ValueNode value, LIRLowerableAccess access) {
         OperandSize size = getMemorySize(access);
         if (size.isXmmType()) {
-            TargetDescription target = getLIRGeneratorTool().target();
-            boolean isAvx = ((AMD64) target.arch).getFeatures().contains(CPUFeature.AVX);
-            if (isAvx) {
-                return binaryRead(AVXOp.MUL, size, value, access);
-            } else {
-                return binaryRead(SSEOp.MUL, size, value, access);
-            }
+            return binaryRead(SSEOp.MUL, size, value, access);
         } else {
             return binaryRead(AMD64RMOp.IMUL, size, value, access);
         }

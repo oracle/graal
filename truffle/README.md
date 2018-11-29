@@ -26,14 +26,14 @@ The Truffle bits are uploaded to Maven central. You can use them from your
 
 ```xml
 <dependency>
-    <groupId>com.oracle.truffle</groupId>
+    <groupId>org.graalvm.truffle</groupId>
     <artifactId>truffle-api</artifactId>
-    <version>0.30</version> <!-- or any later version -->
+    <version>1.0.0-rc8</version> <!-- or any later version -->
 </dependency>
 <dependency>
-    <groupId>com.oracle.truffle</groupId>
+    <groupId>org.graalvm.truffle</groupId>
     <artifactId>truffle-dsl-processor</artifactId>
-    <version>0.30</version>
+    <version>1.0.0-rc8</version>
     <scope>provided</scope>
 </dependency>
 ```
@@ -109,14 +109,14 @@ and then it is possible to include the artifacts as dependencies to a `pom.xml`:
 
 ```xml
 <dependency>
-    <groupId>com.oracle.truffle</groupId>
+    <groupId>org.graalvm.truffle</groupId>
     <artifactId>truffle-api</artifactId>
-    <version>0.30-SNAPSHOT</version> <!-- or whether version got installed by mx maven-install -->
+    <version>1.0.0-rc8</version> <!-- or whether version got installed by mx maven-install -->
 </dependency>
 <dependency>
-    <groupId>com.oracle.truffle</groupId>
+    <groupId>org.graalvm.truffle</groupId>
     <artifactId>truffle-dsl-processor</artifactId>
-    <version>0.30-SNAPSHOT</version>
+    <version>1.0.0-rc8</version>
     <scope>provided</scope>
 </dependency>
 ```
@@ -133,5 +133,4 @@ Detailed info can be found in the [contributing document](CONTRIBUTING.md).
 
 ## License
 
-The Truffle framework is licensed under the [GPL 2 with Classpath exception](LICENSE.GPL.md).
-The SimpleLanguage is licensed under the [Universal Permissive License (UPL)](http://opensource.org/licenses/UPL).
+The Truffle framework and the contained SimpleLanguage are licensed under the [Universal Permissive License](LICENSE.md).

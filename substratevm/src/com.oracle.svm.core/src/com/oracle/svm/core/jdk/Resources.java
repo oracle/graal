@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.jdk;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
@@ -35,10 +36,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.util.VMError;
 
@@ -55,18 +58,20 @@ public final class Resources {
         final Map<String, List<byte[]>> resources = new HashMap<>();
     }
 
+    @AutomaticFeature
+    static class ResourcesFeature implements Feature {
+        @Override
+        public void afterRegistration(AfterRegistrationAccess access) {
+            ImageSingletons.add(ResourcesSupport.class, new ResourcesSupport());
+        }
+    }
+
     private Resources() {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void registerResource(String name, InputStream is) {
-        ResourcesSupport support;
-        if (ImageSingletons.contains(ResourcesSupport.class)) {
-            support = ImageSingletons.lookup(ResourcesSupport.class);
-        } else {
-            support = new ResourcesSupport();
-            ImageSingletons.add(ResourcesSupport.class, support);
-        }
+        ResourcesSupport support = ImageSingletons.lookup(ResourcesSupport.class);
 
         byte[] arr = new byte[4096];
         int pos = 0;
@@ -99,18 +104,10 @@ public final class Resources {
     }
 
     public static List<byte[]> get(String name) {
-        if (!ImageSingletons.contains(ResourcesSupport.class)) {
-            /*
-             * No resources have been registered (registerResource was not called at all during
-             * image generation), so there cannot be a match. This check is constant folded, all
-             * methods in VMConfiguration are annotated with @Fold.
-             */
-            return null;
-        }
         return ImageSingletons.lookup(ResourcesSupport.class).resources.get(name);
     }
 
-    public static URL createURL(String name, InputStream is) {
+    public static URL createURL(String name, byte[] resourceBytes) {
         class Conn extends URLConnection {
             Conn(URL url) {
                 super(url);
@@ -122,7 +119,7 @@ public final class Resources {
 
             @Override
             public InputStream getInputStream() throws IOException {
-                return is;
+                return new ByteArrayInputStream(resourceBytes);
             }
         }
 

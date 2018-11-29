@@ -93,7 +93,7 @@ public final class ClassValueFeature implements Feature {
         try {
             Map<?, ?> map = (Map<?, ?>) CLASS_VALUE_MAP.get(c);
             final Object id = IDENTITY.get(v);
-            final boolean res = map.containsKey(id);
+            final boolean res = map != null && map.containsKey(id);
             return res;
         } catch (RuntimeException ex) {
             throw ex;

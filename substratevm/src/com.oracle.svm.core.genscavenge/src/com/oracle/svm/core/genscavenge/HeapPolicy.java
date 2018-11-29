@@ -78,8 +78,8 @@ public class HeapPolicy {
 
         Object result;
         try {
-            result = policy.newInstance();
-        } catch (InstantiationException | IllegalAccessException ex) {
+            result = policy.getDeclaredConstructor().newInstance();
+        } catch (Exception ex) {
             throw UserError.abort("policy " + className + " cannot be instantiated.");
         }
 
@@ -92,17 +92,24 @@ public class HeapPolicy {
     /*
      * Instance field access methods.
      */
-
     CollectOnAllocationPolicy getCollectOnAllocationPolicy() {
         return collectOnAllocationPolicy;
     }
 
-    public static Word getProducedHeapChunkZapValue() {
-        return producedHeapChunkZapValue;
+    public static Word getProducedHeapChunkZapWord() {
+        return (Word) producedHeapChunkZapWord;
     }
 
-    public static Word getConsumedHeapChunkZapValue() {
-        return consumedHeapChunkZapValue;
+    public static int getProducedHeapChunkZapInt() {
+        return (int) producedHeapChunkZapInt.rawValue();
+    }
+
+    public static Word getConsumedHeapChunkZapWord() {
+        return (Word) consumedHeapChunkZapWord;
+    }
+
+    public static int getConsumedHeapChunkZapInt() {
+        return (int) consumedHeapChunkZapInt.rawValue();
     }
 
     /*
@@ -303,10 +310,12 @@ public class HeapPolicy {
     }
 
     /* - The value to use for zapping produced chunks. */
-    private static final Word producedHeapChunkZapValue = WordFactory.unsigned(0xbaadbeefbaadbeefL);
+    private static final UnsignedWord producedHeapChunkZapInt = WordFactory.unsigned(0xbaadbeef);
+    private static final UnsignedWord producedHeapChunkZapWord = producedHeapChunkZapInt.shiftLeft(32).or(producedHeapChunkZapInt);
 
-    /* - The value to use for zapping. */
-    private static final Word consumedHeapChunkZapValue = WordFactory.unsigned(0xdeadbeefdeadbeefL);
+    /* - The value to use for zapping consumed chunks. */
+    private static final UnsignedWord consumedHeapChunkZapInt = WordFactory.unsigned(0xdeadbeef);
+    private static final UnsignedWord consumedHeapChunkZapWord = consumedHeapChunkZapInt.shiftLeft(32).or(consumedHeapChunkZapInt);
 
     static final AtomicUnsigned bytesAllocatedSinceLastCollection = new AtomicUnsigned();
 

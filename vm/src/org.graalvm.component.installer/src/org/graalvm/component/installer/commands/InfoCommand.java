@@ -31,10 +31,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.zip.ZipException;
+import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.Commands;
 import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.ComponentParam;
 import org.graalvm.component.installer.DependencyException;
+import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.InstallerStopException;
 import org.graalvm.component.installer.MetadataException;
 import org.graalvm.component.installer.model.ComponentInfo;
@@ -108,11 +110,16 @@ public class InfoCommand extends QueryCommandBase {
     }
 
     @Override
-    public int execute() throws IOException {
-        init(input, feedback);
+    public void init(CommandInput commandInput, Feedback feedBack) {
+        super.init(commandInput, feedBack);
         ignoreOpenErrors = input.optValue(Commands.OPTION_IGNORE_OPEN_ERRORS) != null;
         verifyJar = input.optValue(Commands.OPTION_VERIFY_JARS) != null;
         suppressTable = input.optValue(Commands.OPTION_SUPPRESS_TABLE) != null;
+        fullPath = input.optValue(Commands.OPTION_FULL_PATHS) != null;
+    }
+
+    @Override
+    public int execute() throws IOException {
         if (input.optValue(Commands.OPTION_HELP) != null) {
             feedback.output("INFO_Help");
             return 0;
@@ -173,7 +180,7 @@ public class InfoCommand extends QueryCommandBase {
                 } catch (IOException ex) {
                     ComponentInfo ci = c.createMetaLoader().getComponentInfo();
                     feedback.error("INFO_ClosingComponent", ex,
-                                    ci == null ? c.getSpecification() : ci.getId(),
+                                    ci == null ? c.getSpecification() : shortenComponentId(ci),
                                     ex.getLocalizedMessage());
                 }
             }
@@ -221,13 +228,13 @@ public class InfoCommand extends QueryCommandBase {
     void printDetails(ComponentParam param, ComponentInfo info) {
         if (printTable) {
             String line = String.format(feedback.l10n("INFO_ComponentShortList"),
-                            info.getId(), val(info.getVersionString()), val(info.getName()),
+                            shortenComponentId(info), val(info.getVersionString()), val(info.getName()),
                             filePath(info));
             feedback.verbatimOut(line, false);
             return;
         } else {
             feedback.output("INFO_ComponentBasicInfo",
-                            info.getId(), val(info.getVersionString()), val(info.getName()),
+                            shortenComponentId(info), val(info.getVersionString()), val(info.getName()),
                             param.getFullPath(), findRequiredGraalVMVersion(info));
             List<String> keys = new ArrayList<>(info.getRequiredGraalValues().keySet());
             keys.remove(CommonConstants.CAP_GRAALVM_VERSION);
@@ -250,7 +257,7 @@ public class InfoCommand extends QueryCommandBase {
 
             Verifier vfy = new Verifier(feedback, input.getLocalRegistry(), info).collect(true);
             if (vfy.validateRequirements().hasErrors()) {
-                feedback.message("INFO_ComponentWillNotInstall", info.getId());
+                feedback.message("INFO_ComponentWillNotInstall", shortenComponentId(info));
                 for (DependencyException ex : vfy.getErrors()) {
                     feedback.message("INFO_ComponentDependencyIndent", ex.getLocalizedMessage());
                 }

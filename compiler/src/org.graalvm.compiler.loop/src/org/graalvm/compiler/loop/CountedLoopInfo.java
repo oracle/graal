@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,7 +49,7 @@ import org.graalvm.compiler.nodes.extended.GuardingNode;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
-import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.SpeculationLog;
 
 public class CountedLoopInfo {
 
@@ -61,6 +61,7 @@ public class CountedLoopInfo {
     private IfNode ifNode;
 
     CountedLoopInfo(LoopEx loop, InductionVariable iv, IfNode ifNode, ValueNode end, boolean oneOff, AbstractBeginNode body) {
+        assert iv.direction() != null;
         this.loop = loop;
         this.iv = iv;
         this.end = end;
@@ -157,6 +158,7 @@ public class CountedLoopInfo {
             range = endValue - iv.constantInit();
             absStride = iv.constantStride();
         } else {
+            assert iv.direction() == Direction.Down;
             if (initValue < endValue) {
                 return 0;
             }
@@ -253,7 +255,7 @@ public class CountedLoopInfo {
             }
             assert graph.getGuardsStage().allowsFloatingGuards();
             overflowGuard = graph.unique(new GuardNode(cond, AbstractBeginNode.prevBegin(loop.entryPoint()), DeoptimizationReason.LoopLimitCheck, DeoptimizationAction.InvalidateRecompile, true,
-                            JavaConstant.NULL_POINTER, null)); // TODO gd: use speculation
+                            SpeculationLog.NO_SPECULATION, null)); // TODO gd: use speculation
             loop.loopBegin().setOverflowGuard(overflowGuard);
             return overflowGuard;
         }

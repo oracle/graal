@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,16 +24,6 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import com.oracle.truffle.api.test.ReflectionUtils;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
-import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.TruffleInlining;
-import org.graalvm.compiler.truffle.runtime.TruffleInliningDecision;
-import org.graalvm.compiler.truffle.runtime.TruffleInliningPolicy;
-import org.junit.Assert;
-import org.junit.Test;
-
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -42,7 +32,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleInliningMaxCallerSize;
+import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.TruffleInlining;
+import org.graalvm.compiler.truffle.runtime.TruffleInliningDecision;
+import org.graalvm.compiler.truffle.runtime.TruffleInliningPolicy;
+import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
+import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
+import org.junit.Assert;
+import org.junit.Test;
+
+import com.oracle.truffle.api.test.ReflectionUtils;
 
 public class PerformanceTruffleInliningTest extends TruffleInliningTest {
 
@@ -156,7 +156,7 @@ public class PerformanceTruffleInliningTest extends TruffleInliningTest {
         int nodeCount = target.getNonTrivialNodeCount();
         try {
             exploreCallSites.invoke(TruffleInlining.class, new ArrayList<>(Arrays.asList(target)), nodeCount, POLICY, visitedNodes, new HashMap<>());
-            Assert.assertEquals("Budget not in effect! Too many nodes visited!", 100 * TruffleCompilerOptions.getValue(TruffleInliningMaxCallerSize), visitedNodes[0]);
+            Assert.assertEquals("Budget not in effect! Too many nodes visited!", 100 * TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleInliningMaxCallerSize), visitedNodes[0]);
         } catch (IllegalAccessException | InvocationTargetException e) {
             Assert.assertFalse("Could not invoke exploreCallSites: " + e, true);
         }

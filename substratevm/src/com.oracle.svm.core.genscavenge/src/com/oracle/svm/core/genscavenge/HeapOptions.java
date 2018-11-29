@@ -33,10 +33,10 @@ public class HeapOptions {
     @Option(help = "Use a card remembered set heap for GC")//
     public static final HostedOptionKey<Boolean> UseCardRememberedSetHeap = new HostedOptionKey<>(true);
 
-    @Option(help = "Print the shape of the heap before and after each collection.")//
+    @Option(help = "Print the shape of the heap before and after each collection, if +VerboseGC.")//
     public static final RuntimeOptionKey<Boolean> PrintHeapShape = new RuntimeOptionKey<>(false);
 
-    @Option(help = "Print the time for each of the phases of each collection.")//
+    @Option(help = "Print the time for each of the phases of each collection, if +VerboseGC.")//
     public static final RuntimeOptionKey<Boolean> PrintGCTimes = new RuntimeOptionKey<>(false);
 
     /** This produces a lot of output: be prepared to stream the output to a post-processor. */

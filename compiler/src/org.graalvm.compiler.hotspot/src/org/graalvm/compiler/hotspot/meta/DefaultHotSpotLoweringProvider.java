@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.hotspot.meta;
 
-import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider.getArrayBaseOffset;
 import static org.graalvm.compiler.core.common.GraalOptions.AlwaysInlineVTableStubs;
 import static org.graalvm.compiler.core.common.GraalOptions.InlineVTableStubs;
 import static org.graalvm.compiler.core.common.GraalOptions.OmitHotExceptionStacktrace;
@@ -670,6 +669,8 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
             runtimeCalls.put(BytecodeExceptionKind.NULL_POINTER, new ForeignCallDescriptor("createNullPointerException", NullPointerException.class));
             runtimeCalls.put(BytecodeExceptionKind.OUT_OF_BOUNDS, new ForeignCallDescriptor("createOutOfBoundsException", ArrayIndexOutOfBoundsException.class, int.class, int.class));
             runtimeCalls.put(BytecodeExceptionKind.DIVISION_BY_ZERO, new ForeignCallDescriptor("createDivisionByZeroException", ArithmeticException.class));
+            runtimeCalls.put(BytecodeExceptionKind.INTEGER_EXACT_OVERFLOW, new ForeignCallDescriptor("createIntegerExactOverflowException", ArithmeticException.class));
+            runtimeCalls.put(BytecodeExceptionKind.LONG_EXACT_OVERFLOW, new ForeignCallDescriptor("createLongExactOverflowException", ArithmeticException.class));
         }
     }
 
@@ -769,21 +770,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     @Override
     public int fieldOffset(ResolvedJavaField f) {
         HotSpotResolvedJavaField field = (HotSpotResolvedJavaField) f;
-        return field.offset();
-    }
-
-    @Override
-    public int arrayScalingFactor(JavaKind kind) {
-        if (runtime.getVMConfig().useCompressedOops && kind == JavaKind.Object) {
-            return super.arrayScalingFactor(JavaKind.Int);
-        } else {
-            return super.arrayScalingFactor(kind);
-        }
-    }
-
-    @Override
-    public int arrayBaseOffset(JavaKind kind) {
-        return getArrayBaseOffset(kind);
+        return field.getOffset();
     }
 
     @Override

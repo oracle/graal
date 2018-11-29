@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,7 @@ import static jdk.vm.ci.meta.JavaConstant.INT_0;
 import static jdk.vm.ci.meta.JavaConstant.LONG_0;
 
 import org.graalvm.compiler.core.aarch64.AArch64MoveFactory;
-import org.graalvm.compiler.lir.LIRInstruction;
+import org.graalvm.compiler.lir.aarch64.AArch64LIRInstruction;
 
 import jdk.vm.ci.hotspot.HotSpotCompressedNullConstant;
 import jdk.vm.ci.hotspot.HotSpotConstant;
@@ -52,7 +52,7 @@ public class AArch64HotSpotMoveFactory extends AArch64MoveFactory {
     }
 
     @Override
-    public LIRInstruction createLoad(AllocatableValue dst, Constant src) {
+    public AArch64LIRInstruction createLoad(AllocatableValue dst, Constant src) {
         Constant usedSource;
         if (COMPRESSED_NULL.equals(src)) {
             usedSource = INT_0;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -53,7 +53,6 @@ import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequestResult;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -77,7 +76,7 @@ public abstract class GraalOSRTestBase extends GraalCompilerTest {
     }
 
     protected static void compile(DebugContext debug, ResolvedJavaMethod method, int bci) {
-        HotSpotJVMCIRuntimeProvider runtime = HotSpotJVMCIRuntime.runtime();
+        HotSpotJVMCIRuntime runtime = HotSpotJVMCIRuntime.runtime();
         long jvmciEnv = 0L;
         HotSpotCompilationRequest request = new HotSpotCompilationRequest((HotSpotResolvedJavaMethod) method, bci, jvmciEnv);
         HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) runtime.getCompiler();

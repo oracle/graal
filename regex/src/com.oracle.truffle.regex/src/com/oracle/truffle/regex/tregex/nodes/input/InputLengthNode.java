@@ -53,8 +53,8 @@ public abstract class InputLengthNode extends Node {
     public int getLength(TruffleObject input, @Cached("createGetSizeMessageNode()") Node readNode) {
         try {
             Object length = ForeignAccess.sendGetSize(readNode, input);
-            if (length instanceof Integer) {
-                return (int) length;
+            if (length instanceof Number && ((Number) length).longValue() <= Integer.MAX_VALUE) {
+                return ((Number) length).intValue();
             }
             CompilerDirectives.transferToInterpreter();
             throw UnsupportedTypeException.raise(new Object[]{length});

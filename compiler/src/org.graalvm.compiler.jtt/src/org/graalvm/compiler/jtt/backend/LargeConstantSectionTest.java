@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -127,12 +127,12 @@ public class LargeConstantSectionTest extends JTTTest {
                 for (int i = 0; i < labels.length; i++) {
                     mv.visitLabel(labels[i]);
                     mv.visitFrame(Opcodes.F_NEW, 1, new Object[]{Opcodes.INTEGER}, 0, new Object[]{});
-                    mv.visitLdcInsn(new Long(LARGE_CONSTANT + i));
+                    mv.visitLdcInsn(Long.valueOf(LARGE_CONSTANT + i));
                     mv.visitInsn(LRETURN);
                 }
                 mv.visitLabel(defaultLabel);
                 mv.visitFrame(Opcodes.F_NEW, 1, new Object[]{Opcodes.INTEGER}, 0, new Object[]{});
-                mv.visitLdcInsn(new Long(3L));
+                mv.visitLdcInsn(Long.valueOf(3L));
                 mv.visitInsn(LRETURN);
                 Label end = new Label();
                 mv.visitLabel(end);

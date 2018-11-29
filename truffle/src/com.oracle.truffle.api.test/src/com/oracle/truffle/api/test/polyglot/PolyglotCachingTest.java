@@ -2,25 +2,41 @@
  * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * The Universal Permissive License (UPL), Version 1.0
  *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
  *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ * (a) the Software, and
  *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 package com.oracle.truffle.api.test.polyglot;
 
@@ -34,18 +50,25 @@ import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
+import com.oracle.truffle.api.TruffleLanguage.ParsingRequest;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -53,6 +76,11 @@ import com.oracle.truffle.api.nodes.RootNode;
  * Please note that any OOME exceptions when running this test indicate memory leaks in Truffle.
  */
 public class PolyglotCachingTest {
+
+    /*
+     * Also used for other GC tests.
+     */
+    public static final int GC_TEST_ITERATIONS = 15;
 
     @Test
     public void testDisableCaching() throws Exception {
@@ -65,8 +93,8 @@ public class PolyglotCachingTest {
             }
         });
         Context c = Context.create();
-        Source cachedSource = Source.newBuilder(ProxyLanguage.ID, "testSourceInstanceIsEqual", "name").cached(true).buildLiteral();
-        Source uncachedSource = Source.newBuilder(ProxyLanguage.ID, "testSourceInstanceIsEqual", "name").cached(false).buildLiteral();
+        Source cachedSource = Source.newBuilder(ProxyLanguage.ID, "testSourceInstanceIsEqual", "name").cached(true).build();
+        Source uncachedSource = Source.newBuilder(ProxyLanguage.ID, "testSourceInstanceIsEqual", "name").cached(false).build();
         assertEquals(0, parseCalled.get());
         c.eval(uncachedSource);
         assertEquals(1, parseCalled.get());
@@ -114,13 +142,14 @@ public class PolyglotCachingTest {
      */
     @Test
     public void testParsedASTIsNotCollectedIfSourceIsAlive() {
-        setupTestLang();
+        Assume.assumeFalse("This test is too slow in fastdebug.", System.getProperty("java.vm.version").contains("fastdebug"));
+        setupTestLang(false);
 
         Context context = Context.create();
         Source source = Source.create(ProxyLanguage.ID, "0"); // needs to stay alive
 
         WeakReference<CallTarget> parsedRef = new WeakReference<>(assertParsedEval(context, source));
-        for (int i = 0; i < 500; i++) {
+        for (int i = 0; i < GC_TEST_ITERATIONS; i++) {
             // cache should stay valid and never be collected as long as the source is alive.
             assertCachedEval(context, source);
             System.gc();
@@ -135,10 +164,11 @@ public class PolyglotCachingTest {
      */
     @Test
     public void testSourceFreeContextStrong() {
-        setupTestLang();
+        Assume.assumeFalse("This test is too slow in fastdebug.", System.getProperty("java.vm.version").contains("fastdebug"));
+        setupTestLang(false);
 
         Context survivingContext = Context.create();
-        assertObjectsCollectible(200, (iteration) -> {
+        assertObjectsCollectible(GC_TEST_ITERATIONS, (iteration) -> {
             Source source = Source.create(ProxyLanguage.ID, String.valueOf(iteration));
             CallTarget target = assertParsedEval(survivingContext, source);
             assertCachedEval(survivingContext, source);
@@ -153,11 +183,12 @@ public class PolyglotCachingTest {
      */
     @Test
     public void testSourceStrongContextFree() {
-        setupTestLang();
+        Assume.assumeFalse("This test is too slow in fastdebug.", System.getProperty("java.vm.version").contains("fastdebug"));
+        setupTestLang(false);
 
         List<Source> survivingSources = new ArrayList<>();
 
-        assertObjectsCollectible(200, (iteration) -> {
+        assertObjectsCollectible(GC_TEST_ITERATIONS, (iteration) -> {
             Context context = Context.create();
             Source source = Source.create(ProxyLanguage.ID, String.valueOf(iteration));
             CallTarget parsedAST = assertParsedEval(context, source);
@@ -166,6 +197,28 @@ public class PolyglotCachingTest {
             context.close();
             return parsedAST;
         });
+    }
+
+    /*
+     * Test that the language instance is correctly freed if a context is no longer referenced, but
+     * was not closed.
+     */
+    @Test
+    public void testEngineStrongContextFree() {
+        Assume.assumeFalse("This test is too slow in fastdebug.", System.getProperty("java.vm.version").contains("fastdebug"));
+        setupTestLang(true);
+
+        Engine engine = Engine.create();
+        Set<ProxyLanguage> usedInstances = new HashSet<>();
+        assertObjectsCollectible(GC_TEST_ITERATIONS, (iteration) -> {
+            Context context = Context.newBuilder().engine(engine).build();
+            context.eval(ReuseLanguage.ID, String.valueOf(iteration));
+            usedInstances.add(lastLanguage);
+            return context;
+        });
+        // we should at least once reuse a language instance
+        Assert.assertTrue(String.valueOf(usedInstances.size()), usedInstances.size() < GC_TEST_ITERATIONS);
+        engine.close();
     }
 
     private static void assertObjectsCollectible(int iterations, Function<Integer, Object> objectFactory) {
@@ -185,35 +238,50 @@ public class PolyglotCachingTest {
 
     long parseCount;
     CallTarget lastParsedTarget;
+    ProxyLanguage lastLanguage;
 
-    private void setupTestLang() {
+    private void setupTestLang(boolean reuse) {
         byte[] bytes = new byte[16 * 1024 * 1024];
         byte byteValue = (byte) 'a';
         Arrays.fill(bytes, byteValue);
         String testString = new String(bytes); // big string
 
-        ProxyLanguage.setDelegate(new ProxyLanguage() {
+        if (reuse) {
+            ProxyLanguage.setDelegate(new ReuseLanguage() {
+                @Override
+                protected CallTarget parse(ParsingRequest request) throws Exception {
+                    return PolyglotCachingTest.this.parse(languageInstance, testString, request);
+                }
+            });
+        } else {
+            ProxyLanguage.setDelegate(new ProxyLanguage() {
+                @Override
+                protected CallTarget parse(ParsingRequest request) throws Exception {
+                    return PolyglotCachingTest.this.parse(languageInstance, testString, request);
+                }
+            });
+        }
+    }
+
+    private CallTarget parse(ProxyLanguage languageInstance, String testString, ParsingRequest request) {
+        int index = Integer.parseInt(request.getSource().getCharacters().toString());
+        parseCount++;
+        lastLanguage = languageInstance;
+        lastParsedTarget = Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+            /*
+             * Typical root nodes have a strong reference to source. We need to ensure that we can
+             * still collect the cache if that happens.
+             */
+            @SuppressWarnings("unused") final com.oracle.truffle.api.source.Source source = request.getSource();
+
+            @SuppressWarnings("unused") final String bigString = testString.substring(index, testString.length());
+
             @Override
-            protected CallTarget parse(ParsingRequest request) throws Exception {
-                int index = Integer.parseInt(request.getSource().getCharacters().toString());
-                parseCount++;
-                lastParsedTarget = Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
-                    /*
-                     * Typical root nodes have a strong reference to source. We need to ensure that
-                     * we can still collect the cache if that happens.
-                     */
-                    @SuppressWarnings("unused") final com.oracle.truffle.api.source.Source source = request.getSource();
-
-                    @SuppressWarnings("unused") final String bigString = testString.substring(index, testString.length());
-
-                    @Override
-                    public Object execute(VirtualFrame frame) {
-                        return "foobar";
-                    }
-                });
-                return lastParsedTarget;
+            public Object execute(VirtualFrame frame) {
+                return "foobar";
             }
         });
+        return lastParsedTarget;
     }
 
     private CallTarget assertParsedEval(Context context, Source source) {
@@ -232,6 +300,12 @@ public class PolyglotCachingTest {
         assertEquals("foobar", context.eval(source).asString());
         assertEquals(0, this.parseCount);
         assertNull(lastParsedTarget);
+    }
+
+    @TruffleLanguage.Registration(id = ReuseLanguage.ID, name = ReuseLanguage.ID, contextPolicy = ContextPolicy.REUSE)
+    public static class ReuseLanguage extends ProxyLanguage {
+        public static final String ID = "ReuseLanguage";
+
     }
 
 }

@@ -29,6 +29,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.MemoryWalker;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.VMError;
@@ -54,6 +55,13 @@ public class YoungGeneration extends Generation {
         this.space = space;
     }
 
+    /** Return all allocated virtual memory chunks to HeapChunkProvider. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public final void tearDown() {
+        ThreadLocalAllocation.tearDown();
+        space.tearDown();
+    }
+
     @Override
     public boolean walkObjects(ObjectVisitor visitor) {
         /* Flush the thread-local allocation data. */
@@ -63,10 +71,9 @@ public class YoungGeneration extends Generation {
 
     @Override
     public Log report(Log log, boolean traceHeapChunks) {
-        log.string("[Young generation: ").newline();
-        log.string("  ");
+        log.string("[Young generation: ").indent(true);
         getSpace().report(log, traceHeapChunks);
-        log.string("]");
+        log.redent(false).string("]");
         return log;
     }
 
@@ -91,6 +98,11 @@ public class YoungGeneration extends Generation {
 
     void releaseSpaces() {
         getSpace().release();
+    }
+
+    @Override
+    protected boolean isValidSpace(Space thatSpace) {
+        return isYoungSpace(thatSpace);
     }
 
     @Override

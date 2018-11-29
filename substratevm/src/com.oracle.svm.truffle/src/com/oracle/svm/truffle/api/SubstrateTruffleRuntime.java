@@ -26,23 +26,31 @@ package com.oracle.svm.truffle.api;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.graal.SubstrateGraalUtils.updateGraalArchitectureWithHostCPUFeatures;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilationExceptionsArePrinted;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Supplier;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
+import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.options.OptionDescriptor;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.common.TruffleCompiler;
+import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue;
 import org.graalvm.compiler.truffle.runtime.CancellableCompileTask;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.LoopNodeFactory;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
+import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
@@ -52,7 +60,9 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog;
+import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.option.RuntimeOptionParser;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.stack.SubstrateStackIntrospection;
 import com.oracle.svm.graal.GraalSupport;
@@ -63,15 +73,20 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.nodes.RootNode;
 
 import jdk.vm.ci.code.stack.StackIntrospection;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
 
 public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
 
+    private static final int DEBUG_TEAR_DOWN_TIMEOUT = 2_000;
+    private static final int PRODUCTION_TEAR_DOWN_TIMEOUT = 10_000;
+
     private BackgroundCompileQueue compileQueue;
     private CallMethods hostedCallMethods;
     private boolean initialized;
+    private final Supplier<GraalRuntime> graalRuntimeProvider;
 
     @Override
     protected BackgroundCompileQueue getCompileQueue() {
@@ -81,7 +96,8 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public SubstrateTruffleRuntime() {
-        super(() -> ImageSingletons.lookup(GraalRuntime.class), Collections.emptyList());
+        super(Collections.emptyList());
+        this.graalRuntimeProvider = () -> ImageSingletons.lookup(GraalRuntime.class);
         /* Ensure the factory class gets initialized. */
         super.getLoopNodeFactory();
     }
@@ -94,11 +110,11 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     public void initializeAtRuntime() {
         if (SubstrateOptions.MultiThreaded.getValue()) {
             compileQueue = new BackgroundCompileQueue();
+            RuntimeSupport.getRuntimeSupport().addTearDownHook(this::tearDown);
         }
-        if (TruffleCompilerOptions.TraceTruffleTransferToInterpreter.getValue(RuntimeOptionValues.singleton())) {
+        if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TraceTruffleTransferToInterpreter)) {
             if (!SubstrateOptions.IncludeNodeSourcePositions.getValue()) {
-                System.out.println("Warning: " + TruffleCompilerOptions.TraceTruffleTransferToInterpreter.getName() +
-                                " cannot print stack traces. Build image with -H:+IncludeNodeSourcePositions to enable stack traces.");
+                System.out.println("Warning: TraceTruffleTransferToInterpreter cannot print stack traces. Build image with -H:+IncludeNodeSourcePositions to enable stack traces.");
             }
             RuntimeOptionValues.singleton().update(Deoptimizer.Options.TraceDeoptimization, true);
         }
@@ -116,11 +132,21 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
                         GraalSupport.getLIRSuites(),
                         GraalSupport.getRuntimeConfig().getBackendForNormalMethod(), snippetReflection);
         truffleCompiler = compiler;
+
         return compiler;
     }
 
     public ResolvedJavaMethod[] getAnyFrameMethod() {
         return callMethods.anyFrameMethod;
+    }
+
+    @Override
+    protected String getCompilerConfigurationName() {
+        TruffleCompiler compiler = getTruffleCompiler();
+        if (compiler != null) {
+            return compiler.getCompilerConfigurationName();
+        }
+        return null;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -131,6 +157,15 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         return new SubstrateTruffleCompiler(this, graalFeature.getHostedProviders().getGraphBuilderPlugins(), GraalSupport.getSuites(),
                         GraalSupport.getLIRSuites(),
                         GraalSupport.getRuntimeConfig().getBackendForNormalMethod(), snippetReflectionProvider);
+    }
+
+    private void tearDown() {
+        /*
+         * Runaway compilations should fail during testing, but should not cause crashes in
+         * production.
+         */
+        long timeout = SubstrateUtil.assertionsEnabled() ? DEBUG_TEAR_DOWN_TIMEOUT : PRODUCTION_TEAR_DOWN_TIMEOUT;
+        getCompileQueue().shutdownAndAwaitTermination(timeout);
     }
 
     @Override
@@ -196,19 +231,28 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
-    public CancellableCompileTask submitForCompilation(OptimizedCallTarget optimizedCallTarget) {
+    public CancellableCompileTask submitForCompilation(OptimizedCallTarget optimizedCallTarget, boolean lastTierCompilation) {
+        if (SubstrateUtil.HOSTED) {
+            /*
+             * Truffle code can run during image generation. But for now it is the easiest to not
+             * JIT compile during image generation. Support would be difficult and require major
+             * refactorings in the Truffle runtime: we already run with the SubstrateTruffleRuntime
+             * and not with the HotSpotTruffleRuntime, so we do not have the correct configuration
+             * for Graal, we do not have the correct subclasses for the OptimizedCallTarget, ...
+             */
+            return null;
+        }
+
         if (SubstrateOptions.MultiThreaded.getValue()) {
-            return super.submitForCompilation(optimizedCallTarget);
+            return super.submitForCompilation(optimizedCallTarget, lastTierCompilation);
         }
 
         try {
             // Single threaded compilation does not require cancellation.
-            doCompile(RuntimeOptionValues.singleton(), optimizedCallTarget, null);
+            doCompile(TruffleRuntimeOptions.getOptions(), optimizedCallTarget, null);
         } catch (com.oracle.truffle.api.OptimizationFailedException e) {
-            if (TruffleCompilationExceptionsArePrinted.getValue(RuntimeOptionValues.singleton())) {
-                StringWriter string = new StringWriter();
-                e.printStackTrace(new PrintWriter(string));
-                Log.log().string(string.toString());
+            if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompilationExceptionsArePrinted)) {
+                Log.log().string(printStackTraceToString(e));
             }
         } finally {
             optimizedCallTarget.resetCompilationTask();
@@ -218,9 +262,9 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
-    public void finishCompilation(OptimizedCallTarget optimizedCallTarget, Future<?> future, boolean mayBeAsynchronous) {
+    public void finishCompilation(OptimizedCallTarget optimizedCallTarget, CancellableCompileTask task, boolean mayBeAsynchronous) {
         if (SubstrateOptions.MultiThreaded.getValue()) {
-            super.finishCompilation(optimizedCallTarget, future, mayBeAsynchronous);
+            super.finishCompilation(optimizedCallTarget, task, mayBeAsynchronous);
         }
     }
 
@@ -258,12 +302,73 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
-    public OptionValues getInitialOptions() {
-        return RuntimeOptionValues.singleton();
+    public <T> T getOptions(Class<T> type) {
+        if (type == OptionValues.class) {
+            return type.cast(RuntimeOptionValues.singleton());
+        }
+        return super.getOptions(type);
+    }
+
+    @Override
+    public <T> T convertOptions(Class<T> type, Map<String, Object> map) {
+        if (type == OptionValues.class) {
+            final EconomicMap<OptionKey<?>, Object> values = OptionValues.newOptionMap();
+            for (Map.Entry<String, Object> e : map.entrySet()) {
+                final String optionName = e.getKey();
+                final Object optionValue = e.getValue();
+                Optional<OptionDescriptor> descriptor = RuntimeOptionParser.singleton().getDescriptor(optionName);
+                if (descriptor.isPresent()) {
+                    OptionDescriptor desc = descriptor.get();
+                    Class<?> valueType = optionValue.getClass();
+                    if (desc.getOptionValueType().isAssignableFrom(valueType)) {
+                        values.put(desc.getOptionKey(), optionValue);
+                    } else {
+                        throw new IllegalArgumentException("Invalid type of option '" + optionName + "': required " + desc.getOptionValueType().getSimpleName() + ", got " + valueType);
+                    }
+                }
+            }
+            return type.cast(new OptionValues(values));
+
+        }
+        return super.convertOptions(type, map);
+    }
+
+    @Override
+    protected Map<String, Object> createInitialOptions() {
+        Map<String, Object> res = new HashMap<>();
+        UnmodifiableMapCursor<OptionKey<?>, Object> optionValues = RuntimeOptionValues.singleton().getMap().getEntries();
+        while (optionValues.advance()) {
+            final OptionKey<?> key = optionValues.getKey();
+            Object value = optionValues.getValue();
+            if (value == null) {
+                value = key.getDefaultValue();
+            }
+            res.put(key.getName(), value);
+        }
+        return res;
     }
 
     @Platforms(HOSTED_ONLY.class)
     public void resetNativeImageState() {
         clearState();
+    }
+
+    @Override
+    protected <T> T asObject(Class<T> type, JavaConstant constant) {
+        final GraalRuntime graalRuntime = graalRuntimeProvider.get();
+        final SnippetReflectionProvider snippetReflection = graalRuntime.getRequiredCapability(SnippetReflectionProvider.class);
+        return snippetReflection.asObject(type, constant);
+    }
+
+    @Override
+    protected JavaConstant forObject(Object object) {
+        final GraalRuntime graalRuntime = graalRuntimeProvider.get();
+        final SnippetReflectionProvider snippetReflection = graalRuntime.getRequiredCapability(SnippetReflectionProvider.class);
+        return snippetReflection.forObject(object);
+    }
+
+    @Override
+    public void log(String message) {
+        TTY.println(message);
     }
 }

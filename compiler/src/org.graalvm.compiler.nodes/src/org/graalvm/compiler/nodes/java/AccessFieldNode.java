@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,6 +50,7 @@ public abstract class AccessFieldNode extends FixedWithNextNode implements Lower
     @OptionalInput ValueNode object;
 
     protected final ResolvedJavaField field;
+    protected final boolean volatileAccess;
 
     public ValueNode object() {
         return object;
@@ -60,11 +61,24 @@ public abstract class AccessFieldNode extends FixedWithNextNode implements Lower
      *
      * @param object the instruction producing the receiver object
      * @param field the compiler interface representation of the field
+     * @param volatileAccess specifies if the access is volatile or not, this overrides the field
+     *            volatile modifier.
      */
-    public AccessFieldNode(NodeClass<? extends AccessFieldNode> c, Stamp stamp, ValueNode object, ResolvedJavaField field) {
+    public AccessFieldNode(NodeClass<? extends AccessFieldNode> c, Stamp stamp, ValueNode object, ResolvedJavaField field, boolean volatileAccess) {
         super(c, stamp);
         this.object = object;
         this.field = field;
+        this.volatileAccess = volatileAccess;
+    }
+
+    /**
+     * Constructs a new access field object.
+     *
+     * @param object the instruction producing the receiver object
+     * @param field the compiler interface representation of the field
+     */
+    public AccessFieldNode(NodeClass<? extends AccessFieldNode> c, Stamp stamp, ValueNode object, ResolvedJavaField field) {
+        this(c, stamp, object, field, field.isVolatile());
     }
 
     /**
@@ -86,12 +100,13 @@ public abstract class AccessFieldNode extends FixedWithNextNode implements Lower
     }
 
     /**
-     * Checks whether this field is declared volatile.
+     * Checks whether this access has volatile semantics.
      *
-     * @return {@code true} if the field is resolved and declared volatile
+     * The field access semantics are coupled to the access and not to the field. e.g. it's possible
+     * to access volatile fields using non-volatile semantics via VarHandles.
      */
     public boolean isVolatile() {
-        return field.isVolatile();
+        return volatileAccess;
     }
 
     @Override
@@ -116,7 +131,7 @@ public abstract class AccessFieldNode extends FixedWithNextNode implements Lower
 
     @Override
     public NodeSize estimatedNodeSize() {
-        if (field.isVolatile()) {
+        if (isVolatile()) {
             return SIZE_2;
         }
         return super.estimatedNodeSize();

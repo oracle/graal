@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,20 +24,30 @@
  */
 package com.oracle.svm.core;
 
+// Checkstyle: allow reflection
+
 import java.io.FileDescriptor;
 import java.io.FileOutputStream;
+import java.io.UnsupportedEncodingException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Executable;
+import java.lang.reflect.Field;
+import java.lang.reflect.Member;
+import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
-import java.nio.MappedByteBuffer;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.Arrays;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.nodes.BreakpointNode;
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.function.CEntryPointContext;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
@@ -47,7 +57,6 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.amd64.FrameAccess;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -56,7 +65,6 @@ import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfoTable;
-import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
@@ -67,10 +75,14 @@ import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.stack.ThreadStackPrinter;
+import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
 import com.oracle.svm.core.util.Counter;
+import com.oracle.svm.core.util.VMError;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class SubstrateUtil {
 
@@ -148,30 +160,10 @@ public class SubstrateUtil {
         return n;
     }
 
-    @TargetClass(className = "java.nio.DirectByteBuffer")
-    @SuppressWarnings("unused")
-    static final class Target_java_nio_DirectByteBuffer {
-        @Alias
-        Target_java_nio_DirectByteBuffer(long addr, int cap) {
-        }
-
-        @Alias
-        public native long address();
-    }
-
-    /**
-     * Wraps a pointer to C memory into a {@link ByteBuffer}.
-     *
-     * @param pointer The pointer to C memory.
-     * @param size The size of the C memory.
-     * @return A new {@link ByteBuffer} wrapping the pointer.
-     */
+    /** @deprecated replaced by {@link CTypeConversion#asByteBuffer(PointerBase, int)} */
+    @Deprecated
     public static ByteBuffer wrapAsByteBuffer(PointerBase pointer, int size) {
-        return KnownIntrinsics.unsafeCast(new Target_java_nio_DirectByteBuffer(pointer.rawValue(), size), ByteBuffer.class).order(ConfigurationValues.getTarget().arch.getByteOrder());
-    }
-
-    public static <T extends PointerBase> T getBaseAddress(MappedByteBuffer buffer) {
-        return WordFactory.pointer(KnownIntrinsics.unsafeCast(buffer, Target_java_nio_DirectByteBuffer.class).address());
+        return CTypeConversion.asByteBuffer(pointer, size);
     }
 
     /**
@@ -247,7 +239,7 @@ public class SubstrateUtil {
             dumpException(log, "dumpVMThreads", e);
         }
 
-        IsolateThread currentThread = CEntryPointContext.getCurrentIsolateThread();
+        IsolateThread currentThread = CurrentIsolate.getCurrentThread();
         try {
             dumpVMThreadState(log, currentThread);
         } catch (Exception e) {
@@ -294,7 +286,7 @@ public class SubstrateUtil {
 
         if (VMOperationControl.isFrozen()) {
             for (IsolateThread vmThread = VMThreads.firstThread(); vmThread != VMThreads.nullThread(); vmThread = VMThreads.nextThread(vmThread)) {
-                if (vmThread == CEntryPointContext.getCurrentIsolateThread()) {
+                if (vmThread == CurrentIsolate.getCurrentThread()) {
                     continue;
                 }
                 try {
@@ -335,7 +327,9 @@ public class SubstrateUtil {
 
     @NeverInline("catch implicit exceptions")
     private static void dumpDeoptStubPointer(Log log) {
-        log.string("DeoptStubPointer address: ").zhex(DeoptimizationSupport.getDeoptStubPointer().rawValue()).newline().newline();
+        if (DeoptimizationSupport.enabled()) {
+            log.string("DeoptStubPointer address: ").zhex(DeoptimizationSupport.getDeoptStubPointer().rawValue()).newline().newline();
+        }
     }
 
     @NeverInline("catch implicit exceptions")
@@ -366,7 +360,7 @@ public class SubstrateUtil {
                     log.string("Found matching Anchor:").zhex(anchor.rawValue()).newline();
                     Pointer lastSp = anchor.getLastJavaSP();
                     log.string("LastJavaSP ").zhex(lastSp.rawValue()).newline();
-                    CodePointer lastIp = FrameAccess.readReturnAddress(lastSp);
+                    CodePointer lastIp = FrameAccess.singleton().readReturnAddress(lastSp);
                     log.string("LastJavaIP ").zhex(lastIp.rawValue()).newline();
                 }
             }
@@ -379,7 +373,8 @@ public class SubstrateUtil {
         log.string("VMThreads info:").newline();
         log.indent(true);
         for (IsolateThread vmThread = VMThreads.firstThread(); vmThread != VMThreads.nullThread(); vmThread = VMThreads.nextThread(vmThread)) {
-            log.string("VMThread ").zhex(vmThread.rawValue()).spaces(2).string(VMThreads.StatusSupport.getStatusString(vmThread)).newline();
+            log.string("VMThread ").zhex(vmThread.rawValue()).spaces(2).string(VMThreads.StatusSupport.getStatusString(vmThread))
+                            .spaces(2).object(JavaThreads.singleton().fromVMThread(vmThread)).newline();
         }
         log.indent(false);
     }
@@ -401,25 +396,27 @@ public class SubstrateUtil {
     }
 
     static void dumpRuntimeCompilation(Log log) {
-        log.newline().string("RuntimeCodeCache dump:").newline();
-        log.indent(true);
-        try {
-            dumpRecentRuntimeCodeCacheOperations(log);
-        } catch (Exception e) {
-            dumpException(log, "dumpRecentRuntimeCodeCacheOperations", e);
-        }
-        log.newline();
-        try {
-            dumpRuntimeCodeCacheTable(log);
-        } catch (Exception e) {
-            dumpException(log, "dumpRuntimeCodeCacheTable", e);
-        }
-        log.indent(false);
+        if (DeoptimizationSupport.enabled()) {
+            log.newline().string("RuntimeCodeCache dump:").newline();
+            log.indent(true);
+            try {
+                dumpRecentRuntimeCodeCacheOperations(log);
+            } catch (Exception e) {
+                dumpException(log, "dumpRecentRuntimeCodeCacheOperations", e);
+            }
+            log.newline();
+            try {
+                dumpRuntimeCodeCacheTable(log);
+            } catch (Exception e) {
+                dumpException(log, "dumpRuntimeCodeCacheTable", e);
+            }
+            log.indent(false);
 
-        try {
-            dumpRecentDeopts(log);
-        } catch (Exception e) {
-            dumpException(log, "dumpRecentDeopts", e);
+            try {
+                dumpRecentDeopts(log);
+            } catch (Exception e) {
+                dumpException(log, "dumpRecentDeopts", e);
+            }
         }
     }
 
@@ -538,5 +535,106 @@ public class SubstrateUtil {
                 diagnosticThunkRegistry[i].invokeWithoutAllocation();
             }
         }
+    }
+
+    /**
+     * Similar to {@link String#split} but with a fixed separator string instead of a regular
+     * expression. This avoids making regular expression code reachable.
+     */
+    public static String[] split(String value, String separator) {
+        int offset = 0;
+        int next = 0;
+        ArrayList<String> list = null;
+        while ((next = value.indexOf(separator, offset)) != -1) {
+            if (list == null) {
+                list = new ArrayList<>();
+            }
+            list.add(value.substring(offset, next));
+            offset = next + separator.length();
+        }
+
+        if (offset == 0) {
+            /* No match found. */
+            return new String[]{value};
+        }
+
+        /* Add remaining segment. */
+        list.add(value.substring(offset, value.length()));
+
+        return list.toArray(new String[list.size()]);
+    }
+
+    private static final char[] HEX = "0123456789abcdef".toCharArray();
+
+    public static String toHex(byte[] data) {
+        StringBuilder r = new StringBuilder(data.length * 2);
+        for (byte b : data) {
+            r.append(HEX[(b >> 4) & 0xf]);
+            r.append(HEX[b & 0xf]);
+        }
+        return r.toString();
+    }
+
+    public static String digest(String value) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-1");
+            md.update(value.getBytes("UTF-8"));
+            return toHex(md.digest());
+        } catch (NoSuchAlgorithmException | UnsupportedEncodingException ex) {
+            throw VMError.shouldNotReachHere(ex);
+        }
+    }
+
+    /**
+     * Returns a short, reasonably descriptive, but still unique name for the provided method. The
+     * name includes a digest of the fully qualified method name, which ensures uniqueness.
+     */
+    public static String uniqueShortName(ResolvedJavaMethod m) {
+        StringBuilder fullName = new StringBuilder();
+        fullName.append(m.getDeclaringClass().toClassName()).append(".").append(m.getName()).append("(");
+        for (int i = 0; i < m.getSignature().getParameterCount(false); i++) {
+            fullName.append(m.getSignature().getParameterType(i, null).toClassName()).append(",");
+        }
+        fullName.append(')');
+        if (!m.isConstructor()) {
+            fullName.append(m.getSignature().getReturnType(null).toClassName());
+        }
+
+        return stripPackage(m.getDeclaringClass().toJavaName()) + "_" +
+                        (m.isConstructor() ? "constructor" : m.getName()) + "_" +
+                        SubstrateUtil.digest(fullName.toString());
+    }
+
+    /**
+     * Returns a short, reasonably descriptive, but still unique name for the provided
+     * {@link Method}, {@link Constructor}, or {@link Field}. The name includes a digest of the
+     * fully qualified method name, which ensures uniqueness.
+     */
+    public static String uniqueShortName(Member m) {
+        StringBuilder fullName = new StringBuilder();
+        fullName.append(m.getDeclaringClass().getName()).append(".");
+        if (m instanceof Constructor) {
+            fullName.append("<init>");
+        } else {
+            fullName.append(m.getName());
+        }
+        if (m instanceof Executable) {
+            fullName.append("(");
+            for (Class<?> c : ((Executable) m).getParameterTypes()) {
+                fullName.append(c.getName()).append(",");
+            }
+            fullName.append(')');
+            if (m instanceof Method) {
+                fullName.append(((Method) m).getReturnType().getName());
+            }
+        }
+
+        return stripPackage(m.getDeclaringClass().getTypeName()) + "_" +
+                        (m instanceof Constructor ? "constructor" : m.getName()) + "_" +
+                        SubstrateUtil.digest(fullName.toString());
+    }
+
+    private static String stripPackage(String qualifiedClassName) {
+        return qualifiedClassName.substring(qualifiedClassName.lastIndexOf(".") + 1);
     }
 }

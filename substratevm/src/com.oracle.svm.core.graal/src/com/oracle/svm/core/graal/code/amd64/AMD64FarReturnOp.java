@@ -27,11 +27,17 @@ package com.oracle.svm.core.graal.code.amd64;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
+import org.graalvm.compiler.asm.Label;
+import org.graalvm.compiler.asm.amd64.AMD64Address;
+import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.amd64.AMD64BlockEndOp;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
+
+import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.SubstrateOptions;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.ValueUtil;
@@ -54,6 +60,25 @@ public final class AMD64FarReturnOp extends AMD64BlockEndOp {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+        if (SubstrateOptions.UseStackBasePointer.getValue()) {
+            /*
+             * We need to properly restore RBP to the value that matches the frame of the new stack
+             * pointer. Two options: 1) When RSP is not changing, we are jumping within the same
+             * frame - no adjustment of RBP necessary. 2) We jump to a frame earlier in the stack -
+             * the corresponding RBP value was spilled to the stack by the callee.
+             */
+            Label done = new Label();
+            masm.cmpq(AMD64.rsp, ValueUtil.asRegister(sp));
+            masm.jcc(ConditionFlag.Equal, done);
+            /*
+             * The callee pushes two word-sized values: first the return address, then the saved
+             * RBP. The stack grows downwards, so the offset is negative relative to the new stack
+             * pointer.
+             */
+            masm.movq(AMD64.rbp, new AMD64Address(ValueUtil.asRegister(sp), -(FrameAccess.returnAddressSize() + FrameAccess.singleton().savedBasePointerSize())));
+            masm.bind(done);
+        }
+
         masm.movq(AMD64.rsp, ValueUtil.asRegister(sp));
         masm.jmp(ValueUtil.asRegister(ip));
     }

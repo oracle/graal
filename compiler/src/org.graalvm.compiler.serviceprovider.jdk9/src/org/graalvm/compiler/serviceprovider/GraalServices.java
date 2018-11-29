@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,7 @@ import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 import java.util.concurrent.atomic.AtomicLong;
 
+import jdk.vm.ci.runtime.JVMCI;
 import jdk.vm.ci.services.JVMCIPermission;
 import jdk.vm.ci.services.Services;
 
@@ -61,6 +62,11 @@ public final class GraalServices {
      */
     public static final boolean Java8OrEarlier = JAVA_SPECIFICATION_VERSION <= 8;
 
+    /**
+     * Determines if the Java runtime is version 11 or earlier.
+     */
+    public static final boolean Java11OrEarlier = JAVA_SPECIFICATION_VERSION <= 11;
+
     private GraalServices() {
     }
 
@@ -71,7 +77,6 @@ public final class GraalServices {
      *             {@link JVMCIPermission}
      */
     public static <S> Iterable<S> load(Class<S> service) {
-        assert !service.getName().startsWith("jdk.vm.ci") : "JVMCI services must be loaded via " + Services.class.getName();
         Iterable<S> iterable = ServiceLoader.load(service);
         return new Iterable<>() {
             @Override
@@ -112,6 +117,11 @@ public final class GraalServices {
         if (jvmciModule != otherModule) {
             for (String pkg : jvmciModule.getPackages()) {
                 if (!jvmciModule.isOpen(pkg, otherModule)) {
+                    // JVMCI initialization opens all JVMCI packages
+                    // to Graal which is a prerequisite for Graal to
+                    // open JVMCI packages to other modules.
+                    JVMCI.initialize();
+
                     jvmciModule.addOpens(pkg, otherModule);
                 }
             }
@@ -203,27 +213,6 @@ public final class GraalServices {
             globalTimeStamp.compareAndSet(0, System.currentTimeMillis());
         }
         return globalTimeStamp.get();
-    }
-
-    /**
-     * Access to thread specific information made available via Java Management Extensions (JMX).
-     * Using this abstraction enables avoiding a dependency to the {@code java.management} and
-     * {@code jdk.management} modules on JDK 9 and later.
-     */
-    public abstract static class JMXService {
-        protected abstract long getThreadAllocatedBytes(long id);
-
-        protected abstract long getCurrentThreadCpuTime();
-
-        protected abstract boolean isThreadAllocatedMemorySupported();
-
-        protected abstract boolean isCurrentThreadCpuTimeSupported();
-
-        protected abstract List<String> getInputArguments();
-
-        // Placing this static field in JMXService (instead of GraalServices)
-        // allows for lazy initialization.
-        static final JMXService instance = loadSingle(JMXService.class, false);
     }
 
     /**

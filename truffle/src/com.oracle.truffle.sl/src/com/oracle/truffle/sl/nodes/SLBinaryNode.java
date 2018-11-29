@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,13 +41,13 @@
 package com.oracle.truffle.sl.nodes;
 
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 
 /**
  * Utility base class for operations that take two arguments (per convention called "left" and
  * "right"). For concrete subclasses of this class, the Truffle DSL creates two child fields, and
  * the necessary constructors and logic to set them.
  */
-@NodeChildren({@NodeChild("leftNode"), @NodeChild("rightNode")})
+@NodeChild("leftNode")
+@NodeChild("rightNode")
 public abstract class SLBinaryNode extends SLExpressionNode {
 }

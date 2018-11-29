@@ -1,26 +1,42 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * The Universal Permissive License (UPL), Version 1.0
  *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
  *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ * (a) the Software, and
  *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 package com.oracle.truffle.api.instrumentation.test;
 
@@ -30,9 +46,14 @@ import java.util.List;
 
 import static org.junit.Assert.assertTrue;
 import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.ExecuteSourceEvent;
 import com.oracle.truffle.api.instrumentation.ExecuteSourceListener;
@@ -51,6 +72,21 @@ import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Source;
 
 public class SourceListenerTest extends AbstractInstrumentationTest {
+
+    private static boolean isCompileImmediately() {
+        CallTarget target = Truffle.getRuntime().createCallTarget(new RootNode(null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return CompilerDirectives.inCompiledCode();
+            }
+        });
+        return (boolean) target.call();
+    }
+
+    @BeforeClass
+    public static void beforeClass() {
+        Assume.assumeFalse(isCompileImmediately());
+    }
 
     @Test
     public void testLoadSource1() throws IOException {
@@ -124,9 +160,8 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
         assertEvents(impl.allNotInternalEvents, source1, source2);
 
         // Disable the instrument by closing the engine.
-        engine.close();
-        engine = null;
-        engine = getEngine();
+        teardown();
+        setup();
 
         Source source4 = lines("STATEMENT(EXPRESSION, EXPRESSION, EXPRESSION)");
         for (int i = 0; i < runTimes; i++) {
@@ -323,6 +358,7 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
 
     @Test
     public void testLoadSourceNoRootSection() throws Exception {
+        context.initialize(InstrumentationTestLanguage.ID);
         Instrument instrument = engine.getInstruments().get("testLoadExecuteSource");
         TestLoadExecuteSource impl = instrument.lookup(TestLoadExecuteSource.class);
         impl.attachLoad();
@@ -331,25 +367,26 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
 
     @Test
     public void testExecuteSourceNoRootSection() throws Exception {
+        context.initialize(InstrumentationTestLanguage.ID);
         Instrument instrument = engine.getInstruments().get("testLoadExecuteSource");
         TestLoadExecuteSource impl = instrument.lookup(TestLoadExecuteSource.class);
         impl.attachExecute();
         testNoRootSectionImpl(impl);
     }
 
-    private void testNoRootSectionImpl(TestLoadExecuteSource impl) throws Exception {
-        com.oracle.truffle.api.source.Source source1 = com.oracle.truffle.api.source.Source.newBuilder("line1\nline2").mimeType("mime").name("NoName1").build();
-        com.oracle.truffle.api.source.Source source2 = com.oracle.truffle.api.source.Source.newBuilder("line3\nline4").mimeType("mime").name("NoName2").build();
-        com.oracle.truffle.api.source.Source source3 = com.oracle.truffle.api.source.Source.newBuilder("line5\nline6").mimeType("mime").name("NoName3").build();
+    private static void testNoRootSectionImpl(TestLoadExecuteSource impl) throws Exception {
+        com.oracle.truffle.api.source.Source source1 = com.oracle.truffle.api.source.Source.newBuilder("", "line1\nline2", null).name("NoName1").build();
+        com.oracle.truffle.api.source.Source source2 = com.oracle.truffle.api.source.Source.newBuilder("", "line3\nline4", null).name("NoName2").build();
+        com.oracle.truffle.api.source.Source source3 = com.oracle.truffle.api.source.Source.newBuilder("", "line5\nline6", null).name("NoName3").build();
         Node node1 = new SourceSectionFilterTest.SourceSectionNode(source1.createSection(1));
-        RootNode rootA = SourceSectionFilterTest.createRootNode(engine, null, Boolean.FALSE, node1);
+        RootNode rootA = SourceSectionFilterTest.createRootNode(null, Boolean.FALSE, node1);
         assertEvents(impl.allEvents);
         Truffle.getRuntime().createCallTarget(rootA).call();
         assertEvents(impl.allEvents, source1);
 
         Node node2 = new SourceSectionFilterTest.SourceSectionNode(source2.createSection(2));
         Node node3 = new SourceSectionFilterTest.SourceSectionNode(source3.createSection(2));
-        RootNode rootB = SourceSectionFilterTest.createRootNode(engine, null, Boolean.FALSE, node2, node3);
+        RootNode rootB = SourceSectionFilterTest.createRootNode(null, Boolean.FALSE, node2, node3);
         assertEvents(impl.allEvents, source1);
         Truffle.getRuntime().createCallTarget(rootB).call();
         assertEvents(impl.allEvents, source1, source2, source3);
@@ -366,6 +403,7 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
     }
 
     private void testBindingDisposalImpl(boolean load) throws Exception {
+        context.initialize(InstrumentationTestLanguage.ID);
         Instrument instrument = engine.getInstruments().get("testBindingDisposal");
         TestBindingDisposal impl = instrument.lookup(TestBindingDisposal.class);
         impl.doAttach(load);
@@ -377,11 +415,11 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
         impl.onlyNewBinding.dispose();
         impl.allBinding.dispose();
         // No new events received after bindings are disposed
-        com.oracle.truffle.api.source.Source source2a = com.oracle.truffle.api.source.Source.newBuilder("line2a").mimeType("mime").name("NoName2a").build();
-        com.oracle.truffle.api.source.Source source2b = com.oracle.truffle.api.source.Source.newBuilder("line2b").mimeType("mime").name("NoName2b").build();
+        com.oracle.truffle.api.source.Source source2a = com.oracle.truffle.api.source.Source.newBuilder("", "line2a", null).name("NoName2a").build();
+        com.oracle.truffle.api.source.Source source2b = com.oracle.truffle.api.source.Source.newBuilder("", "line2b", null).name("NoName2b").build();
         Node node2a = new SourceSectionFilterTest.SourceSectionNode(source2a.createSection(1));
         Node node2b = new SourceSectionFilterTest.SourceSectionNode(source2b.createSection(1));
-        RootNode root2 = SourceSectionFilterTest.createRootNode(engine, null, Boolean.FALSE, node2a, node2b);
+        RootNode root2 = SourceSectionFilterTest.createRootNode(null, Boolean.FALSE, node2a, node2b);
         Truffle.getRuntime().createCallTarget(root2).call();
         assertEvents(impl.onlyNewEvents, source1);
         assertEvents(impl.allEvents, source1);

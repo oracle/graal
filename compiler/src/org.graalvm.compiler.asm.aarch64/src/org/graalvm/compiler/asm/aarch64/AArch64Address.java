@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -80,7 +80,6 @@ public final class AArch64Address extends AbstractAddress {
          * address = base + imm9. base is updated to base + imm9
          */
         IMMEDIATE_PRE_INDEXED,
-        AddressingMode,
     }
 
     private final Register base;

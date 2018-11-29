@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,6 @@ import static org.graalvm.compiler.truffle.runtime.OptimizedCallTarget.runtime;
 import java.util.Iterator;
 import java.util.List;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -105,7 +104,6 @@ public final class TruffleInliningDecision extends TruffleInlining implements Co
 
     @Override
     public JavaConstant getNodeRewritingAssumption() {
-        SnippetReflectionProvider snippetReflection = runtime().getGraalRuntime().getRequiredCapability(SnippetReflectionProvider.class);
-        return snippetReflection.forObject(target.getNodeRewritingAssumption());
+        return runtime().forObject(target.getNodeRewritingAssumption());
     }
 }

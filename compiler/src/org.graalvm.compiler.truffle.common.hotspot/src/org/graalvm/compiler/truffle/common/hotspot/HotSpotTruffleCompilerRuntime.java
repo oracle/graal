@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,10 @@
  */
 package org.graalvm.compiler.truffle.common.hotspot;
 
+import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 
+import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public interface HotSpotTruffleCompilerRuntime extends TruffleCompilerRuntime {
@@ -38,7 +40,8 @@ public interface HotSpotTruffleCompilerRuntime extends TruffleCompilerRuntime {
     /**
      * Notifies this runtime once {@code installedCode} has been installed in the code cache.
      *
+     * @param compilable the {@link CompilableTruffleAST compilable} to install code into
      * @param installedCode code that has just been installed in the code cache
      */
-    void onCodeInstallation(HotSpotTruffleInstalledCode installedCode);
+    void onCodeInstallation(CompilableTruffleAST compilable, InstalledCode installedCode);
 }

@@ -146,16 +146,20 @@ public abstract class QueryCommandBase implements InstallerCommand {
         return s == null ? feedback.l10n("LIST_MetadataUnknown") : s;
     }
 
+    protected String shortenComponentId(ComponentInfo info) {
+        return registry.shortenComponentId(info);
+    }
+
     @SuppressWarnings("unused")
     void printDetails(ComponentParam param, ComponentInfo info) {
         if (printTable) {
             String line = String.format(feedback.l10n("LIST_ComponentShortList"),
-                            info.getId(), info.getVersionString(), info.getName());
+                            shortenComponentId(info), info.getVersionString(), info.getName());
             feedback.verbatimOut(line, false);
             return;
         } else {
             feedback.output("LIST_ComponentBasicInfo",
-                            info.getId(), info.getVersionString(), info.getName(),
+                            shortenComponentId(info), info.getVersionString(), info.getName(),
                             findRequiredGraalVMVersion(info));
         }
     }

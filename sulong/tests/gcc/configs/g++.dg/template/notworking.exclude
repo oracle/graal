@@ -1,0 +1,6 @@
+gcc-5.2.0/gcc/testsuite/g++.dg/template/partial7.C
+gcc-5.2.0/gcc/testsuite/g++.dg/template/spec26.C
+gcc-5.2.0/gcc/testsuite/g++.dg/template/bitfield2.C
+gcc-5.2.0/gcc/testsuite/g++.dg/template/static15.C
+gcc-5.2.0/gcc/testsuite/g++.dg/template/error50.C
+gcc-5.2.0/gcc/testsuite/g++.dg/template/array27.C

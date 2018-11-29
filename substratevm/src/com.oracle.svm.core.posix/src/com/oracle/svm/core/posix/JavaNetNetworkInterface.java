@@ -641,8 +641,8 @@ public class JavaNetNetworkInterface {
         // 892     int ifnam_size = IFNAMSIZ;
         int ifnam_size = NetIf.IFNAMSIZ();
         // 893     char name[IFNAMSIZ], vname[IFNAMSIZ];
-        CCharPointer name = StackValue.get(NetIf.IFNAMSIZ(), SizeOf.get(CCharPointer.class));
-        CCharPointer vname = StackValue.get(NetIf.IFNAMSIZ(), SizeOf.get(CCharPointer.class));
+        CCharPointer name = StackValue.get(NetIf.IFNAMSIZ(), CCharPointer.class);
+        CCharPointer vname = StackValue.get(NetIf.IFNAMSIZ(), CCharPointer.class);
         // 894 #endif
         // 895
         // 896     char  *name_colonP;
@@ -654,7 +654,7 @@ public class JavaNetNetworkInterface {
         // 899     int addr_size;
         int addr_size;
         // 900     int flags = 0;
-        CIntPointer flags_Pointer = StackValue.get(SizeOf.get(CIntPointer.class));
+        CIntPointer flags_Pointer = StackValue.get(CIntPointer.class);
         flags_Pointer.write(0);
         // 901
         // 902     /*
@@ -908,7 +908,7 @@ public class JavaNetNetworkInterface {
     // 1058  * proto is AF_INET/AF_INET6
     // 1059  */
     // 1060 static int  openSocket(JNIEnv *env, int proto){
-    static int openSocket(int proto) throws SocketException {
+    public static int openSocket(int proto) throws SocketException {
         // 1061     int sock;
         int sock;
         // 1062
@@ -921,7 +921,7 @@ public class JavaNetNetworkInterface {
             // 1068         if (errno != EPROTONOSUPPORT) {
             if (Errno.errno() != Errno.EPROTONOSUPPORT()) {
                 // 1069             NET_ThrowByNameWithLastError(env , JNU_JAVANETPKG "SocketException", "Socket creation failed");
-                throw new SocketException("Socket creation failed");
+                throw new SocketException(PosixUtils.lastErrorString("Socket creation failed"));
             }
             // 1071         return -1;
         }
@@ -941,6 +941,7 @@ public class JavaNetNetworkInterface {
         short getSubnet(int sock, CCharPointer ifname) throws SocketException;
         int getFlags(int sock, CCharPointer ifname, CIntPointer flags);
         int getIndex(int sock, CCharPointer name);
+        int getMacAddress(CCharPointer ifname, NetinetIn.in_addr addr, CCharPointer buf) throws SocketException;
     }
 }
 

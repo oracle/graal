@@ -30,14 +30,14 @@ import com.oracle.truffle.regex.tregex.util.DebugUtil;
 /**
  * Matcher that matches a single character.
  */
-public final class SingleCharMatcher extends ProfiledCharMatcher {
+public final class SingleCharMatcher extends InvertibleCharMatcher {
 
     private final char c;
 
     /**
      * Constructs a new {@link SingleCharMatcher}.
      * 
-     * @param invert see {@link ProfiledCharMatcher}.
+     * @param invert see {@link InvertibleCharMatcher}.
      * @param c character to match.
      */
     public SingleCharMatcher(boolean invert, char c) {

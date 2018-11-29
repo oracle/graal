@@ -77,7 +77,7 @@ public abstract class AbstractProfilerTest {
         context = Context.newBuilder().in(System.in).out(out).err(err).build();
     }
 
-    protected void execute(Source source) {
+    protected void eval(Source source) {
         context.eval(source);
     }
 

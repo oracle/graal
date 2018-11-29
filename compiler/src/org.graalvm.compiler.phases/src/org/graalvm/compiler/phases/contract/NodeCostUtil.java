@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -83,12 +83,12 @@ public class NodeCostUtil {
         try (DebugContext.Scope s = debug.scope("NodeCostSummary")) {
             for (Block block : cfg.getBlocks()) {
                 for (Node n : blockToNodes.apply(block)) {
-                    double probWeighted = n.estimatedNodeCycles().value * block.probability();
+                    double probWeighted = n.estimatedNodeCycles().value * block.getRelativeFrequency();
                     assert Double.isFinite(probWeighted);
                     weightedCycles += probWeighted;
                     if (debug.isLogEnabled()) {
-                        debug.log("Node %s contributes cycles:%f size:%d to graph %s [block prob:%f]", n, n.estimatedNodeCycles().value * block.probability(),
-                                        n.estimatedNodeSize().value, graph, block.probability());
+                        debug.log("Node %s contributes cycles:%f size:%d to graph %s [block freq:%f]", n, n.estimatedNodeCycles().value * block.getRelativeFrequency(),
+                                        n.estimatedNodeSize().value, graph, block.getRelativeFrequency());
                     }
                 }
             }

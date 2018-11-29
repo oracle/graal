@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -134,7 +134,7 @@ public class AssumptionPartialEvaluationTest extends PartialEvaluationTest {
 
         WeakReference<TestOptimizedAssumptionDependency> dep = new WeakReference<>(new TestOptimizedAssumptionDependency());
         if (dep.get() != null) {
-            Assert.assertTrue(dep.get().reachabilityDeterminesValidity());
+            Assert.assertTrue(dep.get().soleExecutionEntryPoint());
             assumption.registerDependency().accept(dep.get());
             Assert.assertEquals(1, assumption.countDependencies());
             int attempts = 10;

@@ -68,10 +68,12 @@ import org.graalvm.compiler.lir.asm.DataBuilder;
 import org.graalvm.compiler.lir.asm.FrameContext;
 import org.graalvm.compiler.lir.framemap.FrameMap;
 import org.graalvm.compiler.lir.phases.LIRSuites;
+import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.IndirectCallTargetNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.ParameterNode;
@@ -143,6 +145,7 @@ import com.oracle.svm.hosted.substitute.DeletedMethod;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.DebugInfo;
+import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.code.site.InfopointReason;
@@ -330,7 +333,8 @@ public class CompileQueue {
     @SuppressWarnings("try")
     public void finish(DebugContext debug) {
         try {
-            try (StopTimer t = new Timer("(parse)").start()) {
+            String imageName = universe.getBigBang().getHostVM().getImageName();
+            try (StopTimer t = new Timer(imageName, "(parse)").start()) {
                 parseAll();
             }
             // Checking @Uninterruptible annotations does not take long enough to justify a timer.
@@ -343,12 +347,12 @@ public class CompileQueue {
             MustNotSynchronizeAnnotationChecker.check(debug, universe.getMethods());
             beforeCompileAll(debug);
 
-            if (SubstrateOptions.AOTInline.getValue()) {
-                try (StopTimer ignored = new Timer("(inline)").start()) {
+            if (SubstrateOptions.AOTInline.getValue() && SubstrateOptions.AOTTrivialInline.getValue()) {
+                try (StopTimer ignored = new Timer(imageName, "(inline)").start()) {
                     inlineTrivialMethods(debug);
                 }
             }
-            try (StopTimer t = new Timer("(compile)").start()) {
+            try (StopTimer t = new Timer(imageName, "(compile)").start()) {
                 compileAll();
             }
         } catch (InterruptedException ie) {
@@ -725,19 +729,17 @@ public class CompileQueue {
                     if (!canBeUsedForInlining(invoke)) {
                         invoke.setUseForInlining(false);
                     }
-                    if (invoke.callTarget() instanceof MethodCallTargetNode) {
-                        MethodCallTargetNode targetNode = (MethodCallTargetNode) invoke.callTarget();
-                        HostedMethod invokeTarget = (HostedMethod) targetNode.targetMethod();
-                        if (targetNode.invokeKind().isDirect()) {
-                            if (invokeTarget.wrapped.isImplementationInvoked()) {
-                                handleSpecialization(method, targetNode, invokeTarget, invokeTarget);
-                                ensureParsed(invokeTarget, new DirectCallReason(method, reason));
-                            }
-                        } else {
-                            for (HostedMethod invokeImplementation : invokeTarget.getImplementations()) {
-                                handleSpecialization(method, targetNode, invokeTarget, invokeImplementation);
-                                ensureParsed(invokeImplementation, new VirtualCallReason(method, invokeImplementation, reason));
-                            }
+                    CallTargetNode targetNode = invoke.callTarget();
+                    HostedMethod invokeTarget = (HostedMethod) targetNode.targetMethod();
+                    if (targetNode.invokeKind().isIndirect() || targetNode instanceof IndirectCallTargetNode) {
+                        for (HostedMethod invokeImplementation : invokeTarget.getImplementations()) {
+                            handleSpecialization(method, targetNode, invokeTarget, invokeImplementation);
+                            ensureParsed(invokeImplementation, new VirtualCallReason(method, invokeImplementation, reason));
+                        }
+                    } else {
+                        if (invokeTarget.wrapped.isImplementationInvoked()) {
+                            handleSpecialization(method, targetNode, invokeTarget, invokeTarget);
+                            ensureParsed(invokeTarget, new DirectCallReason(method, reason));
                         }
                     }
                 }
@@ -821,7 +823,7 @@ public class CompileQueue {
         return invoke.useForInlining();
     }
 
-    private static void handleSpecialization(final HostedMethod method, MethodCallTargetNode targetNode, HostedMethod invokeTarget, HostedMethod invokeImplementation) {
+    private static void handleSpecialization(final HostedMethod method, CallTargetNode targetNode, HostedMethod invokeTarget, HostedMethod invokeImplementation) {
         if (method.getAnnotation(Specialize.class) != null && !method.compilationInfo.isDeoptTarget() && invokeTarget.getAnnotation(DeoptTest.class) != null) {
             /*
              * Collect the constant arguments to a method which should be specialized.
@@ -867,8 +869,8 @@ public class CompileQueue {
     class HostedCompilationResultBuilderFactory implements CompilationResultBuilderFactory {
         @Override
         public CompilationResultBuilder createBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder,
-                        FrameContext frameContext, OptionValues options, DebugContext debug, CompilationResult compilationResult) {
-            return new CompilationResultBuilder(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, options, debug, compilationResult, EconomicMap.wrapMap(dataCache));
+                        FrameContext frameContext, OptionValues options, DebugContext debug, CompilationResult compilationResult, Register nullRegister) {
+            return new CompilationResultBuilder(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, options, debug, compilationResult, nullRegister, EconomicMap.wrapMap(dataCache));
         }
     }
 
@@ -1033,6 +1035,11 @@ public class CompileQueue {
      * feature for testing. Note that usually all image compiled methods cannot deoptimize.
      */
     protected boolean canDeoptForTesting(HostedMethod method) {
+        if (method.getName().equals("<clinit>")) {
+            /* Cannot deoptimize into static initializers. */
+            return false;
+        }
+
         if (method.getAnnotation(DeoptTest.class) != null) {
             return true;
         }

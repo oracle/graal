@@ -93,4 +93,28 @@ public class ThreadStatus {
                     JVMTI_THREAD_STATE_BLOCKED_ON_MONITOR_ENTER;
 
     public static final int TERMINATED = JVMTI_THREAD_STATE_TERMINATED;
+
+    /** Debugging. */
+    public static final String toString(int threadStatus) {
+        switch (threadStatus) {
+            case NEW:
+                return "ThreadStatus.NEW";
+            case RUNNABLE:
+                return "ThreadStatus.RUNNABLE";
+            case SLEEPING:
+                return "ThreadStatus.SLEEPING";
+            case IN_OBJECT_WAIT:
+                return "ThreadStatus.IN_OBJECT_WAIT";
+            case IN_OBJECT_WAIT_TIMED:
+                return "ThreadStatus.IN_OBJECT_WAIT_TIMED";
+            case PARKED:
+                return "ThreadStatus.PARKED";
+            case PARKED_TIMED:
+                return "ThreadStatus.PARKED_TIMED";
+            case BLOCKED_ON_MONITOR_ENTER:
+                return "ThreadStatus.BLOCKED_ON_MONITOR_ENTER";
+            default:
+                return "ThreadStatus unknown";
+        }
+    }
 }

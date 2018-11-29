@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -73,8 +73,10 @@ public class HotSpotGraalManagementTest {
 
     public HotSpotGraalManagementTest() {
         try {
+            /* Trigger loading of the management library using the bootstrap class loader. */
+            ManagementFactory.getThreadMXBean();
             MBeanServerFactory.findMBeanServer(null);
-        } catch (NoClassDefFoundError e) {
+        } catch (UnsatisfiedLinkError | NoClassDefFoundError e) {
             throw new AssumptionViolatedException("Management classes/module(s) not available: " + e);
         }
     }
@@ -358,14 +360,17 @@ public class HotSpotGraalManagementTest {
         assertNotNull("Info is found", info);
 
         final MBeanOperationInfo[] arr = info.getOperations();
-        assertEquals("Currently three overloads", 3, arr.length);
         MBeanOperationInfo dumpOp = null;
+        int dumpMethodCount = 0;
         for (int i = 0; i < arr.length; i++) {
-            assertEquals("dumpMethod", arr[i].getName());
-            if (arr[i].getSignature().length == 3) {
-                dumpOp = arr[i];
+            if ("dumpMethod".equals(arr[i].getName())) {
+                if (arr[i].getSignature().length == 3) {
+                    dumpOp = arr[i];
+                }
+                dumpMethodCount++;
             }
         }
+        assertEquals("Currently three overloads", 3, dumpMethodCount);
         assertNotNull("three args variant (as used by VisualVM) found", dumpOp);
 
         MBeanAttributeInfo dumpPath = findAttributeInfo("DumpPath", info);

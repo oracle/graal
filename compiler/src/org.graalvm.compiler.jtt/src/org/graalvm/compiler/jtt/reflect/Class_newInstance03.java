@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,7 @@ public class Class_newInstance03 extends JTTTest {
     public abstract static class AbstractClass {
     }
 
+    @SuppressWarnings({"deprecation", "unused"})
     public static boolean test(int i) throws IllegalAccessException, InstantiationException {
         if (i == 0) {
             return AbstractClass.class.newInstance() != null;

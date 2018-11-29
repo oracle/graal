@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,43 +24,37 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleArgumentTypeSpeculation;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompileImmediately;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleInvalidationReprofileCount;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleMinInvokeThreshold;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleReplaceReprofileCount;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleReturnTypeSpeculation;
-
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerOptions;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 
-public class OptimizedCompilationProfile {
-
+public final class OptimizedCompilationProfile {
     /**
      * Number of times an installed code for this tree was seen invalidated.
      */
     private int invalidationCount;
-    private int deferredCount;
 
-    private int interpreterCallCount;
-    private int interpreterCallAndLoopCount;
-    private int compilationCallThreshold;
-    private int compilationCallAndLoopThreshold;
+    private int callCount;
+    private int callAndLoopCount;
+    private int lastTierCompilationCallAndLoopThreshold;
+    private boolean multiTierEnabled;
 
     private long timestamp;
+
+    // The values below must only be written under lock, or in the constructor.
+    private int compilationCallThreshold;
+    private int compilationCallAndLoopThreshold;
 
     /*
      * Updating profiling information and its Assumption objects is done without synchronization and
@@ -80,20 +74,30 @@ public class OptimizedCompilationProfile {
     @CompilationFinal private Class<?> exceptionType;
 
     private volatile boolean compilationFailed;
+    @CompilationFinal private boolean callProfiled;
 
     public OptimizedCompilationProfile(OptionValues options) {
-        int callThreshold = TruffleCompilerOptions.getValue(TruffleMinInvokeThreshold);
+        boolean compileImmediately = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompileImmediately);
+        int callThreshold = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleMinInvokeThreshold);
         int callAndLoopThreshold = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.CompilationThreshold);
         assert callThreshold >= 0;
         assert callAndLoopThreshold >= 0;
-        this.compilationCallThreshold = Math.min(callThreshold, callAndLoopThreshold);
-        this.compilationCallAndLoopThreshold = callAndLoopThreshold;
+        this.multiTierEnabled = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleMultiTier);
+        this.compilationCallThreshold = compileImmediately ? 0 : Math.min(callThreshold, callAndLoopThreshold);
+        this.compilationCallAndLoopThreshold = compileImmediately ? 0 : callAndLoopThreshold;
+        this.lastTierCompilationCallAndLoopThreshold = this.compilationCallAndLoopThreshold;
+        if (multiTierEnabled) {
+            int firstTierCallThreshold = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleFirstTierMinInvokeThreshold);
+            int firstTierCallAndLoopThreshold = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.FirstTierCompilationThreshold);
+            this.compilationCallThreshold = compileImmediately ? 0 : Math.min(firstTierCallThreshold, firstTierCallAndLoopThreshold);
+            this.compilationCallAndLoopThreshold = firstTierCallAndLoopThreshold;
+        }
         this.timestamp = System.nanoTime();
     }
 
     @Override
     public String toString() {
-        return String.format("CompilationProfile(callCount=%d/%d, callAndLoopCount=%d/%d)", interpreterCallCount, compilationCallThreshold, interpreterCallAndLoopCount,
+        return String.format("CompilationProfile(callCount=%d/%d, callAndLoopCount=%d/%d)", callCount, compilationCallThreshold, callAndLoopCount,
                         compilationCallAndLoopThreshold);
     }
 
@@ -105,6 +109,7 @@ public class OptimizedCompilationProfile {
         } else {
             this.profiledArgumentTypes = argumentTypes;
             this.profiledArgumentTypesAssumption = createValidAssumption("Custom profiled argument types");
+            this.callProfiled = true;
         }
     }
 
@@ -198,12 +203,12 @@ public class OptimizedCompilationProfile {
         // nothing to profile for inlined calls by default
     }
 
-    final void profileReturnValue(Object result) {
+    void profileReturnValue(Object result) {
         Assumption returnTypeAssumption = profiledReturnTypeAssumption;
         if (CompilerDirectives.inInterpreter() && returnTypeAssumption == null) {
             // we only profile return values in the interpreter as we don't want to deoptimize
             // for immediate compiles.
-            if (TruffleCompilerOptions.getValue(TruffleReturnTypeSpeculation)) {
+            if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleReturnTypeSpeculation)) {
                 profiledReturnType = classOf(result);
                 profiledReturnTypeAssumption = createValidAssumption("Profiled Return Type");
             }
@@ -217,7 +222,7 @@ public class OptimizedCompilationProfile {
     }
 
     @SuppressWarnings("unchecked")
-    final <E extends Throwable> E profileExceptionType(E ex) {
+    <E extends Throwable> E profileExceptionType(E ex) {
         Class<?> cachedClass = exceptionType;
         // if cachedClass is null and we are not in the interpreter we don't want to deoptimize
         // This usually happens only if the call target was compiled using compile without ever
@@ -237,7 +242,7 @@ public class OptimizedCompilationProfile {
         return ex;
     }
 
-    final Object[] injectArgumentProfile(Object[] originalArguments) {
+    Object[] injectArgumentProfile(Object[] originalArguments) {
         Assumption argumentTypesAssumption = profiledArgumentTypesAssumption;
         Object[] args = originalArguments;
         if (argumentTypesAssumption != null && argumentTypesAssumption.isValid()) {
@@ -251,13 +256,17 @@ public class OptimizedCompilationProfile {
     private Object[] castArgumentsImpl(Object[] originalArguments) {
         Class<?>[] types = profiledArgumentTypes;
         Object[] castArguments = new Object[types.length];
+        boolean isCallProfiled = callProfiled;
         for (int i = 0; i < types.length; i++) {
-            castArguments[i] = types[i] != null ? OptimizedCallTarget.unsafeCast(originalArguments[i], types[i], true, true, true) : originalArguments[i];
+            // callProfiled: only the receiver type is exact.
+            Class<?> targetType = types[i];
+            boolean exact = !isCallProfiled || i == 0;
+            castArguments[i] = targetType != null ? OptimizedCallTarget.unsafeCast(originalArguments[i], targetType, true, true, exact) : originalArguments[i];
         }
         return castArguments;
     }
 
-    final Object injectReturnValueProfile(Object result) {
+    Object injectReturnValueProfile(Object result) {
         Class<?> klass = profiledReturnType;
         if (klass != null && CompilerDirectives.inCompiledCode() && profiledReturnTypeAssumption.isValid()) {
             return OptimizedCallTarget.unsafeCast(result, klass, true, true, true);
@@ -265,73 +274,58 @@ public class OptimizedCompilationProfile {
         return result;
     }
 
-    final void reportCompilationFailure() {
+    void reportCompilationFailure() {
         compilationFailed = true;
     }
 
-    final void reportLoopCount(int count) {
-        interpreterCallAndLoopCount += count;
+    void reportLoopCount(int count) {
+        callAndLoopCount += count;
     }
 
-    final void reportInvalidated() {
+    void reportInvalidated() {
         invalidationCount++;
-        int reprofile = TruffleCompilerOptions.getValue(TruffleInvalidationReprofileCount);
+        int reprofile = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleInvalidationReprofileCount);
         ensureProfiling(reprofile, reprofile);
     }
 
-    final void reportNodeReplaced() {
+    void reportNodeReplaced() {
         // delay compilation until tree is deemed stable enough
-        int replaceBackoff = TruffleCompilerOptions.getValue(TruffleReplaceReprofileCount);
+        int replaceBackoff = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleReplaceReprofileCount);
         ensureProfiling(1, replaceBackoff);
     }
 
-    final void interpreterCall(OptimizedCallTarget callTarget) {
-        int intCallCount = ++interpreterCallCount;
-        int intAndLoopCallCount = ++interpreterCallAndLoopCount;
-        if (!callTarget.isCompiling() && !compilationFailed) {
-            // check if call target is hot enough to get compiled, but took not too long to get hot
-            if ((intAndLoopCallCount >= compilationCallAndLoopThreshold && intCallCount >= compilationCallThreshold && !isDeferredCompile(callTarget)) ||
-                            TruffleCompilerOptions.getValue(TruffleCompileImmediately)) {
-                callTarget.compile();
-            }
-        }
+    @CompilerDirectives.TruffleBoundary
+    private static boolean firstTierCompile(OptimizedCallTarget callTarget) {
+        return callTarget.compile(true);
     }
 
-    private boolean isDeferredCompile(OptimizedCallTarget target) {
-        // Workaround for https://bugs.eclipse.org/bugs/show_bug.cgi?id=440019
-        int threshold = target.getOptionValue(PolyglotCompilerOptions.QueueTimeThreshold);
-
-        CompilerOptions compilerOptions = target.getCompilerOptions();
-        if (compilerOptions instanceof GraalCompilerOptions) {
-            threshold = Math.max(threshold, ((GraalCompilerOptions) compilerOptions).getMinTimeThreshold());
+    boolean firstTierCall(OptimizedCallTarget callTarget) {
+        // The increment and the check must be inlined into the compilation unit.
+        int totalCallCount = ++callCount;
+        if (totalCallCount >= lastTierCompilationCallAndLoopThreshold && !callTarget.isCompiling() && !compilationFailed) {
+            return firstTierCompile(callTarget);
         }
-        if (threshold <= 0) {
-            return false;
-        }
+        return false;
+    }
 
-        long time = timestamp;
-        if (time == 0) {
-            return false;
-        }
-
-        long timeElapsed = System.nanoTime() - time;
-        if (timeElapsed > (threshold * 1_000_000L)) {
-
-            int callThreshold = TruffleCompilerOptions.getValue(TruffleMinInvokeThreshold);
-            int callAndLoopThreshold = PolyglotCompilerOptions.getValue(target.getRootNode(), PolyglotCompilerOptions.CompilationThreshold);
-
-            // defer compilation
-            ensureProfiling(0, Math.min(callThreshold, callAndLoopThreshold));
-            timestamp = System.nanoTime();
-            deferredCount++;
-            return true;
+    @SuppressWarnings("try")
+    boolean interpreterCall(OptimizedCallTarget callTarget) {
+        int intCallCount = ++callCount;
+        int intAndLoopCallCount = ++callAndLoopCount;
+        if (!callTarget.isCompiling() && !compilationFailed) {
+            // Check if call target is hot enough to compile, but took not too long to get hot.
+            int callThreshold = compilationCallThreshold; // 0 if TruffleCompileImmediately
+            int callAndLoopThreshold = compilationCallAndLoopThreshold;
+            if ((intAndLoopCallCount >= callAndLoopThreshold && intCallCount >= callThreshold) || callThreshold == 0) {
+                return callTarget.compile(!multiTierEnabled);
+            }
         }
         return false;
     }
 
     private void initializeProfiledArgumentTypes(Object[] args) {
         CompilerAsserts.neverPartOfCompilation();
-        if (TruffleCompilerOptions.getValue(TruffleArgumentTypeSpeculation)) {
+        if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleArgumentTypeSpeculation)) {
             Class<?>[] result = new Class<?>[args.length];
             for (int i = 0; i < args.length; i++) {
                 result[i] = classOf(args[i]);
@@ -355,9 +349,17 @@ public class OptimizedCompilationProfile {
         if (args.length != types.length) {
             throw new ArrayIndexOutOfBoundsException();
         }
-        for (int j = 0; j < types.length; j++) {
-            // throws ClassCast on error
+        // receiver type is always non-null and exact
+        if (types[0] != args[0].getClass()) {
+            throw new ClassCastException();
+        }
+        // other argument types may be inexact
+        for (int j = 1; j < types.length; j++) {
+            if (types[j] == null) {
+                continue;
+            }
             types[j].cast(args[j]);
+            Objects.requireNonNull(args[j]);
         }
         return true;
     }
@@ -374,13 +376,16 @@ public class OptimizedCompilationProfile {
         }
     }
 
-    private void ensureProfiling(int calls, int callsAndLoop) {
-        int increaseCallAndLoopThreshold = callsAndLoop - (this.compilationCallAndLoopThreshold - this.interpreterCallAndLoopCount);
+    private synchronized void ensureProfiling(int calls, int callsAndLoop) {
+        if (this.compilationCallThreshold == 0) { // TruffleCompileImmediately
+            return;
+        }
+        int increaseCallAndLoopThreshold = callsAndLoop - Math.max(0, this.compilationCallAndLoopThreshold - this.callAndLoopCount);
         if (increaseCallAndLoopThreshold > 0) {
             this.compilationCallAndLoopThreshold += increaseCallAndLoopThreshold;
         }
 
-        int increaseCallsThreshold = calls - (this.compilationCallThreshold - this.interpreterCallCount);
+        int increaseCallsThreshold = calls - Math.max(0, this.compilationCallThreshold - this.callCount);
         if (increaseCallsThreshold > 0) {
             this.compilationCallThreshold += increaseCallsThreshold;
         }
@@ -388,8 +393,8 @@ public class OptimizedCompilationProfile {
 
     public Map<String, Object> getDebugProperties() {
         Map<String, Object> properties = new LinkedHashMap<>();
-        String callsThreshold = String.format("%7d/%5d", getInterpreterCallCount(), getCompilationCallThreshold());
-        String loopsThreshold = String.format("%7d/%5d", getInterpreterCallAndLoopCount(), getCompilationCallAndLoopThreshold());
+        String callsThreshold = String.format("%7d/%5d", getCallCount(), getCompilationCallThreshold());
+        String loopsThreshold = String.format("%7d/%5d", getCallAndLoopCount(), getCompilationCallAndLoopThreshold());
         String invalidations = String.format("%5d", invalidationCount);
         properties.put("Calls/Thres", callsThreshold);
         properties.put("CallsAndLoop/Thres", loopsThreshold);
@@ -401,16 +406,12 @@ public class OptimizedCompilationProfile {
         return invalidationCount;
     }
 
-    public int getInterpreterCallAndLoopCount() {
-        return interpreterCallAndLoopCount;
+    public int getCallAndLoopCount() {
+        return callAndLoopCount;
     }
 
-    public int getInterpreterCallCount() {
-        return interpreterCallCount;
-    }
-
-    public int getDeferredCount() {
-        return deferredCount;
+    public int getCallCount() {
+        return callCount;
     }
 
     public int getCompilationCallAndLoopThreshold() {

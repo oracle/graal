@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.meta;
 
+import static com.oracle.svm.core.config.ConfigurationValues.getObjectLayout;
+
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.util.List;
@@ -34,11 +36,11 @@ import java.util.stream.Stream;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.svm.core.deopt.Deoptimizer;
-import com.oracle.svm.hosted.ameta.HostedDynamicHubFeature;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class HostedMetaAccess extends UniverseMetaAccess {
@@ -49,9 +51,7 @@ public class HostedMetaAccess extends UniverseMetaAccess {
 
     @Override
     public HostedType lookupJavaType(Class<?> clazz) {
-        HostedType result = (HostedType) super.lookupJavaType(clazz);
-        HostedDynamicHubFeature.setHostedIdentityHashCode(result.getHub(), clazz);
-        return result;
+        return (HostedType) super.lookupJavaType(clazz);
     }
 
     public Optional<HostedType> optionalLookupJavaType(Class<?> clazz) {
@@ -110,5 +110,15 @@ public class HostedMetaAccess extends UniverseMetaAccess {
     @Override
     public int decodeDebugId(JavaConstant constant) {
         return Deoptimizer.decodeDebugId(constant);
+    }
+
+    @Override
+    public int getArrayBaseOffset(JavaKind elementKind) {
+        return getObjectLayout().getArrayBaseOffset(elementKind);
+    }
+
+    @Override
+    public int getArrayIndexScale(JavaKind elementKind) {
+        return getObjectLayout().getArrayIndexScale(elementKind);
     }
 }

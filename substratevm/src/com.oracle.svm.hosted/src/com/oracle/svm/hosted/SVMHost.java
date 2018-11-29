@@ -54,7 +54,11 @@ import com.oracle.svm.core.annotate.UnknownPrimitiveField;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.jdk.JavaLangSubstitutions.ClassLoaderSupport;
+import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
+import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase;
 import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
@@ -71,12 +75,16 @@ public final class SVMHost implements HostVM {
     private final Platform platform;
     private final AnalysisPolicy analysisPolicy;
     private final ClassLoader classLoader;
+    private final ClassInitializationFeature classInitializationFeature;
+    private final HostedStringDeduplication stringTable;
 
     public SVMHost(OptionValues options, Platform platform, AnalysisPolicy analysisPolicy, ClassLoader classLoader) {
         this.options = options;
         this.platform = platform;
         this.analysisPolicy = analysisPolicy;
         this.classLoader = classLoader;
+        this.classInitializationFeature = ClassInitializationFeature.singleton();
+        this.stringTable = HostedStringDeduplication.singleton();
     }
 
     @Override
@@ -103,6 +111,11 @@ public final class SVMHost implements HostVM {
     @Override
     public void warn(String message) {
         System.err.println("warning: " + message);
+    }
+
+    @Override
+    public String getImageName() {
+        return NativeImageOptions.Name.getValue(options);
     }
 
     @Override
@@ -148,7 +161,9 @@ public final class SVMHost implements HostVM {
     }
 
     @Override
-    public void registerType(AnalysisType analysisType, ResolvedJavaType hostType) {
+    public void registerType(AnalysisType analysisType) {
+        classInitializationFeature.maybeInitializeHosted(analysisType);
+
         DynamicHub hub = createHub(analysisType);
         Object existing = typeToHub.put(analysisType, hub);
         assert existing == null;
@@ -157,7 +172,15 @@ public final class SVMHost implements HostVM {
 
         /* Compute the automatic substitutions. */
         UnsafeAutomaticSubstitutionProcessor automaticSubstitutions = ImageSingletons.lookup(UnsafeAutomaticSubstitutionProcessor.class);
-        automaticSubstitutions.computeSubstitutions(hostType, options);
+        automaticSubstitutions.computeSubstitutions(GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaType(analysisType.getJavaClass()), options);
+    }
+
+    @Override
+    public boolean isInitialized(AnalysisType type) {
+        boolean shouldInitializeAtRuntime = classInitializationFeature.shouldInitializeAtRuntime(type);
+        assert shouldInitializeAtRuntime || type.getWrapped().isInitialized() : "Types that are not marked for runtime initializations must have been initialized";
+
+        return !shouldInitializeAtRuntime;
     }
 
     @Override
@@ -197,9 +220,21 @@ public final class SVMHost implements HostVM {
         if (type.isArray()) {
             componentHub = dynamicHub(type.getComponentType());
         }
-        boolean isStatic = Modifier.isStatic(type.getJavaClass().getModifiers());
-        boolean isSynthetic = type.getJavaClass().isSynthetic();
-        return new DynamicHub(type.toClassName(), type.isLocal(), superHub, componentHub, type.getSourceFileName(), isStatic, isSynthetic);
+        Class<?> javaClass = type.getJavaClass();
+        boolean isStatic = Modifier.isStatic(javaClass.getModifiers());
+        boolean isSynthetic = javaClass.isSynthetic();
+
+        Target_java_lang_ClassLoader hubClassLoader = ClassLoaderSupport.getInstance().getOrCreate(javaClass.getClassLoader());
+
+        /* Class names must be interned strings according to the Java specification. */
+        String className = type.toClassName().intern();
+        /*
+         * There is no need to have file names as interned strings. So we perform our own
+         * de-duplication.
+         */
+        String sourceFileName = stringTable.deduplicate(type.getSourceFileName(), true);
+
+        return new DynamicHub(className, type.isLocal(), superHub, componentHub, sourceFileName, isStatic, isSynthetic, hubClassLoader);
     }
 
     public static boolean isUnknownClass(ResolvedJavaType resolvedJavaType) {

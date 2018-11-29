@@ -37,6 +37,7 @@ import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
@@ -49,8 +50,10 @@ import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnaryOpLogicNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -82,9 +85,11 @@ import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.svm.core.amd64.FrameAccess;
+import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.graal.phases.TrustedInterfaceTypePlugin;
+import com.oracle.svm.core.jdk.VarHandleFeature;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
@@ -135,11 +140,15 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
     private final AnalysisUniverse aUniverse;
     private final HostedUniverse hUniverse;
 
+    private final ClassInitializationPlugin classInitializationPlugin;
+
     public IntrinsifyMethodHandlesInvocationPlugin(Providers providers, AnalysisUniverse aUniverse, HostedUniverse hUniverse) {
         this.aUniverse = aUniverse;
         this.hUniverse = hUniverse;
         this.universeProviders = providers;
         this.originalProviders = GraalAccess.getOriginalProviders();
+
+        this.classInitializationPlugin = new SubstrateClassInitializationPlugin((SVMHost) aUniverse.hostVM());
     }
 
     @Override
@@ -148,7 +157,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
          * We want to process invokes that have a constant MethodHandle parameter. And we need a
          * direct call, otherwise we do not have a single target method.
          */
-        if (b.getInvokeKind().isDirect() && hasMethodHandleArgument(args)) {
+        if (b.getInvokeKind().isDirect() && (hasMethodHandleArgument(args) || isVarHandleMethod(method))) {
             processInvokeWithMethodHandle(b, universeProviders.getReplacements().getDefaultReplacementBytecodeProvider(), method, args);
             return true;
         }
@@ -162,6 +171,28 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
             }
         }
         return false;
+    }
+
+    /**
+     * Checks if the method is the intrinsification root for a VarHandle. In the current VarHandle
+     * implementation, all guards are in the automatically generated class VarHandleGuards. All
+     * methods do have a VarHandle argument, and we expect it to be a compile-time constant. But we
+     * do not need to check that explicitly: if it is not a compile-time constant, then we are not
+     * able to intrinsify the guard to a single call, and the intrinsification will fail later and
+     * report an error to the user.
+     *
+     * See the documentation in {@link VarHandleFeature} for more information on the overall
+     * VarHandle support.
+     */
+    private static boolean isVarHandleMethod(ResolvedJavaMethod method) {
+        /*
+         * We do the check by class name because then we 1) do not need an explicit Java version
+         * check (VarHandle was introduced with JDK 9), 2) VarHandleGuards is a non-public class
+         * that we cannot reference by class literal, and 3) we do not need to worry about analysis
+         * vs. hosted types. If the VarHandle implementation changes, we need to update our whole
+         * handling anyway.
+         */
+        return method.getDeclaringClass().toJavaName(true).equals("java.lang.invoke.VarHandleGuards");
     }
 
     class MethodHandlesParameterPlugin implements ParameterPlugin {
@@ -203,11 +234,20 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                 return null;
             }
 
-            /*
-             * Inline all helper methods. We do not know exactly which ones they are, but they
-             * should all be from the same package.
-             */
-            if (method.getDeclaringClass().toJavaName(true).startsWith("java.lang.invoke")) {
+            String className = method.getDeclaringClass().toJavaName(true);
+            if (className.startsWith("java.lang.invoke.VarHandle")) {
+                /*
+                 * Do not inline implementation methods of various VarHandle implementation classes.
+                 * They are too complex and cannot be reduced to a single invoke or field access.
+                 * There is also no need to inline them, because they are not related to any
+                 * MethodHandle mechanism.
+                 */
+                return null;
+            } else if (className.startsWith("java.lang.invoke")) {
+                /*
+                 * Inline all helper methods used by method handles. We do not know exactly which
+                 * ones they are, but they are all be from the same package.
+                 */
                 return createStandardInlineInfo(method);
             }
             return null;
@@ -260,6 +300,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         graphBuilderPlugins.appendTypePlugin(wordOperationPlugin);
         graphBuilderPlugins.appendTypePlugin(new TrustedInterfaceTypePlugin());
         graphBuilderPlugins.appendNodePlugin(wordOperationPlugin);
+        graphBuilderPlugins.setClassInitializationPlugin(new NoClassInitializationPlugin());
 
         GraphBuilderConfiguration graphBuilderConfig = GraphBuilderConfiguration.getSnippetDefault(graphBuilderPlugins);
         GraphBuilderPhase.Instance graphBuilder = new GraphBuilderPhase.Instance(originalProviders.getMetaAccess(), originalProviders.getStampProvider(), originalProviders.getConstantReflection(),
@@ -349,6 +390,10 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
             if (singleFunctionality instanceof MethodCallTargetNode) {
                 MethodCallTargetNode singleCallTarget = (MethodCallTargetNode) singleFunctionality;
                 assert singleReturn.result() == null || singleReturn.result() == singleCallTarget.invoke();
+                ResolvedJavaMethod resolvedTarget = lookup(singleCallTarget.targetMethod());
+
+                maybeEmitClassInitialization(b, singleCallTarget.invokeKind() == InvokeKind.Static, resolvedTarget.getDeclaringClass());
+
                 /*
                  * Replace the originalTarget with the replacementTarget. Note that the
                  * replacementTarget node belongs to a different graph than originalTarget, so we
@@ -359,15 +404,21 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                 for (int i = 0; i < replacedArguments.length; i++) {
                     replacedArguments[i] = lookup(b, methodHandleArguments, singleCallTarget.arguments().get(i));
                 }
-                b.handleReplacedInvoke(singleCallTarget.invokeKind(), lookup(singleCallTarget.targetMethod()), replacedArguments, false);
+                b.handleReplacedInvoke(singleCallTarget.invokeKind(), resolvedTarget, replacedArguments, false);
 
             } else if (singleFunctionality instanceof LoadFieldNode) {
                 LoadFieldNode fieldLoad = (LoadFieldNode) singleFunctionality;
-                b.addPush(b.getInvokeReturnType().getJavaKind(), LoadFieldNode.create(null, lookup(b, methodHandleArguments, fieldLoad.object()), lookup(fieldLoad.field())));
+                ResolvedJavaField resolvedTarget = lookup(fieldLoad.field());
+
+                maybeEmitClassInitialization(b, resolvedTarget.isStatic(), resolvedTarget.getDeclaringClass());
+                b.addPush(b.getInvokeReturnType().getJavaKind(), LoadFieldNode.create(null, lookup(b, methodHandleArguments, fieldLoad.object()), resolvedTarget));
 
             } else if (singleFunctionality instanceof StoreFieldNode) {
                 StoreFieldNode fieldStore = (StoreFieldNode) singleFunctionality;
-                b.add(new StoreFieldNode(lookup(b, methodHandleArguments, fieldStore.object()), lookup(fieldStore.field()), lookup(b, methodHandleArguments, fieldStore.value())));
+                ResolvedJavaField resolvedTarget = lookup(fieldStore.field());
+
+                maybeEmitClassInitialization(b, resolvedTarget.isStatic(), resolvedTarget.getDeclaringClass());
+                b.add(new StoreFieldNode(lookup(b, methodHandleArguments, fieldStore.object()), resolvedTarget, lookup(b, methodHandleArguments, fieldStore.value())));
 
             } else if (singleReturn.result() != null) {
                 /* Replace the invocation with he constant result. */
@@ -381,6 +432,18 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
         } catch (Throwable ex) {
             throw debug.handle(ex);
+        }
+    }
+
+    private void maybeEmitClassInitialization(GraphBuilderContext b, boolean isStatic, ResolvedJavaType declaringClass) {
+        if (isStatic && classInitializationPlugin.shouldApply(b, declaringClass)) {
+            /*
+             * We know that this code only runs during bytecode parsing, so the casts to
+             * BytecodeParser are safe. We want to avoid putting additional rarely used methods into
+             * GraphBuilderContext.
+             */
+            FrameState stateBefore = ((BytecodeParser) b).getFrameStateBuilder().create(b.bci(), (BytecodeParser) b.getNonIntrinsicAncestor(), false, null, null);
+            classInitializationPlugin.apply(b, declaringClass, stateBefore);
         }
     }
 

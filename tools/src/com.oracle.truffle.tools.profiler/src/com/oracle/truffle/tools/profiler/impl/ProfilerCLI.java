@@ -28,6 +28,7 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.tools.utils.json.JSONObject;
 import org.graalvm.options.OptionType;
 
 import java.io.File;
@@ -84,7 +85,7 @@ abstract class ProfilerCLI {
                 public boolean test(Source source) {
                     boolean internal = (internals || !source.isInternal());
                     boolean file = testWildcardExpressions(source.getPath(), filterFile);
-                    boolean mimeType = filterLanguage.equals("") || source.getMimeType().equals(filterLanguage);
+                    boolean mimeType = filterLanguage.equals("") || filterLanguage.equals(source.getMimeType());
                     return internal && file && mimeType;
                 }
             });
@@ -225,6 +226,28 @@ abstract class ProfilerCLI {
         }
         s.append('$');
         return s.toString();
+    }
+
+    static JSONObject sourceSectionToJSON(SourceSection sourceSection) {
+        JSONObject sourceSectionJson = new JSONObject();
+        if (sourceSection != null) {
+            Source source = sourceSection.getSource();
+            if (source != null) {
+                if (source.getLanguage() != null) {
+                    sourceSectionJson.put("language", source.getLanguage().toString());
+                }
+                String path = source.getPath();
+                if (path != null) {
+                    sourceSectionJson.put("path", path);
+                }
+            }
+            sourceSectionJson.put("source_name", sourceSection.getSource().getName());
+            sourceSectionJson.put("start_line", sourceSection.getStartLine());
+            sourceSectionJson.put("end_line", sourceSection.getEndLine());
+            sourceSectionJson.put("start_column", sourceSection.getStartColumn());
+            sourceSectionJson.put("end_column", sourceSection.getEndColumn());
+        }
+        return sourceSectionJson;
     }
 
     static class SourceLocation {

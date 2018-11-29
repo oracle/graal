@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,7 @@ package org.graalvm.compiler.core.sparc;
 
 import static org.graalvm.compiler.asm.sparc.SPARCAssembler.FMOVDCC;
 import static org.graalvm.compiler.asm.sparc.SPARCAssembler.FMOVSCC;
-import static org.graalvm.compiler.asm.sparc.SPARCAssembler.MOVicc;
+import static org.graalvm.compiler.asm.sparc.SPARCAssembler.MOVICC;
 import static org.graalvm.compiler.asm.sparc.SPARCAssembler.CC.Fcc0;
 import static org.graalvm.compiler.asm.sparc.SPARCAssembler.Op3s.Subcc;
 import static org.graalvm.compiler.asm.sparc.SPARCAssembler.Opfs.Fcmpd;
@@ -287,7 +287,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         } else if (valueKind.isInteger()) {
             actualTrueValue = loadSimm11(trueValue);
             actualFalseValue = loadSimm11(falseValue);
-            cmove = MOVicc;
+            cmove = MOVICC;
         } else {
             throw GraalError.shouldNotReachHere();
         }
@@ -368,7 +368,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         Variable result = newVariable(trueValue.getValueKind());
         ConditionFlag flag = SPARCControlFlow.fromCondition(true, Condition.EQ, false);
         CC cc = CC.forKind(left.getPlatformKind());
-        append(new CondMoveOp(MOVicc, cc, flag, loadSimm11(trueValue), loadSimm11(falseValue), result));
+        append(new CondMoveOp(MOVICC, cc, flag, loadSimm11(trueValue), loadSimm11(falseValue), result));
         return result;
     }
 
@@ -420,9 +420,9 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitArrayEquals(JavaKind kind, Value array1, Value array2, Value length) {
+    public Variable emitArrayEquals(JavaKind kind, Value array1, Value array2, Value length, int constantLength, boolean directPointers) {
         Variable result = newVariable(LIRKind.value(SPARCKind.WORD));
-        append(new SPARCArrayEqualsOp(this, kind, result, load(array1), load(array2), asAllocatable(length)));
+        append(new SPARCArrayEqualsOp(this, kind, result, load(array1), load(array2), asAllocatable(length), directPointers));
         return result;
     }
 
@@ -476,5 +476,10 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     @Override
     public void emitPause() {
         append(new SPARCPauseOp());
+    }
+
+    @Override
+    public void emitSpeculationFence() {
+        throw GraalError.unimplemented();
     }
 }

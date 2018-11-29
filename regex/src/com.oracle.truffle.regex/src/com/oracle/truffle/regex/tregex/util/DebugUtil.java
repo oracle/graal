@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.regex.tregex.util;
 
+import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.regex.chardata.Constants;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 import java.util.Random;
@@ -34,21 +36,21 @@ import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 public class DebugUtil {
 
-    public static final boolean DEBUG = false;
-    public static final boolean DEBUG_STEP_EXECUTION = false;
-    public static final boolean DEBUG_ALWAYS_EAGER = false;
-    public static final boolean LOG_SWITCH_TO_EAGER = false;
-    public static final boolean LOG_TOTAL_COMPILATION_TIME = false;
-    public static final boolean LOG_PHASES = false;
-    public static final boolean LOG_BAILOUT_MESSAGES = false;
-    public static final boolean LOG_AUTOMATON_SIZES = false;
+    public static final TruffleLogger LOG_SWITCH_TO_EAGER = TruffleLogger.getLogger("regex", "SwitchToEager");
+    public static final TruffleLogger LOG_TOTAL_COMPILATION_TIME = TruffleLogger.getLogger("regex", "TotalCompilationTime");
+    public static final TruffleLogger LOG_PHASES = TruffleLogger.getLogger("regex", "Phases");
+    public static final TruffleLogger LOG_BAILOUT_MESSAGES = TruffleLogger.getLogger("regex", "BailoutMessages");
+    public static final TruffleLogger LOG_AUTOMATON_SIZES = TruffleLogger.getLogger("regex", "AutomatonSizes");
+    public static final TruffleLogger LOG_COMPILER_FALLBACK = TruffleLogger.getLogger("regex", "CompilerFallback");
+    public static final TruffleLogger LOG_INTERNAL_ERRORS = TruffleLogger.getLogger("regex", "InternalErrors");
+    public static final TruffleLogger LOG_TREGEX_COMPILATIONS = TruffleLogger.getLogger("regex", "TRegexCompilations");
 
     private static final CompilationFinalBitSet validSpecialCharsForFileNames = CompilationFinalBitSet.valueOf(
                     '^', '$', '.', '*', '+', '-', '?', '(', ')', '[', ']', '{', '}', '|');
 
     @TruffleBoundary
     public static String charToString(int c) {
-        if (c <= 0xffff && (Character.isDigit(c) || (0 < c && c < 128 && !Character.isISOControl(c)))) {
+        if (Constants.WORD_CHARS.contains(c)) {
             return String.valueOf((char) c);
         } else if (c <= 0xff) {
             return String.format("\\x%02x", c);
@@ -145,23 +147,6 @@ public class DebugUtil {
 
         public static String elapsedToString(long elapsed) {
             return String.format("%fms", elapsed / 1e6);
-        }
-    }
-
-    public static class DebugLogger {
-
-        private final String prefix;
-        private final boolean enable;
-
-        public DebugLogger(String prefix, boolean enable) {
-            this.prefix = prefix;
-            this.enable = enable;
-        }
-
-        public void log(String msg) {
-            if (enable) {
-                System.out.println(prefix + msg);
-            }
         }
     }
 

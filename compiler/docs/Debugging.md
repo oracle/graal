@@ -6,8 +6,11 @@ This pages covers the various mechanisms currently available for debugging Graal
 All the parts of Graal written in Java can be debugged with a standard Java debugger.
 While debugging with Eclipse is described here, it should not be too hard to adapt these instructions for another debugger.
 
-The `mx eclipseinit` command not only creates Eclipse project configurations but also creates an Eclipse launch configuration (in `mx.compiler/eclipse-launches/compiler-attach-localhost-8000.launch`) that can be used to debug all Graal code running in the VM.
-This launch configuration requires you to start the VM with the `-d` global option which puts the VM into a state waiting for a remote debugger to attach to port `8000`:
+The `mx eclipseinit` command not only creates Eclipse project configurations but also creates an
+Eclipse launch configuration (in
+`mx.compiler/eclipse-launches/compiler-attach-localhost-8000.launch`) that can be used to debug all
+Graal code running in the VM.  This launch configuration requires you to start the VM with the `-d`
+global option which puts the VM into a state waiting for a remote debugger to attach to port `8000`:
 
 ```
 mx -d vm -XX:+UseJVMCICompiler -version
@@ -34,7 +37,8 @@ At this point you can set breakpoints and perform all other normal Java debuggin
 In addition to IDE debugging, Graal includes support for *printf* style debugging.
 The simplest is to place temporary usages of `System.out` where ever you need them.
 
-For more permanent logging statements, use the `log(...)` methods in [`DebugContext`](../src/org.graalvm.compiler.debug/src/org/graalvm/compiler/debug/DebugContext.java).
+For more permanent logging statements, use the `log(...)` methods in
+[`DebugContext`](../src/org.graalvm.compiler.debug/src/org/graalvm/compiler/debug/DebugContext.java).
 A (nestable) debug scope is entered via one of the `scope(...)` methods in that class. For example:
 
 ```java
@@ -48,16 +52,26 @@ try (Scope s = debug.scope("CodeInstall", method)) {
 }
 ```
 
-The `debug.log` statement will send output to the console if `CodeInstall` is matched by the `-Dgraal.Log` option. The matching logic for this option is described in [DebugFilter](../src/org.graalvm.compiler.debug/src/org/graalvm/compiler/debug/DebugFilter.java#L31-L82). As mentioned in the javadoc, the same matching logic also applies to the `-Dgraal.Dump`, `-Dgraal.Time`, `-Dgraal.Count` and `-Dgraal.TrackMemUse` options.
+The `debug.log` statement will send output to the console if `CodeInstall` is matched by the
+`-Dgraal.Log` option. The matching logic for this option is implemented in
+[DebugFilter](../src/org.graalvm.compiler.debug/src/org/graalvm/compiler/debug/DebugFilter.java#L31-L82)
+and documented in the
+[Dump help message](../src/org.graalvm.compiler.debug/src/org/graalvm/compiler/debug/doc-files/DumpHelp.txt). As
+mentioned in the javadoc, the same matching logic also applies to the `-Dgraal.Dump`,
+`-Dgraal.Time`, `-Dgraal.Count` and `-Dgraal.TrackMemUse` options.
 
-Since `DebugContext` objects are thread local, they need to be passed around as parameters.
-For convenience, they may be available from objects such as a `Graph` or a `Node` but care needs to be taken when such objects can be exposed to multiple threads.
-There are assertions in `DebugContext` guarding against use in a thread different from the one in which it was instantiated.
+Since `DebugContext` objects are thread local, they need to be passed around as parameters.  For
+convenience, they may be available from objects such as a `Graph` or a `Node` but care needs to be
+taken when such objects can be exposed to multiple threads.  There are assertions in `DebugContext`
+guarding against use in a thread different from the one in which it was instantiated.
 
 
 ## JVMCI and Graal specific options
 
-JVMCI and Graal options are specified by the `jvmci.*` and `graal.*` system properties respectively. These must be specified on the JVM command line. Modifications to these properties by application code are not seen by JVMCI and Graal. A listing of all supported properties can be obtained with `-XX:+JVMCIPrintProperties`.
+JVMCI and Graal options are specified by the `jvmci.*` and `graal.*` system properties
+respectively. These must be specified on the JVM command line. Modifications to these properties by
+application code are not seen by JVMCI and Graal. A listing of all supported properties can be
+obtained with `-XX:+JVMCIPrintProperties`.
 
 ## Metrics
 
@@ -122,17 +136,22 @@ CompilationMemory_Accm=100000 bytes
 CompilationMemory_Flat=1000 bytes
 ```
 
-For both the `-Dgraal.AggregatedMetricsFile` and the `-Dgraal.MetricsFile` option, the output
-format is determined by the file name suffix. A `.csv` suffix produces a semi-colon separated format that is amenable to automatic data processing.
+For both the `-Dgraal.AggregatedMetricsFile` and the `-Dgraal.MetricsFile` option, the output format
+is determined by the file name suffix. A `.csv` suffix produces a semi-colon separated format that
+is amenable to automatic data processing.
 
 The columns in the `-Dgraal.MetricsFile` CSV output are:
 * **compilable**: A textual label such as the fully qualified name of the method being compiled.
 For Truffle compilations, this will be a name describing the guest language function/method being compiled.
-* **compilable_identity**: The identity hash code of the **compilable**. This is useful when the label
-may not uniquely identify the compilation input. For example, when a Java method is in a class loaded multiple times by different class loaders or is redefined via JVMTI,
-its label may not change but its identity will.
-* **compilation_nr**: The number of times metrics have been dumped for a compilation of **compilable_identity**. This is guaranteed to be asymptotically increasing since dumping of per-compilation metrics is serialized on a global lock.
-* **compilation_id**: An identifier for the compilation that is highly likely (but not guaranteed) to be unique. Note that it may not be purely numeric.
+* **compilable_identity**: The identity hash code of the **compilable**. This is useful when the
+label may not uniquely identify the compilation input. For example, when a Java method is in a class
+loaded multiple times by different class loaders or is redefined via JVMTI, its label may not change
+but its identity will.
+* **compilation_nr**: The number of times metrics have been dumped for a compilation of
+  **compilable_identity**. This is guaranteed to be asymptotically increasing since dumping of
+  per-compilation metrics is serialized on a global lock.
+* **compilation_id**: An identifier for the compilation that is highly likely (but not guaranteed)
+  to be unique. Note that it may not be purely numeric.
 * **metric_name**: The name of the metric being reported.
 * **metric_value**: The metric value being reported.
 * **metric_unit**: The unit of measurement for the value being reported. This will be the empty string for a counter.
@@ -170,27 +189,39 @@ to obtain per-method metric values.
 
 ## Method filtering
 
-Specifying one of the debug scope options (i.e., `-Dgraal.Log`, `-Dgraal.Dump`, `-Dgraal.Count`, `-Dgraal.Time`, or `-Dgraal.TrackMemUse`) can generate a lot of output. Typically, you are only interesting in compiler output related to a single or few methods. In this case, use the `-Dgraal.MethodFilter` option to specify a method filter. The matching logic for this option is described in [MethodFilter](../src/org.graalvm.compiler.debug/src/org/graalvm/compiler/debug/MethodFilter.java#L33-L92).
+Specifying one of the debug scope options (i.e., `-Dgraal.Log`, `-Dgraal.Dump`, `-Dgraal.Count`,
+`-Dgraal.Time`, or `-Dgraal.TrackMemUse`) can generate a lot of output. Typically, you are only
+interesting in compiler output related to a single or few methods. In this case, use the
+`-Dgraal.MethodFilter` option to specify a method filter. The matching logic for this option is
+described in
+[MethodFilter](../src/org.graalvm.compiler.debug/src/org/graalvm/compiler/debug/MethodFilter.java#L33-L92)
+and documented in the
+[MethodFilter help message](../src/org.graalvm.compiler.debug/src/org/graalvm/compiler/debug/doc-files/MethodFilterHelp.txt).
 
 ## Metric filtering
 
-Alternatively, you may only want to see certain metrics. The `-Dgraal.Timers`, `-Dgraal.Counters` and `-Dgraal.MemUseTrackers` exist for this purpose.
-These options take a comma separated list of metrics names. Only the named metrics will be activated and reported. To see the
-available metric names, specify `-Dgraal.ListMetrics=true`. At VM shutdown this option lists all the metrics that were encountered
-during the VM execution. It does not list metrics registered on non-executed paths since metric registration is lazy.
-For example, to see all the metrics available in a boot strap:
-```
-mx vm -XX:+UseJVMCICompiler -XX:+BootstrapJVMCI -Dgraal.ListMetrics=true -version
-```
+Alternatively, you may only want to see certain metrics. The `-Dgraal.Timers`, `-Dgraal.Counters`
+and `-Dgraal.MemUseTrackers` exist for this purpose.  These options take a comma separated list of
+metrics names. Only the named metrics will be activated and reported. To see the available metric
+names, specify `-Dgraal.ListMetrics=true`. At VM shutdown this option lists all the metrics that
+were encountered during the VM execution. It does not list metrics registered on non-executed paths
+since metric registration is lazy.  For example, to see all the metrics available in a boot strap:
+``` mx vm -XX:+UseJVMCICompiler -XX:+BootstrapJVMCI -Dgraal.ListMetrics=true -version ```
 
 ## Dumping
 
-In addition to logging, Graal provides support for generating (or dumping) more detailed visualizations of certain compiler data structures. Currently, there is support for dumping:
+In addition to logging, Graal provides support for generating (or dumping) more detailed
+visualizations of certain compiler data structures. Currently, there is support for dumping:
 
-* HIR graphs (i.e., instances of [Graph](../src/org.graalvm.compiler.graph/src/org/graalvm/compiler/graph/Graph.java)) to the [Ideal Graph Visualizer](http://ssw.jku.at/General/Staff/TW/igv.html) (IGV), and
-* LIR register allocation and generated code to the [C1Visualizer](https://java.net/projects/c1visualizer/)
+* HIR graphs (i.e., instances of
+  [Graph](../src/org.graalvm.compiler.graph/src/org/graalvm/compiler/graph/Graph.java)) to the
+  [Ideal Graph Visualizer](http://ssw.jku.at/General/Staff/TW/igv.html) (IGV), and
+* LIR register allocation and generated code to the
+  [C1Visualizer](https://java.net/projects/c1visualizer/)
 
-Dumping is enabled via the `-Dgraal.Dump` option. The dump handler for generating C1Visualizer output will also generate output for HIR graphs if the `-Dgraal.PrintCFG=true` option is specified (in addition to the `-Dgraal.Dump` option).
+Dumping is enabled via the `-Dgraal.Dump` option. The dump handler for generating C1Visualizer
+output will also generate output for HIR graphs if the `-Dgraal.PrintCFG=true` option is specified
+(in addition to the `-Dgraal.Dump` option).
 
 By default, `-Dgraal.Dump` output is sent to the IGV over a network socket (localhost:4445).
 If the IGV cannot be connected to, the output will be sent to a file.
@@ -222,11 +253,12 @@ dumps/1497910458736/HotSpotCompilation-539[org.graalvm.compiler.graph.Node.updat
 dumps/1497910458736/HotSpotCompilation-539[org.graalvm.compiler.graph.Node.updateUsages(Node, Node)].cfg
 ```
 
-As you become familiar with the scope names used in Graal, you can refine the `-Dgraal.Dump` option to limit the amount of dump output generated. For example, the `"CodeGen"` and  `"CodeInstall"` scopes are active during code generation and installation respectively. To see the machine code (in the C1Visualizer) produced during these scopes:
-```
-mx vm -Dgraal.Dump=CodeGen,CodeInstall -Dgraal.MethodFilter=NodeClass.get -version
-```
-You will notice that no IGV output is generated by this command.
+As you become familiar with the scope names used in Graal, you can refine the `-Dgraal.Dump` option
+to limit the amount of dump output generated. For example, the `"CodeGen"` and `"CodeInstall"`
+scopes are active during code generation and installation respectively. To see the machine code (in
+the C1Visualizer) produced during these scopes: ``` mx vm -Dgraal.Dump=CodeGen,CodeInstall
+-Dgraal.MethodFilter=NodeClass.get -version ``` You will notice that no IGV output is generated by
+this command.
 
 Alternatively, you can see the machine code using [HotSpot's PrintAssembly support](https://wiki.openjdk.java.net/display/HotSpot/PrintAssembly):
 ```

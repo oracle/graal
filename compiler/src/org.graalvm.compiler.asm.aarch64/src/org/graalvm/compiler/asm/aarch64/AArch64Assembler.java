@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2018, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -2775,7 +2775,8 @@ public abstract class AArch64Assembler extends Assembler {
         WFE(0x2),
         WFI(0x3),
         SEV(0x4),
-        SEVL(0x5);
+        SEVL(0x5),
+        CSDB(0x14);
 
         private final int encoding;
 

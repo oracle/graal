@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package org.graalvm.compiler.nodes;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
@@ -48,7 +49,7 @@ public final class PiArrayNode extends PiNode implements ArrayLengthProvider {
     @Input ValueNode length;
 
     @Override
-    public ValueNode findLength(ArrayLengthProvider.FindLengthMode mode) {
+    public ValueNode findLength(FindLengthMode mode, ConstantReflectionProvider constantReflection) {
         return length;
     }
 
@@ -59,7 +60,7 @@ public final class PiArrayNode extends PiNode implements ArrayLengthProvider {
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (GraphUtil.arrayLength(object(), ArrayLengthProvider.FindLengthMode.SEARCH_ONLY) != length) {
+        if (GraphUtil.arrayLength(object(), ArrayLengthProvider.FindLengthMode.SEARCH_ONLY, tool.getConstantReflection()) != length) {
             return this;
         }
         return super.canonical(tool);

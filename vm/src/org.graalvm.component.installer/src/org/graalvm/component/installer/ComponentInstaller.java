@@ -25,6 +25,7 @@
 package org.graalvm.component.installer;
 
 import java.io.File;
+import java.io.IOError;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -36,7 +37,6 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.text.MessageFormat;
 import java.util.Arrays;
 import java.util.Collections;
@@ -75,7 +75,8 @@ public final class ComponentInstaller {
     static final Map<String, InstallerCommand> commands = new HashMap<>();
     static final Map<String, String> globalOptions = new HashMap<>();
 
-    static {
+    @SuppressWarnings("deprecation")
+    private static void initCommands() {
         commands.put("install", new InstallCommand()); // NOI18N
         commands.put("uninstall", new UninstallCommand()); // NOI18N
         commands.put("list", new ListInstalledCommand()); // NOI18N
@@ -88,6 +89,7 @@ public final class ComponentInstaller {
         globalOptions.put(Commands.OPTION_HELP, "");
         globalOptions.put(Commands.OPTION_CATALOG, "");
         globalOptions.put(Commands.OPTION_FILES, "");
+        globalOptions.put(Commands.OPTION_FILES_OLD, "=L");
         globalOptions.put(Commands.OPTION_FOREIGN_CATALOG, "s");
         globalOptions.put(Commands.OPTION_URLS, "");
         globalOptions.put(Commands.OPTION_NO_DOWNLOAD_PROGRESS, "");
@@ -95,11 +97,16 @@ public final class ComponentInstaller {
         globalOptions.put(Commands.LONG_OPTION_VERBOSE, Commands.OPTION_VERBOSE);
         globalOptions.put(Commands.LONG_OPTION_DEBUG, Commands.OPTION_DEBUG);
         globalOptions.put(Commands.LONG_OPTION_HELP, Commands.OPTION_HELP);
+        globalOptions.put(Commands.LONG_OPTION_FILES_OLD, Commands.OPTION_FILES);
         globalOptions.put(Commands.LONG_OPTION_FILES, Commands.OPTION_FILES);
         globalOptions.put(Commands.LONG_OPTION_CATALOG, Commands.OPTION_CATALOG);
         globalOptions.put(Commands.LONG_OPTION_FOREIGN_CATALOG, Commands.OPTION_FOREIGN_CATALOG);
         globalOptions.put(Commands.LONG_OPTION_URLS, Commands.OPTION_URLS);
         globalOptions.put(Commands.LONG_OPTION_NO_DOWNLOAD_PROGRESS, Commands.OPTION_NO_DOWNLOAD_PROGRESS);
+    }
+
+    static {
+        initCommands();
     }
 
     private static final ResourceBundle BUNDLE = ResourceBundle.getBundle(
@@ -207,7 +214,7 @@ public final class ComponentInstaller {
         } catch (DirectoryNotEmptyException ex) {
             env.error("INSTALLER_DirectoryNotEmpty", ex, ex.getMessage()); // NOI18N
             return 2;
-        } catch (IOException ex) {
+        } catch (IOError | IOException ex) {
             env.error("INSTALLER_IOException", ex, ex.getMessage()); // NOI18N
             return 2;
         } catch (MetadataException ex) {
@@ -235,13 +242,13 @@ public final class ComponentInstaller {
         String graalHome = System.getProperty("GRAAL_HOME", System.getenv("GRAAL_HOME")); // NOI18N
         Path graalPath = null;
         if (graalHome != null) {
-            graalPath = Paths.get(graalHome);
+            graalPath = SystemUtils.fromUserString(graalHome);
         } else {
             URL loc = getClass().getProtectionDomain().getCodeSource().getLocation();
             try {
                 File f = new File(loc.toURI());
                 if (f != null) {
-                    graalPath = f.toPath().resolve(GRAAL_DEFAULT_RELATIVE_PATH).normalize();
+                    graalPath = f.toPath().resolve(SystemUtils.fromCommonString(GRAAL_DEFAULT_RELATIVE_PATH)).toAbsolutePath();
                 }
             } catch (URISyntaxException ex) {
                 Logger.getLogger(ComponentInstaller.class.getName()).log(Level.SEVERE, null, ex);
@@ -250,10 +257,10 @@ public final class ComponentInstaller {
         if (graalPath == null) {
             throw env.failure("ERROR_NoGraalVMDirectory", null);
         }
-        if (!Files.isDirectory(graalPath) || !Files.exists(graalPath.resolve("release"))) {
+        if (!Files.isDirectory(graalPath) || !Files.exists(graalPath.resolve(SystemUtils.fileName("release")))) {
             throw env.failure("ERROR_InvalidGraalVMDirectory", null, graalPath);
         }
-        if (!Files.isDirectory(storagePath = graalPath.resolve(PATH_COMPONENT_STORAGE))) {
+        if (!Files.isDirectory(storagePath = graalPath.resolve(SystemUtils.fromCommonString(PATH_COMPONENT_STORAGE)))) {
             throw env.failure("ERROR_InvalidGraalVMDirectory", null, graalPath);
         }
         graalHomePath = graalPath;
@@ -287,7 +294,12 @@ public final class ComponentInstaller {
             if (envVar != null) {
                 def = envVar;
             } else {
-                def = f.l10n("Installer_BuiltingCatalogURL");
+                String releaseCatalog = env.getLocalRegistry().getGraalCapabilities().get(CommonConstants.RELEASE_CATALOG_KEY);
+                if (releaseCatalog == null) {
+                    def = f.l10n("Installer_BuiltingCatalogURL"); // NOI18N
+                } else {
+                    def = releaseCatalog;
+                }
             }
         }
         String s = System.getProperty(CommonConstants.SYSPROP_CATALOG_URL, def);

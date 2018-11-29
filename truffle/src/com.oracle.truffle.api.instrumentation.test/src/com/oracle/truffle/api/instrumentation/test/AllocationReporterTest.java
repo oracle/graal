@@ -1,26 +1,42 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * The Universal Permissive License (UPL), Version 1.0
  *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
  *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ * (a) the Software, and
  *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 package com.oracle.truffle.api.instrumentation.test;
 
@@ -37,6 +53,10 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.Instrument;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Source;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -55,13 +75,11 @@ import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.Instrument;
-import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.Source;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 /**
  * A test of {@link AllocationReporter}.
@@ -558,13 +576,6 @@ public class AllocationReporterTest {
 
     @Test
     public void testReporterChangeListener() {
-        try {
-            Class.forName("java.beans.PropertyChangeListener");
-        } catch (ClassNotFoundException ex) {
-            // skip the test if running only with java.base JDK9 module
-            return;
-        }
-
         // Test of AllocationReporter property change listener notifications
         allocation.setEnabled(false);
         Source source = Source.create(AllocationReporterLanguage.ID, "NEW");
@@ -572,7 +583,8 @@ public class AllocationReporterTest {
         }, (info) -> {
         });
         context.eval(source);
-        AllocationReporter reporter = (AllocationReporter) context.getPolyglotBindings().getMember(AllocationReporter.class.getSimpleName()).asHostObject();
+        context.enter();
+        AllocationReporter reporter = ProxyLanguage.getCurrentContext().getEnv().lookup(AllocationReporter.class);
         AtomicInteger listenerCalls = new AtomicInteger(0);
         AllocationReporterListener activatedListener = AllocationReporterListener.register(listenerCalls, reporter);
         assertEquals(0, listenerCalls.get());
@@ -588,6 +600,7 @@ public class AllocationReporterTest {
         allocation.setEnabled(false);
         assertEquals(1, listenerCalls.get());
         deactivatedListener.unregister();
+        context.leave();
     }
 
     /**
@@ -602,24 +615,11 @@ public class AllocationReporterTest {
      * <li>{ &lt;command&gt; ... } allocations nested under the previous command</li>
      * </ul>
      */
-    @TruffleLanguage.Registration(id = AllocationReporterLanguage.ID, mimeType = AllocationReporterLanguage.MIME_TYPE, name = "Allocation Reporter Language", version = "1.0")
-    public static class AllocationReporterLanguage extends TruffleLanguage<AllocationReporter> {
+    @TruffleLanguage.Registration(id = AllocationReporterLanguage.ID, name = "Allocation Reporter Language", version = "1.0")
+    public static class AllocationReporterLanguage extends ProxyLanguage {
 
         public static final String ID = "truffle-allocation-reporter-language";
-        public static final String MIME_TYPE = "application/x-truffle-allocation-reporter-language";
         public static final String PROP_SIZE_CALLS = "sizeCalls";
-
-        @Override
-        protected AllocationReporter createContext(Env env) {
-            AllocationReporter context = env.lookup(AllocationReporter.class);
-            env.exportSymbol(AllocationReporter.class.getSimpleName(), context);
-            return context;
-        }
-
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
-        }
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
@@ -738,7 +738,7 @@ public class AllocationReporterTest {
                 children.add(node);
             }
 
-            AllocNode toNode(ContextReference<AllocationReporter> contextRef) {
+            AllocNode toNode(ContextReference<LanguageContext> contextRef) {
                 if (children == null) {
                     return new AllocNode(oldValue, newValue, contextRef);
                 } else {
@@ -751,18 +751,18 @@ public class AllocationReporterTest {
 
             private final AllocValue oldValue;
             private final AllocValue newValue;
-            private final ContextReference<AllocationReporter> contextRef;
             @Children private final AllocNode[] children;
+            private final AllocationReporter reporter;
 
-            AllocNode(AllocValue oldValue, AllocValue newValue, ContextReference<AllocationReporter> contextRef) {
+            AllocNode(AllocValue oldValue, AllocValue newValue, ContextReference<LanguageContext> contextRef) {
                 this(oldValue, newValue, contextRef, null);
             }
 
-            AllocNode(AllocValue oldValue, AllocValue newValue, ContextReference<AllocationReporter> contextRef, AllocNode[] children) {
+            AllocNode(AllocValue oldValue, AllocValue newValue, ContextReference<LanguageContext> contextRef, AllocNode[] children) {
                 this.oldValue = oldValue;
                 this.newValue = newValue;
-                this.contextRef = contextRef;
                 this.children = children;
+                this.reporter = contextRef.get().getEnv().lookup(AllocationReporter.class);
             }
 
             public Object execute(VirtualFrame frame) {
@@ -772,30 +772,30 @@ public class AllocationReporterTest {
                     execChildren(frame);
                 } else if (oldValue == null) {
                     // new allocation
-                    if (contextRef.get().isActive()) {
+                    if (reporter.isActive()) {
                         if (newValue.kind != AllocValue.Kind.WRONG) {
                             // Test that it's wrong not to report will allocate
-                            contextRef.get().onEnter(null, 0, getAllocationSizeEstimate(newValue));
+                            reporter.onEnter(null, 0, getAllocationSizeEstimate(newValue));
                         }
                     }
                     execChildren(frame);
                     value = allocateValue(newValue);
-                    if (contextRef.get().isActive()) {
-                        contextRef.get().onReturnValue(value, 0, computeValueSize(newValue, value));
+                    if (reporter.isActive()) {
+                        reporter.onReturnValue(value, 0, computeValueSize(newValue, value));
                     }
                 } else {
                     // re-allocation
                     value = allocateValue(oldValue);    // pretend that it was allocated already
                     long oldSize = AllocationReporter.SIZE_UNKNOWN;
                     long newSize = AllocationReporter.SIZE_UNKNOWN;
-                    if (contextRef.get().isActive()) {
+                    if (reporter.isActive()) {
                         oldSize = computeValueSize(oldValue, value);
                         newSize = getAllocationSizeEstimate(newValue);
-                        contextRef.get().onEnter(value, oldSize, newSize);
+                        reporter.onEnter(value, oldSize, newSize);
                     }
                     execChildren(frame);
                     // Re-allocate, oldValue -> newValue
-                    if (contextRef.get().isActive()) {
+                    if (reporter.isActive()) {
                         if (newSize == AllocationReporter.SIZE_UNKNOWN) {
                             if (AllocValue.Kind.BIG == newValue.kind) {
                                 newSize = ((BigNumber) allocateValue(newValue)).getSize();
@@ -803,12 +803,13 @@ public class AllocationReporterTest {
                                 newSize = getAllocationSizeEstimate(newValue);
                             }
                         }
-                        contextRef.get().onReturnValue(value, oldSize, newSize);
+                        reporter.onReturnValue(value, oldSize, newSize);
                     }
                 }
                 return value;
             }
 
+            @ExplodeLoop
             private void execChildren(VirtualFrame frame) {
                 if (children != null) {
                     for (AllocNode ch : children) {

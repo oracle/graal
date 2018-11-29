@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -738,6 +738,46 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
+     * dst = src3 + src1 * src2.
+     *
+     * @param size register size. Has to be 32 or 64.
+     * @param dst general purpose register. May not be null or the stackpointer.
+     * @param src1 general purpose register. May not be null or the stackpointer.
+     * @param src2 general purpose register. May not be null or the stackpointer.
+     * @param src3 general purpose register. May not be null or the stackpointer.
+     */
+    @Override
+    public void madd(int size, Register dst, Register src1, Register src2, Register src3) {
+        super.madd(size, dst, src1, src2, src3);
+    }
+
+    /**
+     * dst = src3 - src1 * src2.
+     *
+     * @param size register size. Has to be 32 or 64.
+     * @param dst general purpose register. May not be null or the stackpointer.
+     * @param src1 general purpose register. May not be null or the stackpointer.
+     * @param src2 general purpose register. May not be null or the stackpointer.
+     * @param src3 general purpose register. May not be null or the stackpointer.
+     */
+    @Override
+    public void msub(int size, Register dst, Register src1, Register src2, Register src3) {
+        super.msub(size, dst, src1, src2, src3);
+    }
+
+    /**
+     * dst = 0 - src1 * src2.
+     *
+     * @param size register size. Has to be 32 or 64.
+     * @param dst general purpose register. May not be null or the stackpointer.
+     * @param src1 general purpose register. May not be null or the stackpointer.
+     * @param src2 general purpose register. May not be null or the stackpointer.
+     */
+    public void mneg(int size, Register dst, Register src1, Register src2) {
+        super.msub(size, dst, src1, src2, zr);
+    }
+
+    /**
      * unsigned multiply high. dst = (src1 * src2) >> size
      *
      * @param size register size. Has to be 32 or 64.
@@ -1473,6 +1513,14 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     public void nop() {
         super.hint(SystemHint.NOP);
+    }
+
+    /**
+     * Consumption of Speculative Data Barrier. This is a memory barrier that controls speculative
+     * execution and data value prediction.
+     */
+    public void csdb() {
+        super.hint(SystemHint.CSDB);
     }
 
     /**

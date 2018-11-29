@@ -35,23 +35,23 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.reflect.hosted.AccessorComputer;
-import com.oracle.svm.reflect.hosted.ReflectionFeature;
 
-import sun.reflect.MethodAccessor;
 import sun.reflect.generics.repository.MethodRepository;
 
-@TargetClass(value = Method.class, onlyWith = ReflectionFeature.IsEnabled.class)
+@TargetClass(value = Method.class)
 public final class Target_java_lang_reflect_Method {
 
     @Alias MethodRepository genericInfo;
 
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = AccessorComputer.class) MethodAccessor methodAccessor;
+    @Alias //
+    @RecomputeFieldValue(kind = Kind.Custom, declClass = AccessorComputer.class) //
+    Target_jdk_internal_reflect_MethodAccessor methodAccessor;
 
     @Alias
     native Target_java_lang_reflect_Method copy();
 
     @Substitute
-    MethodAccessor acquireMethodAccessor() {
+    Target_jdk_internal_reflect_MethodAccessor acquireMethodAccessor() {
         if (methodAccessor == null) {
             throw VMError.unsupportedFeature("Runtime reflection is not supported.");
         }

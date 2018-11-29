@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1173,7 +1173,7 @@ public abstract class SPARCAssembler extends Assembler {
     public static final Sethi SETHI = new Sethi();
     public static final FMOVcc FMOVSCC = new FMOVcc(OpfLow.Fmovscc);
     public static final FMOVcc FMOVDCC = new FMOVcc(OpfLow.Fmovdcc);
-    public static final MOVicc MOVicc = new MOVicc();
+    public static final MOVicc MOVICC = new MOVicc();
     public static final OpfOp OPF = new OpfOp();
     public static final Op3Op OP3 = new Op3Op();
     public static final SPARCOp LDST = new SPARCOp(Ops.LdstOp);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,13 +24,14 @@
  */
 package org.graalvm.compiler.replacements;
 
-import java.net.URI;
 import static org.graalvm.compiler.debug.GraalError.unimplemented;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Formatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +41,7 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
+import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
 import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.core.common.cfg.CFGVerifier;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
@@ -399,6 +401,18 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         public JavaType getInvokeReturnType() {
             throw unimplemented();
         }
+
+        @Override
+        public String toString() {
+            Formatter fmt = new Formatter();
+            PEMethodScope scope = this.methodScope;
+            fmt.format("%s", new ResolvedJavaMethodBytecode(scope.method).asStackTraceElement(invoke.bci()));
+            NodeSourcePosition callers = scope.getCallerBytecodePosition();
+            if (callers != null) {
+                fmt.format("%n%s", callers);
+            }
+            return fmt.toString();
+        }
     }
 
     protected class PEAppendGraphBuilderContext extends PENonAppendGraphBuilderContext {
@@ -551,8 +565,8 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
     }
 
-    public void decode(ResolvedJavaMethod method, boolean trackNodeSourcePosition) {
-        PEMethodScope methodScope = new PEMethodScope(graph, null, null, lookupEncodedGraph(method, null, null, trackNodeSourcePosition), method, null, 0, loopExplosionPlugin, null);
+    public void decode(ResolvedJavaMethod method, boolean isSubstitution, boolean trackNodeSourcePosition) {
+        PEMethodScope methodScope = new PEMethodScope(graph, null, null, lookupEncodedGraph(method, null, null, isSubstitution, trackNodeSourcePosition), method, null, 0, loopExplosionPlugin, null);
         decode(createInitialLoopScope(methodScope, null));
         cleanupGraph(methodScope);
 
@@ -779,8 +793,13 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
     }
 
     protected LoopScope doInline(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData, InlineInfo inlineInfo, ValueNode[] arguments) {
+        if (!invokeData.invoke.useForInlining()) {
+            return null;
+        }
         ResolvedJavaMethod inlineMethod = inlineInfo.getMethodToInline();
-        EncodedGraph graphToInline = lookupEncodedGraph(inlineMethod, inlineInfo.getOriginalMethod(), inlineInfo.getIntrinsicBytecodeProvider(), graph.trackNodeSourcePosition());
+        ResolvedJavaMethod originalMethod = inlineInfo.getOriginalMethod();
+        boolean isSubstitution = originalMethod != null && !originalMethod.equals(inlineMethod);
+        EncodedGraph graphToInline = lookupEncodedGraph(inlineMethod, originalMethod, inlineInfo.getIntrinsicBytecodeProvider(), isSubstitution, graph.trackNodeSourcePosition());
         if (graphToInline == null) {
             return null;
         }
@@ -848,7 +867,9 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         // Copy inlined methods from inlinee to caller
         List<ResolvedJavaMethod> inlinedMethods = graphToInline.getInlinedMethods();
         if (inlinedMethods != null) {
-            graph.getMethods().addAll(inlinedMethods);
+            for (ResolvedJavaMethod other : inlinedMethods) {
+                graph.recordMethod(other);
+            }
         }
 
         if (graphToInline.getFields() != null) {
@@ -1047,7 +1068,8 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
     }
 
-    protected abstract EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, ResolvedJavaMethod originalMethod, BytecodeProvider intrinsicBytecodeProvider, boolean trackNodeSourcePosition);
+    protected abstract EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, ResolvedJavaMethod originalMethod, BytecodeProvider intrinsicBytecodeProvider, boolean isSubstitution,
+                    boolean trackNodeSourcePosition);
 
     @Override
     protected void handleFixedNode(MethodScope s, LoopScope loopScope, int nodeOrderId, FixedNode node) {

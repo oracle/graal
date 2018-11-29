@@ -68,7 +68,9 @@ public interface HostVM {
 
     boolean platformSupported(ResolvedJavaType type);
 
-    void registerType(AnalysisType newValue, ResolvedJavaType hostType);
+    void registerType(AnalysisType newValue);
+
+    boolean isInitialized(AnalysisType type);
 
     Optional<AnalysisMethod> handleForeignCall(ForeignCallDescriptor foreignCallDescriptor, ForeignCallsProvider foreignCallsProvider);
 
@@ -78,4 +80,13 @@ public interface HostVM {
     String inspectServerContentPath();
 
     void warn(String message);
+
+    /**
+     * Gets the name of the native image being built.
+     *
+     * @return {@code null} if this VM is not being used in the context of building a native image
+     */
+    default String getImageName() {
+        return null;
+    }
 }

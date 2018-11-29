@@ -1,0 +1,9 @@
+gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/named.C
+gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/gen-attrs-28.C
+gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/rv-array1.C
+gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/implicit5.C
+gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/union4.C
+gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/overflow1.C
+gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/not_special.C
+gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/defaulted36.C
+gcc-5.2.0/gcc/testsuite/g++.dg/cpp0x/rv-trivial-bug.C

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -83,7 +83,7 @@ public class DeoptimizeOnExceptionTest extends GraalCompilerTest {
             ClassLoader testCl = new MyClassLoader();
             @SuppressWarnings("unchecked")
             Class<Runnable> c = (Class<Runnable>) testCl.loadClass(name);
-            Runnable r = c.newInstance();
+            Runnable r = c.getDeclaredConstructor().newInstance();
             ct = Long.MAX_VALUE;
             // warmup
             for (int i = 0; i < 100; i++) {

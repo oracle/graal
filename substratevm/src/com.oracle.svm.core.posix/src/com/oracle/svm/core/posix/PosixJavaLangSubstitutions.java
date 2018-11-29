@@ -54,15 +54,17 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.LibCHelper;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
+import com.oracle.svm.core.jdk.JDK8OrEarlier;
+import com.oracle.svm.core.jdk.JDK9OrLater;
 import com.oracle.svm.core.posix.headers.Dirent;
 import com.oracle.svm.core.posix.headers.Dirent.DIR;
 import com.oracle.svm.core.posix.headers.Dirent.dirent;
@@ -158,11 +160,11 @@ final class Target_java_lang_ProcessEnvironment {
                 int valLength = (int) LibC.strlen(valBeg).rawValue();
 
                 byte[] var = new byte[varLength];
-                SubstrateUtil.wrapAsByteBuffer(varBeg, varLength).get(var);
+                CTypeConversion.asByteBuffer(varBeg, varLength).get(var);
                 result[2 * j] = var;
 
                 byte[] val = new byte[valLength];
-                SubstrateUtil.wrapAsByteBuffer(valBeg, valLength).get(val);
+                CTypeConversion.asByteBuffer(valBeg, valLength).get(val);
                 result[2 * j + 1] = val;
 
                 j++;
@@ -201,7 +203,7 @@ final class Target_java_lang_ProcessEnvironment_Value {
     public static native Target_java_lang_ProcessEnvironment_Value valueOf(byte[] bytes);
 }
 
-@TargetClass(className = "java.lang.UNIXProcess")
+@TargetClass(className = "java.lang.UNIXProcess", onlyWith = JDK8OrEarlier.class)
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_lang_UNIXProcess {
 
@@ -381,7 +383,7 @@ final class Target_java_lang_UNIXProcess {
     @Substitute
     @SuppressWarnings({"static-method"})
     int waitForProcessExit(int ppid) {
-        CIntPointer statusptr = StackValue.get(SizeOf.get(CIntPointer.class));
+        CIntPointer statusptr = StackValue.get(CIntPointer.class);
         while (Wait.waitpid(ppid, statusptr, 0) < 0) {
             if (Errno.errno() == Errno.ECHILD()) {
                 return 0;
@@ -407,6 +409,36 @@ final class Target_java_lang_UNIXProcess {
     }
 }
 
+@TargetClass(className = "java.lang.ProcessImpl")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+final class Target_java_lang_ProcessImpl {
+
+    @Substitute //
+    @TargetElement(onlyWith = JDK9OrLater.class) //
+    @SuppressWarnings({"unused", "static-method"})
+    private /* native */ int forkAndExec(
+                    int mode,
+                    byte[] helperpath,
+                    byte[] prog,
+                    byte[] argBlock,
+                    int argc,
+                    byte[] envBlock,
+                    int envc,
+                    byte[] dir,
+                    int[] fds,
+                    boolean redirectErrorStream)
+                    throws IOException {
+        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ProcessImpl.forkAndExec");
+    }
+
+    @Substitute //
+    @TargetElement(onlyWith = JDK9OrLater.class) //
+    private static /* native */ void init() {
+        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ProcessImpl.init");
+    }
+}
+
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Java_lang_UNIXProcess_Supplement {
 
     static final ThreadFactory reaperFactory = new ThreadFactory() {
@@ -477,36 +509,28 @@ final class Java_lang_UNIXProcess_Supplement {
                 return gotoFinally;
             }
 
-            /*
-             * opendir() below allocates a file descriptor. We close failFd+1 so it should become
-             * the descriptor allocated to opendir() and we can avoid closing it together with the
-             * other descriptors.
-             */
-            final int maxFd = failFd + 1;
-            if (UnistdNoTransitions.close(maxFd) < 0) {
-                return gotoFinally;
-            }
-
             if (procFdsPath.isNull()) {
                 // We have no procfs, resort to close file descriptors by trial and error
                 int maxOpenFds = (int) UnistdNoTransitions.sysconf(Unistd._SC_OPEN_MAX());
-                for (int fd = maxFd + 1; fd < maxOpenFds; fd++) {
-                    if (UnistdNoTransitions.close(fd) != 0 && Errno.errno() != Errno.EBADF()) {
-                        return gotoFinally;
-                    }
+                for (int fd = failFd + 1; fd < maxOpenFds; fd++) {
+                    UnistdNoTransitions.close(fd);
                 }
             } else {
-                DIR fddir = Dirent.opendir_no_transition(procFdsPath);
+                int fddirfd = Fcntl.NoTransitions.open(procFdsPath, Fcntl.O_RDONLY(), 0);
+                if (fddirfd < 0) {
+                    return gotoFinally;
+                }
+                DIR fddir = Dirent.fdopendir_no_transition(fddirfd);
                 if (fddir.isNull()) {
                     return gotoFinally;
                 }
                 dirent dirent = WordFactory.pointer(buffer.rawValue());
-                direntPointer direntptr = StackValue.get(SizeOf.get(direntPointer.class));
+                direntPointer direntptr = StackValue.get(direntPointer.class);
                 int status;
                 while ((status = Dirent.readdir_r_no_transition(fddir, dirent, direntptr)) == 0 && direntptr.read().isNonNull()) {
-                    CCharPointerPointer endptr = StackValue.get(SizeOf.get(CCharPointerPointer.class));
+                    CCharPointerPointer endptr = StackValue.get(CCharPointerPointer.class);
                     long fd = LibC.strtol(dirent.d_name(), endptr, 10);
-                    if (fd > maxFd && endptr.read().isNonNull() && endptr.read().read() == '\0') {
+                    if (fd > failFd && fd != fddirfd && endptr.read().isNonNull() && endptr.read().read() == '\0') {
                         UnistdNoTransitions.close((int) fd);
                     }
                 }
@@ -536,7 +560,7 @@ final class Java_lang_UNIXProcess_Supplement {
                 final int fileStrlen = (int) LibC.strlen(file).rawValue();
                 int stickyErrno = 0;
 
-                final CCharPointerPointer saveptr = StackValue.get(SizeOf.get(CCharPointerPointer.class));
+                final CCharPointerPointer saveptr = StackValue.get(CCharPointerPointer.class);
                 saveptr.write(WordFactory.nullPointer());
                 CCharPointer searchDir = LibC.strtok_r(searchPaths, searchPathSeparator, saveptr);
                 while (searchDir.isNonNull()) {
@@ -664,7 +688,7 @@ final class Java_lang_UNIXProcess_Supplement {
     }
 }
 
-@TargetClass(className = "java.lang.UNIXProcess", innerClass = "ProcessPipeInputStream")
+@TargetClass(className = "java.lang.UNIXProcess", innerClass = "ProcessPipeInputStream", onlyWith = JDK8OrEarlier.class)
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_lang_UNIXProcess_ProcessPipeInputStream {
     @Alias
@@ -675,7 +699,7 @@ final class Target_java_lang_UNIXProcess_ProcessPipeInputStream {
     native void processExited();
 }
 
-@TargetClass(className = "java.lang.UNIXProcess", innerClass = "ProcessPipeOutputStream")
+@TargetClass(className = "java.lang.UNIXProcess", innerClass = "ProcessPipeOutputStream", onlyWith = JDK8OrEarlier.class)
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_lang_UNIXProcess_ProcessPipeOutputStream {
     @Alias
@@ -708,7 +732,7 @@ final class Target_java_lang_System {
     @Substitute
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public static long currentTimeMillis() {
-        timeval timeval = StackValue.get(SizeOf.get(timeval.class));
+        timeval timeval = StackValue.get(timeval.class);
         timezone timezone = WordFactory.nullPointer();
         gettimeofday(timeval, timezone);
         return timeval.tv_sec() * 1_000L + timeval.tv_usec() / 1_000L;
@@ -716,6 +740,7 @@ final class Target_java_lang_System {
 }
 
 @TargetClass(className = "java.lang.Shutdown")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_lang_Shutdown {
 
     @Substitute
@@ -740,6 +765,7 @@ final class Target_java_lang_Runtime {
 }
 
 /** Dummy class to have a class with the file's name. */
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 public final class PosixJavaLangSubstitutions {
 
     /** Private constructor: No instances. */

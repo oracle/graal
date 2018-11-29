@@ -2,25 +2,41 @@
  * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * The Universal Permissive License (UPL), Version 1.0
  *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
  *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ * (a) the Software, and
  *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 package com.oracle.truffle.api.test.polyglot;
 
@@ -70,14 +86,14 @@ public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
     @Test
     public void testSystemMethod() throws InteropException {
         TruffleObject system = (TruffleObject) languageEnv.lookupHostSymbol(System.class.getName());
-        Object value = ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), system, "getProperty", "file.separator");
+        Object value = ForeignAccess.sendInvoke(Message.INVOKE.createNode(), system, "getProperty", "file.separator");
         assertThat(value, CoreMatchers.instanceOf(String.class));
         assertThat(value, CoreMatchers.anyOf(CoreMatchers.equalTo("/"), CoreMatchers.equalTo("\\")));
 
         Object getProperty = ForeignAccess.sendRead(Message.READ.createNode(), system, "getProperty");
         assertThat(getProperty, CoreMatchers.instanceOf(TruffleObject.class));
         assertTrue("IS_EXECUTABLE", ForeignAccess.sendIsExecutable(Message.IS_EXECUTABLE.createNode(), (TruffleObject) getProperty));
-        value = ForeignAccess.sendExecute(Message.createExecute(1).createNode(), (TruffleObject) getProperty, "file.separator");
+        value = ForeignAccess.sendExecute(Message.EXECUTE.createNode(), (TruffleObject) getProperty, "file.separator");
         assertThat(value, CoreMatchers.instanceOf(String.class));
         assertThat(value, CoreMatchers.anyOf(CoreMatchers.equalTo("/"), CoreMatchers.equalTo("\\")));
     }
@@ -135,15 +151,15 @@ public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
         Data data = new Data();
         TruffleObject obj = (TruffleObject) languageEnv.asGuestValue(data);
 
-        Object string = ForeignAccess.sendInvoke(Message.createInvoke(0).createNode(), obj, "toString");
+        Object string = ForeignAccess.sendInvoke(Message.INVOKE.createNode(), obj, "toString");
         assertTrue(string instanceof String && ((String) string).startsWith(Data.class.getName() + "@"));
-        Object clazz = ForeignAccess.sendInvoke(Message.createInvoke(0).createNode(), obj, "getClass");
+        Object clazz = ForeignAccess.sendInvoke(Message.INVOKE.createNode(), obj, "getClass");
         assertTrue(clazz instanceof TruffleObject && languageEnv.asHostObject(clazz) == Data.class);
-        assertEquals(true, ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), obj, "equals", obj));
-        assertTrue(ForeignAccess.sendInvoke(Message.createInvoke(0).createNode(), obj, "hashCode") instanceof Integer);
+        assertEquals(true, ForeignAccess.sendInvoke(Message.INVOKE.createNode(), obj, "equals", obj));
+        assertTrue(ForeignAccess.sendInvoke(Message.INVOKE.createNode(), obj, "hashCode") instanceof Integer);
 
         for (String m : new String[]{"notify", "notifyAll", "wait"}) {
-            assertThrowsExceptionWithCause(() -> ForeignAccess.sendInvoke(Message.createInvoke(0).createNode(), obj, m), IllegalMonitorStateException.class);
+            assertThrowsExceptionWithCause(() -> ForeignAccess.sendInvoke(Message.INVOKE.createNode(), obj, m), IllegalMonitorStateException.class);
         }
     }
 
@@ -454,12 +470,11 @@ public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
         assertFalse(KeyInfo.isInternal(getKeyInfo(ipobj, "p6")));
     }
 
-    @SuppressWarnings({"rawtypes"})
     private void checkInternalKeys(Object map, String nonInternalKeys) throws ClassCastException, IllegalStateException, PolyglotException, UnsupportedMessageException {
-        List mapWithInternalKeys = context.asValue(keys(map, true)).as(List.class);
-        List mapWithoutInternalKeys = context.asValue(keys(map, false)).as(List.class);
-        assertEquals(nonInternalKeys, mapWithoutInternalKeys.toString());
-        assertEquals("[p1, p2, p3, p4, p5, p6]", mapWithInternalKeys.toString());
+        List<?> mapWithInternalKeys = context.asValue(keys(map, true)).as(List.class);
+        List<?> mapWithoutInternalKeys = context.asValue(keys(map, false)).as(List.class);
+        assertEquals(nonInternalKeys, new ArrayList<>(mapWithoutInternalKeys).toString());
+        assertEquals("[p1, p2, p3, p4, p5, p6]", new ArrayList<>(mapWithInternalKeys).toString());
     }
 
     private static TruffleObject keys(Object value, boolean includeInternal) throws UnsupportedMessageException {
@@ -559,7 +574,7 @@ public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
 
     private static Object invoke(Object foreignObject, String propertyName, Object... args) {
         try {
-            return ForeignAccess.sendInvoke(Message.createInvoke(0).createNode(), (TruffleObject) foreignObject, propertyName, args);
+            return ForeignAccess.sendInvoke(Message.INVOKE.createNode(), (TruffleObject) foreignObject, propertyName, args);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException | UnknownIdentifierException e) {
             throw new AssertionError(e);
         }
@@ -567,10 +582,27 @@ public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
 
     private static Object execute(Object foreignObject, Object... args) {
         try {
-            return ForeignAccess.sendExecute(Message.createExecute(0).createNode(), (TruffleObject) foreignObject, args);
+            return ForeignAccess.sendExecute(Message.EXECUTE.createNode(), (TruffleObject) foreignObject, args);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw new AssertionError(e);
         }
+    }
+
+    @Test
+    public void testIsHostFunction() {
+        TruffleObject system = (TruffleObject) languageEnv.lookupHostSymbol(System.class.getName());
+        Object exit = read(system, "exit");
+        assertTrue(exit instanceof TruffleObject);
+        assertFalse(languageEnv.isHostObject(exit));
+        assertTrue(languageEnv.isHostFunction(exit));
+
+        Object out = read(system, "out");
+        assertTrue(exit instanceof TruffleObject);
+        assertTrue(languageEnv.isHostObject(out));
+        assertFalse(languageEnv.isHostFunction(out));
+
+        assertFalse(languageEnv.isHostFunction(system));
+        assertFalse(languageEnv.isHostFunction(false));
     }
 
     static final class NoKeysObject implements TruffleObject {

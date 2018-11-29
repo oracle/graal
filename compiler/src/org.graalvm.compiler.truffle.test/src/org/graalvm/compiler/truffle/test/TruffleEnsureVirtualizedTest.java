@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,19 +24,34 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import jdk.vm.ci.code.BailoutException;
-
-import org.junit.Assert;
-import org.junit.Test;
-
 import org.graalvm.compiler.api.directives.GraalDirectives;
+import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
+import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
+import jdk.vm.ci.code.BailoutException;
+
 public class TruffleEnsureVirtualizedTest extends PartialEvaluationTest {
+
+    private static TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope immediateCompilationScope;
+
+    @BeforeClass
+    public static void setup() {
+        immediateCompilationScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleCompileImmediately, false);
+    }
+
+    @AfterClass
+    public static void tearDown() {
+        immediateCompilationScope.close();
+    }
 
     private abstract class TestNode extends AbstractTestNode {
         @Override
@@ -71,7 +86,7 @@ public class TruffleEnsureVirtualizedTest extends PartialEvaluationTest {
         testEnsureVirtualized(false, new TestNode() {
             @Override
             public void executeVoid(VirtualFrame frame) {
-                Integer object = new Integer(intField);
+                Integer object = newInteger(intField);
                 GraalDirectives.ensureVirtualized(object);
             }
         });
@@ -82,7 +97,7 @@ public class TruffleEnsureVirtualizedTest extends PartialEvaluationTest {
         testEnsureVirtualized(true, new TestNode() {
             @Override
             public void executeVoid(VirtualFrame frame) {
-                Integer object = new Integer(intField);
+                Integer object = newInteger(intField);
                 GraalDirectives.ensureVirtualized(object);
                 field = object; // assert here
             }
@@ -94,7 +109,7 @@ public class TruffleEnsureVirtualizedTest extends PartialEvaluationTest {
         testEnsureVirtualized(true, new TestNode() {
             @Override
             public void executeVoid(VirtualFrame frame) {
-                Integer object = new Integer(intField);
+                Integer object = newInteger(intField);
                 field = object;
                 GraalDirectives.ensureVirtualized(object); // assert here
             }
@@ -106,7 +121,7 @@ public class TruffleEnsureVirtualizedTest extends PartialEvaluationTest {
         testEnsureVirtualized(false, new TestNode() {
             @Override
             public void executeVoid(VirtualFrame frame) {
-                Integer object = new Integer(intField);
+                Integer object = newInteger(intField);
                 GraalDirectives.ensureVirtualizedHere(object);
             }
         });
@@ -117,11 +132,16 @@ public class TruffleEnsureVirtualizedTest extends PartialEvaluationTest {
         testEnsureVirtualized(false, new TestNode() {
             @Override
             public void executeVoid(VirtualFrame frame) {
-                Integer object = new Integer(intField);
+                Integer object = newInteger(intField);
                 GraalDirectives.ensureVirtualizedHere(object);
                 field = object;
             }
         });
+    }
+
+    @SuppressWarnings("deprecation")
+    private static Integer newInteger(int value) {
+        return new Integer(value);
     }
 
     @Test
@@ -129,7 +149,7 @@ public class TruffleEnsureVirtualizedTest extends PartialEvaluationTest {
         testEnsureVirtualized(true, new TestNode() {
             @Override
             public void executeVoid(VirtualFrame frame) {
-                Integer object = new Integer(intField);
+                Integer object = newInteger(intField);
                 field = object;
                 GraalDirectives.ensureVirtualizedHere(object); // assert here
             }
@@ -164,7 +184,7 @@ public class TruffleEnsureVirtualizedTest extends PartialEvaluationTest {
         testEnsureVirtualized(false, new TestNode() {
             @Override
             public void executeVoid(VirtualFrame frame) {
-                Integer object = new Integer(intField);
+                Integer object = newInteger(intField);
                 if (booleanField) {
                     GraalDirectives.ensureVirtualized(object);
                 }
@@ -178,7 +198,7 @@ public class TruffleEnsureVirtualizedTest extends PartialEvaluationTest {
         testEnsureVirtualized(true, new TestNode() {
             @Override
             public void executeVoid(VirtualFrame frame) {
-                Integer object = new Integer(intField);
+                Integer object = newInteger(intField);
                 if (booleanField) {
                     GraalDirectives.ensureVirtualized(object);
                 } else {
@@ -194,7 +214,7 @@ public class TruffleEnsureVirtualizedTest extends PartialEvaluationTest {
         testEnsureVirtualized(true, new TestNode() {
             @Override
             public void executeVoid(VirtualFrame frame) {
-                Integer object = new Integer(intField);
+                Integer object = newInteger(intField);
                 GraalDirectives.ensureVirtualized(object);
                 if (booleanField) {
                     field = 1;
@@ -211,7 +231,7 @@ public class TruffleEnsureVirtualizedTest extends PartialEvaluationTest {
         testEnsureVirtualized(true, new TestNode() {
             @Override
             public void executeVoid(VirtualFrame frame) {
-                Integer object = new Integer(intField);
+                Integer object = newInteger(intField);
                 if (booleanField) {
                     field = object;
                 } else {
@@ -227,7 +247,7 @@ public class TruffleEnsureVirtualizedTest extends PartialEvaluationTest {
         testEnsureVirtualized(true, new TestNode() {
             @Override
             public void executeVoid(VirtualFrame frame) {
-                Integer object = new Integer(intField);
+                Integer object = newInteger(intField);
                 if (booleanField) {
                     field = object;
                 } else {
@@ -248,7 +268,7 @@ public class TruffleEnsureVirtualizedTest extends PartialEvaluationTest {
         testEnsureVirtualized(true, new TestNode() {
             @Override
             public void executeVoid(VirtualFrame frame) {
-                Integer object = new Integer(intField);
+                Integer object = newInteger(intField);
                 TestClass t = new TestClass();
                 t.a = object;
                 GraalDirectives.ensureVirtualized(object);
@@ -267,7 +287,7 @@ public class TruffleEnsureVirtualizedTest extends PartialEvaluationTest {
         testEnsureVirtualized(false, new TestNode() {
             @Override
             public void executeVoid(VirtualFrame frame) {
-                Integer object = new Integer(intField);
+                Integer object = newInteger(intField);
                 TestClass t = new TestClass();
                 t.a = object;
                 GraalDirectives.ensureVirtualized(t);

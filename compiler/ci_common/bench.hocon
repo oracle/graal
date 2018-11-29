@@ -3,7 +3,7 @@
 bench-arguments : ["--machine-name", "${MACHINE_NAME}", "--", "-Xmx${XMX}", "-Xms${XMS}", "-XX:+PrintConcurrentLocks", "--jvm-config=${JVM_CONFIG}", "--jvm=${JVM}"]
 
 bench-jvmci : {
-  mx-benchmark : ["mx", "--kill-with-sigquit", "benchmark", "--results-file", "${BENCH_RESULTS_FILE_PATH}"]
+  mx-benchmark : ["mx", "--kill-with-sigquit", "benchmark", "--fork-count-file=${FORK_COUNT_FILE}", "--extras=${BENCH_SERVER_EXTRAS}", "--results-file", "${BENCH_RESULTS_FILE_PATH}"]
   mx-dacapo : ${bench-jvmci.mx-benchmark} ["dacapo:*"]
   mx-scala-dacapo : ${bench-jvmci.mx-benchmark} ["scala-dacapo:*"]
   mx-dacapo-timing : ${bench-jvmci.mx-benchmark} ["dacapo-timing:*"]
@@ -15,6 +15,7 @@ bench-jvmci : {
   mx-specjbb2005: ${bench-jvmci.mx-benchmark} ["specjbb2005"]
   mx-specjbb2015: ${bench-jvmci.mx-benchmark} ["specjbb2015"]
   mx-renaissance: ${bench-jvmci.mx-benchmark} ["renaissance:*"]
+  mx-spark-sql-perf: ${bench-jvmci.mx-benchmark} ["spark-sql-perf"]
   mx-micros-graal-whitebox: ${bench-jvmci.mx-benchmark} ["jmh-whitebox:*"]
   mx-micros-graal-dist: ${bench-jvmci.mx-benchmark} ["jmh-dist:*"]
   mx-teardown : ["bench-uploader.py", "--url", "${BENCH_SERVER_URL}", "${BENCH_RESULTS_FILE_PATH}"]
@@ -84,7 +85,7 @@ bench-specjbb2005: ${bench-common} ${specjbb-bench-notifications} {
     SPECJBB2005: { name: specjbb2005, version: "1.07" }
   }
   run: [
-    ${bench-jvmci.mx-specjbb2005} ${bench-arguments}
+    ${bench-jvmci.mx-specjbb2005} ${bench-arguments} ["input.ending_number_warehouses=77"]
   ]
   timelimit: "2:00:00"
 }
@@ -134,7 +135,7 @@ bench-specjbb2015: ${bench-common} ${specjbb-bench-notifications} {
 # JMH micros graal
 
 bench-micros-graal-whitebox: ${bench-common} ${micros-bench-notifications} {
-  targets: [weekly]
+  targets: [bench, weekly]
   run: [
     ${bench-jvmci.mx-micros-graal-whitebox} ${bench-arguments}
   ]
@@ -142,7 +143,7 @@ bench-micros-graal-whitebox: ${bench-common} ${micros-bench-notifications} {
 }
 
 bench-micros-graal-dist: ${bench-common} ${micros-bench-notifications} {
-  targets: [weekly]
+  targets: [bench, weekly]
   run: [
     ${bench-jvmci.mx-micros-graal-dist} ${bench-arguments}
   ]
@@ -160,4 +161,17 @@ bench-renaissance: ${bench-common} ${renaissance-bench-notifications} {
     RENAISSANCE: { name: renaissance, version: "0.1" }
   }
   timelimit: "2:45:00"
+}
+
+# spark-sql-perf-related targets
+
+bench-spark-sql-perf: ${bench-common} {
+  targets: [bench, post-merge]
+  run: [
+    ${bench-jvmci.mx-spark-sql-perf} ${bench-arguments}
+  ]
+  downloads: {
+    SPARK_SQL_PERF: { name: spark-sql-perf, version: "0.1" }
+  }
+  timelimit: "0:30:00"
 }

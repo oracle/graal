@@ -34,13 +34,17 @@ import java.lang.management.ThreadMXBean;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
 
 import javax.management.ObjectName;
 
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
@@ -53,6 +57,7 @@ import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+
 //Checkstyle: stop
 import sun.management.Util;
 //Checkstyle: resume
@@ -143,7 +148,14 @@ final class SubstrateRuntimeMXBean implements RuntimeMXBean {
 
     private static final String MSG = "RuntimeMXBean methods";
 
+    private long startMillis = 0;
+
     SubstrateRuntimeMXBean() {
+    }
+
+    /** Set the start time of the VM. */
+    void setStartMillis() {
+        startMillis = System.currentTimeMillis();
     }
 
     @Override
@@ -159,12 +171,13 @@ final class SubstrateRuntimeMXBean implements RuntimeMXBean {
         throw VMError.unsupportedFeature(MSG);
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public String getName() {
         long id;
         String hostName;
         try {
-            id = (Integer) Compiler.command(new Object[]{"com.oracle.svm.core.posix.PosixUtils.getpid()int"});
+            id = ProcessProperties.getProcessID();
         } catch (Throwable t) {
             id = GraalServices.getGlobalTimeStamp();
         }
@@ -215,7 +228,7 @@ final class SubstrateRuntimeMXBean implements RuntimeMXBean {
 
     @Override
     public String getClassPath() {
-        throw VMError.unsupportedFeature(MSG);
+        return System.getProperty("java.class.path");
     }
 
     @Override
@@ -235,17 +248,50 @@ final class SubstrateRuntimeMXBean implements RuntimeMXBean {
 
     @Override
     public long getUptime() {
-        throw VMError.unsupportedFeature(MSG);
+        return System.currentTimeMillis() - startMillis;
     }
 
     @Override
     public long getStartTime() {
-        throw VMError.unsupportedFeature(MSG);
+        assert startMillis > 0 : "SubstrateRuntimeMXBean.getStartTime: Should have set SubstrateRuntimeMXBean.startMillis.";
+        return startMillis;
     }
 
+    /** Copied from {@code sun.management.RuntimeImpl#getSystemProperties()}. */
     @Override
     public Map<String, String> getSystemProperties() {
-        throw VMError.unsupportedFeature(MSG);
+        Properties sysProps = System.getProperties();
+        Map<String, String> map = new HashMap<>();
+
+        // Properties.entrySet() does not include the entries in
+        // the default properties. So use Properties.stringPropertyNames()
+        // to get the list of property keys including the default ones.
+        Set<String> keys = sysProps.stringPropertyNames();
+        for (String k : keys) {
+            String value = sysProps.getProperty(k);
+            map.put(k, value);
+        }
+
+        return map;
+    }
+}
+
+@AutomaticFeature
+class RuntimeMXBeanFeature implements Feature {
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        RuntimeSupport.getRuntimeSupport().addStartupHook(new Runnable() {
+
+            @Override
+            public void run() {
+                final RuntimeMXBean runtimeMXBean = ManagementFactory.getRuntimeMXBean();
+                if (runtimeMXBean instanceof SubstrateRuntimeMXBean) {
+                    final SubstrateRuntimeMXBean substrateRuntimeMXBean = (SubstrateRuntimeMXBean) runtimeMXBean;
+                    substrateRuntimeMXBean.setStartMillis();
+                }
+            }
+        });
     }
 }
 

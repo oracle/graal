@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -83,6 +83,7 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.FullInfopointNode;
+import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.ParameterNode;
@@ -111,6 +112,9 @@ import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.ConvertDeoptimizeToGuardPhase;
+import org.graalvm.compiler.phases.common.inlining.InliningPhase;
+import org.graalvm.compiler.phases.common.inlining.info.InlineInfo;
+import org.graalvm.compiler.phases.common.inlining.policy.GreedyInliningPolicy;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
@@ -632,6 +636,30 @@ public abstract class GraalCompilerTest extends GraalTest {
         return getProviders().getLowerer();
     }
 
+    protected final BasePhase<HighTierContext> createInliningPhase() {
+        return createInliningPhase(new CanonicalizerPhase());
+    }
+
+    protected BasePhase<HighTierContext> createInliningPhase(CanonicalizerPhase canonicalizer) {
+        return createInliningPhase(null, canonicalizer);
+    }
+
+    static class GreedyTestInliningPolicy extends GreedyInliningPolicy {
+        GreedyTestInliningPolicy(Map<Invoke, Double> hints) {
+            super(hints);
+        }
+
+        @Override
+        protected int previousLowLevelGraphSize(InlineInfo info) {
+            // Ignore previous compiles for tests
+            return 0;
+        }
+    }
+
+    protected BasePhase<HighTierContext> createInliningPhase(Map<Invoke, Double> hints, CanonicalizerPhase canonicalizer) {
+        return new InliningPhase(new GreedyTestInliningPolicy(hints), canonicalizer);
+    }
+
     protected CompilationIdentifier getCompilationId(ResolvedJavaMethod method) {
         return getBackend().getCompilationIdentifier(method);
     }
@@ -1063,6 +1091,20 @@ public abstract class GraalCompilerTest extends GraalTest {
         }
     }
 
+    protected StructuredGraph getFinalGraph(String method) {
+        return getFinalGraph(getResolvedJavaMethod(method));
+    }
+
+    protected StructuredGraph getFinalGraph(ResolvedJavaMethod method) {
+        StructuredGraph graph = parseForCompile(method);
+        applyFrontEnd(graph);
+        return graph;
+    }
+
+    protected void applyFrontEnd(StructuredGraph graph) {
+        GraalCompiler.emitFrontEnd(getProviders(), getBackend(), graph, getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, graph.getProfilingInfo(), createSuites(graph.getOptions()));
+    }
+
     protected StructuredGraph lastCompiledGraph;
 
     protected SpeculationLog getSpeculationLog() {
@@ -1108,6 +1150,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         return methodMap.get(javaMethod);
     }
 
+    @SuppressWarnings("deprecation")
     protected Object invoke(ResolvedJavaMethod javaMethod, Object receiver, Object... args) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException, InstantiationException {
         Executable method = lookupMethod(javaMethod);
         Assert.assertTrue(method != null);
@@ -1442,14 +1485,5 @@ public abstract class GraalCompilerTest extends GraalTest {
      */
     protected boolean isArchitecture(String name) {
         return name.equals(backend.getTarget().arch.getName());
-    }
-
-    /**
-     * This method should be called in "timeout" tests which JUnit runs in a different thread.
-     */
-    public static void initializeForTimeout() {
-        // timeout tests run in a separate thread which needs the DebugEnvironment to be
-        // initialized
-        // DebugEnvironment.ensureInitialized(getInitialOptions());
     }
 }

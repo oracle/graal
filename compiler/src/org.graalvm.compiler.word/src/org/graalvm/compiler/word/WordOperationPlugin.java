@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -317,8 +317,9 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
                 if (args.length == 2) {
                     location = any();
                 } else {
-                    assert args[2].isConstant();
+                    assert args[2].isConstant() : args[2];
                     location = snippetReflection.asObject(LocationIdentity.class, args[2].asJavaConstant());
+                    assert location != null : snippetReflection.asObject(Object.class, args[2].asJavaConstant());
                 }
                 b.push(returnKind, readOp(b, readKind, address, location, operation.opcode()));
                 break;

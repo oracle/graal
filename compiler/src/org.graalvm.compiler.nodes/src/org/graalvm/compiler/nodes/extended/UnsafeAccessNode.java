@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -101,7 +101,11 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
                     // never a valid access of an arbitrary address.
                     if (field != null && field.getJavaKind() == this.accessKind()) {
                         assert !graph().isAfterFloatingReadPhase() : "cannot add more precise memory location after floating read phase";
-                        return cloneAsFieldAccess(graph().getAssumptions(), field);
+                        // Unsafe accesses never have volatile semantics.
+                        // Memory barriers are placed around such an unsafe access at construction
+                        // time if necessary, unlike AccessFieldNodes which encapsulate their
+                        // potential volatile semantics.
+                        return cloneAsFieldAccess(graph().getAssumptions(), field, false);
                     }
                 }
             }
@@ -117,7 +121,11 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
         return this;
     }
 
-    protected abstract ValueNode cloneAsFieldAccess(Assumptions assumptions, ResolvedJavaField field);
+    protected ValueNode cloneAsFieldAccess(Assumptions assumptions, ResolvedJavaField field) {
+        return cloneAsFieldAccess(assumptions, field, field.isVolatile());
+    }
+
+    protected abstract ValueNode cloneAsFieldAccess(Assumptions assumptions, ResolvedJavaField field, boolean volatileAccess);
 
     protected abstract ValueNode cloneAsArrayAccess(ValueNode location, LocationIdentity identity);
 }

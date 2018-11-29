@@ -41,6 +41,7 @@ public class Verifier {
     private boolean replaceComponents;
     private boolean ignoreRequirements;
     private boolean collectErrors;
+    private boolean ignoreExisting;
 
     private List<DependencyException> errors = new ArrayList<>();
 
@@ -56,6 +57,23 @@ public class Verifier {
 
     public ComponentInfo getComponentInfo() {
         return componentInfo;
+    }
+
+    public boolean isCollectErrors() {
+        return collectErrors;
+    }
+
+    public void setCollectErrors(boolean collectErrors) {
+        this.collectErrors = collectErrors;
+    }
+
+    public boolean isIgnoreExisting() {
+        return ignoreExisting;
+    }
+
+    public Verifier ignoreExisting(boolean ignore) {
+        this.ignoreExisting = ignore;
+        return this;
     }
 
     public boolean isReplaceComponents() {
@@ -94,7 +112,7 @@ public class Verifier {
         Map<String, String> requiredCaps = info.getRequiredGraalValues();
         Map<String, String> graalCaps = registry.getGraalCapabilities();
 
-        if (feedback.verboseOutput("VERIFY_VerboseCheckRequirements", info.getId(), info.getName(), info.getVersionString())) {
+        if (feedback.verboseOutput("VERIFY_VerboseCheckRequirements", registry.shortenComponentId(info), info.getName(), info.getVersionString())) {
             List<String> keys = new ArrayList<>(requiredCaps.keySet());
             Collections.sort(keys);
             String none = feedback.l10n("VERIFY_VerboseCapabilityNone");
@@ -109,16 +127,29 @@ public class Verifier {
         return errors;
     }
 
+    public boolean shouldInstall() {
+        if (replaceComponents) {
+            return true;
+        }
+        ComponentInfo existing = registry.findComponent(componentInfo.getId());
+        return existing == null;
+    }
+
     @SuppressWarnings("StringEquality")
     @SuppressFBWarnings(value = "ES_COMPARING_STRINGS_WITH_EQ", justification = "intentional comparison of strings using ==")
     public Verifier validateRequirements() {
         // check the component is not in the registry
         ComponentInfo existing = registry.findComponent(componentInfo.getId());
-        if (existing != null && !replaceComponents) {
-            addOrThrow(new DependencyException.Conflict(
-                            existing.getId(), componentInfo.getVersionString(), existing.getVersionString(),
-                            feedback.l10n("VERIFY_ComponentExists",
-                                            existing.getName(), existing.getId(), existing.getVersionString())));
+        if (existing != null) {
+            if (ignoreExisting) {
+                return this;
+            }
+            if (!replaceComponents) {
+                addOrThrow(new DependencyException.Conflict(
+                                existing.getId(), componentInfo.getVersionString(), existing.getVersionString(),
+                                feedback.l10n("VERIFY_ComponentExists",
+                                                existing.getName(), registry.shortenComponentId(existing), existing.getVersionString())));
+            }
         }
         if (ignoreRequirements) {
             return this;
@@ -127,7 +158,7 @@ public class Verifier {
         Map<String, String> requiredCaps = info.getRequiredGraalValues();
         Map<String, String> graalCaps = registry.getGraalCapabilities();
 
-        if (feedback.verboseOutput("VERIFY_VerboseCheckRequirements", info.getId(), info.getName(), info.getVersionString())) {
+        if (feedback.verboseOutput("VERIFY_VerboseCheckRequirements", registry.shortenComponentId(info), info.getName(), info.getVersionString())) {
             List<String> keys = new ArrayList<>(requiredCaps.keySet());
             Collections.sort(keys);
             String none = feedback.l10n("VERIFY_VerboseCapabilityNone");

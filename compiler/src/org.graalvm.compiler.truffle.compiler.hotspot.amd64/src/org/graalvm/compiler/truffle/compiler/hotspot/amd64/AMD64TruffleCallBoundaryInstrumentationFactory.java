@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,7 +56,7 @@ public class AMD64TruffleCallBoundaryInstrumentationFactory extends TruffleCallB
 
     @Override
     public CompilationResultBuilder createBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder, FrameContext frameContext,
-                    OptionValues options, DebugContext debug, CompilationResult compilationResult) {
+                    OptionValues options, DebugContext debug, CompilationResult compilationResult, Register nullRegister) {
         return new TruffleCallBoundaryInstrumentation(metaAccess, codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, options, debug, compilationResult, config, registers) {
             @Override
             protected void injectTailCallCode(int installedCodeOffset, int entryPointOffset) {
@@ -71,7 +71,7 @@ public class AMD64TruffleCallBoundaryInstrumentationFactory extends TruffleCallB
                     masm.movl(spillRegister, new AMD64Address(thisRegister, installedCodeOffset), true);
                     assert masm.position() - pos >= AMD64HotSpotBackend.PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE;
                     CompressEncoding encoding = config.getOopEncoding();
-                    Register heapBaseRegister = AMD64Move.UncompressPointerOp.hasBase(options, encoding) ? registers.getHeapBaseRegister() : null;
+                    Register heapBaseRegister = AMD64Move.UncompressPointerOp.hasBase(options, encoding) ? registers.getHeapBaseRegister() : Register.None;
                     AMD64Move.UncompressPointerOp.emitUncompressCode(masm, spillRegister, encoding.getShift(), heapBaseRegister, true);
                 } else {
                     // First instruction must be at least 5 bytes long to be safe for patching

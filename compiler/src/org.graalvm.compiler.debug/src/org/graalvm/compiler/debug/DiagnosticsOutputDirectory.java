@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -84,7 +84,11 @@ public class DiagnosticsOutputDirectory {
                 }
             }
         }
-        return CLOSED.equals(path) ? null : path;
+        if (CLOSED.equals(path)) {
+            TTY.println("Warning: Graal diagnostic directory already closed");
+            return null;
+        }
+        return path;
     }
 
     /**
@@ -126,6 +130,7 @@ public class DiagnosticsOutputDirectory {
 
             Path dir = Paths.get(outDir);
             if (dir.toFile().exists()) {
+                String prefix = new File(outDir).getName() + "/";
                 File zip = new File(outDir + ".zip").getAbsoluteFile();
                 List<Path> toDelete = new ArrayList<>();
                 try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(zip))) {
@@ -134,7 +139,7 @@ public class DiagnosticsOutputDirectory {
                         @Override
                         public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
                             if (attrs.isRegularFile()) {
-                                String name = dir.relativize(file).toString();
+                                String name = prefix + dir.relativize(file).toString();
                                 ZipEntry ze = new ZipEntry(name);
                                 zos.putNextEntry(ze);
                                 Files.copy(file, zos);

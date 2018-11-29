@@ -40,18 +40,12 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
 
     @Child private DFACaptureGroupPartialTransitionDispatchNode transitionDispatchNode;
 
-    public CGTrackingDFAStateNode(short id,
-                    boolean finalState,
-                    boolean anchoredFinalState,
-                    boolean hasBackwardPrefixState,
-                    short loopToSelf,
-                    short[] successors,
-                    CharMatcher[] matchers,
+    public CGTrackingDFAStateNode(short id, byte flags, LoopOptimizationNode loopOptimizationNode, short[] successors, CharMatcher[] matchers,
                     short[] captureGroupTransitions,
                     short[] precedingCaptureGroupTransitions,
                     DFACaptureGroupPartialTransitionNode anchoredFinalStateTransition,
                     DFACaptureGroupPartialTransitionNode unAnchoredFinalStateTransition) {
-        super(id, finalState, anchoredFinalState, hasBackwardPrefixState, loopToSelf, successors, matchers);
+        super(id, flags, loopOptimizationNode, successors, matchers);
         this.captureGroupTransitions = captureGroupTransitions;
         this.precedingCaptureGroupTransitions = precedingCaptureGroupTransitions;
         transitionDispatchNode = precedingCaptureGroupTransitions.length > 1 ? DFACaptureGroupPartialTransitionDispatchNode.create(precedingCaptureGroupTransitions) : null;
@@ -66,6 +60,10 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
         this.anchoredFinalStateTransition = copy.anchoredFinalStateTransition;
         this.unAnchoredFinalStateTransition = copy.unAnchoredFinalStateTransition;
         transitionDispatchNode = precedingCaptureGroupTransitions.length > 1 ? DFACaptureGroupPartialTransitionDispatchNode.create(precedingCaptureGroupTransitions) : null;
+    }
+
+    private DFACaptureGroupLazyTransitionNode getCGTransitionToSelf(TRegexDFAExecutorNode executor) {
+        return executor.getCGTransitions()[captureGroupTransitions[getLoopToSelf()]];
     }
 
     @Override
@@ -86,7 +84,7 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
         CompilerAsserts.partialEvaluationConstant(this);
         CompilerAsserts.partialEvaluationConstant(i);
         if (precedingCaptureGroupTransitions.length == 1) {
-            executor.getCGTransitions()[precedingCaptureGroupTransitions[0]].getPartialTransitions()[i].apply(executor.getCGData(frame), prevIndex(frame, executor));
+            executor.getCGTransitions()[precedingCaptureGroupTransitions[0]].getPartialTransitions()[i].apply(executor, executor.getCGData(frame), prevIndex(frame, executor));
         } else {
             transitionDispatchNode.applyPartialTransition(frame, executor, executor.getLastTransition(frame), i, prevIndex(frame, executor));
         }
@@ -108,11 +106,11 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
     protected void successorFound2(VirtualFrame frame, TRegexDFAExecutorNode executor, int i) {
         CompilerAsserts.partialEvaluationConstant(this);
         CompilerAsserts.partialEvaluationConstant(i);
-        assert executor.getLastTransition(frame) == captureGroupTransitions[loopToSelf];
+        assert executor.getLastTransition(frame) == captureGroupTransitions[getLoopToSelf()];
         if (executor.isSearching()) {
             checkFinalStateLoop(frame, executor);
         }
-        executor.getCGTransitions()[captureGroupTransitions[loopToSelf]].getPartialTransitions()[i].apply(executor.getCGData(frame), prevIndex(frame, executor));
+        getCGTransitionToSelf(executor).getPartialTransitions()[i].apply(executor, executor.getCGData(frame), prevIndex(frame, executor));
         executor.setLastTransition(frame, captureGroupTransitions[i]);
     }
 
@@ -137,7 +135,7 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
         if (executor.isSearching()) {
             checkFinalStateLoop(frame, executor);
         }
-        executor.getCGTransitions()[captureGroupTransitions[loopToSelf]].getPartialTransitions()[i].apply(executor.getCGData(frame), prevIndex(frame, executor));
+        getCGTransitionToSelf(executor).getPartialTransitions()[i].apply(executor, executor.getCGData(frame), prevIndex(frame, executor));
         executor.setLastTransition(frame, captureGroupTransitions[i]);
     }
 
@@ -158,28 +156,26 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
 
     private void applyLoopTransitions(VirtualFrame frame, TRegexDFAExecutorNode executor, int preLoopIndex, int postLoopIndex) {
         CompilerAsserts.partialEvaluationConstant(this);
-        DFACaptureGroupPartialTransitionNode transition = executor.getCGTransitions()[captureGroupTransitions[loopToSelf]].getPartialTransitions()[loopToSelf];
+        DFACaptureGroupPartialTransitionNode transition = getCGTransitionToSelf(executor).getPartialTransitions()[getLoopToSelf()];
         if (transition.doesReorderResults()) {
             for (int i = preLoopIndex - 1; i <= postLoopIndex; i++) {
-                transition.apply(executor.getCGData(frame), i);
+                transition.apply(executor, executor.getCGData(frame), i);
             }
         } else {
-            transition.apply(executor.getCGData(frame), postLoopIndex);
+            transition.apply(executor, executor.getCGData(frame), postLoopIndex);
         }
     }
 
     private int atEndLoop(VirtualFrame frame, TRegexDFAExecutorNode executor) {
         CompilerAsserts.partialEvaluationConstant(this);
-        assert executor.getLastTransition(frame) == captureGroupTransitions[loopToSelf];
+        assert executor.getLastTransition(frame) == captureGroupTransitions[getLoopToSelf()];
         if (isAnchoredFinalState() && executor.atEnd(frame)) {
-            executor.getCGTransitions()[captureGroupTransitions[loopToSelf]].getTransitionToAnchoredFinalState().applyPreFinalStateTransition(
-                            executor.getCGData(frame), executor.isSearching(), curIndex(frame, executor));
-            anchoredFinalStateTransition.applyFinalStateTransition(executor.getCGData(frame), executor.isSearching(), nextIndex(frame, executor));
+            getCGTransitionToSelf(executor).getTransitionToAnchoredFinalState().applyPreFinalStateTransition(executor, executor.getCGData(frame), executor.isSearching(), curIndex(frame, executor));
+            anchoredFinalStateTransition.applyFinalStateTransition(executor, executor.getCGData(frame), executor.isSearching(), nextIndex(frame, executor));
             storeResult(frame, executor);
         } else if (isFinalState()) {
-            executor.getCGTransitions()[captureGroupTransitions[loopToSelf]].getTransitionToFinalState().applyPreFinalStateTransition(
-                            executor.getCGData(frame), executor.isSearching(), curIndex(frame, executor));
-            unAnchoredFinalStateTransition.applyFinalStateTransition(executor.getCGData(frame), executor.isSearching(), nextIndex(frame, executor));
+            getCGTransitionToSelf(executor).getTransitionToFinalState().applyPreFinalStateTransition(executor, executor.getCGData(frame), executor.isSearching(), curIndex(frame, executor));
+            unAnchoredFinalStateTransition.applyFinalStateTransition(executor, executor.getCGData(frame), executor.isSearching(), nextIndex(frame, executor));
             storeResult(frame, executor);
         }
         return FS_RESULT_NO_SUCCESSOR;
@@ -190,11 +186,11 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
         if (isFinalState()) {
             if (precedingCaptureGroupTransitions.length == 1) {
                 executor.getCGTransitions()[precedingCaptureGroupTransitions[0]].getTransitionToFinalState().applyPreFinalStateTransition(
-                                executor.getCGData(frame), executor.isSearching(), curIndex(frame, executor));
+                                executor, executor.getCGData(frame), executor.isSearching(), curIndex(frame, executor));
             } else {
                 transitionDispatchNode.applyPreFinalTransition(frame, executor, executor.getLastTransition(frame), curIndex(frame, executor));
             }
-            unAnchoredFinalStateTransition.applyFinalStateTransition(executor.getCGData(frame), executor.isSearching(), nextIndex(frame, executor));
+            unAnchoredFinalStateTransition.applyFinalStateTransition(executor, executor.getCGData(frame), executor.isSearching(), nextIndex(frame, executor));
             storeResult(frame, executor);
         }
     }
@@ -202,21 +198,20 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
     private void applyAnchoredFinalStateTransition(VirtualFrame frame, TRegexDFAExecutorNode executor) {
         if (precedingCaptureGroupTransitions.length == 1) {
             executor.getCGTransitions()[precedingCaptureGroupTransitions[0]].getTransitionToAnchoredFinalState().applyPreFinalStateTransition(
-                            executor.getCGData(frame), executor.isSearching(), curIndex(frame, executor));
+                            executor, executor.getCGData(frame), executor.isSearching(), curIndex(frame, executor));
         } else {
             transitionDispatchNode.applyPreAnchoredFinalTransition(frame, executor, executor.getLastTransition(frame), curIndex(frame, executor));
         }
-        anchoredFinalStateTransition.applyFinalStateTransition(executor.getCGData(frame), executor.isSearching(), nextIndex(frame, executor));
+        anchoredFinalStateTransition.applyFinalStateTransition(executor, executor.getCGData(frame), executor.isSearching(), nextIndex(frame, executor));
         storeResult(frame, executor);
     }
 
     private void checkFinalStateLoop(VirtualFrame frame, TRegexDFAExecutorNode executor) {
         CompilerAsserts.partialEvaluationConstant(this);
-        assert executor.getLastTransition(frame) == captureGroupTransitions[loopToSelf];
+        assert executor.getLastTransition(frame) == captureGroupTransitions[getLoopToSelf()];
         if (isFinalState()) {
-            executor.getCGTransitions()[captureGroupTransitions[loopToSelf]].getTransitionToFinalState().applyPreFinalStateTransition(
-                            executor.getCGData(frame), executor.isSearching(), prevIndex(frame, executor));
-            unAnchoredFinalStateTransition.applyFinalStateTransition(executor.getCGData(frame), executor.isSearching(), curIndex(frame, executor));
+            getCGTransitionToSelf(executor).getTransitionToFinalState().applyPreFinalStateTransition(executor, executor.getCGData(frame), executor.isSearching(), prevIndex(frame, executor));
+            unAnchoredFinalStateTransition.applyFinalStateTransition(executor, executor.getCGData(frame), executor.isSearching(), curIndex(frame, executor));
             storeResult(frame, executor);
         }
     }

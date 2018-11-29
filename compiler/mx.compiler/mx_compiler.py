@@ -28,7 +28,6 @@
 
 import os
 from os.path import join, exists, getmtime, basename, isdir
-from collections import namedtuple
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 import re
 import stat
@@ -49,6 +48,8 @@ import mx_unittest
 from mx_unittest import unittest
 
 from mx_javamodules import as_java_module
+from mx_updategraalinopenjdk import updategraalinopenjdk
+import mx_jaotc
 
 import mx_graal_benchmark # pylint: disable=unused-import
 import mx_graal_tools #pylint: disable=unused-import
@@ -267,8 +268,9 @@ def ctw(args, extraVMarguments=None):
     elif not configArgs:
         vmargs.append('-DCompileTheWorld.Config=Inline=false')
 
-    # suppress menubar and dock when running on Mac
-    vmargs = ['-Djava.awt.headless=true'] + vmargs
+    if mx.get_os() == 'darwin':
+        # suppress menubar and dock when running on Mac
+        vmargs = ['-Djava.awt.headless=true'] + vmargs
 
     if args.cp:
         cp = os.path.abspath(args.cp)
@@ -379,6 +381,8 @@ class UnitTestRun:
 
     def run(self, suites, tasks, extraVMarguments=None):
         for suite in suites:
+            if suite == 'truffle' and mx.get_os() == 'windows':
+                continue  # necessary until Truffle is fully supported (GR-7941)
             with Task(self.name + ': hosted-product ' + suite, tasks, tags=self.tags) as t:
                 if mx_gate.Task.verbose:
                     extra_args = ['--verbose', '--enable-timing']
@@ -409,6 +413,7 @@ class GraalTags:
     bootstraplite = ['bootstraplite', 'bootstrap', 'fulltest']
     bootstrapfullverify = ['bootstrapfullverify', 'fulltest']
     test = ['test', 'fulltest']
+    coverage = ['coverage']
     benchmarktest = ['benchmarktest', 'fulltest']
     ctw = ['ctw', 'fulltest']
     doc = ['javadoc']
@@ -468,13 +473,13 @@ def _gate_dacapo(name, iterations, extraVMarguments=None, force_serial_gc=True, 
         args += ['-t', str(threads)]
     _gate_java_benchmark(vmargs + ['-jar', dacapoJar, name] + args, r'^===== DaCapo 9\.12 ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====')
 
-def _jdk_includes_corba(jdk):
+def jdk_includes_corba(jdk):
     # corba has been removed since JDK11 (http://openjdk.java.net/jeps/320)
     return jdk.javaCompliance < '11'
 
 def _gate_scala_dacapo(name, iterations, extraVMarguments=None):
     vmargs = ['-Xms2g', '-XX:+UseSerialGC', '-XX:-UseCompressedOops', '-Dgraal.CompilationFailureAction=ExitVM'] + _remove_empty_entries(extraVMarguments)
-    if name == 'actors' and jdk.javaCompliance >= '9' and _jdk_includes_corba(jdk):
+    if name == 'actors' and jdk.javaCompliance >= '9' and jdk_includes_corba(jdk):
         vmargs += ['--add-modules', 'java.corba']
     scalaDacapoJar = mx.library('DACAPO_SCALA').get_path(True)
     _gate_java_benchmark(vmargs + ['-jar', scalaDacapoJar, name, '-n', str(iterations)], r'^===== DaCapo 0\.1\.0(-SNAPSHOT)? ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====')
@@ -583,7 +588,7 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
     scala_dacapos_without_sa = {
         'actors':     1,
     }
-    if not _jdk_includes_corba(jdk):
+    if not jdk_includes_corba(jdk):
         mx.warn('Removing scaladacapo:actors from benchmarks because corba has been removed since JDK11 (http://openjdk.java.net/jeps/320)')
         del scala_dacapos_without_sa['actors']
 
@@ -604,12 +609,23 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
     with Task('XCompMode:product', tasks, tags=GraalTags.test) as t:
         if t: run_vm(_remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xcomp', '-version'])
 
+    if isJDK8:
+        # temporarily isolate those test (GR-10990)
+        cms = ['cms']
+        # ensure CMS still works
+        with Task('DaCapo_pmd:CMS', tasks, tags=cms) as t:
+            if t: _gate_dacapo('pmd', 4, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xmx256M', '-XX:+UseConcMarkSweepGC'], threads=4, force_serial_gc=False, set_start_heap_size=False)
+
+        # ensure CMSIncrementalMode still works
+        with Task('DaCapo_pmd:CMSIncrementalMode', tasks, tags=cms) as t:
+            if t: _gate_dacapo('pmd', 4, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xmx256M', '-XX:+UseConcMarkSweepGC', '-XX:+CMSIncrementalMode'], threads=4, force_serial_gc=False, set_start_heap_size=False)
+
     with Task('Javadoc', tasks, tags=GraalTags.doc) as t:
         # metadata package was deprecated, exclude it
-        if t: mx.javadoc(['--exclude-packages', 'com.oracle.truffle.api.metadata,com.oracle.truffle.api.interop.java,com.oracle.truffle.api.vm'], quietForNoPackages=True)
+        if t: mx.javadoc(['--exclude-packages', 'com.oracle.truffle.dsl.processor.java'], quietForNoPackages=True)
 
 graal_unit_test_runs = [
-    UnitTestRun('UnitTests', [], tags=GraalTags.test),
+    UnitTestRun('UnitTests', [], tags=GraalTags.test + GraalTags.coverage),
 ]
 
 _registers = {
@@ -647,6 +663,7 @@ graal_bootstrap_tests = [
 def _graal_gate_runner(args, tasks):
     compiler_gate_runner(['compiler', 'truffle'], graal_unit_test_runs, graal_bootstrap_tests, tasks, args.extra_vm_argument)
     jvmci_ci_version_gate_runner(tasks)
+    mx_jaotc.jaotc_gate_runner(tasks)
 
 class ShellEscapedStringAction(argparse.Action):
     """Turns a shell-escaped string into a list of arguments.
@@ -865,7 +882,7 @@ def run_java(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=No
 
 _JVMCI_JDK_TAG = 'jvmci'
 
-class GraalJVMCI9JDKConfig(mx.JDKConfig):
+class GraalJVMCIJDKConfig(mx.JDKConfig):
     """
     A JDKConfig that configures Graal as the JVMCI compiler.
     """
@@ -877,28 +894,25 @@ class GraalJVMCI9JDKConfig(mx.JDKConfig):
 
 class GraalJDKFactory(mx.JDKFactory):
     def getJDKConfig(self):
-        return GraalJVMCI9JDKConfig()
+        return GraalJVMCIJDKConfig()
 
     def description(self):
         return "JVMCI JDK with Graal"
-
-mx.addJDKFactory(_JVMCI_JDK_TAG, mx.JavaCompliance('9'), GraalJDKFactory())
 
 def run_vm(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, debugLevel=None, vmbuild=None):
     """run a Java program by executing the java executable in a JVMCI JDK"""
     return run_java(args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd, timeout=timeout)
 
-class GraalArchiveParticipant:
 
+class GraalArchiveParticipant:
     providersRE = re.compile(r'(?:META-INF/versions/([1-9][0-9]*)/)?META-INF/providers/(.+)')
+
     def __init__(self, dist, isTest=False):
         self.dist = dist
         self.isTest = isTest
 
     def __opened__(self, arc, srcArc, services):
         self.services = services
-        self.versionedServices = {}
-        self.arc = arc
 
     def __add__(self, arcname, contents):
         m = GraalArchiveParticipant.providersRE.match(arcname)
@@ -918,7 +932,7 @@ class GraalArchiveParticipant:
                         self.services.setdefault(service, []).append(provider)
                     else:
                         # Versioned service
-                        services = self.versionedServices.setdefault(version, {})
+                        services = self.services.setdefault(int(version), {})
                         services.setdefault(service, []).append(provider)
             return True
         elif arcname.endswith('_OptionDescriptors.class'):
@@ -936,11 +950,8 @@ class GraalArchiveParticipant:
         return False
 
     def __closing__(self):
-        for version, services in self.versionedServices.iteritems():
-            for service, providers in services.iteritems():
-                arcname = 'META-INF/versions/{}/META-INF/services/{}'.format(version, service)
-                # Convert providers to a set before printing to remove duplicates
-                self.arc.zf.writestr(arcname, '\n'.join(frozenset(providers)) + '\n')
+        pass
+
 
 mx.add_argument('--vmprefix', action='store', dest='vm_prefix', help='prefix for running the VM (e.g. "gdb --args")', metavar='<prefix>')
 mx.add_argument('--gdb', action='store_const', const='gdb --args', dest='vm_prefix', help='alias for --vmprefix "gdb --args"')
@@ -957,14 +968,15 @@ def java_base_unittest(args):
     if not exists(jlink):
         raise mx.JDKConfigException('jlink tool does not exist: ' + jlink)
     basejdk_dir = join(_suite.get_output_root(), 'jdkbase')
-    basemodules = 'java.base,jdk.internal.vm.ci,jdk.unsupported'
+    basemodules = 'java.base,java.logging,jdk.internal.vm.ci,jdk.unsupported'
     if exists(basejdk_dir):
         shutil.rmtree(basejdk_dir)
     mx.run([jlink, '--output', basejdk_dir, '--add-modules', basemodules, '--module-path', join(jdk.home, 'jmods')])
     jdwp = mx.add_lib_suffix(mx.add_lib_prefix('jdwp'))
-    shutil.copy(join(jdk.home, 'lib', jdwp), join(basejdk_dir, 'lib', jdwp))
+    lib_folder = 'bin' if mx.get_os() == 'windows' else 'lib'
+    shutil.copy(join(jdk.home, lib_folder, jdwp), join(basejdk_dir, lib_folder, jdwp))
     dt_socket = mx.add_lib_suffix(mx.add_lib_prefix('dt_socket'))
-    shutil.copy(join(jdk.home, 'lib', dt_socket), join(basejdk_dir, 'lib', dt_socket))
+    shutil.copy(join(jdk.home, lib_folder, dt_socket), join(basejdk_dir, lib_folder, dt_socket))
 
     if not args:
         args = []
@@ -1048,6 +1060,7 @@ def makegraaljdk(args):
     parser.add_argument('-f', '--force', action='store_true', help='overwrite existing GraalJDK')
     parser.add_argument('-a', '--archive', action='store', help='name of archive to create', metavar='<path>')
     parser.add_argument('-b', '--bootstrap', action='store_true', help='execute a bootstrap of the created GraalJDK')
+    parser.add_argument('-l', '--license', action='store', help='path to the license file', metavar='<path>')
     parser.add_argument('dest', help='destination directory for GraalJDK', metavar='<path>')
     args = parser.parse_args(args)
     if isJDK8:
@@ -1114,7 +1127,7 @@ def makegraaljdk(args):
         for line in out.lines:
             m = pattern.match(line)
             if m:
-                with open(join(jvmlibDir, 'vm.properties'), 'w') as fp:
+                with open(join(jvmlibDir, 'vm.properties'), 'wb') as fp:
                     # Modify VM name in `java -version` to be Graal along
                     # with a suffix denoting the commit of each Graal jar.
                     # For example:
@@ -1126,6 +1139,8 @@ def makegraaljdk(args):
             mx.abort('Could not find "{}" in output of `java -version`:\n{}'.format(pattern.pattern, os.linesep.join(out.lines)))
 
         exe = join(dstJdk, 'bin', mx.exe_suffix('java'))
+        if args.license:
+            shutil.copy(args.license, join(dstJdk, 'LICENSE'))
         if args.bootstrap:
             with StdoutUnstripping(args=[], out=None, err=None, mapFiles=mapFiles) as u:
                 mx.run([exe, '-XX:+BootstrapJVMCI', '-version'], out=u.out, err=u.err)
@@ -1134,182 +1149,6 @@ def makegraaljdk(args):
             create_archive(dstJdk, args.archive, basename(args.dest) + '/')
     else:
         mx.abort('Can only make GraalJDK for JDK 8 currently')
-
-def _find_version_base_project(versioned_project):
-    extended_packages = versioned_project.extended_java_packages()
-    if not extended_packages:
-        mx.abort('Project with a multiReleaseJarVersion attribute must have sources in a package defined by project without multiReleaseJarVersion attribute', context=versioned_project)
-    base_project = None
-    base_package = None
-    for extended_package in extended_packages:
-        for p in mx.projects():
-            if versioned_project != p and p.isJavaProject() and not hasattr(p, 'multiReleaseJarVersion'):
-                if extended_package in p.defined_java_packages():
-                    if base_project is None:
-                        base_project = p
-                        base_package = extended_package
-                    else:
-                        if base_project != p:
-                            mx.abort('Multi-release jar versioned project {} must extend packages from exactly one project but extends {} from {} and {} from {}'.format(versioned_project, extended_package, p, base_project, base_package))
-    if not base_project:
-        mx.abort('Multi-release jar versioned project {} must extend package(s) from another project'.format(versioned_project))
-    return base_project
-
-SuiteJDKInfo = namedtuple('SuiteJDKInfo', 'name includes excludes')
-GraalJDKModule = namedtuple('GraalJDKModule', 'name suites')
-
-def updategraalinopenjdk(args):
-    """updates the Graal sources in OpenJDK"""
-    parser = ArgumentParser(prog='mx updategraalinopenjdk')
-    parser.add_argument('--pretty', help='value for --pretty when logging the changes since the last JDK* tag')
-    parser.add_argument('jdkrepo', help='path to the local OpenJDK repo')
-    parser.add_argument('version', type=int, help='Java version of the OpenJDK repo')
-
-    args = parser.parse_args(args)
-
-    if jdk.javaCompliance.value < args.version:
-        mx.abort('JAVA_HOME/--java-home must be Java version {} or greater: {}'.format(args.version, jdk))
-
-    graal_modules = [
-        GraalJDKModule('jdk.internal.vm.compiler',
-            [SuiteJDKInfo('compiler', ['org.graalvm'], ['truffle', 'management']),
-             SuiteJDKInfo('sdk', ['org.graalvm.collections', 'org.graalvm.word'], [])]),
-        GraalJDKModule('jdk.internal.vm.compiler.management',
-            [SuiteJDKInfo('compiler', ['org.graalvm.compiler.hotspot.management'], [])]),
-    ]
-
-    package_renamings = {
-        'org.graalvm.collections' : 'jdk.internal.vm.compiler.collections',
-        'org.graalvm.word'        : 'jdk.internal.vm.compiler.word'
-    }
-
-    jdkrepo = args.jdkrepo
-
-    for m in graal_modules:
-        m_src_dir = join(jdkrepo, 'src', m.name)
-        if not exists(m_src_dir):
-            mx.abort(jdkrepo + ' does not look like a JDK repo - ' + m_src_dir + ' does not exist')
-
-    def run_output(args, cwd=None):
-        out = mx.OutputCapture()
-        mx.run(args, cwd=cwd, out=out, err=out)
-        return out.data
-
-    for m in graal_modules:
-        m_src_dir = join('src', m.name)
-        mx.log('Checking ' + m_src_dir)
-        out = run_output(['hg', 'status', m_src_dir], cwd=jdkrepo)
-        if out:
-            mx.abort(jdkrepo + ' is not "hg clean":' + '\n' + out[:min(200, len(out))] + '...')
-
-    for dirpath, _, filenames in os.walk(join(jdkrepo, 'make')):
-        for filename in filenames:
-            if filename.endswith('.gmk'):
-                filepath = join(dirpath, filename)
-                with open(filepath) as fp:
-                    contents = fp.read()
-                new_contents = contents
-                for old_name, new_name in package_renamings.iteritems():
-                    new_contents = new_contents.replace(old_name, new_name)
-                if new_contents != contents:
-                    with open(filepath, 'w') as fp:
-                        fp.write(new_contents)
-                        mx.log('  updated ' + filepath)
-
-    copied_source_dirs = []
-    for m in graal_modules:
-        classes_dir = join(jdkrepo, 'src', m.name, 'share', 'classes')
-        for info in m.suites:
-            mx.log('Processing ' + m.name + ':' + info.name)
-            for e in os.listdir(classes_dir):
-                if any(inc in e for inc in info.includes) and not any(ex in e for ex in info.excludes):
-                    project_dir = join(classes_dir, e)
-                    shutil.rmtree(project_dir)
-                    mx.log('  removed ' + project_dir)
-            suite = mx.suite(info.name)
-
-            worklist = []
-            for p in [e for e in suite.projects if e.isJavaProject()]:
-                if any(inc in p.name for inc in info.includes) and not any(ex in p.name for ex in info.excludes):
-                    assert len(p.source_dirs()) == 1, p
-                    version = 0
-                    new_project_name = p.name
-                    if hasattr(p, 'multiReleaseJarVersion'):
-                        version = int(getattr(p, 'multiReleaseJarVersion'))
-                        if version <= args.version:
-                            base_project = _find_version_base_project(p)
-                            new_project_name = base_project.name
-                        else:
-                            continue
-
-                    for old_name, new_name in package_renamings.iteritems():
-                        if new_project_name.startswith(old_name):
-                            new_project_name = new_project_name.replace(old_name, new_name)
-
-                    source_dir = p.source_dirs()[0]
-                    target_dir = join(classes_dir, new_project_name, 'src')
-                    copied_source_dirs.append(source_dir)
-
-                    workitem = (version, p, source_dir, target_dir)
-                    worklist.append(workitem)
-
-            # Ensure versioned resources are copied in the right order
-            # such that higher versions override lower versions.
-            worklist = sorted(worklist)
-
-            for version, p, source_dir, target_dir in worklist:
-                mx.log('  copying: ' + source_dir)
-                mx.log('       to: ' + target_dir)
-                for dirpath, _, filenames in os.walk(source_dir):
-                    for filename in filenames:
-                        src_file = join(dirpath, filename)
-                        dst_file = join(target_dir, os.path.relpath(src_file, source_dir))
-                        with open(src_file) as fp:
-                            contents = fp.read()
-                        if filename.endswith('.java'):
-                            for old_name, new_name in package_renamings.iteritems():
-                                old_name_as_dir = old_name.replace('.', os.sep)
-                                if old_name_as_dir in src_file:
-                                    new_name_as_dir = new_name.replace('.', os.sep)
-                                    dst = src_file.replace(old_name_as_dir, new_name_as_dir)
-                                    dst_file = join(target_dir, os.path.relpath(dst, source_dir))
-                                contents = contents.replace(old_name, new_name)
-                        dst_dir = os.path.dirname(dst_file)
-                        if not exists(dst_dir):
-                            os.makedirs(dst_dir)
-                        with open(dst_file, 'w') as fp:
-                            fp.write(contents)
-    mx.log('Adding new files to HG...')
-    overwritten = ''
-    for m in graal_modules:
-        m_src_dir = join('src', m.name)
-        out = run_output(['hg', 'log', '-r', 'last(keyword("Update Graal"))', '--template', '{rev}', m_src_dir], cwd=jdkrepo)
-        last_graal_update = out.strip()
-        if last_graal_update:
-            overwritten += run_output(['hg', 'diff', '-r', last_graal_update, '-r', 'tip', m_src_dir], cwd=jdkrepo)
-        mx.run(['hg', 'add', m_src_dir], cwd=jdkrepo)
-    mx.log('Removing old files from HG...')
-    for m in graal_modules:
-        m_src_dir = join('src', m.name)
-        out = run_output(['hg', 'status', '-dn', m_src_dir], cwd=jdkrepo)
-        if out:
-            mx.run(['hg', 'rm'] + out.split(), cwd=jdkrepo)
-
-    out = run_output(['git', 'tag', '-l', 'JDK-*'], cwd=_suite.vc_dir)
-    last_jdk_tag = sorted(out.split(), reverse=True)[0]
-
-    pretty = args.pretty or 'format:%h %ad %>(20) %an %s'
-    out = run_output(['git', '--no-pager', 'log', '--merges', '--abbrev-commit', '--pretty=' + pretty, '--first-parent', '-r', last_jdk_tag + '..HEAD'] +
-            copied_source_dirs, cwd=_suite.vc_dir)
-    changes_file = 'changes-since-{}.txt'.format(last_jdk_tag)
-    with open(changes_file, 'w') as fp:
-        fp.write(out)
-    mx.log('Saved changes since {} to {}'.format(last_jdk_tag, os.path.abspath(changes_file)))
-    if overwritten:
-        overwritten_file = 'overwritten-diffs.txt'
-        with open(overwritten_file, 'w') as fp:
-            fp.write(overwritten)
-        mx.warn('Overwritten changes detected in OpenJDK Graal! See diffs in ' + os.path.abspath(overwritten_file))
 
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmJvmciComponent(
@@ -1335,6 +1174,8 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJvmciComponent(
 mx.update_commands(_suite, {
     'sl' : [sl, '[SL args|@VM options]'],
     'vm': [run_vm, '[-options] class [args...]'],
+    'jaotc': [mx_jaotc.run_jaotc, '[-options] class [args...]'],
+    'jaotc-test': [mx_jaotc.jaotc_test, ''],
     'ctw': [ctw, '[-vmoptions|noinline|nocomplex|full]'],
     'nodecostdump' : [_nodeCostDump, ''],
     'verify_jvmci_ci_versions': [verify_jvmci_ci_versions, ''],
@@ -1346,6 +1187,7 @@ mx.update_commands(_suite, {
 })
 
 def mx_post_parse_cmd_line(opts):
+    mx.addJDKFactory(_JVMCI_JDK_TAG, jdk.javaCompliance, GraalJDKFactory())
     mx.add_ide_envvar('JVMCI_VERSION_CHECK')
     for dist in _suite.dists:
         dist.set_archiveparticipant(GraalArchiveParticipant(dist, isTest=dist.name.endswith('_TEST')))

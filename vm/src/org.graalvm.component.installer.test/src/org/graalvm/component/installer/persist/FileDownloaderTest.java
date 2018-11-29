@@ -28,6 +28,7 @@ import org.graalvm.component.installer.ChunkedConnection;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.concurrent.TimeUnit;
@@ -210,7 +211,8 @@ public class FileDownloaderTest extends NetworkTestBase {
             @Override
             public void connect() throws IOException {
                 try {
-                    Thread.sleep(3000);
+                    // called twice, default timeout is 5 secs
+                    Thread.sleep(1000);
                 } catch (InterruptedException ex) {
                 }
                 super.connect();
@@ -255,7 +257,7 @@ public class FileDownloaderTest extends NetworkTestBase {
             @Override
             public void connect() throws IOException {
                 try {
-                    Thread.sleep(3000);
+                    Thread.sleep(2000);
                 } catch (InterruptedException ex) {
                 }
                 super.connect();
@@ -281,6 +283,62 @@ public class FileDownloaderTest extends NetworkTestBase {
         }
 
         exception.expect(FileNotFoundException.class);
+        dn.download();
+    }
+
+    /**
+     * Checks that a proxy connection which results in HTTP 500 will not override delayed direct
+     * connection.
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void testDownloadProxy500() throws Exception {
+        URL clu = getClass().getResource("data/truffleruby2.jar");
+        URL u = new URL("test://graalvm.io/download/truffleruby.zip");
+
+        ChunkedConnection directConnect = new ChunkedConnection(
+                        u,
+                        clu.openConnection()) {
+            @Override
+            public void connect() throws IOException {
+                try {
+                    Thread.sleep(2000);
+                } catch (InterruptedException ex) {
+                }
+                super.connect();
+            }
+        };
+
+        HttpURLConnection proxyCon = new HttpURLConnection(u) {
+            @Override
+            public void disconnect() {
+            }
+
+            @Override
+            public boolean usingProxy() {
+                return true;
+            }
+
+            @Override
+            public void connect() throws IOException {
+                responseCode = 500;
+            }
+        };
+
+        Handler.bind(u.toString(), directConnect);
+        Handler.bindProxy(u.toString(), proxyCon);
+        Check check = new Check();
+        check.verbose = false;
+        delegateFeedback(check);
+        FileDownloader dn = new FileDownloader("test",
+                        u, this);
+        dn.setVerbose(true);
+        dn.setDisplayProgress(true);
+
+        dn.envHttpProxy = "http://localhost:11111";
+        dn.envHttpsProxy = "http://localhost:11111";
+
         dn.download();
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -107,9 +107,15 @@ public abstract class SnippetStub extends Stub implements Snippets {
         plugins.prependParameterPlugin(new ConstantBindingParameterPlugin(makeConstArgs(), metaAccess, snippetReflection));
         GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
 
+        // @formatter:off
         // Stubs cannot have optimistic assumptions since they have
         // to be valid for the entire run of the VM.
-        final StructuredGraph graph = new StructuredGraph.Builder(options, debug).method(method).compilationId(compilationId).build();
+        final StructuredGraph graph = new StructuredGraph.Builder(options, debug).
+                        method(method).
+                        compilationId(compilationId).
+                        setIsSubstitution(true).
+                        build();
+        // @formatter:on
         try (DebugContext.Scope outer = debug.scope("SnippetStub", graph)) {
             graph.disableUnsafeAccessTracking();
 

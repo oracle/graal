@@ -29,12 +29,17 @@ import java.util.Map;
 import java.util.concurrent.ForkJoinPool;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.results.StaticAnalysisResultsBuilder;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.graal.code.amd64.SubstrateAMD64Backend;
 import com.oracle.svm.hosted.code.CompileQueue;
 import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
 import com.oracle.svm.hosted.config.HybridLayout;
@@ -52,6 +57,12 @@ public class HostedConfiguration {
     public static void setDefaultIfEmpty() {
         if (!ImageSingletons.contains(HostedConfiguration.class)) {
             ImageSingletons.add(HostedConfiguration.class, new HostedConfiguration());
+
+            CompressEncoding compressEncoding = new CompressEncoding(SubstrateOptions.SpawnIsolates.getValue() ? 1 : 0, 0);
+            ImageSingletons.add(CompressEncoding.class, compressEncoding);
+
+            ObjectLayout objectLayout = new ObjectLayout(ConfigurationValues.getTarget(), SubstrateAMD64Backend.getDeoptScratchSpace());
+            ImageSingletons.add(ObjectLayout.class, objectLayout);
         }
     }
 

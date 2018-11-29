@@ -1,26 +1,42 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * The Universal Permissive License (UPL), Version 1.0
  *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
  *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ * (a) the Software, and
  *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 package com.oracle.truffle.api.interop;
 
@@ -74,7 +90,7 @@ public abstract class Message {
      *
      * <pre>
      * {@link ForeignAccess}.{@link ForeignAccess#sendRead(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object) sendRead}(
-     *   {@link Message#READ}.{@link Message#createNode()},  receiver, nameOfTheField
+     *   {@link Message#READ}.{@link Message#createNode() createNode()}, receiver, nameOfTheField
      * );
      * </pre>
      *
@@ -101,7 +117,7 @@ public abstract class Message {
      *
      * <pre>
      * {@link ForeignAccess}.{@link ForeignAccess#sendUnbox(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.interop.TruffleObject) sendUnbox}(
-     *   {@link Message#UNBOX}.{@link Message#createNode()},  objectToUnbox
+     *   {@link Message#UNBOX}.{@link Message#createNode() createNode()}, objectToUnbox
      * );
      * </pre>
      *
@@ -138,7 +154,7 @@ public abstract class Message {
      *
      * <pre>
      * {@link ForeignAccess}.{@link ForeignAccess#sendWrite(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object, java.lang.Object) sendWrite}(
-     *   {@link Message#WRITE}.{@link Message#createNode()},  receiver, nameOfTheField, newValue
+     *   {@link Message#WRITE}.{@link Message#createNode() createNode()}, receiver, nameOfTheField, newValue
      * );
      * </pre>
      *
@@ -172,7 +188,7 @@ public abstract class Message {
      *
      * <pre>
      * {@link ForeignAccess}.{@link ForeignAccess#sendRemove(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object) sendRemove}(
-     *   {@link Message#WRITE}.{@link Message#createNode()},  receiver, nameOfTheField);
+     *   {@link Message#WRITE}.{@link Message#createNode() createNode()}, receiver, nameOfTheField);
      * </pre>
      *
      * Where <code>receiver</code> is the {@link TruffleObject foreign object} to access and
@@ -186,10 +202,10 @@ public abstract class Message {
     public static final Message REMOVE = Remove.INSTANCE;
 
     /**
-     * Creates a non-object oriented execution message. In contrast to {@link #createInvoke(int)}
-     * messages, which are more suitable for dealing with object oriented style of programming,
-     * messages created by this method are more suitable for execution where one can explicitly
-     * control all passed in arguments.
+     * The non-object oriented execution message. In contrast to the {@link #INVOKE} message, which
+     * is more suitable for dealing with object oriented style of programming, the {@link #EXECUTE}
+     * message is more suitable for execution where one can explicitly control all passed in
+     * arguments.
      * <p>
      * To inter-operate with a non-OOP language like <em>C</em> - for example to execute its
      * function:
@@ -218,7 +234,7 @@ public abstract class Message {
      *
      * <pre>
      * {@link ForeignAccess}.{@link ForeignAccess#sendExecute(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object...) sendExecute}(
-     *   {@link Message#createExecute(int) Message.createExecute}(2).{@link Message#createNode()},  addFunction, valueOfA, valueOfB
+     *   {@link Message#EXECUTE Message.EXECUTE}.{@link Message#createNode() createNode()}, addFunction, valueOfA, valueOfB
      * );
      * </pre>
      *
@@ -228,22 +244,23 @@ public abstract class Message {
      * One can use this method to talk to object oriented language as well, however one needs to pay
      * attention to provide all necessary arguments manually - usually an OOP language requires the
      * first argument to represent <code>this</code> or <code>self</code> and only then pass in the
-     * additional arguments. It may be easier to use {@link #createInvoke(int)} message which is
-     * more suitable for object oriented languages and handles (if supported) the arguments
-     * manipulation automatically.
+     * additional arguments. It may be easier to use the {@link #INVOKE} message which is more
+     * suitable for object oriented languages and handles (if supported) the arguments manipulation
+     * automatically.
      * <p>
      *
+     * @since 1.0
+     */
+    public static final Message EXECUTE = Execute.INSTANCE;
+
+    /**
+     * Use {@link Message#EXECUTE} instead.
      *
-     * <p>
-     * All messages created by this method are {@link Object#equals(java.lang.Object) equal} to each
-     * other regardless of the value of <code>argumentsLength</code>.
-     *
-     * @param argumentsLength number of parameters to pass to the target
-     * @return execute message
      * @since 0.8 or earlier
      */
-    public static Message createExecute(int argumentsLength) {
-        return Execute.create(Execute.EXECUTE, argumentsLength);
+    @Deprecated
+    public static Message createExecute(@SuppressWarnings("unused") int argumentsLength) {
+        return EXECUTE;
     }
 
     /**
@@ -255,13 +272,12 @@ public abstract class Message {
      * {@link ForeignAccess#getArguments(com.oracle.truffle.api.frame.Frame) no arguments} and a
      * single non-null {@link ForeignAccess#getReceiver(com.oracle.truffle.api.frame.Frame)
      * receiver}. The call should yield value of {@link Boolean}. Either {@link Boolean#TRUE} if the
-     * receiver can be executed (i.e. accepts {@link #createExecute(int)} message, or
-     * {@link Boolean#FALSE} otherwise. This is the way to send the <code>IS_EXECUTABLE</code>
-     * message:
+     * receiver can be executed (i.e. accepts the {@link #EXECUTE} message, or {@link Boolean#FALSE}
+     * otherwise. This is the way to send the <code>IS_EXECUTABLE</code> message:
      *
      * <pre>
      * {@link Boolean} canBeExecuted = ({@link Boolean}) {@link ForeignAccess}.sendIsExecutable(
-     *   {@link Message#IS_EXECUTABLE}.{@link Message#createNode()},  receiver
+     *   {@link Message#IS_EXECUTABLE}.{@link Message#createNode() createNode()}, receiver
      * );
      * </pre>
      * <p>
@@ -281,13 +297,12 @@ public abstract class Message {
      * {@link ForeignAccess#getArguments(com.oracle.truffle.api.frame.Frame) no arguments} and a
      * single non-null {@link ForeignAccess#getReceiver(com.oracle.truffle.api.frame.Frame)
      * receiver}. The call should yield value of {@link Boolean}. Either {@link Boolean#TRUE} if the
-     * receiver can be instantiated (i.e. accepts {@link #createNew(int)} message, or
-     * {@link Boolean#FALSE} otherwise. This is the way to send the <code>IS_INSTANTIABLE</code>
-     * message:
+     * receiver can be instantiated (i.e. accepts the {@link #NEW} message, or {@link Boolean#FALSE}
+     * otherwise. This is the way to send the <code>IS_INSTANTIABLE</code> message:
      *
      * <pre>
      * {@link Boolean} canBeinstantiated = ({@link Boolean}) {@link ForeignAccess}.sendIsInstantiable(
-     *   {@link Message#IS_INSTANTIABLE}.{@link Message#createNode()},  receiver
+     *   {@link Message#IS_INSTANTIABLE}.{@link Message#createNode() createNode()}, receiver
      * );
      * </pre>
      * <p>
@@ -299,10 +314,9 @@ public abstract class Message {
     public static final Message IS_INSTANTIABLE = IsInstantiable.INSTANCE;
 
     /**
-     * Creates an object oriented execute message. Unlike {@link #createExecute(int)} the receiver
-     * of the message isn't the actual function to invoke, but an object. The object has the
-     * function as a field, or as a field of its class, or whatever is appropriate for an object
-     * oriented language.
+     * The object oriented execute message. Unlike {@link #EXECUTE} the receiver of the message
+     * isn't the actual function to invoke, but an object. The object has the function as a field,
+     * or as a field of its class, or whatever is appropriate for an object oriented language.
      * <p>
      * Languages that don't support object oriented semantics do not and should not implement this
      * message. When the invoke message isn't supported, the caller is expected to fall back into
@@ -310,7 +324,7 @@ public abstract class Message {
      * <ul>
      * <li>sending {@link #READ} message to access the field</li>
      * <li>verify the result {@link #IS_EXECUTABLE}, if so continue by</li>
-     * <li>sending {@link #createExecute(int) execute message}</li>
+     * <li>sending {@link #EXECUTE execute message}</li>
      * </ul>
      * <p>
      * The last step is problematic, as it is not clear whether to pass just the execution
@@ -319,15 +333,15 @@ public abstract class Message {
      * receiving object as first argument, non-object languages like <em>C</em> would get confused
      * by doing so. However it is not possible for the caller to find out what language one is
      * sending message to - only the set of supported messages is known. As a result it is
-     * recommended for object oriented languages to support the {@link #createInvoke(int)} message
-     * and handle the semantics the way it is natural to them. Languages like <em>C</em> shouldn't
-     * implement {@link #createInvoke(int)} and just support primitive operations like
-     * {@link #createExecute(int)} and {@link #READ}.
+     * recommended for object oriented languages to support the {@link #INVOKE} message and handle
+     * the semantics the way it is natural to them. Languages like <em>C</em> shouldn't implement
+     * {@link #INVOKE} and just support primitive operations like {@link #EXECUTE} and {@link #READ}
+     * .
      * <p>
      * When accessing a method of an object in an object oriented manner, one is supposed to send
-     * the {@link #createInvoke(int)} message first. Only when that fails, fallback to non-object
-     * oriented workflow with {@link #createExecute(int)}. Imagine there is a <em>Java</em> class
-     * with <code>add</code> method and its instance:
+     * the {@link #INVOKE} message first. Only when that fails, fallback to non-object oriented
+     * workflow with {@link #EXECUTE}. Imagine there is a <em>Java</em> class with <code>add</code>
+     * method and its instance:
      *
      * <pre>
      * <b>public class</b> Arith {
@@ -356,37 +370,38 @@ public abstract class Message {
      * <pre>
      * <b>try</b> {
      *   {@link ForeignAccess}.{@link ForeignAccess#sendInvoke(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.interop.TruffleObject, java.lang.String, java.lang.Object...) sendInvoke}(
-     *     {@link Message#createInvoke(int) Message.createInvoke}(2).{@link Message#createNode()},  obj, "add", valueOfA, valueOfB
+     *     {@link Message#INVOKE Message.INVOKE}.{@link Message#createNode() createNode()}, obj, "add", valueOfA, valueOfB
      *   );
      * } <b>catch</b> ({@link IllegalArgumentException} ex) {
-     *   // access the language via {@link #createExecute(int)}
+     *   // access the language via {@link #EXECUTE}
      * }
      * </pre>
      *
      * The <code>valueOfA</code> and <code>valueOfB</code> should be <code>double</code> or
      * {@link Double} or at least be {@link #UNBOX unboxable} to such type.
      * <p>
-     * All messages created by this method are {@link Object#equals(java.lang.Object) equal} to each
-     * other regardless of the value of <code>argumentsLength</code>. The expected behavior of this
-     * message is to perform {@link #READ} first and on the result invoke
-     * {@link #createExecute(int)}.
+     * The expected behavior of this message is to perform {@link #READ} first and then
+     * {@link #EXECUTE} the result.
      *
-     * @param argumentsLength number of parameters to pass to the target
-     * @return message combining read & execute messages tailored for use with object oriented
-     *         languages
+     * @since 1.0
+     */
+    public static final Message INVOKE = Invoke.INSTANCE;
+
+    /**
+     * Use {@link Message#INVOKE} instead.
+     *
      * @since 0.8 or earlier
      */
-    public static Message createInvoke(int argumentsLength) {
-        return Execute.create(Execute.INVOKE, argumentsLength);
+    @Deprecated
+    public static Message createInvoke(@SuppressWarnings("unused") int argumentsLength) {
+        return INVOKE;
     }
 
     /**
-     * Creates an allocation message. All messages created by this method are
-     * {@link Object#equals(java.lang.Object) equal} to each other regardless of the value of
-     * <code>argumentsLength</code>. The expected behavior of this message is to allocate a new
-     * instance of the {@link ForeignAccess#getReceiver(com.oracle.truffle.api.frame.Frame)
-     * receiver} and then perform its constructor with appropriate number of arguments. To check if
-     * an object supports allocation of new instances, use the {@link #IS_INSTANTIABLE} message.
+     * The allocation message. The expected behavior of this message is to allocate a new instance
+     * of the {@link ForeignAccess#getReceiver(com.oracle.truffle.api.frame.Frame) receiver} and
+     * then perform its constructor with appropriate number of arguments. To check if an object
+     * supports allocation of new instances, use the {@link #IS_INSTANTIABLE} message.
      * <p>
      * If the object does not support the <code>NEW</code> message, an
      * {@link UnsupportedMessageException} has to be thrown.
@@ -398,12 +413,18 @@ public abstract class Message {
      * {@link UnsupportedTypeException} has to be thrown.
      * <p>
      *
-     * @param argumentsLength number of parameters to pass to the target
-     * @return new instance message
+     * @since 1.0
+     */
+    public static final Message NEW = New.INSTANCE;
+
+    /**
+     * Use {@link Message#NEW} instead.
+     *
      * @since 0.8 or earlier
      */
-    public static Message createNew(int argumentsLength) {
-        return Execute.create(Execute.NEW, argumentsLength);
+    @Deprecated
+    public static Message createNew(@SuppressWarnings("unused") int argumentsLength) {
+        return NEW;
     }
 
     /**
@@ -414,7 +435,7 @@ public abstract class Message {
      *
      * <pre>
      * {@link Boolean} isNull = ({@link Boolean}) {@link ForeignAccess}.sendIsNull(
-     *   {@link Message#IS_NULL}.{@link Message#createNode()},  objectToCheckForNull
+     *   {@link Message#IS_NULL}.{@link Message#createNode() createNode()}, objectToCheckForNull
      * );
      * </pre>
      *
@@ -473,7 +494,7 @@ public abstract class Message {
      *
      * <pre>
      * {@link Boolean} isBoxed = ({@link Boolean}) {@link ForeignAccess}.sendIsBoxed(
-     *   {@link Message#IS_BOXED}.{@link Message#createNode()},  objectToCheck
+     *   {@link Message#IS_BOXED}.{@link Message#createNode() createNode()}, objectToCheck
      * );
      * </pre>
      *
@@ -504,7 +525,7 @@ public abstract class Message {
      *
      * <pre>
      * {@link ForeignAccess}.{@link ForeignAccess#sendKeyInfo(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object) sendKeyInfo}(
-     *   {@link Message#KEY_INFO}.{@link Message#createNode() createNode()},  receiver, nameOfTheField
+     *   {@link Message#KEY_INFO}.{@link Message#createNode() createNode()}, receiver, nameOfTheField
      * );
      * </pre>
      *
@@ -563,14 +584,17 @@ public abstract class Message {
      *
      * <pre>
      * {@link Boolean} isPointer = ({@link Boolean}) {@link ForeignAccess}.sendIsPointer(
-     *   {@link Message#IS_POINTER}.{@link Message#createNode()},  objectToCheck
+     *   {@link Message#IS_POINTER}.{@link Message#createNode() createNode()}, objectToCheck
      * );
      * </pre>
      *
      * Calling {@link Factory#accessMessage(com.oracle.truffle.api.interop.Message) the target}
-     * created for this message should yield value of {@link Boolean}. If the object responds with
-     * {@link Boolean#TRUE}, the object can be accessed by {@link #AS_POINTER} message.
+     * created for this message should yield a {@link Boolean}. If the object responds with
+     * {@link Boolean#TRUE}, the object can be accessed by the {@link #AS_POINTER} message. An
+     * object that responds with {@link Boolean#TRUE} to {@link #IS_POINTER} <b>MUST</b> also
+     * implement {@link #TO_NATIVE}, which should just return the receiver.
      *
+     * <p>
      * It is expected that objects should only return {@link Boolean#TRUE} here if the native
      * pointer value corresponding to this object already exists, and obtaining it is a cheap
      * operation. If an object can be transformed to a pointer representation, but this hasn't
@@ -593,7 +617,7 @@ public abstract class Message {
      *
      * <pre>
      * {@link ForeignAccess}.{@link ForeignAccess#sendAsPointer(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.interop.TruffleObject) sendAsPointer}(
-     *   {@link Message#AS_POINTER}.{@link Message#createNode()},  objectAsPointer
+     *   {@link Message#AS_POINTER}.{@link Message#createNode() createNode()}, objectAsPointer
      * );
      * </pre>
      *
@@ -623,7 +647,7 @@ public abstract class Message {
      *
      * <pre>
      * {@link ForeignAccess}.{@link ForeignAccess#sendToNative(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.interop.TruffleObject) sendToNative}(
-     *   {@link Message#TO_NATIVE}.{@link Message#createNode()},  objectToNative
+     *   {@link Message#TO_NATIVE}.{@link Message#createNode() createNode()}, objectToNative
      * );
      * </pre>
      *
@@ -637,9 +661,8 @@ public abstract class Message {
 
     /**
      * Compares types of two messages. Messages are encouraged to implement this method. All
-     * standard ones ({@link #IS_NULL}, {@link #READ}, etc.) do so. Messages obtained via the same
-     * {@link #createExecute(int) method} are equal, messages obtained by different methods or
-     * fields are not.
+     * standard ones ({@link #IS_NULL}, {@link #READ}, etc.) do so. Messages obtained by different
+     * methods or fields are not equal.
      *
      * @param message the object to compare to
      * @return true, if the structure of the message is that same as of <code>this</code> one.
@@ -730,8 +753,14 @@ public abstract class Message {
         if (Message.TO_NATIVE == message) {
             return "TO_NATIVE"; // NOI18N
         }
-        if (message instanceof Execute) {
-            return ((Execute) message).name();
+        if (Execute.INSTANCE == message) {
+            return "EXECUTE";
+        }
+        if (Invoke.INSTANCE == message) {
+            return "INVOKE";
+        }
+        if (New.INSTANCE == message) {
+            return "NEW";
         }
         return message.getClass().getName();
     }
@@ -781,11 +810,11 @@ public abstract class Message {
             case "TO_NATIVE":
                 return Message.TO_NATIVE;
             case "EXECUTE":
-                return Message.createExecute(0);
+                return Message.EXECUTE;
             case "NEW":
-                return Message.createNew(0);
+                return Message.NEW;
             case "INVOKE":
-                return Message.createInvoke(0);
+                return Message.INVOKE;
         }
         if (!TruffleOptions.AOT) {
             initializeMessageClass(messageId);
@@ -804,13 +833,24 @@ public abstract class Message {
             if (l == null) {
                 l = ClassLoader.getSystemClassLoader();
             }
-            Class.forName(message, false, l).newInstance();
+            Class.forName(message, false, l).getDeclaredConstructor().newInstance();
         } catch (Exception ex) {
             throw new IllegalArgumentException("Cannot find message for " + message, ex);
         }
     }
 
     private static final Map<String, Message> CLASS_TO_MESSAGE = new ConcurrentHashMap<>();
+
+    /**
+     * Resets the state for native image generation.
+     *
+     * NOTE: this method is called reflectively by downstream projects.
+     */
+    @SuppressWarnings("unused")
+    private static void resetNativeImageState() {
+        assert TruffleOptions.AOT : "Only supported during image generation";
+        CLASS_TO_MESSAGE.clear();
+    }
 
     @CompilerDirectives.TruffleBoundary
     private static void registerClass(Message message) {

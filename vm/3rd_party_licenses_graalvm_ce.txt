@@ -222,11 +222,68 @@ SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
 CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, 
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+-------------------------------------------------------------------------------
+
+		JSON.org 
+
+Copyright (c) 2002 JSON.org
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+The Software shall be used for Good, not Evil.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+-------------------------------------------------------------------------------
+
+		ANTLR 4.7  
+
+Copyright (c) 2015 Terence Parr, Sam Harwell
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+
+ 1. Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+ 2. Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+ 3. The name of the author may not be used to endorse or promote products
+    derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
 ---------------------------------------------------------------------------
+
            Node.js
-Node JS 8.11.1
-Source URL: https://github.com/nodejs/node/tree/v8.11.1
-License URL: https://github.com/nodejs/node/blob/v8.11.1/LICENSE
+10.9.0
 
 Node.js is licensed for use as follows:
 
@@ -279,36 +336,51 @@ IN THE SOFTWARE.
 The Node.js license applies to all parts of Node.js that are not externally
 maintained libraries.
 
-For the license of Node.js, see ./graal-nodejs/LICENSE
-=====================================================
-
 The externally maintained libraries used by Node.js are:
+
+- Acorn, located at deps/acorn, is licensed as follows:
+  """
+    Copyright (C) 2012-2017 by various contributors (see AUTHORS)
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+    THE SOFTWARE.
+  """
 
 - c-ares, located at deps/cares, is licensed as follows:
   """
-    Copyright 1998 by the Massachusetts Institute of Technology.
-    Copyright (C) 2007-2013 by Daniel Stenberg
+    Copyright (c) 2007 - 2016, Daniel Stenberg with many contributors, see AUTHORS
+    file.
 
-    Permission to use, copy, modify, and distribute this
-    software and its documentation for any purpose and without
-    fee is hereby granted, provided that the above copyright
-    notice appear in all copies and that both that copyright
-    notice and this permission notice appear in supporting
-    documentation, and that the name of M.I.T. not be used in
-    advertising or publicity pertaining to distribution of the
-    software without specific, written prior permission.
-    M.I.T. makes no representations about the suitability of
-    this software for any purpose.  It is provided "as is"
-    without express or implied warranty.
+    Copyright 1998 by the Massachusetts Institute of Technology.
+
+    Permission to use, copy, modify, and distribute this software and its
+    documentation for any purpose and without fee is hereby granted, provided that
+    the above copyright notice appear in all copies and that both that copyright
+    notice and this permission notice appear in supporting documentation, and that
+    the name of M.I.T. not be used in advertising or publicity pertaining to
+    distribution of the software without specific, written prior permission.
+    M.I.T. makes no representations about the suitability of this software for any
+    purpose.  It is provided "as is" without express or implied warranty.
   """
 
 - HTTP Parser, located at deps/http_parser, is licensed as follows:
   """
-    http_parser.c is based on src/http/ngx_http_parse.c from NGINX copyright
-    Igor Sysoev.
-
-    Additional changes are licensed under the same terms as NGINX and
-    copyright Joyent, Inc. and other Node contributors. All rights reserved.
+    Copyright Joyent, Inc. and other Node contributors.
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to
@@ -333,8 +405,8 @@ The externally maintained libraries used by Node.js are:
   """
     COPYRIGHT AND PERMISSION NOTICE (ICU 58 and later)
 
-    Copyright © 1991-2017 Unicode, Inc. All rights reserved.
-    Distributed under the Terms of Use in http://www.unicode.org/copyright.html
+    Copyright © 1991-2018 Unicode, Inc. All rights reserved.
+    Distributed under the Terms of Use in http://www.unicode.org/copyright.html.
 
     Permission is hereby granted, free of charge, to any person obtaining
     a copy of the Unicode data files and any associated documentation
@@ -377,8 +449,7 @@ The externally maintained libraries used by Node.js are:
 
     COPYRIGHT AND PERMISSION NOTICE
 
-    Copyright (c) 1995-2016 International Business Machines Corporation and 
-others
+    Copyright (c) 1995-2016 International Business Machines Corporation and others
     All rights reserved.
 
     Permission is hereby granted, free of charge, to any person obtaining
@@ -422,8 +493,7 @@ others
      #  All rights reserved.
      #
      #  Redistribution and use in source and binary forms, with or without
-     # modification, are permitted provided that the following conditions are 
-met:
+     # modification, are permitted provided that the following conditions are met:
      #
      #  Redistributions of source code must retain the above copyright notice,
      # this list of conditions and the following disclaimer.
@@ -466,7 +536,7 @@ met:
      #  ---------COPYING.libtabe ---- BEGIN--------------------
      #
      #  /*
-     #   * Copyrighy (c) 1999 TaBE Project.
+     #   * Copyright (c) 1999 TaBE Project.
      #   * Copyright (c) 1999 Pai-Hsiang Hsiao.
      #   * All rights reserved.
      #   *
@@ -621,8 +691,7 @@ met:
      #
      # Project: http://code.google.com/p/lao-dictionary/
      # Dictionary: http://lao-dictionary.googlecode.com/git/Lao-Dictionary.txt
-     # License: 
-http://lao-dictionary.googlecode.com/git/Lao-Dictionary-LICENSE.txt
+     # License: http://lao-dictionary.googlecode.com/git/Lao-Dictionary-LICENSE.txt
      #              (copied below)
      #
      #  This file is derived from the above dictionary, with slight
@@ -636,8 +705,7 @@ http://lao-dictionary.googlecode.com/git/Lao-Dictionary-LICENSE.txt
      #  are permitted provided that the following conditions are met:
      #
      #
-     # Redistributions of source code must retain the above copyright notice, 
-this
+     # Redistributions of source code must retain the above copyright notice, this
      #  list of conditions and the following disclaimer. Redistributions in
      #  binary form must reproduce the above copyright notice, this list of
      #  conditions and the following disclaimer in the documentation and/or
@@ -656,8 +724,7 @@ this
      # STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
      # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
      # OF THE POSSIBILITY OF SUCH DAMAGE.
-     #  
---------------------------------------------------------------------------
+     #  --------------------------------------------------------------------------
 
     4. Burmese Word Break Dictionary Data (burmesedict.txt)
 
@@ -667,8 +734,7 @@ this
      #  This list is part of a project hosted at:
      #    github.com/kanyawtech/myanmar-karen-word-lists
      #
-     #  
---------------------------------------------------------------------------
+     #  --------------------------------------------------------------------------
      #  Copyright (c) 2013, LeRoy Benjamin Sharon
      #  All rights reserved.
      #
@@ -698,8 +764,7 @@ this
      #  TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
      #  THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
      #  SUCH DAMAGE.
-     #  
---------------------------------------------------------------------------
+     #  --------------------------------------------------------------------------
 
     5. Time Zone Database
 
@@ -723,6 +788,35 @@ this
      #    by ICANN or the IETF Trust on the database or the code.  Any person
      #    making a contribution to the database or code waives all rights to
      #    future claims in that contribution or in the TZ Database.
+
+    6. Google double-conversion
+
+    Copyright 2006-2011, the V8 project authors. All rights reserved.
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions are
+    met:
+
+        * Redistributions of source code must retain the above copyright
+          notice, this list of conditions and the following disclaimer.
+        * Redistributions in binary form must reproduce the above
+          copyright notice, this list of conditions and the following
+          disclaimer in the documentation and/or other materials provided
+          with the distribution.
+        * Neither the name of Google Inc. nor the names of its
+          contributors may be used to endorse or promote products derived
+          from this software without specific prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+    "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+    LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+    A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+    OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+    SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+    LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+    DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+    THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+    (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+    OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   """
 
 - libuv, located at deps/uv, is licensed as follows:
@@ -785,26 +879,23 @@ this
       - tree.h (from FreeBSD), copyright Niels Provos. Two clause BSD license.
 
       - inet_pton and inet_ntop implementations, contained in src/inet.c, are
-        copyright the Internet Systems Consortium, Inc., and licensed under the 
-ISC
+        copyright the Internet Systems Consortium, Inc., and licensed under the ISC
         license.
 
       - stdint-msvc2008.h (from msinttypes), copyright Alexander Chemeris. Three
         clause BSD license.
 
-      - pthread-fixes.c, copyright Google Inc. and Sony Mobile Communications 
-AB.
+      - pthread-fixes.c, copyright Google Inc. and Sony Mobile Communications AB.
         Three clause BSD license.
 
       - android-ifaddrs.h, android-ifaddrs.c, copyright Berkeley Software Design
-        Inc, Kenneth MacKay and Emergya (Cloud4all, FP7/2007-2013, grant 
-agreement
+        Inc, Kenneth MacKay and Emergya (Cloud4all, FP7/2007-2013, grant agreement
         n° 289016). Three clause BSD license.
   """
 
 - OpenSSL, located at deps/openssl, is licensed as follows:
   """
-    Copyright (c) 1998-2017 The OpenSSL Project.  All rights reserved.
+    Copyright (c) 1998-2018 The OpenSSL Project.  All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions
@@ -887,14 +978,12 @@ agreement
     are:
 
       - PCRE test suite, located in
-        test/mjsunit/third_party/regexp-pcre/regexp-pcre.js.  This is based on 
-the
+        test/mjsunit/third_party/regexp-pcre/regexp-pcre.js.  This is based on the
         test suite from PCRE-7.3, which is copyrighted by the University
         of Cambridge and Google, Inc.  The copyright notice and license
         are embedded in regexp-pcre.js.
 
-      - Layout tests, located in test/mjsunit/third_party/object-keys.  These 
-are
+      - Layout tests, located in test/mjsunit/third_party/object-keys.  These are
         based on layout tests from webkit.org which are copyrighted by
         Apple Computer, Inc. and released under a 3-clause BSD license.
 
@@ -907,6 +996,9 @@ are
         under a 3-clause BSD license.
 
       - Valgrind client API header, located at third_party/valgrind/valgrind.h
+        This is release under the BSD license.
+
+      - antlr4 parser generator Cpp library located in third_party/antlr4
         This is release under the BSD license.
 
     These libraries have their own licenses; we recommend you read them,
@@ -1230,29 +1322,107 @@ are
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   """
 
-- marked, located at tools/doc/node_modules/marked, is licensed as follows:
+- inspector_protocol, located at tools/inspector_protocol, is licensed as follows:
   """
-    Copyright (c) 2011-2014, Christopher Jeffrey (https://github.com/chjj/)
+    // Copyright 2016 The Chromium Authors. All rights reserved.
+    //
+    // Redistribution and use in source and binary forms, with or without
+    // modification, are permitted provided that the following conditions are
+    // met:
+    //
+    //    * Redistributions of source code must retain the above copyright
+    // notice, this list of conditions and the following disclaimer.
+    //    * Redistributions in binary form must reproduce the above
+    // copyright notice, this list of conditions and the following disclaimer
+    // in the documentation and/or other materials provided with the
+    // distribution.
+    //    * Neither the name of Google Inc. nor the names of its
+    // contributors may be used to endorse or promote products derived from
+    // this software without specific prior written permission.
+    //
+    // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+    // "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+    // LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+    // A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+    // OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+    // SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+    // LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+    // DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+    // THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+    // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+    // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  """
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to 
-deal
-    in the Software without restriction, including without limitation the rights
-    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is
-    furnished to do so, subject to the following conditions:
+- jinja2, located at tools/jinja2, is licensed as follows:
+  """
+    Copyright (c) 2009 by the Jinja Team, see AUTHORS for more details.
 
-    The above copyright notice and this permission notice shall be included in
-    all copies or substantial portions of the Software.
+    Some rights reserved.
 
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
-FROM,
-    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-    THE SOFTWARE.
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions are
+    met:
+
+        * Redistributions of source code must retain the above copyright
+          notice, this list of conditions and the following disclaimer.
+
+        * Redistributions in binary form must reproduce the above
+          copyright notice, this list of conditions and the following
+          disclaimer in the documentation and/or other materials provided
+          with the distribution.
+
+        * The names of the contributors may not be used to endorse or
+          promote products derived from this software without specific
+          prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+    "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+    LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+    A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+    OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+    SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+    LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+    DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+    THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+    (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+    OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  """
+
+- markupsafe, located at tools/markupsafe, is licensed as follows:
+  """
+    Copyright (c) 2010 by Armin Ronacher and contributors.  See AUTHORS
+    for more details.
+
+    Some rights reserved.
+
+    Redistribution and use in source and binary forms of the software as well
+    as documentation, with or without modification, are permitted provided
+    that the following conditions are met:
+
+    * Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+
+    * Redistributions in binary form must reproduce the above
+      copyright notice, this list of conditions and the following
+      disclaimer in the documentation and/or other materials provided
+      with the distribution.
+
+    * The names of the contributors may not be used to endorse or
+      promote products derived from this software without specific
+      prior written permission.
+
+    THIS SOFTWARE AND DOCUMENTATION IS PROVIDED BY THE COPYRIGHT HOLDERS AND
+    CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT
+    NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+    A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER
+    OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+    EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+    PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+    PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+    LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+    NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+    SOFTWARE AND DOCUMENTATION, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
+    DAMAGE.
   """
 
 - cpplint.py, located at tools/cpplint.py, is licensed as follows:
@@ -1286,13 +1456,12 @@ FROM,
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   """
 
-- ESLint, located at tools/eslint, is licensed as follows:
+- ESLint, located at tools/node_modules/eslint, is licensed as follows:
   """
     Copyright JS Foundation and other contributors, https://js.foundation
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to 
-deal
+    of this software and associated documentation files (the "Software"), to deal
     in the Software without restriction, including without limitation the rights
     to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
     copies of the Software, and to permit persons to whom the Software is
@@ -1305,10 +1474,35 @@ deal
     IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
     FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
     AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
-FROM,
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
     THE SOFTWARE.
+  """
+
+- babel-eslint, located at tools/node_modules/babel-eslint, is licensed as follows:
+  """
+    Copyright (c) 2014-2016 Sebastian McKenzie <sebmck@gmail.com>
+
+    MIT License
+
+    Permission is hereby granted, free of charge, to any person obtaining
+    a copy of this software and associated documentation files (the
+    "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish,
+    distribute, sublicense, and/or sell copies of the Software, and to
+    permit persons to whom the Software is furnished to do so, subject to
+    the following conditions:
+
+    The above copyright notice and this permission notice shall be
+    included in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+    NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+    LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+    OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+    WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
   """
 
 - gtest, located at deps/gtest, is licensed as follows:
@@ -1378,8 +1572,7 @@ FROM,
     Copyright (c) 2011-2014, Christopher Jeffrey (https://github.com/chjj/)
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to 
-deal
+    of this software and associated documentation files (the "Software"), to deal
     in the Software without restriction, including without limitation the rights
     to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
     copies of the Software, and to permit persons to whom the Software is
@@ -1392,8 +1585,7 @@ deal
     IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
     FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
     AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
-FROM,
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
     THE SOFTWARE.
   """
@@ -1419,7 +1611,8 @@ FROM,
     LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
     IN THE SOFTWARE.
-  """
+"""
+
 --------------------------------------------------------------------------------
            lbicxxabi (libc++abi)
 The libc++abi library is dual licensed under both the University of Illinois

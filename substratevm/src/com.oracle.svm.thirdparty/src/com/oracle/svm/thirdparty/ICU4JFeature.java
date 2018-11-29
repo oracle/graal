@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package com.oracle.svm.thirdparty;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
 
 import org.graalvm.nativeimage.Feature;
@@ -40,7 +41,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -55,6 +55,7 @@ import com.oracle.svm.core.util.VMError;
  */
 @AutomaticFeature
 public final class ICU4JFeature implements Feature {
+
     static final class IsEnabled implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
@@ -70,13 +71,13 @@ public final class ICU4JFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         registerShimClass(access, "com.ibm.icu.text.NumberFormatServiceShim");
+        registerShimClass(access, "com.ibm.icu.text.CollatorServiceShim");
     }
 
     private static void registerShimClass(BeforeAnalysisAccess access, String shimClassName) {
-        Class<?> numberFormatServiceShim = access.findClassByName(shimClassName);
-        if (numberFormatServiceShim != null) {
-            RuntimeReflection.register(numberFormatServiceShim.getDeclaredConstructors());
-            ClassForNameSupport.registerClass(numberFormatServiceShim);
+        Class<?> shimClass = access.findClassByName(shimClassName);
+        if (shimClass != null) {
+            RuntimeReflection.registerForReflectiveInstantiation(shimClass);
         } else {
             throw VMError.shouldNotReachHere(shimClassName + " not found");
         }
@@ -111,6 +112,16 @@ final class Target_com_ibm_icu_impl_ICUBinary {
 
     static final class IcuDataFilesAccessors {
 
+        private static final String ICU4J_DATA_PATH_SYS_PROP = "com.ibm.icu.impl.ICUBinary.dataPath";
+        private static final String ICU4J_DATA_PATH_ENV_VAR = "ICU4J_DATA_PATH";
+
+        private static final String NO_DATA_PATH_ERR_MSG = "No ICU4J data path was set or found. This will likely end up with a MissingResourceException. " +
+                        "To take advantage of the ICU4J library, you should either set system property, " +
+                        ICU4J_DATA_PATH_SYS_PROP +
+                        ", or set environment variable, " +
+                        ICU4J_DATA_PATH_ENV_VAR +
+                        ", to contain path to your ICU4J icudt directory";
+
         private static volatile List<?> instance;
 
         static List<?> get() {
@@ -119,13 +130,17 @@ final class Target_com_ibm_icu_impl_ICUBinary {
                 // Checkstyle: allow synchronization
                 synchronized (IcuDataFilesAccessors.class) {
                     if (instance == null) {
+
                         instance = new ArrayList<>();
-                        String dataPath = System.getProperty("com.ibm.icu.impl.ICUBinary.dataPath");
+
+                        String dataPath = System.getProperty(ICU4J_DATA_PATH_SYS_PROP);
                         if (dataPath == null || dataPath.isEmpty()) {
-                            dataPath = System.getenv("ICU4J_DATA_PATH");
+                            dataPath = System.getenv(ICU4J_DATA_PATH_ENV_VAR);
                         }
                         if (dataPath != null && !dataPath.isEmpty()) {
                             addDataFilesFromPath(dataPath, instance);
+                        } else {
+                            System.err.println(NO_DATA_PATH_ERR_MSG);
                         }
                     }
                 }
@@ -156,6 +171,13 @@ final class Target_com_ibm_icu_impl_ICUResourceBundle_WholeBundle {
     @Alias @RecomputeFieldValue(kind = Kind.Reset)
     // Checkstyle: stop
     ClassLoader loader;
+    // Checkstyle: resume
+}
+
+@TargetClass(className = "com.ibm.icu.impl.SoftCache", onlyWith = ICU4JFeature.IsEnabled.class)
+final class Target_com_ibm_icu_impl_SoftCache {
+    // Checkstyle: stop
+    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ConcurrentHashMap.class) private ConcurrentHashMap<?, ?> map;
     // Checkstyle: resume
 }
 

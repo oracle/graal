@@ -1,26 +1,42 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * The Universal Permissive License (UPL), Version 1.0
  *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
  *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ * (a) the Software, and
  *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 
 package com.oracle.truffle.dsl.processor.interop;
@@ -41,6 +57,8 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import java.util.Arrays;
+import javax.tools.Diagnostic;
 
 abstract class MessageGenerator extends InteropNodeGenerator {
     protected static final String ACCESS_METHOD_NAME = "access";
@@ -61,8 +79,8 @@ abstract class MessageGenerator extends InteropNodeGenerator {
     public void appendGetName(Writer w) throws IOException {
         w.append(indent).append("        @Override\n");
         w.append(indent).append("        public String getName() {\n");
-        String rootName = "Interop::" + messageName + "::" + receiverClassName;
-        w.append(indent).append("            return \"").append(rootName).append("\";\n");
+        String rootName = "Interop::" + messageName + "::";
+        w.append(indent).append("            return \"").append(rootName).append("\" + " + receiverClassName + ".class.getName();\n");
         w.append(indent).append("        }\n\n");
     }
 
@@ -160,30 +178,33 @@ abstract class MessageGenerator extends InteropNodeGenerator {
         String messageName = resolveAnnotation.message();
 
         Object currentMessage = Utils.getMessage(processingEnv, messageName);
-        if (currentMessage != null) {
-            if (Message.READ.toString().equalsIgnoreCase(messageName) || Message.KEY_INFO.toString().equalsIgnoreCase(messageName) ||
-                            Message.REMOVE.toString().equalsIgnoreCase(messageName)) {
-                return new ReadGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
-            } else if (Message.WRITE.toString().equalsIgnoreCase(messageName)) {
-                return new WriteGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
-            } else if (Message.IS_NULL.toString().equalsIgnoreCase(messageName) || Message.IS_EXECUTABLE.toString().equalsIgnoreCase(messageName) ||
-                            Message.IS_BOXED.toString().equalsIgnoreCase(messageName) || Message.HAS_SIZE.toString().equalsIgnoreCase(messageName) ||
-                            Message.GET_SIZE.toString().equalsIgnoreCase(messageName) || Message.UNBOX.toString().equalsIgnoreCase(messageName) ||
-                            Message.IS_INSTANTIABLE.toString().equalsIgnoreCase(messageName) || Message.HAS_KEYS.toString().equalsIgnoreCase(messageName) ||
-                            Message.IS_POINTER.toString().equalsIgnoreCase(messageName) ||
-                            Message.AS_POINTER.toString().equalsIgnoreCase(messageName) || Message.TO_NATIVE.toString().equalsIgnoreCase(messageName)) {
-                return new UnaryGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
-            } else if (Message.KEYS.toString().equalsIgnoreCase(messageName)) {
-                return new KeysGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
-            } else if (Message.createExecute(0).toString().equalsIgnoreCase(messageName) || Message.createInvoke(0).toString().equalsIgnoreCase(messageName) ||
-                            Message.createNew(0).toString().equalsIgnoreCase(messageName)) {
-                return new ExecuteGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
-            } else {
-                assert !InteropDSLProcessor.KNOWN_MESSAGES.contains(currentMessage);
-                return new GenericGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
+        if (currentMessage == null) {
+            SuppressWarnings suppress = element.getAnnotation(SuppressWarnings.class);
+            if (suppress == null || !Arrays.asList(suppress.value()).contains("unknown-message")) {
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.WARNING, "Unknown message " + messageName + " (add @SuppressWarnings(\"unknown-message\") to ignore this warning)", element);
             }
         }
-        return null;
+        if (Message.READ.toString().equalsIgnoreCase(messageName) || Message.KEY_INFO.toString().equalsIgnoreCase(messageName) ||
+                        Message.REMOVE.toString().equalsIgnoreCase(messageName)) {
+            return new ReadGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
+        } else if (Message.WRITE.toString().equalsIgnoreCase(messageName)) {
+            return new WriteGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
+        } else if (Message.IS_NULL.toString().equalsIgnoreCase(messageName) || Message.IS_EXECUTABLE.toString().equalsIgnoreCase(messageName) ||
+                        Message.IS_BOXED.toString().equalsIgnoreCase(messageName) || Message.HAS_SIZE.toString().equalsIgnoreCase(messageName) ||
+                        Message.GET_SIZE.toString().equalsIgnoreCase(messageName) || Message.UNBOX.toString().equalsIgnoreCase(messageName) ||
+                        Message.IS_INSTANTIABLE.toString().equalsIgnoreCase(messageName) || Message.HAS_KEYS.toString().equalsIgnoreCase(messageName) ||
+                        Message.IS_POINTER.toString().equalsIgnoreCase(messageName) ||
+                        Message.AS_POINTER.toString().equalsIgnoreCase(messageName) || Message.TO_NATIVE.toString().equalsIgnoreCase(messageName)) {
+            return new UnaryGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
+        } else if (Message.KEYS.toString().equalsIgnoreCase(messageName)) {
+            return new KeysGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
+        } else if (Message.EXECUTE.toString().equalsIgnoreCase(messageName) || Message.INVOKE.toString().equalsIgnoreCase(messageName) ||
+                        Message.NEW.toString().equalsIgnoreCase(messageName)) {
+            return new ExecuteGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
+        } else {
+            assert !InteropDSLProcessor.KNOWN_MESSAGES.contains(currentMessage);
+            return new GenericGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
+        }
     }
 
     protected void appendHandleUnsupportedTypeException(Writer w) throws IOException {
@@ -192,6 +213,10 @@ abstract class MessageGenerator extends InteropNodeGenerator {
         w.append(indent).append("                } else {\n");
         w.append(indent).append("                  throw e;\n");
         w.append(indent).append("                }\n");
+    }
+
+    public String getMessageName() {
+        return messageName;
     }
 
 }

@@ -205,8 +205,9 @@ public class PECoffSymtab extends ObjectFile.Element implements SymbolTable {
 
         for (Entry e : entries) {
             PECoffSection sect = e.getReferencedSection();
-            // The NULL Entry doesn't have a section associated with it
-            int sectID = sect == null ? 0 : sect.getSectionID();
+            // Undefined symbols have a null ReferencedSection
+            // Pass -1 as sectID since addSymbolEntry will add 1
+            int sectID = sect == null ? -1 : sect.getSectionID();
             long offset = e.isDefined() ? e.getDefinedOffset() : 0L;
 
             symtabStruct.addSymbolEntry(e.getName(),

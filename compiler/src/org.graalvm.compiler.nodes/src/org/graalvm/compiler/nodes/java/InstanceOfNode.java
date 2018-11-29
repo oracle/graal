@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -61,7 +61,7 @@ import jdk.vm.ci.meta.TriState;
 public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtualizable {
     public static final NodeClass<InstanceOfNode> TYPE = NodeClass.create(InstanceOfNode.class);
 
-    private ObjectStamp checkedStamp;
+    private final ObjectStamp checkedStamp;
 
     private JavaTypeProfile profile;
     @OptionalInput(Anchor) protected AnchoringNode anchor;
@@ -77,6 +77,7 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
         this.anchor = anchor;
         assert (profile == null) || (anchor != null) : "profiles must be anchored";
         assert checkedStamp != null;
+        assert type() != null;
     }
 
     public static LogicNode createAllowNull(TypeReference type, ValueNode object, JavaTypeProfile profile, AnchoringNode anchor) {
@@ -215,11 +216,6 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
 
     public ObjectStamp getCheckedStamp() {
         return checkedStamp;
-    }
-
-    public void strengthenCheckedStamp(ObjectStamp newCheckedStamp) {
-        assert this.checkedStamp.join(newCheckedStamp).equals(newCheckedStamp) : "stamp can only improve";
-        this.checkedStamp = newCheckedStamp;
     }
 
     @Override

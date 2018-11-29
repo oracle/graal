@@ -1,26 +1,42 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * The Universal Permissive License (UPL), Version 1.0
  *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
  *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ * (a) the Software, and
  *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 package com.oracle.truffle.dsl.processor.interop;
 
@@ -135,6 +151,7 @@ final class ForeignAccessFactoryGenerator {
         imports.add("com.oracle.truffle.api.CallTarget");
         if (hasLanguageCheckNode()) {
             imports.add("com.oracle.truffle.api.CompilerDirectives.TruffleBoundary");
+            imports.add("java.util.function.Supplier");
         }
         imports.add("com.oracle.truffle.api.Truffle");
         imports.add("com.oracle.truffle.api.interop.ForeignAccess");
@@ -152,6 +169,7 @@ final class ForeignAccessFactoryGenerator {
                         messageGenerators.containsKey(Message.IS_POINTER))) {
             imports.add("com.oracle.truffle.api.nodes.RootNode");
         }
+        imports.add("com.oracle.truffle.api.dsl.GeneratedBy");
 
         for (MessageGenerator generator : messageGenerators.values()) {
             generator.addImports(imports);
@@ -170,11 +188,11 @@ final class ForeignAccessFactoryGenerator {
     }
 
     private void appendSingletonAndGetter(Writer w) throws IOException {
-        String allocation;
+        String allocation = "ForeignAccess.createAccess(new " + simpleClassName + "(), ";
         if (hasLanguageCheckNode()) {
-            allocation = "ForeignAccess.create(new " + simpleClassName + "(), " + languageCheckGenerator.getRootNodeFactoryInvocation() + ");";
+            allocation += "new Supplier<RootNode>() { @Override public RootNode get() { return " + languageCheckGenerator.getRootNodeFactoryInvocation() + "; }});";
         } else {
-            allocation = "ForeignAccess.create(new " + simpleClassName + "(), null);";
+            allocation += "null);";
         }
         w.append("    public static final ForeignAccess ACCESS = ").append(allocation).append("\n");
         w.append("    @Deprecated public static ForeignAccess createAccess() { return ").append(allocation).append(" }\n");
@@ -211,14 +229,14 @@ final class ForeignAccessFactoryGenerator {
     private void appendFactoryAccessIsExecutable(Writer w) throws IOException {
         w.append("    @Override").append("\n");
         w.append("    public CallTarget accessIsExecutable() {").append("\n");
-        appendOptionalDefaultHandlerBody(w, Message.IS_EXECUTABLE, Message.createExecute(0));
+        appendOptionalDefaultHandlerBody(w, Message.IS_EXECUTABLE, Message.EXECUTE);
         w.append("    }").append("\n");
     }
 
     private void appendFactoryAccessIsInstantiable(Writer w) throws IOException {
         w.append("    @Override").append("\n");
         w.append("    public CallTarget accessIsInstantiable() {").append("\n");
-        appendOptionalDefaultHandlerBody(w, Message.IS_INSTANTIABLE, Message.createNew(0));
+        appendOptionalDefaultHandlerBody(w, Message.IS_INSTANTIABLE, Message.NEW);
         w.append("    }").append("\n");
     }
 
@@ -332,21 +350,21 @@ final class ForeignAccessFactoryGenerator {
     private void appendFactoryAccessExecute(Writer w) throws IOException {
         w.append("    @Override").append("\n");
         w.append("    public CallTarget accessExecute(int argumentsLength) {").append("\n");
-        appendOptionalHandlerBody(w, Message.createExecute(0));
+        appendOptionalHandlerBody(w, Message.EXECUTE);
         w.append("    }").append("\n");
     }
 
     private void appendFactoryAccessInvoke(Writer w) throws IOException {
         w.append("    @Override").append("\n");
         w.append("    public CallTarget accessInvoke(int argumentsLength) {").append("\n");
-        appendOptionalHandlerBody(w, Message.createInvoke(0));
+        appendOptionalHandlerBody(w, Message.INVOKE);
         w.append("    }").append("\n");
     }
 
     private void appendFactoryAccessNew(Writer w) throws IOException {
         w.append("    @Override").append("\n");
         w.append("    public CallTarget accessNew(int argumentsLength) {").append("\n");
-        appendOptionalHandlerBody(w, Message.createNew(0));
+        appendOptionalHandlerBody(w, Message.NEW);
         w.append("    }").append("\n");
     }
 

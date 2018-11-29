@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,7 +50,8 @@ public class GraalCompilerOptions {
                    "The accepted values are the same as for CompilationBailoutAction.", type = OptionType.User)
      public static final EnumOptionKey<ExceptionAction> CompilationFailureAction = new EnumOptionKey<>(ExceptionAction.Diagnose);
     @Option(help = "The maximum number of compilation failures or bailouts to handle with the action specified " +
-                   "by CompilationFailureAction or CompilationBailoutAction before changing to a less verbose action.", type = OptionType.User)
+                   "by CompilationFailureAction or CompilationBailoutAction before changing to a less verbose action. " +
+                   "This does not apply to the ExitVM action.", type = OptionType.User)
     public static final OptionKey<Integer> MaxCompilationProblemsPerAction = new OptionKey<>(2);
     @Option(help = "Alias for CompilationFailureAction=ExitVM.", type = OptionType.User)
     public static final OptionKey<Boolean> ExitVMOnException = new OptionKey<>(false);

@@ -37,6 +37,9 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.JDK8OrEarlier;
+import com.oracle.svm.core.jdk.JDK9OrLater;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Socket;
 import com.oracle.svm.core.posix.headers.Time;
@@ -92,10 +95,60 @@ public final class DarwinNIOSubstitutions {
             return DarwinEvent.kevent.offsetOf_flags();
         }
 
-        // 063 JNIEXPORT jint JNICALL
-        // 064 Java_sun_nio_ch_KQueue_kqueue(JNIEnv *env, jclass c) {
+        // static native int kqueue() throws IOException;
         @Substitute
+        @TargetElement(onlyWith = JDK8OrEarlier.class)
         static int kqueue() throws IOException {
+            return Util_sun_nio_ch_KQueue.create();
+        }
+
+        // static native int create() throws IOException;
+        @Substitute
+        @TargetElement(onlyWith = JDK9OrLater.class)
+        static int create() throws IOException {
+            return Util_sun_nio_ch_KQueue.create();
+        }
+
+        // static native int keventRegister(int kqpfd, int fd, int filter, int flags);
+        @Substitute
+        @TargetElement(onlyWith = JDK8OrEarlier.class)
+        static int keventRegister(int kqfd, int fd, int filter, int flags) {
+            return Util_sun_nio_ch_KQueue.register(kqfd, fd, filter, flags);
+        }
+
+        // static native int register(int kqfd, int fd, int filter, int flags);
+        @Substitute
+        @TargetElement(onlyWith = JDK9OrLater.class)
+        static int register(int kqfd, int fd, int filter, int flags) {
+            return Util_sun_nio_ch_KQueue.register(kqfd, fd, filter, flags);
+        }
+
+        // static native int keventPoll(int kqpfd, long pollAddress, int nevents) throws IOException;
+        @Substitute
+        @TargetElement(onlyWith = JDK8OrEarlier.class)
+        static int keventPoll(int kqfd, long address, int nevents) throws IOException {
+            return Util_sun_nio_ch_KQueue.poll(kqfd, address, nevents);
+        }
+
+        // static native int poll(int kqfd, long pollAddress, int nevents, long timeout) throws IOException;
+        @Substitute
+        @TargetElement(onlyWith = JDK9OrLater.class)
+        @SuppressWarnings({"unused"})
+        static int poll(int kqfd, long pollAddress, int nevents, long timeout) throws IOException {
+            return Util_sun_nio_ch_KQueue.poll(kqfd, pollAddress, nevents);
+        }
+    }
+    /* } Do not reformat commented-out code: @formatter:off */
+
+    /**
+     * Using the method names from JDK-11. E.g., open/src/java.base/macosx/native/libnio/ch/KQueue.c
+     */
+    static class Util_sun_nio_ch_KQueue {
+
+        /* { Do not reformat commented-out code: @formatter:off */
+        // 063 JNIEXPORT jint JNICALL
+        // 064 Java_sun_nio_ch_KQueue_create(JNIEnv *env, jclass c) {
+        static int create() throws IOException {
             // 065     int kqfd = kqueue();
             int kqfd = DarwinEvent.kqueue();
             // 066     if (kqfd < 0) {
@@ -106,19 +159,21 @@ public final class DarwinNIOSubstitutions {
             // 069     return kqfd;
             return kqfd;
         }
+        /* } Do not reformat commented-out code: @formatter:on */
 
+        /* { Do not reformat commented-out code: @formatter:off */
         // 071
         // 072 JNIEXPORT jint JNICALL
-        // 073 Java_sun_nio_ch_KQueue_keventRegister(JNIEnv *env, jclass c, jint kqfd,
+        // 073 Java_sun_nio_ch_KQueue_register(JNIEnv *env, jclass c, jint kqfd,
         // 074                                       jint fd, jint filter, jint flags)
         // 075
         // 076 {
         @Substitute
-        static int keventRegister(int kqfd, int fd, int filter, int flags) {
+        static int register(int kqfd, int fd, int filter, int flags) {
             // 077     struct kevent changes[1];
-            DarwinEvent.kevent changes = StackValue.get(1, SizeOf.get(DarwinEvent.kevent.class));
+            DarwinEvent.kevent changes = StackValue.get(1, DarwinEvent.kevent.class);
             //  078     struct timespec timeout = {0, 0};
-            Time.timespec timeout = StackValue.get(SizeOf.get(Time.timespec.class));
+            Time.timespec timeout = StackValue.get(Time.timespec.class);
             timeout.set_tv_sec(0);
             timeout.set_tv_nsec(0);
             // 079     int res;
@@ -134,13 +189,15 @@ public final class DarwinNIOSubstitutions {
             // 083     return (res == -1) ? errno : 0;
             return (res == -1) ? Errno.errno() : 0;
         }
+        /* } Do not reformat commented-out code: @formatter:on */
 
+        /* { Do not reformat commented-out code: @formatter:off */
         // 086 JNIEXPORT jint JNICALL
-        // 087 Java_sun_nio_ch_KQueue_keventPoll(JNIEnv *env, jclass c,
+        // 087 Java_sun_nio_ch_KQueue_poll(JNIEnv *env, jclass c,
         // 088                                   jint kqfd, jlong address, jint nevents)
         // 089 {
         @Substitute
-        static int keventPoll(int kqfd, long address, int nevents) throws IOException {
+        static int poll(int kqfd, long address, int nevents) throws IOException {
             // 090     struct kevent *events = jlong_to_ptr(address);
             DarwinEvent.kevent events = WordFactory.pointer(address);
             // 091     int res;
@@ -159,13 +216,13 @@ public final class DarwinNIOSubstitutions {
             // 097     return res;
             return res;
         }
+        /* } Do not reformat commented-out code: @formatter:on */
     }
-    /* } @formatter:on */
 
     /* { Do not reformat commented-out code: @formatter:off */
     /** Translations of jdk/src/macosx/native/sun/nio/ch/KQueueArrayWrapper.c?v=Java_1.8.0_40_b10. */
     @Platforms({Platform.DARWIN.class})
-    @TargetClass(className = "sun.nio.ch.KQueueArrayWrapper")
+    @TargetClass(className = "sun.nio.ch.KQueueArrayWrapper", onlyWith = JDK8OrEarlier.class)
     static final class Target_sun_nio_ch_KQueueArrayWrapper {
 
         // 097 JNIEXPORT jint JNICALL
@@ -193,11 +250,11 @@ public final class DarwinNIOSubstitutions {
         @Substitute
         void register0(int kq, int fd, int r, int w) {
             // 112     struct kevent changes[2];
-            DarwinEvent.kevent changes = StackValue.get(2, SizeOf.get(DarwinEvent.kevent.class));
+            DarwinEvent.kevent changes = StackValue.get(2, DarwinEvent.kevent.class);
             // 113     struct kevent errors[2];
-            DarwinEvent.kevent errors = StackValue.get(2, SizeOf.get(DarwinEvent.kevent.class));
+            DarwinEvent.kevent errors = StackValue.get(2, DarwinEvent.kevent.class);
             // 114     struct timespec dontBlock = {0, 0};
-            Time.timespec dontBlock = StackValue.get(SizeOf.get(Time.timespec.class));
+            Time.timespec dontBlock = StackValue.get(Time.timespec.class);
             dontBlock.set_tv_sec(0);
             dontBlock.set_tv_nsec(0);
             // 115
@@ -237,7 +294,7 @@ public final class DarwinNIOSubstitutions {
             // 132     struct kevent *kevs = (struct kevent *)jlong_to_ptr(kevAddr);
             DarwinEvent.kevent keys = WordFactory.pointer(kevAddr);
             // 133     struct timespec ts;
-            Time.timespec ts = StackValue.get(SizeOf.get(Time.timespec.class));
+            Time.timespec ts = StackValue.get(Time.timespec.class);
             // 134     struct timespec *tsp;
             Time.timespec tsp;
             // 135     int result;
@@ -283,7 +340,7 @@ public final class DarwinNIOSubstitutions {
         @Substitute
         static void interrupt(int fd) throws IOException {
             // 166     char c = 1;
-            CCharPointer cPointer = StackValue.get(SizeOf.get(CCharPointer.class));
+            CCharPointer cPointer = StackValue.get(CCharPointer.class);
             cPointer.write((byte) 1);
             // 167     if (1 != write(fd, &c, 1)) {
             if (1 != (int) Unistd.write(fd, cPointer, WordFactory.unsigned(1)).rawValue()) {
@@ -303,9 +360,10 @@ public final class DarwinNIOSubstitutions {
         // 038 JNIEXPORT void JNICALL
         // 039 Java_sun_nio_ch_KQueuePort_socketpair(JNIEnv* env, jclass clazz, jintArray sv) {
         @Substitute
-        static void socketpair(int[] sv) throws IOException {
+        @TargetElement(onlyWith = JDK8OrEarlier.class)
+       static void socketpair(int[] sv) throws IOException {
             // 040     int sp[2];
-            CIntPointer sp = StackValue.get(2, SizeOf.get(CIntPointer.class));
+            CIntPointer sp = StackValue.get(2, CIntPointer.class);
             // 041     if (socketpair(PF_UNIX, SOCK_STREAM, 0, sp) == -1) {
             if (Socket.socketpair(Socket.PF_UNIX(), Socket.SOCK_STREAM(), 0, sp) == -1) {
                 // 042         JNU_ThrowIOExceptionWithLastError(env, "socketpair failed");
@@ -323,11 +381,12 @@ public final class DarwinNIOSubstitutions {
         // 051 JNIEXPORT void JNICALL
         // 052 Java_sun_nio_ch_KQueuePort_interrupt(JNIEnv *env, jclass c, jint fd) {
         @Substitute
+        @TargetElement(onlyWith = JDK8OrEarlier.class)
         static void interrupt(int fd) throws IOException {
             // 053     int res;
             int res;
             // 054     int buf[1];
-            CIntPointer buf = StackValue.get(1, SizeOf.get(CIntPointer.class));
+            CIntPointer buf = StackValue.get(1, CIntPointer.class);
             // 055     buf[0] = 1;
             buf.write(0, 1);
             // 056     RESTARTABLE(write(fd, buf, 1), res);
@@ -346,11 +405,12 @@ public final class DarwinNIOSubstitutions {
         // 062 JNIEXPORT void JNICALL
         // 063 Java_sun_nio_ch_KQueuePort_drain1(JNIEnv *env, jclass cl, jint fd) {
         @Substitute
+        @TargetElement(onlyWith = JDK8OrEarlier.class)
         static void drain1(int fd) throws IOException {
             // 064     int res;
             int res;
             // 065     char buf[1];
-            CIntPointer buf = StackValue.get(1, SizeOf.get(CIntPointer.class));
+            CIntPointer buf = StackValue.get(1, CIntPointer.class);
             // 066     RESTARTABLE(read(fd, buf, 1), res);
             do {
                 do {
@@ -367,6 +427,7 @@ public final class DarwinNIOSubstitutions {
         // 072 JNIEXPORT void JNICALL
         // 073 Java_sun_nio_ch_KQueuePort_close0(JNIEnv *env, jclass c, jint fd) {
         @Substitute
+        @TargetElement(onlyWith = JDK8OrEarlier.class)
         static void close0(int fd) {
             // 074     int res;
             int res;

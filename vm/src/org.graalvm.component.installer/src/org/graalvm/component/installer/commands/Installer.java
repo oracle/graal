@@ -32,8 +32,8 @@ import java.nio.channels.ByteChannel;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.PosixFileAttributeView;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.ArrayList;
@@ -53,6 +53,7 @@ import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.Feedback;
+import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.Verifier;
 
@@ -91,12 +92,21 @@ public class Installer implements Closeable {
     private boolean dryRun;
     private boolean ignoreRequirements;
     private boolean rebuildPolyglot;
+    private boolean failOnExisting;
 
     /**
      * Paths tracked by the component system.
      */
     private Set<String> trackedPaths = new HashSet<>();
     private Set<Path> visitedPaths = new HashSet<>();
+
+    public boolean isFailOnExisting() {
+        return failOnExisting;
+    }
+
+    public void setFailOnExisting(boolean failOnExisting) {
+        this.failOnExisting = failOnExisting;
+    }
 
     public boolean isReplaceDiferentFiles() {
         return replaceDiferentFiles;
@@ -192,22 +202,35 @@ public class Installer implements Closeable {
         if (BundleConstants.PATH_LICENSE.equals(n)) {
             rel = getLicenseRelativePath();
         } else {
-            rel = Paths.get(n);
+            rel = SystemUtils.fromCommonString(n);
         }
         return getInstallPath().resolve(rel);
     }
 
-    public void validateRequirements() {
-        new Verifier(feedback, registry, componentInfo)
+    public Verifier validateRequirements() {
+        return new Verifier(feedback, registry, componentInfo)
                         .ignoreRequirements(ignoreRequirements)
                         .replaceComponents(replaceComponents)
+                        .ignoreExisting(!failOnExisting)
                         .validateRequirements();
     }
 
-    public void validateAll() throws IOException {
+    /**
+     * Validates requirements, decides whether to install. Returns false if the component should be
+     * skipped.
+     * 
+     * @return true, if the component should be installed
+     * @throws IOException
+     */
+    public boolean validateAll() throws IOException {
+        validateRequirements();
+        ComponentInfo existing = registry.findComponent(componentInfo.getId());
+        if (existing != null) {
+            return false;
+        }
         validateFiles();
         validateSymlinks();
-        validateRequirements();
+        return true;
     }
 
     public void validateFiles() throws IOException {
@@ -235,7 +258,7 @@ public class Installer implements Closeable {
 
     boolean validateOneEntry(Path target, ZipEntry entry) throws IOException {
         if (entry.isDirectory()) {
-            Path dirPath = installPath.resolve(entry.getName());
+            Path dirPath = installPath.resolve(SystemUtils.fromCommonString(entry.getName()));
             if (Files.exists(dirPath)) {
                 if (!Files.isDirectory(dirPath)) {
                     throw new IOException(
@@ -368,7 +391,7 @@ public class Installer implements Closeable {
         List<String> paths = new ArrayList<>(permissions.keySet());
         Collections.sort(paths);
         for (String s : paths) {
-            Path p = installPath.resolve(Paths.get(s));
+            Path p = installPath.resolve(SystemUtils.fromCommonString(s));
             if (Files.exists(p)) {
                 String permissionString = permissions.get(s);
                 Set<PosixFilePermission> perms;
@@ -378,19 +401,24 @@ public class Installer implements Closeable {
                 } else {
                     perms = DEFAULT_CHANGE_PERMISSION;
                 }
-                Files.setPosixFilePermissions(p, perms);
+                if (Files.getFileAttributeView(p, PosixFileAttributeView.class) != null) {
+                    Files.setPosixFilePermissions(p, perms);
+                }
             }
         }
     }
 
     public void createSymlinks() throws IOException {
+        if (SystemUtils.isWindows()) {
+            return;
+        }
         List<String> createdRelativeLinks = new ArrayList<>();
         try {
             List<String> paths = new ArrayList<>(symlinks.keySet());
             Collections.sort(paths);
             for (String s : paths) {
-                Path source = installPath.resolve(Paths.get(s));
-                Path target = Paths.get(symlinks.get(s));
+                Path source = installPath.resolve(SystemUtils.fromCommonString(s));
+                Path target = SystemUtils.fromCommonString(symlinks.get(s));
                 ensurePathExists(source.getParent());
                 createdRelativeLinks.add(s);
                 trackedPaths.add(s);

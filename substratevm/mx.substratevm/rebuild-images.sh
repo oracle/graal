@@ -56,11 +56,12 @@ supported_languages=(
 )
 
 function usage_and_exit() {
-    echo "Usage: $0 [--verbose] polyglot|libpolyglot|js|llvm|python|ruby..."
+    echo "Usage: $0 [--verbose] polyglot|libpolyglot|js|llvm|python|ruby... [custom native-image args]..."
     exit 1
 }
 
 to_build=()
+custom_args=()
 
 for opt in "${@:1}"; do
     case "$opt" in
@@ -75,8 +76,8 @@ for opt in "${@:1}"; do
             VERBOSE=true
             ;;
         *)
-            echo "Unrecognized argument: '${opt}'"
-            usage_and_exit
+            custom_args+=("${opt}")
+            ;;
     esac
 done
 
@@ -88,8 +89,12 @@ fi
 function common() {
     cmd_line+=(
         "${graalvm_home}/bin/native-image"
-        "--no-server"
+        ${custom_args[@]}
     )
+
+    if $(${graalvm_home}/bin/native-image --help-extra | grep -q "\-\-no\-server"); then
+        cmd_line+=("--no-server")
+    fi
 
     if [[ -f "${graalvm_home}/jre/lib/svm/builder/svm-enterprise.jar" ]]; then
         cmd_line+=("-g")
@@ -132,15 +137,23 @@ function polyglot() {
 
 function libpolyglot() {
     polyglot_common
+    cp="${graalvm_home}/jre/lib/polyglot/polyglot-native-api.jar"
+    if [ -f "${graalvm_home}/jre/languages/js/trufflenode.jar" ]; then
+      cp="${cp}:${graalvm_home}/jre/languages/js/trufflenode.jar"
+      cmd_line+=(
+        "-H:JNIConfigurationResources=svmnodejs.jniconfig"
+      )
+    fi
     cmd_line+=(
         "-cp"
-        "${graalvm_home}/jre/lib/polyglot/polyglot-native-api.jar:${graalvm_home}/jre/languages/js/trufflenode.jar"
+        "${cp}"
         "-Dgraalvm.libpolyglot=true"
-        "-H:JNIConfigurationResources=svmnodejs.jniconfig"
         "-H:Features=org.graalvm.polyglot.nativeapi.PolyglotNativeAPIFeature"
         "-Dorg.graalvm.polyglot.nativeapi.libraryPath=${graalvm_home}/jre/lib/polyglot"
         "-Dorg.graalvm.polyglot.nativeapi.nativeLibraryPath=${graalvm_home}/jre/lib/polyglot"
         "-H:CStandard=C11"
+        "-H:+IncludeAllTimeZones"
+        "-H:+SpawnIsolates"
         "-H:Name=libpolyglot"
         "-H:Kind=SHARED_LIBRARY"
     )

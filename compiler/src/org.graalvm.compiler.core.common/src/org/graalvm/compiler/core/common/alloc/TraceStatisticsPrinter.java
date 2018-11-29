@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -59,13 +59,13 @@ public final class TraceStatisticsPrinter {
                     double max = Double.NEGATIVE_INFINITY;
                     double min = Double.POSITIVE_INFINITY;
                     for (AbstractBlockBase<?> block : t) {
-                        double probability = block.probability();
-                        total += probability;
-                        if (probability < min) {
-                            min = probability;
+                        double frequency = block.getRelativeFrequency();
+                        total += frequency;
+                        if (frequency < min) {
+                            min = frequency;
                         }
-                        if (probability > max) {
-                            max = probability;
+                        if (frequency > max) {
+                            max = frequency;
                         }
                     }
                     printLine(debug, i, total, min, max, t.length);

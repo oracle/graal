@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -133,7 +133,7 @@ public class ConstantTree extends PrintableDominatorOptimizationProblem<Constant
     NodeCost getOrInitCost(AbstractBlockBase<?> block) {
         NodeCost cost = getCost(block);
         if (cost == null) {
-            cost = new NodeCost(block.probability(), blockMap.get(block), 1);
+            cost = new NodeCost(block.getRelativeFrequency(), blockMap.get(block), 1);
             setCost(block, cost);
         }
         return cost;

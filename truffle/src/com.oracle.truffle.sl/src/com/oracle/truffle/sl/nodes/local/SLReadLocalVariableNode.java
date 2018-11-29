@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -111,10 +111,10 @@ public abstract class SLReadLocalVariableNode extends SLExpressionNode {
      *            slot kind which can change.
      */
     protected boolean isLong(VirtualFrame frame) {
-        return getSlot().getKind() == FrameSlotKind.Long;
+        return frame.getFrameDescriptor().getFrameSlotKind(getSlot()) == FrameSlotKind.Long;
     }
 
-    protected boolean isBoolean(@SuppressWarnings("unused") VirtualFrame frame) {
-        return getSlot().getKind() == FrameSlotKind.Boolean;
+    protected boolean isBoolean(VirtualFrame frame) {
+        return frame.getFrameDescriptor().getFrameSlotKind(getSlot()) == FrameSlotKind.Boolean;
     }
 }

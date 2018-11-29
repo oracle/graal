@@ -89,6 +89,8 @@ meth public static com.oracle.truffle.api.profiles.ValueProfile createIdentityPr
 supr com.oracle.truffle.api.profiles.Profile
 hcls Disabled,Equality,ExactClass,Identity
 
+CLSS abstract interface com.oracle.truffle.api.profiles.package-info
+
 CLSS public abstract interface java.lang.Cloneable
 
 CLSS public java.lang.Object

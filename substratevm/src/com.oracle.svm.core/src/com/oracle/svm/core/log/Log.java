@@ -300,7 +300,15 @@ public abstract class Log implements AutoCloseable {
      * after each newline.
      */
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
-    public abstract Log indent(boolean addOrRemove);
+    public abstract Log redent(boolean addOrRemove);
+
+    /**
+     * Change current amount of indentation, and then print a newline.
+     */
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
+    public final Log indent(boolean addOrRemove) {
+        return redent(addOrRemove).newline();
+    }
 
     /**
      * Prints the strings "true" or "false" depending on the value.
@@ -517,7 +525,7 @@ public abstract class Log implements AutoCloseable {
         }
 
         @Override
-        public Log indent(boolean addOrRemove) {
+        public Log redent(boolean addOrRemove) {
             return this;
         }
     }

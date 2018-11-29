@@ -1,0 +1,8 @@
+gcc-5.2.0/gcc/testsuite/g++.dg/tree-ssa/pr20458.C
+gcc-5.2.0/gcc/testsuite/g++.dg/init/self1.C
+gcc-5.2.0/gcc/testsuite/g++.dg/init/null1.C
+gcc-5.2.0/gcc/testsuite/g++.dg/init/lifetime2.C
+gcc-5.2.0/gcc/testsuite/g++.dg/ext/typeof6.C
+gcc-5.2.0/gcc/testsuite/g++.dg/ext/bitfield1.C
+gcc-5.2.0/gcc/testsuite/g++.dg/ext/typeof1.C
+gcc-5.2.0/gcc/testsuite/g++.dg/conversion/self1.C

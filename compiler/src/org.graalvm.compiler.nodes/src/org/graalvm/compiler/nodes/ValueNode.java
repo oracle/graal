@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -132,6 +132,11 @@ public abstract class ValueNode extends org.graalvm.compiler.graph.Node implemen
     public final boolean isNullConstant() {
         JavaConstant value = asJavaConstant();
         return value != null && value.isNull();
+    }
+
+    public final boolean isDefaultConstant() {
+        Constant value = asConstant();
+        return value != null && value.isDefaultForKind();
     }
 
     /**

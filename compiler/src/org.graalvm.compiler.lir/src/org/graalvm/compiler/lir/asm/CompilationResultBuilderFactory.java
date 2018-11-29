@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import org.graalvm.compiler.lir.framemap.FrameMap;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.Register;
 
 /**
  * Factory class for creating {@link CompilationResultBuilder}s.
@@ -42,7 +43,7 @@ public interface CompilationResultBuilderFactory {
      * Creates a new {@link CompilationResultBuilder}.
      */
     CompilationResultBuilder createBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder, FrameContext frameContext,
-                    OptionValues options, DebugContext debug, CompilationResult compilationResult);
+                    OptionValues options, DebugContext debug, CompilationResult compilationResult, Register nullRegister);
 
     /**
      * The default factory creates a standard {@link CompilationResultBuilder}.
@@ -51,8 +52,8 @@ public interface CompilationResultBuilderFactory {
 
         @Override
         public CompilationResultBuilder createBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder,
-                        FrameContext frameContext, OptionValues options, DebugContext debug, CompilationResult compilationResult) {
-            return new CompilationResultBuilder(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, options, debug, compilationResult);
+                        FrameContext frameContext, OptionValues options, DebugContext debug, CompilationResult compilationResult, Register nullRegister) {
+            return new CompilationResultBuilder(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, options, debug, compilationResult, nullRegister);
         }
     };
 }

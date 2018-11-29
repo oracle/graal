@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,7 +34,8 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.ReflectionUtils;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
+import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
@@ -52,7 +53,7 @@ public class SplittingStrategyTest extends AbstractSplittingStrategyTest {
     @Test
     @SuppressWarnings("try")
     public void testDefaultStrategyStabilises() {
-        try (TruffleCompilerOptions.TruffleOptionsOverrideScope s = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleSplittingMaxNumberOfSplitNodes,
+        try (TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope s = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleSplittingMaxNumberOfSplitNodes,
                         fallbackSplitInfo.getSplitLimit() + 1000)) {
             createDummyTargetsToBoostGrowingSplitLimit();
             class InnerRootNode extends SplittableRootNode {
@@ -242,7 +243,7 @@ public class SplittingStrategyTest extends AbstractSplittingStrategyTest {
     @SuppressWarnings("try")
     public void testMaxLimitForTargetsOutsideEngine() {
         final int expectedIncreaseInNodes = 10;
-        try (TruffleCompilerOptions.TruffleOptionsOverrideScope s = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleSplittingMaxNumberOfSplitNodes,
+        try (TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope s = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleSplittingMaxNumberOfSplitNodes,
                         fallbackSplitInfo.getSplitCount() + expectedIncreaseInNodes)) {
 
             final OptimizedCallTarget inner = (OptimizedCallTarget) runtime.createCallTarget(new DummyRootNode());
@@ -264,11 +265,11 @@ public class SplittingStrategyTest extends AbstractSplittingStrategyTest {
     @Test
     @SuppressWarnings("try")
     public void testGrowingLimitForTargetsOutsideEngine() {
-        final int expectedGrowingSplits = (int) (2 * TruffleCompilerOptions.getValue(TruffleCompilerOptions.TruffleSplittingGrowthLimit));
+        final int expectedGrowingSplits = (int) (2 * TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingGrowthLimit));
         final OptimizedCallTarget inner = (OptimizedCallTarget) runtime.createCallTarget(new DummyRootNode());
         final OptimizedCallTarget outer = (OptimizedCallTarget) runtime.createCallTarget(new CallsInnerAndSwapsCallNode(inner));
         fallbackSplitInfo.setLimitToCount();
-        try (TruffleCompilerOptions.TruffleOptionsOverrideScope s = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleSplittingMaxNumberOfSplitNodes,
+        try (TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope s = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleSplittingMaxNumberOfSplitNodes,
                         fallbackSplitInfo.getSplitCount() + 2 * expectedGrowingSplits)) {
             // Create 2 targets to boost the growing limit
             runtime.createCallTarget(new DummyRootNode());
@@ -286,7 +287,7 @@ public class SplittingStrategyTest extends AbstractSplittingStrategyTest {
         }
     }
 
-    @TruffleLanguage.Registration(id = "SplitTestLanguage", name = "SplitTestLanguage", mimeType = "application/x-split-test-lang", version = "0.1")
+    @TruffleLanguage.Registration(id = "SplitTestLanguage", name = "SplitTestLanguage")
     public static class SplitTestLanguage extends TruffleLanguage<TruffleLanguage.Env> {
         static final String ID = "SplitTestLanguage";
 
@@ -317,8 +318,9 @@ public class SplittingStrategyTest extends AbstractSplittingStrategyTest {
     @Test
     @SuppressWarnings("try")
     public void testHardSplitLimitInContext() {
-        final int expectedSplittingIncrease = 20;
-        try (TruffleCompilerOptions.TruffleOptionsOverrideScope s = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleSplittingMaxNumberOfSplitNodes, expectedSplittingIncrease)) {
+        final int expectedSplittingIncrease = DUMMYROOTNODECOUNT * 2;
+        try (TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope s = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleSplittingMaxNumberOfSplitNodes,
+                        expectedSplittingIncrease)) {
             Context c = Context.create();
             for (int i = 0; i < 100; i++) {
                 eval(c, "exec");
@@ -342,14 +344,14 @@ public class SplittingStrategyTest extends AbstractSplittingStrategyTest {
         for (int i = 0; i < 10; i++) {
             eval(c, "exec");
         }
-        Assert.assertEquals("Split count not correct after one new target", (int) (baseSplitCount + TruffleCompilerOptions.getValue(TruffleCompilerOptions.TruffleSplittingGrowthLimit)),
+        Assert.assertEquals("Split count not correct after one new target", (int) (baseSplitCount + TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingGrowthLimit)),
                         listener.splitCount);
 
         eval(c, "new2");
         for (int i = 0; i < 10; i++) {
             eval(c, "exec");
         }
-        Assert.assertEquals("Split count not correct after one new target", (int) (baseSplitCount + 2 * TruffleCompilerOptions.getValue(TruffleCompilerOptions.TruffleSplittingGrowthLimit)),
+        Assert.assertEquals("Split count not correct after one new target", (int) (baseSplitCount + 2 * TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingGrowthLimit)),
                         listener.splitCount);
     }
 

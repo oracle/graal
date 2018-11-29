@@ -34,7 +34,7 @@ import mx
 
 _suite = mx.suite('compiler')
 
-def _run_netbeans_app(app_name, env=None, args=None):
+def run_netbeans_app(app_name, env=None, args=None):
     args = [] if args is None else args
     dist = app_name.upper() + '_DIST'
     name = app_name.lower()
@@ -69,26 +69,29 @@ def _run_netbeans_app(app_name, env=None, args=None):
         launch.append('-J-Dnetbeans.logger.console=false')
     mx.run(launch+args, env=env)
 
-def _igvJdk():
+def netbeans_jdk(appName):
     v8u20 = mx.VersionSpec("1.8.0_20")
     v8u40 = mx.VersionSpec("1.8.0_40")
+    v11 = mx.VersionSpec("11") # IGV requires java.xml.bind which has been removed in 11 (JEP320)
     def _igvJdkVersionCheck(version):
-        return version < v8u20 or version >= v8u40
-    return mx.get_jdk(_igvJdkVersionCheck, versionDescription='>= 1.8 and < 1.8.0u20 or >= 1.8.0u40', purpose="running IGV").home
+        return (version < v8u20 or version >= v8u40) and version < v11
+    return mx.get_jdk(_igvJdkVersionCheck, versionDescription='(< 1.8.0u20 or >= 1.8.0u40) and < 11', purpose="running " + appName).home
 
 def igv(args):
-    """run the Ideal Graph Visualizer"""
-    env = dict(os.environ)
-    # make the jar for Batik 1.7 available.
-    env['IGV_BATIK_JAR'] = mx.library('BATIK').get_path(True)
-    env['jdkhome'] = _igvJdk()
-    _run_netbeans_app('IdealGraphVisualizer', env, args)
+    """(obsolete) informs about IGV"""
+    mx.warn(
+        """IGV (idealgraphvisualizer) is distributed as part of GraalVM EE, available from
+    https://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html
+Please download the distribution and run
+    bin/idealgraphvisualizer
+from the GraalVM EE installation.
+""")
 
 def c1visualizer(args):
     """run the C1 Compiler Visualizer"""
     env = dict(os.environ)
-    env['jdkhome'] = _igvJdk()
-    _run_netbeans_app('C1Visualizer', env, args)
+    env['jdkhome'] = netbeans_jdk("C1 Visualizer")
+    run_netbeans_app('C1Visualizer', env, args)
 
 def hsdis(args, copyToDir=None):
     """download the hsdis library
@@ -106,19 +109,19 @@ def hsdis(args, copyToDir=None):
     libpattern = mx.add_lib_suffix('hsdis-' + mx.get_arch() + '-' + mx.get_os() + '-%s')
 
     sha1s = {
-        'att/hsdis-amd64-windows-%s.dll' : 'bcbd535a9568b5075ab41e96205e26a2bac64f72',
-        'att/hsdis-amd64-linux-%s.so' : '36a0b8e30fc370727920cc089f104bfb9cd508a0',
-        'att/hsdis-amd64-darwin-%s.dylib' : 'c1865e9a58ca773fdc1c5eea0a4dfda213420ffb',
-        'intel/hsdis-amd64-windows-%s.dll' : '6a388372cdd5fe905c1a26ced614334e405d1f30',
-        'intel/hsdis-amd64-linux-%s.so' : '0d031013db9a80d6c88330c42c983fbfa7053193',
-        'intel/hsdis-amd64-darwin-%s.dylib' : '67f6d23cbebd8998450a88b5bef362171f66f11a',
-        'hsdis-sparcv9-solaris-%s.so': '970640a9af0bd63641f9063c11275b371a59ee60',
-        'hsdis-sparcv9-linux-%s.so': '0c375986d727651dee1819308fbbc0de4927d5d9',
-        'hsdis-aarch64-linux-%s.so': 'fcc9b70ac91c00db8a50b0d4345490a68e3743e1',
+        r'att\hsdis-amd64-windows-%s.dll' : 'bcbd535a9568b5075ab41e96205e26a2bac64f72',
+        r'att/hsdis-amd64-linux-%s.so' : '36a0b8e30fc370727920cc089f104bfb9cd508a0',
+        r'att/hsdis-amd64-darwin-%s.dylib' : 'c1865e9a58ca773fdc1c5eea0a4dfda213420ffb',
+        r'intel\hsdis-amd64-windows-%s.dll' : '6a388372cdd5fe905c1a26ced614334e405d1f30',
+        r'intel/hsdis-amd64-linux-%s.so' : '0d031013db9a80d6c88330c42c983fbfa7053193',
+        r'intel/hsdis-amd64-darwin-%s.dylib' : '67f6d23cbebd8998450a88b5bef362171f66f11a',
+        r'hsdis-sparcv9-solaris-%s.so': '970640a9af0bd63641f9063c11275b371a59ee60',
+        r'hsdis-sparcv9-linux-%s.so': '0c375986d727651dee1819308fbbc0de4927d5d9',
+        r'hsdis-aarch64-linux-%s.so': 'fcc9b70ac91c00db8a50b0d4345490a68e3743e1',
     }
 
     if flavor:
-        flavoredLib = flavor + "/" + libpattern
+        flavoredLib = join(flavor, libpattern)
     else:
         flavoredLib = libpattern
     if flavoredLib not in sha1s:
@@ -130,7 +133,7 @@ def hsdis(args, copyToDir=None):
     path = join(_suite.get_output_root(), lib)
     if not exists(path):
         sha1path = path + '.sha1'
-        mx.download_file_with_sha1('hsdis', path, ['https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/hsdis/' + lib], sha1, sha1path, True, True, sources=False)
+        mx.download_file_with_sha1('hsdis', path, ['https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/hsdis/' + lib.replace(os.sep, '/')], sha1, sha1path, True, True, sources=False)
 
     overwrite = True
     if copyToDir is None:
@@ -138,9 +141,13 @@ def hsdis(args, copyToDir=None):
         overwrite = False
         base = mx.get_jdk().home
         if exists(join(base, 'jre')):
-            copyToDir = join(base, 'jre', 'lib')
-        else:
+            base = join(base, 'jre')
+        if mx.get_os() == 'darwin':
             copyToDir = join(base, 'lib')
+        elif mx.get_os() == 'windows':
+            copyToDir = join(base, 'bin')
+        else:
+            copyToDir = join(base, 'lib', mx.get_arch())
 
     if exists(copyToDir):
         dest = join(copyToDir, mx.add_lib_suffix('hsdis-' + mx.get_arch()))

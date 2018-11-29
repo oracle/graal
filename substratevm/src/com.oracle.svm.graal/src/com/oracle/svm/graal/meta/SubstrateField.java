@@ -36,6 +36,7 @@ import com.oracle.svm.core.annotate.UnknownPrimitiveField;
 import com.oracle.svm.core.hub.AnnotationsEncoding;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.Replaced;
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.Node.Children;
@@ -70,9 +71,9 @@ public class SubstrateField implements SharedField, Replaced {
     final boolean truffleChildrenField;
     final boolean truffleCloneableField;
 
-    public SubstrateField(MetaAccessProvider originalMetaAccess, ResolvedJavaField original, int modifiers, UniqueStringTable stringTable) {
+    public SubstrateField(MetaAccessProvider originalMetaAccess, ResolvedJavaField original, int modifiers, HostedStringDeduplication stringTable) {
         this.modifiers = modifiers;
-        this.name = stringTable.unique(original.getName());
+        this.name = stringTable.deduplicate(original.getName(), true);
         this.hashCode = original.hashCode();
 
         truffleChildField = original.getAnnotation(Child.class) != null;
@@ -142,6 +143,11 @@ public class SubstrateField implements SharedField, Replaced {
     @Override
     public int getModifiers() {
         return modifiers;
+    }
+
+    @Override
+    public int getOffset() {
+        throw unimplemented();
     }
 
     @Override

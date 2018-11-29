@@ -28,9 +28,10 @@ typedef struct __graal_create_isolate_params_t graal_create_isolate_params_t;
  * Create a new isolate, considering the passed parameters (which may be NULL).
  * Returns 0 on success, or a non-zero value on failure.
  * On success, the current thread is attached to the created isolate, and the
- * address of the isolate structure is written to the passed pointer.
+ * address of the isolate and the isolate thread structures is written to the
+ * passed pointers if they are not NULL.
  */
-int graal_create_isolate(graal_create_isolate_params_t* params, graal_isolate_t** isolate);
+int graal_create_isolate(graal_create_isolate_params_t* params, graal_isolate_t** isolate, graal_isolatethread_t** thread);
 
 /*
  * Attaches the current thread to the passed isolate.
@@ -46,14 +47,14 @@ int graal_attach_thread(graal_isolate_t* isolate, graal_isolatethread_t** thread
  * the thread's associated isolate thread structure.  If the current thread is not
  * attached to the passed isolate or if another error occurs, returns NULL.
  */
-graal_isolatethread_t* graal_current_thread(graal_isolate_t* isolate);
+graal_isolatethread_t* graal_get_current_thread(graal_isolate_t* isolate);
 
 /*
- * Given an isolate thread structure for the current thread, determines to which
- * isolate it belongs and returns the address of its isolate structure.  If an
- * error occurs, returns NULL instead.
+ * Given an isolate thread structure, determines to which isolate it belongs and
+ * returns the address of its isolate structure. If an error occurs, returns NULL
+ * instead.
  */
-graal_isolate_t* graal_current_isolate(graal_isolatethread_t* thread);
+graal_isolate_t* graal_get_isolate(graal_isolatethread_t* thread);
 
 /*
  * Detaches the passed isolate thread from its isolate and discards any state or
@@ -69,5 +70,8 @@ int graal_detach_thread(graal_isolatethread_t* thread);
  * that is associated with it.
  * Returns 0 on success, or a non-zero value on failure.
  */
-int graal_tear_down_isolate(graal_isolate_t* isolate);
+int graal_tear_down_isolate(graal_isolatethread_t* thread);
 ```
+In addition to the C level API, there is also a way to initialize an isolate
+from Java and thus use Java and Substrate VM to
+[implement native methods in Java](ImplementingNativeMethodsInJavaWithSVM.md).

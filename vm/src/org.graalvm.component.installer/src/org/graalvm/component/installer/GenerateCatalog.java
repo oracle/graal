@@ -35,7 +35,6 @@ import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.MessageFormat;
@@ -85,7 +84,7 @@ public final class GenerateCatalog {
         OPTIONS.put("a", "s");
         OPTIONS.put("n", "");  // GraalVM release name
         OPTIONS.put("b", "s");  // URL Base
-        OPTIONS.put("p", "s");  // path base
+        OPTIONS.put("p", "s");  // fileName base
     }
 
     private Map<String, GraalVersion> graalVMReleases = new LinkedHashMap<>();
@@ -187,7 +186,7 @@ public final class GenerateCatalog {
 
         String pb = env.optValue("p");
         if (pb != null) {
-            pathBase = Paths.get(pb).toAbsolutePath();
+            pathBase = SystemUtils.fromUserString(pb).toAbsolutePath();
         }
         urlPrefix = env.optValue("b");
         graalVersionPrefix = env.optValue("g");
@@ -374,7 +373,9 @@ public final class GenerateCatalog {
                 for (Object a : atts.keySet()) {
                     String key = a.toString();
                     String val = atts.getValue(key);
-
+                    if (key.startsWith("x-GraalVM-Message-")) { // NOI18N
+                        continue;
+                    }
                     catalogContents.append(MessageFormat.format(
                                     "Component.{0}.{1}-{2}={3}\n", prefix, bid, key, val));
                 }

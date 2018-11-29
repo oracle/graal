@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -120,6 +120,7 @@ public class StaticAnalysisTests {
         assertEquals(m(sa, B.class, "foo").getFormalReturn(), t(Data.class));
     }
 
+    @SuppressWarnings({"deprecation", "unused"})
     static void test03Entry() {
         Data data = new Data();
         data.f = new Integer(42);
@@ -147,6 +148,7 @@ public class StaticAnalysisTests {
         assertEquals(m(sa, B.class, "foo").getFormalReturn(), t(Data.class), t(Integer.class));
     }
 
+    @SuppressWarnings({"deprecation", "unused"})
     static void test04Entry() {
         Data data = null;
         for (int i = 0; i < 2; i++) {

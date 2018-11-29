@@ -100,8 +100,15 @@ public final class InjectedAccessorsPlugin implements NodePlugin {
 
             JavaType actualReceiver = foundMethod.getSignature().getParameterType(paramIdx, null);
             ResolvedJavaType expectedReceiver = field.getDeclaringClass();
-            if (!actualReceiver.equals(expectedReceiver)) {
-                error(field, accessorsType, foundMethod, "wrong receiver type: expected " + expectedReceiver.toJavaName(true) + ", found " + actualReceiver.toJavaName(true));
+            boolean match = false;
+            for (ResolvedJavaType cur = expectedReceiver; cur != null; cur = cur.getSuperclass()) {
+                if (actualReceiver.equals(cur)) {
+                    match = true;
+                    break;
+                }
+            }
+            if (!match) {
+                error(field, accessorsType, foundMethod, "wrong receiver type: expected " + expectedReceiver.toJavaName(true) + " or a superclass, found " + actualReceiver.toJavaName(true));
             }
             paramIdx++;
         }

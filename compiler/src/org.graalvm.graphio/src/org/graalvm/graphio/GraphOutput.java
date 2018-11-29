@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -211,9 +211,9 @@ public final class GraphOutput<G, M> implements Closeable {
          * <p>
          * Both GraphOutput (the {@code parent} and the returned one) has to be used in
          * synchronization - e.g. only one
-         * {@link #beginGroup(java.lang.Object, java.lang.String, java.lang.String, java.lang.Object, int, java.util.Map)
-         * begin}, {@link #endGroup() end} of group or
-         * {@link #print(java.lang.Object, java.util.Map, int, java.lang.String, java.lang.Object...)
+         * {@link GraphOutput#beginGroup(java.lang.Object, java.lang.String, java.lang.String, java.lang.Object, int, java.util.Map)
+         * begin}, {@link GraphOutput#endGroup() end} of group or
+         * {@link GraphOutput#print(java.lang.Object, java.util.Map, int, java.lang.String, java.lang.Object...)
          * printing} can be on at a given moment.
          *
          * @param parent the output to inherit {@code channel} and protocol version from

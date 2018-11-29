@@ -33,7 +33,7 @@ typedef struct {
 
 typedef struct {
     ffi_cif cif;
-    ffi_type *args[0];
+    ffi_type *args[1];
 } svm_cif_data;
 
 typedef struct {

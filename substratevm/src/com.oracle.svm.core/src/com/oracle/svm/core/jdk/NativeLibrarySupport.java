@@ -40,6 +40,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport.NativeLibrary;
 
@@ -89,7 +90,7 @@ public final class NativeLibrarySupport {
 
     public void loadLibrary(String name, boolean isAbsolute) {
         if (paths == null) {
-            String[] tokens = System.getProperty("java.library.path", "").split(File.pathSeparator);
+            String[] tokens = SubstrateUtil.split(System.getProperty("java.library.path", ""), File.pathSeparator);
             paths = Arrays.stream(tokens).map(t -> t.isEmpty() ? "." : t).toArray(String[]::new);
         }
 

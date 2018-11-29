@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,6 +54,7 @@ public enum AArch64ArithmeticOp {
     SUBS(ARITHMETIC),
     MUL,
     MULVS,
+    MNEG,
     DIV,
     SMULH,
     UMULH,
@@ -275,6 +276,9 @@ public enum AArch64ArithmeticOp {
                 case SMULH:
                     masm.smulh(size, dst, src1, src2);
                     break;
+                case MNEG:
+                    masm.mneg(size, dst, src1, src2);
+                    break;
                 case DIV:
                     masm.sdiv(size, dst, src1, src2);
                     break;
@@ -434,6 +438,44 @@ public enum AArch64ArithmeticOp {
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
             int size = result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
             masm.add(size, asRegister(result), asRegister(src1), asRegister(src2), extendType, shiftAmt);
+        }
+    }
+
+    public static class MultiplyAddSubOp extends AArch64LIRInstruction {
+        private static final LIRInstructionClass<MultiplyAddSubOp> TYPE = LIRInstructionClass.create(MultiplyAddSubOp.class);
+
+        @Opcode private final AArch64ArithmeticOp op;
+        @Def(REG) protected AllocatableValue result;
+        @Use(REG) protected AllocatableValue src1;
+        @Use(REG) protected AllocatableValue src2;
+        @Use(REG) protected AllocatableValue src3;
+
+        /**
+         * Computes <code>result = src3 <op> src1 * src2</code>.
+         */
+        public MultiplyAddSubOp(AArch64ArithmeticOp op, AllocatableValue result, AllocatableValue src1, AllocatableValue src2, AllocatableValue src3) {
+            super(TYPE);
+            assert op == ADD || op == SUB;
+            this.op = op;
+            this.result = result;
+            this.src1 = src1;
+            this.src2 = src2;
+            this.src3 = src3;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+            int size = result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            switch (op) {
+                case ADD:
+                    masm.madd(size, asRegister(result), asRegister(src1), asRegister(src2), asRegister(src3));
+                    break;
+                case SUB:
+                    masm.msub(size, asRegister(result), asRegister(src1), asRegister(src2), asRegister(src3));
+                    break;
+                default:
+                    throw GraalError.shouldNotReachHere();
+            }
         }
     }
 

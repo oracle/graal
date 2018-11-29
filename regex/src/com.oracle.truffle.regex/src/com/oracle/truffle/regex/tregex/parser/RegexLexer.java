@@ -24,13 +24,16 @@
  */
 package com.oracle.truffle.regex.tregex.parser;
 
+import com.oracle.truffle.regex.RegexLanguageOptions;
 import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.chardata.CodePointRange;
+import com.oracle.truffle.regex.chardata.CodePointSet;
+import com.oracle.truffle.regex.chardata.Constants;
+import com.oracle.truffle.regex.chardata.UnicodeCharacterProperties;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
-import com.oracle.truffle.regex.util.Constants;
 
 import java.math.BigInteger;
 import java.util.EnumSet;
@@ -50,17 +53,19 @@ public final class RegexLexer {
     private final String pattern;
     private final RegexFlags flags;
     private final RegexOptions options;
+    private final RegexLanguageOptions contextOptions;
     private Token lastToken;
     private int index = 0;
     private int nGroups = 1;
     private boolean identifiedAllGroups = false;
     private Map<String, Integer> namedCaptureGroups = null;
 
-    public RegexLexer(RegexSource source, RegexOptions options) {
+    public RegexLexer(RegexSource source, RegexFlags flags, RegexOptions options, RegexLanguageOptions contextOptions) {
         this.source = source;
         this.pattern = source.getPattern();
-        this.flags = source.getFlags();
+        this.flags = flags;
         this.options = options;
+        this.contextOptions = contextOptions;
     }
 
     public boolean hasNext() {
@@ -85,7 +90,7 @@ public final class RegexLexer {
      *            {@link RegexSource#getPattern()}.
      */
     private void setSourceSection(Token t, int startIndex, int endIndex) {
-        if (DebugUtil.DEBUG) {
+        if (contextOptions.isDumpAutomata()) {
             // RegexSource#getSource() prepends a slash ('/') to the pattern, so we have to add an
             // offset of 1 here.
             t.setSourceSection(source.getSource().createSection(startIndex + 1, endIndex - startIndex));
@@ -217,7 +222,8 @@ public final class RegexLexer {
 
     private Token charClass(CodePointSet codePointSet, boolean invert) {
         CodePointSet processedSet = codePointSet;
-        processedSet = flags.isIgnoreCase() ? CaseFoldTable.applyCaseFold(processedSet, flags.isUnicode()) : processedSet;
+        CaseFoldTable.CaseFoldingAlgorithm caseFolding = flags.isUnicode() ? CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptUnicode : CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptNonUnicode;
+        processedSet = flags.isIgnoreCase() ? CaseFoldTable.applyCaseFold(processedSet, caseFolding) : processedSet;
         processedSet = invert ? processedSet.createInverse() : processedSet;
         return Token.createCharClass(processedSet);
     }
@@ -801,6 +807,6 @@ public final class RegexLexer {
     }
 
     private RegexSyntaxException syntaxError(String msg) {
-        return new RegexSyntaxException(pattern, flags, msg);
+        return new RegexSyntaxException(pattern, source.getFlags(), msg);
     }
 }

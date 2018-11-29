@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,18 +24,22 @@
  */
 package org.graalvm.compiler.nodes;
 
-import static org.graalvm.compiler.graph.Graph.SourcePositionTracking.Default;
-
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.UnmodifiableEconomicMap;
+import org.graalvm.compiler.api.replacements.MethodSubstitution;
+import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.core.common.CancellationBailoutException;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.GraalOptions;
@@ -56,6 +60,7 @@ import org.graalvm.compiler.nodes.spi.VirtualizableAllocation;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
 
+import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.Assumptions.Assumption;
 import jdk.vm.ci.meta.DefaultProfilingInfo;
@@ -103,6 +108,10 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
         public boolean allowsFloatingGuards() {
             return this == FLOATING_GUARDS;
+        }
+
+        public boolean allowsGuardInsertion() {
+            return this.ordinal() <= FIXED_DEOPTS.ordinal();
         }
 
         public boolean areFrameStatesAtDeopts() {
@@ -172,11 +181,13 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         private CompilationIdentifier compilationId = CompilationIdentifier.INVALID_COMPILATION_ID;
         private int entryBCI = JVMCICompiler.INVOCATION_ENTRY_BCI;
         private boolean useProfilingInfo = true;
-        private SourcePositionTracking trackNodeSourcePosition = Default;
+        private boolean recordInlinedMethods = true;
+        private boolean trackNodeSourcePosition;
         private final OptionValues options;
         private Cancellable cancellable = null;
         private final DebugContext debug;
         private NodeSourcePosition callerContext;
+        private boolean isSubstitution;
 
         /**
          * Creates a builder for a graph.
@@ -204,6 +215,14 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
         public Builder name(String s) {
             this.name = s;
+            return this;
+        }
+
+        /**
+         * @see StructuredGraph#isSubstitution
+         */
+        public Builder setIsSubstitution(boolean flag) {
+            this.isSubstitution = flag;
             return this;
         }
 
@@ -265,14 +284,18 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             return this;
         }
 
-        public Builder trackNodeSourcePosition(SourcePositionTracking tracking) {
-            this.trackNodeSourcePosition = tracking;
+        public boolean getRecordInlinedMethods() {
+            return recordInlinedMethods;
+        }
+
+        public Builder recordInlinedMethods(boolean flag) {
+            this.recordInlinedMethods = flag;
             return this;
         }
 
         public Builder trackNodeSourcePosition(boolean flag) {
             if (flag) {
-                this.trackNodeSourcePosition = SourcePositionTracking.Track;
+                this.trackNodeSourcePosition = true;
             }
             return this;
         }
@@ -283,7 +306,23 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         }
 
         public StructuredGraph build() {
-            return new StructuredGraph(name, rootMethod, entryBCI, assumptions, speculationLog, useProfilingInfo, trackNodeSourcePosition, compilationId, options, debug, cancellable, callerContext);
+            List<ResolvedJavaMethod> inlinedMethods = recordInlinedMethods ? new ArrayList<>() : null;
+            // @formatter:off
+            return new StructuredGraph(name,
+                            rootMethod,
+                            entryBCI,
+                            assumptions,
+                            speculationLog,
+                            useProfilingInfo,
+                            isSubstitution,
+                            inlinedMethods,
+                            trackNodeSourcePosition,
+                            compilationId,
+                            options,
+                            debug,
+                            cancellable,
+                            callerContext);
+            // @formatter:on
         }
     }
 
@@ -302,6 +341,8 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     private boolean isAfterExpandLogic = false;
     private final boolean useProfilingInfo;
     private final Cancellable cancellable;
+    private final boolean isSubstitution;
+
     /**
      * The assumptions made while constructing and transforming this graph.
      */
@@ -320,14 +361,14 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     /**
      * Records the methods that were used while constructing this graph, one entry for each time a
-     * specific method is used.
+     * specific method is used. This will be {@code null} if recording of inlined methods is
+     * disabled for the graph.
      */
-    private final List<ResolvedJavaMethod> methods = new ArrayList<>();
+    private final List<ResolvedJavaMethod> methods;
 
     /**
      * Records the fields that were accessed while constructing this graph.
      */
-
     private EconomicSet<ResolvedJavaField> fields = null;
 
     private enum UnsafeAccessState {
@@ -348,30 +389,41 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
                     Assumptions assumptions,
                     SpeculationLog speculationLog,
                     boolean useProfilingInfo,
-                    SourcePositionTracking trackNodeSourcePosition,
+                    boolean isSubstitution,
+                    List<ResolvedJavaMethod> methods,
+                    boolean trackNodeSourcePosition,
                     CompilationIdentifier compilationId,
                     OptionValues options,
                     DebugContext debug,
                     Cancellable cancellable,
                     NodeSourcePosition context) {
-        super(name, options, debug);
+        super(name, options, debug, trackNodeSourcePosition);
         this.setStart(add(new StartNode()));
         this.rootMethod = method;
         this.graphId = uniqueGraphIds.incrementAndGet();
         this.compilationId = compilationId;
         this.entryBCI = entryBCI;
         this.assumptions = assumptions;
-        if (speculationLog != null && !(speculationLog instanceof GraphSpeculationLog)) {
-            this.speculationLog = new GraphSpeculationLog(speculationLog);
-        } else {
-            this.speculationLog = speculationLog;
-        }
+        this.methods = methods;
+        this.speculationLog = speculationLog;
         this.useProfilingInfo = useProfilingInfo;
-        this.trackNodeSourcePosition = trackNodeSourcePosition;
-        assert trackNodeSourcePosition != null;
+        this.isSubstitution = isSubstitution;
+        assert checkIsSubstitutionInvariants(method, isSubstitution);
         this.cancellable = cancellable;
         this.inliningLog = new InliningLog(rootMethod, GraalOptions.TraceInlining.getValue(options));
         this.callerContext = context;
+    }
+
+    private static boolean checkIsSubstitutionInvariants(ResolvedJavaMethod method, boolean isSubstitution) {
+        if (method != null) {
+            if (method.getAnnotation(Snippet.class) != null || method.getAnnotation(MethodSubstitution.class) != null) {
+                assert isSubstitution : "Graph for method " + method.format("%H.%n(%p)") +
+                                " annotated by " + Snippet.class.getName() + " or " +
+                                MethodSubstitution.class.getName() +
+                                " must have its `isSubstitution` field set to true";
+            }
+        }
+        return true;
     }
 
     public void setLastSchedule(ScheduleResult result) {
@@ -516,6 +568,8 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
                         assumptions == null ? null : new Assumptions(),
                         speculationLog,
                         useProfilingInfo,
+                        isSubstitution,
+                        methods != null ? new ArrayList<>(methods) : null,
                         trackNodeSourcePosition,
                         newCompilationId,
                         getOptions(), debugForCopy, null, callerContext);
@@ -528,6 +582,9 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         copy.hasValueProxies = hasValueProxies;
         copy.isAfterExpandLogic = isAfterExpandLogic;
         copy.trackNodeSourcePosition = trackNodeSourcePosition;
+        if (fields != null) {
+            copy.fields = createFieldSet(fields);
+        }
         EconomicMap<Node, Node> replacements = EconomicMap.create(Equivalence.IDENTITY);
         replacements.put(start, copy.start);
         UnmodifiableEconomicMap<Node, Node> duplicates;
@@ -836,6 +893,15 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     }
 
     /**
+     * Returns true if this graph is built without parsing the {@linkplain #method() root method} or
+     * if the root method is annotated by {@link Snippet} or {@link MethodSubstitution}. This is
+     * preferred over querying annotations directly as querying annotations can cause class loading.
+     */
+    public boolean isSubstitution() {
+        return isSubstitution;
+    }
+
+    /**
      * Gets the profiling info for the {@linkplain #method() root method} of this graph.
      */
     public ProfilingInfo getProfilingInfo() {
@@ -864,17 +930,55 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     }
 
     /**
-     * Gets the methods that were inlined while constructing this graph.
+     * Checks that any method referenced from a {@link FrameState} is also in the set of methods
+     * parsed while building this graph.
+     */
+    private boolean checkFrameStatesAgainstInlinedMethods() {
+        for (FrameState fs : getNodes(FrameState.TYPE)) {
+            if (!BytecodeFrame.isPlaceholderBci(fs.bci)) {
+                ResolvedJavaMethod m = fs.code.getMethod();
+                if (!m.equals(rootMethod) && !methods.contains(m)) {
+                    SortedSet<String> haystack = new TreeSet<>();
+                    if (!methods.contains(rootMethod)) {
+                        haystack.add(rootMethod.format("%H.%n(%p)"));
+                    }
+                    for (ResolvedJavaMethod e : methods) {
+                        haystack.add(e.format("%H.%n(%p)"));
+                    }
+                    throw new AssertionError(String.format("Could not find %s from %s in set(%s)", m.format("%H.%n(%p)"), fs, haystack.stream().collect(Collectors.joining(System.lineSeparator()))));
+                }
+            }
+        }
+        return true;
+    }
+
+    private static EconomicSet<ResolvedJavaField> createFieldSet(EconomicSet<ResolvedJavaField> init) {
+        // Multiple ResolvedJavaField objects can represent the same field so they
+        // need to be compared with equals().
+        if (init != null) {
+            return EconomicSet.create(Equivalence.DEFAULT, init);
+        }
+        return EconomicSet.create(Equivalence.DEFAULT);
+    }
+
+    /**
+     * Gets an unmodifiable view of the methods that were inlined while constructing this graph.
      */
     public List<ResolvedJavaMethod> getMethods() {
-        return methods;
+        if (methods != null) {
+            assert checkFrameStatesAgainstInlinedMethods();
+            return Collections.unmodifiableList(methods);
+        }
+        return Collections.emptyList();
     }
 
     /**
      * Records that {@code method} was used to build this graph.
      */
     public void recordMethod(ResolvedJavaMethod method) {
-        methods.add(method);
+        if (methods != null) {
+            methods.add(method);
+        }
     }
 
     /**
@@ -882,12 +986,20 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      * to build another graph.
      */
     public void updateMethods(StructuredGraph other) {
-        assert this != other;
-        this.methods.addAll(other.methods);
+        if (methods != null) {
+            if (other.rootMethod != null) {
+                methods.add(other.rootMethod);
+            }
+            for (ResolvedJavaMethod m : other.methods) {
+                methods.add(m);
+            }
+        }
     }
 
     /**
-     * Gets the fields that were accessed while constructing this graph.
+     * Gets an unmodifiable view of the fields that were accessed while constructing this graph.
+     *
+     * @return {@code null} if no field accesses were recorded
      */
     public EconomicSet<ResolvedJavaField> getFields() {
         return fields;
@@ -899,7 +1011,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     public void recordField(ResolvedJavaField field) {
         assert GraalOptions.GeneratePIC.getValue(getOptions());
         if (this.fields == null) {
-            this.fields = EconomicSet.create(Equivalence.IDENTITY);
+            this.fields = createFieldSet(null);
         }
         fields.add(field);
     }
@@ -913,7 +1025,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         assert GraalOptions.GeneratePIC.getValue(getOptions());
         if (other.fields != null) {
             if (this.fields == null) {
-                this.fields = EconomicSet.create(Equivalence.IDENTITY);
+                this.fields = createFieldSet(null);
             }
             this.fields.addAll(other.fields);
         }
@@ -927,18 +1039,15 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      */
     public int getBytecodeSize() {
         int res = 0;
-        for (ResolvedJavaMethod e : methods) {
-            res += e.getCodeSize();
+        if (rootMethod != null) {
+            res += rootMethod.getCodeSize();
+        }
+        if (methods != null) {
+            for (ResolvedJavaMethod e : methods) {
+                res += e.getCodeSize();
+            }
         }
         return res;
-    }
-
-    /**
-     *
-     * @return true if the graph contains only a {@link StartNode} and {@link ReturnNode}
-     */
-    public boolean isTrivial() {
-        return !(start.next() instanceof ReturnNode);
     }
 
     @Override

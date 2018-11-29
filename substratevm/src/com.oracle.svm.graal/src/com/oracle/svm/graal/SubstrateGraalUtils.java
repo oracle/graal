@@ -26,6 +26,7 @@ package com.oracle.svm.graal;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
+import java.io.PrintStream;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.Map;
@@ -157,8 +158,8 @@ public class SubstrateGraalUtils {
             }
 
             @Override
-            protected DebugContext createRetryDebugContext(OptionValues options) {
-                return GraalSupport.get().openDebugContext(options, compilationId, method);
+            protected DebugContext createRetryDebugContext(OptionValues options, PrintStream logStream) {
+                return GraalSupport.get().openDebugContext(options, compilationId, method, logStream);
             }
         }.run(initialDebug);
     }
@@ -200,7 +201,7 @@ public class SubstrateGraalUtils {
     }
 
     @SuppressWarnings("try")
-    public static CompilationResult compileGraph(RuntimeConfiguration runtimeConfig, Suites suites, LIRSuites lirSuites, final SharedMethod method, final StructuredGraph graph) {
+    private static CompilationResult compileGraph(RuntimeConfiguration runtimeConfig, Suites suites, LIRSuites lirSuites, final SharedMethod method, final StructuredGraph graph) {
         assert runtimeConfig != null : "no runtime";
 
         if (Options.ForceDumpGraphsBeforeCompilation.getValue()) {

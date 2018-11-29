@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.core.test.inlining;
 
+import java.util.regex.Pattern;
+
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.DebugContext;
@@ -41,7 +43,6 @@ import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
-import org.graalvm.compiler.phases.common.inlining.InliningPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.junit.Assert;
 import org.junit.Ignore;
@@ -49,8 +50,6 @@ import org.junit.Test;
 
 import jdk.vm.ci.code.site.InfopointReason;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-
-import java.util.regex.Pattern;
 
 public class InliningTest extends GraalCompilerTest {
 
@@ -293,7 +292,7 @@ public class InliningTest extends GraalCompilerTest {
                 HighTierContext context = new HighTierContext(getProviders(), graphBuilderSuite, OptimisticOptimizations.ALL);
                 debug.dump(DebugContext.BASIC_LEVEL, graph, "Graph");
                 new CanonicalizerPhase().apply(graph, context);
-                new InliningPhase(new CanonicalizerPhase()).apply(graph, context);
+                createInliningPhase().apply(graph, context);
                 debug.dump(DebugContext.BASIC_LEVEL, graph, "Graph");
                 new CanonicalizerPhase().apply(graph, context);
                 new DeadCodeEliminationPhase().apply(graph);
@@ -480,7 +479,7 @@ public class InliningTest extends GraalCompilerTest {
 
     private static final class StaticFinalFields {
 
-        private static final Number NumberStaticFinalField = new Integer(1);
+        private static final Number NumberStaticFinalField = Integer.valueOf(1);
         private static final SuperClass SuperClassStaticFinalField = new SubClassA(2);
         private static final FinalSubClass FinalSubClassStaticFinalField = new FinalSubClass(3);
         private static final SingleImplementorInterface SingleImplementorStaticFinalField = new SubClassA(4);
@@ -492,7 +491,7 @@ public class InliningTest extends GraalCompilerTest {
 
     private static final class FinalFields {
 
-        private final Number numberFinalField = new Integer(1);
+        private final Number numberFinalField = Integer.valueOf(1);
         private final SuperClass superClassFinalField = new SubClassA(2);
         private final FinalSubClass finalSubClassFinalField = new FinalSubClass(3);
         private final SingleImplementorInterface singleImplementorFinalField = new SubClassA(4);
@@ -504,7 +503,7 @@ public class InliningTest extends GraalCompilerTest {
 
     private static final class Fields {
 
-        private Number numberField = new Integer(1);
+        private Number numberField = Integer.valueOf(1);
         private SuperClass superClassField = new SubClassA(2);
         private FinalSubClass finalSubClassField = new FinalSubClass(3);
         private SingleImplementorInterface singleImplementorField = new SubClassA(4);

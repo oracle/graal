@@ -2,25 +2,41 @@
  * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * The Universal Permissive License (UPL), Version 1.0
  *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
  *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ * (a) the Software, and
  *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 package com.oracle.truffle.api.test.polyglot;
 
@@ -254,7 +270,7 @@ public class ProxyAPITest {
         proxy.getSize = null;
     }
 
-    private void assertProxyPrimitive(ProxyPrimitiveTest proxy, Value value, Object primitiveValue, Class<?> primitiveType, Trait... traits) {
+    private static void assertProxyPrimitive(ProxyPrimitiveTest proxy, Value value, Object primitiveValue, Class<?> primitiveType, Trait... traits) {
         proxy.primitive = primitiveValue;
         proxy.invocationCounter = 0;
         assertEquals(0, proxy.invocationCounter);
@@ -262,7 +278,7 @@ public class ProxyAPITest {
         assertEquals(proxy.primitive, value.as(Object.class));
         assertEquals(2, proxy.invocationCounter);
         proxy.invocationCounter = 0;
-        assertValue(context, value, traits);
+        assertValue(value, traits);
     }
 
     static class ProxyExecutableTest implements ProxyExecutable {
@@ -291,7 +307,7 @@ public class ProxyAPITest {
             assertEquals(2, args.length);
             assertEquals("a", args[0].asString());
             assertEquals('a', args[0].as(Object.class));
-            ValueAssert.assertValue(context, args[0], Trait.STRING);
+            assertValue(args[0], Trait.STRING);
 
             assertTrue(args[1].isNumber());
             assertEquals((byte) 42, args[1].asByte());
@@ -299,7 +315,7 @@ public class ProxyAPITest {
             assertEquals(42, args[1].asInt());
             assertEquals(42L, args[1].asLong());
             assertEquals(42, args[1].as(Object.class));
-            ValueAssert.assertValue(context, args[1], Trait.NUMBER);
+            assertValue(args[1], Trait.NUMBER);
             return 42;
         };
 
@@ -319,7 +335,7 @@ public class ProxyAPITest {
             assertSame(ex, e.asHostException());
             assertEquals(2, proxy.executeCounter);
         }
-        assertValue(context, value, Trait.PROXY_OBJECT, Trait.EXECUTABLE);
+        assertValue(value, Trait.PROXY_OBJECT, Trait.EXECUTABLE);
     }
 
     static class ProxyInstantiableTest implements ProxyInstantiable {
@@ -349,7 +365,7 @@ public class ProxyAPITest {
             assertEquals(2, args.length);
             assertEquals("a", args[0].asString());
             assertEquals('a', args[0].as(Object.class));
-            ValueAssert.assertValue(context, args[0], Trait.STRING);
+            assertValue(args[0], Trait.STRING);
 
             assertTrue(args[1].isNumber());
             assertEquals((byte) 42, args[1].asByte());
@@ -357,7 +373,7 @@ public class ProxyAPITest {
             assertEquals(42, args[1].asInt());
             assertEquals(42L, args[1].asLong());
             assertEquals(42, args[1].as(Object.class));
-            ValueAssert.assertValue(context, args[1], Trait.NUMBER);
+            assertValue(args[1], Trait.NUMBER);
             return 42;
         };
 
@@ -377,7 +393,7 @@ public class ProxyAPITest {
             assertSame(ex, e.asHostException());
             assertEquals(2, proxy.newInstanceCounter);
         }
-        assertValue(context, value, Trait.PROXY_OBJECT, Trait.INSTANTIABLE);
+        assertValue(value, Trait.PROXY_OBJECT, Trait.INSTANTIABLE);
     }
 
     static class ProxyObjectTest implements ProxyObject {
@@ -427,7 +443,7 @@ public class ProxyAPITest {
         proxy.putMember = (key, v) -> {
             assertEquals("foo", key);
             assertEquals(42, v.asInt());
-            ValueAssert.assertValue(context, v, Trait.NUMBER);
+            assertValue(v, Trait.NUMBER);
             return null;
         };
         value.putMember("foo", 42);
@@ -515,7 +531,7 @@ public class ProxyAPITest {
         proxy.putMember = (key, v) -> {
             return null;
         };
-        assertValue(context, value, Trait.PROXY_OBJECT, Trait.MEMBERS);
+        assertValue(value, Trait.PROXY_OBJECT, Trait.MEMBERS);
     }
 
     @Test
@@ -557,6 +573,36 @@ public class ProxyAPITest {
             assertTrue(frame.isHostFrame());
             assertEquals("testExceptionFrames", frame.toHostFrame().getMethodName());
         }
+    }
+
+    static class DummyObject {
+
+    }
+
+    /*
+     * Tests that if different incompatible argument array types are used, they are properly copied.
+     */
+    @Test
+    public void testInvalidArrayCopying() {
+        Value executable = context.asValue(new ProxyExecutable() {
+            @Override
+            public Object execute(Value... args) {
+                return args[0];
+            }
+        });
+        Value instantiable = context.asValue(new ProxyInstantiable() {
+            @Override
+            public Object newInstance(Value... args) {
+                return args[0];
+            }
+        });
+        DummyObject[] arg0 = new DummyObject[]{new DummyObject()};
+        DummyObject[] arg1 = new DummyObject[]{new DummyObject(), new DummyObject()};
+        assertSame(arg0[0], executable.execute((Object[]) arg0).asHostObject());
+        assertSame(arg1[0], executable.execute((Object[]) arg1).asHostObject());
+
+        assertSame(arg0[0], instantiable.newInstance((Object[]) arg0).asHostObject());
+        assertSame(arg1[0], instantiable.newInstance((Object[]) arg1).asHostObject());
 
     }
 

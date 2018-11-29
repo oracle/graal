@@ -69,7 +69,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.amd64.AMD64ConvertSnippets;
 
-import com.oracle.svm.core.amd64.FrameAccess;
+import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.amd64.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
@@ -183,7 +183,11 @@ public final class NonSnippetLowerings {
                 LoadHubNode hub = null;
                 CallTargetNode loweredCallTarget;
 
-                if (invokeKind != InvokeKind.Static && implementations.length == 0) {
+                if (invokeKind.isDirect()) {
+                    loweredCallTarget = graph.add(new DirectCallTargetNode(parameters.toArray(new ValueNode[parameters.size()]), callTarget.returnStamp(), signature, callTarget.targetMethod(),
+                                    callType, invokeKind));
+
+                } else if (implementations.length == 0) {
                     /*
                      * We are calling an abstract method with no implementation, i.e., the
                      * closed-world analysis showed that there is no concrete receiver ever
@@ -202,14 +206,10 @@ public final class NonSnippetLowerings {
                     loweredCallTarget = graph.add(new DirectCallTargetNode(parameters.toArray(new ValueNode[parameters.size()]), callTarget.returnStamp(), signature, method, callType,
                                     invokeKind));
 
-                } else if (invokeKind.isDirect()) {
-                    loweredCallTarget = graph.add(new DirectCallTargetNode(parameters.toArray(new ValueNode[parameters.size()]), callTarget.returnStamp(), signature, callTarget.targetMethod(),
-                                    callType, invokeKind));
-
                 } else if (implementations.length == 1) {
                     /*
                      * We only have one possible implementation for a indirect call, so we can emit
-                     * a direct call to the uniqye implementation.
+                     * a direct call to the unique implementation.
                      */
                     SharedMethod uniqueImplementation = implementations[0];
                     loweredCallTarget = graph.add(new DirectCallTargetNode(parameters.toArray(new ValueNode[parameters.size()]), callTarget.returnStamp(), signature, uniqueImplementation,

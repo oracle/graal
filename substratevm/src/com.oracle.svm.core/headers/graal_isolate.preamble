@@ -13,8 +13,19 @@ typedef struct __graal_isolate_t graal_isolate_t;
 struct __graal_isolatethread_t;
 typedef struct __graal_isolatethread_t graal_isolatethread_t;
 
+#ifdef _WIN64
+typedef unsigned long long ulong;
+#else
+typedef unsigned long ulong;
+#endif
+
+
 /* Parameters for the creation of a new isolate. */
+enum { __graal_create_isolate_params_version = 1 };
 struct __graal_create_isolate_params_t {
-    /* for future use */
+    int version;                                /* Version of this struct */
+
+    /* Fields introduced in version 1 */
+    ulong reserved_address_space_size;  /* Size of address space to reserve */
 };
 typedef struct __graal_create_isolate_params_t graal_create_isolate_params_t;

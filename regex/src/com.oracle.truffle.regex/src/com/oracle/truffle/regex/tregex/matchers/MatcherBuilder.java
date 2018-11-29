@@ -30,14 +30,14 @@ import com.oracle.truffle.regex.tregex.buffer.ByteArrayBuffer;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.buffer.ObjectArrayBuffer;
 import com.oracle.truffle.regex.tregex.buffer.RangesArrayBuffer;
-import com.oracle.truffle.regex.tregex.parser.CodePointRange;
-import com.oracle.truffle.regex.tregex.parser.CodePointSet;
+import com.oracle.truffle.regex.chardata.CodePointRange;
+import com.oracle.truffle.regex.chardata.CodePointSet;
+import com.oracle.truffle.regex.chardata.Constants;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
-import com.oracle.truffle.regex.util.Constants;
 
 import java.util.Arrays;
 import java.util.List;
@@ -218,6 +218,10 @@ public final class MatcherBuilder implements Comparable<MatcherBuilder>, JsonCon
 
     private boolean isSingle(int ia) {
         return getLo(ia) == getHi(ia);
+    }
+
+    private int size(int ia) {
+        return getHi(ia) - getLo(ia);
     }
 
     private static boolean contains(char aLo, char aHi, char bLo, char bHi) {
@@ -713,6 +717,34 @@ public final class MatcherBuilder implements Comparable<MatcherBuilder>, JsonCon
         return size() == 1 && isSingle(0);
     }
 
+    public int charCount() {
+        int charSize = 0;
+        for (int i = 0; i < size(); i++) {
+            charSize += (getHi(i) - getLo(i)) + 1;
+        }
+        return charSize;
+    }
+
+    public int inverseCharCount() {
+        return Character.MAX_VALUE + 1 - charCount();
+    }
+
+    public char[] inverseToCharArray() {
+        char[] array = new char[inverseCharCount()];
+        int index = 0;
+        int lastHi = -1;
+        for (int i = 0; i < size(); i++) {
+            for (int j = lastHi + 1; j < getLo(i); j++) {
+                array[index++] = (char) j;
+            }
+            lastHi = getHi(i);
+        }
+        for (int j = lastHi + 1; j <= Character.MAX_VALUE; j++) {
+            array[index++] = (char) j;
+        }
+        return array;
+    }
+
     public boolean matchesEverything() {
         // ranges should be consolidated to one
         return size() == 1 && getLo(0) == Character.MIN_VALUE && getHi(0) == Character.MAX_VALUE;
@@ -758,10 +790,17 @@ public final class MatcherBuilder implements Comparable<MatcherBuilder>, JsonCon
             if (isSingle(0)) {
                 return new SingleCharMatcher(inverse, getLo(0));
             }
+            if (size(0) == 1) {
+                // two equality checks are cheaper than one range check
+                return new TwoCharMatcher(inverse, getLo(0), getHi(0));
+            }
             return new SingleRangeMatcher(inverse, getLo(0), getHi(0));
         }
         if (size() == 2 && isSingle(0) && isSingle(1)) {
             return new TwoCharMatcher(inverse, getLo(0), getLo(1));
+        }
+        if (preferRangeListMatcherOverBitSetMatcher()) {
+            return new RangeListMatcher(inverse, ranges);
         }
         if (allSameHighByte()) {
             CompilationFinalBitSet bs = convertToBitSet(0, size());
@@ -781,6 +820,12 @@ public final class MatcherBuilder implements Comparable<MatcherBuilder>, JsonCon
                 return RangeTreeMatcher.fromRanges(inverse, ranges);
             }
         }
+    }
+
+    private boolean preferRangeListMatcherOverBitSetMatcher() {
+        // for up to two ranges, RangeListMatcher is faster than any BitSet matcher
+        // also, up to four single character checks are still faster than a bit set
+        return size() <= 2 || charCount() <= 4;
     }
 
     private CompilationFinalBitSet convertToBitSet(int iMinArg, int iMaxArg) {
@@ -875,11 +920,16 @@ public final class MatcherBuilder implements Comparable<MatcherBuilder>, JsonCon
     @Override
     @TruffleBoundary
     public String toString() {
+        return toString(true);
+    }
+
+    @TruffleBoundary
+    private String toString(boolean addBrackets) {
         if (equalsCodePointSet(Constants.DOT)) {
             return ".";
         }
         if (equalsCodePointSet(Constants.LINE_TERMINATOR)) {
-            return "[\\r\\n]";
+            return "[\\r\\n\\u2028\\u2029]";
         }
         if (equalsCodePointSet(Constants.DIGITS)) {
             return "\\d";
@@ -900,19 +950,23 @@ public final class MatcherBuilder implements Comparable<MatcherBuilder>, JsonCon
             return "\\S";
         }
         if (matchesEverything()) {
-            return "[_any_]";
+            return "[\\s\\S]";
         }
         if (matchesNothing()) {
-            return "[_none_]";
+            return "[]";
         }
         if (matchesSingleChar()) {
             return rangeToString(ranges[0], ranges[1]);
         }
         MatcherBuilder inverse = createInverse(new CompilationBuffer());
         if (inverse.size() < size()) {
-            return "!" + inverse.toString();
+            return "[^" + inverse.toString(false) + "]";
         }
-        return rangesToString(ranges);
+        if (addBrackets) {
+            return "[" + rangesToString(ranges) + "]";
+        } else {
+            return rangesToString(ranges);
+        }
     }
 
     @TruffleBoundary
@@ -931,18 +985,12 @@ public final class MatcherBuilder implements Comparable<MatcherBuilder>, JsonCon
     @TruffleBoundary
     public static String rangesToString(char[] ranges, boolean numeric) {
         StringBuilder sb = new StringBuilder();
-        if (!numeric && ranges.length > 2) {
-            sb.append("[");
-        }
         for (int i = 0; i < ranges.length; i += 2) {
             if (numeric) {
                 sb.append("[").append((int) ranges[i]).append("-").append((int) ranges[i + 1]).append("]");
             } else {
                 sb.append(rangeToString(ranges[i], ranges[i + 1]));
             }
-        }
-        if (!numeric && ranges.length > 2) {
-            sb.append("]");
         }
         return sb.toString();
     }

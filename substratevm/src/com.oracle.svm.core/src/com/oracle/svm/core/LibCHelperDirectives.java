@@ -35,6 +35,6 @@ public class LibCHelperDirectives implements CContext.Directives {
 
     @Override
     public List<String> getHeaderFiles() {
-        return Collections.singletonList(ProjectHeaderFile.resolve("com.oracle.svm.native", "include/cpufeatures.h"));
+        return Collections.singletonList(ProjectHeaderFile.resolve("com.oracle.svm.native.libchelper", "include/cpufeatures.h"));
     }
 }

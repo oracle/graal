@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,11 +24,10 @@
  */
 package org.graalvm.compiler.truffle.compiler.substitutions;
 
+import jdk.vm.ci.code.Architecture;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
-
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.MetaAccessProvider;
+import org.graalvm.compiler.phases.util.Providers;
 
 public interface TruffleInvocationPluginProvider {
-    void registerInvocationPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins, boolean canDelayIntrinsification, ConstantReflectionProvider constantReflection);
+    void registerInvocationPlugins(Providers providers, Architecture architecture, InvocationPlugins plugins, boolean canDelayIntrinsification);
 }

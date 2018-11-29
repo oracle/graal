@@ -25,14 +25,12 @@
 package com.oracle.svm.hosted.ameta;
 
 import org.graalvm.nativeimage.Feature;
-import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 
 @AutomaticFeature
 public class HostedDynamicHubFeature implements Feature {
@@ -53,7 +51,6 @@ public class HostedDynamicHubFeature implements Feature {
             Class<?> clazz = (Class<?>) source;
             DynamicHub dynamicHub = hostVM.dynamicHub(metaAccess.lookupJavaType(clazz));
 
-            setHostedIdentityHashCode(dynamicHub, clazz);
             AnalysisConstantReflectionProvider.registerHub(hostVM, dynamicHub);
             return dynamicHub;
 
@@ -61,14 +58,5 @@ public class HostedDynamicHubFeature implements Feature {
             AnalysisConstantReflectionProvider.registerHub(hostVM, (DynamicHub) source);
         }
         return source;
-    }
-
-    public static void setHostedIdentityHashCode(DynamicHub dynamicHub, Class<?> fromClass) {
-        /*
-         * We do not want to inherit the identity hash code from substitution classes - they are an
-         * implementation detail and no information about them should leak to the outside world.
-         */
-        Class<?> targetClass = ImageSingletons.lookup(AnnotationSubstitutionProcessor.class).getTargetClass(fromClass);
-        dynamicHub.setHostedIdentityHashCode(targetClass.hashCode());
     }
 }

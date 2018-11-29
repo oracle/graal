@@ -2,25 +2,41 @@
  * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * The Universal Permissive License (UPL), Version 1.0
  *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
  *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ * (a) the Software, and
  *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 package com.oracle.truffle.api.test.source;
 
@@ -28,6 +44,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertEquals;
 
 import java.io.File;
 import java.io.IOException;
@@ -48,72 +65,78 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
+import com.oracle.truffle.api.test.polyglot.PolyglotCachingTest;
 
-public class SourceInternalizationTest {
+public class SourceInternalizationTest extends AbstractPolyglotTest {
 
     @Test
     public void testSourceIdentity() throws RuntimeException, URISyntaxException, IOException {
-        assertNotSame(Source.newBuilder("1").mimeType("").language("").name("").build(),
-                        Source.newBuilder("2").mimeType("").language("").name("").build());
-        assertSame(Source.newBuilder("1").mimeType("").language("").name("").build(),
-                        Source.newBuilder("1").mimeType("").language("").name("").build());
+        setupEnv();
+        assertNotSame(Source.newBuilder("", "1", "").build(),
+                        Source.newBuilder("", "2", "").build());
+        assertSame(Source.newBuilder("", "1", "").build(),
+                        Source.newBuilder("", "1", "").build());
 
-        assertNotSame(Source.newBuilder("").mimeType("1").language("").name("").build(),
-                        Source.newBuilder("").mimeType("2").language("").name("").build());
-        assertSame(Source.newBuilder("").mimeType("1").language("").name("").build(),
-                        Source.newBuilder("").mimeType("1").language("").name("").build());
+        assertNotSame(Source.newBuilder("", "", "").mimeType("text/javascript").build(),
+                        Source.newBuilder("", "", "").mimeType("text/R").build());
+        assertSame(Source.newBuilder("", "", "").mimeType("text/javascript").build(),
+                        Source.newBuilder("", "", "").mimeType("text/javascript").build());
 
-        assertNotSame(Source.newBuilder("").mimeType("").language("1").name("").build(),
-                        Source.newBuilder("").mimeType("").language("2").name("").build());
-        assertSame(Source.newBuilder("").mimeType("").language("1").name("").build(),
-                        Source.newBuilder("").mimeType("").language("1").name("").build());
+        assertNotSame(Source.newBuilder("1", "", "").build(),
+                        Source.newBuilder("2", "", "").build());
+        assertSame(Source.newBuilder("1", "", "").build(),
+                        Source.newBuilder("1", "", "").build());
 
-        assertNotSame(Source.newBuilder("").mimeType("").language("").name("1").build(),
-                        Source.newBuilder("").mimeType("").language("").name("2").build());
-        assertSame(Source.newBuilder("").mimeType("").language("").name("1").build(),
-                        Source.newBuilder("").mimeType("").language("").name("1").build());
+        assertNotSame(Source.newBuilder("", "", "1").build(),
+                        Source.newBuilder("", "", "2").build());
+        assertSame(Source.newBuilder("", "", "1").build(),
+                        Source.newBuilder("", "", "1").build());
 
-        assertNotSame(Source.newBuilder("").mimeType("").language("").name("").content("1").build(),
-                        Source.newBuilder("").mimeType("").language("").name("").content("2").build());
-        assertSame(Source.newBuilder("").mimeType("").language("").name("").content("1").build(),
-                        Source.newBuilder("").mimeType("").language("").name("").content("1").build());
+        assertNotSame(Source.newBuilder("", "", "").content("1").build(),
+                        Source.newBuilder("", "", "").content("2").build());
+        assertSame(Source.newBuilder("", "", "").content("1").build(),
+                        Source.newBuilder("", "", "").content("1").build());
 
-        assertNotSame(Source.newBuilder("").mimeType("").language("").name("").interactive().build(),
-                        Source.newBuilder("").mimeType("").language("").name("").build());
-        assertSame(Source.newBuilder("").mimeType("").language("").name("").interactive().build(),
-                        Source.newBuilder("").mimeType("").language("").name("").interactive().build());
+        assertNotSame(Source.newBuilder("", "", "").interactive(true).build(),
+                        Source.newBuilder("", "", "").interactive(false).build());
+        assertSame(Source.newBuilder("", "", "").interactive(true).build(),
+                        Source.newBuilder("", "", "").interactive(true).build());
 
-        assertNotSame(Source.newBuilder("").mimeType("").language("").name("").internal().build(),
-                        Source.newBuilder("").mimeType("").language("").name("").build());
-        assertSame(Source.newBuilder("").mimeType("").language("").name("").internal().build(),
-                        Source.newBuilder("").mimeType("").language("").name("").internal().build());
+        assertNotSame(Source.newBuilder("", "", "").internal(true).build(),
+                        Source.newBuilder("", "", "").internal(false).build());
+        assertSame(Source.newBuilder("", "", "").internal(true).build(),
+                        Source.newBuilder("", "", "").internal(true).build());
 
-        assertNotSame(Source.newBuilder("").mimeType("").language("").name("").uri(new URI("s:///333")).build(),
-                        Source.newBuilder("").mimeType("").language("").name("").uri(new URI("s:///332")).build());
-        assertSame(Source.newBuilder("").mimeType("").language("").name("").uri(new URI("s:///333")).build(),
-                        Source.newBuilder("").mimeType("").language("").name("").uri(new URI("s:///333")).build());
+        assertNotSame(Source.newBuilder("", "", "").uri(new URI("s:///333")).uri(new URI("s:///333")).build(),
+                        Source.newBuilder("", "", "").uri(new URI("s:///332")).build());
+        assertSame(Source.newBuilder("", "", "").uri(new URI("s:///333")).build(),
+                        Source.newBuilder("", "", "").uri(new URI("s:///333")).build());
 
-        File file1 = createTempFile("1");
-        File file2 = createTempFile("2");
+        TruffleFile file1 = languageEnv.getTruffleFile(createTempFile("1").getPath());
+        TruffleFile file2 = languageEnv.getTruffleFile(createTempFile("2").getPath());
 
-        assertNotSame(Source.newBuilder(file1).mimeType("").language("").build(),
-                        Source.newBuilder(file2).mimeType("").language("").build());
-        assertSame(Source.newBuilder(file1).mimeType("").language("").build(),
-                        Source.newBuilder(file1).mimeType("").language("").build());
+        assertNotSame(Source.newBuilder("", file1).build(),
+                        Source.newBuilder("", file2).build());
+        assertSame(Source.newBuilder("", file1).build(),
+                        Source.newBuilder("", file1).build());
 
-        assertNotSame(Source.newBuilder(file1.toURI().toURL()).mimeType("").language("").build(),
-                        Source.newBuilder(file2.toURI().toURL()).mimeType("").language("").build());
-        assertSame(Source.newBuilder(file1.toURI().toURL()).mimeType("").language("").build(),
-                        Source.newBuilder(file1.toURI().toURL()).mimeType("").language("").build());
+        assertNotSame(Source.newBuilder("", file1.toUri().toURL()).build(),
+                        Source.newBuilder("", file2.toUri().toURL()).build());
+        assertSame(Source.newBuilder("", file1.toUri().toURL()).build(),
+                        Source.newBuilder("", file1.toUri().toURL()).build());
 
-        Source fileSource2 = Source.newBuilder(file2).mimeType("").language("").build();
-        Source urlSource2 = Source.newBuilder(file2.toURI().toURL()).mimeType("").language("").build();
-        Files.write(file2.toPath(), "3".getBytes());
-        assertNotSame(Source.newBuilder(file2).mimeType("").language("").build(), fileSource2);
-        assertNotSame(Source.newBuilder(file2.toURI().toURL()).mimeType("").language("").build(), urlSource2);
+        Source fileSource2 = Source.newBuilder("", file2).build();
+        Source urlSource2 = Source.newBuilder("", file2).build();
+
+        file2.newBufferedWriter().write("3".toCharArray());
+        assertNotSame(Source.newBuilder("", file2), fileSource2);
+        assertNotSame(Source.newBuilder("", file2.toUri().toURL()), urlSource2);
 
         file1.delete();
         file2.delete();
@@ -144,7 +167,7 @@ public class SourceInternalizationTest {
                     List<Source> returnedSources = new ArrayList<>();
                     for (int source = 0; source < sources; source++) {
                         String name = testCharacters + ":" + currentRun + ":" + source;
-                        returnedSources.add(Source.newBuilder(name).mimeType("mime").interactive().internal().name("name").language("language").build());
+                        returnedSources.add(Source.newBuilder("language", name, "name").interactive(true).internal(true).build());
                     }
                     return returnedSources;
                 }));
@@ -172,7 +195,22 @@ public class SourceInternalizationTest {
     }
 
     @Test
+    public void testUncachedAreNotInterned() {
+        Source source1 = Source.newBuilder("language", "", "name").interactive(true).internal(true).cached(false).build();
+        Source source2 = Source.newBuilder("language", "", "name").interactive(true).internal(true).cached(false).build();
+        assertNotSame(source1, source2);
+        assertEquals(source1, source2);
+
+        source1 = Source.newBuilder("language", "", "name").interactive(true).internal(true).cached(true).build();
+        source2 = Source.newBuilder("language", "", "name").interactive(true).internal(true).cached(true).build();
+
+        assertSame(source1, source2);
+    }
+
+    @Test
     public void testSourceInterning() {
+        Assume.assumeFalse("This test is too slow in fastdebug.", System.getProperty("java.vm.version").contains("fastdebug"));
+
         byte[] bytes = new byte[16 * 1024 * 1024];
         byte byteValue = (byte) 'a';
         Arrays.fill(bytes, byteValue);
@@ -180,7 +218,7 @@ public class SourceInternalizationTest {
 
         ReferenceQueue<Object> queue = new ReferenceQueue<>();
         List<WeakReference<Object>> sources = new ArrayList<>();
-        for (int i = 0; i < 200; i++) {
+        for (int i = 0; i < PolyglotCachingTest.GC_TEST_ITERATIONS; i++) {
             sources.add(new WeakReference<>(createTestSource(testString, i), queue));
             System.gc();
         }
@@ -195,7 +233,7 @@ public class SourceInternalizationTest {
 
     private static Object createTestSource(String testString, int i) {
         String testStringIteraton = testString.substring(i, testString.length());
-        return Source.newBuilder(testStringIteraton).name(String.valueOf(i)).mimeType("").build();
+        return Source.newBuilder("language", testStringIteraton, String.valueOf(i)).name(String.valueOf(i)).build();
     }
 
 }

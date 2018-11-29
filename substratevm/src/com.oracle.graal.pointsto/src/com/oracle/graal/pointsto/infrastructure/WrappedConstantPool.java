@@ -26,6 +26,11 @@ package com.oracle.graal.pointsto.infrastructure;
 
 import static jdk.vm.ci.common.JVMCIError.unimplemented;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+
+import org.graalvm.compiler.debug.GraalError;
+
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.util.AnalysisError.TypeNotFoundError;
 
@@ -54,10 +59,42 @@ public class WrappedConstantPool implements ConstantPool {
         return wrapped.length();
     }
 
-    @Override
-    public void loadReferencedType(int cpi, int opcode) {
+    /**
+     * The method loadReferencedType(int cpi, int opcode, boolean initialize) is present in
+     * HotSpotConstantPool both in the JVMCI-enabled JDK 8 (starting with JVMCI 0.47) and JDK 11,
+     * but it is not in the API (the {@link ConstantPool} interface). For JDK 11, it is also too
+     * late to change the API, so we need to invoke this method using reflection.
+     */
+    private static final Method hsLoadReferencedType;
+
+    static {
         try {
-            wrapped.loadReferencedType(cpi, opcode);
+            Class<?> hsConstantPool = Class.forName("jdk.vm.ci.hotspot.HotSpotConstantPool");
+            hsLoadReferencedType = hsConstantPool.getDeclaredMethod("loadReferencedType", int.class, int.class, boolean.class);
+            hsLoadReferencedType.setAccessible(true);
+        } catch (ReflectiveOperationException ex) {
+            throw GraalError.shouldNotReachHere("JVMCI 0.47 or later, or JDK 11 is required for Substrate VM: could not find method HotSpotConstantPool.loadReferencedType");
+        }
+    }
+
+    public static void loadReferencedType(ConstantPool cp, int cpi, int opcode, boolean initialize) {
+        ConstantPool root = cp;
+        while (root instanceof WrappedConstantPool) {
+            root = ((WrappedConstantPool) root).wrapped;
+        }
+
+        try {
+            hsLoadReferencedType.invoke(root, cpi, opcode, initialize);
+        } catch (InvocationTargetException ex) {
+            if (ex.getCause() instanceof java.lang.BootstrapMethodError) {
+                /*
+                 * This can happen when JVMCI tries to resolve a invoke dyanmic target on a ghost
+                 * type. We ignore the exception. JVMCI should just swallow this exception at this
+                 * point and return an UnresolvedJavaMethod at a later stage.
+                 */
+            } else {
+                throw new UnsupportedFeatureException("Error loading a referenced type: " + ex.toString(), ex);
+            }
         } catch (Throwable ex) {
             Throwable cause = ex;
             if (ex instanceof ExceptionInInitializerError && ex.getCause() != null) {
@@ -65,6 +102,11 @@ public class WrappedConstantPool implements ConstantPool {
             }
             throw new UnsupportedFeatureException("Error loading a referenced type: " + cause.toString(), cause);
         }
+    }
+
+    @Override
+    public void loadReferencedType(int cpi, int opcode) {
+        loadReferencedType(wrapped, cpi, opcode, false);
     }
 
     @Override

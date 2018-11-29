@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -247,7 +247,11 @@ public final class CommitAllocationNode extends FixedWithNextNode implements Vir
         List<VirtualObjectNode> v = getVirtualObjects();
         int fieldWriteCount = 0;
         for (int i = 0; i < v.size(); i++) {
-            fieldWriteCount += v.get(i).entryCount();
+            VirtualObjectNode node = v.get(i);
+            if (node == null) {
+                return CYCLES_UNKNOWN;
+            }
+            fieldWriteCount += node.entryCount();
         }
         int rawValueWrites = NodeCycles.compute(WriteNode.TYPE.cycles(), fieldWriteCount).value;
         int rawValuesTlabBumps = AbstractNewObjectNode.TYPE.cycles().value;
@@ -259,7 +263,11 @@ public final class CommitAllocationNode extends FixedWithNextNode implements Vir
         List<VirtualObjectNode> v = getVirtualObjects();
         int fieldWriteCount = 0;
         for (int i = 0; i < v.size(); i++) {
-            fieldWriteCount += v.get(i).entryCount();
+            VirtualObjectNode node = v.get(i);
+            if (node == null) {
+                return SIZE_UNKNOWN;
+            }
+            fieldWriteCount += node.entryCount();
         }
         int rawValueWrites = NodeSize.compute(WriteNode.TYPE.size(), fieldWriteCount).value;
         int rawValuesTlabBumps = AbstractNewObjectNode.TYPE.size().value;

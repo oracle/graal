@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -81,25 +81,31 @@ public class AMD64FrameMap extends FrameMap {
     private StackSlot rbpSpillSlot;
 
     public AMD64FrameMap(CodeCacheProvider codeCache, RegisterConfig registerConfig, ReferenceMapBuilderFactory referenceMapFactory) {
+        this(codeCache, registerConfig, referenceMapFactory, false);
+    }
+
+    public AMD64FrameMap(CodeCacheProvider codeCache, RegisterConfig registerConfig, ReferenceMapBuilderFactory referenceMapFactory, boolean useBasePointer) {
         super(codeCache, registerConfig, referenceMapFactory);
         // (negative) offset relative to sp + total frame size
-        initialSpillSize = returnAddressSize();
+        initialSpillSize = returnAddressSize() + (useBasePointer ? getTarget().arch.getWordSize() : 0);
         spillSize = initialSpillSize;
     }
 
     @Override
     public int totalFrameSize() {
-        return frameSize() + returnAddressSize();
+        int result = frameSize() + initialSpillSize;
+        assert result % getTarget().stackAlignment == 0 : "Total frame size not aligned: " + result;
+        return result;
     }
 
     @Override
     public int currentFrameSize() {
-        return alignFrameSize(outgoingSize + spillSize - returnAddressSize());
+        return alignFrameSize(outgoingSize + spillSize - initialSpillSize);
     }
 
     @Override
     protected int alignFrameSize(int size) {
-        return NumUtil.roundUp(size + returnAddressSize(), getTarget().stackAlignment) - returnAddressSize();
+        return NumUtil.roundUp(size + initialSpillSize, getTarget().stackAlignment) - initialSpillSize;
     }
 
     @Override

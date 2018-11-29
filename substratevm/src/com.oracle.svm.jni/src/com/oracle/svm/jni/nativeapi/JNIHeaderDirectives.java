@@ -35,6 +35,6 @@ public class JNIHeaderDirectives implements CContext.Directives {
 
     @Override
     public List<String> getHeaderFiles() {
-        return Collections.singletonList(ProjectHeaderFile.resolve("com.oracle.svm.native", "include/jni.h"));
+        return Collections.singletonList(ProjectHeaderFile.resolve("com.oracle.svm.native.jni", "include/jni.h"));
     }
 }

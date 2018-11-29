@@ -1,39 +1,65 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * The Universal Permissive License (UPL), Version 1.0
  *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
  *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ * (a) the Software, and
  *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 package com.oracle.truffle.api.dsl.test;
+
+import static com.oracle.truffle.api.dsl.test.TestHelper.getSlowPathCount;
+import static com.oracle.truffle.api.dsl.test.TestHelper.instrumentSlowPath;
+import static org.junit.Assert.assertEquals;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.TypeSystem;
+import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.DoubleEvaluatedNodeFactory;
 import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.EvaluatedNodeFactory;
 import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.TestEvaluatedGenerationFactory;
+import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.TestEvaluatedImplicitCast0NodeGen;
+import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.TestEvaluatedImplicitCast1NodeGen;
+import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.TestEvaluatedImplicitCast2NodeGen;
 import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.TestEvaluatedVarArgs0Factory;
 import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.TestEvaluatedVarArgs1Factory;
 import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.TestEvaluatedVarArgs2Factory;
@@ -58,8 +84,8 @@ public class ExecuteEvaluatedTest {
         ArgumentNode arg0 = new ArgumentNode(0);
         CallTarget callTarget = TestHelper.createCallTarget(UseEvaluatedNodeFactory.create(arg0, EvaluatedNodeFactory.create(null)));
 
-        Assert.assertEquals(43, callTarget.call(new Object[]{42}));
-        Assert.assertEquals(1, arg0.getInvocationCount());
+        assertEquals(43, callTarget.call(new Object[]{42}));
+        assertEquals(1, arg0.getInvocationCount());
     }
 
     @NodeChild("exp")
@@ -91,9 +117,9 @@ public class ExecuteEvaluatedTest {
         ArgumentNode arg1 = new ArgumentNode(1);
         CallTarget callTarget = TestHelper.createCallTarget(UseDoubleEvaluated1NodeFactory.create(arg0, arg1, DoubleEvaluatedNodeFactory.create(null, null)));
 
-        Assert.assertEquals(42, callTarget.call(new Object[]{43, 1}));
-        Assert.assertEquals(1, arg0.getInvocationCount());
-        Assert.assertEquals(1, arg1.getInvocationCount());
+        assertEquals(42, callTarget.call(new Object[]{43, 1}));
+        assertEquals(1, arg0.getInvocationCount());
+        assertEquals(1, arg1.getInvocationCount());
     }
 
     @NodeChildren({@NodeChild("exp0"), @NodeChild("exp1")})
@@ -125,9 +151,9 @@ public class ExecuteEvaluatedTest {
         ArgumentNode arg1 = new ArgumentNode(1);
         CallTarget callTarget = TestHelper.createCallTarget(UseDoubleEvaluated2NodeFactory.create(arg0, arg1, DoubleEvaluatedNodeFactory.create(null, null)));
 
-        Assert.assertEquals(42, callTarget.call(new Object[]{1, 43}));
-        Assert.assertEquals(1, arg0.getInvocationCount());
-        Assert.assertEquals(1, arg1.getInvocationCount());
+        assertEquals(42, callTarget.call(new Object[]{1, 43}));
+        assertEquals(1, arg0.getInvocationCount());
+        assertEquals(1, arg1.getInvocationCount());
     }
 
     @NodeChildren({@NodeChild("exp0"), @NodeChild("exp1"), @NodeChild(value = "exp2", type = DoubleEvaluatedNode.class, executeWith = {"exp1", "exp0"})})
@@ -144,10 +170,10 @@ public class ExecuteEvaluatedTest {
     public void testEvaluatedGeneration() throws UnexpectedResultException {
         TestRootNode<TestEvaluatedGeneration> root = TestHelper.createRoot(TestEvaluatedGenerationFactory.getInstance());
 
-        Assert.assertEquals(42, root.getNode().executeEvaluated1(null, 42));
-        Assert.assertEquals(42, root.getNode().executeEvaluated2(null, 42));
-        Assert.assertEquals(42, root.getNode().executeEvaluated3(null, 42));
-        Assert.assertEquals(42, root.getNode().executeEvaluated4(null, 42));
+        assertEquals(42, root.getNode().executeEvaluated1(null, 42));
+        assertEquals(42, root.getNode().executeEvaluated2(null, 42));
+        assertEquals(42, root.getNode().executeEvaluated3(null, 42));
+        assertEquals(42, root.getNode().executeEvaluated4(null, 42));
     }
 
     @NodeChildren({@NodeChild("exp0")})
@@ -170,7 +196,7 @@ public class ExecuteEvaluatedTest {
     @Test
     public void test0VarArgs1() {
         TestRootNode<TestEvaluatedVarArgs0> root = TestHelper.createRoot(TestEvaluatedVarArgs0Factory.getInstance());
-        Assert.assertEquals(42, root.getNode().execute1(null));
+        assertEquals(42, root.getNode().execute1(null));
     }
 
     abstract static class TestEvaluatedVarArgs0 extends ChildrenNode {
@@ -191,7 +217,7 @@ public class ExecuteEvaluatedTest {
     @Test
     public void test1VarArgs1() {
         TestRootNode<TestEvaluatedVarArgs1> root = TestHelper.createRoot(TestEvaluatedVarArgs1Factory.getInstance());
-        Assert.assertEquals(42, root.getNode().execute1(null, 42));
+        assertEquals(42, root.getNode().execute1(null, 42));
     }
 
     @Test(expected = Throwable.class)
@@ -213,7 +239,7 @@ public class ExecuteEvaluatedTest {
     @Test
     public void test2VarArgs1() {
         TestRootNode<TestEvaluatedVarArgs2> root = TestHelper.createRoot(TestEvaluatedVarArgs2Factory.getInstance());
-        Assert.assertEquals(42, root.getNode().execute1(null, 21, 21));
+        assertEquals(42, root.getNode().execute1(null, 21, 21));
     }
 
     @Test(expected = Throwable.class)
@@ -241,7 +267,7 @@ public class ExecuteEvaluatedTest {
     @Test
     public void test3VarArgs1() {
         TestRootNode<TestEvaluatedVarArgs3> root = TestHelper.createRoot(TestEvaluatedVarArgs3Factory.getInstance());
-        Assert.assertEquals(42, root.getNode().execute1(null, 42));
+        assertEquals(42, root.getNode().execute1(null, 42));
     }
 
     @NodeChild
@@ -258,7 +284,7 @@ public class ExecuteEvaluatedTest {
     @Test
     public void test4VarArgs1() {
         TestRootNode<TestEvaluatedVarArgs4> root = TestHelper.createRoot(TestEvaluatedVarArgs4Factory.getInstance());
-        Assert.assertEquals(42, root.getNode().execute1(null, 21, 21));
+        assertEquals(42, root.getNode().execute1(null, 21, 21));
     }
 
     @NodeChildren({@NodeChild, @NodeChild})
@@ -275,7 +301,7 @@ public class ExecuteEvaluatedTest {
     @Test
     public void test5VarArgs1() {
         TestRootNode<TestEvaluatedVarArgs5> root = TestHelper.createRoot(TestEvaluatedVarArgs5Factory.getInstance());
-        Assert.assertEquals(42, root.getNode().execute1(null));
+        assertEquals(42, root.getNode().execute1(null));
     }
 
     abstract static class TestEvaluatedVarArgs5 extends ValueNode {
@@ -304,6 +330,147 @@ public class ExecuteEvaluatedTest {
         @Specialization
         public Object test(@SuppressWarnings("unused") final Object[] args) {
             return null;
+        }
+    }
+
+    @Test
+    public void testEvaluatedImplicitCast0() {
+        TestEvaluatedImplicitCast0Node node = TestEvaluatedImplicitCast0NodeGen.create();
+        instrumentSlowPath(node);
+
+        assertEquals(0, getSlowPathCount(node));
+        node.execute("a", 0);
+        assertEquals(1, getSlowPathCount(node));
+        node.execute("b", 0);
+        assertEquals(1, getSlowPathCount(node));
+        node.execute(42, 0);
+        assertEquals(2, getSlowPathCount(node));
+        node.execute(43, 0);
+        assertEquals(2, getSlowPathCount(node));
+    }
+
+    @TypeSystem
+    public static class TestEvaluatedImplicitCast0TypeSystem {
+
+        @ImplicitCast
+        public static int toInt(short s) {
+            return s;
+        }
+
+    }
+
+    @TypeSystemReference(TestEvaluatedImplicitCast0TypeSystem.class)
+    @SuppressWarnings("unused")
+    abstract static class TestEvaluatedImplicitCast0Node extends Node {
+
+        public abstract Object execute(Object receiver, int intValue);
+
+        @Specialization
+        public int doInt(String receiver, int intValue) {
+            return intValue;
+        }
+
+        @Specialization
+        public double doInt(Number receiver, int intValue) {
+            return intValue;
+        }
+
+    }
+
+    @Test
+    public void testEvaluatedImplicitCast1() {
+        TestEvaluatedImplicitCast1Node node = TestEvaluatedImplicitCast1NodeGen.create();
+        instrumentSlowPath(node);
+
+        assertEquals(0, getSlowPathCount(node));
+        node.execute("a", (short) 0);
+        node.execute("a", (short) 0);
+        assertEquals(1, getSlowPathCount(node));
+        node.execute("b", 0);
+        node.execute("b", 0);
+        assertEquals(2, getSlowPathCount(node));
+        node.execute(42, (short) 0);
+        node.execute(42, (short) 0);
+        assertEquals(3, getSlowPathCount(node));
+        node.execute(43, 0);
+        node.execute(43, 0);
+        assertEquals(3, getSlowPathCount(node));
+    }
+
+    @TypeSystem
+    public static class TestEvaluatedImplicitCast1TypeSystem {
+
+        @ImplicitCast
+        public static int toInt(short s) {
+            return s;
+        }
+
+    }
+
+    @TypeSystemReference(TestEvaluatedImplicitCast1TypeSystem.class)
+    @SuppressWarnings("unused")
+    abstract static class TestEvaluatedImplicitCast1Node extends Node {
+
+        public abstract Object execute(Object receiver, Object intValue);
+
+        @Specialization
+        public int doInt(String receiver, int intValue) {
+            return intValue;
+        }
+
+        @Specialization
+        public double doInt(Number receiver, int intValue) {
+            return intValue;
+        }
+
+    }
+
+    @Test
+    public void testEvaluatedImplicitCast2() {
+        TestEvaluatedImplicitCast2Node node = TestEvaluatedImplicitCast2NodeGen.create();
+        instrumentSlowPath(node);
+
+        assertEquals(0, getSlowPathCount(node));
+        node.execute("a", (short) 0);
+        node.execute("a", (short) 0);
+        assertEquals(1, getSlowPathCount(node));
+        node.execute("b", 0);
+        node.execute("b", 0);
+        assertEquals(2, getSlowPathCount(node));
+        node.execute(42, (short) 0);
+        node.execute(42, (short) 0);
+        assertEquals(3, getSlowPathCount(node));
+        node.execute("c", 0);
+        node.execute("c", 0);
+        assertEquals(3, getSlowPathCount(node));
+    }
+
+    @TypeSystem
+    public static class TestEvaluatedImplicitCast2TypeSystem {
+
+        @ImplicitCast
+        public static int toInt(short s) {
+            return s;
+        }
+
+    }
+
+    @TypeSystemReference(TestEvaluatedImplicitCast2TypeSystem.class)
+    @SuppressWarnings("unused")
+    abstract static class TestEvaluatedImplicitCast2Node extends Node {
+
+        public abstract Object execute(Object receiver, short intValue);
+
+        public abstract Object execute(Object receiver, int intValue);
+
+        @Specialization
+        public String doInt(String receiver, int intValue) {
+            return "int";
+        }
+
+        @Specialization
+        public String doShort(Number receiver, short intValue) {
+            return "short";
         }
     }
 

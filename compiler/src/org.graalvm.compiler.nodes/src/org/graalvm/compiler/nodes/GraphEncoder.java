@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -436,10 +436,13 @@ public class GraphEncoder {
     @SuppressWarnings("try")
     public static boolean verifyEncoding(StructuredGraph originalGraph, EncodedGraph encodedGraph, Architecture architecture) {
         DebugContext debug = originalGraph.getDebug();
-        StructuredGraph decodedGraph = new StructuredGraph.Builder(originalGraph.getOptions(), debug, AllowAssumptions.YES).method(originalGraph.method()).build();
-        if (originalGraph.trackNodeSourcePosition()) {
-            decodedGraph.setTrackNodeSourcePosition();
-        }
+        // @formatter:off
+        StructuredGraph decodedGraph = new StructuredGraph.Builder(originalGraph.getOptions(), debug, AllowAssumptions.YES).
+                        method(originalGraph.method()).
+                        setIsSubstitution(originalGraph.isSubstitution()).
+                        trackNodeSourcePosition(originalGraph.trackNodeSourcePosition()).
+                        build();
+        // @formatter:off
         GraphDecoder decoder = new GraphDecoder(architecture, decodedGraph);
         decoder.decode(encodedGraph);
 

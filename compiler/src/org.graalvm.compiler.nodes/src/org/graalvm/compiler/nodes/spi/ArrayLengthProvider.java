@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.nodes.spi;
 
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.ValueProxyNode;
@@ -65,5 +66,5 @@ public interface ArrayLengthProvider {
      *
      * This method should not be called directly. Use {@link GraphUtil#arrayLength} instead.
      */
-    ValueNode findLength(FindLengthMode mode);
+    ValueNode findLength(FindLengthMode mode, ConstantReflectionProvider constantReflection);
 }

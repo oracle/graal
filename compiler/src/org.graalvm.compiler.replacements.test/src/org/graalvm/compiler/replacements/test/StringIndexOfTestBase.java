@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,13 +24,13 @@
  */
 package org.graalvm.compiler.replacements.test;
 
-import java.util.ArrayList;
-import java.util.Collection;
-
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+
+import java.util.ArrayList;
+import java.util.Collection;
 
 @RunWith(value = Parameterized.class)
 public abstract class StringIndexOfTestBase extends GraalCompilerTest {
@@ -41,6 +41,13 @@ public abstract class StringIndexOfTestBase extends GraalCompilerTest {
     public static Collection<Object[]> data() {
         ArrayList<Object[]> tests = new ArrayList<>();
         String[] targets = new String[]{"foobar", "foo", "bar"};
+        String[] utf16targets = new String[]{"grga " + ((char) 0x10D) + "varak", "grga", ((char) 0x10D) + "varak"};
+        addTargets(tests, targets);
+        addTargets(tests, utf16targets);
+        return tests;
+    }
+
+    private static void addTargets(ArrayList<Object[]> tests, String[] targets) {
         for (String source : targets) {
             for (String target : targets) {
                 tests.add(new Object[]{source, target});
@@ -60,7 +67,6 @@ public abstract class StringIndexOfTestBase extends GraalCompilerTest {
                 tests.add(new Object[]{s.substring(0, s.length() - 1) + s, s});
             }
         }
-        return tests;
     }
 
     public int testStringIndexOf(String a, String b) {

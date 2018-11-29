@@ -135,13 +135,18 @@ public final class PthreadVMLockSupport {
      * Must be called once early during startup, before any mutex or condition is used.
      */
     @Uninterruptible(reason = "Called from uninterruptible code. Too early for safepoints.")
-    public static void initialize() {
+    public static boolean initialize() {
         for (PthreadVMMutex mutex : ImageSingletons.lookup(PthreadVMLockSupport.class).mutexes) {
-            checkResult(Pthread.pthread_mutex_init(mutex.getStructPointer(), WordFactory.nullPointer()), "pthread_mutex_init");
+            if (Pthread.pthread_mutex_init(mutex.getStructPointer(), WordFactory.nullPointer()) != 0) {
+                return false;
+            }
         }
         for (PthreadVMCondition condition : ImageSingletons.lookup(PthreadVMLockSupport.class).conditions) {
-            checkResult(PthreadConditionUtils.initCondition(condition.getStructPointer()), "pthread_cond_init");
+            if (PthreadConditionUtils.initCondition(condition.getStructPointer()) != 0) {
+                return false;
+            }
         }
+        return true;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", calleeMustBe = false)
@@ -227,7 +232,7 @@ final class PthreadVMCondition extends VMCondition {
 
     @Override
     public long block(long waitNanos) {
-        Time.timespec deadlineTimespec = StackValue.get(SizeOf.get(Time.timespec.class));
+        Time.timespec deadlineTimespec = StackValue.get(Time.timespec.class);
         PthreadConditionUtils.delayNanosToDeadlineTimespec(waitNanos, deadlineTimespec);
 
         final int timedwaitResult = Pthread.pthread_cond_timedwait(getStructPointer(), ((PthreadVMMutex) getMutex()).getStructPointer(), deadlineTimespec);
@@ -243,7 +248,7 @@ final class PthreadVMCondition extends VMCondition {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public long blockNoTransition(long waitNanos) {
-        Time.timespec deadlineTimespec = StackValue.get(SizeOf.get(Time.timespec.class));
+        Time.timespec deadlineTimespec = StackValue.get(Time.timespec.class);
         PthreadConditionUtils.delayNanosToDeadlineTimespec(waitNanos, deadlineTimespec);
 
         final int timedwaitResult = Pthread.pthread_cond_timedwait_no_transition(getStructPointer(), ((PthreadVMMutex) getMutex()).getStructPointer(), deadlineTimespec);

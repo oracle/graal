@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -118,6 +118,7 @@ public class PartialEscapeAnalysisTest extends EATestBase {
         testPartialEscapeAnalysis("test3Snippet", 0.5, 1, StoreFieldNode.class, LoadFieldNode.class);
     }
 
+    @SuppressWarnings("deprecation")
     public static Object test3Snippet(int a) {
         if (a < 0) {
             TestObject obj = new TestObject(1, 2);
@@ -292,14 +293,14 @@ public class PartialEscapeAnalysisTest extends EATestBase {
             Assert.assertTrue("partial escape analysis should have removed all NewArrayNode allocations", graph.getNodes().filter(NewArrayNode.class).isEmpty());
 
             ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, false, false);
-            double probabilitySum = 0;
+            double frequencySum = 0;
             int materializeCount = 0;
             for (CommitAllocationNode materialize : graph.getNodes().filter(CommitAllocationNode.class)) {
-                probabilitySum += cfg.blockFor(materialize).probability() * materialize.getVirtualObjects().size();
+                frequencySum += cfg.blockFor(materialize).getRelativeFrequency() * materialize.getVirtualObjects().size();
                 materializeCount += materialize.getVirtualObjects().size();
             }
             Assert.assertEquals("unexpected number of MaterializeObjectNodes", expectedCount, materializeCount);
-            Assert.assertEquals("unexpected probability of MaterializeObjectNodes", expectedProbability, probabilitySum, 0.01);
+            Assert.assertEquals("unexpected frequency of MaterializeObjectNodes", expectedProbability, frequencySum, 0.01);
             for (Node node : graph.getNodes()) {
                 for (Class<? extends Node> clazz : invalidNodeClasses) {
                     Assert.assertFalse("instance of invalid class: " + clazz.getSimpleName(), clazz.isInstance(node) && node.usages().isNotEmpty());

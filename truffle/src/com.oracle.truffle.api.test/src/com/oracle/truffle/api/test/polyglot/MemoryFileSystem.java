@@ -2,25 +2,41 @@
  * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * The Universal Permissive License (UPL), Version 1.0
  *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
  *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ * (a) the Software, and
  *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 package com.oracle.truffle.api.test.polyglot;
 
@@ -49,7 +65,9 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileTime;
+import java.nio.file.attribute.GroupPrincipal;
 import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.UserPrincipal;
 import java.util.AbstractMap;
 import java.util.Arrays;
 import java.util.Collection;
@@ -70,7 +88,7 @@ final class MemoryFileSystem implements FileSystem {
     private final Map<Long, FileInfo> inodes;
     private final Map<Long, byte[]> blocks;
     private final Path root;
-    private Path userDir;
+    private volatile Path userDir;
     private long nextInode = 0;
 
     MemoryFileSystem() throws IOException {
@@ -79,10 +97,6 @@ final class MemoryFileSystem implements FileSystem {
         root = Paths.get("/");
         userDir = root;
         createDirectoryImpl();
-    }
-
-    void setUserDir(final Path newUserDir) {
-        userDir = newUserDir;
     }
 
     @Override
@@ -322,6 +336,12 @@ final class MemoryFileSystem implements FileSystem {
             return path;
         }
         return userDir.resolve(path);
+    }
+
+    @Override
+    public void setCurrentWorkingDirectory(Path currentWorkingDirectory) {
+        Objects.requireNonNull(currentWorkingDirectory, "Current working directory must be non null.");
+        this.userDir = currentWorkingDirectory;
     }
 
     @Override
@@ -596,6 +616,8 @@ final class MemoryFileSystem implements FileSystem {
 
     private static final class PermissionsAttributes extends BasicFileAttributes {
         private static final String ATTR_PERMISSIONS = "permissions";
+        private static final String ATTR_OWNER = "owner";
+        private static final String ATTR_GROUP = "group";
 
         PermissionsAttributes(long inode, FileInfo fileInfo, int size) {
             super(inode, fileInfo, size);
@@ -605,6 +627,8 @@ final class MemoryFileSystem implements FileSystem {
         Set<String> getSupportedKeys() {
             final Set<String> base = super.getSupportedKeys();
             base.add(ATTR_PERMISSIONS);
+            base.add(ATTR_OWNER);
+            base.add(ATTR_GROUP);
             return base;
         }
 
@@ -622,6 +646,30 @@ final class MemoryFileSystem implements FileSystem {
                     result.add(PosixFilePermission.OWNER_EXECUTE);
                 }
                 return result;
+            } else if (ATTR_OWNER.equals(key)) {
+                return new UserPrincipal() {
+                    @Override
+                    public String getName() {
+                        return "";
+                    }
+
+                    @Override
+                    public int hashCode() {
+                        return 0;
+                    }
+                };
+            } else if (ATTR_GROUP.equals(key)) {
+                return new GroupPrincipal() {
+                    @Override
+                    public String getName() {
+                        return "";
+                    }
+
+                    @Override
+                    public int hashCode() {
+                        return 0;
+                    }
+                };
             }
             return super.getValue(key);
         }

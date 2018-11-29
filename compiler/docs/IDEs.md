@@ -39,21 +39,22 @@ To make IntelliJ work the same way as Eclipse with respect to Problems View and 
 ### Eclipse
 This section describes how to set up Eclipse for Graal development. For convenience, `$GRAAL` denotes your local Graal repository.
 
-Eclipse can be downloaded [here](http://download.eclipse.org/eclipse/downloads/). The currently supported version for Graal development is 4.5.2.
+Eclipse can be downloaded [here](http://download.eclipse.org/eclipse/downloads/). The currently recommended version for Graal development is 4.7.3a ("Oxygen").
 
-Once you have installed Eclipse, if you have multiple Java versions on your computer, you should edit [eclipse.ini](http://wiki.eclipse.org/Eclipse.ini) to [specify the JVM](http://wiki.eclipse.org/Eclipse.ini#Specifying_the_JVM) that Eclipse will be run with. It must be run with a JDK 8 VM. For example:
+Once you have installed Eclipse, if you have multiple Java versions on your computer, you should edit [eclipse.ini](http://wiki.eclipse.org/Eclipse.ini) to [specify the JVM](http://wiki.eclipse.org/Eclipse.ini#Specifying_the_JVM) that Eclipse will be run with. It must be run with a JDK 9 or later VM. For example:
 ```
 -vm
-/usr/lib/jvm/jdk1.8.0/bin/java
+/usr/lib/jvm/jdk-9.0.4/bin/java
 ```
 
 When first launching Eclipse, you should create a new workspace for Graal development. Select the parent of  `$GRAAL` as the workspace as you will also be importing projects from the suites that Graal depends on.
 
-The configurations created by the `mx eclipseinit` command binds projects to Execution Environments corresponding to the Java compliance level of the projects. You need to configure these Execution Environments as follows:
+The configurations created by the `mx eclipseinit` command binds projects to Execution Environments or JREs corresponding to the Java compliance level of the projects. You need to configure these Execution Environments and JREs as follows:
 
 1. From the main menu bar, select **Window > Preferences**.
-2. On the left, select **Java > Installed JREs > Execution Environments**
-3. Configure the **JavaSE-1.8** environments to refer to a 1.8 JRE. You may need to first add any missing JRE.
+2. On the left, select **Java > Installed JREs**
+3. Ensure there is an installed JRE with the name `jdk-11`.
+4. Select **Execution Environments** and configure the **JavaSE-1.8** environment.
 4. Click **OK**
 
 Run `mx eclipseinit` to create the Eclipse project configurations for all the Java projects then use the **Import Wizard** to import the created/updated projects:
@@ -66,6 +67,6 @@ Run `mx eclipseinit` to create the Eclipse project configurations for all the Ja
 
 Any time Eclipse updates a class file needed by the Graal runtime, the updated classes are automatically deployed to the right place so that the next execution of the VM will see the changes.
 
-> Occasionally, a new Eclipse project is added to Graal.  This usually results in an Eclipse error message indicating that a project is missing another required Java project. To handle this, you simply need repeat the steps above for importing projects.
+> After updating your Graal sources and re-running `mx eclipseint`, a new Eclipse projects made be created and old ones removed. This usually results in an Eclipse error message indicating that a project is missing another required Java project. To handle this, you simply need repeat the steps above for importing projects.
 
 In order to debug Graal with Eclipse, you should launch Graal using the `-d` global option as described [Debugging](Debugging.md).

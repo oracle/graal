@@ -130,7 +130,7 @@ public class DiscoverableReferenceProcessing {
         /* It might be a forwarding pointer. */
         if (ObjectHeaderImpl.getObjectHeaderImpl().isForwardedHeader(header)) {
             /* If the referent got forwarded, then update the referent. */
-            final Pointer forwardedPointer = ObjectHeaderImpl.getObjectHeaderImpl().getForwardingPointer(header);
+            final Pointer forwardedPointer = ObjectHeaderImpl.getObjectHeaderImpl().getForwardingPointer(refPointer);
             dr.setReferentPointer(forwardedPointer);
             trace.string("  forwarded header: updated referent: ").hex(forwardedPointer).string("]").newline();
             return true;
@@ -221,22 +221,16 @@ public class DiscoverableReferenceProcessing {
 
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate during a collection.")
         static void distributeReferences() {
-            final Log trace = Log.noopLog().string("[FeebleReferenceScatterer.distributeReferences:").newline();
+            final Log trace = Log.noopLog().string("[DiscoverableReferenceProcessing.Scatterer.distributeReferences:").newline();
             /*
              * Walk down the discovered references looking for FeebleReferences, and put them on
-             * their lists.
+             * their lists, if any.
              */
             for (DiscoverableReference dr = DiscoverableReferenceProcessing.getDiscoveredList(); dr != null; dr = dr.getNextDiscoverableReference()) {
                 trace.string("  dr: ").object(dr).newline();
-                if (dr instanceof FeebleReference) {
+                if (dr instanceof FeebleReference<?>) {
                     final FeebleReference<?> fr = (FeebleReference<?>) dr;
-                    /*
-                     * Policy choice: This clears the FeebleReference's list field when it pushes
-                     * the FeebleReference list onto the list. That means that a FeebleReference
-                     * will only be put on its list once, rather than each time it is discovered.
-                     */
                     final FeebleReferenceList<?> frList = fr.getList();
-                    fr.clearList();
                     if (frList != null) {
                         trace.string("  frList: ").object(frList).newline();
                         frList.push(fr);

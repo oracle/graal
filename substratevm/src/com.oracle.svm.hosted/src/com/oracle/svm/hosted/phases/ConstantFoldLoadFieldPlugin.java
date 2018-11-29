@@ -32,6 +32,7 @@ import org.graalvm.compiler.nodes.util.ConstantFoldUtil;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.hosted.ClassInitializationFeature;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -79,6 +80,9 @@ public final class ConstantFoldLoadFieldPlugin implements NodePlugin {
                 }
                 sValue.setRoot(root);
             }
+
+            assert !ClassInitializationFeature.singleton().shouldInitializeAtRuntime(field.getDeclaringClass()) ||
+                            value.isDefaultForKind() : "Fields in classes that are marked for initialization at run time must not be constant folded, unless they are not written in the static initializer, i.e., have the default value";
 
             result = b.getGraph().unique(result);
             b.push(field.getJavaKind(), result);

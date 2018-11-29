@@ -34,6 +34,7 @@ import static com.oracle.svm.core.posix.headers.Unistd.write;
 import java.io.FileDescriptor;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.SyncFailedException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -43,7 +44,6 @@ import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
@@ -55,8 +55,11 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.CompilerCommandPlugin;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.jdk.JDK9OrLater;
 import com.oracle.svm.core.jdk.RuntimeFeature;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.posix.headers.Dlfcn;
@@ -174,6 +177,33 @@ public class PosixUtils {
     private static final class Target_java_io_FileDescriptor {
 
         @Alias int fd;
+
+        /* jdk/src/solaris/native/java/io/FileDescriptor_md.c */
+        // 53 JNIEXPORT void JNICALL
+        // 54 Java_java_io_FileDescriptor_sync(JNIEnv *env, jobject this) {
+        @Substitute
+        public /* native */ void sync() throws SyncFailedException {
+            // 55 FD fd = THIS_FD(this);
+            // 56 if (IO_Sync(fd) == -1) {
+            if (Unistd.fsync(fd) == -1) {
+                // 57 JNU_ThrowByName(env, "java/io/SyncFailedException", "sync failed");
+                throw new SyncFailedException("sync failed");
+            }
+        }
+
+        @Substitute //
+        @TargetElement(onlyWith = JDK9OrLater.class) //
+        @SuppressWarnings({"unused"})
+        private static /* native */ boolean getAppend(int fd) {
+            throw VMError.unsupportedFeature("JDK9OrLater: Target_java_io_FileDescriptor.getAppend");
+        }
+
+        @Substitute //
+        @TargetElement(onlyWith = JDK9OrLater.class) //
+        @SuppressWarnings({"unused", "static-method"})
+        private /* native */ void close0() throws IOException {
+            throw VMError.unsupportedFeature("JDK9OrLater: Target_java_io_FileDescriptor.close0");
+        }
     }
 
     public static int getFD(FileDescriptor descriptor) {
@@ -184,9 +214,15 @@ public class PosixUtils {
         KnownIntrinsics.unsafeCast(descriptor, Target_java_io_FileDescriptor.class).fd = fd;
     }
 
-    static String lastErrorString(String defaultMsg) {
-        String result = "";
+    /** Return the error string for the last error, or a default message. */
+    public static String lastErrorString(String defaultMsg) {
         int errno = Errno.errno();
+        return errorString(errno, defaultMsg);
+    }
+
+    /** Return the error string for the given error number, or a default message. */
+    public static String errorString(int errno, String defaultMsg) {
+        String result = "";
         if (errno != 0) {
             result = CTypeConversion.toJavaString(Errno.strerror(errno));
         }
@@ -242,7 +278,7 @@ public class PosixUtils {
     }
 
     static int readSingle(FileDescriptor fd) throws IOException {
-        CCharPointer retPtr = StackValue.get(SizeOf.get(CCharPointer.class));
+        CCharPointer retPtr = StackValue.get(CCharPointer.class);
         int handle = PosixUtils.getFDHandle(fd);
         SignedWord nread = read(handle, retPtr, WordFactory.unsigned(1));
         if (nread.equal(0)) {
@@ -302,7 +338,7 @@ public class PosixUtils {
             throw new IOException("Stream Closed");
         }
 
-        CCharPointer bufPtr = StackValue.get(SizeOf.get(CCharPointer.class));
+        CCharPointer bufPtr = StackValue.get(CCharPointer.class);
         bufPtr.write((byte) b);
         // the append parameter is disregarded
         n = write(handle, bufPtr, WordFactory.unsigned(1));

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,7 +36,6 @@ import org.graalvm.compiler.options.OptionValues;
 import org.junit.Test;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntimeProvider;
 
 /**
  * Tests {@link CompileTheWorld} functionality.
@@ -48,7 +47,7 @@ public class CompileTheWorldTest extends GraalCompilerTest {
         ExceptionAction originalBailoutAction = CompilationBailoutAction.getValue(getInitialOptions());
         ExceptionAction originalFailureAction = CompilationFailureAction.getValue(getInitialOptions());
         // Compile a couple classes in rt.jar
-        HotSpotJVMCIRuntimeProvider runtime = HotSpotJVMCIRuntime.runtime();
+        HotSpotJVMCIRuntime runtime = HotSpotJVMCIRuntime.runtime();
         System.setProperty("CompileTheWorld.LimitModules", "java.base");
         OptionValues initialOptions = getInitialOptions();
         EconomicMap<OptionKey<?>, Object> compilationOptions = CompileTheWorld.parseOptions("Inline=false");

@@ -30,6 +30,7 @@ import java.util.BitSet;
 import java.util.TreeMap;
 
 import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
 import org.graalvm.compiler.options.Option;
@@ -127,16 +128,17 @@ public class CodeInfoEncoder {
 
     public void addMethod(SharedMethod method, CompilationResult compilation, int compilationOffset) {
         int totalFrameSize = compilation.getTotalFrameSize();
+        int encodedFrameSize = method.isEntryPoint() ? CodeInfoQueryResult.ENTRY_POINT_FRAME_SIZE : totalFrameSize;
 
         /* Mark the method start and register the frame size. */
         IPData startEntry = makeEntry(compilationOffset);
-        startEntry.frameSizeEncoding = encodeFrameSize(totalFrameSize, true);
+        startEntry.frameSizeEncoding = encodeFrameSize(encodedFrameSize, true);
 
         /* Register the frame size for all entries that are starting points for the index. */
         long entryIP = CodeInfoDecoder.lookupEntryIP(CodeInfoDecoder.indexGranularity() + compilationOffset);
         while (entryIP <= CodeInfoDecoder.lookupEntryIP(compilation.getTargetCodeSize() + compilationOffset)) {
             IPData entry = makeEntry(entryIP);
-            entry.frameSizeEncoding = encodeFrameSize(totalFrameSize, false);
+            entry.frameSizeEncoding = encodeFrameSize(encodedFrameSize, false);
             entryIP += CodeInfoDecoder.indexGranularity();
         }
 
@@ -397,9 +399,9 @@ class CodeInfoVerifier extends CodeInfoDecoder {
             int totalIP = relativeIP + compilationOffset;
             CodeInfoQueryResult codeInfo = new CodeInfoQueryResult();
             lookupCodeInfo(totalIP, codeInfo);
-            assert codeInfo.getTotalFrameSize() == compilation.getTotalFrameSize();
+            assert codeInfo.isEntryPoint() || codeInfo.getTotalFrameSize() == compilation.getTotalFrameSize();
 
-            assert lookupTotalFrameSize(totalIP) == codeInfo.getTotalFrameSize();
+            assert codeInfo.isEntryPoint() || lookupTotalFrameSize(totalIP) == codeInfo.getTotalFrameSize();
             assert lookupExceptionOffset(totalIP) == codeInfo.getExceptionOffset();
             assert lookupReferenceMapIndex(totalIP) == codeInfo.getReferenceMapIndex();
             assert getReferenceMapEncoding() == codeInfo.getReferenceMapEncoding();
@@ -503,11 +505,11 @@ class CodeInfoVerifier extends CodeInfoDecoder {
         // Kind.Object && expectedType.getObjectHub().equals(actualHub.getValue());
 
         if (expectedType.isArray()) {
-            JavaKind kind = expectedType.getComponentType().getJavaKind();
+            JavaKind kind = ((SharedType) expectedType.getComponentType()).getStorageKind();
             int expectedLength = 0;
             for (int i = 0; i < expectedObject.getValues().length; i++) {
                 JavaValue expectedValue = expectedObject.getValues()[i];
-                UnsignedWord expectedOffset = WordFactory.unsigned(objectLayout.getArrayElementOffset(expectedType.getComponentType().getJavaKind(), expectedLength));
+                UnsignedWord expectedOffset = WordFactory.unsigned(objectLayout.getArrayElementOffset(kind, expectedLength));
                 ValueInfo actualValue = findActualArrayElement(actualObject, expectedOffset);
                 verifyValue(compilation, expectedValue, actualValue, actualFrame, visitedVirtualObjects);
 
@@ -573,7 +575,7 @@ class CodeInfoVerifier extends CodeInfoDecoder {
         int curIdx = startIdx;
         while (curOffset.notEqual(expectedOffset)) {
             ValueInfo value = actualObject[curIdx];
-            curOffset = curOffset.add(objectLayout.sizeInBytes(value.getKind(), value.isCompressedReference));
+            curOffset = curOffset.add(objectLayout.sizeInBytes(value.getKind()));
             curIdx++;
         }
         assert curOffset.equal(expectedOffset);
@@ -586,9 +588,9 @@ class CollectingObjectReferenceVisitor implements ObjectReferenceVisitor {
 
     @Override
     public boolean visitObjectReference(Pointer objRef, boolean compressed) {
-        int idx = (int) (objRef.rawValue() / SubstrateReferenceMap.getSlotSizeInBytes());
-        assert !result.isIndexMarked(idx);
-        result.markReferenceAtIndex(idx, compressed);
+        int offset = NumUtil.safeToInt(objRef.rawValue());
+        assert !result.isOffsetMarked(offset);
+        result.markReferenceAtOffset(offset, compressed);
         return true;
     }
 }

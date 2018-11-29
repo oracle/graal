@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,28 +24,11 @@
  */
 package org.graalvm.compiler.serviceprovider;
 
-import static java.lang.Thread.currentThread;
-import static org.graalvm.compiler.serviceprovider.GraalServices.JMXService.jmx;
-
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Iterator;
 import java.util.List;
-import java.util.ServiceConfigurationError;
-import java.util.concurrent.atomic.AtomicLong;
 
 import jdk.vm.ci.services.JVMCIPermission;
-import jdk.vm.ci.services.Services;
-
-/*
- * Note: Avoid import statements for java.management or com.sun.management to prevent
- * mx creating a jdk.internal.vm.compiler module that `requires` the java.management
- * or jdk.management modules. The GraalServices class is replaced by a multi-release jar
- * version in JDK 9 and later which does not depend these modules.
- *
- * See also org.graalvm.compiler.serviceprovider.GraalServices.LazyJMX in the
- * org.graalvm.compiler.serviceprovider.jdk9 project.
- */
 
 /**
  * Interface to functionality that abstracts over which JDK version Graal is running on.
@@ -53,11 +36,7 @@ import jdk.vm.ci.services.Services;
 public final class GraalServices {
 
     private static int getJavaSpecificationVersion() {
-        String value = System.getProperty("java.specification.version");
-        if (value.startsWith("1.")) {
-            value = value.substring(2);
-        }
-        return Integer.parseInt(value);
+        throw shouldNotReachHere();
     }
 
     /**
@@ -71,18 +50,27 @@ public final class GraalServices {
      */
     public static final boolean Java8OrEarlier = JAVA_SPECIFICATION_VERSION <= 8;
 
+    /**
+     * Determines if the Java runtime is version 11 or earlier.
+     */
+    public static final boolean Java11OrEarlier = JAVA_SPECIFICATION_VERSION <= 11;
+
     private GraalServices() {
+    }
+
+    private static InternalError shouldNotReachHere() {
+        throw new InternalError("JDK specific overlay missing");
     }
 
     /**
      * Gets an {@link Iterable} of the providers available for a given service.
      *
+     * @param service the service whose provider is being requested
      * @throws SecurityException if on JDK8 and a security manager is present and it denies
      *             {@link JVMCIPermission}
      */
     public static <S> Iterable<S> load(Class<S> service) {
-        assert !service.getName().startsWith("jdk.vm.ci") : "JVMCI services must be loaded via " + Services.class.getName();
-        return Services.load(service);
+        throw shouldNotReachHere();
     }
 
     /**
@@ -96,123 +84,45 @@ public final class GraalServices {
      *             {@link JVMCIPermission}
      */
     public static <S> S loadSingle(Class<S> service, boolean required) {
-        assert !service.getName().startsWith("jdk.vm.ci") : "JVMCI services must be loaded via " + Services.class.getName();
-        Iterable<S> providers = load(service);
-        S singleProvider = null;
-        try {
-            for (Iterator<S> it = providers.iterator(); it.hasNext();) {
-                singleProvider = it.next();
-                if (it.hasNext()) {
-                    S other = it.next();
-                    throw new InternalError(String.format("Multiple %s providers found: %s, %s", service.getName(), singleProvider.getClass().getName(), other.getClass().getName()));
-                }
-            }
-        } catch (ServiceConfigurationError e) {
-            // If the service is required we will bail out below.
-        }
-        if (singleProvider == null) {
-            if (required) {
-                throw new InternalError(String.format("No provider for %s found", service.getName()));
-            }
-        }
-        return singleProvider;
+        throw shouldNotReachHere();
     }
 
     /**
      * Gets the class file bytes for {@code c}.
+     *
+     * @param c the class for which class file bytes are being requested
+     * @return an input stream for reading the class file bytes or {@code null} if the class file
+     *         bytes could not be found
+     * @throws IOException if there's an IO error retrieving the class file bytes
      */
-    @SuppressWarnings("unused")
     public static InputStream getClassfileAsStream(Class<?> c) throws IOException {
-        String classfilePath = c.getName().replace('.', '/') + ".class";
-        ClassLoader cl = c.getClassLoader();
-        if (cl == null) {
-            return ClassLoader.getSystemResourceAsStream(classfilePath);
-        }
-        return cl.getResourceAsStream(classfilePath);
-    }
-
-    private static final ClassLoader JVMCI_LOADER = GraalServices.class.getClassLoader();
-    private static final ClassLoader JVMCI_PARENT_LOADER = JVMCI_LOADER == null ? null : JVMCI_LOADER.getParent();
-    static {
-        assert JVMCI_PARENT_LOADER == null || JVMCI_PARENT_LOADER.getParent() == null;
+        throw shouldNotReachHere();
     }
 
     /**
      * Determines if invoking {@link Object#toString()} on an instance of {@code c} will only run
      * trusted code.
+     *
+     * @param c
      */
     public static boolean isToStringTrusted(Class<?> c) {
-        ClassLoader cl = c.getClassLoader();
-        return cl == null || cl == JVMCI_LOADER || cl == JVMCI_PARENT_LOADER;
+        throw shouldNotReachHere();
     }
 
     /**
      * Gets a unique identifier for this execution such as a process ID or a
-     * {@linkplain #getGlobalTimeStamp() fixed timestamp}.
+     * {@linkplain #getGlobalTimeStamp() fixed time stamp}.
      */
     public static String getExecutionID() {
-        try {
-            String runtimeName = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
-            try {
-                int index = runtimeName.indexOf('@');
-                if (index != -1) {
-                    long pid = Long.parseLong(runtimeName.substring(0, index));
-                    return Long.toString(pid);
-                }
-            } catch (NumberFormatException e) {
-            }
-            return runtimeName;
-        } catch (LinkageError err) {
-            return String.valueOf(getGlobalTimeStamp());
-        }
+        throw shouldNotReachHere();
     }
-
-    private static final AtomicLong globalTimeStamp = new AtomicLong();
 
     /**
      * Gets a time stamp for the current process. This method will always return the same value for
      * the current VM execution.
      */
     public static long getGlobalTimeStamp() {
-        if (globalTimeStamp.get() == 0) {
-            globalTimeStamp.compareAndSet(0, System.currentTimeMillis());
-        }
-        return globalTimeStamp.get();
-    }
-
-    /**
-     * Access to thread specific information made available via Java Management Extensions (JMX).
-     */
-    public static class JMXService {
-        // In this JDK 8 specific implementation, we can reference
-        // JMX classes directly since there's no module dependencies to
-        // worry about - everything is in rt.jar.
-        private final com.sun.management.ThreadMXBean threadMXBean = (com.sun.management.ThreadMXBean) java.lang.management.ManagementFactory.getThreadMXBean();
-
-        protected long getThreadAllocatedBytes(long id) {
-            return threadMXBean.getThreadAllocatedBytes(id);
-        }
-
-        protected long getCurrentThreadCpuTime() {
-            return threadMXBean.getCurrentThreadCpuTime();
-        }
-
-        protected boolean isThreadAllocatedMemorySupported() {
-            return threadMXBean.isThreadAllocatedMemorySupported();
-        }
-
-        protected boolean isCurrentThreadCpuTimeSupported() {
-            return threadMXBean.isCurrentThreadCpuTimeSupported();
-        }
-
-        protected List<String> getInputArguments() {
-            return java.lang.management.ManagementFactory.getRuntimeMXBean().getInputArguments();
-        }
-
-        // Placing this static field in JMXService (instead of GraalServices)
-        // allows for lazy initialization.
-        static final JMXService jmx = new JMXService();
-
+        throw shouldNotReachHere();
     }
 
     /**
@@ -240,7 +150,7 @@ public final class GraalServices {
      *             measurement.
      */
     public static long getThreadAllocatedBytes(long id) {
-        return jmx.getThreadAllocatedBytes(id);
+        throw shouldNotReachHere();
     }
 
     /**
@@ -248,7 +158,7 @@ public final class GraalServices {
      * current thread.
      */
     public static long getCurrentThreadAllocatedBytes() {
-        return getThreadAllocatedBytes(currentThread().getId());
+        throw shouldNotReachHere();
     }
 
     /**
@@ -265,7 +175,7 @@ public final class GraalServices {
      *             the current thread
      */
     public static long getCurrentThreadCpuTime() {
-        return jmx.getCurrentThreadCpuTime();
+        throw shouldNotReachHere();
     }
 
     /**
@@ -273,14 +183,14 @@ public final class GraalServices {
      * measurement.
      */
     public static boolean isThreadAllocatedMemorySupported() {
-        return jmx.isThreadAllocatedMemorySupported();
+        throw shouldNotReachHere();
     }
 
     /**
      * Determines if the Java virtual machine supports CPU time measurement for the current thread.
      */
     public static boolean isCurrentThreadCpuTimeSupported() {
-        return jmx.isCurrentThreadCpuTimeSupported();
+        throw shouldNotReachHere();
     }
 
     /**
@@ -298,6 +208,6 @@ public final class GraalServices {
      * @return the input arguments to the JVM or {@code null} if they are unavailable
      */
     public static List<String> getInputArguments() {
-        return jmx.getInputArguments();
+        throw shouldNotReachHere();
     }
 }

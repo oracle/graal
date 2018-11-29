@@ -35,6 +35,7 @@ import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.ObjectFile.Element;
 import com.oracle.objectfile.ObjectFile.RelocationRecord;
+import com.oracle.objectfile.io.AssemblyBuffer;
 import com.oracle.objectfile.pecoff.PECoffObjectFile.PECoffSection;
 import com.oracle.objectfile.pecoff.PECoffObjectFile.PECoffSectionFlag;
 
@@ -157,6 +158,49 @@ public class PECoffUserDefinedSection extends PECoffSection implements ObjectFil
             ent = syms.getNullEntry();
             assert ent.isNull();
         }
+
+        AssemblyBuffer sbb = new AssemblyBuffer(bb);
+        sbb.setByteOrder(getOwner().getByteOrder());
+        sbb.pushSeek(offset);
+        /*
+         * NOTE: Windows does not support explicit addends, and inline addends are applied even
+         * during dynamic linking. So if the caller supplies an explicit addend, we turn it into an
+         * implicit one by updating our content.
+         */
+        long currentInlineAddendValue = sbb.readTruncatedLong(length);
+        long desiredInlineAddendValue;
+        if (explicitAddend != null) {
+            /*
+             * This assertion is conservatively disallowing double-addend (could
+             * "add currentValue to explicitAddend"), because that seems more likely to be a bug
+             * than a feature.
+             */
+            assert currentInlineAddendValue == 0;
+            desiredInlineAddendValue = explicitAddend;
+        } else {
+            desiredInlineAddendValue = currentInlineAddendValue;
+        }
+
+        /*
+         * One more complication: for PC-relative relocation, at least on x86-64, Coff linkers
+         * adjust the calculation to compensate for the fact that it's the *next* instruction that
+         * the PC-relative reference gets resolved against. Note that ELF doesn't do this
+         * compensation. Our interface duplicates the ELF behaviour, so we have to act against this
+         * Windows-specific fixup here, by *adding* a little to the addend. The amount we add is
+         * always the length in bytes of the relocation site (since on x86-64 the reference is
+         * always the last field in a PC-relative instruction).
+         */
+        if (k == ObjectFile.RelocationKind.PC_RELATIVE) {
+            desiredInlineAddendValue += length;
+        }
+
+        // Write the inline addend back to the buffer.
+        sbb.seek(offset);
+        sbb.writeTruncatedLong(desiredInlineAddendValue, length);
+
+        // return ByteBuffer cursor to where it was
+        sbb.pop();
+
         return rs.addEntry(this, offset, PECoffMachine.getRelocation(getOwner().getMachine(), k, length), ent, explicitAddend);
     }
 }

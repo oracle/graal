@@ -67,6 +67,7 @@ public class PECoffObjectFile extends ObjectFile {
     private SectionHeaderTable sht;
     private PECoffSymtab symtab;
     private boolean runtimeDebugInfoGeneration;
+    private String mainEntryPoint;
 
     private PECoffObjectFile(boolean runtimeDebugInfoGeneration) {
         this.runtimeDebugInfoGeneration = runtimeDebugInfoGeneration;
@@ -101,7 +102,15 @@ public class PECoffObjectFile extends ObjectFile {
     @Override
     public Symbol createDefinedSymbol(String name, Element baseSection, long position, int size, boolean isCode, boolean isGlobal) {
         PECoffSymtab st = createSymbolTable();
-        return st.newDefinedEntry(name, (Section) baseSection, position, size, isGlobal, isCode);
+        String symName = name;
+
+        // Windows doesn't have symbol aliases, change the entrypoint symbol name to "main"
+        if (mainEntryPoint != null) {
+            if (mainEntryPoint.equals(symName)) {
+                symName = "main";
+            }
+        }
+        return st.newDefinedEntry(symName, (Section) baseSection, position, size, isGlobal, isCode);
     }
 
     @Override
@@ -176,8 +185,12 @@ public class PECoffObjectFile extends ObjectFile {
             boolean flagsCompatible = PECoffSectionFlag.getMemSegmentFlags(es1.getFlags()) == PECoffSectionFlag.getMemSegmentFlags(es2.getFlags());
 
             return flagsCompatible && super.elementsCanSharePage(es1, es2, off1, off2);
+        } else if (s1 instanceof PECoffSection || s2 instanceof PECoffSection) {
+            // If one element is a PECoffSection then don't share pages.
+            // Could try to share READ only PECoffSections with reloctab, symtab etc.
+            return false;
         } else {
-            // If this is not a PECoffSection, the page is read-only
+            // There are no PECoffSections, the page is read-only
             assert !(s1 instanceof PECoffSection);
             assert !(s2 instanceof PECoffSection);
             return true;
@@ -419,8 +432,6 @@ public class PECoffObjectFile extends ObjectFile {
          */
         public SectionHeaderTable() {
             super(".secthdrtab");
-            // assert that we do not have any other sections other than the Header
-            assert elements.sectionsCount() == 1;
         }
 
         @Override
@@ -587,6 +598,11 @@ public class PECoffObjectFile extends ObjectFile {
     @Override
     public void setByteOrder(ByteOrder byteorder) {
         byteOrder = byteorder;
+    }
+
+    @Override
+    public void setMainEntryPoint(String name) {
+        mainEntryPoint = name;
     }
 
     public static ByteOrder getTargetByteOrder() {

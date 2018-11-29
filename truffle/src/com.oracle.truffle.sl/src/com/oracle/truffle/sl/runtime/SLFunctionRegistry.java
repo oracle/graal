@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -96,6 +96,10 @@ public final class SLFunctionRegistry {
 
     public void register(Source newFunctions) {
         register(SimpleLanguageParser.parseSL(language, newFunctions));
+    }
+
+    public SLFunction getFunction(String name) {
+        return functionsObject.functions.get(name);
     }
 
     /**

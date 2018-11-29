@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,7 +56,6 @@ import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.BinaryOpLogicNode;
 import org.graalvm.compiler.nodes.ConditionAnchorNode;
-import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.DeoptimizingGuard;
 import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
@@ -64,6 +63,7 @@ import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.GuardNode;
 import org.graalvm.compiler.nodes.IfNode;
+import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.MergeNode;
@@ -99,6 +99,7 @@ import org.graalvm.compiler.phases.tiers.PhaseContext;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.SpeculationLog.Speculation;
 import jdk.vm.ci.meta.TriState;
 
 public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
@@ -200,7 +201,7 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
                     for (GuardNode guard : node.falseSuccessor().guards().snapshot()) {
                         GuardNode otherGuard = trueGuards.get(guard.getCondition());
                         if (otherGuard != null && guard.isNegated() == otherGuard.isNegated()) {
-                            JavaConstant speculation = otherGuard.getSpeculation();
+                            Speculation speculation = otherGuard.getSpeculation();
                             if (speculation == null) {
                                 speculation = guard.getSpeculation();
                             } else if (guard.getSpeculation() != null && guard.getSpeculation() != speculation) {
@@ -334,11 +335,18 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
                 if (result != node.isNegated()) {
                     node.replaceAndDelete(guard.asNode());
                 } else {
-                    DeoptimizeNode deopt = node.graph().add(new DeoptimizeNode(node.getAction(), node.getReason(), node.getSpeculation()));
+                    /*
+                     * Don't kill this branch immediately because `killCFG` can have complex
+                     * implications in the presence of loops: it might replace or delete nodes in
+                     * other branches or even above the kill point. Instead of killing immediately,
+                     * just leave the graph in a state that is easy to simplify by a subsequent
+                     * canonicalizer phase.
+                     */
+                    FixedGuardNode deopt = new FixedGuardNode(LogicConstantNode.forBoolean(result, node.graph()), node.getReason(), node.getAction(), node.getSpeculation(), node.isNegated(),
+                                    node.getNodeSourcePosition());
                     AbstractBeginNode beginNode = (AbstractBeginNode) node.getAnchor();
-                    FixedNode next = beginNode.next();
-                    beginNode.setNext(deopt);
-                    GraphUtil.killCFG(next);
+                    graph.addAfterFixed(beginNode, node.graph().add(deopt));
+
                 }
                 return true;
             })) {
@@ -353,10 +361,8 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
                     GraphUtil.unlinkFixedNode(node);
                     GraphUtil.killWithUnusedFloatingInputs(node);
                 } else {
-                    DeoptimizeNode deopt = node.graph().add(new DeoptimizeNode(node.getAction(), node.getReason(), node.getSpeculation()));
-                    deopt.setStateBefore(node.stateBefore());
-                    node.replaceAtPredecessor(deopt);
-                    GraphUtil.killCFG(node);
+                    node.setCondition(LogicConstantNode.forBoolean(result, node.graph()), node.isNegated());
+                    // Don't kill this branch immediately, see `processGuard`.
                 }
                 debug.log("Kill fixed guard guard");
                 return true;
@@ -367,11 +373,10 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
 
         protected void processIf(IfNode node) {
             tryProveCondition(node.condition(), (guard, result, guardedValueStamp, newInput) -> {
+                node.setCondition(LogicConstantNode.forBoolean(result, node.graph()));
                 AbstractBeginNode survivingSuccessor = node.getSuccessor(result);
                 survivingSuccessor.replaceAtUsages(InputType.Guard, guard.asNode());
-                survivingSuccessor.replaceAtPredecessor(null);
-                node.replaceAtPredecessor(survivingSuccessor);
-                GraphUtil.killCFG(node);
+                // Don't kill the other branch immediately, see `processGuard`.
                 counterIfsKilled.increment(debug);
                 return true;
             });
@@ -523,8 +528,7 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
                                     if (input == null) {
                                         input = valueAt;
                                     }
-                                    ValueNode valueNode = graph.maybeAddOrUnique(PiNode.create(input, curBestStamp, (ValueNode) infoElement.guard));
-                                    valueAt = valueNode;
+                                    valueAt = graph.maybeAddOrUnique(PiNode.create(input, curBestStamp, (ValueNode) infoElement.guard));
                                 }
                                 newPhi.addInput(valueAt);
                             }

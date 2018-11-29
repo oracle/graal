@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.lir.phases.LIRPhase;
@@ -66,7 +67,7 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
 
     static class Options {
         // @formatter:off
-        @Option(help = "Names the Graal compiler configuration to use. If ommitted, the compiler configuration " +
+        @Option(help = "Names the Graal compiler configuration to use. If omitted, the compiler configuration " +
                        "with the highest auto-selection priority is used. To see the set of available configurations, " +
                        "supply the value 'help' to this option.", type = OptionType.Expert)
         public static final OptionKey<String> CompilerConfiguration = new OptionKey<>(null);
@@ -168,6 +169,7 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
     /**
      * @return sorted list of {@link CompilerConfigurationFactory}s
      */
+    @SuppressFBWarnings(value = "DLS_DEAD_LOCAL_STORE", justification = "false positive on dead store to `candidates`")
     private static List<CompilerConfigurationFactory> getAllCandidates() {
         List<CompilerConfigurationFactory> candidates = new ArrayList<>();
         for (CompilerConfigurationFactory candidate : GraalServices.load(CompilerConfigurationFactory.class)) {

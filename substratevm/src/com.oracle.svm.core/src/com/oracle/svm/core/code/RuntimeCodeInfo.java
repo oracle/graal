@@ -44,7 +44,6 @@ import com.oracle.svm.core.heap.PinnedAllocator;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.log.StringBuilderLog;
 import com.oracle.svm.core.option.RuntimeOptionKey;
-import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.RingBuffer;
@@ -75,6 +74,14 @@ public class RuntimeCodeInfo {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public RuntimeCodeInfo() {
+    }
+
+    /** Tear down the heap, return all allocated virtual memory chunks to VirtualMemoryProvider. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public final void tearDown() {
+        for (int i = 0; i < numMethods; i++) {
+            methodInfos[i].freeInstalledCode();
+        }
     }
 
     protected RuntimeMethodInfo lookupMethod(CodePointer ip) {
@@ -201,6 +208,16 @@ public class RuntimeCodeInfo {
          * table.
          */
         methodInfos = newMethodInfos;
+
+        if (oldMethodInfos != null) {
+            /*
+             * The old array is in a pinned chunk that probably still contains metadata for other
+             * methods that are still alive. So even though we release our allocator, the old array
+             * is not garbage collected any time soon. By clearing the object array, we make sure
+             * that we do not keep objects alive unnecessarily.
+             */
+            Arrays.fill(oldMethodInfos, null);
+        }
     }
 
     protected void invalidateMethod(RuntimeMethodInfo methodInfo) {
@@ -266,7 +283,7 @@ public class RuntimeCodeInfo {
         }
 
         methodInfo.allocator.release();
-        CommittedMemoryProvider.get().free(methodInfo.getCodeStart(), methodInfo.getCodeSize(), CommittedMemoryProvider.UNALIGNED, true);
+        methodInfo.freeInstalledCode();
 
         if (Options.TraceCodeCache.getValue()) {
             logTable();

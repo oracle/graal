@@ -1,26 +1,42 @@
 /*
- * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * The Universal Permissive License (UPL), Version 1.0
  *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
  *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ * (a) the Software, and
  *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 package com.oracle.truffle.api.debug;
 
@@ -31,6 +47,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Consumer;
 
 import org.graalvm.polyglot.Engine;
 
@@ -39,11 +56,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.impl.DebuggerInstrument;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.impl.Accessor;
-import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
-import com.oracle.truffle.api.instrumentation.LoadSourceEvent;
-import com.oracle.truffle.api.instrumentation.LoadSourceListener;
-import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.nodes.Node;
@@ -76,18 +89,12 @@ import com.oracle.truffle.api.source.Source;
  */
 public final class Debugger {
 
-    /**
-     * Name of a property that is fired when a list of breakpoints changes.
-     *
-     * @since 0.27
-     * @see #getBreakpoints()
-     * @see #addPropertyChangeListener(java.beans.PropertyChangeListener)
-     */
-    public static final String PROPERTY_BREAKPOINTS = "breakpoints";
     static final boolean TRACE = Boolean.getBoolean("truffle.debug.trace");
 
     private final Env env;
     final List<Object> propSupport = new CopyOnWriteArrayList<>();
+    private final List<Consumer<Breakpoint>> breakpointAddedListeners = new CopyOnWriteArrayList<>();
+    private final List<Consumer<Breakpoint>> breakpointRemovedListeners = new CopyOnWriteArrayList<>();
     final ObjectStructures.MessageNodes msgNodes;
     private final Set<DebuggerSession> sessions = new HashSet<>();
     private final List<Breakpoint> breakpoints = new ArrayList<>();
@@ -182,7 +189,9 @@ public final class Debugger {
         for (DebuggerSession s : ds) {
             s.install(breakpoint, true);
         }
-        BreakpointsPropertyChangeEvent.firePropertyChange(this, null, breakpoint);
+        for (Consumer<Breakpoint> listener : breakpointAddedListeners) {
+            listener.accept(breakpoint.getROWrapper());
+        }
         if (Debugger.TRACE) {
             trace("installed debugger breakpoint %s", breakpoint);
         }
@@ -195,11 +204,11 @@ public final class Debugger {
      * snapshot of breakpoints, those that were {@link Breakpoint#dispose() disposed} are not
      * included.
      * <p>
-     * It's not possible to modify state of breakpoints returned from this list, or from the
-     * associated property change events, they are not {@link Breakpoint#isModifiable() modifiable}.
-     * An attempt to modify breakpoints state using any of their set method, or an attempt to
-     * dispose such breakpoints, fails with an {@link IllegalStateException}. Use the original
-     * installed breakpoint instance to change breakpoint state or dispose the breakpoint.
+     * It's not possible to modify state of breakpoints returned from this list, or from methods on
+     * listeners, they are not {@link Breakpoint#isModifiable() modifiable}. An attempt to modify
+     * breakpoints state using any of their set method, or an attempt to dispose such breakpoints,
+     * fails with an {@link IllegalStateException}. Use the original installed breakpoint instance
+     * to change breakpoint state or dispose the breakpoint.
      *
      * @since 0.27
      * @see DebuggerSession#getBreakpoints()
@@ -228,7 +237,9 @@ public final class Debugger {
             removed = breakpoints.remove(breakpoint);
         }
         if (removed) {
-            BreakpointsPropertyChangeEvent.firePropertyChange(this, breakpoint, null);
+            for (Consumer<Breakpoint> listener : breakpointRemovedListeners) {
+                listener.accept(breakpoint.getROWrapper());
+            }
         }
         if (Debugger.TRACE) {
             trace("disposed debugger breakpoint %s", breakpoint);
@@ -236,45 +247,43 @@ public final class Debugger {
     }
 
     /**
-     * Returns a list of all loaded sources. The sources are returned in the order as they have been
-     * loaded by the languages.
+     * Add a listener that is notified when a new breakpoint is added into {@link #getBreakpoints()
+     * list of breakpoints}. The reported breakpoint is not {@link Breakpoint#isModifiable()
+     * modifiable}.
      *
-     * @return an unmodifiable list of sources
-     * @since 0.17
-     * @deprecated not very flexible, polls all sources without any notification about changes.
+     * @since 1.0
      */
-    @Deprecated
-    public List<Source> getLoadedSources() {
-        final List<Source> sources = new ArrayList<>();
-        EventBinding<?> binding = env.getInstrumenter().attachLoadSourceListener(SourceFilter.ANY, new LoadSourceListener() {
-            public void onLoad(LoadSourceEvent event) {
-                sources.add(event.getSource());
-            }
-        }, true);
-        binding.dispose();
-        return Collections.unmodifiableList(sources);
+    public void addBreakpointAddedListener(Consumer<Breakpoint> listener) {
+        breakpointAddedListeners.add(listener);
     }
 
     /**
-     * Add a property change listener that is notified when a property of this debugger changes.
+     * Remove a listener that was added by {@link #addBreakpointAddedListener(Consumer)}.
      *
-     * @since 0.27
-     * @see #PROPERTY_BREAKPOINTS
+     * @since 1.0
      */
-    public void addPropertyChangeListener(java.beans.PropertyChangeListener listener) {
-        // using FQN to avoid mx to generate dependency on java.desktop module
-        propSupport.add(listener);
+    public void removeBreakpointAddedListener(Consumer<Breakpoint> listener) {
+        breakpointAddedListeners.remove(listener);
     }
 
     /**
-     * Remove a property change listener that is notified when state of this debugger changes.
+     * Add a listener that is notified when a breakpoint is removed from {@link #getBreakpoints()
+     * list of breakpoints}. The reported breakpoint is not {@link Breakpoint#isModifiable()
+     * modifiable}.
      *
-     * @since 0.27
-     * @see #addPropertyChangeListener(java.beans.PropertyChangeListener)
+     * @since 1.0
      */
-    public void removePropertyChangeListener(java.beans.PropertyChangeListener listener) {
-        // using FQN to avoid mx to generate dependency on java.desktop module
-        propSupport.remove(listener);
+    public void addBreakpointRemovedListener(Consumer<Breakpoint> listener) {
+        breakpointRemovedListeners.add(listener);
+    }
+
+    /**
+     * Remove a listener that was added by {@link #addBreakpointRemovedListener(Consumer)}.
+     *
+     * @since 1.0
+     */
+    public void removeBreakpointRemovedListener(Consumer<Breakpoint> listener) {
+        breakpointRemovedListeners.remove(listener);
     }
 
     Env getEnv() {
@@ -294,17 +303,6 @@ public final class Debugger {
             PrintStream out = System.out;
             out.println("Debugger: " + String.format(message, parameters));
         }
-    }
-
-    /**
-     * @since 0.9
-     * @deprecated use {@link #find(TruffleInstrument.Env)}, {@link #find(TruffleLanguage.Env)} or
-     *             {@link #find(Engine)} instead.
-     */
-    @Deprecated
-    @SuppressWarnings("all")
-    public static Debugger find(com.oracle.truffle.api.vm.PolyglotEngine engine) {
-        return DebuggerInstrument.getDebugger(engine);
     }
 
     /**

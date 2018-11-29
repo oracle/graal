@@ -24,12 +24,16 @@
  */
 package org.graalvm.compiler.hotspot;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
 
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
  * This is a source with different versions for various JDKs.
@@ -40,6 +44,20 @@ public abstract class GraalHotSpotVMConfigBase extends HotSpotVMConfigAccess {
         super(store);
         assert this instanceof GraalHotSpotVMConfig;
         versioned = new GraalHotSpotVMConfigVersioned(store);
+        assert checkVersioned();
+    }
+
+    private boolean checkVersioned() {
+        Class<? extends GraalHotSpotVMConfigVersioned> c = versioned.getClass();
+        for (Field field : c.getDeclaredFields()) {
+            int modifiers = field.getModifiers();
+            if (!Modifier.isStatic(modifiers)) {
+                // javac inlines non-static final fields which means
+                // versioned values are ignored in non-flattened Graal
+                assert !Modifier.isFinal(modifiers) : "Non-static field in " + c.getName() + " must not be final: " + field.getName();
+            }
+        }
+        return true;
     }
 
     /**
@@ -52,6 +70,7 @@ public abstract class GraalHotSpotVMConfigBase extends HotSpotVMConfigAccess {
      * {@link GraalHotSpotVMConfig} parameter to a {@linkplain Fold foldable} method.
      */
     public static final GraalHotSpotVMConfig INJECTED_VMCONFIG = null;
+    public static final MetaAccessProvider INJECTED_METAACCESS = null;
 
     public final String osName = getHostOSName();
     public final String osArch = getHostArchitectureName();

@@ -126,6 +126,7 @@ final class Target_com_oracle_truffle_nfi_impl_NFIContext {
         ret.setContextHandle(support.createContextHandle(this));
 
         NFIInitialization.initializeContext(ret);
+        NFIInitialization.initializeSimpleTypes(this);
 
         return ret.rawValue();
     }

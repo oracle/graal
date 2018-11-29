@@ -1,0 +1,19 @@
+
+'createExecute() no longer needs an arity argument':
+com.oracle.truffle.api.interop.Message.createExecute($1)
+=>
+'Use Message.EXECUTE':
+com.oracle.truffle.api.interop.Message.EXECUTE
+;;
+'createInvoke() no longer needs an arity argument':
+com.oracle.truffle.api.interop.Message.createInvoke($1)
+=>
+'Use Message.INVOKE':
+com.oracle.truffle.api.interop.Message.INVOKE
+;;
+'createNew() no longer needs an arity argument':
+com.oracle.truffle.api.interop.Message.createNew($1)
+=>
+'Use Message.NEW':
+com.oracle.truffle.api.interop.Message.NEW
+;;

@@ -30,6 +30,7 @@ import static com.oracle.svm.core.util.VMError.unimplemented;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
 
+import com.oracle.svm.core.util.VMError;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.JavaMethodContext;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -132,7 +133,9 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
      * the buffer.
      */
     public int getCodeAddressOffset() {
-        assert codeAddressOffsetValid : "method " + getName() + " has no code address offset set";
+        if (!codeAddressOffsetValid) {
+            throw VMError.shouldNotReachHere(format("%H.%n(%p)") + ": has no code address offset set.");
+        }
         return codeAddressOffset;
     }
 

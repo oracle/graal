@@ -113,6 +113,11 @@ public class InjectedFieldsType implements ResolvedJavaType, OriginalClassProvid
     }
 
     @Override
+    public boolean isEnum() {
+        return original.isEnum();
+    }
+
+    @Override
     public int getModifiers() {
         return original.getModifiers();
     }

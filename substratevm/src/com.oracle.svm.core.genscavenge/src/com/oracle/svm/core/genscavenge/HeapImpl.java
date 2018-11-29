@@ -29,7 +29,6 @@ import java.lang.management.MemoryUsage;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
@@ -51,8 +50,10 @@ import com.oracle.svm.core.MemoryWalker.ImageCodeAccess;
 import com.oracle.svm.core.MemoryWalker.NativeImageHeapRegionAccess;
 import com.oracle.svm.core.MemoryWalker.RuntimeCompiledMethodAccess;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.NativeImageInfo;
@@ -60,7 +61,9 @@ import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.PinnedAllocator;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -113,6 +116,12 @@ public class HeapImpl extends Heap {
         this.objectVisitorWalkerOperation = new ObjectVisitorWalkerOperation();
         this.memoryMXBean = new HeapImplMemoryMXBean();
         this.classList = null;
+        SubstrateUtil.DiagnosticThunkRegister.getSingleton().register(() -> {
+            bootImageHeapBoundariesToLog(Log.log()).newline();
+            zapValuesToLog(Log.log()).newline();
+            report(Log.log(), true).newline();
+            Log.log().newline();
+        });
     }
 
     @Fold
@@ -223,6 +232,15 @@ public class HeapImpl extends Heap {
             result = HeapChunkProvider.get().walkHeapChunks(visitor);
         }
         return result;
+    }
+
+    /** Tear down the heap, return all allocated virtual memory chunks to VirtualMemoryProvider. */
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public final void tearDown() {
+        youngGeneration.tearDown();
+        oldGeneration.tearDown();
+        HeapChunkProvider.get().tearDown();
     }
 
     /** State: Who handles object headers? */
@@ -455,27 +473,61 @@ public class HeapImpl extends Heap {
         report(log, HeapPolicyOptions.TraceHeapChunks.getValue());
     }
 
-    public void report(Log log, boolean traceHeapChunks) {
+    public Log report(Log log, boolean traceHeapChunks) {
         final HeapImpl heap = HeapImpl.getHeapImpl();
-        log.newline().string("[Heap:").newline();
+        log.newline().string("[Heap:").indent(true);
         heap.getYoungGeneration().report(log, traceHeapChunks).newline();
         heap.getOldGeneration().report(log, traceHeapChunks).newline();
         HeapChunkProvider.get().report(log, traceHeapChunks);
-        log.string("]");
+        log.redent(false).string("]");
+        return log;
     }
 
     /** Print the boundaries of the native image heap partitions. */
     Log bootImageHeapBoundariesToLog(Log log) {
-        log.string("[Native image heap boundaries: ").newline();
-        log.string("  ReadOnly Primitives: ").hex(Word.objectToUntrackedPointer(NativeImageInfo.firstReadOnlyPrimitiveObject)).string(" .. ").hex(
+        log.string("[Native image heap boundaries: ").indent(true);
+        log.string("ReadOnly Primitives: ").hex(Word.objectToUntrackedPointer(NativeImageInfo.firstReadOnlyPrimitiveObject)).string(" .. ").hex(
                         Word.objectToUntrackedPointer(NativeImageInfo.lastReadOnlyPrimitiveObject)).newline();
-        log.string("  ReadOnly References: ").hex(Word.objectToUntrackedPointer(NativeImageInfo.firstReadOnlyReferenceObject)).string(" .. ").hex(
+        log.string("ReadOnly References: ").hex(Word.objectToUntrackedPointer(NativeImageInfo.firstReadOnlyReferenceObject)).string(" .. ").hex(
                         Word.objectToUntrackedPointer(NativeImageInfo.lastReadOnlyReferenceObject)).newline();
-        log.string("  Writable Primitives: ").hex(Word.objectToUntrackedPointer(NativeImageInfo.firstWritablePrimitiveObject)).string(" .. ").hex(
+        log.string("Writable Primitives: ").hex(Word.objectToUntrackedPointer(NativeImageInfo.firstWritablePrimitiveObject)).string(" .. ").hex(
                         Word.objectToUntrackedPointer(NativeImageInfo.lastWritablePrimitiveObject)).newline();
-        log.string("  Writable References: ").hex(Word.objectToUntrackedPointer(NativeImageInfo.firstWritableReferenceObject)).string(" .. ").hex(
+        log.string("Writable References: ").hex(Word.objectToUntrackedPointer(NativeImageInfo.firstWritableReferenceObject)).string(" .. ").hex(
                         Word.objectToUntrackedPointer(NativeImageInfo.lastWritableReferenceObject));
-        log.string("]").newline();
+        log.redent(false).string("]");
+        return log;
+    }
+
+    /** Log the zap values to make it easier to search for them. */
+    Log zapValuesToLog(Log log) {
+        if (HeapPolicy.getZapProducedHeapChunks() || HeapPolicy.getZapConsumedHeapChunks()) {
+            log.string("[Heap Chunk zap values: ").indent(true);
+            /* Padded with spaces so the columns line up between the int and word variants. */
+            if (HeapPolicy.getZapProducedHeapChunks()) {
+                log.string("  producedHeapChunkZapInt: ")
+                                .string("  hex: ").spaces(8).hex(HeapPolicy.getProducedHeapChunkZapInt())
+                                .string("  signed: ").spaces(9).signed(HeapPolicy.getProducedHeapChunkZapInt())
+                                .string("  unsigned: ").spaces(10).unsigned(HeapPolicy.getProducedHeapChunkZapInt()).newline();
+                log.string("  producedHeapChunkZapWord:")
+                                .string("  hex: ").hex(HeapPolicy.getProducedHeapChunkZapWord())
+                                .string("  signed: ").signed(HeapPolicy.getProducedHeapChunkZapWord())
+                                .string("  unsigned: ").unsigned(HeapPolicy.getProducedHeapChunkZapWord());
+                if (HeapPolicy.getZapConsumedHeapChunks()) {
+                    log.newline();
+                }
+            }
+            if (HeapPolicy.getZapConsumedHeapChunks()) {
+                log.string("  consumedHeapChunkZapInt: ")
+                                .string("  hex: ").spaces(8).hex(HeapPolicy.getConsumedHeapChunkZapInt())
+                                .string("  signed: ").spaces(10).signed(HeapPolicy.getConsumedHeapChunkZapInt())
+                                .string("  unsigned: ").spaces(10).unsigned(HeapPolicy.getConsumedHeapChunkZapInt()).newline();
+                log.string("  consumedHeapChunkZapWord:")
+                                .string("  hex: ").hex(HeapPolicy.getConsumedHeapChunkZapWord())
+                                .string("  signed: ").signed(HeapPolicy.getConsumedHeapChunkZapWord())
+                                .string("  unsigned: ").unsigned(HeapPolicy.getConsumedHeapChunkZapWord());
+            }
+            log.redent(false).string("]");
+        }
         return log;
     }
 
@@ -584,6 +636,23 @@ public class HeapImpl extends Heap {
                 assert false;
             }
         }
+    }
+
+    /** For assertions: Verify that the hub is a reference to where DynamicHubs live in the heap. */
+    public boolean assertHub(DynamicHub hub) {
+        /* DynamicHubs live only in the read-only reference section of the image heap. */
+        return NativeImageInfo.isObjectInReadOnlyReferencePartition(hub);
+    }
+
+    /** For assertions: Verify the hub of the object. */
+    public boolean assertHubOfObject(Object obj) {
+        final DynamicHub hub = ObjectHeader.readDynamicHubFromObject(obj);
+        return assertHub(hub);
+    }
+
+    /** For assertions: Verify that a Space is a valid Space. */
+    public boolean isValidSpace(Space space) {
+        return (getYoungGeneration().isValidSpace(space) || getOldGeneration().isValidSpace(space));
     }
 
     /** State: The stack verifier. */

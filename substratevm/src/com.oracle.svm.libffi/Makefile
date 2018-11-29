@@ -44,16 +44,10 @@ ifneq (${OS},windows)
 
 default: ${TARGET}/libffi.a ${HEADERFILES}
 
-${TARGET}/libffi.a: libffi-build/.libs/libffi.a bin/svm_initialize.o
-	$(QUIETLY) echo AR libffi.a
+${TARGET}/libffi.a: libffi-build/.libs/libffi.a
 	$(QUIETLY) mkdir -p ${TARGET}
 	$(QUIETLY) cp libffi-build/.libs/libffi.a $@
-	$(QUIETLY) ar r $@ bin/svm_initialize.o
-
-bin/svm_initialize.o: svm_initialize.c ${HEADERFILES}
-	$(QUIETLY) echo CC svm_initialize.c
-	$(QUIETLY) mkdir -p bin
-	$(QUIETLY) $(CC) -c -I${TARGET}/include ${CFLAGS} $< -o $@
+	$(QUIETLY) touch $@
 
 ${TARGET}/include/trufflenfi.h: ${TRUFFLE_NFI}/include/trufflenfi.h
 	$(QUIETLY) mkdir -p ${TARGET}/include
@@ -88,10 +82,26 @@ libffi-3.2.1/configure: ${LIBFFI_SRC}
 	$(QUIETLY) touch $@
 
 else
-all:
+
+all: ${TARGET} ${HEADERFILES}
+
+${TARGET}:
 	echo "Building libffi on Windows is not currently supported"
 	$(shell mkdir -p ${TARGET})
 	$(shell touch ${TARGET}/libffi.a)
-	$(shell mkdir -p `dirname ${HEADERFILES}`)
-	$(shell touch ${HEADERFILES})
+
+${TARGET}/include/trufflenfi.h: ${TRUFFLE_NFI}/include/trufflenfi.h
+	$(QUIETLY) mkdir -p ${TARGET}/include
+	$(QUIETLY) cp $< $@
+	$(QUIETLY) touch $@
+
+${TARGET}/include/svm_libffi.h: include/svm_libffi.h
+	$(QUIETLY) mkdir -p ${TARGET}/include
+	$(QUIETLY) cp $< $@
+	$(QUIETLY) touch $@
+
+${TARGET}/include/ffi.h ${TARGET}/include/ffitarget.h:
+	$(QUIETLY) mkdir -p ${TARGET}/include
+	$(QUIETLY) touch $@
+
 endif
