@@ -27,19 +27,21 @@ package org.graalvm.compiler.nodes;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.type.StampTool;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public interface Invoke extends StateSplit, Lowerable, DeoptimizingNode.DeoptDuring, FixedNodeInterface, Invokable {
+public interface Invoke extends StateSplit, Lowerable, MemoryCheckpoint.Single, DeoptimizingNode.DeoptDuring, FixedNodeInterface, Invokable {
 
     FixedNode next();
 
     void setNext(FixedNode x);
 
     CallTargetNode callTarget();
+
 
     @Override
     int bci();

@@ -60,6 +60,7 @@ import org.graalvm.compiler.phases.tiers.PhaseContext;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.word.LocationIdentity;
 
 /**
  * Macro nodes can be used to temporarily replace an invoke. They can, for example, be used to
@@ -227,9 +228,13 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable, 
         }
     }
 
+    public LocationIdentity getLocationIdentity() {
+        return LocationIdentity.any();
+    }
+
     protected InvokeNode createInvoke() {
         MethodCallTargetNode callTarget = graph().add(new MethodCallTargetNode(invokeKind, targetMethod, arguments.toArray(new ValueNode[arguments.size()]), returnStamp, null));
-        InvokeNode invoke = graph().add(new InvokeNode(callTarget, bci));
+        InvokeNode invoke = graph().add(new InvokeNode(callTarget, bci, getLocationIdentity()));
         if (stateAfter() != null) {
             invoke.setStateAfter(stateAfter().duplicate());
             if (getStackKind() != JavaKind.Void) {
