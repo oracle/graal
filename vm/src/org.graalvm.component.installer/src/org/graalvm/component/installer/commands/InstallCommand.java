@@ -137,6 +137,12 @@ public class InstallCommand implements InstallerCommand {
             current = p.getSpecification();
             Installer inst = createInstaller(p,
                             validateDownload ? p.createFileLoader() : p.createMetaLoader());
+            boolean keep = force || inst.validateRequirements().shouldInstall();
+            if (!keep) {
+                // component will be skipped, do not bother with validation
+                feedback.output("INSTALL_ComponentAlreadyInstalled", inst.getComponentInfo().getName(), inst.getComponentInfo().getId());
+                continue;
+            }
             installers.add(inst);
             if (p.isComplete()) {
                 realInstallers.put(p, inst);
@@ -147,17 +153,9 @@ public class InstallCommand implements InstallerCommand {
         }
 
         for (Installer i : new ArrayList<>(installers)) {
-            boolean keep = false;
             if (validateBeforeInstall) {
                 current = i.getComponentInfo().getName();
-                keep = i.validateAll();
-            } else {
-                keep = force || i.validateRequirements().shouldInstall();
-            }
-            if (!keep) {
-                // component will be skipped, do not bother with validation
-                feedback.output("INSTALL_ComponentAlreadyInstalled", i.getComponentInfo().getName(), i.getComponentInfo().getId());
-                installers.remove(i);
+                i.validateAll();
             }
         }
     }

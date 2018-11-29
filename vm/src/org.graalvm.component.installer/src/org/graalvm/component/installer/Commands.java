@@ -160,7 +160,7 @@ public interface Commands {
     /**
      * Fails if a component which already exists is to be installed.
      */
-    String OPTION_FAIL_EXISTING = "e"; // NOI18N
+    String OPTION_FAIL_EXISTING = "i"; // NOI18N
     String LONG_OPTION_FAIL_EXISTING = "fail-existing"; // NOI18N
 
 }
