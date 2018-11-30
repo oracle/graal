@@ -167,6 +167,7 @@ suite = {
             "subDir": "src",
             "native": True,
             "vpath": True,
+            "platformDependent": True,
             "results": [
                 "bin/<lib:mokapot>",
             ],
@@ -245,10 +246,15 @@ suite = {
         "ESPRESSO_SUPPORT": {
             "native": True,
             "description": "Espresso support distribution for the GraalVM",
+            "platformDependent": True,
             "layout": {
                 "./": [
                     "file:mx.espresso/native-image.properties",
                     "file:mx.espresso/reflectconfig.json",
+                ],
+                "lib/": [
+                    "dependency:espresso:com.oracle.truffle.espresso.mokapot/bin/<lib:mokapot>",
+                    "dependency:espresso:com.oracle.truffle.espresso.native/bin/<lib:nespresso>"
                 ],
             },
         },
