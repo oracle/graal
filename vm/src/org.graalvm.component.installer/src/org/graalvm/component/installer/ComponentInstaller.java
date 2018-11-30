@@ -76,7 +76,7 @@ public final class ComponentInstaller {
     static final Map<String, String> globalOptions = new HashMap<>();
 
     @SuppressWarnings("deprecation")
-    private static void initCommands() {
+    static void initCommands() {
         commands.put("install", new InstallCommand()); // NOI18N
         commands.put("uninstall", new UninstallCommand()); // NOI18N
         commands.put("list", new ListInstalledCommand()); // NOI18N
