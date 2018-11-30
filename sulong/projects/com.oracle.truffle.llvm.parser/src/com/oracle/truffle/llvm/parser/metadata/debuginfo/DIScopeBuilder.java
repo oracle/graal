@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.Source.SourceBuilder;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
 import com.oracle.truffle.llvm.parser.metadata.MDBasicType;
@@ -58,8 +59,8 @@ import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation.LazySourceSection;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
-
 import java.io.IOException;
+
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -191,7 +192,7 @@ final class DIScopeBuilder {
         }
 
         // fallback to relative path
-        return env.getTruffleFile(path.toUri());
+        return env.getTruffleFile(name);
     }
 
     private TruffleFile getSourceFile(MDFile file) {
@@ -204,10 +205,6 @@ final class DIScopeBuilder {
 
         if (sourceFile == null) {
             sourceFile = resolveWithSourcePath(name, file.getDirectory());
-        }
-
-        if (sourceFile != null && !sourceFile.exists()) {
-            sourceFile = null;
         }
 
         sourceFiles.put(file, sourceFile);
@@ -317,10 +314,10 @@ final class DIScopeBuilder {
                     section = source.createSection(line);
 
                 } else {
-                    section = source.createSection(line, column, 0);
+                    section = source.createSection(line, column, line, column);
                 }
 
-                if (needsRange && section.isAvailable()) {
+                if (needsRange && section.isAvailable() && source.hasCharacters()) {
                     int length = source.getLength() - section.getCharIndex();
                     section = source.createSection(section.getCharIndex(), length);
                 }
@@ -550,14 +547,15 @@ final class DIScopeBuilder {
 
         String mimeType = getMimeType(path);
         Source source = null;
-        try {
-            if (sourceFile != null && sourceFile.exists() && sourceFile.isReadable()) {
-                source = Source.newBuilder("llvm", sourceFile).mimeType(mimeType).build();
+        if (sourceFile != null) {
+            SourceBuilder builder = Source.newBuilder("llvm", sourceFile).mimeType(mimeType);
+            try {
+                source = builder.build();
+            } catch (IOException ex) {
+                // can't load the source file: fall back to CONTENT_NONE
+                source = builder.content(Source.CONTENT_NONE).build();
             }
-        } catch (IOException | InvalidPathException | UnsupportedOperationException ignored) {
-        }
-
-        if (source == null) {
+        } else {
             final String sourceText = STDIN_FILENAME.equals(path) ? STDIN_SOURCE_TEXT : path;
             source = Source.newBuilder("llvm", sourceText, sourceText).mimeType(MIMETYPE_UNAVAILABLE).build();
         }
