@@ -75,6 +75,7 @@ import org.graalvm.compiler.debug.DebugDumpScope;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.hotspot.HotSpotBackend.Options;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -1033,7 +1034,7 @@ public class NativeImageGenerator {
         BytecodeProvider replacementBytecodeProvider = replacements.getDefaultReplacementBytecodeProvider();
         final boolean explicitUnsafeNullChecks = SubstrateOptions.SpawnIsolates.getValue();
         registerInvocationPlugins(providers.getMetaAccess(), providers.getSnippetReflection(), plugins.getInvocationPlugins(), replacementBytecodeProvider, !hosted, explicitUnsafeNullChecks);
-        AMD64GraphBuilderPlugins.register(plugins, replacementBytecodeProvider, (AMD64) ConfigurationValues.getTarget().arch, true, explicitUnsafeNullChecks);
+        AMD64GraphBuilderPlugins.register(plugins, replacementBytecodeProvider, (AMD64) ConfigurationValues.getTarget().arch, explicitUnsafeNullChecks);
 
         /*
          * When the context is hosted, i.e., ahead-of-time compilation, and after the analysis we
