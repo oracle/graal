@@ -27,6 +27,7 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import org.graalvm.nativeimage.ImageInfo;
 
 @EspressoIntrinsics
 public class Target_java_lang_Thread {
@@ -80,7 +81,12 @@ public class Target_java_lang_Thread {
 
     @Intrinsic
     public static boolean holdsLock(Object object) {
-        return Thread.holdsLock(object);
+        if (!ImageInfo.inImageCode()) {
+            // Sane behavior on HotSpot.
+            return Thread.holdsLock(object);
+        }
+        // TODO(peterssen): On SVM we incorrectly hold all locks since this method is usually used to ensure that locks are hold.
+        return true;
     }
 
     @Intrinsic

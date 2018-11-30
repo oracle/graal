@@ -457,14 +457,18 @@ public class InterpreterToVM {
     // region Monitor enter/exit
     @SuppressWarnings({"deprecation"})
     public void monitorEnter(Object obj) {
-        // TODO(peterssen): Nop for single-threaded language.
-        hostUnsafe.monitorEnter(obj);
+        // TODO(peterssen): Nop for single-threaded language + enable on SVM.
+        if (!ImageInfo.inImageCode()) {
+            hostUnsafe.monitorEnter(obj);
+        }
     }
 
     @SuppressWarnings({"deprecation"})
     public void monitorExit(Object obj) {
-        // TODO(peterssen): Nop for single-threaded language.
-        hostUnsafe.monitorExit(obj);
+        // TODO(peterssen): Nop for single-threaded language + enable on SVM.
+        if (!ImageInfo.inImageCode()) {
+            hostUnsafe.monitorExit(obj);
+        }
     }
     // endregion
 
