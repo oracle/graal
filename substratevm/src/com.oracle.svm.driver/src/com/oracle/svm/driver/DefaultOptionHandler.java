@@ -75,8 +75,10 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 if (cpArgs == null) {
                     NativeImage.showError(headArg + " requires class path specification");
                 }
-                for (String cp : cpArgs.split(File.pathSeparator)) {
-                    nativeImage.addCustomImageClasspath(Paths.get(cp));
+                for (String cp : cpArgs.split(File.pathSeparator, Integer.MAX_VALUE)) {
+                    /* Conform to `java` command empty cp entry handling. */
+                    String cpEntry = cp.isEmpty() ? "." : cp;
+                    nativeImage.addCustomImageClasspath(Paths.get(cpEntry));
                 }
                 return true;
             case "--configurations-path":
