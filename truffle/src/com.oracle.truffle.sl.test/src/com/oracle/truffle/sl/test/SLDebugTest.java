@@ -705,8 +705,7 @@ public class SLDebugTest {
                 if (inFac) {
                     // Frame in fac function
                     assertEquals("fac", dsf.getName());
-                    // TODO fix host stack interop.
-                    // assertEquals(6, dsf.getSourceSection().getStartLine());
+                    assertEquals(6, dsf.getSourceSection().getStartLine());
                     assertFalse(dsf.isInternal());
                     i++;
                 } else {

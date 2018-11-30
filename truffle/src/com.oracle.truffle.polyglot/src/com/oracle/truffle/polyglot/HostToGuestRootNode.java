@@ -49,7 +49,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.polyglot.PolyglotLanguage.ContextProfile;
 
-abstract class HostRootNode extends RootNode {
+abstract class HostToGuestRootNode extends RootNode {
 
     // offset used to indicate where the argument start.
     // first two arguments are language context and receiver.
@@ -60,7 +60,7 @@ abstract class HostRootNode extends RootNode {
 
     @CompilationFinal private volatile ContextProfile profile;
 
-    HostRootNode() {
+    HostToGuestRootNode() {
         super(null);
     }
 
@@ -115,7 +115,7 @@ abstract class HostRootNode extends RootNode {
 
     protected abstract Object executeImpl(PolyglotLanguageContext languageContext, Object receiver, Object[] args);
 
-    protected static CallTarget createTarget(HostRootNode node) {
+    protected static CallTarget createTarget(HostToGuestRootNode node) {
         return Truffle.getRuntime().createCallTarget(node);
     }
 

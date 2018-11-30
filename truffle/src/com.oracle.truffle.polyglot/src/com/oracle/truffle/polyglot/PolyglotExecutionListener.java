@@ -125,7 +125,7 @@ final class PolyglotExecutionListener extends AbstractExecutionListenerImpl {
                             // configuration is closing ignore errors.
                             return false;
                         }
-                        throw new HostException(null, e);
+                        throw new HostException(e);
                     }
                 } else {
                     return true;
@@ -143,7 +143,7 @@ final class PolyglotExecutionListener extends AbstractExecutionListenerImpl {
                             // configuration is closing ignore errors.
                             return false;
                         }
-                        throw new HostException(null, e);
+                        throw new HostException(e);
                     }
                 }
             });
@@ -553,7 +553,7 @@ final class PolyglotExecutionListener extends AbstractExecutionListenerImpl {
 
         protected RuntimeException wrapHostError(Throwable t) {
             assert !(t instanceof HostException);
-            throw new HostException(this, t);
+            throw new HostException(t);
         }
 
         @TruffleBoundary(allowInlining = true)

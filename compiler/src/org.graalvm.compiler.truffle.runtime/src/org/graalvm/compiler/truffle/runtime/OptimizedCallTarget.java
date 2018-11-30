@@ -37,6 +37,7 @@ import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -48,6 +49,8 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.DefaultCompilerOptions;
+import com.oracle.truffle.api.impl.Accessor.CallInlined;
+import com.oracle.truffle.api.impl.Accessor.CallProfiled;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
@@ -834,5 +837,27 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             rootNode = rootNode.getParent();
         }
         toDump.add(rootNode);
+    }
+
+    /**
+     * Call without verifying the argument profile. Needs to be initialized by
+     * {@link GraalTVMCI#initializeProfile(CallTarget, Class[])}. Potentially crashes the VM if the
+     * argument profile is incompatible with the actual arguments. Use with caution.
+     */
+    static class OptimizedCallProfiled extends CallProfiled {
+        @Override
+        public Object call(CallTarget target, Object... args) {
+            OptimizedCallTarget castTarget = (OptimizedCallTarget) target;
+            assert castTarget.compilationProfile != null &&
+                            castTarget.compilationProfile.isValidArgumentProfile(args) : "Invalid argument profile. UnsafeCalls need to explicity initialize the profile.";
+            return castTarget.doInvoke(args);
+        }
+    }
+
+    static class OptimizedCallInlined extends CallInlined {
+        @Override
+        public Object call(Node callNode, CallTarget target, Object... arguments) {
+            return ((OptimizedCallTarget) target).callInlined(callNode, arguments);
+        }
     }
 }

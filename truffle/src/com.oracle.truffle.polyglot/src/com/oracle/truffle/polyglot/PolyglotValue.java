@@ -62,6 +62,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.impl.Accessor.CallProfiled;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -99,6 +100,8 @@ abstract class PolyglotValue extends AbstractValueImpl {
     private static final String TRUNCATION_SUFFIX = "...";
 
     protected final PolyglotLanguageContext languageContext;
+
+    static final CallProfiled CALL_PROFILED = VMAccessor.SPI.getCallProfiled();
 
     PolyglotValue(PolyglotLanguageContext languageContext) {
         super(languageContext.getEngine().impl);
@@ -1748,7 +1751,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     }
 
-    abstract static class InteropNode extends HostRootNode {
+    abstract static class InteropNode extends HostToGuestRootNode {
 
         protected static final int CACHE_LIMIT = 5;
 
@@ -1854,43 +1857,43 @@ abstract class PolyglotValue extends AbstractValueImpl {
         @SuppressWarnings("unchecked")
         @Override
         public <T> T as(Object receiver, Class<T> targetType) {
-            return (T) VMAccessor.SPI.callProfiled(cache.asClassLiteral, languageContext, receiver, targetType);
+            return (T) CALL_PROFILED.call(cache.asClassLiteral, languageContext, receiver, targetType);
         }
 
         @SuppressWarnings("unchecked")
         @Override
         public <T> T as(Object receiver, TypeLiteral<T> targetType) {
-            return (T) VMAccessor.SPI.callProfiled(cache.asTypeLiteral, languageContext, receiver, targetType);
+            return (T) CALL_PROFILED.call(cache.asTypeLiteral, languageContext, receiver, targetType);
         }
 
         @Override
         public boolean isNativePointer(Object receiver) {
-            return (boolean) VMAccessor.SPI.callProfiled(cache.isNativePointer, languageContext, receiver);
+            return (boolean) CALL_PROFILED.call(cache.isNativePointer, languageContext, receiver);
         }
 
         @Override
         public boolean hasArrayElements(Object receiver) {
-            return (boolean) VMAccessor.SPI.callProfiled(cache.hasArrayElements, languageContext, receiver);
+            return (boolean) CALL_PROFILED.call(cache.hasArrayElements, languageContext, receiver);
         }
 
         @Override
         public Value getArrayElement(Object receiver, long index) {
-            return (Value) VMAccessor.SPI.callProfiled(cache.getArrayElement, languageContext, receiver, index);
+            return (Value) CALL_PROFILED.call(cache.getArrayElement, languageContext, receiver, index);
         }
 
         @Override
         public void setArrayElement(Object receiver, long index, Object value) {
-            VMAccessor.SPI.callProfiled(cache.setArrayElement, languageContext, receiver, index, value);
+            CALL_PROFILED.call(cache.setArrayElement, languageContext, receiver, index, value);
         }
 
         @Override
         public boolean removeArrayElement(Object receiver, long index) {
-            return (boolean) VMAccessor.SPI.callProfiled(cache.removeArrayElement, languageContext, receiver, index);
+            return (boolean) CALL_PROFILED.call(cache.removeArrayElement, languageContext, receiver, index);
         }
 
         @Override
         public long getArraySize(Object receiver) {
-            return (long) VMAccessor.SPI.callProfiled(cache.getArraySize, languageContext, receiver);
+            return (long) CALL_PROFILED.call(cache.getArraySize, languageContext, receiver);
         }
 
         @Override
@@ -1900,27 +1903,27 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         @Override
         public Value getMember(Object receiver, String key) {
-            return (Value) VMAccessor.SPI.callProfiled(cache.getMember, languageContext, receiver, key);
+            return (Value) CALL_PROFILED.call(cache.getMember, languageContext, receiver, key);
         }
 
         @Override
         public boolean hasMember(Object receiver, String key) {
-            return (boolean) VMAccessor.SPI.callProfiled(cache.hasMember, languageContext, receiver, key);
+            return (boolean) CALL_PROFILED.call(cache.hasMember, languageContext, receiver, key);
         }
 
         @Override
         public void putMember(Object receiver, String key, Object member) {
-            VMAccessor.SPI.callProfiled(cache.putMember, languageContext, receiver, key, member);
+            CALL_PROFILED.call(cache.putMember, languageContext, receiver, key, member);
         }
 
         @Override
         public boolean removeMember(Object receiver, String key) {
-            return (boolean) VMAccessor.SPI.callProfiled(cache.removeMember, languageContext, receiver, key);
+            return (boolean) CALL_PROFILED.call(cache.removeMember, languageContext, receiver, key);
         }
 
         @Override
         public Set<String> getMemberKeys(Object receiver) {
-            Value keys = (Value) VMAccessor.SPI.callProfiled(cache.getMemberKeys, languageContext, receiver);
+            Value keys = (Value) CALL_PROFILED.call(cache.getMemberKeys, languageContext, receiver);
             if (keys == null) {
                 // unsupported
                 return Collections.emptySet();
@@ -1930,7 +1933,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         @Override
         public long asNativePointer(Object receiver) {
-            return (long) VMAccessor.SPI.callProfiled(cache.asNativePointer, languageContext, receiver);
+            return (long) CALL_PROFILED.call(cache.asNativePointer, languageContext, receiver);
         }
 
         @Override
@@ -1963,32 +1966,32 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         @Override
         public boolean isNull(Object receiver) {
-            return (boolean) VMAccessor.SPI.callProfiled(cache.isNull, languageContext, receiver);
+            return (boolean) CALL_PROFILED.call(cache.isNull, languageContext, receiver);
         }
 
         @Override
         public boolean canExecute(Object receiver) {
-            return (boolean) VMAccessor.SPI.callProfiled(cache.canExecute, languageContext, receiver);
+            return (boolean) CALL_PROFILED.call(cache.canExecute, languageContext, receiver);
         }
 
         @Override
         public void executeVoid(Object receiver, Object[] arguments) {
-            VMAccessor.SPI.callProfiled(cache.executeVoid, languageContext, receiver, arguments);
+            CALL_PROFILED.call(cache.executeVoid, languageContext, receiver, arguments);
         }
 
         @Override
         public void executeVoid(Object receiver) {
-            VMAccessor.SPI.callProfiled(cache.executeVoidNoArgs, languageContext, receiver);
+            CALL_PROFILED.call(cache.executeVoidNoArgs, languageContext, receiver);
         }
 
         @Override
         public Value execute(Object receiver, Object[] arguments) {
-            return (Value) VMAccessor.SPI.callProfiled(cache.execute, languageContext, receiver, arguments);
+            return (Value) CALL_PROFILED.call(cache.execute, languageContext, receiver, arguments);
         }
 
         @Override
         public Value execute(Object receiver) {
-            return (Value) VMAccessor.SPI.callProfiled(cache.executeNoArgs, languageContext, receiver);
+            return (Value) CALL_PROFILED.call(cache.executeNoArgs, languageContext, receiver);
         }
 
         @Override
@@ -2003,17 +2006,17 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         @Override
         public boolean canInvoke(String identifier, Object receiver) {
-            return (boolean) VMAccessor.SPI.callProfiled(cache.canInvoke, languageContext, receiver, identifier);
+            return (boolean) CALL_PROFILED.call(cache.canInvoke, languageContext, receiver, identifier);
         }
 
         @Override
         public Value invoke(Object receiver, String identifier, Object[] arguments) {
-            return (Value) VMAccessor.SPI.callProfiled(cache.invoke, languageContext, receiver, identifier, arguments);
+            return (Value) CALL_PROFILED.call(cache.invoke, languageContext, receiver, identifier, arguments);
         }
 
         @Override
         public Value invoke(Object receiver, String identifier) {
-            return (Value) VMAccessor.SPI.callProfiled(cache.invokeNoArgs, languageContext, receiver, identifier);
+            return (Value) CALL_PROFILED.call(cache.invokeNoArgs, languageContext, receiver, identifier);
         }
 
         @Override

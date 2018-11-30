@@ -296,14 +296,14 @@ class HostLanguage extends TruffleLanguage<HostContext> {
                         return Objects.toString(javaObject);
                     }
                 } catch (Throwable t) {
-                    throw PolyglotImpl.wrapHostException(null, context.internalContext, t);
+                    throw PolyglotImpl.wrapHostException(context.internalContext, t);
                 }
             } else if (PolyglotProxy.isProxyGuestObject(to)) {
                 Proxy proxy = PolyglotProxy.toProxyHostObject(to);
                 try {
                     return proxy.toString();
                 } catch (Throwable t) {
-                    throw PolyglotImpl.wrapHostException(null, context.internalContext, t);
+                    throw PolyglotImpl.wrapHostException(context.internalContext, t);
                 }
             } else if (isHostFunction(value)) {
                 return ((HostFunction) value).getDescription();

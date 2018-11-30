@@ -141,6 +141,8 @@ public abstract class Accessor {
             SUPPORT.reportPolymorphicSpecialize(node);
         }
 
+        public abstract void makeSharableRoot(RootNode rootNode);
+
     }
 
     public abstract static class SourceSupport {
@@ -735,6 +737,26 @@ public abstract class Accessor {
         return SUPPORT.getCompilerOptionDescriptors();
     }
 
+    public abstract static class CallInlined {
+
+        public abstract Object call(Node callNode, CallTarget target, Object... arguments);
+
+    }
+
+    protected CallInlined getCallInlined() {
+        return SUPPORT.getCallInlined();
+    }
+
+    public abstract static class CallProfiled {
+
+        public abstract Object call(CallTarget target, Object... arguments);
+
+    }
+
+    protected CallProfiled getCallProfiled() {
+        return SUPPORT.getCallProfiled();
+    }
+
     protected boolean isGuestCallStackElement(StackTraceElement element) {
         if (SUPPORT == null) {
             return false;
@@ -744,10 +766,6 @@ public abstract class Accessor {
 
     protected void initializeProfile(CallTarget target, Class<?>[] argmentTypes) {
         SUPPORT.initializeProfile(target, argmentTypes);
-    }
-
-    protected Object callProfiled(CallTarget target, Object... args) {
-        return SUPPORT.callProfiled(target, args);
     }
 
     protected void onLoopCount(Node source, int iterations) {

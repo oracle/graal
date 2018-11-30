@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.impl;
 
+import com.oracle.truffle.api.impl.Accessor.CallInlined;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -61,6 +62,11 @@ final class DefaultTVMCI extends TVMCI {
     @Override
     protected IndirectCallNode createUncachedIndirectCall() {
         return DefaultIndirectCallNode.createUncached();
+    }
+
+    @Override
+    protected CallInlined getCallInlined() {
+        return new DefaultCallTarget.DefaultCallInlined();
     }
 
     @Override

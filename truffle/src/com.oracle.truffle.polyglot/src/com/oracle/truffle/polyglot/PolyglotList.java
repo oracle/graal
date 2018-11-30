@@ -162,14 +162,14 @@ class PolyglotList<T> extends AbstractList<T> implements HostWrapper {
         }
 
         private static CallTarget initializeCall(PolyglotListNode node) {
-            return HostRootNode.createTarget(node);
+            return HostToGuestRootNode.createTarget(node);
         }
 
         static Cache lookup(PolyglotLanguageContext languageContext, Class<?> receiverClass, Class<?> valueClass, Type valueType) {
             Key cacheKey = new Key(receiverClass, valueClass, valueType);
-            Cache cache = HostRootNode.lookupHostCodeCache(languageContext, cacheKey, Cache.class);
+            Cache cache = HostToGuestRootNode.lookupHostCodeCache(languageContext, cacheKey, Cache.class);
             if (cache == null) {
-                cache = HostRootNode.installHostCodeCache(languageContext, cacheKey, new Cache(receiverClass, valueClass, valueType), Cache.class);
+                cache = HostToGuestRootNode.installHostCodeCache(languageContext, cacheKey, new Cache(receiverClass, valueClass, valueType), Cache.class);
             }
             assert cache.receiverClass == receiverClass;
             assert cache.valueClass == valueClass;
@@ -207,7 +207,7 @@ class PolyglotList<T> extends AbstractList<T> implements HostWrapper {
             }
         }
 
-        abstract static class PolyglotListNode extends HostRootNode {
+        abstract static class PolyglotListNode extends HostToGuestRootNode {
 
             static final int LIMIT = 5;
 

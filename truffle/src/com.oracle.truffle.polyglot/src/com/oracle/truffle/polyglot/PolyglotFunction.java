@@ -101,7 +101,7 @@ final class PolyglotFunction<T, R> implements Function<T, R>, HostWrapper {
         return new PolyglotFunction<>(languageContext, function, returnClass, returnType);
     }
 
-    static final class Apply extends HostRootNode {
+    static final class Apply extends HostToGuestRootNode {
 
         final Class<?> receiverClass;
         final Class<?> returnClass;

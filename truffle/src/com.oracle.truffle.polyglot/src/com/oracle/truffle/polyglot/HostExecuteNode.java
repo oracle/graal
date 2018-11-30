@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.polyglot;
 
+import static com.oracle.truffle.polyglot.GuestToHostRootNode.createGuestToHost;
+
 import java.lang.reflect.Array;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.Type;
@@ -52,6 +54,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.StringJoiner;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -93,8 +96,6 @@ abstract class HostExecuteNode extends Node {
             throw UnsupportedTypeException.create(args);
         } catch (UnsupportedTypeException | ArityException e) {
             throw e;
-        } catch (Throwable e) {
-            throw HostInteropReflect.rethrow(PolyglotImpl.wrapHostException(this, languageContext, e));
         }
     }
 
@@ -178,7 +179,7 @@ abstract class HostExecuteNode extends Node {
     @SuppressWarnings("unused")
     @ExplodeLoop
     @Specialization(guards = {"method == cachedMethod", "checkArgTypes(args, cachedArgTypes, interop, asVarArgs)"}, limit = "LIMIT")
-    Object doOverloadedCached(OverloadedMethod method, Object obj, Object[] args, PolyglotLanguageContext languageContext,
+    static Object doOverloadedCached(OverloadedMethod method, Object obj, Object[] args, PolyglotLanguageContext languageContext,
                     @Cached("method") OverloadedMethod cachedMethod,
                     @Cached ToHostNode toJavaNode,
                     @Cached ToGuestValueNode toGuest,
@@ -732,15 +733,24 @@ abstract class HostExecuteNode extends Node {
         return arguments;
     }
 
+    private static final CallTarget INVOKE = createGuestToHost(new GuestToHostRootNode(HostObject.class, "doInvoke") {
+        @Override
+        protected Object executeImpl(Object obj, Object[] callArguments) {
+            SingleMethod method = (SingleMethod) callArguments[ARGUMENT_OFFSET];
+            Object[] arguments = (Object[]) callArguments[ARGUMENT_OFFSET + 1];
+            Object ret;
+            try {
+                ret = method.invoke(obj, arguments);
+            } catch (Throwable e) {
+                throw HostInteropReflect.rethrow(e);
+            }
+            return ret;
+        }
+    });
+
     private static Object doInvoke(SingleMethod method, Object obj, Object[] arguments, PolyglotLanguageContext languageContext, ToGuestValueNode toGuest) {
         assert arguments.length == method.getParameterCount();
-
-        Object ret;
-        try {
-            ret = method.invoke(obj, arguments);
-        } catch (Throwable e) {
-            throw HostInteropReflect.rethrow(e);
-        }
+        Object ret = GuestToHostRootNode.guestToHostCall(toGuest, INVOKE, languageContext, obj, method, arguments);
         return toGuest.execute(languageContext, ret);
     }
 

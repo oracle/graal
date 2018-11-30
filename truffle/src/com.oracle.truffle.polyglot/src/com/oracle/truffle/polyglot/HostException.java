@@ -49,11 +49,9 @@ import com.oracle.truffle.api.nodes.Node;
 @SuppressWarnings("serial")
 final class HostException extends RuntimeException implements TruffleException {
 
-    private final Node location;
     private final Throwable original;
 
-    HostException(Node location, Throwable original) {
-        this.location = location;
+    HostException(Throwable original) {
         this.original = original;
     }
 
@@ -73,11 +71,6 @@ final class HostException extends RuntimeException implements TruffleException {
     }
 
     @Override
-    public Node getLocation() {
-        return location;
-    }
-
-    @Override
     public boolean isCancelled() {
         return getOriginal() instanceof InterruptedException;
     }
@@ -86,5 +79,9 @@ final class HostException extends RuntimeException implements TruffleException {
     public Object getExceptionObject() {
         Throwable exception = getOriginal();
         return PolyglotContextImpl.requireContext().getHostContext().toGuestValue(exception);
+    }
+
+    public Node getLocation() {
+        return null;
     }
 }

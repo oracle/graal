@@ -324,14 +324,13 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         throw new EngineException(e);
     }
 
-    @TruffleBoundary
-    static <T extends Throwable> RuntimeException wrapHostException(Node location, PolyglotLanguageContext languageContext, T e) {
-        throw wrapHostException(location, languageContext.context, e);
+    static <T extends Throwable> RuntimeException wrapHostException(PolyglotLanguageContext context, T e) {
+        return wrapHostException(context.context, e);
     }
 
     @SuppressWarnings("deprecation")
     @TruffleBoundary
-    static <T extends Throwable> RuntimeException wrapHostException(Node location, PolyglotContextImpl context, T e) {
+    static <T extends Throwable> RuntimeException wrapHostException(PolyglotContextImpl context, T e) {
         if (e instanceof ThreadDeath) {
             throw (ThreadDeath) e;
         } else if (e instanceof PolyglotException) {
@@ -358,7 +357,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         } else if (e instanceof InteropException) {
             throw ((InteropException) e).raise();
         }
-        return new HostException(location, e);
+        return new HostException(e);
     }
 
     @TruffleBoundary
@@ -843,7 +842,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         @Override
         public RuntimeException wrapHostException(Node location, Object languageContext, Throwable exception) {
-            return PolyglotImpl.wrapHostException(location, (PolyglotLanguageContext) languageContext, exception);
+            return PolyglotImpl.wrapHostException((PolyglotLanguageContext) languageContext, exception);
         }
 
         @Override

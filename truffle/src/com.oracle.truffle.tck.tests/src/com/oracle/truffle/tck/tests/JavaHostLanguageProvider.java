@@ -96,10 +96,6 @@ public final class JavaHostLanguageProvider implements LanguageProvider {
                         TypeDescriptor.array(TypeDescriptor.NUMBER)).build());
         result.add(Snippet.newBuilder("Array<java.lang.Object>", export(context, new ValueSupplier<>(new Object[]{1, "TEST"})),
                         TypeDescriptor.array(TypeDescriptor.union(TypeDescriptor.NUMBER, TypeDescriptor.STRING))).build());
-        // Primitive Proxies
-        for (Primitive primitive : primitives.values()) {
-            result.add(createProxyPrimitive(context, primitive));
-        }
         // Array Proxies
         result.add(createProxyArray(context, null));
         for (Primitive primitive : primitives.values()) {
@@ -196,15 +192,6 @@ public final class JavaHostLanguageProvider implements LanguageProvider {
                         primitive.type).build();
     }
 
-    private static Snippet createProxyPrimitive(
-                    final Context context,
-                    final Primitive primitive) {
-        return Snippet.newBuilder(
-                        String.format("Proxy<%s>", primitive.name),
-                        export(context, new ValueSupplier<>(new ProxyPrimitiveImpl(primitive.value))),
-                        primitive.type).build();
-    }
-
     private static Snippet createProxyArray(
                     final Context context,
                     final Primitive primitive) {
@@ -228,21 +215,6 @@ public final class JavaHostLanguageProvider implements LanguageProvider {
 
     private static Value export(final Context context, final Supplier<Object> s) {
         return context.asValue(s);
-    }
-
-    @SuppressWarnings("deprecation")
-    private static final class ProxyPrimitiveImpl implements org.graalvm.polyglot.proxy.ProxyPrimitive {
-        private final Object primitiveValue;
-
-        ProxyPrimitiveImpl(final Object primitiveValue) {
-            Objects.requireNonNull(primitiveValue);
-            this.primitiveValue = primitiveValue;
-        }
-
-        @Override
-        public Object asPrimitive() {
-            return primitiveValue;
-        }
     }
 
     private static final class ValueSupplier<T> implements Supplier<T> {

@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.library;
 
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeUtil;
 
 public abstract class Library extends Node {
 

@@ -44,11 +44,8 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.ResolvedLibrary;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
 
 @RunWith(Parameterized.class)
 public abstract class AbstractParametrizedLibraryTest extends AbstractLibraryTest {

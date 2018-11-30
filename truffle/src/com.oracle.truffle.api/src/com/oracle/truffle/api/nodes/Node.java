@@ -757,6 +757,11 @@ public abstract class Node implements NodeInterface, Cloneable {
                 return node.getLock();
             }
 
+            @Override
+            public void makeSharableRoot(RootNode rootNode) {
+                rootNode.sourceVM = null;
+            }
+
         }
     }
 

@@ -357,7 +357,7 @@ final class HostInteropReflect {
 }
 
 @ImportStatic(HostInteropReflect.class)
-abstract class FunctionProxyNode extends HostRootNode {
+abstract class FunctionProxyNode extends HostToGuestRootNode {
 
     final Class<?> receiverClass;
     final Method method;
@@ -499,7 +499,7 @@ final class FunctionProxyHandler implements InvocationHandler, HostWrapper {
     }
 }
 
-class ObjectProxyNode extends HostRootNode {
+class ObjectProxyNode extends HostToGuestRootNode {
 
     final Class<?> receiverClass;
     final Class<?> interfaceType;

@@ -485,9 +485,51 @@ public class CachedLibraryTest extends AbstractLibraryTest {
 
         @Fallback
         public static String fallback(Object a0) {
-            return "";
+            return "fallback";
         }
 
+    }
+
+    @GenerateLibrary
+    @SuppressWarnings("unused")
+    public abstract static class InExportsLibrary extends Library {
+
+        public String m0(Object receiver) {
+            return "m0_default";
+        }
+
+        public String m1(Object receiver) {
+            return "m1_default";
+        }
+
+    }
+
+    @ExportLibrary(InExportsLibrary.class)
+    final class InExportsSameLibraryObject {
+
+        @ExportMessage
+        String m0(@CachedLibrary("this") InExportsLibrary thisLibrary) {
+            return thisLibrary.m1(this);
+        }
+    }
+
+    @ExportLibrary(InExportsLibrary.class)
+    final class InExportsDifferentLibraryObject {
+
+        @ExportMessage(limit = "4")
+        String m0(@CachedLibrary("this") SomethingLibrary otherLibrary) {
+            return otherLibrary.call(this);
+        }
+    }
+
+    @ExportLibrary(InExportsLibrary.class)
+    final class InExportsErrorObject1 {
+
+        @ExpectError("The limit expression has no effect. Multiple specialization instantiations are impossible for this specialization.")
+        @ExportMessage(limit = "5")
+        String m0(@CachedLibrary("this") InExportsLibrary thisLibrary) {
+            return thisLibrary.m1(this);
+        }
     }
 
     @GenerateUncached

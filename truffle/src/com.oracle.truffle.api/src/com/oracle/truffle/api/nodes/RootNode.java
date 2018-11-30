@@ -129,8 +129,9 @@ public abstract class RootNode extends ExecutableNode {
      * TruffleLanguage for languages that are not yet migrated. We use this sourceVM reference
      * instead for compatibility.
      */
-    final Object sourceVM;
+    @CompilationFinal Object sourceVM;
     private volatile RootCallTarget callTarget;
+    private RootCallTarget callTarget;
     @CompilationFinal private FrameDescriptor frameDescriptor;
     final ReentrantLock lock = new ReentrantLock();
 

@@ -377,14 +377,14 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
         }
 
         private static CallTarget initializeCall(PolyglotMapNode node) {
-            return HostRootNode.createTarget(node);
+            return HostToGuestRootNode.createTarget(node);
         }
 
         static Cache lookup(PolyglotLanguageContext languageContext, Class<?> receiverClass, Class<?> keyClass, Class<?> valueClass, Type valueType) {
             Key cacheKey = new Key(receiverClass, keyClass, valueType);
-            Cache cache = HostRootNode.lookupHostCodeCache(languageContext, cacheKey, Cache.class);
+            Cache cache = HostToGuestRootNode.lookupHostCodeCache(languageContext, cacheKey, Cache.class);
             if (cache == null) {
-                cache = HostRootNode.installHostCodeCache(languageContext, cacheKey, new Cache(receiverClass, keyClass, valueClass, valueType), Cache.class);
+                cache = HostToGuestRootNode.installHostCodeCache(languageContext, cacheKey, new Cache(receiverClass, keyClass, valueClass, valueType), Cache.class);
             }
             assert cache.receiverClass == receiverClass;
             assert cache.keyClass == keyClass;
@@ -424,7 +424,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
             }
         }
 
-        abstract static class PolyglotMapNode extends HostRootNode {
+        abstract static class PolyglotMapNode extends HostToGuestRootNode {
 
             static final int LIMIT = 5;
 

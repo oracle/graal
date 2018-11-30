@@ -238,6 +238,14 @@ public final class NodeUtil {
         return (Node) CURRENT_ENCAPSULATING_NODE.get();
     }
 
+    public static Node getEncapsulatingNode(Node node) {
+        if (node.isAdoptable()) {
+            return node;
+        } else {
+            return NodeUtil.getCurrentEncapsulatingNode();
+        }
+    }
+
     @TruffleBoundary
     public static Node pushEncapsulatingNode(Node node) {
         assert node == null || node.isAdoptable() : "Node must be adoptable to be pushed as encapsulating node.";
