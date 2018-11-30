@@ -111,7 +111,7 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
             // Return: rscratch1 is non-zero iff the arrays differ
             masm.bind(breakLabel);
             masm.cmp(64, rscratch1, zr);
-            masm.cset(result, ConditionFlag.EQ);
+            masm.cset(resultValue.getPlatformKind().getSizeInBytes() * Byte.SIZE, result, ConditionFlag.EQ);
         }
     }
 
