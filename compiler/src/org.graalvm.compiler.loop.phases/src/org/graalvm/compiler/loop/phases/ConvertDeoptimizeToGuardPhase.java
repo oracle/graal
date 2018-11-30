@@ -193,8 +193,11 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<PhaseContext> {
                     }
                     return;
                 } else if (current.predecessor() instanceof IfNode) {
+                    AbstractBeginNode begin = (AbstractBeginNode) current;
                     IfNode ifNode = (IfNode) current.predecessor();
-                    if (!isLoopExit(ifNode, lazyLoops)) {
+                    if (isOsrLoopExit(begin) || isCountedLoopExit(ifNode, lazyLoops)) {
+                        moveAsDeoptAfter(begin, deopt);
+                    } else {
                         // Prioritize the source position of the IfNode
                         try (DebugCloseable closable = ifNode.withNodeSourcePosition()) {
                             StructuredGraph graph = ifNode.graph();
@@ -203,7 +206,6 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<PhaseContext> {
                             NodeSourcePosition survivingSuccessorPosition = negateGuardCondition ? ifNode.falseSuccessor().getNodeSourcePosition() : ifNode.trueSuccessor().getNodeSourcePosition();
                             FixedGuardNode guard = graph.add(
                                             new FixedGuardNode(conditionNode, deopt.getReason(), deopt.getAction(), deopt.getSpeculation(), negateGuardCondition, survivingSuccessorPosition));
-
                             FixedWithNextNode pred = (FixedWithNextNode) ifNode.predecessor();
                             AbstractBeginNode survivingSuccessor;
                             if (negateGuardCondition) {
@@ -249,7 +251,14 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<PhaseContext> {
         }
     }
 
-    private static boolean isLoopExit(IfNode ifNode, LazyValue<LoopsData> lazyLoops) {
+    private static boolean isOsrLoopExit(AbstractBeginNode node) {
+        if (!(node instanceof LoopExitNode)) {
+            return false;
+        }
+        return ((LoopExitNode) node).loopBegin().isOsrLoop();
+    }
+
+    private static boolean isCountedLoopExit(IfNode ifNode, LazyValue<LoopsData> lazyLoops) {
         LoopsData loopsData = lazyLoops.get();
         Loop<Block> loop = loopsData.getCFG().getNodeToBlock().get(ifNode).getLoop();
         if (loop != null) {
