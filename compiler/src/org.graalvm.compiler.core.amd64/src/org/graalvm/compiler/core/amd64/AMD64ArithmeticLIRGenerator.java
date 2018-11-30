@@ -150,41 +150,11 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
 
     private static final RegisterValue RCX_I = AMD64.rcx.asValue(LIRKind.value(AMD64Kind.DWORD));
 
-    public AMD64ArithmeticLIRGenerator(AllocatableValue nullRegisterValue, Maths maths) {
+    public AMD64ArithmeticLIRGenerator(AllocatableValue nullRegisterValue) {
         this.nullRegisterValue = nullRegisterValue;
-        this.maths = maths == null ? new Maths() {
-        } : maths;
     }
 
     private final AllocatableValue nullRegisterValue;
-    private final Maths maths;
-
-    /**
-     * Interface for emitting LIR for selected {@link Math} routines. A {@code null} return value
-     * for any method in this interface means the caller must emit the LIR itself.
-     */
-    public interface Maths {
-
-        @SuppressWarnings("unused")
-        default Variable emitLog(LIRGenerator gen, Value input, boolean base10) {
-            return null;
-        }
-
-        @SuppressWarnings("unused")
-        default Variable emitCos(LIRGenerator gen, Value input) {
-            return null;
-        }
-
-        @SuppressWarnings("unused")
-        default Variable emitSin(LIRGenerator gen, Value input) {
-            return null;
-        }
-
-        @SuppressWarnings("unused")
-        default Variable emitTan(LIRGenerator gen, Value input) {
-            return null;
-        }
-    }
 
     @Override
     public Variable emitNegate(Value inputVal) {
@@ -1101,46 +1071,26 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
 
     @Override
     public Value emitMathLog(Value input, boolean base10) {
-        LIRGenerator gen = getLIRGen();
-        Variable result = maths.emitLog(gen, input, base10);
-        if (result != null) {
-            return result;
-        }
         if (base10) {
-            return new AMD64MathLog10Op().emitLIRWrapper(gen, input);
+            return new AMD64MathLog10Op().emitLIRWrapper(getLIRGen(), input);
         } else {
-            return new AMD64MathLogOp().emitLIRWrapper(gen, input);
+            return new AMD64MathLogOp().emitLIRWrapper(getLIRGen(), input);
         }
     }
 
     @Override
     public Value emitMathCos(Value input) {
-        LIRGenerator gen = getLIRGen();
-        Variable result = maths.emitCos(gen, input);
-        if (result == null) {
-            return new AMD64MathCosOp().emitLIRWrapper(gen, input);
-        }
-        return result;
+        return new AMD64MathCosOp().emitLIRWrapper(getLIRGen(), input);
     }
 
     @Override
     public Value emitMathSin(Value input) {
-        LIRGenerator gen = getLIRGen();
-        Variable result = maths.emitSin(gen, input);
-        if (result == null) {
-            return new AMD64MathSinOp().emitLIRWrapper(gen, input);
-        }
-        return result;
+        return new AMD64MathSinOp().emitLIRWrapper(getLIRGen(), input);
     }
 
     @Override
     public Value emitMathTan(Value input) {
-        LIRGenerator gen = getLIRGen();
-        Variable result = maths.emitTan(gen, input);
-        if (result == null) {
-            return new AMD64MathTanOp().emitLIRWrapper(gen, input);
-        }
-        return result;
+        return new AMD64MathTanOp().emitLIRWrapper(getLIRGen(), input);
     }
 
     @Override

@@ -363,7 +363,6 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                  */
                 return;
             }
-
         }
         ForeignCallDescriptor foreignCall = toForeignCall(math.getOperation());
         if (foreignCall != null) {

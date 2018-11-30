@@ -26,21 +26,21 @@ package org.graalvm.compiler.lir.amd64;
 
 import static jdk.vm.ci.amd64.AMD64.xmm0;
 
-import jdk.vm.ci.code.RegisterValue;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.lir.LIRInstructionClass;
+import org.graalvm.compiler.lir.Variable;
+import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.Value;
-import org.graalvm.compiler.lir.Variable;
-import org.graalvm.compiler.lir.gen.LIRGenerator;
 
 /**
  * AMD64MathIntrinsicUnaryOp assumes that the input value is stored at the xmm0 register, and will
  * emit the output value into the xmm0 register as well.
- * {{@link #emitLIRWrapper(LIRGenerator, Value)}} is provided for emitting necessary mov LIRs before
- * and after this LIR instruction.
+ * {{@link #emitLIRWrapper(LIRGeneratorTool, Value)}} is provided for emitting necessary mov LIRs
+ * before and after this LIR instruction.
  */
 public abstract class AMD64MathIntrinsicUnaryOp extends AMD64MathIntrinsicOp {
 
@@ -57,7 +57,7 @@ public abstract class AMD64MathIntrinsicUnaryOp extends AMD64MathIntrinsicOp {
         temps = registersToValues(registers);
     }
 
-    public final Variable emitLIRWrapper(LIRGenerator gen, Value input) {
+    public final Variable emitLIRWrapper(LIRGeneratorTool gen, Value input) {
         LIRKind kind = LIRKind.combine(input);
         RegisterValue xmm0Value = xmm0.asValue(kind);
         gen.emitMove(xmm0Value, input);

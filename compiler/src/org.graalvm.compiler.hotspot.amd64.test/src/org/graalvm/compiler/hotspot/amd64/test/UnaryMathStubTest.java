@@ -41,7 +41,7 @@ import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 
 @RunWith(Parameterized.class)
-public class MathStubTest extends GraalCompilerTest {
+public class UnaryMathStubTest extends GraalCompilerTest {
 
     @Parameterized.Parameters(name = "{0}")
     public static List<Object[]> data() {
@@ -58,7 +58,7 @@ public class MathStubTest extends GraalCompilerTest {
     private static final double[] inputs = {0.0D, Math.PI / 2, Math.PI, -1.0D, Double.MAX_VALUE, Double.MIN_VALUE, Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY};
     private final String stub;
 
-    public MathStubTest(String stub) {
+    public UnaryMathStubTest(String stub) {
         this.stub = stub;
     }
 
@@ -95,6 +95,7 @@ public class MathStubTest extends GraalCompilerTest {
     @Test
     public void testStub() {
         for (double input : inputs) {
+//            test(getResolvedJavaMethod(Math.class, stub), null, input);
             test(stub, input);
         }
     }
