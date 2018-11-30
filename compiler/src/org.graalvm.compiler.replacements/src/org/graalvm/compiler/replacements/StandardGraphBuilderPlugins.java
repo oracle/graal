@@ -988,7 +988,18 @@ public class StandardGraphBuilderPlugins {
                     EndNode endNode = graph.add(new EndNode());
                     node.setNext(endNode);
                     if (node instanceof StateSplit) {
+                        if (isLoad(node)) {
+                            /*
+                             * Temporarily push the access node so that the frame state has the node
+                             * on the expression stack.
+                             */
+                            b.push(unsafeAccessKind, node);
+                        }
                         b.setStateAfter((StateSplit) node);
+                        if (isLoad(node)) {
+                            ValueNode popped = b.pop(unsafeAccessKind);
+                            assert popped == node;
+                        }
                     }
                     merge.addForwardEnd(endNode);
                 }
