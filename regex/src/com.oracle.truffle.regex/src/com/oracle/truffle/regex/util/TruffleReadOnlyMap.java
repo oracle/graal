@@ -25,6 +25,8 @@
 package com.oracle.truffle.regex.util;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.MessageResolution;
@@ -36,13 +38,16 @@ import com.oracle.truffle.regex.RegexLanguageObject;
 
 import java.util.Map;
 
-import static com.oracle.truffle.regex.util.Boundaries.*;
+import static com.oracle.truffle.regex.util.Boundaries.mapKeySet;
+import static com.oracle.truffle.regex.util.Boundaries.setToArray;
+import static com.oracle.truffle.regex.util.TruffleReadOnlyMapFactory.TruffleReadOnlyMapMessageResolutionFactory.KeyInfoCacheNodeGen;
+import static com.oracle.truffle.regex.util.TruffleReadOnlyMapFactory.TruffleReadOnlyMapMessageResolutionFactory.ReadCacheNodeGen;
 
 public class TruffleReadOnlyMap implements RegexLanguageObject {
 
-    private final Map<String, ? extends Object> map;
+    private final Map<String, ?> map;
 
-    public TruffleReadOnlyMap(Map<String, ? extends Object> map) {
+    public TruffleReadOnlyMap(Map<String, ?> map) {
         this.map = map;
     }
 
@@ -66,27 +71,82 @@ public class TruffleReadOnlyMap implements RegexLanguageObject {
             }
         }
 
-        @Resolve(message = "KEY_INFO")
-        abstract static class TruffleReadOnlyMapKeyInfoNode extends Node {
+        abstract static class KeyInfoCacheNode extends Node {
 
-            public Object access(TruffleReadOnlyMap o, String name) {
-                if (mapContainsKey(o.map, name)) {
+            abstract Object execute(TruffleReadOnlyMap receiver, String symbol);
+
+            @Specialization(guards = {"receiver == cachedReceiver", "cachedKey.equals(key)", "cachedContainsKey"}, limit = "8")
+            Object readCached(@SuppressWarnings("unused") TruffleReadOnlyMap receiver, @SuppressWarnings("unused") String key,
+                            @Cached("receiver") @SuppressWarnings("unused") TruffleReadOnlyMap cachedReceiver,
+                            @Cached("key") @SuppressWarnings("unused") String cachedKey,
+                            @Cached("mapContainsKey(receiver, key)") @SuppressWarnings("unused") boolean cachedContainsKey) {
+                return KeyInfo.READABLE;
+            }
+
+            @Specialization(replaces = "readCached")
+            Object readDynamic(TruffleReadOnlyMap receiver, String key) {
+                if (mapContainsKey(receiver, key)) {
                     return KeyInfo.READABLE;
                 } else {
                     return KeyInfo.NONE;
                 }
             }
+
+            static boolean mapContainsKey(TruffleReadOnlyMap map, String key) {
+                return Boundaries.mapContainsKey(map.map, key);
+            }
+        }
+
+        @Resolve(message = "KEY_INFO")
+        abstract static class TruffleReadOnlyMapKeyInfoNode extends Node {
+
+            @Child KeyInfoCacheNode cache = KeyInfoCacheNodeGen.create();
+
+            public Object access(TruffleReadOnlyMap o, String name) {
+                return cache.execute(o, name);
+            }
+        }
+
+        abstract static class ReadCacheNode extends Node {
+
+            abstract Object execute(TruffleReadOnlyMap receiver, String symbol);
+
+            @Specialization(guards = {"receiver == cachedReceiver", "cachedKey.equals(key)", "cachedContainsKey"}, limit = "8")
+            Object readCached(@SuppressWarnings("unused") TruffleReadOnlyMap receiver, @SuppressWarnings("unused") String key,
+                            @Cached("receiver") @SuppressWarnings("unused") TruffleReadOnlyMap cachedReceiver,
+                            @Cached("key") @SuppressWarnings("unused") String cachedKey,
+                            @Cached("mapContainsKey(receiver, key)") @SuppressWarnings("unused") boolean cachedContainsKey,
+                            @Cached("mapGet(receiver, key)") Object cachedValue) {
+                return cachedValue;
+            }
+
+            @Specialization(replaces = "readCached")
+            Object readDynamic(TruffleReadOnlyMap receiver, String key) {
+                Object value = mapGet(receiver, key);
+                if (value != null) {
+                    return value;
+                }
+                CompilerDirectives.transferToInterpreter();
+                throw UnknownIdentifierException.raise(key);
+            }
+
+            static Object mapGet(TruffleReadOnlyMap map, String key) {
+                return Boundaries.mapGet(map.map, key);
+            }
+
+            static boolean mapContainsKey(TruffleReadOnlyMap map, String key) {
+                return Boundaries.mapContainsKey(map.map, key);
+            }
+
         }
 
         @Resolve(message = "READ")
         abstract static class TruffleReadOnlyMapReadNode extends Node {
 
+            @Child ReadCacheNode cache = ReadCacheNodeGen.create();
+
             public Object access(TruffleReadOnlyMap o, String name) {
-                if (mapContainsKey(o.map, name)) {
-                    return mapGet(o.map, name);
-                }
-                CompilerDirectives.transferToInterpreter();
-                throw UnknownIdentifierException.raise(name);
+                return cache.execute(o, name);
             }
         }
     }
