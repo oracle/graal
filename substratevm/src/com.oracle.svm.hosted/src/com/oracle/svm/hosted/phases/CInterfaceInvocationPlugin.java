@@ -60,6 +60,7 @@ import org.graalvm.compiler.nodes.memory.HeapAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.word.LocationIdentity;
@@ -133,9 +134,10 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
         } else if (methodInfo instanceof ConstantInfo) {
             return replaceConstant(b, method, (ConstantInfo) methodInfo);
         } else if (method.getAnnotation(InvokeCFunctionPointer.class) != null) {
-            return replaceFunctionPointerInvoke(b, method, args, SubstrateCallingConventionType.NativeCall);
+            boolean needsTransition = (method.getAnnotation(InvokeCFunctionPointer.class).transition() != Transition.NO_TRANSITION);
+            return replaceFunctionPointerInvoke(b, method, args, SubstrateCallingConventionType.NativeCall, needsTransition);
         } else if (method.getAnnotation(InvokeJavaFunctionPointer.class) != null) {
-            return replaceFunctionPointerInvoke(b, method, args, SubstrateCallingConventionType.JavaCall);
+            return replaceFunctionPointerInvoke(b, method, args, SubstrateCallingConventionType.JavaCall, false);
         } else if (method.getAnnotation(CEntryPoint.class) != null) {
             AnalysisMethod aMethod = (AnalysisMethod) (method instanceof HostedMethod ? ((HostedMethod) method).getWrapped() : method);
             assert !(aMethod.getWrapped() instanceof CEntryPointJavaCallStubMethod) : "Call stub should never have a @CEntryPoint annotation";
@@ -481,7 +483,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
         return true;
     }
 
-    private boolean replaceFunctionPointerInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args, CallingConvention.Type callType) {
+    private boolean replaceFunctionPointerInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args, CallingConvention.Type callType, boolean needsTransition) {
         if (!functionPointerType.isAssignableFrom(method.getDeclaringClass())) {
             throw UserError.abort(new CInterfaceError("function pointer invocation method " + method.format("%H.%n(%p)") +
                             " must be in a type that extends " + CFunctionPointer.class.getSimpleName(), method).getMessage());
@@ -499,7 +501,9 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
              * does not work too well.
              */
 
-            b.append(new CFunctionPrologueNode());
+            if (needsTransition) {
+                b.append(new CFunctionPrologueNode());
+            }
         }
 
         // We "discard" the receiver from the signature by pretending we are a static method
@@ -528,7 +532,9 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
             } else {
                 b.add(invokeNode);
             }
-            b.append(new CFunctionEpilogueNode());
+            if (needsTransition) {
+                b.append(new CFunctionEpilogueNode());
+            }
         } else {
             throw shouldNotReachHere("Unsupported type of call: " + callType);
         }
