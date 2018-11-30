@@ -914,9 +914,7 @@ public class InliningUtil extends ValueMergeUtil {
                         // replace the InvokeWithExceptionNode with a normal
                         // InvokeNode -- the deoptimization occurs when the invoke throws.
                         InvokeWithExceptionNode oldInvoke = (InvokeWithExceptionNode) fixedStateSplit.predecessor();
-                        FrameState oldFrameState = oldInvoke.stateAfter();
                         InvokeNode newInvoke = oldInvoke.replaceWithInvoke();
-                        newInvoke.setStateAfter(oldFrameState.duplicate());
                         if (replacements != null) {
                             replacements.put(oldInvoke, newInvoke);
                         }
