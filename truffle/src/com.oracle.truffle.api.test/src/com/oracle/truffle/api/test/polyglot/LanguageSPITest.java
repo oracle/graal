@@ -95,14 +95,15 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.KeyInfo;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -1083,10 +1084,6 @@ public class LanguageSPITest {
     @Test
     public void testErrorInFindMetaObject() {
         final TruffleObject testObject = new TruffleObject() {
-            @Override
-            public ForeignAccess getForeignAccess() {
-                return null;
-            }
         };
         ProxyLanguage.setDelegate(new ProxyLanguage() {
 
@@ -1394,100 +1391,110 @@ public class LanguageSPITest {
         c.close();
     }
 
-    private static class TestScope extends ProxyLegacyInteropObject {
+    @ExportLibrary(InteropLibrary.class)
+    static final class TestKeysArray implements TruffleObject {
+
+        private final String[] keys;
+
+        TestKeysArray(String[] keys) {
+            this.keys = keys;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean isArray() {
+            return true;
+        }
+
+        @ExportMessage
+        boolean isElementReadable(long index) {
+            return index >= 0 && index < keys.length;
+        }
+
+        @ExportMessage
+        long getArraySize() {
+            return keys.length;
+        }
+
+        @ExportMessage
+        Object readElement(long index) throws InvalidArrayIndexException {
+            try {
+                return keys[(int) index];
+            } catch (IndexOutOfBoundsException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw InvalidArrayIndexException.create(index);
+            }
+        }
+
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static class TestScope implements TruffleObject {
 
         final Map<String, Object> values = new HashMap<>();
         boolean modifiable;
         boolean insertable;
         boolean removable;
 
-        @Override
-        public boolean hasKeys() {
+        @ExportMessage
+        public boolean isObject() {
             return true;
         }
 
-        @Override
-        public Object keys() throws UnsupportedMessageException {
-            return new ProxyLegacyInteropObject() {
-
-                private final String[] keys = values.keySet().toArray(new String[0]);
-
-                @Override
-                public boolean hasSize() {
-                    return true;
-                }
-
-                @Override
-                public int getSize() {
-                    return keys.length;
-                }
-
-                @Override
-                public Object read(Number key) throws UnsupportedMessageException, UnknownIdentifierException {
-                    return keys[key.intValue()];
-                }
-
-                @Override
-                public int keyInfo(Number key) {
-                    return (key.intValue() < keys.length && key.intValue() >= 0) ? KeyInfo.READABLE : KeyInfo.NONE;
-                }
-
-            };
+        @ExportMessage
+        public Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+            return new TestKeysArray(values.keySet().toArray(new String[0]));
         }
 
-        @Override
-        public Object read(String key) throws UnsupportedMessageException, UnknownIdentifierException {
+        @ExportMessage
+        public Object readMember(String key) throws UnknownIdentifierException {
             if (values.containsKey(key)) {
                 return values.get(key);
             } else {
-                throw UnknownIdentifierException.raise(key);
+                throw UnknownIdentifierException.create(key);
             }
         }
 
-        @Override
-        public Object write(String key, Object value) throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException {
+        @ExportMessage
+        public void writeMember(String key, Object value) throws UnsupportedMessageException {
             if (modifiable && values.containsKey(key)) {
                 values.put(key, value);
-                return value;
-            }
-            if (insertable && !values.containsKey(key)) {
+            } else if (insertable && !values.containsKey(key)) {
                 values.put(key, value);
-                return value;
-            }
-            throw UnsupportedMessageException.raise(Message.WRITE);
-        }
-
-        @Override
-        public boolean remove(String key) throws UnsupportedMessageException, UnknownIdentifierException {
-            if (removable) {
-                if (values.containsKey(key)) {
-                    values.remove(key);
-                    return true;
-                } else {
-                    return false;
-                }
-            }
-            return super.remove(key);
-        }
-
-        @Override
-        public int keyInfo(String key) {
-            int keyInfo = KeyInfo.NONE;
-            if (values.containsKey(key)) {
-                keyInfo |= KeyInfo.READABLE;
-                if (modifiable) {
-                    keyInfo |= KeyInfo.MODIFIABLE;
-                }
-                if (removable) {
-                    keyInfo |= KeyInfo.REMOVABLE;
-                }
             } else {
-                if (insertable) {
-                    keyInfo |= KeyInfo.INSERTABLE;
-                }
+                throw UnsupportedMessageException.create();
             }
-            return keyInfo;
         }
+
+        @ExportMessage
+        public void removeMember(String key) throws UnsupportedMessageException {
+            if (removable && values.containsKey(key)) {
+                values.remove(key);
+                return;
+            }
+            throw UnsupportedMessageException.create();
+        }
+
+        @ExportMessage
+        final boolean isMemberReadable(String member) {
+            return values.containsKey(member);
+        }
+
+        @ExportMessage
+        final boolean isMemberModifiable(String member) {
+            return modifiable && values.containsKey(member);
+        }
+
+        @ExportMessage
+        final boolean isMemberInsertable(String member) {
+            return insertable && !values.containsKey(member);
+        }
+
+        @ExportMessage
+        final boolean isMemberRemovable(String member) {
+            return removable && values.containsKey(member);
+        }
+
     }
 
     @Test
@@ -1695,16 +1702,11 @@ public class LanguageSPITest {
                     public Object execute(VirtualFrame frame) {
                         Object bindings = getCurrentContext(ProxyLanguage.class).env.getPolyglotBindings();
                         try {
-                            boundary((TruffleObject) bindings);
+                            InteropLibrary.getUncached().writeMember(bindings, "exportedValue", "convertOnToString");
                         } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
                             throw new AssertionError(e);
                         }
                         return bindings;
-                    }
-
-                    @CompilerDirectives.TruffleBoundary
-                    private void boundary(TruffleObject bindings) throws UnknownIdentifierException, UnsupportedTypeException, UnsupportedMessageException {
-                        ForeignAccess.sendWrite(Message.WRITE.createNode(), bindings, "exportedValue", "convertOnToString");
                     }
                 });
             }
@@ -1937,10 +1939,6 @@ public class LanguageSPITest {
             this.source = source;
         }
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return null;
-        }
     }
 
     static final Source TEST_SOURCE = Source.newBuilder("", "", "testLanguageErrorDuringInitialization").build();

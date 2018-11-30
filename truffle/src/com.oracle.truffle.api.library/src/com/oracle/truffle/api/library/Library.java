@@ -48,8 +48,18 @@ public abstract class Library extends Node {
     }
 
     /**
-     * Returns the supported receiver class of this library. The method returns <code>null</code> if
-     * all receiver types are supported.
+     * Returns <code>true</code> if this library supports calling methods on that library with the
+     * given receiver. If a library method/message is called if the library returns
+     * <code>false</code> for accepts then an {@link AssertionError} is thrown if assertion errors
+     * are enabled, otherwise a {@link NullPointerException} or {@link ClassCastException} may be
+     * thrown by the method.
+     * <p>
+     * {@link Libraries#createCachedDispatch(Class, int) Cached} or
+     * {@link Libraries#getUncachedDispatch(Class) uncached} and dispatched always return return
+     * <code>true</code> for accepts for any value. Other receiver initialized libraries only accept
+     * the value it was created with, other observed values need to invoke {@link #accepts(Object)}
+     * to ensure they are supported. If they are not supported then a new library library needs to
+     * be created or fetched.
      *
      * @since 1.0
      */

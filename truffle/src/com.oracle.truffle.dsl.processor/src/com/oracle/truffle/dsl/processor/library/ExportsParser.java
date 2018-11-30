@@ -634,7 +634,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
     private void initializeExportedMethod(ExportsData model, ExportMessageElement exportedElement) {
         ExecutableElement exportedMethod = (ExecutableElement) exportedElement.getMessageElement();
         LibraryMessage message = exportedElement.getExport().getResolvedMessage();
-        ExportsLibrary exportsLibrary = exportedElement.getExport().getLibrary();
+        ExportsLibrary exportsLibrary = exportedElement.getExport().getExportsLibrary();
 
         TypeMirror cached = context.getType(Cached.class);
         TypeMirror cachedLibrary = context.getType(CachedLibrary.class);
@@ -754,7 +754,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             }
         }
         DeclaredType importStaticType = context.getDeclaredType(ImportStatic.class);
-        staticImports.add(new CodeAnnotationValue(exportedMessage.getExport().getLibrary().getTemplateType().asType()));
+        staticImports.add(new CodeAnnotationValue(exportedMessage.getExport().getExportsLibrary().getTemplateType().asType()));
         CodeAnnotationMirror newImports = new CodeAnnotationMirror(importStaticType);
         newImports.setElementValue(ElementUtils.findExecutableElement(importStaticType, "value"), new CodeAnnotationValue(staticImports));
 
@@ -768,7 +768,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
 
         parseNodeType = clonedType;
 
-        NodeData parsedNodeData = new NodeParser(ParseMode.EXPORTED_MESSAGE).parse(parseNodeType, false);
+        NodeData parsedNodeData = NodeParser.createExportParser(exportedMessage.getExport().getExportsLibrary().getLibrary().getTemplateType().asType()).parse(parseNodeType, false);
         if (syntheticExecute != null) {
             // reset name to library
             syntheticExecute.setEnclosingElement(message.getExecutable().getEnclosingElement());
@@ -777,7 +777,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
         // redirect errors on generated elements to the outer element
         // JDT will otherwise just ignore those messages and not display anything.
         if (parsedNodeData != null) {
-            if (parsedNodeData.hasErrors()) {
+            if (parsedNodeData.hasErrorsOrWarnings()) {
                 parsedNodeData.redirectMessagesOnGeneratedElements(exportedMessage);
             }
             parsedNodeData.setGenerateUncached(false);
@@ -809,7 +809,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                     boolean emitErrors) {
         ExecutableElement libraryMethod = message.getExecutable();
 
-        if (exportedMessage.getExport().getLibrary().isExplicitReceiver() && !exportedMethod.getModifiers().contains(Modifier.STATIC)) {
+        if (exportedMessage.getExport().getExportsLibrary().isExplicitReceiver() && !exportedMethod.getModifiers().contains(Modifier.STATIC)) {
             if (emitErrors) {
                 exportedMessage.addError("Exported methods with explicit receiver must be static.");
             }
@@ -821,7 +821,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
         List<? extends VariableElement> expectedParameters = libraryMethod.getParameters().subList(paramOffset, libraryMethod.getParameters().size());
         List<? extends VariableElement> exportedParameters = exportedMethod.getParameters().subList(0, realParameterCount);
 
-        TypeMirror expectedStaticReceiverType = explicitReceiver || exportedMessage.getExport().getLibrary().isExplicitReceiver() ? receiverType : null;
+        TypeMirror expectedStaticReceiverType = explicitReceiver || exportedMessage.getExport().getExportsLibrary().isExplicitReceiver() ? receiverType : null;
         if (exportedParameters.size() != expectedParameters.size()) {
             if (emitErrors) {
                 exportedMessage.addError(exportedMethod,

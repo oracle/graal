@@ -91,7 +91,7 @@ public abstract class SLNormalizeArrayNode extends Node {
                 for (int i = 0; i < nodes.length; i++) {
                     nodes[i] = SLSimplifyNodeGen.create();
                 }
-                normalizeNodes = nodes;
+                normalizeNodes = insert(nodes);
             }
             if (args.length == nodes.length) {
                 // fast path
@@ -108,7 +108,7 @@ public abstract class SLNormalizeArrayNode extends Node {
                     if (nodes[0] == null) {
                         nodes[0] = SLSimplifyNodeGen.create();
                     }
-                    this.normalizeNodes = nodes;
+                    this.normalizeNodes = insert(nodes);
                     this.generic = true;
                 }
                 if (args.length == 0) {

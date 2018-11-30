@@ -47,6 +47,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -66,7 +67,7 @@ import com.oracle.truffle.api.library.test.CachedLibraryTestFactory.SimpleNodeGe
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.ExpectError;
 
-public class CachedLibraryTest {
+public class CachedLibraryTest extends AbstractLibraryTest {
 
     @GenerateLibrary
     @SuppressWarnings("unused")
@@ -142,7 +143,7 @@ public class CachedLibraryTest {
         assertEquals("uncached", SimpleNodeGen.getUncached().execute(s1));
         assertEquals("uncached", SimpleNodeGen.getUncached().execute(s2));
 
-        SimpleNode node = SimpleNodeGen.create();
+        SimpleNode node = adopt(SimpleNodeGen.create());
         assertEquals("cached", node.execute(s1));
         assertEquals("cached", node.execute(s2));
         assertEquals("uncached", node.execute(s3));
@@ -185,7 +186,7 @@ public class CachedLibraryTest {
         assertEquals("uncached_s1", ExcludeNodeGen.getUncached().execute(s3));
 
         ExcludeNode.call = 0;
-        ExcludeNode node = ExcludeNodeGen.create();
+        ExcludeNode node = adopt(ExcludeNodeGen.create());
         assertEquals("cached_s0", node.execute(s1));
         assertEquals("cached_s1", node.execute(s2));
         assertEquals("cached_s1", node.execute(s3));
@@ -226,14 +227,14 @@ public class CachedLibraryTest {
 
         // test with null assumption
         AssumptionNode.a = null;
-        AssumptionNode node = AssumptionNodeGen.create();
+        AssumptionNode node = adopt(AssumptionNodeGen.create());
         assertEquals("cached_s1", node.execute(s1));
         assertEquals("cached_s1", node.execute(s2));
         assertEquals("uncached_s1", node.execute(s3));
         assertEquals("uncached_s1", node.execute(s2));
         assertEquals("uncached_s1", node.execute(s1));
 
-        node = AssumptionNodeGen.create();
+        node = adopt(AssumptionNodeGen.create());
         Assumption a0 = AssumptionNode.a = Truffle.getRuntime().createAssumption();
         assertEquals("cached_s0", node.execute(s1));
         AssumptionNode.a = Truffle.getRuntime().createAssumption();
@@ -270,7 +271,7 @@ public class CachedLibraryTest {
     public void testConstant() {
         assertEquals("default", ConstantNodeGen.getUncached().execute(42));
 
-        ConstantNode node = ConstantNodeGen.create();
+        ConstantNode node = adopt(ConstantNodeGen.create());
         assertEquals("default", node.execute(42));
     }
 
@@ -300,7 +301,7 @@ public class CachedLibraryTest {
         assertEquals("s1_uncached", uncached.execute(s1));
         assertEquals("s2_uncached", uncached.execute(s2));
 
-        FromCached1Node cached = FromCached1NodeGen.create();
+        FromCached1Node cached = adopt(FromCached1NodeGen.create());
         assertEquals("s1_cached", cached.execute(s1));
         assertEquals("s2_cached", cached.execute(s2));
     }
@@ -330,7 +331,7 @@ public class CachedLibraryTest {
         assertEquals("s1_uncached", uncached.execute(s1));
         assertEquals("s2_uncached", uncached.execute(s2));
 
-        FromCached2Node cached = FromCached2NodeGen.create();
+        FromCached2Node cached = adopt(FromCached2NodeGen.create());
         assertEquals("s1_cached", cached.execute(s1));
         assertEquals("s1_cached", cached.execute(s2));
     }
@@ -354,14 +355,14 @@ public class CachedLibraryTest {
         Something s1 = new Something("s1");
         Something s2 = new Something("s2");
         Something s3 = new Something("s3");
-        DoubleNode uncached = DoubleNodeGen.getUncached();
+        DoubleNode uncached = adopt(DoubleNodeGen.getUncached());
         assertEquals("s1_uncached_s1_uncached", uncached.execute(s1, s1));
         assertEquals("s1_uncached_s2_uncached", uncached.execute(s1, s2));
         assertEquals("s2_uncached_s1_uncached", uncached.execute(s2, s1));
         assertEquals("s1_uncached_s3_uncached", uncached.execute(s1, s3));
         assertEquals("s3_uncached_s1_uncached", uncached.execute(s3, s1));
 
-        DoubleNode cached = DoubleNodeGen.create();
+        DoubleNode cached = adopt(DoubleNodeGen.create());
         assertEquals("s1_cached_s1_cached", cached.execute(s1, s1));
         assertEquals("s1_cached_s1_cached", cached.execute(s1, s1));
         assertEquals("s1_cached_s2_cached", cached.execute(s1, s2));
@@ -404,14 +405,14 @@ public class CachedLibraryTest {
         Something s2 = new Something("s2");
         Something s3 = new Something("s3");
 
-        uncached = SimpleDispatchedNodeGen.getUncached();
+        uncached = adopt(SimpleDispatchedNodeGen.getUncached());
         assertEquals("s1_uncached", uncached.execute(s1));
         assertEquals("s1_uncached", uncached.execute(s1));
         assertEquals("s2_uncached", uncached.execute(s2));
         assertEquals("s3_uncached", uncached.execute(s3));
 
         SimpleDispatchedNode.limit = 0;
-        cached = SimpleDispatchedNodeGen.create();
+        cached = adopt(SimpleDispatchedNodeGen.create());
         assertEquals("s1_uncached", cached.execute(s1));
         assertEquals("s1_uncached", cached.execute(s1));
         assertEquals("s2_uncached", cached.execute(s2));
@@ -419,7 +420,7 @@ public class CachedLibraryTest {
         assertEquals("s1_uncached", cached.execute(s1));
 
         SimpleDispatchedNode.limit = 1;
-        cached = SimpleDispatchedNodeGen.create();
+        cached = adopt(SimpleDispatchedNodeGen.create());
         assertEquals("s1_cached", cached.execute(s1));
         assertEquals("s1_cached", cached.execute(s1));
         assertEquals("s2_uncached", cached.execute(s2));
@@ -427,7 +428,7 @@ public class CachedLibraryTest {
         assertEquals("s1_uncached", cached.execute(s1));
 
         SimpleDispatchedNode.limit = 2;
-        cached = SimpleDispatchedNodeGen.create();
+        cached = adopt(SimpleDispatchedNodeGen.create());
         assertEquals("s1_cached", cached.execute(s1));
         assertEquals("s1_cached", cached.execute(s1));
         assertEquals("s2_cached", cached.execute(s2));
@@ -436,7 +437,7 @@ public class CachedLibraryTest {
         assertEquals("s1_uncached", cached.execute(s1));
 
         SimpleDispatchedNode.limit = 3;
-        cached = SimpleDispatchedNodeGen.create();
+        cached = adopt(SimpleDispatchedNodeGen.create());
         assertEquals("s1_cached", cached.execute(s1));
         assertEquals("s1_cached", cached.execute(s1));
         assertEquals("s2_cached", cached.execute(s2));
@@ -465,6 +466,28 @@ public class CachedLibraryTest {
         ConstantLimitNode cached = ConstantLimitNodeGen.create();
         assertEquals("s1_uncached", cached.execute(s1));
         assertEquals("s2_uncached", cached.execute(s2));
+    }
+
+    @SuppressWarnings("unused")
+    public abstract static class FallbackTest extends Node {
+
+        static final String TEST_STRING = "test";
+
+        static int limit = 2;
+
+        abstract String execute(Object a0);
+
+        @Specialization(guards = "lib1.call(a0).equals(TEST_STRING)", limit = "3")
+        public static String s1(Object a0,
+                        @CachedLibrary("a0") SomethingLibrary lib1) {
+            return lib1.call(a0);
+        }
+
+        @Fallback
+        public static String fallback(Object a0) {
+            return "";
+        }
+
     }
 
     @GenerateUncached

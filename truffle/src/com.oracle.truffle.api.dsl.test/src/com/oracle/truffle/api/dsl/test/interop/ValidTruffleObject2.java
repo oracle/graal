@@ -40,17 +40,16 @@
  */
 package com.oracle.truffle.api.dsl.test.interop;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 
-public class ValidTruffleObject2 {
+@SuppressWarnings("deprecation") public class ValidTruffleObject2 {
     public static boolean isInstance(TruffleObject obj) {
         return obj instanceof ValidTruffleObject2;
     }
 
     public static class NestedTruffleObject implements TruffleObject {
 
-        public ForeignAccess getForeignAccess() {
+        public com.oracle.truffle.api.interop.ForeignAccess getForeignAccess() {
             return null;
         }
 
@@ -62,7 +61,7 @@ public class ValidTruffleObject2 {
 
     public static class Nested2TruffleObject implements TruffleObject {
 
-        public ForeignAccess getForeignAccess() {
+        public com.oracle.truffle.api.interop.ForeignAccess getForeignAccess() {
             return null;
         }
 
@@ -72,9 +71,9 @@ public class ValidTruffleObject2 {
 
     }
 
-    public class NestedInvalidTruffleObject implements TruffleObject {
+    @SuppressWarnings("deprecation") public class NestedInvalidTruffleObject implements TruffleObject {
 
-        public ForeignAccess getForeignAccess() {
+        public com.oracle.truffle.api.interop.ForeignAccess getForeignAccess() {
             return null;
         }
 

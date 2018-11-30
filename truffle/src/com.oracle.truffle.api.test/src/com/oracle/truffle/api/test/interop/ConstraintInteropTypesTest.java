@@ -53,13 +53,10 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 
+@SuppressWarnings("deprecation")
 public class ConstraintInteropTypesTest {
 
     private Context context;
@@ -120,7 +117,7 @@ public class ConstraintInteropTypesTest {
     public void forbidNonPrimitiveObjectParam() throws Exception {
         BrokenTruffleObject obj = new BrokenTruffleObject("30");
         Object param = this;
-        Object result = ForeignAccess.sendExecute(Message.EXECUTE.createNode(), obj, param);
+        Object result = com.oracle.truffle.api.interop.ForeignAccess.sendExecute(com.oracle.truffle.api.interop.Message.EXECUTE.createNode(), obj, param);
         fail("No result, an exception should be thrown: " + result);
     }
 
@@ -128,7 +125,7 @@ public class ConstraintInteropTypesTest {
     public void forbidNullParam() throws Exception {
         BrokenTruffleObject obj = new BrokenTruffleObject("30");
         Object param = null;
-        Object result = ForeignAccess.sendExecute(Message.EXECUTE.createNode(), obj, param);
+        Object result = com.oracle.truffle.api.interop.ForeignAccess.sendExecute(com.oracle.truffle.api.interop.Message.EXECUTE.createNode(), obj, param);
         fail("No result, an exception should be thrown: " + result);
     }
 
@@ -136,7 +133,7 @@ public class ConstraintInteropTypesTest {
     public void forbidStringBuilderParam() throws Exception {
         BrokenTruffleObject obj = new BrokenTruffleObject("30");
         Object param = new StringBuilder("I am string builder!");
-        Object result = ForeignAccess.sendExecute(Message.EXECUTE.createNode(), obj, param);
+        Object result = com.oracle.truffle.api.interop.ForeignAccess.sendExecute(com.oracle.truffle.api.interop.Message.EXECUTE.createNode(), obj, param);
         fail("No result, an exception should be thrown: " + result);
     }
 
@@ -144,21 +141,21 @@ public class ConstraintInteropTypesTest {
     public void forbidBigIntegerParam() throws Exception {
         BrokenTruffleObject obj = new BrokenTruffleObject("30");
         Object param = new BigInteger("30");
-        Object result = ForeignAccess.sendExecute(Message.EXECUTE.createNode(), obj, param);
+        Object result = com.oracle.truffle.api.interop.ForeignAccess.sendExecute(com.oracle.truffle.api.interop.Message.EXECUTE.createNode(), obj, param);
         fail("No result, an exception should be thrown: " + result);
     }
 
     public void allowStringReturnWithParam() throws Exception {
         BrokenTruffleObject obj = new BrokenTruffleObject("30");
         Object param = "30";
-        Object result = ForeignAccess.sendExecute(Message.EXECUTE.createNode(), obj, param);
+        Object result = com.oracle.truffle.api.interop.ForeignAccess.sendExecute(com.oracle.truffle.api.interop.Message.EXECUTE.createNode(), obj, param);
         Assert.assertEquals("30", result);
     }
 
     abstract static class Dummy extends TruffleLanguage<Object> {
     }
 
-    @MessageResolution(receiverType = BrokenTruffleObject.class)
+    @com.oracle.truffle.api.interop.MessageResolution(receiverType = BrokenTruffleObject.class)
     static final class BrokenTruffleObject implements TruffleObject {
 
         final Object value;
@@ -172,11 +169,11 @@ public class ConstraintInteropTypesTest {
         }
 
         @Override
-        public ForeignAccess getForeignAccess() {
+        public com.oracle.truffle.api.interop.ForeignAccess getForeignAccess() {
             return BrokenTruffleObjectForeign.ACCESS;
         }
 
-        @Resolve(message = "EXECUTE")
+        @com.oracle.truffle.api.interop.Resolve(message = "EXECUTE")
         abstract static class BrokenExecNode extends Node {
             @SuppressWarnings("unused")
             Object access(BrokenTruffleObject obj, Object... args) {

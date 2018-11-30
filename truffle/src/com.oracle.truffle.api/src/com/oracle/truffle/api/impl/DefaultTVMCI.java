@@ -59,8 +59,8 @@ final class DefaultTVMCI extends TVMCI {
     }
 
     @Override
-    protected IndirectCallNode getUncachedIndirectCall() {
-        return DefaultIndirectCallNode.UNCACHED;
+    protected IndirectCallNode createUncachedIndirectCall() {
+        return DefaultIndirectCallNode.createUncached();
     }
 
     @Override

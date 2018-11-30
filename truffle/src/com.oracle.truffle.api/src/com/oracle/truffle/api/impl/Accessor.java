@@ -105,8 +105,8 @@ public abstract class Accessor {
         return SUPPORT.createFastThreadLocal();
     }
 
-    protected IndirectCallNode getUncachedIndirectCall() {
-        return SUPPORT.getUncachedIndirectCall();
+    protected IndirectCallNode createUncachedIndirectCall() {
+        return SUPPORT.createUncachedIndirectCall();
     }
 
     public abstract static class Nodes {
@@ -141,7 +141,6 @@ public abstract class Accessor {
             SUPPORT.reportPolymorphicSpecialize(node);
         }
 
-        public abstract Node getCurrentCallLocation();
     }
 
     public abstract static class SourceSupport {

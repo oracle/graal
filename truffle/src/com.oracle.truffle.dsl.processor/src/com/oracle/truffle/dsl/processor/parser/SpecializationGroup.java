@@ -114,48 +114,6 @@ public final class SpecializationGroup {
         return specializations;
     }
 
-    private List<GuardExpression> findElseConnectableGuards() {
-        if (!getTypeGuards().isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        if (getGuards().isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        List<GuardExpression> elseConnectableGuards = new ArrayList<>();
-        int guardIndex = 0;
-        while (guardIndex < getGuards().size() && findNegatedGuardInPrevious(getGuards().get(guardIndex)) != null) {
-            elseConnectableGuards.add(getGuards().get(guardIndex));
-            guardIndex++;
-        }
-
-        return elseConnectableGuards;
-    }
-
-    private GuardExpression findNegatedGuardInPrevious(GuardExpression guard) {
-        SpecializationGroup previous = this.getPreviousGroup();
-        if (previous == null) {
-            return null;
-        }
-        List<GuardExpression> elseConnectedGuards = previous.findElseConnectableGuards();
-
-        if (previous == null || previous.getGuards().size() != elseConnectedGuards.size() + 1) {
-            return null;
-        }
-
-        /* Guard is else branch can be connected in previous specialization. */
-        if (elseConnectedGuards.contains(guard)) {
-            return guard;
-        }
-
-        GuardExpression previousGuard = previous.getGuards().get(elseConnectedGuards.size());
-        if (guard.equalsNegated(previousGuard)) {
-            return guard;
-        }
-        return null;
-    }
-
     private void updateChildren(List<SpecializationGroup> childs) {
         if (!children.isEmpty()) {
             children.clear();

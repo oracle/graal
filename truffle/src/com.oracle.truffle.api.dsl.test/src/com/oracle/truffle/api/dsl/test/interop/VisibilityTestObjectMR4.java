@@ -40,19 +40,15 @@
  */
 package com.oracle.truffle.api.dsl.test.interop;
 
-import com.oracle.truffle.api.dsl.test.ExpectError;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.CanResolve;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 
-@SuppressWarnings("unused")
-@MessageResolution(receiverType = VisibilityTestObject.class)
+@SuppressWarnings({"unused", "deprecation"})
+@com.oracle.truffle.api.interop.MessageResolution(receiverType = VisibilityTestObject.class)
 class VisibilityTestObjectMR4 {
 
-    @Resolve(message = "READ")
+    @com.oracle.truffle.api.interop.Resolve(message = "READ")
     abstract static class VisibilityTestReadNode extends Node {
 
         protected Object access(VirtualFrame frame, VisibilityTestObject receiver, Object name) {
@@ -60,7 +56,7 @@ class VisibilityTestObjectMR4 {
         }
     }
 
-    @CanResolve
+    @com.oracle.truffle.api.interop.CanResolve
     abstract static class VisibilityTestLanguageCheck extends Node {
 
         protected boolean test(VirtualFrame frame, TruffleObject receiver) {

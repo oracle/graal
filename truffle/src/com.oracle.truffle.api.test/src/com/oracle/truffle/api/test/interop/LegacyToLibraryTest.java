@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.api.test.interop;
 
-import static com.oracle.truffle.api.interop.ForeignAccess.sendIsBoxed;
-import static com.oracle.truffle.api.interop.ForeignAccess.sendUnbox;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -54,20 +52,19 @@ import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
+@SuppressWarnings("deprecation")
 public class LegacyToLibraryTest {
 
     @Before
     public void checkAssumptions() throws Exception {
-        Field f = ForeignAccess.class.getDeclaredField("LEGACY_TO_LIBRARY_BRIDGE");
+        Field f = com.oracle.truffle.api.interop.ForeignAccess.class.getDeclaredField("LEGACY_TO_LIBRARY_BRIDGE");
         f.setAccessible(true);
         Assume.assumeTrue((boolean) f.get(null));
     }
@@ -112,11 +109,11 @@ public class LegacyToLibraryTest {
     }
 
     private static boolean isBoxed(TruffleObject value) {
-        return sendIsBoxed(Message.IS_BOXED.createNode(), value);
+        return com.oracle.truffle.api.interop.ForeignAccess.sendIsBoxed(com.oracle.truffle.api.interop.Message.IS_BOXED.createNode(), value);
     }
 
     private static Object unbox(TruffleObject value) throws InteropException {
-        return sendUnbox(Message.UNBOX.createNode(), value);
+        return com.oracle.truffle.api.interop.ForeignAccess.sendUnbox(com.oracle.truffle.api.interop.Message.UNBOX.createNode(), value);
     }
 
     @ExportLibrary(InteropLibrary.class)

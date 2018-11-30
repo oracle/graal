@@ -54,7 +54,6 @@ import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary.Abstract;
 import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
 import com.oracle.truffle.api.library.GenerateLibrary.Ignore;
-import com.oracle.truffle.api.library.Libraries;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.test.CachedLibraryTest.SimpleDispatchedNode;
 import com.oracle.truffle.api.nodes.Node;
@@ -62,7 +61,7 @@ import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.test.ExpectError;
 
 @SuppressWarnings("unused")
-public class GenerateLibraryTest {
+public class GenerateLibraryTest extends AbstractLibraryTest {
 
     @GenerateLibrary
     @SuppressWarnings("unused")
@@ -129,19 +128,19 @@ public class GenerateLibraryTest {
         Sample s3 = new Sample("s3");
 
         try {
-            Libraries.getUncachedDispatch(null);
+            getUncachedDispatch(null);
             fail();
         } catch (NullPointerException e) {
             // expected
         }
         try {
-            Libraries.getUncachedDispatch(InvalidLibrary.class);
+            getUncachedDispatch(InvalidLibrary.class);
             fail();
         } catch (IllegalArgumentException e) {
             // expected
         }
 
-        uncached = Libraries.getUncachedDispatch(SampleLibrary.class);
+        uncached = getUncachedDispatch(SampleLibrary.class);
         assertSame(NodeCost.MEGAMORPHIC, uncached.getCost());
         assertEquals("s1_uncached", uncached.call(s1));
         assertEquals("s1_uncached", uncached.call(s1));
@@ -149,28 +148,28 @@ public class GenerateLibraryTest {
         assertEquals("s3_uncached", uncached.call(s3));
 
         try {
-            Libraries.createCachedDispatch(null, 0);
+            createCachedDispatch(null, 0);
             fail();
         } catch (NullPointerException e) {
             // expected
         }
 
         // not really useful but shouldn't fail
-        Libraries.createCachedDispatch(SampleLibrary.class, -1);
+        createCachedDispatch(SampleLibrary.class, -1);
 
         try {
-            Libraries.createCachedDispatch(InvalidLibrary.class, 0);
+            createCachedDispatch(InvalidLibrary.class, 0);
             fail();
         } catch (IllegalArgumentException e) {
             // expected
         }
 
-        cached = Libraries.createCachedDispatch(SampleLibrary.class, 0);
+        cached = createCachedDispatch(SampleLibrary.class, 0);
         assertSame(NodeCost.MEGAMORPHIC, cached.getCost());
         assertEquals("s1_uncached", cached.call(s1));
         assertSame(NodeCost.MEGAMORPHIC, cached.getCost());
 
-        cached = Libraries.createCachedDispatch(SampleLibrary.class, 1);
+        cached = createCachedDispatch(SampleLibrary.class, 1);
         assertSame(NodeCost.UNINITIALIZED, cached.getCost());
         assertEquals("s1_cached", cached.call(s1));
         assertSame(NodeCost.MONOMORPHIC, cached.getCost());
@@ -181,7 +180,7 @@ public class GenerateLibraryTest {
         assertEquals("s3_uncached", cached.call(s3));
         assertEquals("s1_uncached", cached.call(s1));
 
-        cached = Libraries.createCachedDispatch(SampleLibrary.class, 2);
+        cached = createCachedDispatch(SampleLibrary.class, 2);
         assertSame(NodeCost.UNINITIALIZED, cached.getCost());
         assertEquals("s1_cached", cached.call(s1));
         assertSame(NodeCost.MONOMORPHIC, cached.getCost());
@@ -195,7 +194,7 @@ public class GenerateLibraryTest {
         assertEquals("s1_uncached", cached.call(s1));
 
         SimpleDispatchedNode.limit = 3;
-        cached = Libraries.createCachedDispatch(SampleLibrary.class, 3);
+        cached = createCachedDispatch(SampleLibrary.class, 3);
         assertSame(NodeCost.UNINITIALIZED, cached.getCost());
         assertEquals("s1_cached", cached.call(s1));
         assertSame(NodeCost.MONOMORPHIC, cached.getCost());

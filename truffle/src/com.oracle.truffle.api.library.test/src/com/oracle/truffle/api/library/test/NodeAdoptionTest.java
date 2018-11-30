@@ -40,62 +40,96 @@
  */
 package com.oracle.truffle.api.library.test;
 
-import org.junit.Assert;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
+
 import org.junit.Test;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
+import com.oracle.truffle.api.library.Libraries;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.nodes.Node;
 
-public class SlowPathCallTest extends AbstractLibraryTest {
+@SuppressWarnings({"unused", "static-method"})
+public class NodeAdoptionTest extends AbstractLibraryTest {
 
     @GenerateLibrary
-    public abstract static class SlowPathCallLibrary extends Library {
-
-        public abstract Object someCall(Object receiver);
-
+    abstract static class NodeAdoptionLibrary extends Library {
+        public String m0(Object receiver) {
+            return "default";
+        }
     }
 
-    @ExportLibrary(SlowPathCallLibrary.class)
-    static class MyObject {
+    @ExportLibrary(NodeAdoptionLibrary.class)
+    static final class NodeAdoptionObject {
 
         @ExportMessage
-        Object someCall() {
+        String m0() {
             return "uncached";
         }
 
         @ExportMessage
-        static class SomeCallNode extends Node {
-
-            @Specialization
-            static Object s0(@SuppressWarnings("unused") MyObject receiver) {
+        static class M0Node extends Node {
+            @Specialization(guards = "innerNode.execute(receiver)")
+            static String doM0(NodeAdoptionObject receiver,
+                            @Cached InnerNode innerNode) {
+                assertNotNull(innerNode.getRootNode());
                 return "cached";
             }
+        }
+    }
 
+    abstract static class InnerNode extends Node {
+
+        abstract boolean execute(Object argument);
+
+        @Specialization
+        boolean s0(Object argument) {
+            assertNotNull(this.getRootNode());
+            return true;
         }
 
     }
 
     @Test
-    public void doSlowPathCall() {
-        MyObject object = new MyObject();
+    public void testDefault() {
+        Object o = new Object();
 
-        Assert.assertEquals("uncached", getUncached(SlowPathCallLibrary.class, object).someCall(object));
-        Assert.assertEquals("cached", createCached(SlowPathCallLibrary.class, object).someCall(object));
+        // defaults are cached as singleton and don't have a parent.
+        NodeAdoptionLibrary cached = Libraries.createCached(NodeAdoptionLibrary.class, o);
+        assertEquals("default", cached.m0(o));
+
+        NodeAdoptionLibrary dispatched = Libraries.createCachedDispatch(NodeAdoptionLibrary.class, 3);
+        assertEquals("default", dispatched.m0(o));
+    }
+
+    @Test
+    public void testExports() {
+        NodeAdoptionObject o = new NodeAdoptionObject();
+
+        NodeAdoptionLibrary cached = Libraries.createCached(NodeAdoptionLibrary.class, new NodeAdoptionObject());
+        assertAssertionError(() -> cached.m0(o));
+        adopt(cached);
+        assertEquals("cached", cached.m0(o));
+
+        NodeAdoptionLibrary dispatched = Libraries.createCachedDispatch(NodeAdoptionLibrary.class, 3);
+        assertAssertionError(() -> dispatched.m0(o));
+        adopt(dispatched);
+        assertEquals("cached", dispatched.m0(o));
+    }
+
+    private static void assertAssertionError(Runnable r) {
         try {
-            createCached(SlowPathCallLibrary.class, Object.class).someCall(new Object());
-            Assert.fail();
-        } catch (AbstractMethodError e) {
+            r.run();
+        } catch (AssertionError e) {
+            return;
         }
-        try {
-            Object o = new Object();
-            getUncached(SlowPathCallLibrary.class, o).someCall(o);
-            Assert.fail();
-        } catch (AbstractMethodError e) {
-        }
+        fail();
     }
 
 }

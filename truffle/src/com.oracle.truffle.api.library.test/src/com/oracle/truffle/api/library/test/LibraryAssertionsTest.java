@@ -49,14 +49,13 @@ import org.junit.Test;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
-import com.oracle.truffle.api.library.Libraries;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.Message;
 import com.oracle.truffle.api.library.ReflectionLibrary;
 import com.oracle.truffle.api.test.ExpectError;
 
 @SuppressWarnings("unused")
-public class LibraryAssertionsTest {
+public class LibraryAssertionsTest extends AbstractLibraryTest {
 
     @GenerateLibrary(assertions = TestLibrary1Assertions.class)
     public abstract static class TestLibrary1 extends Library {
@@ -83,7 +82,7 @@ public class LibraryAssertionsTest {
         boolean assertsOn = assertionsEnabled();
 
         int expectedCalls = 0;
-        TestLibrary1 lib = Libraries.createCached(TestLibrary1.class, "");
+        TestLibrary1 lib = createCached(TestLibrary1.class, "");
         if (assertsOn) {
             assertTrue(lib instanceof TestLibrary1Assertions);
             expectedCalls++;
@@ -93,7 +92,7 @@ public class LibraryAssertionsTest {
         assertEquals(42, lib.foo("", 42));
         assertEquals(expectedCalls, fooCalls);
 
-        lib = Libraries.getUncached(TestLibrary1.class, "");
+        lib = getUncached(TestLibrary1.class, "");
         if (assertsOn) {
             assertTrue(lib instanceof TestLibrary1Assertions);
             expectedCalls++;
@@ -108,7 +107,7 @@ public class LibraryAssertionsTest {
             expectedCalls++;
         }
 
-        ReflectionLibrary reflection = Libraries.createCached(ReflectionLibrary.class, "");
+        ReflectionLibrary reflection = createCached(ReflectionLibrary.class, "");
         assertEquals(42, reflection.send("", Message.resolve(TestLibrary1.class, "foo"), 42));
         assertEquals(expectedCalls, fooCalls);
     }

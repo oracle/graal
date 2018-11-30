@@ -44,6 +44,12 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
+/**
+ * Contains utilities for using {@link Library libraries}.
+ *
+ * @see Library for further details.
+ * @since 1.0
+ */
 public final class Libraries {
 
     private Libraries() {
@@ -68,6 +74,19 @@ public final class Libraries {
         return ResolvedLibrary.resolve(libraryClass).getUncached(receiver);
     }
 
+    /**
+     * Creates a new cached library given a libraryClass and a receiver. The returned library
+     * implementation only works with the provided receiver or for other receivers that are
+     * {@link Library#accepts(Object) accepted} by the returned library. This method is rarely used
+     * directly. Use the {@link CachedLibrary} annotation in specializations instead.
+     * <p>
+     * Calling this method is short-hand for:
+     * <code>{@link ResolvedLibrary#resolve(Class) resolve(libraryClass)}.{@link ResolvedLibrary#createCached(Object) createCached(receiver)} </code>.
+     *
+     * @see ResolvedLibrary#createCached(Object)
+     * @see CachedLibrary
+     * @since 1.0
+     */
     @SuppressWarnings("unchecked")
     @TruffleBoundary
     public static <T extends Library> T createCached(Class<T> libraryClass, Object receiver) {

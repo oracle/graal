@@ -56,12 +56,12 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
 
-public class PushCallNodeTest {
+public class EncapsulatedNodeTest {
 
     @Test
     @SuppressWarnings("unchecked")
@@ -72,13 +72,14 @@ public class PushCallNodeTest {
                 return captureStack();
             }
         });
-        Node callLocation = new Node() {
-        };
+        Node callLocation = adopt(new Node() {
+        });
 
         CallTarget root = create(new RootNode(null) {
+
             @Override
             public Object execute(VirtualFrame frame) {
-                return boundary(callLocation, () -> iterateFrames.call());
+                return boundary(callLocation, () -> IndirectCallNode.getUncached().call(iterateFrames, new Object[0]));
             }
         });
         List<TruffleStackTraceElement> frames = (List<TruffleStackTraceElement>) root.call();
@@ -98,8 +99,8 @@ public class PushCallNodeTest {
     @Test
     @SuppressWarnings("unchecked")
     public void testCallNodePickedWithoutCallTarget() {
-        Node callLocation = new Node() {
-        };
+        Node callLocation = adopt(new Node() {
+        });
         CallTarget root = create(new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
@@ -114,32 +115,87 @@ public class PushCallNodeTest {
         assertNull(frame.getLocation());
     }
 
-    @Test
-    @SuppressWarnings("unchecked")
-    public void testDirectCallNodeClearedAssertion() {
-        Node callLocation = new Node() {
+    private static <T extends Node> T adopt(T node) {
+        RootNode root = new RootNode(null) {
+            {
+                insert(node);
+            }
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return null;
+            }
         };
-        Node prev = IndirectCallNode.pushCallLocation(callLocation);
-        try {
-            DirectCallNode callNode = DirectCallNode.create(create(RootNode.createConstantNode("")));
-            assertAssertionError(() -> callNode.call(new Object[0]));
-        } finally {
-            IndirectCallNode.popCallLocation(prev);
-        }
+        root.adoptChildren();
+        return node;
     }
 
     @Test
     @SuppressWarnings("unchecked")
-    public void testIndirectCallNodeClearedAssertion() {
-        Node callLocation = new Node() {
+    public void testNotAdoptedNode() {
+        Node node = new Node() {
         };
-        Node prev = IndirectCallNode.pushCallLocation(callLocation);
-        try {
-            IndirectCallNode callNode = IndirectCallNode.create();
-            assertAssertionError(() -> callNode.call(create(RootNode.createConstantNode("")), new Object[0]));
-        } finally {
-            IndirectCallNode.popCallLocation(prev);
-        }
+
+        assertAssertionError(() -> NodeUtil.pushEncapsulatingNode(node));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testNotAdoptableNode() {
+        Node node = new Node() {
+            @Override
+            protected boolean isAdoptable() {
+                return false;
+            }
+        };
+        assertAssertionError(() -> NodeUtil.pushEncapsulatingNode(node));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testPartiallyAdoptedNode() {
+        Node node = new Node() {
+        };
+        Node otherNode = new Node() {
+
+            @Child private Node innerNode = node;
+
+        };
+        otherNode.adoptChildren();
+
+        assertAssertionError(() -> NodeUtil.pushEncapsulatingNode(node));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testNullAllowed() {
+        Node prev = NodeUtil.pushEncapsulatingNode(null);
+        assertNull(prev);
+        NodeUtil.popEncapsulatingNode(null);
+    }
+
+    @Test
+    public void testGetEncapsulatingNode() {
+        Node node = NodeUtil.getCurrentEncapsulatingNode();
+        assertNull(node);
+        Node node0 = adopt(new Node() {
+        });
+        Node node1 = adopt(new Node() {
+        });
+
+        Node prev0 = NodeUtil.pushEncapsulatingNode(node0);
+        assertSame(null, prev0);
+        assertSame(node0, NodeUtil.getCurrentEncapsulatingNode());
+
+        Node prev1 = NodeUtil.pushEncapsulatingNode(node1);
+        assertSame(node0, prev1);
+        assertSame(node1, NodeUtil.getCurrentEncapsulatingNode());
+        NodeUtil.popEncapsulatingNode(prev1);
+
+        assertSame(node0, NodeUtil.getCurrentEncapsulatingNode());
+        NodeUtil.popEncapsulatingNode(prev0);
+
+        assertSame(null, NodeUtil.getCurrentEncapsulatingNode());
     }
 
     private static void assertAssertionError(Runnable r) {
@@ -164,11 +220,11 @@ public class PushCallNodeTest {
 
     @TruffleBoundary
     public static Object boundary(Node callNode, Supplier<Object> run) {
-        Node prev = IndirectCallNode.pushCallLocation(callNode);
+        Node prev = NodeUtil.pushEncapsulatingNode(callNode);
         try {
             return run.get();
         } finally {
-            IndirectCallNode.popCallLocation(prev);
+            NodeUtil.popEncapsulatingNode(prev);
         }
     }
 

@@ -56,14 +56,13 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
-import com.oracle.truffle.api.library.Libraries;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.ExpectError;
 
 @SuppressWarnings("unused")
-public class ExportMethodTest {
+public class ExportMethodTest extends AbstractLibraryTest {
 
     @GenerateLibrary
     public abstract static class ExportsTestLibrary1 extends Library {
@@ -159,7 +158,7 @@ public class ExportMethodTest {
         }
 
         ExportsTestObject1 o = new ExportsTestObject1();
-        assertEquals("foo", Libraries.getUncached(ExportsTestLibrary1.class, o).foo(o, 42));
+        assertEquals("foo", getUncached(ExportsTestLibrary1.class, o).foo(o, 42));
     }
 
     private static class TestSubInterface implements TestInterface {
@@ -174,9 +173,9 @@ public class ExportMethodTest {
     public void testExportsObject2() {
         ExportsTestObject2 obj = new ExportsTestObject2();
         TestSubInterface subInterface = new TestSubInterface();
-        assertSame(subInterface, Libraries.createCached(ExportsTestLibrary4.class, obj).interfaceArg(obj, subInterface));
+        assertSame(subInterface, createCached(ExportsTestLibrary4.class, obj).interfaceArg(obj, subInterface));
         TestSubClass subClass = new TestSubClass();
-        assertSame(subClass, Libraries.createCached(ExportsTestLibrary4.class, obj).classArg(obj, subClass));
+        assertSame(subClass, createCached(ExportsTestLibrary4.class, obj).classArg(obj, subClass));
     }
 
     // allow covariant return types in exports
@@ -225,8 +224,8 @@ public class ExportMethodTest {
     @Test
     public void testExportsObject3() {
         ExportsTestVarArgs obj = new ExportsTestVarArgs();
-        assertEquals(42, Libraries.createCached(ExportsTestLibrary4.class, obj).varArgsObject(obj, 42));
-        assertEquals(42, Libraries.getUncached(ExportsTestLibrary4.class, obj).varArgsObject(obj, 42));
+        assertEquals(42, createCached(ExportsTestLibrary4.class, obj).varArgsObject(obj, 42));
+        assertEquals(42, getUncached(ExportsTestLibrary4.class, obj).varArgsObject(obj, 42));
     }
 
     // export method as static method.
@@ -242,8 +241,8 @@ public class ExportMethodTest {
     @Test
     public void testExportsStaticMethod() {
         ExportsTestStaticMethod obj = new ExportsTestStaticMethod();
-        assertEquals("foo", Libraries.createCached(ExportsTestLibrary1.class, obj).foo(obj, 42));
-        assertEquals("foo", Libraries.getUncached(ExportsTestLibrary1.class, obj).foo(obj, 42));
+        assertEquals("foo", createCached(ExportsTestLibrary1.class, obj).foo(obj, 42));
+        assertEquals("foo", getUncached(ExportsTestLibrary1.class, obj).foo(obj, 42));
     }
 
     // test implicit receiver + CachedNode
@@ -259,8 +258,8 @@ public class ExportMethodTest {
     @Test
     public void testExportsInstanceWithCachedNode() {
         ExportsTestInstanceWithCachedNode obj = new ExportsTestInstanceWithCachedNode();
-        assertEquals("cached", Libraries.createCached(ExportsTestLibrary1.class, obj).foo(obj, 42));
-        assertEquals("uncached", Libraries.getUncached(ExportsTestLibrary1.class, obj).foo(obj, 42));
+        assertEquals("cached", AbstractLibraryTest.adopt(createCached(ExportsTestLibrary1.class, obj)).foo(obj, 42));
+        assertEquals("uncached", getUncached(ExportsTestLibrary1.class, obj).foo(obj, 42));
     }
 
     // test static receiver + cached node
@@ -276,8 +275,8 @@ public class ExportMethodTest {
     @Test
     public void testExportsStaticWithCachedNode() {
         ExportsTestStaticWithCachedNode obj = new ExportsTestStaticWithCachedNode();
-        assertEquals("cached", Libraries.createCached(ExportsTestLibrary1.class, obj).foo(obj, 42));
-        assertEquals("uncached", Libraries.getUncached(ExportsTestLibrary1.class, obj).foo(obj, 42));
+        assertEquals("cached", createCached(ExportsTestLibrary1.class, obj).foo(obj, 42));
+        assertEquals("uncached", getUncached(ExportsTestLibrary1.class, obj).foo(obj, 42));
     }
 
     @ExportLibrary(ExportsTestLibrary1.class)
@@ -294,8 +293,8 @@ public class ExportMethodTest {
     @Test
     public void testExportsInstanceWithLibrary() {
         ExportsTestInstanceWithLibrary obj = new ExportsTestInstanceWithLibrary();
-        assertEquals("cached", Libraries.createCached(ExportsTestLibrary1.class, obj).foo(obj, 42));
-        assertEquals("uncached", Libraries.getUncached(ExportsTestLibrary1.class, obj).foo(obj, 42));
+        assertEquals("cached", createCached(ExportsTestLibrary1.class, obj).foo(obj, 42));
+        assertEquals("uncached", getUncached(ExportsTestLibrary1.class, obj).foo(obj, 42));
     }
 
     @ExportLibrary(ExportsTestLibrary1.class)
@@ -312,8 +311,8 @@ public class ExportMethodTest {
     @Test
     public void testExportsStaticWithLibrary() {
         ExportsTestStaticWithLibrary obj = new ExportsTestStaticWithLibrary();
-        assertEquals("cached", Libraries.createCached(ExportsTestLibrary1.class, obj).foo(obj, 42));
-        assertEquals("uncached", Libraries.getUncached(ExportsTestLibrary1.class, obj).foo(obj, 42));
+        assertEquals("cached", createCached(ExportsTestLibrary1.class, obj).foo(obj, 42));
+        assertEquals("uncached", getUncached(ExportsTestLibrary1.class, obj).foo(obj, 42));
     }
 
     abstract static class NoLibrary extends Library {

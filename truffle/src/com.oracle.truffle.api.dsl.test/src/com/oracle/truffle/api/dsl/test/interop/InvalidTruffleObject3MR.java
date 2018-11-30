@@ -40,21 +40,16 @@
  */
 package com.oracle.truffle.api.dsl.test.interop;
 
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.ExpectError;
-import com.oracle.truffle.api.dsl.test.interop.ValidTruffleObject15MRFactory.NodeThatCausesUnsupportedSpecializationExceptionNodeGen;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.CanResolve;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 
-@SuppressWarnings("unused")
-@MessageResolution(receiverType = InvalidTruffleObject3.class)
+@SuppressWarnings({"unused", "deprecation"})
+@com.oracle.truffle.api.interop.MessageResolution(receiverType = InvalidTruffleObject3.class)
 public class InvalidTruffleObject3MR {
 
-    @CanResolve
+    @com.oracle.truffle.api.interop.CanResolve
     public abstract static class InvalidLanguageCheck2 extends Node {
         @ExpectError({"Method test must not throw a checked exception."})
         protected boolean test(VirtualFrame frame, TruffleObject receiver) throws Exception {

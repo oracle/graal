@@ -45,21 +45,17 @@ import org.junit.Test;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.ForeignAccess.StandardFactory;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
-@SuppressWarnings("static-method")
+@SuppressWarnings({"static-method", "deprecation"})
 public final class FaultyMRTest {
 
     public static class FaultyMRTestObject implements TruffleObject {
 
-        public ForeignAccess getForeignAccess() {
+        public com.oracle.truffle.api.interop.ForeignAccess getForeignAccess() {
             return FaultyMRTestObjectMRForeign.ACCESS;
         }
 
@@ -69,10 +65,10 @@ public final class FaultyMRTest {
         }
     }
 
-    @MessageResolution(receiverType = FaultyMRTestObject.class)
+    @com.oracle.truffle.api.interop.MessageResolution(receiverType = FaultyMRTestObject.class)
     public static class FaultyMRTestObjectMR {
 
-        @Resolve(message = "IS_NULL")
+        @com.oracle.truffle.api.interop.Resolve(message = "IS_NULL")
         public abstract static class IsNullNode extends Node {
             @SuppressWarnings("unused")
             public Object access(VirtualFrame frame, FaultyMRTestObject object) {
@@ -83,12 +79,12 @@ public final class FaultyMRTest {
 
     @Test(expected = AssertionError.class)
     public void test() {
-        ForeignAccess.sendIsNull(Message.IS_NULL.createNode(), new FaultyMRTestObject());
+        com.oracle.truffle.api.interop.ForeignAccess.sendIsNull(com.oracle.truffle.api.interop.Message.IS_NULL.createNode(), new FaultyMRTestObject());
     }
 
     public static class FaultyMRTestObject2 implements TruffleObject {
 
-        public ForeignAccess getForeignAccess() {
+        public com.oracle.truffle.api.interop.ForeignAccess getForeignAccess() {
             return FaultyMRTestObject2Factory.INSTANCE;
         }
     }
@@ -96,7 +92,7 @@ public final class FaultyMRTest {
     private static final class FaultyMRTestObject2Factory implements StandardFactory {
 
         // this provides a faulty class to the ForeignAccess
-        private static final ForeignAccess INSTANCE = ForeignAccess.create(FaultyMRTestObject.class, new FaultyMRTestObject2Factory());
+        private static final com.oracle.truffle.api.interop.ForeignAccess INSTANCE = com.oracle.truffle.api.interop.ForeignAccess.create(FaultyMRTestObject.class, new FaultyMRTestObject2Factory());
 
         @Override
         public CallTarget accessWrite() {
@@ -194,13 +190,13 @@ public final class FaultyMRTest {
         }
 
         @Override
-        public CallTarget accessMessage(Message unknown) {
+        public CallTarget accessMessage(com.oracle.truffle.api.interop.Message unknown) {
             return null;
         }
     }
 
     @Test(expected = AssertionError.class)
     public void test2() {
-        ForeignAccess.sendIsNull(Message.IS_NULL.createNode(), new FaultyMRTestObject2());
+        com.oracle.truffle.api.interop.ForeignAccess.sendIsNull(com.oracle.truffle.api.interop.Message.IS_NULL.createNode(), new FaultyMRTestObject2());
     }
 }

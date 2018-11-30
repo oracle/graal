@@ -40,16 +40,12 @@
  */
 package com.oracle.truffle.api.dsl.test.interop;
 
-import com.oracle.truffle.api.interop.CanResolve;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.Node;
 
-public class Snippets {
+@SuppressWarnings("deprecation") public class Snippets {
 
 //@formatter:off
 public static class ExampleTruffleObject implements TruffleObject {
@@ -66,7 +62,7 @@ public static class ExampleTruffleObject implements TruffleObject {
     }
 
     // BEGIN: com.oracle.truffle.api.dsl.test.interop.Snippets.ExampleTruffleObject#getForeignAccessMethod
-    public ForeignAccess getForeignAccess() {
+    public com.oracle.truffle.api.interop.ForeignAccess getForeignAccess() {
         return ExampleTruffleObjectMRForeign.ACCESS;
     }
 
@@ -80,10 +76,10 @@ public static class ExampleTruffleObject implements TruffleObject {
 }
 
 // BEGIN: com.oracle.truffle.api.dsl.test.interop.Snippets.ExampleTruffleObjectMR
-@MessageResolution(receiverType = ExampleTruffleObject.class)
+@com.oracle.truffle.api.interop.MessageResolution(receiverType = ExampleTruffleObject.class)
 public static class ExampleTruffleObjectMR {
 
-     @Resolve(message = "READ")
+     @com.oracle.truffle.api.interop.Resolve(message = "READ")
      public abstract static class ExampleReadNode extends Node {
 
          protected Object access(ExampleTruffleObject receiver,
@@ -95,7 +91,7 @@ public static class ExampleTruffleObjectMR {
          }
      }
 
-    @Resolve(message = "WRITE")
+    @com.oracle.truffle.api.interop.Resolve(message = "WRITE")
     public abstract static class ExampleWriteNode extends Node {
 
         protected static int access(ExampleTruffleObject receiver,
@@ -108,7 +104,7 @@ public static class ExampleTruffleObjectMR {
         }
     }
 
-    @CanResolve
+    @com.oracle.truffle.api.interop.CanResolve
     public abstract static class Check extends Node {
 
         protected static boolean test(TruffleObject receiver) {
@@ -127,7 +123,7 @@ public static class RethrowExample {
     public void foo() {
         // BEGIN: com.oracle.truffle.api.dsl.test.interop.Snippets.RethrowExample
         try {
-            ForeignAccess.sendRead(readNode, receiver, identifier);
+            com.oracle.truffle.api.interop.ForeignAccess.sendRead(readNode, receiver, identifier);
         } catch (InteropException ex) {
             throw ex.raise();
         }

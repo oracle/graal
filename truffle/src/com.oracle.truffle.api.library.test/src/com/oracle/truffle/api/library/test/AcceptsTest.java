@@ -67,7 +67,7 @@ import com.oracle.truffle.api.test.ExpectError;
 
 @RunWith(Parameterized.class)
 @SuppressWarnings("unused")
-public class AcceptsTest extends AbstractLibraryTest {
+public class AcceptsTest extends AbstractParametrizedLibraryTest {
 
     @Parameters(name = "{0}")
     public static List<TestRun> data() {

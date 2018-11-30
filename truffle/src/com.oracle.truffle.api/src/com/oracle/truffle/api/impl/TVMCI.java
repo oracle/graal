@@ -320,11 +320,7 @@ public abstract class TVMCI {
         return new ThreadLocal<>();
     }
 
-    protected Node getCurrentCallLocation() {
-        return Accessor.nodesAccess().getCurrentCallLocation();
-    }
-
-    protected IndirectCallNode getUncachedIndirectCall() {
+    protected IndirectCallNode createUncachedIndirectCall() {
         return null;
     }
 

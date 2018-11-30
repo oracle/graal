@@ -48,14 +48,13 @@ import org.junit.Test;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
-public class ForeignAccessMultiThreadedTest implements ForeignAccess.Factory, TruffleObject {
-    ForeignAccess fa;
+@SuppressWarnings("deprecation")
+public class ForeignAccessMultiThreadedTest implements com.oracle.truffle.api.interop.ForeignAccess.Factory, TruffleObject {
+    com.oracle.truffle.api.interop.ForeignAccess fa;
     private int cnt;
 
     @Before
@@ -63,7 +62,7 @@ public class ForeignAccessMultiThreadedTest implements ForeignAccess.Factory, Tr
         Thread t = new Thread("Initializer") {
             @Override
             public void run() {
-                fa = ForeignAccess.create(ForeignAccessMultiThreadedTest.this);
+                fa = com.oracle.truffle.api.interop.ForeignAccess.create(ForeignAccessMultiThreadedTest.this);
             }
         };
         t.start();
@@ -72,8 +71,8 @@ public class ForeignAccessMultiThreadedTest implements ForeignAccess.Factory, Tr
 
     @Test
     public void accessNodeFromOtherThread() {
-        Node n = Message.IS_EXECUTABLE.createNode();
-        ForeignAccess.sendIsExecutable(n, this);
+        Node n = com.oracle.truffle.api.interop.Message.IS_EXECUTABLE.createNode();
+        com.oracle.truffle.api.interop.ForeignAccess.sendIsExecutable(n, this);
         // access from different thread allowed.
         assertEquals(1, cnt);
     }
@@ -84,8 +83,8 @@ public class ForeignAccessMultiThreadedTest implements ForeignAccess.Factory, Tr
     }
 
     @Override
-    public CallTarget accessMessage(Message tree) {
-        if (tree == Message.IS_EXECUTABLE) {
+    public CallTarget accessMessage(com.oracle.truffle.api.interop.Message tree) {
+        if (tree == com.oracle.truffle.api.interop.Message.IS_EXECUTABLE) {
             return Truffle.getRuntime().createCallTarget(new RootNode(null) {
                 @Override
                 public Object execute(VirtualFrame frame) {
@@ -98,7 +97,7 @@ public class ForeignAccessMultiThreadedTest implements ForeignAccess.Factory, Tr
     }
 
     @Override
-    public ForeignAccess getForeignAccess() {
+    public com.oracle.truffle.api.interop.ForeignAccess getForeignAccess() {
         return fa;
     }
 }

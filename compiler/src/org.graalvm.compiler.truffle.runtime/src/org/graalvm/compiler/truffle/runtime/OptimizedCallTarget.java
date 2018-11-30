@@ -49,7 +49,6 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.DefaultCompilerOptions;
 import com.oracle.truffle.api.nodes.ControlFlowException;
-import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
@@ -203,13 +202,17 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     @Override
     public final Object call(Object... args) {
-        return callIndirect(null, args);
+        Node encapsulatingNode = NodeUtil.pushEncapsulatingNode(null);
+        try {
+            return callIndirect(encapsulatingNode, args);
+        } finally {
+            NodeUtil.popEncapsulatingNode(encapsulatingNode);
+        }
     }
 
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
     public final Object callIndirect(Node location, Object... args) {
         try {
-            assert runtime().getTvmci().getCurrentCallLocation() == null : "Current call location must be clear when direct or indirect call node executed.";
             OptimizedCompilationProfile profile = compilationProfile;
             if (profile != null) {
                 profile.profileIndirectCall();
@@ -224,7 +227,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
     public final Object callDirect(Node location, Object... args) {
         try {
-            assert runtime().getTvmci().getCurrentCallLocation() == null : "Current call location must be clear when direct or indirect call node executed.";
             getCompilationProfile().profileDirectCall(args);
             try {
                 Object result = doInvoke(args);

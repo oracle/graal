@@ -122,7 +122,7 @@ public abstract class DSLExpression {
     @Override
     public abstract int hashCode();
 
-    public boolean isReceiverBound() {
+    public boolean isNodeReceiverBound() {
         final AtomicBoolean bindsReceiver = new AtomicBoolean(false);
         accept(new DSLExpressionVisitor() {
 
@@ -131,7 +131,8 @@ public abstract class DSLExpression {
                     VariableElement resolvedVar = var.getResolvedVariable();
                     if (resolvedVar != null && !resolvedVar.getModifiers().contains(Modifier.STATIC) &&
                                     (resolvedVar.getEnclosingElement() == null || resolvedVar.getEnclosingElement().getKind() != ElementKind.METHOD)) {
-                        if (!resolvedVar.getSimpleName().toString().equals("null")) {
+                        String name = resolvedVar.getSimpleName().toString();
+                        if (!name.equals("null") && !name.equals("this")) {
                             bindsReceiver.set(true);
                         }
                     }

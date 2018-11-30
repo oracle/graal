@@ -40,13 +40,13 @@
  */
 package com.oracle.truffle.api.impl;
 
+import static com.oracle.truffle.api.impl.DefaultTruffleRuntime.getRuntime;
+
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleRuntime;
-import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
-
-import static com.oracle.truffle.api.impl.DefaultTruffleRuntime.getRuntime;
 
 /**
  * This is an implementation-specific class. Do not use or instantiate it. Instead, use
@@ -77,7 +77,6 @@ public final class DefaultCallTarget implements RootCallTarget {
         if (!this.initialized) {
             initialize();
         }
-        assert Accessor.nodesAccess().getCurrentCallLocation() == null : "Current call node must be null. Invalid usage IndirectCallNode.pushCallNode";
         final DefaultVirtualFrame frame = new DefaultVirtualFrame(getRootNode().getFrameDescriptor(), args);
         getRuntime().pushFrame(frame, this, callNode);
         try {
@@ -87,15 +86,6 @@ public final class DefaultCallTarget implements RootCallTarget {
             throw t;
         } finally {
             getRuntime().popFrame();
-        }
-    }
-
-    Object callIndirectUncached(Object... args) {
-        Node callNode = IndirectCallNode.pushCallLocation(null);
-        try {
-            return call(args);
-        } finally {
-            IndirectCallNode.popCallLocation(callNode);
         }
     }
 

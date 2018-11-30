@@ -56,11 +56,10 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
-import com.oracle.truffle.api.library.Libraries;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.nodes.Node;
 
-public class ExportSharingTest {
+public class ExportSharingTest extends AbstractLibraryTest {
 
     @GenerateLibrary
     @SuppressWarnings("unused")
@@ -105,12 +104,12 @@ public class ExportSharingTest {
 
         TestSingletonCached obj = new TestSingletonCached();
 
-        library1 = Libraries.getUncached(ExportSharingLibrary.class, obj);
-        library2 = Libraries.getUncached(ExportSharingLibrary.class, obj);
+        library1 = getUncached(ExportSharingLibrary.class, obj);
+        library2 = getUncached(ExportSharingLibrary.class, obj);
         assertSame(library1, library2);
 
-        library1 = Libraries.createCached(ExportSharingLibrary.class, obj);
-        library2 = Libraries.createCached(ExportSharingLibrary.class, obj);
+        library1 = createCached(ExportSharingLibrary.class, obj);
+        library2 = createCached(ExportSharingLibrary.class, obj);
         assertSame(library1, library2);
     }
 
@@ -150,8 +149,8 @@ public class ExportSharingTest {
     @Test
     public void testCachedNodeAdoption() {
         TestSimpleCached obj = new TestSimpleCached();
-        ExportSharingLibrary library1 = Libraries.createCached(ExportSharingLibrary.class, obj);
-        ExportSharingLibrary library2 = Libraries.createCached(ExportSharingLibrary.class, obj);
+        ExportSharingLibrary library1 = createCached(ExportSharingLibrary.class, obj);
+        ExportSharingLibrary library2 = createCached(ExportSharingLibrary.class, obj);
         assertFalse(library1.getChildren().iterator().hasNext());
         assertFalse(library2.getChildren().iterator().hasNext());
         assertTrue(library1.accepts(obj));

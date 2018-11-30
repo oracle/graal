@@ -40,81 +40,82 @@
  */
 package com.oracle.truffle.api.library.test;
 
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+
+import org.junit.Test;
+
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
+import com.oracle.truffle.api.library.test.UncachedEncapsulatedNodeTestFactory.Test1NodeGen;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeUtil;
 
-@SuppressWarnings("unused")
-public class DSLCallTest extends Node {
+@SuppressWarnings("static-method")
+public class UncachedEncapsulatedNodeTest extends AbstractLibraryTest {
 
     @GenerateLibrary
-    public abstract static class DSLCallLibrary extends Library {
+    public abstract static class EncapsulatedNodeLibrary extends Library {
 
-        public boolean guard(Object receiver) {
-            return false;
-        }
-
-        public abstract int someCall(Object receiver);
+        public abstract Object m0(Object receiver);
 
     }
 
-    @ExportLibrary(DSLCallLibrary.class)
-    static class SlowPathMyObject {
-
-        boolean isType;
-        int value;
+    @ExportLibrary(EncapsulatedNodeLibrary.class)
+    static final class TestObject {
 
         @ExportMessage
-        protected boolean guard() {
-            return isType;
+        boolean accepts(@Cached("this") TestObject cached) {
+            return this == cached;
         }
 
         @ExportMessage
-        protected int someCall() {
-            return value;
+        Object m0() {
+            return NodeUtil.getCurrentEncapsulatingNode();
         }
 
     }
 
-// public abstract static class DSLNode extends Node {
-//
-// abstract int execute(Object arg0, Object arg1);
-//
-// @Specialization(guards = {"lib1.guard(object1) || lib2.guard(object2)"})
-// int doActiveMethods1(
-// Object object1,
-// Object object2,
-// @CachedLibrary("object1") DSLCallLibrary lib1,
-// @CachedLibrary("object2") DSLCallLibrary lib2) {
-// return lib1.someCall(object1) + lib2.someCall(object2);
-// }
-//
-// @Specialization
-// int doFallback(Object object1, Object object2) {
-// return -1;
-// }
-//
-// }
-//
-// @Test
-// public void testDSLCall() {
-// DSLNode node = DSLNodeGen.create();
-//
-// SlowPathMyObject object = new SlowPathMyObject();
-// object.isType = true;
-// object.value = 42;
-//
-// SlowPathMyObject notobject = new SlowPathMyObject();
-// notobject.isType = false;
-// notobject.value = 1;
-//
-// Assert.assertEquals(84, node.execute(object, object));
-// Assert.assertEquals(43, node.execute(object, notobject));
-// Assert.assertEquals(43, node.execute(notobject, object));
-// Assert.assertEquals(-1, node.execute("", ""));
-//
-// }
+    @Test
+    public void testDSLNode() {
+        Test1Node node = adopt(Test1NodeGen.create());
+        assertNull(node.execute(new TestObject()));
+        assertNull(node.execute(new TestObject()));
+        assertSame(node, node.execute(new TestObject()));
+        assertSame(node, node.execute(new TestObject()));
+    }
+
+    @Test
+    public void testCachedDispatch() {
+        EncapsulatedNodeLibrary lib = createCachedDispatch(EncapsulatedNodeLibrary.class, 2);
+
+        assertNull(lib.m0(new TestObject()));
+        assertNull(lib.m0(new TestObject()));
+        assertSame(lib, lib.m0(new TestObject()));
+        assertSame(lib, lib.m0(new TestObject()));
+    }
+
+    abstract static class Test1Node extends Node {
+
+        abstract Object execute(Object arg);
+
+        @Specialization(limit = "2")
+        Object doLibrary(Object arg,
+                        @CachedLibrary("arg") EncapsulatedNodeLibrary library) {
+            return library.m0(arg);
+        }
+
+    }
+
+    abstract static class Test2Node extends Node {
+
+        abstract Object execute();
+
+    }
 
 }

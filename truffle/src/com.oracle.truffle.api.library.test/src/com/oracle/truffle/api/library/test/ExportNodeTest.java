@@ -52,13 +52,12 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
-import com.oracle.truffle.api.library.Libraries;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.ExpectError;
 
 @SuppressWarnings({"unused", "hiding"})
-public class ExportNodeTest {
+public class ExportNodeTest extends AbstractLibraryTest {
 
     @GenerateLibrary
     abstract static class ExportNodeLibrary1 extends Library {
@@ -93,7 +92,7 @@ public class ExportNodeTest {
     @Test
     public void testObject1() {
         ExportNodeTestObject1 o = new ExportNodeTestObject1();
-        ExportNodeLibrary1 cached = Libraries.createCached(ExportNodeLibrary1.class, o);
+        ExportNodeLibrary1 cached = createCached(ExportNodeLibrary1.class, o);
         cached.foo(o);
         assertEquals(1, o.nodeCalled);
         assertEquals(0, o.uncachedCalled);
@@ -103,7 +102,7 @@ public class ExportNodeTest {
         assertEquals(0, o.uncachedCalled);
 
         o = new ExportNodeTestObject1();
-        ExportNodeLibrary1 uncached = Libraries.getUncached(ExportNodeLibrary1.class, o);
+        ExportNodeLibrary1 uncached = getUncached(ExportNodeLibrary1.class, o);
         uncached.foo(o);
         assertEquals(1, o.uncachedCalled);
         assertEquals(0, o.nodeCalled);
@@ -195,7 +194,7 @@ public class ExportNodeTest {
     @Test
     public void testObject3() {
         ExportNodeTestObject3 obj = new ExportNodeTestObject3();
-        ExportNodeLibrary1 lib = Libraries.createCached(ExportNodeLibrary1.class, obj);
+        ExportNodeLibrary1 lib = createCached(ExportNodeLibrary1.class, obj);
         lib.foo(obj); // should not lead to unsupported operation.
         assertEquals(1, obj.cachedExecute);
     }
@@ -250,7 +249,7 @@ public class ExportNodeTest {
     @Test
     public void testObject4() {
         ExportNodeTestObject4 obj = new ExportNodeTestObject4();
-        ExportNodeLibrary1 lib = Libraries.createCached(ExportNodeLibrary1.class, obj);
+        ExportNodeLibrary1 lib = createCached(ExportNodeLibrary1.class, obj);
         lib.foo(obj); // should not lead to unsupported operation.
         assertEquals(1, obj.cachedExecute);
     }
@@ -284,7 +283,7 @@ public class ExportNodeTest {
         List<Object> caching = Arrays.asList(new MultiExportMethod2(), new MultiExportMethod4(), new MultiExportMethod5());
         List<Object> uncached = Arrays.asList(new MultiExportMethod1(), new MultiExportMethod3());
 
-        MultiNodeExportLibrary lib = Libraries.createCachedDispatch(MultiNodeExportLibrary.class, caching.size() + uncached.size());
+        MultiNodeExportLibrary lib = createCachedDispatch(MultiNodeExportLibrary.class, caching.size() + uncached.size());
         for (Object v : caching) {
             // test that caching implementations share the cache between m0, m1 and m2
             assertEquals("42", lib.m0(v, "42"));
@@ -708,4 +707,5 @@ public class ExportNodeTest {
             }
         }
     }
+
 }

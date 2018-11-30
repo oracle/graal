@@ -42,14 +42,12 @@ package com.oracle.truffle.api.dsl.test.interop;
 
 import com.oracle.truffle.api.dsl.test.ExpectError;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.nodes.Node;
 
-@SuppressWarnings("unused")
-@MessageResolution(receiverType = ValidTruffleObject1.class)
+@SuppressWarnings({"unused", "deprecation"})
+@com.oracle.truffle.api.interop.MessageResolution(receiverType = ValidTruffleObject1.class)
 public class ValidTruffleObject1MR {
-    @Resolve(message = "INVOKE")
+    @com.oracle.truffle.api.interop.Resolve(message = "INVOKE")
     public abstract static class Invoke4 extends Node {
         @ExpectError({"The 3 argument must be a java.lang.String- but is java.lang.Object"})
         protected int access(VirtualFrame frame, ValidTruffleObject0 receiver, Object name, Object[] args) {
@@ -57,7 +55,7 @@ public class ValidTruffleObject1MR {
         }
     }
 
-    @Resolve(message = "READ")
+    @com.oracle.truffle.api.interop.Resolve(message = "READ")
     public abstract static class ReadNode5 extends Node {
 
         @ExpectError({"Wrong number of arguments. Expected signature: ([frame: VirtualFrame], receiverObject: TruffleObject, identifier: String)"})

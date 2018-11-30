@@ -43,10 +43,7 @@ package com.oracle.truffle.api.test.polyglot;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.assertFails;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.assertUnsupported;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.assertValue;
-import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.BOOLEAN;
-import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.NUMBER;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.PROXY_OBJECT;
-import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.STRING;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
@@ -101,69 +98,6 @@ public class ProxyAPITest {
         assertTrue(value.isProxyObject());
         assertSame(proxy, value.asProxyObject());
         assertUnsupported(value, PROXY_OBJECT);
-    }
-
-    @SuppressWarnings("deprecation")
-    static class ProxyPrimitiveTest implements org.graalvm.polyglot.proxy.ProxyPrimitive {
-
-        Object primitive;
-        int invocationCounter = 0;
-
-        public Object asPrimitive() {
-            invocationCounter++;
-            return primitive;
-        }
-    }
-
-    @SuppressWarnings("deprecation")
-    @Test
-    public void testProxyPrimitive() {
-        ProxyPrimitiveTest proxy = new ProxyPrimitiveTest();
-
-        Value value = context.asValue(proxy);
-
-        assertTrue(value.isProxyObject());
-        assertSame(proxy, value.asProxyObject());
-
-        // no need to invoke asPrimitive yet.
-        assertEquals(0, proxy.invocationCounter);
-
-        assertProxyPrimitive(proxy, value, false, Boolean.class, BOOLEAN, PROXY_OBJECT);
-        assertProxyPrimitive(proxy, value, "a", String.class, STRING, PROXY_OBJECT);
-        assertProxyPrimitive(proxy, value, 'a', Character.class, STRING, PROXY_OBJECT);
-        assertProxyPrimitive(proxy, value, Byte.MAX_VALUE, Byte.class, NUMBER, PROXY_OBJECT);
-        assertProxyPrimitive(proxy, value, Short.MAX_VALUE, Short.class, NUMBER, PROXY_OBJECT);
-        assertProxyPrimitive(proxy, value, Integer.MAX_VALUE, Integer.class, NUMBER, PROXY_OBJECT);
-        assertProxyPrimitive(proxy, value, Long.MAX_VALUE, Long.class, NUMBER, PROXY_OBJECT);
-        assertProxyPrimitive(proxy, value, Float.MAX_VALUE, Float.class, NUMBER, PROXY_OBJECT);
-        assertProxyPrimitive(proxy, value, Double.MAX_VALUE, Double.class, NUMBER, PROXY_OBJECT);
-
-        // test errors
-        proxy.primitive = null;
-
-        try {
-            // force to unbox the primitive
-            value.isNumber();
-        } catch (PolyglotException e) {
-            assertTrue(e.isHostException());
-            assertTrue(e.asHostException() instanceof IllegalStateException);
-        }
-
-        RuntimeException e = new RuntimeException();
-        try {
-            value = context.asValue(new org.graalvm.polyglot.proxy.ProxyPrimitive() {
-                public Object asPrimitive() {
-                    throw e;
-                }
-            });
-            // force to unbox the primitive
-            value.isNumber();
-        } catch (PolyglotException ex) {
-            assertTrue(ex.isHostException());
-            assertSame(e, ex.asHostException());
-            assertFalse(ex.isInternalError());
-        }
-
     }
 
     static class ProxyArrayTest implements ProxyArray {
@@ -270,21 +204,6 @@ public class ProxyAPITest {
             assertFalse(e.isInternalError());
         });
         proxy.getSize = null;
-    }
-
-    private static void assertProxyPrimitive(ProxyPrimitiveTest proxy, Value value, Object primitiveValue, Class<?> primitiveType, Trait... traits) {
-        proxy.primitive = primitiveValue;
-        proxy.invocationCounter = 0;
-        assertEquals(0, proxy.invocationCounter);
-        assertEquals(proxy.primitive, value.as(primitiveType));
-        if (proxy.primitive instanceof Character) {
-            assertEquals(proxy.primitive.toString(), value.as(Object.class));
-        } else {
-            assertEquals(proxy.primitive, value.as(Object.class));
-        }
-        assertTrue(proxy.invocationCounter >= 2);
-        proxy.invocationCounter = 0;
-        assertValue(value, traits);
     }
 
     static class ProxyExecutableTest implements ProxyExecutable {

@@ -187,7 +187,7 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
         if (generators == null && processingEnv != null) {
             generators = new ArrayList<>();
             generators.add(new AnnotationProcessor<>(new TypeSystemParser(), new TypeSystemCodeGenerator()));
-            generators.add(new AnnotationProcessor<>(new NodeParser(), new NodeCodeGenerator()));
+            generators.add(new AnnotationProcessor<>(NodeParser.createDefaultParser(), new NodeCodeGenerator()));
             generators.add(new AnnotationProcessor<>(new LibraryParser(), new LibraryGenerator()));
             generators.add(new AnnotationProcessor<>(new ExportsParser(), new ExportsGenerator()));
         }

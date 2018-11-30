@@ -42,10 +42,14 @@ package com.oracle.truffle.api.library.test;
 
 import static org.junit.Assert.assertEquals;
 
+import java.util.Arrays;
+import java.util.List;
+
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -56,7 +60,12 @@ import com.oracle.truffle.api.test.ExpectError;
 
 @RunWith(Parameterized.class)
 @SuppressWarnings("unused")
-public class DefaultExportTest extends AbstractLibraryTest {
+public class DefaultExportTest extends AbstractParametrizedLibraryTest {
+
+    @Parameters(name = "{0}")
+    public static List<TestRun> data() {
+        return Arrays.asList(TestRun.CACHED, TestRun.UNCACHED, TestRun.DISPATCHED_CACHED, TestRun.DISPATCHED_UNCACHED);
+    }
 
     public static class ValidClass {
 

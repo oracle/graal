@@ -41,8 +41,10 @@
 package com.oracle.truffle.api.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.library.Libraries;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 
 @SuppressWarnings("deprecation")
 final class LegacyToLibraryNode extends Node {
@@ -61,12 +63,32 @@ final class LegacyToLibraryNode extends Node {
         legacyIsBoxed = InteropAccessNode.create(Message.IS_BOXED);
     }
 
+    static final class AdoptRootNode extends RootNode {
+
+        AdoptRootNode() {
+            super(null);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            throw new AssertionError();
+        }
+
+        LegacyToLibraryNode insertAccess(LegacyToLibraryNode node) {
+            return insert(node);
+        }
+    }
+
     static LegacyToLibraryNode create(Message message) {
         if (message instanceof KnownMessage) {
-            return new LegacyToLibraryNode(message);
+            /*
+             * Cached Truffle libraries need to be adopted. This was not necessary for legacy to
+             * library interop nodes, therefore we create a dummy root node and adopt it. This
+             * overhead will go away as soon as all languages migrated.
+             */
+            return new AdoptRootNode().insertAccess(new LegacyToLibraryNode(message));
         }
-        // TODO
-        return null;
+        throw new IllegalArgumentException();
     }
 
     Object sendRead(TruffleObject receiver, Object identifier) throws UnknownIdentifierException, UnsupportedMessageException {

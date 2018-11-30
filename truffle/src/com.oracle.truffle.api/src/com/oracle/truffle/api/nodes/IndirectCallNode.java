@@ -41,9 +41,7 @@
 package com.oracle.truffle.api.nodes;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 
 /**
@@ -83,36 +81,10 @@ public abstract class IndirectCallNode extends Node {
         return Truffle.getRuntime().createIndirectCallNode();
     }
 
-    private static final IndirectCallNode UNCACHED = Node.ACCESSOR.getUncachedIndirectCall();
+    private static final IndirectCallNode UNCACHED = Node.ACCESSOR.createUncachedIndirectCall();
 
     public static IndirectCallNode getUncached() {
-        assert !UNCACHED.isAdoptable();
         return UNCACHED;
-    }
-
-    // TODO hide this behind accessor
-    /**
-     * Push a current call nodes for call targets that are invoked.
-     *
-     * @param callNode
-     * @return
-     */
-    @TruffleBoundary
-    public static final Node pushCallLocation(Node callNode) {
-        Object prev = CURRENT_CALL_NODE.get();
-        CURRENT_CALL_NODE.set(callNode);
-        return (Node) prev;
-    }
-
-    // TODO hide this behind accessor
-    /**
-     *
-     * @param prev
-     */
-    @TruffleBoundary
-    public static void popCallLocation(Node prev) {
-        CompilerAsserts.neverPartOfCompilation();
-        CURRENT_CALL_NODE.set(prev);
     }
 
 }

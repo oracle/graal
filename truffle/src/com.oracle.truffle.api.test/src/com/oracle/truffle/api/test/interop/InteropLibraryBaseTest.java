@@ -52,11 +52,14 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.ResolvedLibrary;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 
 @RunWith(Parameterized.class)
 public abstract class InteropLibraryBaseTest {
@@ -80,16 +83,31 @@ public abstract class InteropLibraryBaseTest {
         ResolvedLibrary<T> lib = ResolvedLibrary.resolve(library);
         switch (run) {
             case CACHED:
-                return lib.createCached(receiver);
+                return adopt(lib.createCached(receiver));
             case UNCACHED:
                 return lib.getUncached(receiver);
             case DISPATCHED_CACHED:
-                return lib.createCachedDispatch(2);
+                return adopt(lib.createCachedDispatch(2));
             case DISPATCHED_UNCACHED:
                 return lib.getUncachedDispatch();
         }
 
         throw new AssertionError();
+    }
+
+    static <T extends Node> T adopt(T node) {
+        RootNode root = new RootNode(null) {
+            {
+                insert(node);
+            }
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return null;
+            }
+        };
+        root.adoptChildren();
+        return node;
     }
 
     protected final void assertNotNull(Object value) {

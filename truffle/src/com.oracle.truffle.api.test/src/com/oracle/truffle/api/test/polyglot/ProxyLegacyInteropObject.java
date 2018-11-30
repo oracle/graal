@@ -47,11 +47,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.ForeignAccess.StandardFactory;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.KeyInfo;
-import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -62,12 +58,12 @@ import com.oracle.truffle.api.test.polyglot.ProxySPITest.TestFunction;
 /**
  * Helper class for tests to simplify the declaration of interop objects.
  */
-@SuppressWarnings("unused")
+@SuppressWarnings({"unused", "deprecation"})
 public abstract class ProxyLegacyInteropObject implements TruffleObject {
 
     public Object execute(Object[] args) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
         CompilerDirectives.transferToInterpreter();
-        throw UnsupportedMessageException.raise(Message.EXECUTE);
+        throw UnsupportedMessageException.create();
     }
 
     static boolean isInstance(TruffleObject obj) {
@@ -104,89 +100,89 @@ public abstract class ProxyLegacyInteropObject implements TruffleObject {
 
     public long asPointer() throws UnsupportedMessageException {
         CompilerDirectives.transferToInterpreter();
-        throw UnsupportedMessageException.raise(Message.AS_POINTER);
+        throw UnsupportedMessageException.create();
     }
 
-    public int getSize() {
+    public int getSize() throws UnsupportedMessageException {
         CompilerDirectives.transferToInterpreter();
-        throw UnsupportedMessageException.raise(Message.GET_SIZE);
+        throw UnsupportedMessageException.create();
     }
 
     public Object unbox() throws UnsupportedMessageException {
         CompilerDirectives.transferToInterpreter();
-        throw UnsupportedMessageException.raise(Message.UNBOX);
+        throw UnsupportedMessageException.create();
 
     }
 
     public Object read(String key) throws UnsupportedMessageException, UnknownIdentifierException {
         CompilerDirectives.transferToInterpreter();
-        throw UnsupportedMessageException.raise(Message.READ);
+        throw UnsupportedMessageException.create();
     }
 
     public Object read(Number key) throws UnsupportedMessageException, UnknownIdentifierException {
         CompilerDirectives.transferToInterpreter();
-        throw UnsupportedMessageException.raise(Message.READ);
+        throw UnsupportedMessageException.create();
     }
 
     public Object write(String key, Object value) throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException {
         CompilerDirectives.transferToInterpreter();
-        throw UnsupportedMessageException.raise(Message.WRITE);
+        throw UnsupportedMessageException.create();
     }
 
     public Object write(Number key, Object value) throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException {
         CompilerDirectives.transferToInterpreter();
-        throw UnsupportedMessageException.raise(Message.WRITE);
+        throw UnsupportedMessageException.create();
     }
 
     public boolean remove(String key) throws UnsupportedMessageException, UnknownIdentifierException {
         CompilerDirectives.transferToInterpreter();
-        throw UnsupportedMessageException.raise(Message.REMOVE);
+        throw UnsupportedMessageException.create();
     }
 
     public boolean remove(Number key) throws UnsupportedMessageException, UnknownIdentifierException {
         CompilerDirectives.transferToInterpreter();
-        throw UnsupportedMessageException.raise(Message.REMOVE);
+        throw UnsupportedMessageException.create();
     }
 
     public Object invoke(String key, Object[] arguments) throws UnsupportedMessageException, UnsupportedTypeException, ArityException {
         CompilerDirectives.transferToInterpreter();
-        throw UnsupportedMessageException.raise(Message.INVOKE);
+        throw UnsupportedMessageException.create();
     }
 
     public Object newInstance(Object[] arguments) throws UnsupportedMessageException, UnsupportedTypeException, ArityException {
         CompilerDirectives.transferToInterpreter();
-        throw UnsupportedMessageException.raise(Message.NEW);
+        throw UnsupportedMessageException.create();
     }
 
     public Object keys() throws UnsupportedMessageException {
         CompilerDirectives.transferToInterpreter();
-        throw UnsupportedMessageException.raise(Message.KEYS);
+        throw UnsupportedMessageException.create();
     }
 
     public int keyInfo(String key) {
-        return KeyInfo.NONE;
+        return com.oracle.truffle.api.interop.KeyInfo.NONE;
     }
 
     public int keyInfo(Number key) {
-        return KeyInfo.NONE;
+        return com.oracle.truffle.api.interop.KeyInfo.NONE;
     }
 
-    public Object message(Message message, Object[] arguments) {
+    public Object message(com.oracle.truffle.api.interop.Message message, Object[] arguments) {
         return null;
     }
 
     public Object toNative() throws UnsupportedMessageException {
         CompilerDirectives.transferToInterpreter();
-        throw UnsupportedMessageException.raise(Message.KEYS);
+        throw UnsupportedMessageException.create();
     }
 
-    public ForeignAccess getForeignAccess() {
+    public com.oracle.truffle.api.interop.ForeignAccess getForeignAccess() {
         return TestObjectFactory.INSTANCE;
     }
 
-    private static final class TestObjectFactory implements StandardFactory {
+    private static final class TestObjectFactory implements com.oracle.truffle.api.interop.ForeignAccess.StandardFactory {
 
-        private static final ForeignAccess INSTANCE = ForeignAccess.create(ProxyLegacyInteropObject.class, new TestObjectFactory());
+        private static final com.oracle.truffle.api.interop.ForeignAccess INSTANCE = com.oracle.truffle.api.interop.ForeignAccess.create(ProxyLegacyInteropObject.class, new TestObjectFactory());
 
         private abstract static class BaseNode extends RootNode {
 
@@ -313,7 +309,7 @@ public abstract class ProxyLegacyInteropObject implements TruffleObject {
                         return receiver.read((String) key);
                     } else {
                         CompilerDirectives.transferToInterpreter();
-                        throw UnsupportedMessageException.raise(Message.READ);
+                        throw UnsupportedMessageException.create();
                     }
                 }
             });
@@ -331,7 +327,7 @@ public abstract class ProxyLegacyInteropObject implements TruffleObject {
                         return receiver.write((String) key, value);
                     } else {
                         CompilerDirectives.transferToInterpreter();
-                        throw UnsupportedMessageException.raise(Message.WRITE);
+                        throw UnsupportedMessageException.create();
                     }
                 }
             });
@@ -348,7 +344,7 @@ public abstract class ProxyLegacyInteropObject implements TruffleObject {
                         return receiver.remove((String) key);
                     } else {
                         CompilerDirectives.transferToInterpreter();
-                        throw UnsupportedMessageException.raise(Message.REMOVE);
+                        throw UnsupportedMessageException.create();
                     }
                 }
             });
@@ -363,7 +359,7 @@ public abstract class ProxyLegacyInteropObject implements TruffleObject {
                         return receiver.invoke((String) key, Arrays.copyOfRange(arguments, 2, arguments.length));
                     } else {
                         CompilerDirectives.transferToInterpreter();
-                        throw UnsupportedMessageException.raise(Message.INVOKE);
+                        throw UnsupportedMessageException.create();
                     }
                 }
             });
@@ -398,7 +394,7 @@ public abstract class ProxyLegacyInteropObject implements TruffleObject {
                         return receiver.keyInfo((String) key);
                     } else {
                         CompilerDirectives.transferToInterpreter();
-                        throw UnsupportedMessageException.raise(Message.REMOVE);
+                        throw UnsupportedMessageException.create();
                     }
                 }
             });
@@ -422,7 +418,7 @@ public abstract class ProxyLegacyInteropObject implements TruffleObject {
             });
         }
 
-        public CallTarget accessMessage(Message unknown) {
+        public CallTarget accessMessage(com.oracle.truffle.api.interop.Message unknown) {
             return create(new BaseNode() {
                 @Override
                 protected Object executeImpl(ProxyLegacyInteropObject receiver, Object[] arguments) throws InteropException {

@@ -31,10 +31,8 @@ import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.impl.DefaultCallTarget;
 import com.oracle.truffle.api.impl.TVMCI;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
@@ -59,11 +57,6 @@ final class GraalTVMCI extends TVMCI {
                 ((OptimizedCallTarget) target).onLoopCount(count);
             }
         }
-    }
-
-    @Override
-    protected Node getCurrentCallLocation() {
-        return super.getCurrentCallLocation();
     }
 
     @Override
@@ -148,8 +141,8 @@ final class GraalTVMCI extends TVMCI {
     }
 
     @Override
-    protected IndirectCallNode getUncachedIndirectCall() {
-        return OptimizedIndirectCallNode.UNCACHED;
+    protected IndirectCallNode createUncachedIndirectCall() {
+        return OptimizedIndirectCallNode.createUncached();
     }
 
     @Override

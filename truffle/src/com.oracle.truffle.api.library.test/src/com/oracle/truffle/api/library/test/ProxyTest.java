@@ -40,10 +40,14 @@
  */
 package com.oracle.truffle.api.library.test;
 
+import java.util.Arrays;
+import java.util.List;
+
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -54,7 +58,12 @@ import com.oracle.truffle.api.library.Message;
 import com.oracle.truffle.api.library.ReflectionLibrary;
 
 @RunWith(Parameterized.class)
-public class ProxyTest extends AbstractLibraryTest {
+public class ProxyTest extends AbstractParametrizedLibraryTest {
+
+    @Parameters(name = "{0}")
+    public static List<TestRun> data() {
+        return Arrays.asList(TestRun.CACHED, TestRun.UNCACHED, TestRun.DISPATCHED_CACHED, TestRun.DISPATCHED_UNCACHED);
+    }
 
     @GenerateLibrary
     public abstract static class ProxyTestLibrary extends Library {

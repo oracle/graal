@@ -42,14 +42,12 @@ package com.oracle.truffle.api.dsl.test.interop;
 
 import com.oracle.truffle.api.dsl.test.ExpectError;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.nodes.Node;
 
-@SuppressWarnings("unused")
-@MessageResolution(receiverType = ValidTruffleObject6.class)
+@SuppressWarnings({"unused", "deprecation"})
+@com.oracle.truffle.api.interop.MessageResolution(receiverType = ValidTruffleObject6.class)
 public class ValidTruffleObject6MR {
-    @Resolve(message = "EXECUTE")
+    @com.oracle.truffle.api.interop.Resolve(message = "EXECUTE")
     public abstract static class Execute extends Node {
 
         @ExpectError({"Wrong number of arguments. Expected signature: ([frame: VirtualFrame], receiverObject: TruffleObject, arguments: Object[])"})
@@ -58,7 +56,7 @@ public class ValidTruffleObject6MR {
         }
     }
 
-    @Resolve(message = "HAS_SIZE")
+    @com.oracle.truffle.api.interop.Resolve(message = "HAS_SIZE")
     public abstract static class HasSizeNode2 extends Node {
 
         @ExpectError(value = "Wrong number of arguments. Expected signature: ([frame: VirtualFrame], receiverObject: TruffleObject)")
@@ -67,7 +65,7 @@ public class ValidTruffleObject6MR {
         }
     }
 
-    @Resolve(message = "INVOKE")
+    @com.oracle.truffle.api.interop.Resolve(message = "INVOKE")
     public abstract static class Invoke extends Node {
 
         @ExpectError({"Wrong number of arguments. Expected signature: ([frame: VirtualFrame], receiverObject: TruffleObject, identifier: String, arguments: Object[])"})
@@ -76,7 +74,7 @@ public class ValidTruffleObject6MR {
         }
     }
 
-    @Resolve(message = "IS_BOXED")
+    @com.oracle.truffle.api.interop.Resolve(message = "IS_BOXED")
     public abstract static class IsBoxed extends Node {
 
         @ExpectError({"Wrong number of arguments. Expected signature: ([frame: VirtualFrame], receiverObject: TruffleObject)"})
@@ -86,11 +84,11 @@ public class ValidTruffleObject6MR {
     }
 
     @ExpectError("There needs to be at least one access method.")
-    @Resolve(message = "READ")
+    @com.oracle.truffle.api.interop.Resolve(message = "READ")
     public abstract static class ReadNode extends Node {
     }
 
-    @Resolve(message = "WRITE")
+    @com.oracle.truffle.api.interop.Resolve(message = "WRITE")
     public abstract static class WriteNode extends Node {
 
         @ExpectError({"Wrong number of arguments. Expected signature: ([frame: VirtualFrame], receiverObject: TruffleObject, identifier: String, value: Object)"})

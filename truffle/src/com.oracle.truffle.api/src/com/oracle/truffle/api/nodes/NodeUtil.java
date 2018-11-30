@@ -55,6 +55,7 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
@@ -66,6 +67,8 @@ public final class NodeUtil {
 
     private NodeUtil() {
     }
+
+    static final ThreadLocal<Object> CURRENT_ENCAPSULATING_NODE = Node.ACCESSOR.createFastThreadLocal();
 
     static Iterator<Node> makeIterator(Node node) {
         return node.getNodeClass().makeIterator(node);
@@ -228,6 +231,25 @@ public final class NodeUtil {
     /** @since 0.8 or earlier */
     public static boolean replaceChild(Node parent, Node oldChild, Node newChild) {
         return replaceChild(parent, oldChild, newChild, false);
+    }
+
+    @TruffleBoundary
+    public static Node getCurrentEncapsulatingNode() {
+        return (Node) CURRENT_ENCAPSULATING_NODE.get();
+    }
+
+    @TruffleBoundary
+    public static Node pushEncapsulatingNode(Node node) {
+        assert node == null || node.isAdoptable() : "Node must be adoptable to be pushed as encapsulating node.";
+        assert node == null || node.getRootNode() != null : "Node must be adopted by a RootNode to be pushed as encapsulating node.";
+        Object prev = CURRENT_ENCAPSULATING_NODE.get();
+        CURRENT_ENCAPSULATING_NODE.set(node);
+        return (Node) prev;
+    }
+
+    @TruffleBoundary
+    public static void popEncapsulatingNode(Node prev) {
+        CURRENT_ENCAPSULATING_NODE.set(prev);
     }
 
     /*

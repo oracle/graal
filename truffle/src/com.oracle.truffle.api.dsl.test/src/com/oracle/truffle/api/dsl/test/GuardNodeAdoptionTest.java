@@ -38,33 +38,73 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.library.test;
+package com.oracle.truffle.api.dsl.test;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+
+import org.junit.Test;
+
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.test.GuardNodeAdoptionTestFactory.UseCachedNodeGen;
+import com.oracle.truffle.api.dsl.test.GuardNodeAdoptionTestFactory.UseNoCacheNodeGen;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.library.Library;
-import com.oracle.truffle.api.library.ResolvedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
-public abstract class AbstractLibraryTest {
+public class GuardNodeAdoptionTest {
 
-    protected static final <T extends Library> T createCached(Class<T> library, Object receiver) {
-        return adopt(ResolvedLibrary.resolve(library).createCached(receiver));
+    abstract static class GuardNode extends Node {
+
+        abstract boolean execute(String argument);
+
+        @Specialization
+        boolean s0(String argument) {
+            assertNotNull(this.getRootNode());
+            return argument.equals("42");
+        }
     }
 
-    protected static final <T extends Library> T createCachedDispatch(Class<T> library, int limit) {
-        return adopt(ResolvedLibrary.resolve(library).createCachedDispatch(limit));
+    @SuppressWarnings("unused")
+    abstract static class UseCachedNode extends Node {
+
+        abstract String execute(String argument);
+
+        @Specialization(guards = "guardNode.execute(argument)")
+        String s0(String argument, @Cached GuardNode guardNode) {
+            assertNotNull(this.getRootNode());
+            return "cached";
+        }
     }
 
-    protected static final <T extends Library> T getUncached(Class<T> library, Object receiver) {
-        return ResolvedLibrary.resolve(library).getUncached(receiver);
+    @Test
+    public void testDynamicParameterBoundAdopted() {
+        UseCachedNode use = adopt(UseCachedNodeGen.create());
+        assertEquals("cached", use.execute("42"));
     }
 
-    protected static final <T extends Library> T getUncachedDispatch(Class<T> library) {
-        return ResolvedLibrary.resolve(library).getUncachedDispatch();
+    @SuppressWarnings("unused")
+    abstract static class UseNoCacheNode extends Node {
+
+        static final String CONSTANT_42 = "42";
+
+        abstract String execute(String argument);
+
+        @Specialization(guards = "guardNode.execute(CONSTANT_42)")
+        String s0(String argument, @Cached GuardNode guardNode) {
+            assertNotNull(this.getRootNode());
+            return "cached";
+        }
     }
 
-    static <T extends Node> T adopt(T node) {
+    @Test
+    public void testStaticParameterAdopted() {
+        UseNoCacheNode use = adopt(UseNoCacheNodeGen.create());
+        assertEquals("cached", use.execute("42"));
+    }
+
+    private static <T extends Node> T adopt(T node) {
         RootNode root = new RootNode(null) {
             {
                 insert(node);

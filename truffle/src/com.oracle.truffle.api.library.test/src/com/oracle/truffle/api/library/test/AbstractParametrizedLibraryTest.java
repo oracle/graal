@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,13 +38,45 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.dsl.test.interop;
+package com.oracle.truffle.api.library.test;
 
-import com.oracle.truffle.api.interop.TruffleObject;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
 
-@SuppressWarnings("deprecation") public class VisibilityTestObject implements TruffleObject {
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.library.Library;
+import com.oracle.truffle.api.library.ResolvedLibrary;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 
-    public com.oracle.truffle.api.interop.ForeignAccess getForeignAccess() {
-        return VisibilityTestObjectMRForeign.ACCESS;
+@RunWith(Parameterized.class)
+public abstract class AbstractParametrizedLibraryTest extends AbstractLibraryTest {
+
+    public enum TestRun {
+        CACHED,
+        UNCACHED,
+        DISPATCHED_CACHED,
+        DISPATCHED_UNCACHED,
     }
+
+    @Parameter // first data value (0) is default
+    public /* NOT private */ TestRun run;
+
+    protected final <T extends Library> T createLibrary(Class<T> library, Object receiver) {
+        ResolvedLibrary<T> lib = ResolvedLibrary.resolve(library);
+        switch (run) {
+            case CACHED:
+                return adopt(lib.createCached(receiver));
+            case UNCACHED:
+                return lib.getUncached(receiver);
+            case DISPATCHED_CACHED:
+                return adopt(lib.createCachedDispatch(2));
+            case DISPATCHED_UNCACHED:
+                return lib.getUncachedDispatch();
+        }
+
+        throw new AssertionError();
+    }
+
 }

@@ -41,17 +41,14 @@
 package com.oracle.truffle.api.dsl.test.interop;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.CanResolve;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 
-@SuppressWarnings("unused")
-@MessageResolution(receiverType = ValidTruffleObject11.class)
+@SuppressWarnings({"unused", "deprecation"})
+@com.oracle.truffle.api.interop.MessageResolution(receiverType = ValidTruffleObject11.class)
 public class ValidTruffleObject11MR {
 
-    @Resolve(message = "READ")
+    @com.oracle.truffle.api.interop.Resolve(message = "READ")
     public abstract static class ReadNode11 extends Node {
 
         protected Object access(VirtualFrame frame, ValidTruffleObject1 receiver, Object name) {
@@ -59,7 +56,7 @@ public class ValidTruffleObject11MR {
         }
     }
 
-    @CanResolve
+    @com.oracle.truffle.api.interop.CanResolve
     public abstract static class LanguageCheck1 extends Node {
 
         protected boolean test(VirtualFrame frame, TruffleObject receiver) {

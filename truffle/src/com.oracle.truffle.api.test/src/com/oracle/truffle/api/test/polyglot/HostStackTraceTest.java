@@ -50,6 +50,7 @@ import java.util.function.Supplier;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.Value;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -178,6 +179,7 @@ public class HostStackTraceTest extends AbstractPolyglotTest {
         });
         try {
             v.execute();
+            Assert.fail();
         } catch (PolyglotException e) {
             assertTrue(e.asHostException() instanceof RuntimeException);
             Iterator<StackFrame> frames = e.getPolyglotStackTrace().iterator();
@@ -205,6 +207,7 @@ public class HostStackTraceTest extends AbstractPolyglotTest {
         Value v1 = context.asValue(new HostStackTraceExecutable("v1", source.createSection(0, 1), source.createSection(1, 1)));
         try {
             v1.execute(v0);
+            Assert.fail();
         } catch (PolyglotException e) {
             assertTrue(e.asHostException() instanceof RuntimeException);
             Iterator<StackFrame> frames = e.getPolyglotStackTrace().iterator();
@@ -234,6 +237,7 @@ public class HostStackTraceTest extends AbstractPolyglotTest {
         Value v2 = context.asValue(new HostStackTraceExecutable("v2", source.createSection(2, 1), source.createSection(3, 1)));
         try {
             v2.execute(v1, v0);
+            Assert.fail();
         } catch (PolyglotException e) {
             assertTrue(e.asHostException() instanceof RuntimeException);
             Iterator<StackFrame> frames = e.getPolyglotStackTrace().iterator();
@@ -267,10 +271,10 @@ public class HostStackTraceTest extends AbstractPolyglotTest {
         Value v1 = context.asValue(new HostStackTraceExecutable("v1", source.createSection(0, 1), source.createSection(1, 1)));
         Value v2 = context.asValue(new HostStackTraceExecutable("v2", source.createSection(2, 1), source.createSection(3, 1)));
 
+        // TODO support host stack trace
         try {
             v2.execute(v0);
         } catch (PolyglotException e) {
-// e.printStackTrace();
         }
 
         // make the call site uncached
@@ -283,7 +287,6 @@ public class HostStackTraceTest extends AbstractPolyglotTest {
         try {
             v2.execute(v0);
         } catch (PolyglotException e) {
-// e.printStackTrace();
         }
 
     }

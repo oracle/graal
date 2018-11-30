@@ -43,6 +43,8 @@ package com.oracle.truffle.api.impl;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeUtil;
 
 /**
  * This is runtime specific API. Do not use in a guest language.
@@ -54,19 +56,24 @@ final class DefaultIndirectCallNode extends IndirectCallNode {
         return ((DefaultCallTarget) target).callDirectOrIndirect(this, arguments);
     }
 
-    static final IndirectCallNode UNCACHED = new IndirectCallNode() {
+    static IndirectCallNode createUncached() {
+        return new IndirectCallNode() {
+            @Override
+            protected boolean isAdoptable() {
+                return false;
+            }
 
-        @Override
-        protected boolean isAdoptable() {
-            return false;
-        }
-
-        @Override
-        @TruffleBoundary
-        public Object call(CallTarget target, Object[] arguments) {
-            return ((DefaultCallTarget) target).callIndirectUncached(arguments);
-        }
-
-    };
+            @Override
+            @TruffleBoundary
+            public Object call(CallTarget target, Object[] arguments) {
+                Node parent = NodeUtil.pushEncapsulatingNode(null);
+                try {
+                    return ((DefaultCallTarget) target).callDirectOrIndirect(parent, arguments);
+                } finally {
+                    NodeUtil.popEncapsulatingNode(parent);
+                }
+            }
+        };
+    }
 
 }

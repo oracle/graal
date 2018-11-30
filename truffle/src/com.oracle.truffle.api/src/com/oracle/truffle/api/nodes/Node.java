@@ -171,7 +171,7 @@ public abstract class Node implements NodeInterface, Cloneable {
             if (currentSection != null) {
                 return currentSection;
             }
-            current = current.parent;
+            current = current.getParent();
         }
         return null;
     }
@@ -653,8 +653,10 @@ public abstract class Node implements NodeInterface, Cloneable {
         }
 
         @Override
-        protected IndirectCallNode getUncachedIndirectCall() {
-            return super.getUncachedIndirectCall();
+        protected IndirectCallNode createUncachedIndirectCall() {
+            IndirectCallNode callNode = super.createUncachedIndirectCall();
+            assert !callNode.isAdoptable();
+            return callNode;
         }
 
         @Override
@@ -688,11 +690,6 @@ public abstract class Node implements NodeInterface, Cloneable {
         }
 
         static final class AccessNodes extends Accessor.Nodes {
-
-            @Override
-            public Node getCurrentCallLocation() {
-                return (Node) IndirectCallNode.CURRENT_CALL_NODE.get();
-            }
 
             @Override
             public boolean isInstrumentable(RootNode rootNode) {

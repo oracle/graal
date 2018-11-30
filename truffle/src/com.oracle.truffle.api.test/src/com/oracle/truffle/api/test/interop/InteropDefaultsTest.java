@@ -59,12 +59,12 @@ import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.test.polyglot.ProxyLegacyInteropObject;
 
+@SuppressWarnings("deprecation")
 public class InteropDefaultsTest extends InteropLibraryBaseTest {
 
     public static class TestInterop1 {
@@ -246,7 +246,7 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
             readCalls++;
             int index = key.intValue();
             if (index < 0 || index >= array.size()) {
-                throw UnknownIdentifierException.raise(String.valueOf(index));
+                throw UnknownIdentifierException.create(String.valueOf(index));
             }
             return array.get(index);
         }
@@ -256,7 +256,7 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
             writeCalls++;
             int index = key.intValue();
             if (index < 0 || index >= array.size()) {
-                throw UnknownIdentifierException.raise(String.valueOf(index));
+                throw UnknownIdentifierException.create(String.valueOf(index));
             }
             return array.set(index, value);
         }
@@ -266,7 +266,7 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
             removeCalls++;
             int index = key.intValue();
             if (index < 0 || index >= array.size()) {
-                throw UnknownIdentifierException.raise(String.valueOf(index));
+                throw UnknownIdentifierException.create(String.valueOf(index));
             }
             Object result = array.remove(index);
             return result != null;
@@ -277,10 +277,11 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
             return array.size();
         }
 
+        @SuppressWarnings("deprecation")
         @Override
         public int keyInfo(Number key) {
             if (keyInfo == 0 && key.intValue() >= 0 && key.intValue() < array.size()) {
-                return KeyInfo.MODIFIABLE | KeyInfo.READABLE | KeyInfo.REMOVABLE;
+                return com.oracle.truffle.api.interop.KeyInfo.MODIFIABLE | com.oracle.truffle.api.interop.KeyInfo.READABLE | com.oracle.truffle.api.interop.KeyInfo.REMOVABLE;
             }
             return keyInfo;
         }
@@ -346,9 +347,10 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
         public int keyInfo(String key) {
             if (keyInfo == -1) {
                 if (members.containsKey(key)) {
-                    return KeyInfo.READABLE | KeyInfo.MODIFIABLE | KeyInfo.REMOVABLE | KeyInfo.INVOCABLE;
+                    return com.oracle.truffle.api.interop.KeyInfo.READABLE | com.oracle.truffle.api.interop.KeyInfo.MODIFIABLE | com.oracle.truffle.api.interop.KeyInfo.REMOVABLE |
+                                    com.oracle.truffle.api.interop.KeyInfo.INVOCABLE;
                 } else {
-                    return KeyInfo.INSERTABLE;
+                    return com.oracle.truffle.api.interop.KeyInfo.INSERTABLE;
                 }
             }
             return keyInfo;
@@ -367,34 +369,34 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
         assertFalse(library.isObject(v));
         v.hasKeys = true;
 
-        v.keyInfo = KeyInfo.READABLE;
+        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.READABLE;
         assertTrue(library.isMemberReadable(v, ""));
-        v.keyInfo = KeyInfo.NONE;
+        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.NONE;
         assertFalse(library.isMemberReadable(v, ""));
 
-        v.keyInfo = KeyInfo.INSERTABLE;
+        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.INSERTABLE;
         assertTrue(library.isMemberInsertable(v, ""));
-        v.keyInfo = KeyInfo.NONE;
+        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.NONE;
         assertFalse(library.isMemberInsertable(v, ""));
 
-        v.keyInfo = KeyInfo.INTERNAL;
+        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.INTERNAL;
         assertTrue(library.isMemberInternal(v, ""));
-        v.keyInfo = KeyInfo.NONE;
+        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.NONE;
         assertFalse(library.isMemberInternal(v, ""));
 
-        v.keyInfo = KeyInfo.MODIFIABLE;
+        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.MODIFIABLE;
         assertTrue(library.isMemberModifiable(v, ""));
-        v.keyInfo = KeyInfo.NONE;
+        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.NONE;
         assertFalse(library.isMemberModifiable(v, ""));
 
-        v.keyInfo = KeyInfo.INVOCABLE;
+        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.INVOCABLE;
         assertTrue(library.isMemberInvokable(v, ""));
-        v.keyInfo = KeyInfo.NONE;
+        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.NONE;
         assertFalse(library.isMemberInvokable(v, ""));
 
-        v.keyInfo = KeyInfo.REMOVABLE;
+        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.REMOVABLE;
         assertTrue(library.isMemberRemovable(v, ""));
-        v.keyInfo = KeyInfo.NONE;
+        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.NONE;
         assertFalse(library.isMemberRemovable(v, ""));
 
         v.keyInfo = -1;
@@ -448,27 +450,27 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
         assertFalse(library.isArray(v));
         v.hasSize = true;
 
-        v.keyInfo = KeyInfo.READABLE;
+        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.READABLE;
         assertTrue(library.isElementReadable(v, 0));
-        v.keyInfo = KeyInfo.MODIFIABLE;
+        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.MODIFIABLE;
         assertFalse(library.isElementReadable(v, 0));
 
-        v.keyInfo = KeyInfo.INSERTABLE;
+        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.INSERTABLE;
         assertTrue(library.isElementInsertable(v, 0));
-        v.keyInfo = KeyInfo.MODIFIABLE;
+        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.MODIFIABLE;
         assertFalse(library.isElementInsertable(v, 0));
 
-        v.keyInfo = KeyInfo.MODIFIABLE;
+        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.MODIFIABLE;
         assertTrue(library.isElementModifiable(v, 0));
-        v.keyInfo = KeyInfo.READABLE;
+        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.READABLE;
         assertFalse(library.isElementModifiable(v, 0));
 
-        v.keyInfo = KeyInfo.REMOVABLE;
+        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.REMOVABLE;
         assertTrue(library.isElementRemovable(v, 0));
-        v.keyInfo = KeyInfo.READABLE;
+        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.READABLE;
         assertFalse(library.isElementRemovable(v, 0));
 
-        v.keyInfo = KeyInfo.NONE;
+        v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.NONE;
         library.writeElement(v, 0, "baz");
         assertEquals(1, v.writeCalls);
         assertEquals("baz", v.array.get(0));

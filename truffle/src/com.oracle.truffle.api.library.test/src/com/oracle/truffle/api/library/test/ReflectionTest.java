@@ -40,8 +40,12 @@
  */
 package com.oracle.truffle.api.library.test;
 
+import java.util.Arrays;
+import java.util.List;
+
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -52,7 +56,12 @@ import com.oracle.truffle.api.library.Message;
 import com.oracle.truffle.api.library.ReflectionLibrary;
 import com.oracle.truffle.api.nodes.Node;
 
-public class ReflectionTest extends AbstractLibraryTest {
+public class ReflectionTest extends AbstractParametrizedLibraryTest {
+
+    @Parameters(name = "{0}")
+    public static List<TestRun> data() {
+        return Arrays.asList(TestRun.CACHED, TestRun.UNCACHED, TestRun.DISPATCHED_CACHED, TestRun.DISPATCHED_UNCACHED);
+    }
 
     @GenerateLibrary
     public abstract static class ReflectionTestLibrary extends Library {

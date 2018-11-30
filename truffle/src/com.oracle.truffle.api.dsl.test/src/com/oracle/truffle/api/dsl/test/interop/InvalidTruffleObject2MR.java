@@ -40,21 +40,16 @@
  */
 package com.oracle.truffle.api.dsl.test.interop;
 
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.ExpectError;
-import com.oracle.truffle.api.dsl.test.interop.ValidTruffleObject15MRFactory.NodeThatCausesUnsupportedSpecializationExceptionNodeGen;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.CanResolve;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 
-@SuppressWarnings("unused")
-@MessageResolution(receiverType = InvalidTruffleObject2.class)
+@SuppressWarnings({"unused", "deprecation"})
+@com.oracle.truffle.api.interop.MessageResolution(receiverType = InvalidTruffleObject2.class)
 public class InvalidTruffleObject2MR {
 
-    @Resolve(message = "WRITE")
+    @com.oracle.truffle.api.interop.Resolve(message = "WRITE")
     public abstract static class InvalidTruffleObjectWrite2 extends Node {
         @ExpectError({"Method access must not throw a checked exception. Use an InteropException (e.g. UnknownIdentifierException.raise() ) to report an error to the host language."})
         protected Object access(VirtualFrame frame, InvalidTruffleObject2 receiver, String name, Object value) throws Exception {
@@ -62,7 +57,7 @@ public class InvalidTruffleObject2MR {
         }
     }
 
-    @Resolve(message = "INVOKE")
+    @com.oracle.truffle.api.interop.Resolve(message = "INVOKE")
     public abstract static class InvalidTruffleObjectInvoke2 extends Node {
         @ExpectError({"Method access must not throw a checked exception. Use an InteropException (e.g. UnknownIdentifierException.raise() ) to report an error to the host language."})
         protected Object access(VirtualFrame frame, InvalidTruffleObject2 receiver, String name, Object[] arg) throws Exception {
@@ -70,7 +65,7 @@ public class InvalidTruffleObject2MR {
         }
     }
 
-    @CanResolve
+    @com.oracle.truffle.api.interop.CanResolve
     public abstract static class InvalidLanguageCheck2 extends Node {
 
         protected boolean test(VirtualFrame frame, TruffleObject receiver) {

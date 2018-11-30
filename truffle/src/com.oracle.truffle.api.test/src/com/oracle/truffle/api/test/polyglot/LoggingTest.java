@@ -60,6 +60,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
@@ -81,6 +82,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.function.Consumer;
 import org.graalvm.polyglot.Engine;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.RootNode;
 
 public class LoggingTest {
 
@@ -1147,10 +1150,6 @@ public class LoggingTest {
             this.stringValue = stringValue;
         }
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return null;
-        }
     }
 
     public abstract static class AbstractLoggingLanguage extends TruffleLanguage<LoggingContext> {

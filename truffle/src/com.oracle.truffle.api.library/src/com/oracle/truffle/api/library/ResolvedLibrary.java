@@ -133,7 +133,6 @@ public abstract class ResolvedLibrary<T extends Library> {
      */
     public final T createCached(Object receiver) {
         T cached = lookupExport(receiver).createCached(receiver);
-        assert cached.accepts(receiver) : String.format("Invalid accepts implementation for receiver class %s.", receiver.getClass());
         assert (cached = createAssertions(cached)) != null;
         return cached;
     }

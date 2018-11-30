@@ -329,6 +329,10 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                     }
                     cachedExecute.setSimpleName(CodeNames.of(ACCEPTS_METHOD_NAME));
                     ElementUtils.setVisibility(cachedExecute.getModifiers(), Modifier.PRIVATE);
+                } else {
+                    if (cacheSingleton == null) {
+                        injectCachedAssertions(cachedExecute);
+                    }
                 }
 
                 // uncached execute
@@ -378,6 +382,13 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
 
         genClass.addAll(libraryConstants.values());
         return Arrays.asList(genClass);
+    }
+
+    static void injectCachedAssertions(CodeExecutableElement cachedExecute) {
+        CodeTree body = cachedExecute.getBodyTree();
+        CodeTreeBuilder builder = cachedExecute.createBuilder();
+        builder.startAssert().string("getRootNode() != null : ").doubleQuote("Invalid libray usage. Cached library must be adopted by a RootNode before it is executed.").end();
+        builder.tree(body);
     }
 
     private static Map<CacheExpression, String> computeSharedCaches(Collection<NodeData> inlinedNodes) {
@@ -565,10 +576,12 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                     if (var1.getKind() == ElementKind.PARAMETER && var2.getKind() == ElementKind.PARAMETER) {
                         Parameter p1 = specialization.findByVariable(var1);
                         Parameter p2 = other.specialization.findByVariable(var2);
-                        NodeExecutionData execution1 = p1.getSpecification().getExecution();
-                        NodeExecutionData execution2 = p2.getSpecification().getExecution();
-                        if (execution1 != null && execution2 != null && execution1.getIndex() == execution2.getIndex()) {
-                            continue;
+                        if (p1 != null && p2 != null) {
+                            NodeExecutionData execution1 = p1.getSpecification().getExecution();
+                            NodeExecutionData execution2 = p2.getSpecification().getExecution();
+                            if (execution1 != null && execution2 != null && execution1.getIndex() == execution2.getIndex()) {
+                                continue;
+                            }
                         }
                     }
                     if (!ElementUtils.variableEquals(var1, var2)) {

@@ -505,7 +505,7 @@ class ObjectProxyNode extends HostRootNode {
     final Class<?> interfaceType;
 
     @Child private ProxyInvokeNode proxyInvoke = ProxyInvokeNodeGen.create();
-    @CompilationFinal private ToGuestValuesNode toGuests;
+    @CompilationFinal private ToGuestValuesNode toGuests = ToGuestValuesNode.create();
 
     ObjectProxyNode(Class<?> receiverType, Class<?> interfaceType) {
         this.receiverClass = receiverType;
@@ -525,11 +525,6 @@ class ObjectProxyNode extends HostRootNode {
 
     @Override
     protected Object executeImpl(PolyglotLanguageContext languageContext, Object receiver, Object[] args) {
-        if (proxyInvoke == null || toGuests == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            toGuests = ToGuestValuesNode.create();
-            proxyInvoke = ProxyInvokeNodeGen.create();
-        }
         Method method = (Method) args[ARGUMENT_OFFSET];
         Object[] arguments = toGuests.apply(languageContext, (Object[]) args[ARGUMENT_OFFSET + 1]);
         return proxyInvoke.execute(languageContext, receiver, method, arguments);

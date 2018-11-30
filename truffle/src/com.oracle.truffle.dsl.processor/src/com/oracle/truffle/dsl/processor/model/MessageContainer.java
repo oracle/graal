@@ -218,7 +218,11 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
     }
 
     public final boolean hasErrors() {
-        return hasErrorsImpl(new HashSet<MessageContainer>());
+        return hasErrorsImpl(new HashSet<MessageContainer>(), false);
+    }
+
+    public final boolean hasErrorsOrWarnings() {
+        return hasErrorsImpl(new HashSet<MessageContainer>(), true);
     }
 
     public final List<Message> collectMessages() {
@@ -239,9 +243,9 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
         }
     }
 
-    private boolean hasErrorsImpl(Set<MessageContainer> visitedSinks) {
+    private boolean hasErrorsImpl(Set<MessageContainer> visitedSinks, boolean orWarnings) {
         for (Message msg : getMessages()) {
-            if (msg.getKind() == Kind.ERROR) {
+            if (msg.getKind() == Kind.ERROR || (orWarnings && msg.getKind() == Kind.WARNING)) {
                 return true;
             }
         }
@@ -252,7 +256,7 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
 
             visitedSinks.add(sink);
 
-            if (sink.hasErrorsImpl(visitedSinks)) {
+            if (sink.hasErrorsImpl(visitedSinks, orWarnings)) {
                 return true;
             }
         }

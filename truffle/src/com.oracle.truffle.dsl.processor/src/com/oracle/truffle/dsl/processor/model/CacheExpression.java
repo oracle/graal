@@ -58,6 +58,7 @@ public final class CacheExpression extends MessageContainer {
     private DSLExpression uncachedExpression;
     private boolean initializedInFastPath = false;
     private Message uncachedExpressionError;
+    private boolean requiresBoundary;
 
     public CacheExpression(Parameter sourceParameter, AnnotationMirror sourceAnnotationMirror) {
         this.sourceParameter = sourceParameter;
@@ -133,6 +134,14 @@ public final class CacheExpression extends MessageContainer {
     @Override
     public AnnotationMirror getMessageAnnotation() {
         return sourceAnnotationMirror;
+    }
+
+    public void setRequiresBoundary(boolean requiresBoundary) {
+        this.requiresBoundary = requiresBoundary;
+    }
+
+    public boolean isRequiresBoundary() {
+        return requiresBoundary;
     }
 
     public DSLExpression getDefaultExpression() {

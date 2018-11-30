@@ -80,7 +80,7 @@ public final class ExportMessageElement extends MessageContainer {
                 return ((ExecutableElement) element).getParameters().get(0).asType();
             }
         }
-        return export.getLibrary().getReceiverClass();
+        return export.getExportsLibrary().getReceiverClass();
     }
 
     public void setSpecializedNode(NodeData specializedNode) {

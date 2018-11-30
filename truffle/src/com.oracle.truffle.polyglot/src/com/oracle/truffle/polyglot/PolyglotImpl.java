@@ -89,6 +89,7 @@ import com.oracle.truffle.api.impl.TruffleLocator;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.ThreadsListener;
 import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
@@ -328,6 +329,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         throw wrapHostException(location, languageContext.context, e);
     }
 
+    @SuppressWarnings("deprecation")
     @TruffleBoundary
     static <T extends Throwable> RuntimeException wrapHostException(Node location, PolyglotContextImpl context, T e) {
         if (e instanceof ThreadDeath) {
@@ -1076,6 +1078,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             PolyglotEngineImpl engine = getEngine(vmObject);
             Object loggerCache = engine.getOrCreateEngineLoggers();
             return LANGUAGE.getLogger(id, loggerName, loggerCache);
+        }
+
+        @Override
+        public Object convertPrimitive(Object value, Class<?> requestedType) {
+            return ToHostNode.convertLossLess(value, requestedType, InteropLibrary.getUncached());
         }
     }
 }

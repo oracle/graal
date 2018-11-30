@@ -40,12 +40,11 @@
  */
 package com.oracle.truffle.api.dsl.test.interop;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 
-public class ManagedTestObject implements TruffleObject {
+@SuppressWarnings("deprecation") public class ManagedTestObject implements TruffleObject {
 
-    public ForeignAccess getForeignAccess() {
+    public com.oracle.truffle.api.interop.ForeignAccess getForeignAccess() {
         return ManagedTestObjectMRForeign.ACCESS;
     }
 

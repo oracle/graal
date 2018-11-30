@@ -92,7 +92,7 @@ public class ExportMessageData extends MessageContainer {
         return resolvedMessage;
     }
 
-    public ExportsLibrary getLibrary() {
+    public ExportsLibrary getExportsLibrary() {
         return library;
     }
 

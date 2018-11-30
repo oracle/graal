@@ -41,14 +41,12 @@
 package com.oracle.truffle.api.dsl.test.interop;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.nodes.Node;
 
-@MessageResolution(receiverType = ManagedTestObject.class)
-public class ManagedTestObjectMR {
+@com.oracle.truffle.api.interop.MessageResolution(receiverType = ManagedTestObject.class)
+@SuppressWarnings("deprecation") public class ManagedTestObjectMR {
 
-    @Resolve(message = "TO_NATIVE")
+    @com.oracle.truffle.api.interop.Resolve(message = "TO_NATIVE")
     public abstract static class AcceptToNative extends Node {
         @SuppressWarnings("unused")
         public Object access(VirtualFrame frame, ManagedTestObject object) {

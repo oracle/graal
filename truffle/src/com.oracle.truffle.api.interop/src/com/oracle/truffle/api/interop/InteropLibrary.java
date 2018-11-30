@@ -394,24 +394,33 @@ public abstract class InteropLibrary extends Library {
     }
 
     public static InteropLibrary createDispatched(int limit) {
-        return Resolved.INTEROP_LIBRARY.createCachedDispatch(limit);
+        return Lazy.INTEROP_LIBRARY.createCachedDispatch(limit);
     }
 
     public static InteropLibrary create(Object receiver) {
-        return Resolved.INTEROP_LIBRARY.createCached(receiver);
+        return Lazy.INTEROP_LIBRARY.createCached(receiver);
     }
 
     public static InteropLibrary getUncached() {
-        return Resolved.INTEROP_LIBRARY.getUncachedDispatch();
+        return Lazy.UNCACHED_DISPATCH;
     }
 
     public static InteropLibrary getUncached(Object receiver) {
-        return Resolved.INTEROP_LIBRARY.getUncached(receiver);
+        return Lazy.INTEROP_LIBRARY.getUncached(receiver);
     }
 
-    static class Resolved {
+    /*
+     * This indirection is needed to avoid cyclic class initialization. The enclosing class needs to
+     * be loaded before ResolvedLibrary.resolve can be used.
+     */
+    static final class Lazy {
+
+        private Lazy() {
+            /* No instances */
+        }
 
         static final ResolvedLibrary<InteropLibrary> INTEROP_LIBRARY = ResolvedLibrary.resolve(InteropLibrary.class);
+        static final InteropLibrary UNCACHED_DISPATCH = INTEROP_LIBRARY.getUncachedDispatch();
 
     }
 

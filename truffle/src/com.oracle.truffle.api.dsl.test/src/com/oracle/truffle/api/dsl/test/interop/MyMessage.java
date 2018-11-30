@@ -40,9 +40,8 @@
  */
 package com.oracle.truffle.api.dsl.test.interop;
 
-import com.oracle.truffle.api.interop.Message;
-
-public final class MyMessage extends Message {
+@SuppressWarnings({"deprecation"})
+public final class MyMessage extends com.oracle.truffle.api.interop.Message {
 
     @Override
     public boolean equals(Object message) {

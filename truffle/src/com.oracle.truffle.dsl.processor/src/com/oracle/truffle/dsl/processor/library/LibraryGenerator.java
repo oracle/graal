@@ -74,6 +74,7 @@ import com.oracle.truffle.api.library.ResolvedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.NodeCost;
+import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.generator.CodeTypeElementFactory;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
@@ -294,10 +295,41 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
 
         genClass.add(createGenericDispatch(methods, messageClass));
 
+        // CachedToUncachedDispatchNode
+        final CodeTypeElement cachedToUncached = createClass(model, null, modifiers(PRIVATE, STATIC, FINAL), "CachedToUncachedDispatch", libraryTypeMirror);
+        CodeExecutableElement getCost = cachedToUncached.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(context.getDeclaredType(Node.class), "getCost")));
+        getCost.createBuilder().startReturn().staticReference(ElementUtils.findVariableElement(context.getDeclaredType(NodeCost.class), "MEGAMORPHIC")).end();
+
+        for (MessageObjects message : methods) {
+            CodeExecutableElement execute = cachedToUncached.add(CodeExecutableElement.cloneNoAnnotations(message.model.getExecutable()));
+            execute.renameArguments("receiver_");
+            removeAbstractModifiers(execute);
+            builder = execute.createBuilder();
+            if (message.model.getName().equals(ACCEPTS)) {
+                builder.returnTrue();
+            } else {
+                builder.startStatement().type(context.getType(Node.class)).string(" prev_ = ").//
+                                startStaticCall(context.getType(NodeUtil.class), "pushEncapsulatingNode").string("getParent()").end().end();
+                builder.startTryBlock();
+                builder.startReturn().startCall("INSTANCE.getUncached(receiver_)", execute.getSimpleName().toString());
+                for (VariableElement var : execute.getParameters()) {
+                    builder.string(var.getSimpleName().toString());
+                }
+                builder.end().end();
+                builder.end().startFinallyBlock();
+                builder.startStatement().startStaticCall(context.getType(NodeUtil.class), "popEncapsulatingNode").string("prev_").end().end();
+                builder.end();
+                ExportsGenerator.injectCachedAssertions(execute);
+            }
+        }
+
+        genClass.add(cachedToUncached);
+
         // UncachedDispatch
         final CodeTypeElement uncachedDispatch = createClass(model, null, modifiers(PRIVATE, STATIC, FINAL), "UncachedDispatch", libraryTypeMirror);
-        CodeExecutableElement getCost = uncachedDispatch.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(context.getDeclaredType(Node.class), "getCost")));
+        getCost = uncachedDispatch.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(context.getDeclaredType(Node.class), "getCost")));
         getCost.createBuilder().startReturn().staticReference(ElementUtils.findVariableElement(context.getDeclaredType(NodeCost.class), "MEGAMORPHIC")).end();
+
         for (MessageObjects message : methods) {
             CodeExecutableElement execute = uncachedDispatch.add(CodeExecutableElement.cloneNoAnnotations(message.model.getExecutable()));
             execute.renameArguments("receiver_");
@@ -390,7 +422,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         builder.statement("current = current.next");
         builder.end().startDoWhile().string("current != null").end();
         builder.startIf().string("count >= getLimit()").end().startBlock();
-        builder.statement("this.library = INSTANCE.getUncachedDispatch()");
+        builder.startStatement().string("this.library = insert(").startNew(cachedToUncached.asType()).end().string(")").end();
         builder.statement("this.next = null");
         builder.end().startElseBlock();
         builder.startStatement().string("this.next = insert(");
@@ -404,7 +436,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         builder.end();
         builder.end();
 
-        // CacheDispatch.First
+        // CacheDispatchFirst
         final CodeTypeElement cachedDispatchFirst = createClass(model, null, modifiers(PRIVATE, STATIC, FINAL), "CachedDispatchFirst", cachedDispatch.asType());
         CodeVariableElement limit = cachedDispatchFirst.add(new CodeVariableElement(modifiers(PRIVATE, FINAL), context.getType(int.class), "limit_"));
         cachedDispatchFirst.add(GeneratorUtils.createConstructorUsingFields(modifiers(), cachedDispatchFirst));
@@ -416,7 +448,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
 
         getCost = cachedDispatchFirst.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(context.getDeclaredType(Node.class), "getCost")));
         builder = getCost.createBuilder();
-        builder.startIf().string("this.library == INSTANCE.getUncachedDispatch()").end().startBlock();
+        builder.startIf().string("this.library").instanceOf(cachedToUncached.asType()).end().startBlock();
         builder.startReturn().staticReference(ElementUtils.findVariableElement(nodeCost, "MEGAMORPHIC")).end();
         builder.end();
         builder.declaration(cachedDispatch.asType(), "current", "this");
