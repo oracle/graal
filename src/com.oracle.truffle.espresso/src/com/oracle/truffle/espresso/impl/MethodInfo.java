@@ -167,7 +167,7 @@ public final class MethodInfo implements ModifiersProvider {
         SignatureDescriptor signature = method.rawMethod().getSignature();
 
         // Receiver for instance methods, class for static methods.
-        sb.append(", ").append(NativeSimpleType.OBJECT_OR_NULL);
+        sb.append(", ").append(NativeSimpleType.NULLABLE);
 
         int argCount = signature.getParameterCount(false);
         for (int i = 0; i < argCount; ++i) {

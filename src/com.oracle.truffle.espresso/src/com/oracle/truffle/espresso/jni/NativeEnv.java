@@ -68,7 +68,7 @@ public class NativeEnv {
     }
 
     public static NativeSimpleType classToType(Class<?> clazz, boolean javaToNative) {
-        return classToNative.getOrDefault(clazz, javaToNative ? NativeSimpleType.OBJECT_OR_NULL : NativeSimpleType.OBJECT);
+        return classToNative.getOrDefault(clazz, javaToNative ? NativeSimpleType.NULLABLE : NativeSimpleType.OBJECT);
     }
 
     protected static ByteBuffer directByteBuffer(long address, long capacity, JavaKind kind) {
