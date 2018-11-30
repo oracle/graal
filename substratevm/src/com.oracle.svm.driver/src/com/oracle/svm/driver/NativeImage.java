@@ -719,7 +719,7 @@ public class NativeImage {
                     }
                     return resolvePropertyValue(str, optionArg, componentDirectory.toString());
                 };
-                showVerboseMessage(verbose, "Apply " + nativeImagePropertyFile.toUri());
+                showVerboseMessage(isVerbose(), "Apply " + nativeImagePropertyFile.toUri());
                 processNativeImageProperties(loadProperties(Files.newInputStream(nativeImagePropertyFile)), resolver);
             }
         }
@@ -840,7 +840,7 @@ public class NativeImage {
         }
 
         if (isGraalVMLauncher) {
-            showVerboseMessage(verbose || dryRun, "Automatically appending LauncherClassPath");
+            showVerboseMessage(isVerbose() || dryRun, "Automatically appending LauncherClassPath");
             config.getAbsoluteLauncherClassPath(getRelativeLauncherClassPath()).forEach(p -> {
                 if (!Files.isRegularFile(p)) {
                     showWarning(String.format("Ignoring '%s' from LauncherClassPath: it does not exist or is not a regular file", p));
@@ -892,9 +892,9 @@ public class NativeImage {
         command.addAll(imageArgs);
         command.addAll(Arrays.asList("-imagecp", imagecp.stream().map(Path::toString).collect(Collectors.joining(":"))));
 
-        showVerboseMessage(verbose || dryRun, "Executing [");
-        showVerboseMessage(verbose || dryRun, command.stream().collect(Collectors.joining(" \\\n")));
-        showVerboseMessage(verbose || dryRun, "]");
+        showVerboseMessage(isVerbose() || dryRun, "Executing [");
+        showVerboseMessage(isVerbose() || dryRun, command.stream().collect(Collectors.joining(" \\\n")));
+        showVerboseMessage(isVerbose() || dryRun, "]");
 
         if (!dryRun) {
             try {
@@ -1010,7 +1010,11 @@ public class NativeImage {
             processClasspathNativeImageProperties(classpathEntry);
             customImageClasspath.add(classpathEntry);
         } catch (NativeImageError e) {
-            showWarning("Invalid classpath entry: " + classpath);
+            /* Allow non-existent classpath entries to comply with `java` command behaviour. */
+            customImageClasspath.add(classpath);
+            if (isVerbose()) {
+                showWarning("Invalid classpath entry: " + classpath);
+            }
         }
     }
 
