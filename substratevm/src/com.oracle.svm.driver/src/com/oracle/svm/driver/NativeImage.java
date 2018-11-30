@@ -725,7 +725,7 @@ public class NativeImage {
                 try {
                     processNativeImageProperties(loadProperties(Files.newInputStream(nativeImagePropertyFile)), resolver);
                 } catch (NativeImageError err) {
-                    showError("Processing " + nativeImagePropertyFile + " failed", err);
+                    showError("Processing " + nativeImagePropertyFile.toUri() + " failed", err);
                 }
             }
         }
@@ -1027,17 +1027,18 @@ public class NativeImage {
     }
 
     void addCustomImageClasspath(Path classpath) {
+        Path classpathEntry;
         try {
-            Path classpathEntry = canonicalize(classpath);
-            processClasspathNativeImageProperties(classpathEntry);
-            customImageClasspath.add(classpathEntry);
+            classpathEntry = canonicalize(classpath);
         } catch (NativeImageError e) {
-            /* Allow non-existent classpath entries to comply with `java` command behaviour. */
-            customImageClasspath.add(classpath);
             if (isVerbose()) {
                 showWarning("Invalid classpath entry: " + classpath);
             }
+            /* Allow non-existent classpath entries to comply with `java` command behaviour. */
+            classpathEntry = classpath;
         }
+        processClasspathNativeImageProperties(classpathEntry);
+        customImageClasspath.add(classpathEntry);
     }
 
     void addCustomJavaArgs(String javaArg) {

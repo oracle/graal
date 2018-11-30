@@ -50,6 +50,8 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             NativeImage.showError(e1.getMessage(nativeImage.optionRegistry));
         } catch (InvalidMacroException | AddedTwiceException e) {
             NativeImage.showError(e.getMessage());
+        } catch (NativeImage.NativeImageError err) {
+            NativeImage.showError("Applying MacroOption " + headArg + " failed", err);
         }
         if (consumed) {
             args.poll();
