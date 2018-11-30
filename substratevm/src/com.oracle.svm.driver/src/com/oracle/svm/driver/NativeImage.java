@@ -127,6 +127,7 @@ public class NativeImage {
     }
 
     final APIOptionHandler apiOptionHandler;
+    final DefaultOptionHandler defaultOptionHandler;
 
     static final String oH = "-H:";
     static final String oR = "-R:";
@@ -484,7 +485,8 @@ public class NativeImage {
         optionRegistry = new MacroOption.Registry();
 
         /* Default handler needs to be fist */
-        registerOptionHandler(new DefaultOptionHandler(this));
+        defaultOptionHandler = new DefaultOptionHandler(this);
+        registerOptionHandler(defaultOptionHandler);
         apiOptionHandler = new APIOptionHandler(this);
         registerOptionHandler(apiOptionHandler);
         registerOptionHandler(new MacroOptionHandler(this));
@@ -720,7 +722,11 @@ public class NativeImage {
                     return resolvePropertyValue(str, optionArg, componentDirectory.toString());
                 };
                 showVerboseMessage(isVerbose(), "Apply " + nativeImagePropertyFile.toUri());
-                processNativeImageProperties(loadProperties(Files.newInputStream(nativeImagePropertyFile)), resolver);
+                try {
+                    processNativeImageProperties(loadProperties(Files.newInputStream(nativeImagePropertyFile)), resolver);
+                } catch (NativeImageError err) {
+                    showError("Processing " + nativeImagePropertyFile + " failed", err);
+                }
             }
         }
     }
@@ -731,7 +737,9 @@ public class NativeImage {
             addCustomImageBuilderArgs(oHName + resolver.apply(imageName));
         }
         forEachPropertyValue(properties.get("JavaArgs"), this::addImageBuilderJavaArgs, resolver);
-        forEachPropertyValue(properties.get("Args"), this::addImageBuilderArg, resolver);
+        NativeImageArgsProcessor args = new NativeImageArgsProcessor();
+        forEachPropertyValue(properties.get("Args"), args, resolver);
+        args.apply();
     }
 
     private void completeImageBuildArgs() {
@@ -976,10 +984,24 @@ public class NativeImage {
         imageBuilderJavaArgs.addAll(javaArgs);
     }
 
-    void addImageBuilderArg(String arg) {
-        String translatedArg = apiOptionHandler.translateOption(arg);
-        String plainArg = translatedArg != null ? translatedArg : arg;
-        addPlainImageBuilderArg(plainArg);
+    class NativeImageArgsProcessor implements Consumer<String> {
+        ArrayDeque<String> args = new ArrayDeque<>();
+
+        @Override
+        public void accept(String arg) {
+            args.add(arg);
+        }
+
+        void apply() {
+            while (!args.isEmpty()) {
+                boolean consumed = false;
+                consumed = consumed || apiOptionHandler.consume(args);
+                consumed = consumed || defaultOptionHandler.consume(args);
+                if (!consumed) {
+                    showError("Property 'Args' contains invalid entry '" + args.peek() + "'");
+                }
+            }
+        }
     }
 
     void addPlainImageBuilderArg(String plainArg) {

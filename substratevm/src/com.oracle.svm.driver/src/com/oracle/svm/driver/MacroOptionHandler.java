@@ -87,6 +87,8 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         }
 
         enabledOption.forEachPropertyValue("JavaArgs", nativeImage::addImageBuilderJavaArgs);
-        enabledOption.forEachPropertyValue("Args", nativeImage::addImageBuilderArg);
+        NativeImage.NativeImageArgsProcessor args = nativeImage.new NativeImageArgsProcessor();
+        enabledOption.forEachPropertyValue("Args", args);
+        args.apply();
     }
 }
