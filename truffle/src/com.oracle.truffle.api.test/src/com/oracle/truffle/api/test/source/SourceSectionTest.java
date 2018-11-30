@@ -55,6 +55,7 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
+import static com.oracle.truffle.api.test.polyglot.ValueAssert.assertFails;
 
 public class SourceSectionTest extends AbstractPolyglotTest {
 
@@ -62,6 +63,7 @@ public class SourceSectionTest extends AbstractPolyglotTest {
     private final Source emptyLineSource = Source.newBuilder("", "\n", "emptyLineSource").build();
     private final Source shortSource = Source.newBuilder("", "01", "shortSource").build();
     private final Source longSource = Source.newBuilder("", "01234\n67\n9\n", "long").build();
+    private final Source noContentSource = Source.newBuilder("", "", "name").content(Source.CONTENT_NONE).build();
 
     @Test
     public void emptySourceTest0() {
@@ -322,4 +324,41 @@ public class SourceSectionTest extends AbstractPolyglotTest {
 
         sample.delete();
     }
+
+    @Test
+    public void testNoContent() {
+        SourceSection section = noContentSource.createSection(10);
+        checkNoContentSection(section, true, false, false, 10, 1, 10, 1, 0, 0, 0);
+        section = noContentSource.createSection(2, 5);
+        checkNoContentSection(section, false, false, true, 1, 1, 1, 1, 2, 7, 5);
+        section = noContentSource.createSection(1, -1, 3, -1);
+        checkNoContentSection(section, true, false, false, 1, 1, 3, 1, 0, 0, 0);
+        section = noContentSource.createSection(1, 2, 3, 4);
+        checkNoContentSection(section, true, true, false, 1, 2, 3, 4, 0, 0, 0);
+        assertFails(() -> noContentSource.createSection(2, 3, -1), UnsupportedOperationException.class);
+        assertFails(() -> noContentSource.createSection(-1), IllegalArgumentException.class);
+        assertFails(() -> noContentSource.createSection(1, -1), IllegalArgumentException.class);
+        assertFails(() -> noContentSource.createSection(-1, 1, 1, 1), IllegalArgumentException.class);
+        assertFails(() -> noContentSource.createSection(1, -1, 1, 1), IllegalArgumentException.class);
+        assertFails(() -> noContentSource.createSection(1, 1, -1, 1), IllegalArgumentException.class);
+        assertFails(() -> noContentSource.createSection(1, 1, 1, -1), IllegalArgumentException.class);
+    }
+
+    private static void checkNoContentSection(SourceSection section, boolean hasLines, boolean hasColumns, boolean hasIndex,
+                    int startLine, int startColumn, int endLine, int endColumn, int startIndex, int endIndex, int length) {
+        assertEquals(hasLines, section.hasLines());
+        assertEquals(hasColumns, section.hasColumns());
+        assertEquals(hasIndex, section.hasCharIndex());
+        assertEquals(startLine, section.getStartLine());
+        assertEquals(startColumn, section.getStartColumn());
+        assertEquals(endLine, section.getEndLine());
+        assertEquals(endColumn, section.getEndColumn());
+        assertTrue(section.isAvailable());
+        assertFalse(section.getSource().hasCharacters());
+        assertEquals(startIndex, section.getCharIndex());
+        assertEquals(endIndex, section.getCharEndIndex());
+        assertEquals(length, section.getCharLength());
+        assertEquals("", section.getCharacters());
+    }
+
 }

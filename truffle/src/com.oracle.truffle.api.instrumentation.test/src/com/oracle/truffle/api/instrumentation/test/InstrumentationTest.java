@@ -1822,6 +1822,11 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
 
         @Override
         public void onEnter(EventContext context, VirtualFrame frame) {
+            doOnEnter(context);
+        }
+
+        @TruffleBoundary
+        private void doOnEnter(EventContext context) {
             if (!initializationEvents && !context.isLanguageContextInitialized()) {
                 // Skipt language context initialization if initializationEvents is false
                 return;

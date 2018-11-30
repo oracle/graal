@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -539,7 +539,7 @@ public class ArrayCopySnippets implements Snippets {
                         throw new GraalError("unexpected invoke %s in snippet", call.targetMethod());
                     }
                     // Here we need to fix the bci of the invoke
-                    InvokeNode newInvoke = graph.add(new InvokeNode(invoke.callTarget(), arraycopy.getBci()));
+                    InvokeNode newInvoke = graph.add(new InvokeNode(invoke.callTarget(), arraycopy.getBci(), invoke.getLocationIdentity()));
                     if (arraycopy.stateDuring() != null) {
                         newInvoke.setStateDuring(arraycopy.stateDuring());
                     } else {

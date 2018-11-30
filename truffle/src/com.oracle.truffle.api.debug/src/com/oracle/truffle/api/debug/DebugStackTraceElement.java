@@ -66,12 +66,12 @@ import com.oracle.truffle.api.source.SourceSection;
  */
 public final class DebugStackTraceElement {
 
-    private final Debugger debugger;
+    private final DebuggerSession session;
     final TruffleStackTraceElement traceElement;
     private StackTraceElement stackTrace;
 
-    DebugStackTraceElement(Debugger debugger, TruffleStackTraceElement traceElement) {
-        this.debugger = debugger;
+    DebugStackTraceElement(DebuggerSession session, TruffleStackTraceElement traceElement) {
+        this.session = session;
         this.traceElement = traceElement;
     }
 
@@ -107,7 +107,7 @@ public final class DebugStackTraceElement {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(debugger, ex, root.getLanguageInfo(), null, true, null);
+            throw new DebugException(session, ex, root.getLanguageInfo(), null, true, null);
         }
     }
 
@@ -134,7 +134,7 @@ public final class DebugStackTraceElement {
     public SourceSection getSourceSection() {
         Node node = traceElement.getLocation();
         if (node != null) {
-            return node.getEncapsulatingSourceSection();
+            return session.resolveSection(node.getEncapsulatingSourceSection());
         }
         return null;
     }
@@ -159,17 +159,17 @@ public final class DebugStackTraceElement {
         }
         Frame elementFrame = traceElement.getFrame();
         MaterializedFrame frame = (elementFrame != null) ? elementFrame.materialize() : null;
-        Iterable<Scope> scopes = debugger.getEnv().findLocalScopes(node, frame);
+        Iterable<Scope> scopes = session.getDebugger().getEnv().findLocalScopes(node, frame);
         Iterator<Scope> it = scopes.iterator();
         if (!it.hasNext()) {
             return null;
         }
-        return new DebugScope(it.next(), it, debugger, null, frame, root);
+        return new DebugScope(it.next(), it, session, null, frame, root);
     }
 
     DebugValue wrapHeapValue(Object result) {
         LanguageInfo language = getLanguage();
-        return new HeapValue(debugger, language, null, result);
+        return new HeapValue(session, language, null, result);
     }
 
     LanguageInfo getLanguage() {

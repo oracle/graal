@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.debug;
 
 import java.io.Closeable;
+import java.net.URI;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -87,6 +88,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * Represents a single debugging session of a Debugger.
@@ -206,6 +208,7 @@ public final class DebuggerSession implements Closeable {
     private final StableBoolean exceptionBreakpointsActive = new StableBoolean(true);
     private final DebuggerExecutionLifecycle executionLifecycle;
     final ThreadLocal<ThreadSuspension> threadSuspensions = new ThreadLocal<>();
+    private final DebugSourcesResolver sources;
 
     private final int sessionId;
 
@@ -231,8 +234,9 @@ public final class DebuggerSession implements Closeable {
         if (Debugger.TRACE) {
             trace("open with callback %s", callback);
         }
+        sources = new DebugSourcesResolver();
         addBindings(includeInternal, sourceFilter);
-        executionLifecycle = new DebuggerExecutionLifecycle(debugger);
+        executionLifecycle = new DebuggerExecutionLifecycle(this);
     }
 
     private void trace(String msg, Object... parameters) {
@@ -277,11 +281,11 @@ public final class DebuggerSession implements Closeable {
             if (!it.hasNext()) {
                 return null;
             }
-            return new DebugScope(it.next(), it, debugger, info);
+            return new DebugScope(it.next(), it, this, info);
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(debugger, ex, info, null, true, null);
+            throw new DebugException(this, ex, info, null, true, null);
         }
     }
 
@@ -296,7 +300,7 @@ public final class DebuggerSession implements Closeable {
             public Set<Map.Entry<String, DebugValue>> entrySet() {
                 Set<Map.Entry<String, DebugValue>> entries = new LinkedHashSet<>();
                 for (Map.Entry<String, ? extends Object> symbol : debugger.getEnv().getExportedSymbols().entrySet()) {
-                    DebugValue value = new DebugValue.HeapValue(debugger, symbol.getKey(), symbol.getValue());
+                    DebugValue value = new DebugValue.HeapValue(DebuggerSession.this, symbol.getKey(), symbol.getValue());
                     entries.add(new SimpleImmutableEntry<>(symbol.getKey(), value));
                 }
                 return Collections.unmodifiableSet(entries);
@@ -312,7 +316,7 @@ public final class DebuggerSession implements Closeable {
                 if (value == null) {
                     return null;
                 }
-                return new DebugValue.HeapValue(debugger, name, value);
+                return new DebugValue.HeapValue(DebuggerSession.this, name, value);
             }
         };
     }
@@ -752,6 +756,43 @@ public final class DebuggerSession implements Closeable {
         executionLifecycle.setThreadsListener(listener, includeInitializedThreads);
     }
 
+    /**
+     * Set a list of source path roots that are used to resolve relative {@link Source#getURI()
+     * source URIs}. All debugger methods that provide {@link Source} object, resolve relative
+     * sources with respect to this source-path. When the resolution does not succeed (the relative
+     * path does not exist under any of the supplied source-path elements), the original relative
+     * {@link Source} is provided.
+     *
+     * @param uris a list of absolute URIs
+     * @throws IllegalArgumentException when an URI is not absolute
+     * @see #resolveSource(Source)
+     * @since 1.0
+     */
+    public void setSourcePath(Iterable<URI> uris) {
+        sources.setSourcePath(uris);
+    }
+
+    /**
+     * Resolve the source with respect to the actual {@link #setSourcePath(Iterable) source path}.
+     * Sources with relative {@link Source#getURI() URI} are subject to resolution to an existing
+     * absolute location. The first source-path URI that resolves to an existing location is used.
+     *
+     * @param source the source to resolve
+     * @return the provided source if no resolution is necessary, or the resolved source, or
+     *         <code>null</code> when it's not possible to resolve the provided source
+     * @since 1.0
+     */
+    public Source resolveSource(Source source) {
+        return sources.resolve(source);
+    }
+
+    /**
+     * Resolve the {@link SourceSection}, or return the original when resolution is not possible.
+     */
+    SourceSection resolveSection(SourceSection section) {
+        return sources.resolve(section);
+    }
+
     @TruffleBoundary
     Object notifyCallback(DebuggerNode source, MaterializedFrame frame, SuspendAnchor suspendAnchor,
                     InputValuesProvider inputValuesProvider, Object returnValue, DebugException exception,
@@ -1156,14 +1197,14 @@ public final class DebuggerSession implements Closeable {
         try {
             return evalInContext(ev, node, frame, code);
         } catch (KillException kex) {
-            throw new DebugException(ev.getSession().getDebugger(), "Evaluation was killed.", null, true, null);
+            throw new DebugException(ev.getSession(), "Evaluation was killed.", null, true, null);
         } catch (Throwable ex) {
             LanguageInfo language = null;
             RootNode root = node.getRootNode();
             if (root != null) {
                 language = root.getLanguageInfo();
             }
-            throw new DebugException(ev.getSession().getDebugger(), ex, language, null, true, null);
+            throw new DebugException(ev.getSession(), ex, language, null, true, null);
         }
     }
 

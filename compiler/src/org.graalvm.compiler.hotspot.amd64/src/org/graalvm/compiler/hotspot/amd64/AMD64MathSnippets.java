@@ -116,7 +116,7 @@ public class AMD64MathSnippets implements Snippets {
                     info = tan;
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere("Snippet not found for math intrinsic " + mathIntrinsicNode.getOperation().name());
+                    throw GraalError.shouldNotReachHere("SniAMD64MathIntrinsicBinaryOp.javappet not found for math intrinsic " + mathIntrinsicNode.getOperation().name());
             }
 
             Arguments args = new Arguments(info, graph.getGuardsStage(), tool.getLoweringStage());

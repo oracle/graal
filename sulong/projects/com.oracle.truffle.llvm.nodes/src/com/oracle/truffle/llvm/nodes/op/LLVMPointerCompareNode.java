@@ -228,7 +228,7 @@ public abstract class LLVMPointerCompareNode extends LLVMAbstractCompareNode {
     }
 
     public abstract static class LLVMPointToSameObjectNode extends LLVMNode {
-        abstract boolean execute(Object a, Object b);
+        public abstract boolean execute(Object a, Object b);
 
         @Specialization
         protected boolean pointToSameObjectCached(LLVMManagedPointer a, LLVMManagedPointer b,
@@ -241,10 +241,6 @@ public abstract class LLVMPointerCompareNode extends LLVMAbstractCompareNode {
             return a.getObject() == b.getObject();
         }
 
-        protected static Class<?> getObjectClass(LLVMManagedPointer pointer) {
-            return pointer.getObject().getClass();
-        }
-
         @TruffleBoundary
         public static LLVMPointToSameObjectNode create() {
             return LLVMPointToSameObjectNodeGen.create();
@@ -254,8 +250,8 @@ public abstract class LLVMPointerCompareNode extends LLVMAbstractCompareNode {
     /**
      * Uses an inline cache to devirtualize the virtual call to equals.
      */
-    abstract static class LLVMObjectEqualsNode extends LLVMNode {
-        abstract boolean execute(Object a, Object b);
+    public abstract static class LLVMObjectEqualsNode extends LLVMNode {
+        public abstract boolean execute(Object a, Object b);
 
         @Specialization(guards = "cachedClassA == getObjectClass(a)")
         protected boolean pointToSameForeignObjectCached(LLVMTypedForeignObject a, LLVMTypedForeignObject b,

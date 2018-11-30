@@ -49,6 +49,12 @@ gateTestAVX1 : ${gateTest} {
   }
 }
 
+gateTestCompileImmediately : ${gateTest} {
+  environment : {
+    EXTRA_VM_ARGS : "-Dgraal.TruffleBackgroundCompilation=false -Dgraal.TruffleCompileImmediately=true"
+  }
+}
+
 gateTestCTW : {
   environment : {
     EXTRA_VM_ARGS : ""

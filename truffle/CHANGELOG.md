@@ -2,6 +2,13 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 1.0.0 RC11
+* `Source` can be created from a relative `TruffleFile`.
+* `Source` can be created without content using `Source.CONTENT_NONE` constant.
+* `SourceSection` can be created from line/column information by [Source.createSection(startLine,startColumn,endLine,endColumn)](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/Source.html#createSection-int-int-int-int-).
+* Added [SourceSection.hasLines()](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/SourceSection.html#hasLines--), [SourceSection.hasColumns()](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/SourceSection.html#hasColumns--) and [SourceSection.hasCharIndex()](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/SourceSection.html#hasCharIndex--) to distinguish which positions are defined and which are not.
+* `DebuggerSession` [accepts source-path](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebuggerSession.html#setSourcePath-java.lang.Iterable-) for source [resolution](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebuggerSession.html#resolveSource-com.oracle.truffle.api.source.Source-).
+
 ## Version 1.0.0 RC10
 * Added support for setting current working directory for TruffleFiles, see [Env.setCurrentWorkingDirectory](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#setCurrentWorkingDirectory-com.oracle.truffle.api.TruffleFile-)
 * Removed deprecated `TruffleLanguage.Env.newSourceBuilder`.

@@ -83,6 +83,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Scope;
@@ -1689,11 +1690,16 @@ public class LanguageSPITest {
                     public Object execute(VirtualFrame frame) {
                         Object bindings = getCurrentContext(ProxyLanguage.class).env.getPolyglotBindings();
                         try {
-                            ForeignAccess.sendWrite(Message.WRITE.createNode(), (TruffleObject) bindings, "exportedValue", "convertOnToString");
+                            boundary((TruffleObject) bindings);
                         } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
                             throw new AssertionError(e);
                         }
                         return bindings;
+                    }
+
+                    @CompilerDirectives.TruffleBoundary
+                    private void boundary(TruffleObject bindings) throws UnknownIdentifierException, UnsupportedTypeException, UnsupportedMessageException {
+                        ForeignAccess.sendWrite(Message.WRITE.createNode(), bindings, "exportedValue", "convertOnToString");
                     }
                 });
             }

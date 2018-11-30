@@ -24,7 +24,7 @@
  */
 
 #include <cpuid.h>
-#include "include/cpufeatures.h"
+#include "cpufeatures.h"
 
 
 #define bit_CX8_compat           0x00000100

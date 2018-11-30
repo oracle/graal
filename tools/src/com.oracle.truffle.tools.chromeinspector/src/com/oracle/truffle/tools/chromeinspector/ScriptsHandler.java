@@ -32,6 +32,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.instrumentation.LoadSourceEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceListener;
 import com.oracle.truffle.api.source.Source;
@@ -44,9 +45,14 @@ public final class ScriptsHandler implements LoadSourceListener {
     private final List<Script> scripts = new ArrayList<>(100);
     private final List<LoadScriptListener> listeners = new ArrayList<>();
     private final boolean reportInternal;
+    private volatile DebuggerSession debuggerSession;
 
     public ScriptsHandler(boolean reportInternal) {
         this.reportInternal = reportInternal;
+    }
+
+    void setDebuggerSession(DebuggerSession debuggerSession) {
+        this.debuggerSession = debuggerSession;
     }
 
     public int getScriptId(Source source) {
@@ -88,7 +94,15 @@ public final class ScriptsHandler implements LoadSourceListener {
         }
     }
 
-    public int assureLoaded(Source source) {
+    public int assureLoaded(Source sourceLoaded) {
+        DebuggerSession ds = debuggerSession;
+        Source source = sourceLoaded;
+        if (ds != null) {
+            source = ds.resolveSource(sourceLoaded);
+        }
+        if (source == null) {
+            return -1;
+        }
         Script scr;
         URI uri = source.getURI();
         int id;

@@ -58,6 +58,24 @@ class PolyglotSourceSection extends AbstractSourceSectionImpl {
     }
 
     @Override
+    public boolean hasLines(Object impl) {
+        SourceSection section = (SourceSection) impl;
+        return section.hasLines();
+    }
+
+    @Override
+    public boolean hasColumns(Object impl) {
+        SourceSection section = (SourceSection) impl;
+        return section.hasColumns();
+    }
+
+    @Override
+    public boolean hasCharIndex(Object impl) {
+        SourceSection section = (SourceSection) impl;
+        return section.hasCharIndex();
+    }
+
+    @Override
     public int getStartLine(Object impl) {
         SourceSection section = (SourceSection) impl;
         return section.getStartLine();
