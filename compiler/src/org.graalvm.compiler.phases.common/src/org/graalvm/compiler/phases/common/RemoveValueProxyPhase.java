@@ -24,11 +24,9 @@
  */
 package org.graalvm.compiler.phases.common;
 
-import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.Phase;
 
 public class RemoveValueProxyPhase extends Phase {
@@ -38,15 +36,6 @@ public class RemoveValueProxyPhase extends Phase {
         for (LoopExitNode exit : graph.getNodes(LoopExitNode.TYPE)) {
             for (ProxyNode vpn : exit.proxies().snapshot()) {
                 vpn.replaceAtUsagesAndDelete(vpn.value());
-            }
-            if (!exit.loopBegin().isOsrLoop()) {
-                FrameState stateAfter = exit.stateAfter();
-                if (stateAfter != null) {
-                    exit.setStateAfter(null);
-                    if (stateAfter.hasNoUsages()) {
-                        GraphUtil.killWithUnusedFloatingInputs(stateAfter);
-                    }
-                }
             }
         }
         graph.setHasValueProxies(false);
