@@ -85,7 +85,8 @@ public class Target_java_lang_Thread {
             // Sane behavior on HotSpot.
             return Thread.holdsLock(object);
         }
-        // TODO(peterssen): On SVM we incorrectly hold all locks since this method is usually used to ensure that locks are hold.
+        // TODO(peterssen): On SVM we incorrectly hold all locks since this method is usually used
+        // to ensure that locks are hold.
         return true;
     }
 

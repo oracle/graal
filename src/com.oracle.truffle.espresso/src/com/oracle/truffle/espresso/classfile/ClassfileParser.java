@@ -346,7 +346,6 @@ public class ClassfileParser {
         return new BootstrapMethodsAttribute(name, entries);
     }
 
-
     private InnerClassesAttribute parseInnerClasses(String name) {
         int length = stream.readS4();
         int entryCount = stream.readU2();

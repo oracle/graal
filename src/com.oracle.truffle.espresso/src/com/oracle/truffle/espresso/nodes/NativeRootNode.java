@@ -47,8 +47,10 @@ import com.oracle.truffle.object.DebugCounter;
 public abstract class NativeRootNode extends RootNode implements LinkedNode {
 
     private final TruffleObject boundNative;
-    @CompilerDirectives.CompilationFinal
+
+    @CompilerDirectives.CompilationFinal \\
     private Meta.Method originalMethod;
+
     @Node.Child Node execute = Message.EXECUTE.createNode();
 
     public final static DebugCounter nativeCalls = DebugCounter.create("Native calls");

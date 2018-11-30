@@ -61,6 +61,7 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.nodes.VmNativeNode;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
@@ -426,15 +427,15 @@ public class JniEnv extends NativeEnv {
      *
      * Returns the version of the native method interface.
      *
-     * @returns the major version number in the higher 16 bits and the minor version number in the
-     *          lower 16 bits.
+     * @return the major version number in the higher 16 bits and the minor version number in the
+     *         lower 16 bits.
      *
-     *          <p>
-     *          <b>Error codes</b>
-     *          <ul>
-     *          <li>#define JNI_EDETACHED (-2) // thread detached from the VM
-     *          <li>#define JNI_EVERSION (-3) // JNI version error
-     *          </ul>
+     *         <p>
+     *         <b>Error codes</b>
+     *         <ul>
+     *         <li>#define JNI_EDETACHED (-2) // thread detached from the VM
+     *         <li>#define JNI_EVERSION (-3) // JNI version error
+     *         </ul>
      */
     @JniImpl
     public int GetVersion() {
@@ -448,7 +449,7 @@ public class JniEnv extends NativeEnv {
      *
      * @param array a Java array object.
      *
-     * @returns the length of the array.
+     * @return the length of the array.
      */
     @JniImpl
     public int GetArrayLength(Object array) {
@@ -462,7 +463,7 @@ public class JniEnv extends NativeEnv {
      *
      * @param string a Java string object.
      *
-     * @returns the length of the Java string.
+     * @return the length of the Java string.
      */
     @JniImpl
     public int GetStringLength(@Type(String.class) StaticObject string) {
@@ -519,7 +520,7 @@ public class JniEnv extends NativeEnv {
      * @param name the static field name in a 0-terminated modified UTF-8 string.
      * @param sig the field signature in a 0-terminated modified UTF-8 string.
      *
-     * @returns a field ID, or NULL if the specified static field cannot be found.
+     * @return a field ID, or NULL if the specified static field cannot be found.
      * @throws NoSuchFieldError if the specified static field cannot be found.
      * @throws ExceptionInInitializerError if the class initializer fails due to an exception.
      * @throws OutOfMemoryError if the system runs out of memory.
@@ -553,7 +554,7 @@ public class JniEnv extends NativeEnv {
      * @param name the method name in a 0-terminated modified UTF-8 string.
      * @param sig the method signature in 0-terminated modified UTF-8 string.
      *
-     * @returns a method ID, or NULL if the specified method cannot be found.
+     * @return a method ID, or NULL if the specified method cannot be found.
      *
      * @throws NoSuchMethodError if the specified method cannot be found.
      * @throws ExceptionInInitializerError if the class initializer fails due to an exception.
@@ -586,7 +587,7 @@ public class JniEnv extends NativeEnv {
      * @param name the static method name in a 0-terminated modified UTF-8 string.
      * @param sig the method signature in a 0-terminated modified UTF-8 string.
      *
-     * @returns a method ID, or NULL if the operation fails.
+     * @return a method ID, or NULL if the operation fails.
      *
      * @throws NoSuchMethodError if the specified static method cannot be found. *
      * @throws ExceptionInInitializerError if the class initializer fails due to an exception.
@@ -1289,7 +1290,7 @@ public class JniEnv extends NativeEnv {
      * A convenience function to check for pending exceptions without creating a local reference to
      * the exception object.
      *
-     * @returns JNI_TRUE when there is a pending exception; otherwise, returns JNI_FALSE.
+     * @return JNI_TRUE when there is a pending exception; otherwise, returns JNI_FALSE.
      */
     @JniImpl
     public boolean ExceptionCheck() {
@@ -1393,7 +1394,7 @@ public class JniEnv extends NativeEnv {
      *
      * @param obj a {@link java.lang.Throwable} object.
      *
-     * @returns 0 on success; a negative value on failure.
+     * @return 0 on success; a negative value on failure.
      */
     @JniImpl
     public int Throw(@Type(Throwable.class) StaticObject obj) {
@@ -1414,7 +1415,7 @@ public class JniEnv extends NativeEnv {
      * @param message the message used to construct the {@link java.lang.Throwable} object. The
      *            string is encoded in modified UTF-8.
      *
-     * @returns 0 on success; a negative value on failure.
+     * @return 0 on success; a negative value on failure.
      *
      * @throws Exception the newly constructed {@link java.lang.Throwable} object.
      */
@@ -1432,8 +1433,8 @@ public class JniEnv extends NativeEnv {
      * Determines if an exception is being thrown. The exception stays being thrown until either the
      * native code calls {@link #ExceptionClear}, or the Java code handles the exception.
      *
-     * @returns the exception object that is currently in the process of being thrown, or NULL if no
-     *          exception is currently being thrown.
+     * @return the exception object that is currently in the process of being thrown, or NULL if no
+     *         exception is currently being thrown.
      */
     @JniImpl
     public StaticObject ExceptionOccurred() {
@@ -1574,12 +1575,12 @@ public class JniEnv extends NativeEnv {
      * @param clazz1: the first class argument.
      * @param clazz2 the second class argument.
      *
-     * @returns Returns JNI_TRUE if either of the following is true:
-     *          <ul>
-     *          <li>The first and second class arguments refer to the same Java class.
-     *          <li>The first class is a subclass of the second class.
-     *          <li>The first class has the second class as one of its interfaces.
-     *          </ul>
+     * @return Returns JNI_TRUE if either of the following is true:
+     *         <ul>
+     *         <li>The first and second class arguments refer to the same Java class.
+     *         <li>The first class is a subclass of the second class.
+     *         <li>The first class has the second class as one of its interfaces.
+     *         </ul>
      */
     @JniImpl
     public boolean IsAssignableFrom(@Type(Class.class) StaticObject clazz1, @Type(Class.class) StaticObject clazz2) {
@@ -1595,8 +1596,8 @@ public class JniEnv extends NativeEnv {
      * @param obj a Java object.
      * @param clazz a Java class object.
      *
-     * @returns Returns {@code JNI_TRUE} if obj can be cast to clazz; otherwise, returns
-     *          {@code JNI_FALSE}. <b>A NULL object can be cast to any class.</b>
+     * @return Returns {@code JNI_TRUE} if obj can be cast to clazz; otherwise, returns
+     *         {@code JNI_FALSE}. <b>A NULL object can be cast to any class.</b>
      */
     @JniImpl
     public boolean IsInstanceOf(Object obj, @Type(Class.class) StaticObjectClass clazz) {
