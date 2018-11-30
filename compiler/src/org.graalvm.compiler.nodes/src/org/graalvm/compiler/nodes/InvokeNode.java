@@ -109,6 +109,9 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
         InvokeNode newInvoke = graph().add(new InvokeNode(callTarget, newBci, stamp, identity));
         newInvoke.setUseForInlining(useForInlining);
         newInvoke.setPolymorphic(polymorphic);
+        newInvoke.setStateAfter(stateAfter);
+        newInvoke.setStateDuring(stateDuring);
+        newInvoke.setClassInit(classInit);
         graph().replaceFixedWithFixed(this, newInvoke);
         return newInvoke;
     }
