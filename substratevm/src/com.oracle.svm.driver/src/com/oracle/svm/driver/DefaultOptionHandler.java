@@ -209,7 +209,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                     nativeImage.addImageProvidedClasspath(manifestClassPath);
                 }
             }
-            nativeImage.addImageClasspath(filePath);
+            nativeImage.addCustomImageClasspath(filePath);
         } catch (NativeImage.NativeImageError ex) {
             throw ex;
         } catch (Throwable ex) {
