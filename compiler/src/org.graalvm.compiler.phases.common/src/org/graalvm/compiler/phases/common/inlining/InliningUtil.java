@@ -471,8 +471,7 @@ public class InliningUtil extends ValueMergeUtil {
             // the intrinsified method.
             Invoke dup = (Invoke) duplicates.get(exit.asNode());
             if (dup instanceof InvokeNode) {
-                InvokeNode repl = graph.add(new InvokeNode(invoke.callTarget(), invoke.bci(), invoke.getLocationIdentity()));
-                dup.intrinsify(repl.asNode());
+                ((InvokeNode) dup).replaceWithNewBci(invoke.bci());
             } else {
                 ((InvokeWithExceptionNode) dup).replaceWithNewBci(invoke.bci());
             }
@@ -915,9 +914,7 @@ public class InliningUtil extends ValueMergeUtil {
                         // replace the InvokeWithExceptionNode with a normal
                         // InvokeNode -- the deoptimization occurs when the invoke throws.
                         InvokeWithExceptionNode oldInvoke = (InvokeWithExceptionNode) fixedStateSplit.predecessor();
-                        FrameState oldFrameState = oldInvoke.stateAfter();
                         InvokeNode newInvoke = oldInvoke.replaceWithInvoke();
-                        newInvoke.setStateAfter(oldFrameState.duplicate());
                         if (replacements != null) {
                             replacements.put(oldInvoke, newInvoke);
                         }

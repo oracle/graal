@@ -46,7 +46,6 @@ import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodeinfo.Verbosity;
-import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.memory.AbstractMemoryCheckpoint;
 import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
@@ -54,7 +53,6 @@ import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.spi.UncheckedInterfaceProvider;
-import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -81,7 +79,7 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
     protected final int bci;
     protected boolean polymorphic;
     protected boolean useForInlining;
-    protected LocationIdentity identity;
+    protected final LocationIdentity identity;
 
     public InvokeNode(CallTargetNode callTarget, int bci) {
         this(callTarget, bci, callTarget.returnStamp().getTrustedStamp());
@@ -102,6 +100,17 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
         this.polymorphic = false;
         this.useForInlining = true;
         this.identity = identity;
+    }
+
+    public InvokeNode replaceWithNewBci(int newBci) {
+        InvokeNode newInvoke = graph().add(new InvokeNode(callTarget, newBci, stamp, identity));
+        newInvoke.setUseForInlining(useForInlining);
+        newInvoke.setPolymorphic(polymorphic);
+        newInvoke.setStateAfter(stateAfter);
+        newInvoke.setStateDuring(stateDuring);
+        newInvoke.setClassInit(classInit);
+        graph().replaceFixedWithFixed(this, newInvoke);
+        return newInvoke;
     }
 
     @Override
@@ -195,35 +204,6 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
     @Override
     public int bci() {
         return bci;
-    }
-
-    @Override
-    public void intrinsify(Node node) {
-        assert !(node instanceof ValueNode) || node.isAllowedUsageType(InputType.Value) == isAllowedUsageType(InputType.Value) : "replacing " + this + " with " + node;
-        CallTargetNode call = callTarget;
-        FrameState currentStateAfter = stateAfter();
-        if (node instanceof StateSplit) {
-            StateSplit stateSplit = (StateSplit) node;
-            stateSplit.setStateAfter(currentStateAfter);
-        }
-        if (node instanceof ForeignCallNode) {
-            ForeignCallNode foreign = (ForeignCallNode) node;
-            foreign.setBci(bci());
-        }
-        if (node instanceof FixedWithNextNode) {
-            graph().replaceFixedWithFixed(this, (FixedWithNextNode) node);
-        } else if (node instanceof ControlSinkNode) {
-            this.replaceAtPredecessor(node);
-            this.replaceAtUsages(null);
-            GraphUtil.killCFG(this);
-            return;
-        } else {
-            graph().replaceFixed(this, node);
-        }
-        GraphUtil.killWithUnusedFloatingInputs(call);
-        if (currentStateAfter.hasNoUsages()) {
-            GraphUtil.killWithUnusedFloatingInputs(currentStateAfter);
-        }
     }
 
     @Override

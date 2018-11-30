@@ -55,8 +55,8 @@ import org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import org.graalvm.compiler.hotspot.word.KlassPointer;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
-import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
+import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
@@ -530,8 +530,8 @@ public class ArrayCopySnippets implements Snippets {
             SnippetTemplate template = template(arraycopy, args);
             UnmodifiableEconomicMap<Node, Node> replacements = template.instantiate(providers.getMetaAccess(), arraycopy, SnippetTemplate.DEFAULT_REPLACER, args, false);
             for (Node originalNode : replacements.getKeys()) {
-                if (originalNode instanceof Invoke) {
-                    Invoke invoke = (Invoke) replacements.get(originalNode);
+                if (originalNode instanceof InvokeNode) {
+                    InvokeNode invoke = (InvokeNode) replacements.get(originalNode);
                     assert invoke.asNode().graph() == graph;
                     CallTargetNode call = invoke.callTarget();
 
@@ -539,14 +539,17 @@ public class ArrayCopySnippets implements Snippets {
                         throw new GraalError("unexpected invoke %s in snippet", call.targetMethod());
                     }
                     // Here we need to fix the bci of the invoke
-                    InvokeNode newInvoke = graph.add(new InvokeNode(invoke.callTarget(), arraycopy.getBci(), invoke.getLocationIdentity()));
+                    InvokeNode newInvoke = invoke.replaceWithNewBci(arraycopy.getBci());
+                    newInvoke.setStateDuring(null);
+                    newInvoke.setStateAfter(null);
                     if (arraycopy.stateDuring() != null) {
                         newInvoke.setStateDuring(arraycopy.stateDuring());
                     } else {
                         assert arraycopy.stateAfter() != null : arraycopy;
                         newInvoke.setStateAfter(arraycopy.stateAfter());
                     }
-                    graph.replaceFixedWithFixed((InvokeNode) invoke.asNode(), newInvoke);
+                } else if (originalNode instanceof InvokeWithExceptionNode) {
+                    throw new GraalError("unexpected invoke with exception %s in snippet", originalNode);
                 } else if (originalNode instanceof ArrayCopyWithSlowPathNode) {
                     ArrayCopyWithSlowPathNode slowPath = (ArrayCopyWithSlowPathNode) replacements.get(originalNode);
                     assert arraycopy.stateAfter() != null : arraycopy;
