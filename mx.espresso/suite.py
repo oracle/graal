@@ -53,7 +53,7 @@ suite = {
             ],
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "javaCompliance": "1.8+",
-            "checkstyleVersion": "8.8",
+            "checkstyle" : "com.oracle.truffle.espresso",
         },
 
         "com.oracle.truffle.espresso.overlay": {
@@ -62,7 +62,7 @@ suite = {
             "dependencies": [
             ],
             "javaCompliance": "1.8+",
-            "checkstyleVersion": "8.8",
+            "checkstyle": "com.oracle.truffle.espresso.overlay",
             "checkPackagePrefix": "false",
         },
 
@@ -74,7 +74,7 @@ suite = {
                 "sdk:LAUNCHER_COMMON",
             ],
             "javaCompliance": "1.8+",
-            "checkstyleVersion": "8.8",
+            "checkstyle" : "com.oracle.truffle.espresso.launcher",
         },
 
         "com.oracle.truffle.espresso.playground": {
@@ -132,7 +132,7 @@ suite = {
                 "mx:JUNIT",
             ],
             "javaCompliance": "1.8+",
-            "checkstyle": "com.oracle.truffle.espresso",
+            "checkstyle": "com.oracle.truffle.espresso.test",
         },
 
         # "com.oracle.truffle.espresso.bench": {
