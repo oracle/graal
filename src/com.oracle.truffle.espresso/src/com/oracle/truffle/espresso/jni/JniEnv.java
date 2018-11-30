@@ -1606,4 +1606,20 @@ public class JniEnv extends NativeEnv {
         return EspressoLanguage.getCurrentContext().getInterpreterToVM().instanceOf(obj, clazz.getMirror());
     }
 
+    /**
+     * <h3>jobject GetObjectArrayElement(JNIEnv *env, jobjectArray array, jsize index);</h3>
+     *
+     * Returns an element of an Object array.
+     *
+     * @param array a Java array.
+     * @param index array index.
+     *
+     * @return a Java object.
+     *
+     * @throws ArrayIndexOutOfBoundsException if index does not specify a valid index in the array.
+     */
+    @JniImpl
+    public Object GetObjectArrayElement(StaticObject array, int index) {
+        return EspressoLanguage.getCurrentContext().getInterpreterToVM().getArrayObject(index, array);
+    }
 }
