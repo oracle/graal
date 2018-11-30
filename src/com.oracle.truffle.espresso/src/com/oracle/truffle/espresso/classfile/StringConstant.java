@@ -22,10 +22,14 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public final class StringConstant implements PoolConstant {
+
+    @CompilerDirectives.CompilationFinal()
+    private volatile StaticObject internedString;
 
     @Override
     public Tag tag() {
@@ -52,6 +56,17 @@ public final class StringConstant implements PoolConstant {
     }
 
     public StaticObject intern(ConstantPool pool) {
-        return pool.getContext().getStrings().intern(getValue(pool));
+        StaticObject result = internedString;
+        if (result == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            synchronized (this) {
+                result = internedString;
+                if (result == null) {
+                    result = pool.getContext().getStrings().intern(getValue(pool));
+                    internedString = result;
+                }
+            }
+        }
+        return result;
     }
 }

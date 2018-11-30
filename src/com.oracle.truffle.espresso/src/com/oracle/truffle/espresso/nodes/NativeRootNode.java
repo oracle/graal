@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.nodes;
 
 import java.util.Arrays;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
@@ -46,6 +47,7 @@ import com.oracle.truffle.object.DebugCounter;
 public abstract class NativeRootNode extends RootNode implements LinkedNode {
 
     private final TruffleObject boundNative;
+    @CompilerDirectives.CompilationFinal
     private Meta.Method originalMethod;
     @Node.Child Node execute = Message.EXECUTE.createNode();
 
@@ -81,6 +83,10 @@ public abstract class NativeRootNode extends RootNode implements LinkedNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
+        if (originalMethod == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere();
+        }
         try {
             nativeCalls.inc();
             // TODO(peterssen): Inject JNIEnv properly, without copying.
