@@ -35,8 +35,10 @@ import com.oracle.svm.core.util.VMError;
 import jdk.internal.misc.JavaUtilResourceBundleAccess;
 import jdk.internal.misc.SharedSecrets;
 import jdk.internal.module.Modules;
+// Checkstyle: stop
 import sun.util.locale.provider.LocaleProviderAdapter;
 import sun.util.resources.LocaleData;
+// Checkstyle: resume
 
 /** JDK-9-or-later localization resource bundle initialization. */
 @Platforms(Platform.HOSTED_ONLY.class)
@@ -105,7 +107,9 @@ public class LocalizationResourceBundles extends LocalizationSupport {
     private static ResourceBundle getBundleByName(String bundleName) {
         Class<? extends ResourceBundle> bundleClass = null;
         try {
+            // Checkstyle: stop
             final Class<?> fromName = Class.forName(bundleName);
+            // Checkstyle: resume
             bundleClass = fromName.asSubclass(ResourceBundle.class);
         } catch (ClassNotFoundException cnfe) {
             throw VMError.shouldNotReachHere("Could not find ResourceBundle by name:", cnfe);

@@ -275,7 +275,6 @@ suite = {
       "checkstyle" : "com.oracle.truffle.dsl.processor",
       "javaCompliance" : "9+",
       "multiReleaseJarVersion" : "9",
-      "checkstyleVersion" : "8.8",
       "imports" : [
         "com.sun.tools.javac.processing",
         "com.sun.tools.javac.model",
@@ -649,6 +648,7 @@ suite = {
       "dependencies" : [
         "sdk:GRAAL_SDK",
       ],
+      "checkstyle" : "com.oracle.truffle.sl",
       "javaCompliance" : "8+",
       "workingSets" : "Truffle,SimpleLanguage",
     },
