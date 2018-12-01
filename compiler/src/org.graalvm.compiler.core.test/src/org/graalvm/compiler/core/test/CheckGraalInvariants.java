@@ -168,6 +168,10 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         protected void handleParsingException(Throwable t) {
             GraalError.shouldNotReachHere(t);
         }
+
+        public boolean shouldVerifyFoldableMethods() {
+            return true;
+        }
     }
 
     @Test
@@ -263,7 +267,9 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         verifiers.add(new VerifyGetOptionsUsage());
 
         VerifyFoldableMethods foldableMethodsVerifier = new VerifyFoldableMethods();
-        verifiers.add(foldableMethodsVerifier);
+        if (tool.shouldVerifyFoldableMethods()) {
+            verifiers.add(foldableMethodsVerifier);
+        }
 
         for (Method m : BadUsageWithEquals.class.getDeclaredMethods()) {
             ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);
@@ -343,10 +349,12 @@ public class CheckGraalInvariants extends GraalCompilerTest {
                 throw new RuntimeException(e1);
             }
 
-            try {
-                foldableMethodsVerifier.finish();
-            } catch (Throwable e) {
-                errors.add(e.getMessage());
+            if (tool.shouldVerifyFoldableMethods()) {
+                try {
+                    foldableMethodsVerifier.finish();
+                } catch (Throwable e) {
+                    errors.add(e.getMessage());
+                }
             }
         }
         if (!errors.isEmpty()) {
