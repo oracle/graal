@@ -435,13 +435,20 @@ public class WriteBarrierSnippets implements Snippets {
         private final CompressEncoding oopEncoding;
         private final Counters counters;
         private final boolean verifyBarrier;
+        private final long gcTotalCollectionsAddress;
 
         public Templates(OptionValues options, Iterable<DebugHandlersFactory> factories, Group.Factory factory, HotSpotProviders providers, TargetDescription target,
                         GraalHotSpotVMConfig config) {
             super(options, factories, providers, providers.getSnippetReflection(), target);
             this.oopEncoding = config.useCompressedOops ? config.getOopEncoding() : null;
             this.verifyBarrier = ReplacementsUtil.REPLACEMENTS_ASSERTIONS_ENABLED || config.verifyBeforeGC || config.verifyAfterGC;
+            this.gcTotalCollectionsAddress = config.gcTotalCollectionsAddress();
             this.counters = new Counters(factory);
+        }
+
+        public boolean traceBarrier(StructuredGraph graph) {
+            long startCycle = GraalOptions.GCDebugStartCycle.getValue(graph.getOptions());
+            return startCycle > 0 && ((Pointer) WordFactory.pointer(gcTotalCollectionsAddress)).readLong(0) > startCycle;
         }
 
         public void lower(SerialWriteBarrier writeBarrier, LoweringTool tool) {
@@ -586,12 +593,6 @@ public class WriteBarrierSnippets implements Snippets {
         if (enabled) {
             Log.printf(format, value1, value2, value3);
         }
-    }
-
-    public static boolean traceBarrier(StructuredGraph graph) {
-        return GraalOptions.GCDebugStartCycle.getValue(graph.getOptions()) > 0 &&
-                        ((int) ((Pointer) WordFactory.pointer(HotSpotReplacementsUtil.gcTotalCollectionsAddress(INJECTED_VMCONFIG))).readLong(0) > GraalOptions.GCDebugStartCycle.getValue(
-                                        graph.getOptions()));
     }
 
     /**
