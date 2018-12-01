@@ -318,7 +318,7 @@ class ToolDescriptor:
 
 tools_map = {
     'truffle' : ToolDescriptor(),
-    'native-image' : ToolDescriptor(image_deps=['substratevm:SVM_DRIVER']),
+    'native-image' : ToolDescriptor(),
     'junit' : ToolDescriptor(builder_deps=['mx:JUNIT_TOOL', 'JUNIT', 'HAMCREST']),
     'regex' : ToolDescriptor(image_deps=['regex:TREGEX']),
 }

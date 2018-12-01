@@ -138,7 +138,10 @@ public final class ImageClassLoader {
         if (entry.getFileName() != null && entry.getFileName().toString().endsWith("*")) {
             return Arrays.stream(entry.getParent().toFile().listFiles()).filter(File::isFile).map(File::toPath);
         }
-        return Stream.of(entry);
+        if (Files.isReadable(entry)) {
+            return Stream.of(entry);
+        }
+        return Stream.empty();
     }
 
     private static Set<Path> excludeDirectories = getExcludeDirectories();
