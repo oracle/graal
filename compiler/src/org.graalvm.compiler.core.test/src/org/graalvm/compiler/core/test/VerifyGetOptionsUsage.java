@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.phases.verify;
+package org.graalvm.compiler.core.test;
 
 import java.lang.reflect.MalformedParametersException;
 import java.lang.reflect.Method;

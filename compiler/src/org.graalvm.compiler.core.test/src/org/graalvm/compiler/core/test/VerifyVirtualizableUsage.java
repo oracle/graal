@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.phases.verify;
+package org.graalvm.compiler.core.test;
 
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -42,7 +42,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- *
  * Verifies that node types implementing the {@link Virtualizable} interface use it correctly.
  * Implementors of {@link Virtualizable#virtualize(org.graalvm.compiler.nodes.spi.VirtualizerTool)}
  * must not apply effects on their {@link Graph graph} that cannot be easily undone.
