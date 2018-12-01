@@ -24,8 +24,8 @@
  */
 package org.graalvm.compiler.hotspot.replacements;
 
-import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_METAACCESS;
-import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
+import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfigBase.INJECTED_METAACCESS;
+import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfigBase.INJECTED_VMCONFIG;
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.VERIFY_OOP;
 import static org.graalvm.compiler.hotspot.replacements.UnsafeAccess.UNSAFE;
 
@@ -576,11 +576,6 @@ public class HotSpotReplacementsUtil {
     }
 
     @Fold
-    public static long cardTableStart(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.cardtableStartAddress;
-    }
-
-    @Fold
     public static int g1CardQueueIndexOffset(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.g1CardQueueIndexOffset;
     }
@@ -588,11 +583,6 @@ public class HotSpotReplacementsUtil {
     @Fold
     public static int g1CardQueueBufferOffset(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.g1CardQueueBufferOffset;
-    }
-
-    @Fold
-    public static int logOfHeapRegionGrainBytes(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.logOfHRGrainBytes;
     }
 
     @Fold
@@ -649,16 +639,6 @@ public class HotSpotReplacementsUtil {
     @Fold
     public static boolean useBiasedLocking(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.useBiasedLocking;
-    }
-
-    @Fold
-    public static boolean useDeferredInitBarriers(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.useDeferredInitBarriers;
-    }
-
-    @Fold
-    public static boolean useCompressedOops(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.useCompressedOops;
     }
 
     @Fold
@@ -801,16 +781,6 @@ public class HotSpotReplacementsUtil {
     @Fold
     public static int layoutHelperLog2ElementSizeMask(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.layoutHelperLog2ElementSizeMask;
-    }
-
-    @Fold
-    public static int layoutHelperElementTypeShift(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.layoutHelperElementTypeShift;
-    }
-
-    @Fold
-    public static int layoutHelperElementTypeMask(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.layoutHelperElementTypeMask;
     }
 
     @NodeIntrinsic(ForeignCallNode.class)

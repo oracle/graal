@@ -238,6 +238,33 @@ public class CheckGraalInvariants extends GraalCompilerTest {
 
         List<String> errors = Collections.synchronizedList(new ArrayList<>());
 
+        List<VerifyPhase<PhaseContext>> verifiers = new ArrayList<>();
+
+        // If you add a new type to test here, be sure to add appropriate
+        // methods to the BadUsageWithEquals class below
+        verifiers.add(new VerifyUsageWithEquals(Value.class));
+        verifiers.add(new VerifyUsageWithEquals(Register.class));
+        verifiers.add(new VerifyUsageWithEquals(RegisterCategory.class));
+        verifiers.add(new VerifyUsageWithEquals(JavaType.class));
+        verifiers.add(new VerifyUsageWithEquals(JavaMethod.class));
+        verifiers.add(new VerifyUsageWithEquals(JavaField.class));
+        verifiers.add(new VerifyUsageWithEquals(LocationIdentity.class));
+        verifiers.add(new VerifyUsageWithEquals(LIRKind.class));
+        verifiers.add(new VerifyUsageWithEquals(ArithmeticOpTable.class));
+        verifiers.add(new VerifyUsageWithEquals(ArithmeticOpTable.Op.class));
+
+        verifiers.add(new VerifyDebugUsage());
+        verifiers.add(new VerifyCallerSensitiveMethods());
+        verifiers.add(new VerifyVirtualizableUsage());
+        verifiers.add(new VerifyUpdateUsages());
+        verifiers.add(new VerifyBailoutUsage());
+        verifiers.add(new VerifyInstanceOfUsage());
+        verifiers.add(new VerifyGraphAddUsage());
+        verifiers.add(new VerifyGetOptionsUsage());
+
+        VerifyFoldableMethods foldableMethodsVerifier = new VerifyFoldableMethods();
+        verifiers.add(foldableMethodsVerifier);
+
         for (Method m : BadUsageWithEquals.class.getDeclaredMethods()) {
             ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);
             try (DebugContext debug = DebugContext.create(options, DebugHandlersFactory.LOADER)) {
@@ -246,7 +273,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
                     graphBuilderSuite.apply(graph, context);
                     // update phi stamps
                     graph.getNodes().filter(PhiNode.class).forEach(PhiNode::inferStamp);
-                    checkGraph(context, graph);
+                    checkGraph(verifiers, context, graph);
                     errors.add(String.format("Expected error while checking %s", m));
                 } catch (VerificationError e) {
                     // expected!
@@ -286,7 +313,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
                                         graphBuilderSuite.apply(graph, context);
                                         // update phi stamps
                                         graph.getNodes().filter(PhiNode.class).forEach(PhiNode::inferStamp);
-                                        checkGraph(context, graph);
+                                        checkGraph(verifiers, context, graph);
                                     } catch (VerificationError e) {
                                         errors.add(e.getMessage());
                                     } catch (LinkageError e) {
@@ -308,11 +335,18 @@ public class CheckGraalInvariants extends GraalCompilerTest {
                     }
                 }
             }
+
             executor.shutdown();
             try {
                 executor.awaitTermination(1, TimeUnit.HOURS);
             } catch (InterruptedException e1) {
                 throw new RuntimeException(e1);
+            }
+
+            try {
+                foldableMethodsVerifier.finish();
+            } catch (Throwable e) {
+                errors.add(e.getMessage());
             }
         }
         if (!errors.isEmpty()) {
@@ -384,29 +418,14 @@ public class CheckGraalInvariants extends GraalCompilerTest {
     /**
      * Checks the invariants for a single graph.
      */
-    private static void checkGraph(HighTierContext context, StructuredGraph graph) {
-        if (shouldVerifyEquals(graph.method())) {
-            // If you add a new type to test here, be sure to add appropriate
-            // methods to the BadUsageWithEquals class below
-            new VerifyUsageWithEquals(Value.class).apply(graph, context);
-            new VerifyUsageWithEquals(Register.class).apply(graph, context);
-            new VerifyUsageWithEquals(RegisterCategory.class).apply(graph, context);
-            new VerifyUsageWithEquals(JavaType.class).apply(graph, context);
-            new VerifyUsageWithEquals(JavaMethod.class).apply(graph, context);
-            new VerifyUsageWithEquals(JavaField.class).apply(graph, context);
-            new VerifyUsageWithEquals(LocationIdentity.class).apply(graph, context);
-            new VerifyUsageWithEquals(LIRKind.class).apply(graph, context);
-            new VerifyUsageWithEquals(ArithmeticOpTable.class).apply(graph, context);
-            new VerifyUsageWithEquals(ArithmeticOpTable.Op.class).apply(graph, context);
+    private static void checkGraph(List<VerifyPhase<PhaseContext>> verifiers, HighTierContext context, StructuredGraph graph) {
+        for (VerifyPhase<PhaseContext> verifier : verifiers) {
+            if (!(verifier instanceof VerifyUsageWithEquals) || shouldVerifyEquals(graph.method())) {
+                verifier.apply(graph, context);
+            } else {
+                verifier.apply(graph, context);
+            }
         }
-        new VerifyDebugUsage().apply(graph, context);
-        new VerifyCallerSensitiveMethods().apply(graph, context);
-        new VerifyVirtualizableUsage().apply(graph, context);
-        new VerifyUpdateUsages().apply(graph, context);
-        new VerifyBailoutUsage().apply(graph, context);
-        new VerifyInstanceOfUsage().apply(graph, context);
-        new VerifyGraphAddUsage().apply(graph, context);
-        new VerifyGetOptionsUsage().apply(graph, context);
         if (graph.method().isBridge()) {
             BridgeMethodUtils.getBridgedMethod(graph.method());
         }
