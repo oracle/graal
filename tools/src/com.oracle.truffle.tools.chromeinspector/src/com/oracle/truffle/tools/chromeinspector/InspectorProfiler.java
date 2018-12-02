@@ -65,7 +65,7 @@ import com.oracle.truffle.tools.profiler.ProfilerNode;
 import com.oracle.truffle.tools.profiler.impl.CPUSamplerInstrument;
 import com.oracle.truffle.tools.profiler.impl.CPUTracerInstrument;
 
-public final class TruffleProfiler extends ProfilerDomain {
+public final class InspectorProfiler extends ProfilerDomain {
 
     private CPUSampler sampler;
     private CPUTracer tracer;
@@ -74,11 +74,11 @@ public final class TruffleProfiler extends ProfilerDomain {
     private long startTimestamp;
     private boolean oldGatherSelfHitTimes;
 
-    private final TruffleExecutionContext context;
+    private final InspectorExecutionContext context;
     private final ConnectionWatcher connectionWatcher;
     private Enabler enabler;
 
-    public TruffleProfiler(TruffleExecutionContext context, ConnectionWatcher connectionWatcher) {
+    public InspectorProfiler(InspectorExecutionContext context, ConnectionWatcher connectionWatcher) {
         this.context = context;
         this.connectionWatcher = connectionWatcher;
     }

@@ -43,7 +43,7 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.MessageEndpoint;
 
-import com.oracle.truffle.tools.chromeinspector.TruffleExecutionContext;
+import com.oracle.truffle.tools.chromeinspector.InspectorExecutionContext;
 import com.oracle.truffle.tools.chromeinspector.server.ConnectionWatcher;
 import com.oracle.truffle.tools.chromeinspector.server.InspectServerSession;
 import com.oracle.truffle.tools.chromeinspector.types.ExceptionDetails;
@@ -68,7 +68,7 @@ public final class InspectorTester {
     public static InspectorTester start(boolean suspend, final boolean inspectInternal, final boolean inspectInitialization, List<URI> sourcePath) throws InterruptedException {
         RemoteObject.resetIDs();
         ExceptionDetails.resetIDs();
-        TruffleExecutionContext.resetIDs();
+        InspectorExecutionContext.resetIDs();
         InspectExecThread exec = new InspectExecThread(suspend, inspectInternal, inspectInitialization, sourcePath);
         exec.start();
         exec.initialized.acquire();
@@ -92,7 +92,7 @@ public final class InspectorTester {
         exec.join();
         RemoteObject.resetIDs();
         ExceptionDetails.resetIDs();
-        TruffleExecutionContext.resetIDs();
+        InspectorExecutionContext.resetIDs();
         return exec.error;
     }
 

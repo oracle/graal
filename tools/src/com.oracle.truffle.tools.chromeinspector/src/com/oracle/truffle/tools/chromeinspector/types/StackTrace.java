@@ -30,14 +30,14 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 import com.oracle.truffle.api.debug.DebugStackTraceElement;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.tools.chromeinspector.InspectorExecutionContext;
 import com.oracle.truffle.tools.chromeinspector.ScriptsHandler;
-import com.oracle.truffle.tools.chromeinspector.TruffleExecutionContext;
 
 public final class StackTrace {
 
     private final JSONObject jsonObject;
 
-    public StackTrace(TruffleExecutionContext context, Iterable<DebugStackTraceElement> frames) {
+    public StackTrace(InspectorExecutionContext context, Iterable<DebugStackTraceElement> frames) {
         jsonObject = new JSONObject();
         JSONArray callFrames = new JSONArray();
         for (DebugStackTraceElement frame : frames) {

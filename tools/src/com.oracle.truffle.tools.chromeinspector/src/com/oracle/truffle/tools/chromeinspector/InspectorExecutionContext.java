@@ -51,7 +51,7 @@ import com.oracle.truffle.tools.chromeinspector.types.RemoteObject;
 /**
  * The Truffle engine execution context.
  */
-public final class TruffleExecutionContext {
+public final class InspectorExecutionContext {
 
     private static final AtomicLong LAST_ID = new AtomicLong(0);
 
@@ -75,7 +75,7 @@ public final class TruffleExecutionContext {
     private volatile String lastMimeType = "text/javascript";   // Default JS
     private volatile String lastLanguage = "js";
 
-    public TruffleExecutionContext(String name, boolean inspectInternal, boolean inspectInitialization, TruffleInstrument.Env env, List<URI> sourceRoots, PrintWriter err) throws IOException {
+    public InspectorExecutionContext(String name, boolean inspectInternal, boolean inspectInitialization, TruffleInstrument.Env env, List<URI> sourceRoots, PrintWriter err) throws IOException {
         this.name = name;
         this.inspectInternal = inspectInternal;
         this.inspectInitialization = inspectInitialization;

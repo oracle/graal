@@ -48,7 +48,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.Source.LiteralBuilder;
 import com.oracle.truffle.api.source.SourceSection;
 
-import com.oracle.truffle.tools.chromeinspector.TruffleExecutionContext.NoSuspendedThreadException;
+import com.oracle.truffle.tools.chromeinspector.InspectorExecutionContext.NoSuspendedThreadException;
 import com.oracle.truffle.tools.chromeinspector.commands.Params;
 import com.oracle.truffle.tools.chromeinspector.domains.RuntimeDomain;
 import com.oracle.truffle.tools.chromeinspector.events.Event;
@@ -65,7 +65,7 @@ import com.oracle.truffle.tools.chromeinspector.types.RemoteObject;
 
 import org.graalvm.collections.Pair;
 
-public final class TruffleRuntime extends RuntimeDomain {
+public final class InspectorRuntime extends RuntimeDomain {
 
     private static final Pattern WHITESPACES_PATTERN = Pattern.compile("\\s+");
     private static final String FUNCTION_COMPLETION = eliminateWhiteSpaces("function getCompletions(");
@@ -82,12 +82,12 @@ public final class TruffleRuntime extends RuntimeDomain {
     private static final Pattern FUNCTION_GETTER_PATTERN2 = Pattern.compile(
                     "function\\s+(?<invokeGetter>\\w+)\\((?<propName>\\w+)\\)\\s*\\{\\s*return\\s+this\\[\\k<propName>\\];\\s*\\}");
 
-    private final TruffleExecutionContext context;
-    private TruffleExecutionContext.Listener contextListener;
+    private final InspectorExecutionContext context;
+    private InspectorExecutionContext.Listener contextListener;
     private ScriptsHandler slh;
     private Enabler enabler;
 
-    public TruffleRuntime(TruffleExecutionContext context) {
+    public InspectorRuntime(InspectorExecutionContext context) {
         this.context = context;
     }
 
@@ -156,7 +156,7 @@ public final class TruffleRuntime extends RuntimeDomain {
                     public Boolean executeCommand() throws CommandProcessException {
                         LanguageInfo languageInfo = context.getSuspendedInfo().getSuspendedEvent().getTopStackFrame().getLanguage();
                         if (languageInfo == null || !languageInfo.isInteractive()) {
-                            exceptionText[0] = TruffleDebugger.getEvalNonInteractiveMessage();
+                            exceptionText[0] = InspectorDebugger.getEvalNonInteractiveMessage();
                             return false;
                         }
                         try {
@@ -213,13 +213,13 @@ public final class TruffleRuntime extends RuntimeDomain {
                         suspendedInfo.lastEvaluatedValue.set(null);
                         LanguageInfo languageInfo = context.getSuspendedInfo().getSuspendedEvent().getTopStackFrame().getLanguage();
                         if (languageInfo == null || !languageInfo.isInteractive()) {
-                            fillExceptionDetails(json, TruffleDebugger.getEvalNonInteractiveMessage());
+                            fillExceptionDetails(json, InspectorDebugger.getEvalNonInteractiveMessage());
                             return null;
                         }
                         JSONObject result;
                         DebugValue value = null;
                         if (suspendedInfo.getCallFrames().length > 0) {
-                            value = TruffleDebugger.getVarValue(expression, suspendedInfo.getCallFrames()[0]);
+                            value = InspectorDebugger.getVarValue(expression, suspendedInfo.getCallFrames()[0]);
                         }
                         if (value == null) {
                             value = suspendedInfo.getSuspendedEvent().getTopStackFrame().eval(expression);
@@ -577,7 +577,7 @@ public final class TruffleRuntime extends RuntimeDomain {
         fillExceptionDetails(obj, ex, context);
     }
 
-    static void fillExceptionDetails(JSONObject obj, DebugException ex, TruffleExecutionContext context) {
+    static void fillExceptionDetails(JSONObject obj, DebugException ex, InspectorExecutionContext context) {
         ExceptionDetails exceptionDetails = new ExceptionDetails(ex);
         obj.put("exceptionDetails", exceptionDetails.createJSON(context));
     }
@@ -633,7 +633,7 @@ public final class TruffleRuntime extends RuntimeDomain {
         return WHITESPACES_PATTERN.matcher(str).replaceAll("");
     }
 
-    private class ContextListener implements TruffleExecutionContext.Listener {
+    private class ContextListener implements InspectorExecutionContext.Listener {
 
         @Override
         public void contextCreated(long id, String name) {
