@@ -204,7 +204,7 @@ public class SourceSectionLegacyTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void testOutOfRange12() {
-        longSource.createSection(1, 6, 1);
+        longSource.createSection(1, 7, 1);
     }
 
     @Test(expected = IllegalArgumentException.class)

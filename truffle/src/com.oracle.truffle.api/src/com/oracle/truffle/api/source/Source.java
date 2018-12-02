@@ -563,9 +563,15 @@ public abstract class Source {
             final int charIndex = getTextMap().lineColumnToOffset(startLine, startColumn);
             final int endIndex = getTextMap().lineColumnToOffset(endLine, endColumn);
             assert charIndex <= endIndex : charIndex + " > " + endIndex;
-            final int length = endIndex + 1 - charIndex;
-            if (charIndex + length > getCharacters().length()) {
-                throw new IllegalArgumentException("charIndex out of range");
+            int length = endIndex + 1 - charIndex;
+            int sourceLength = getTextMap().length();
+            if (length == 1 && charIndex + length > sourceLength) {
+                // When the start and end position is the same, reduce to zero-length section
+                // when on the very end of the source
+                length = 0;
+            }
+            if (charIndex + length > sourceLength) {
+                throw new IllegalArgumentException("end position out of range");
             }
             SourceSection section = new SourceSectionLoaded(this, charIndex, length);
             assert assertValid(section);
@@ -686,7 +692,8 @@ public abstract class Source {
             throw new IllegalArgumentException("length < 0");
         }
         final int lineStartOffset = getTextMap().lineStartOffset(startLine);
-        if (startColumn > getTextMap().lineLength(startLine)) {
+        final int lineLength = getTextMap().lineLength(startLine);
+        if (startColumn > (lineLength + 1)) {
             throw new IllegalArgumentException("column out of range");
         }
         final int charIndex = lineStartOffset + startColumn - 1;
