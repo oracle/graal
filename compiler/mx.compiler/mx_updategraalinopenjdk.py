@@ -31,7 +31,6 @@ import shutil
 from collections import namedtuple
 from argparse import ArgumentParser
 from os.path import join, exists, dirname
-import re
 
 import mx
 import mx_compiler
@@ -113,6 +112,8 @@ def updategraalinopenjdk(args):
 
     jdkrepo = args.jdkrepo
 
+    ignored_files = []
+
     for m in graal_modules:
         m_src_dir = join(jdkrepo, 'src', m.name)
         if not exists(m_src_dir):
@@ -127,9 +128,15 @@ def updategraalinopenjdk(args):
         m_src_dir = join('src', m.name)
         mx.log('Checking ' + m_src_dir)
         out = run_output(['hg', 'status', m_src_dir], cwd=jdkrepo)
-        out = re.sub(r'^\?.*(\r\n|\r|\n)?', '', out, flags=re.MULTILINE)
-        if out:
-            mx.abort(jdkrepo + ' is not "hg clean":' + '\n' + out[:min(200, len(out))] + '...')
+        status = []
+        for changed_file in out.split('\n'):
+            if changed_file:
+                if not changed_file.startswith('?'):
+                    status.append(changed_file)
+                else:
+                    ignored_files.append(changed_file[2:])
+        if status:
+            mx.abort(jdkrepo + ' is not "hg clean":' + '\n' + '\n'.join(status[:min(5, len(status))]) + '\n...')
 
     for dirpath, _, filenames in os.walk(join(jdkrepo, 'make')):
         for filename in filenames:
@@ -317,7 +324,12 @@ def updategraalinopenjdk(args):
         last_graal_update = out.strip()
         if last_graal_update:
             overwritten += run_output(['hg', 'diff', '-r', last_graal_update, '-r', 'tip', m_src_dir], cwd=jdkrepo)
-        mx.run(['hg', 'add', m_src_dir], cwd=jdkrepo)
+        add_args = ['hg', 'add']
+        for ignored_file in ignored_files:
+            add_args.append('--exclude')
+            add_args.append(ignored_file)
+        add_args.append(m_src_dir)
+        mx.run(add_args, cwd=jdkrepo)
     mx.log('Removing old files from HG...')
     for m in graal_modules:
         m_src_dir = join('src', m.name)
