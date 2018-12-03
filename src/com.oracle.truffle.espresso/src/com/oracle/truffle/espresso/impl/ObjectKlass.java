@@ -51,14 +51,11 @@ public final class ObjectKlass extends Klass {
     private final EnclosingMethodAttribute enclosingMethod;
     private final ConstantPool pool;
 
-    @CompilerDirectives.CompilationFinal(dimensions = 1)
-    private FieldInfo[] instanceFieldsCache;
+    @CompilerDirectives.CompilationFinal(dimensions = 1) private FieldInfo[] instanceFieldsCache;
 
-    @CompilerDirectives.CompilationFinal(dimensions = 1)
-    private FieldInfo[] declaredInstanceFieldsCache;
+    @CompilerDirectives.CompilationFinal(dimensions = 1) private FieldInfo[] declaredInstanceFieldsCache;
 
-    @CompilerDirectives.CompilationFinal(dimensions = 1)
-    private FieldInfo[] staticFieldsCache;
+    @CompilerDirectives.CompilationFinal(dimensions = 1) private FieldInfo[] staticFieldsCache;
 
     private final InnerClassesAttribute innerClasses;
 

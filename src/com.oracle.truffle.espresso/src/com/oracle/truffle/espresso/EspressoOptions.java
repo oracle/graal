@@ -36,14 +36,22 @@ public final class EspressoOptions {
     public static final OptionKey<Map<String, String>> Properties = OptionKey.mapOf(String.class);
 
     // Injecting java.io.File.pathSeparator is a hack for OptionProcessor.
-    @Option(help = "Specifies \" + java.io.File.pathSeparator + \" a list of directories, JAR files, and ZIP archives to search for boot class files. These are used in place of the boot class files included in the JDK.", category = OptionCategory.USER) //
+    @Option(help = "A \" + java.io.File.pathSeparator + \" separated list of directories, JAR files, and ZIP archives to search for boot class files. These are used in place of the boot class files included in the JDK.", category = OptionCategory.USER) //
     public static final OptionKey<String> BootClasspath = new OptionKey<>("");
+
+    // Injecting java.io.File.pathSeparator is a hack for OptionProcessor.
+    @Option(help = "A \" + java.io.File.pathSeparator + \" separated list of directories, JAR files, and ZIP archives to append to the front of the default bootstrap class path.", category = OptionCategory.USER) //
+    public static final OptionKey<String> BootClasspathAppend = new OptionKey<>("");
+
+    // Injecting java.io.File.pathSeparator is a hack for OptionProcessor.
+    @Option(help = "A \" + java.io.File.pathSeparator + \" separated list of directories, JAR files, and ZIP archives to prepend to the front of the default bootstrap class path.", category = OptionCategory.USER) //
+    public static final OptionKey<String> BootClasspathPrepend = new OptionKey<>("");
 
     // Injecting java.io.File.pathSeparator is a hack for OptionProcessor.
     @Option(help = "A \" + java.io.File.pathSeparator + \" separated list of directories, JAR archives, and ZIP archives to search for class files.", category = OptionCategory.USER) //
     public static final OptionKey<String> Classpath = new OptionKey<>("");
 
-    @Option(help = "Use MethodHandless instead of reflection to call substitutions.", category = OptionCategory.USER) //
+    @Option(help = "Use MethodHandle(s) instead of reflection to call substitutions.", category = OptionCategory.USER) //
     public static final OptionKey<Boolean> IntrinsicsViaMethodHandles = new OptionKey<>(false);
 
     @Option(help = "Installation directory for Java Runtime Environment (JRE)", category = OptionCategory.USER) //

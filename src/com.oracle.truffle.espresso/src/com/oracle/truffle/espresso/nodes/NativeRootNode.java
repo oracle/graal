@@ -48,7 +48,7 @@ public abstract class NativeRootNode extends RootNode implements LinkedNode {
 
     private final TruffleObject boundNative;
 
-    @CompilerDirectives.CompilationFinal \\
+    @CompilerDirectives.CompilationFinal //
     private Meta.Method originalMethod;
 
     @Node.Child Node execute = Message.EXECUTE.createNode();

@@ -25,13 +25,10 @@ package com.oracle.truffle.espresso.runtime;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Method;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.StringTable;
@@ -67,11 +64,9 @@ public class EspressoContext {
     private Meta meta;
     private StaticObject mainThread;
 
-    @CompilerDirectives.CompilationFinal
-    private JniEnv jniEnv;
+    @CompilerDirectives.CompilationFinal private JniEnv jniEnv;
 
-    @CompilerDirectives.CompilationFinal
-    private VM vm;
+    @CompilerDirectives.CompilationFinal private VM vm;
 
     public EspressoContext(TruffleLanguage.Env env, EspressoLanguage language) {
         this.env = env;

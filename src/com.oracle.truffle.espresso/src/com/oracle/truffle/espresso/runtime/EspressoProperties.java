@@ -51,7 +51,7 @@ public interface EspressoProperties {
         if (options.hasBeenSet(EspressoOptions.JavaHome)) {
             builder.setJavaHome(options.get(EspressoOptions.JavaHome));
         }
-        
+
         return builder.build();
     }
 
@@ -96,10 +96,10 @@ public interface EspressoProperties {
 
         public EspressoProperties build() {
             if ((javaHome == null || javaHome.equals(fallback.getJavaHome())) &&
-                (bootClasspath == null || bootClasspath.equals(fallback.getBootClasspath())) &&
-                (javaLibraryPath == null || javaLibraryPath.equals(fallback.getJavaLibraryPath())) &&
-                (bootLibraryPath == null || bootLibraryPath.equals(fallback.getBootLibraryPath())) &&
-                (extDirs == null || extDirs.equals(fallback.getExtDirs()))) {
+                            (bootClasspath == null || bootClasspath.equals(fallback.getBootClasspath())) &&
+                            (javaLibraryPath == null || javaLibraryPath.equals(fallback.getJavaLibraryPath())) &&
+                            (bootLibraryPath == null || bootLibraryPath.equals(fallback.getBootLibraryPath())) &&
+                            (extDirs == null || extDirs.equals(fallback.getExtDirs()))) {
                 // No overrides.
                 return fallback;
             }

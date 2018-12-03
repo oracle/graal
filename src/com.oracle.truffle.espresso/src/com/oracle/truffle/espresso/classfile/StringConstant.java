@@ -28,8 +28,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public final class StringConstant implements PoolConstant {
 
-    @CompilerDirectives.CompilationFinal()
-    private volatile StaticObject internedString;
+    @CompilerDirectives.CompilationFinal() private volatile StaticObject internedString;
 
     @Override
     public Tag tag() {
