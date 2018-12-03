@@ -204,7 +204,8 @@ suite = {
                 "mx:JUNIT",
             ],
             "javaProperties": {
-                "native.test.lib": "<path:ESPRESSO_TESTS_NATIVE>/bin/<lib:nativetest>"
+                "native.test.lib": "<path:ESPRESSO_TESTS_NATIVE>/bin/<lib:nativetest>",
+                "espresso.test.SingletonContext": "true",
             },
             "testDistribution": True,
         },
