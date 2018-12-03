@@ -1160,7 +1160,7 @@ public class NativeImageGenerator {
         SubstrateRegisterConfig registerConfig = (SubstrateRegisterConfig) runtimeCallProviders.getCodeCache().getRegisterConfig();
         SubstrateAMD64AddressLowering addressLowering = new SubstrateAMD64AddressLowering(compressEncoding, registerConfig);
         if (firstTier) {
-            lowTier.findPhase(SchedulePhase.class).add(new AddressLoweringPhase(addressLowering));
+            lowTier.findPhase(ExpandLogicPhase.class).add(new AddressLoweringPhase(addressLowering));
         } else {
             lowTier.findPhase(FixReadsPhase.class).add(new AddressLoweringPhase(addressLowering));
         }
@@ -1189,6 +1189,10 @@ public class NativeImageGenerator {
             if (firstTier) {
                 ListIterator<BasePhase<? super MidTierContext>> it = midTier.findPhase(FrameStateAssignmentPhase.class);
                 it.add(new CollectDeoptimizationSourcePositionsPhase());
+
+                // On SVM, the economy configuration requires a canonicalization run at the end of mid tier.
+                it = midTier.findLastPhase();
+                it.add(new CanonicalizerPhase());
             } else {
                 ListIterator<BasePhase<? super MidTierContext>> it = midTier.findPhase(DeoptimizationGroupingPhase.class);
                 it.previous();
