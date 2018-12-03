@@ -83,16 +83,24 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
                     versionAction = VersionAction.PrintAndContinue;
                     break;
                 default:
+                    if (arg.startsWith("-Xbootclasspath:")) {
+                        polyglotOptions.put("java.BootClasspath", arg.substring("-Xbootclasspath:".length()));
+                    } else if (arg.startsWith("-Xbootclasspath/a:")) {
+                        polyglotOptions.put("java.BootClasspathAppend", arg.substring("-Xbootclasspath/a:".length()));
+                    } else if (arg.startsWith("-Xbootclasspath/p:")) {
+                        polyglotOptions.put("java.BootClasspathPrepend", arg.substring("-Xbootclasspath/p:".length()));
+                    } else
                     // -Dsystem.property=value
                     if (arg.startsWith("-D")) {
-                        int splitAt = arg.indexOf("=");
-                        String key = arg.substring(2);
+                        String key = arg.substring("-D".length());
+                        int splitAt = key.indexOf("=");
                         String value = "";
                         if (splitAt >= 0) {
-                            key = arg.substring(2, splitAt);
-                            value = arg.substring(splitAt + 1);
+                            value = key.substring(splitAt + 1);
+                            key = key.substring(0, splitAt);
                         }
                         properties.put(key, value);
+                        polyglotOptions.put("java.Properties." + key, value);
                     } else if (!arg.startsWith("-")) {
                         mainClassName = arg;
                     } else {
