@@ -742,7 +742,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         }
         if (depth > TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplittingMaxPropagationDepth) || needsSplit || numberOfKnownCallNodes == 0 ||
                         compilationProfile.getCallCount() == 1) {
-            return false;
+            return needsSplit;
         }
         if (numberOfKnownCallNodes == 1) {
             if (onlyCaller != null) {
