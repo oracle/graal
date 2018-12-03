@@ -318,14 +318,13 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         ResolvedJavaMethod method = math.graph().method();
         if (method != null) {
             if (method.getAnnotation(Snippet.class) != null) {
-                // In the context of SnippetStub, i.e., Graal-generated stubs.
+                // In the context of SnippetStub, i.e., Graal-generated stubs, use the LIR
+                // lowering to emit the stub assembly code instead of the Node lowering.
                 return;
             }
             if (method.getName().equalsIgnoreCase(math.getOperation().name()) && tool.getMetaAccess().lookupJavaType(Math.class).equals(method.getDeclaringClass())) {
-                /*
-                 * A root compilation of the intrinsic method should emit the full assembly
-                 * implementation.
-                 */
+                // A root compilation of the intrinsic method should emit the full assembly
+                // implementation.
                 return;
             }
         }
@@ -342,10 +341,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         ResolvedJavaMethod method = math.graph().method();
         if (method != null) {
             if (method.getName().equalsIgnoreCase(math.getOperation().name()) && tool.getMetaAccess().lookupJavaType(Math.class).equals(method.getDeclaringClass())) {
-                /*
-                 * A root compilation of the intrinsic method should emit the full assembly
-                 * implementation.
-                 */
+                // A root compilation of the intrinsic method should emit the full assembly
+                // implementation.
                 return;
             }
         }

@@ -93,7 +93,8 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
         ResolvedJavaMethod method = graph.method();
         if (method != null) {
             if (method.getAnnotation(Snippet.class) != null) {
-                // In the context of SnippetStub, i.e., Graal-generated stubs.
+                // In the context of SnippetStub, i.e., Graal-generated stubs, use the LIR
+                // lowering to emit the stub assembly code instead of the Node lowering.
                 return;
             }
         }
