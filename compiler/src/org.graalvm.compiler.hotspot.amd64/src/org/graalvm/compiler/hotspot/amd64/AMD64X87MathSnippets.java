@@ -24,19 +24,15 @@
  */
 package org.graalvm.compiler.hotspot.amd64;
 
-import static org.graalvm.compiler.hotspot.HotSpotBackend.Options.GraalArithmeticStubs;
 import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
-import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Snippet;
-import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
-import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
@@ -50,35 +46,29 @@ import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOpera
 
 import jdk.vm.ci.code.TargetDescription;
 
-public class AMD64MathSnippets implements Snippets {
+public class AMD64X87MathSnippets implements Snippets {
 
     private static final double PI_4 = Math.PI / 4;
 
-    @Fold
-    static boolean useGraalArithmeticStubs(OptionValues options) {
-        return GraalArithmeticStubs.getValue(options);
-    }
-
     @Snippet
-    public static double sin(double input, @ConstantParameter OptionValues options) {
-        if (!useGraalArithmeticStubs(options) && Math.abs(input) < PI_4) {
+    public static double sin(double input) {
+        if (Math.abs(input) < PI_4) {
             return AMD64X87MathIntrinsicNode.compute(input, UnaryOperation.SIN);
-        } else {
-            return callDouble1(UnaryOperation.SIN.foreignCallDescriptor, input);
         }
+        return callDouble1(UnaryOperation.SIN.foreignCallDescriptor, input);
     }
 
     @Snippet
-    public static double cos(double input, @ConstantParameter OptionValues options) {
-        if (!useGraalArithmeticStubs(options) && Math.abs(input) < PI_4) {
+    public static double cos(double input) {
+        if (Math.abs(input) < PI_4) {
             return AMD64X87MathIntrinsicNode.compute(input, UnaryOperation.COS);
         }
         return callDouble1(UnaryOperation.COS.foreignCallDescriptor, input);
     }
 
     @Snippet
-    public static double tan(double input, @ConstantParameter OptionValues options) {
-        if (!useGraalArithmeticStubs(options) && Math.abs(input) < PI_4) {
+    public static double tan(double input) {
+        if (Math.abs(input) < PI_4) {
             return AMD64X87MathIntrinsicNode.compute(input, UnaryOperation.TAN);
         }
         return callDouble1(UnaryOperation.TAN.foreignCallDescriptor, input);
@@ -96,13 +86,12 @@ public class AMD64MathSnippets implements Snippets {
         public Templates(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target) {
             super(options, factories, providers, snippetReflection, target);
 
-            sin = snippet(AMD64MathSnippets.class, "sin");
-            cos = snippet(AMD64MathSnippets.class, "cos");
-            tan = snippet(AMD64MathSnippets.class, "tan");
+            sin = snippet(AMD64X87MathSnippets.class, "sin");
+            cos = snippet(AMD64X87MathSnippets.class, "cos");
+            tan = snippet(AMD64X87MathSnippets.class, "tan");
         }
 
         public void lower(UnaryMathIntrinsicNode mathIntrinsicNode, LoweringTool tool) {
-            StructuredGraph graph = mathIntrinsicNode.graph();
             SnippetInfo info;
 
             switch (mathIntrinsicNode.getOperation()) {
@@ -119,9 +108,8 @@ public class AMD64MathSnippets implements Snippets {
                     throw GraalError.shouldNotReachHere("Snippet not found for math intrinsic " + mathIntrinsicNode.getOperation().name());
             }
 
-            Arguments args = new Arguments(info, graph.getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(info, mathIntrinsicNode.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("input", mathIntrinsicNode.getValue());
-            args.addConst("options", graph.getOptions());
             template(mathIntrinsicNode, args).instantiate(providers.getMetaAccess(), mathIntrinsicNode, DEFAULT_REPLACER, tool, args);
             mathIntrinsicNode.safeDelete();
         }

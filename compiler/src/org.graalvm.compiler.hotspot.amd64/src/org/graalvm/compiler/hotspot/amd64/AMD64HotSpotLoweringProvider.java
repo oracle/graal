@@ -24,14 +24,13 @@
  */
 package org.graalvm.compiler.hotspot.amd64;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.Options.GraalArithmeticStubs;
+
 import org.graalvm.compiler.api.replacements.Snippet;
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
-import org.graalvm.compiler.hotspot.HotSpotBackend.Options;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.hotspot.meta.DefaultHotSpotLoweringProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
@@ -50,12 +49,13 @@ import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOpera
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider {
 
     private AMD64ConvertSnippets.Templates convertSnippets;
     private ProbabilisticProfileSnippets.Templates profileSnippets;
-    private AMD64MathSnippets.Templates mathSnippets;
+    private AMD64X87MathSnippets.Templates mathSnippets;
 
     public AMD64HotSpotLoweringProvider(HotSpotGraalRuntimeProvider runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers,
                     HotSpotConstantReflectionProvider constantReflection, TargetDescription target) {
@@ -68,7 +68,7 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
         profileSnippets = ProfileNode.Options.ProbabilisticProfiling.getValue(options)
                         ? new ProbabilisticProfileSnippets.Templates(options, factories, providers, providers.getCodeCache().getTarget())
                         : null;
-        mathSnippets = new AMD64MathSnippets.Templates(options, factories, providers, providers.getSnippetReflection(), providers.getCodeCache().getTarget());
+        mathSnippets = new AMD64X87MathSnippets.Templates(options, factories, providers, providers.getSnippetReflection(), providers.getCodeCache().getTarget());
         super.initialize(options, factories, providers, config);
     }
 
@@ -89,38 +89,35 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
         if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.HIGH_TIER) {
             return;
         }
-        ResolvedJavaMethod method = math.graph().method();
+        StructuredGraph graph = math.graph();
+        ResolvedJavaMethod method = graph.method();
         if (method != null) {
             if (method.getAnnotation(Snippet.class) != null) {
-                /*
-                 * In the context of the snippet use the LIR lowering instead of the Node lowering.
-                 */
+                // In the context of SnippetStub, i.e., Graal-generated stubs.
                 return;
             }
         }
-        StructuredGraph graph = math.graph();
-        UnaryOperation operation = math.getOperation();
-        switch (operation) {
-            case SIN:
-            case COS:
-            case TAN:
-                mathSnippets.lower(math, tool);
-                return;
-            case LOG:
-                if (!Options.GraalArithmeticStubs.getValue(graph.getOptions())) {
+        if (!GraalArithmeticStubs.getValue(graph.getOptions())) {
+            switch (math.getOperation()) {
+                case SIN:
+                case COS:
+                case TAN:
+                    // Math.sin(), .cos() and .tan() guarantee a value within 1 ULP of the exact
+                    // result, but x87 trigonometric FPU instructions are only that accurate within
+                    // [-pi/4, pi/4]. The snippets fall back to a foreign call to HotSpot stubs
+                    // should the inputs outside of that interval.
+                    mathSnippets.lower(math, tool);
+                    return;
+                case LOG:
                     math.replaceAtUsages(graph.addOrUnique(new AMD64X87MathIntrinsicNode(math.getValue(), UnaryOperation.LOG)));
                     return;
-                }
-                break;
-            case LOG10:
-                if (!Options.GraalArithmeticStubs.getValue(graph.getOptions())) {
+                case LOG10:
                     math.replaceAtUsages(graph.addOrUnique(new AMD64X87MathIntrinsicNode(math.getValue(), UnaryOperation.LOG10)));
                     return;
-                }
-                break;
+            }
         }
-        ForeignCallDescriptor foreignCall = math.getOperation().foreignCallDescriptor;
-        ForeignCallNode call = graph.add(new ForeignCallNode(foreignCalls, foreignCall, math.getValue()));
+
+        ForeignCallNode call = graph.add(new ForeignCallNode(foreignCalls, math.getOperation().foreignCallDescriptor, math.getValue()));
         graph.addAfterFixed(tool.lastFixedNode(), call);
         math.replaceAtUsages(call);
     }

@@ -42,7 +42,7 @@ public abstract class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         super(type);
     }
 
-    protected final Value[] registersToValues(Register[] registers) {
+    protected static Value[] registersToValues(Register[] registers) {
         Value[] temps = new Value[registers.length];
         for (int i = 0; i < registers.length; i++) {
             Register register = registers[i];
@@ -57,11 +57,11 @@ public abstract class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
         return temps;
     }
 
-    protected final AMD64Address recordExternalAddress(CompilationResultBuilder crb, ArrayDataPointerConstant ptr) {
+    protected static AMD64Address recordExternalAddress(CompilationResultBuilder crb, ArrayDataPointerConstant ptr) {
         return (AMD64Address) crb.recordDataReferenceInCode(ptr);
     }
 
-    protected final ArrayDataPointerConstant pointerConstant(int alignment, int[] ints) {
+    protected static ArrayDataPointerConstant pointerConstant(int alignment, int[] ints) {
         return new ArrayDataPointerConstant(ints, alignment);
     }
 }

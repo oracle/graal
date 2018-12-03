@@ -100,7 +100,7 @@ public final class AMD64X87MathIntrinsicNode extends UnaryNode implements LIRLow
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
         if (forValue.isConstant()) {
-            return ConstantNode.forDouble(operation.compute(value.asJavaConstant().asDouble()));
+            return ConstantNode.forDouble(operation.compute(forValue.asJavaConstant().asDouble()));
         }
         return this;
     }

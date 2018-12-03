@@ -60,12 +60,12 @@ public abstract class AMD64MathIntrinsicBinaryOp extends AMD64MathIntrinsicOp {
         temps = registersToValues(registers);
     }
 
-    public final Variable emitLIRWrapper(LIRGenerator gen, Value input0, Value input1) {
-        LIRKind kind = LIRKind.combine(input0, input1);
+    public final Variable emitLIRWrapper(LIRGenerator gen, Value x, Value y) {
+        LIRKind kind = LIRKind.combine(x, y);
         RegisterValue xmm0Value = xmm0.asValue(kind);
-        gen.emitMove(xmm0Value, input0);
+        gen.emitMove(xmm0Value, x);
         RegisterValue xmm1Value = xmm1.asValue(kind);
-        gen.emitMove(xmm1Value, input1);
+        gen.emitMove(xmm1Value, y);
         gen.append(this);
         Variable result = gen.newVariable(kind);
         gen.emitMove(result, xmm0Value);
