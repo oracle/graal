@@ -274,19 +274,13 @@ final class DIScopeBuilder {
         private final int line;
         private final int column;
         private final HashMap<String, Source> sources;
-        private final boolean needsRange;
 
-        LazySourceSectionImpl(HashMap<String, Source> sources, TruffleFile sourceFile, String path, int line, int column, boolean needsRange) {
+        LazySourceSectionImpl(HashMap<String, Source> sources, TruffleFile sourceFile, String path, int line, int column) {
             this.sources = sources;
             this.sourceFile = sourceFile;
             this.path = path;
             this.line = line;
             this.column = column;
-            this.needsRange = needsRange;
-        }
-
-        LazySourceSectionImpl extend() {
-            return needsRange ? this : new LazySourceSectionImpl(sources, sourceFile, path, line, column, true);
         }
 
         @Override
@@ -315,11 +309,6 @@ final class DIScopeBuilder {
 
                 } else {
                     section = source.createSection(line, column, line, column);
-                }
-
-                if (needsRange && section.isAvailable() && source.hasCharacters()) {
-                    int length = source.getLength() - section.getCharIndex();
-                    section = source.createSection(section.getCharIndex(), length);
                 }
 
             } catch (IllegalArgumentException ignored) {
@@ -372,7 +361,7 @@ final class DIScopeBuilder {
 
         public LLVMSourceLocation build() {
             if (loc == null) {
-                sourceSection = buildSection(file, line, col, false);
+                sourceSection = buildSection(file, line, col);
                 loc = LLVMSourceLocation.create(parent, kind, name, sourceSection, null);
             }
 
@@ -426,8 +415,7 @@ final class DIScopeBuilder {
             name = MDNameExtractor.getName(md.getName());
             final LLVMSourceLocation compileUnit = buildLocation(md.getCompileUnit());
 
-            sourceSection = buildSection(file, line, col, true);
-            sourceSection = extend(sourceSection);
+            sourceSection = buildSection(file, line, col);
             loc = LLVMSourceLocation.create(parent, kind, name, sourceSection, compileUnit);
         }
 
@@ -520,11 +508,7 @@ final class DIScopeBuilder {
         }
     }
 
-    private static LazySourceSectionImpl extend(LazySourceSectionImpl base) {
-        return base == null ? null : base.extend();
-    }
-
-    private LazySourceSectionImpl buildSection(MDFile file, long startLine, long startCol, boolean needsRange) {
+    private LazySourceSectionImpl buildSection(MDFile file, long startLine, long startCol) {
         if (file == null) {
             return null;
         }
@@ -535,7 +519,7 @@ final class DIScopeBuilder {
         }
 
         TruffleFile sourceFile = getSourceFile(file);
-        return new LazySourceSectionImpl(sources, sourceFile, relPath, (int) startLine, (int) startCol, needsRange);
+        return new LazySourceSectionImpl(sources, sourceFile, relPath, (int) startLine, (int) startCol);
     }
 
     private static Source asSource(Map<String, Source> sources, TruffleFile sourceFile, String path) {
