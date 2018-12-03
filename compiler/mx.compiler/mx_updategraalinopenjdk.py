@@ -142,13 +142,13 @@ def updategraalinopenjdk(args):
         for filename in filenames:
             if filename.endswith('.gmk'):
                 filepath = join(dirpath, filename)
-                with open(filepath) as fp:
+                with open(filepath, 'rb') as fp:
                     contents = fp.read()
                 new_contents = contents
                 for old_name, new_name in package_renamings.iteritems():
                     new_contents = new_contents.replace(old_name, new_name)
                 if new_contents != contents:
-                    with open(filepath, 'w') as fp:
+                    with open(filepath, 'wb') as fp:
                         fp.write(new_contents)
                         mx.log('  updated ' + filepath)
 
@@ -206,7 +206,7 @@ def updategraalinopenjdk(args):
                     for filename in filenames:
                         src_file = join(dirpath, filename)
                         dst_file = join(target_dir, os.path.relpath(src_file, source_dir))
-                        with open(src_file) as fp:
+                        with open(src_file, 'rb') as fp:
                             contents = fp.read()
                         old_line_count = len(contents.split('\n'))
                         if filename.endswith('.java'):
@@ -248,14 +248,14 @@ def updategraalinopenjdk(args):
                                 if p.testProject:
                                     jdk_internal_vm_compiler_test_SRC.add(to_exclude)
                             first_file = False
-                        with open(dst_file, 'w') as fp:
+                        with open(dst_file, 'wb') as fp:
                             fp.write(contents)
 
     def replace_lines(filename, begin_lines, end_line, replace_lines, old_line_check):
         mx.log('Updating ' + filename + '...')
         old_lines = []
         new_lines = []
-        with open(filename) as fp:
+        with open(filename, 'rb') as fp:
             for begin_line in begin_lines:
                 line = fp.readline()
                 while line:
@@ -281,7 +281,7 @@ def updategraalinopenjdk(args):
                         old_line_check(line)
                 else:
                     new_lines.append(line)
-        with open(filename, 'w') as fp:
+        with open(filename, 'wb') as fp:
             for line in new_lines:
                 fp.write(line)
         return old_lines
