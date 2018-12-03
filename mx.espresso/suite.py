@@ -46,7 +46,6 @@ suite = {
         "com.oracle.truffle.espresso": {
             "subDir": "src",
             "sourceDirs": ["src"],
-            "jniHeaders": True,
             "dependencies": [
                 "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_NFI",
@@ -54,16 +53,6 @@ suite = {
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "javaCompliance": "1.8+",
             "checkstyle" : "com.oracle.truffle.espresso",
-        },
-
-        "com.oracle.truffle.espresso.overlay": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": [
-            ],
-            "javaCompliance": "1.8+",
-            "checkstyle": "com.oracle.truffle.espresso.overlay",
-            "checkPackagePrefix": "false",
         },
 
         "com.oracle.truffle.espresso.launcher": {
@@ -117,7 +106,7 @@ suite = {
             "buildEnv": {
                 "TARGET": "bin/<lib:nespresso>",
                 "LIBFFI_SRC": "<path:LIBFFI>",
-                "CPPFLAGS": "-I<jnigen:com.oracle.truffle.espresso> -I<path:TRUFFLE_NFI_NATIVE>/include",
+                "CPPFLAGS": "-I<path:TRUFFLE_NFI_NATIVE>/include",
                 "OS": "<os>",
             },
         },
@@ -169,7 +158,7 @@ suite = {
             "buildEnv": {
                 "TARGET": "bin/<lib:mokapot>",
                 "LIBFFI_SRC": "<path:LIBFFI>",
-                "CPPFLAGS": "-I<jnigen:com.oracle.truffle.espresso> -I<path:TRUFFLE_NFI_NATIVE>/include",
+                "CPPFLAGS": "-I<path:TRUFFLE_NFI_NATIVE>/include",
                 "OS": "<os>",
             },
         },
@@ -223,16 +212,6 @@ suite = {
             "license": "UPL",
             "description": "Espresso launcher using the polyglot API.",
             "allowsJavadocWarnings": True,
-        },
-
-        "ESPRESSO_OVERLAY": {
-            "subDir": "src",
-            "dependencies": [
-                "com.oracle.truffle.espresso.overlay"
-            ],
-            "distDependencies": [
-            ],
-            "description": "Espresso overlay distribution for the GraalVM",
         },
 
         "ESPRESSO_SUPPORT": {
