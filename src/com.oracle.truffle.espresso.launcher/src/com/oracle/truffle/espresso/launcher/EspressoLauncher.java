@@ -45,7 +45,7 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
         new EspressoLauncher().launch(args);
     }
 
-    private String classPathString = null;
+    private String classpath = null;
     private final ArrayList<String> mainClassArgs = new ArrayList<>();
     private String mainClassName = null;
     private VersionAction versionAction = VersionAction.None;
@@ -62,7 +62,7 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
                 case "-classpath":
                     i += 1;
                     if (i < arguments.size()) {
-                        classPathString = arguments.get(i);
+                        classpath = arguments.get(i);
                     } else {
                         throw abort("Error: " + arg + " requires class path specification");
                     }
@@ -112,7 +112,7 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
                 if (jarFileName != null) {
                     // Overwrite class path. For compatibility with the standard java launcher,
                     // this is done silently.
-                    classPathString = jarFileName;
+                    classpath = jarFileName;
 
                     mainClassName = getMainClassName(jarFileName);
                 }
@@ -126,6 +126,23 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
         if (mainClassName == null) {
             throw abort(usage());
         }
+
+        // classpath provenance order:
+        // (1) the -cp/-classpath command line option
+        if (classpath == null) {
+            // (2) the property java.class.path
+            classpath = polyglotOptions.get("java.Properties.java.class.path");
+            if (classpath == null) {
+                // (3) the environment variable CLASSPATH
+                classpath = System.getenv("CLASSPATH");
+                if (classpath == null) {
+                    // (4) the current working directory only
+                    classpath = ".";
+                }
+            }
+        }
+
+        polyglotOptions.put("java.Classpath", classpath);
 
         return unrecognized;
     }
@@ -184,8 +201,8 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
     protected void launch(Builder contextBuilder) {
         contextBuilder.arguments(getLanguageId(), mainClassArgs.toArray(new String[0])).in(System.in).out(System.out).err(System.err);
 
-        if (classPathString != null) {
-            contextBuilder.option("java.Classpath", classPathString);
+        if (classpath != null) {
+            contextBuilder.option("java.Classpath", classpath);
         }
 
         for (String propKey : properties.keySet()) {
@@ -212,7 +229,6 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
             rc = 1;
             e.printStackTrace();
         }
-        System.out.println("Exiting launcher");
         throw exit(rc);
     }
 

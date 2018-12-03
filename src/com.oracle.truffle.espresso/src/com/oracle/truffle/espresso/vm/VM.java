@@ -46,6 +46,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.truffle.espresso.runtime.EspressoProperties;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
@@ -694,25 +695,21 @@ public class VM extends NativeEnv {
         Meta.Method.WithInstance setProperty = meta(properties).method("setProperty", Object.class, String.class, String.class);
         OptionValues options = EspressoLanguage.getCurrentContext().getEnv().getOptions();
 
-        String[] inheritedProps = {
-                        "java.home",
-                        "sun.boot.class.path",
-                        "java.library.path",
-                        "sun.boot.library.path"};
-
-        // Classpath
-        setProperty.invoke("java.class.path", options.get(EspressoOptions.Classpath));
-        if (options.hasBeenSet(EspressoOptions.BootClasspath)) {
-            setProperty.invoke("sun.boot.class.path", options.get(EspressoOptions.BootClasspath));
-        }
-
-        for (String prop : inheritedProps) {
-            setProperty.invoke(prop, System.getProperty(prop));
-        }
-
-        for (Map.Entry<String, String> entry : EspressoLanguage.getCurrentContext().getEnv().getOptions().get(EspressoOptions.Properties).entrySet()) {
+        // Set user-defined system properties.
+        for (Map.Entry<String, String> entry : options.get(EspressoOptions.Properties).entrySet()) {
             setProperty.invoke(entry.getKey(), entry.getValue());
         }
+
+        // TODO(peterssen): Use EspressoProperties to store classpath.
+        EspressoError.guarantee(options.hasBeenSet(EspressoOptions.Classpath), "Classpath must be defined.");
+        setProperty.invoke("java.class.path", options.get(EspressoOptions.Classpath));
+
+        EspressoProperties props = EspressoLanguage.getCurrentContext().getVmProperties();
+        setProperty.invoke("java.home", props.getJavaHome());
+        setProperty.invoke("sun.boot.class.path", props.getBootClasspath());
+        setProperty.invoke("java.library.path", props.getJavaLibraryPath());
+        setProperty.invoke("sun.boot.library.path", props.getBootLibraryPath());
+        setProperty.invoke("java.ext.dirs", props.getExtDirs());
 
         return properties;
     }

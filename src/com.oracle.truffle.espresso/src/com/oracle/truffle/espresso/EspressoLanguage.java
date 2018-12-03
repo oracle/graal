@@ -26,6 +26,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
@@ -84,36 +86,9 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         InputStream in = env.in();
         OutputStream out = env.out();
         EspressoContext context = new EspressoContext(env, this);
-
         context.setMainArguments(env.getApplicationArguments());
 
-        String classpathValue = options.get(EspressoOptions.Classpath);
-
-        // classpath provenance order:
-        // (1) the -cp command line option
-        if (classpathValue.equals("")) {
-            // (2) the property java.class.path
-            classpathValue = System.getProperty("java.class.path");
-            if (classpathValue == null) {
-                // (3) the environment variable CLASSPATH
-                classpathValue = System.getenv("CLASSPATH");
-                if (classpathValue == null) {
-                    // (4) the current working directory only
-                    classpathValue = ".";
-                }
-            }
-        }
-
-        context.setClasspath(new Classpath(classpathValue));
-
-        // TODO(peterssen): Investigate boot classpath whereabouts/sources.
-        String bootClasspathValue = options.get(EspressoOptions.BootClasspath);
-        if (bootClasspathValue.equals("")) {
-            bootClasspathValue = System.getProperty("sun.boot.class.path");
-        }
-        assert bootClasspathValue != null;
-
-        context.setBootClasspath(new Classpath(bootClasspathValue));
+        EspressoError.guarantee(options.hasBeenSet(EspressoOptions.Classpath), "classpath must be defined");
 
         Object sourceFile = env.getConfig().get(EspressoLanguage.ESPRESSO_SOURCE_FILE_KEY);
         if (sourceFile != null) {
@@ -207,5 +182,9 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     public static EspressoContext getCurrentContext() {
         return getCurrentContext(EspressoLanguage.class);
+    }
+
+    public Path getEspressoHome() {
+        return Paths.get(getLanguageHome());
     }
 }
