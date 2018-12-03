@@ -52,6 +52,7 @@ public final class FileSystemProviderFeature implements Feature {
          * providers as described by the {@link FileSystems} class.
          */
         ArrayList<FileSystemProvider> providers = new ArrayList<>(FileSystemProvider.installedProviders());
+        /* Currently we do not support access to Java modules (jimage/jrtfs access) in SVM images */
         providers.removeIf(p -> p.getScheme().equals("jrt"));
         providers.forEach(p -> addFileSystemProvider(p));
     }
