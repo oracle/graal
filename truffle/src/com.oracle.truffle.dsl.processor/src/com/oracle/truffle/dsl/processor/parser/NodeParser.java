@@ -2184,9 +2184,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
     }
 
     private void initializePolymorphism(NodeData node) {
-        if (!node.needsRewrites(context)) {
-            return;
-        }
 
         SpecializationData generic = node.getGenericSpecialization();
         List<VariableElement> types = new ArrayList<>();

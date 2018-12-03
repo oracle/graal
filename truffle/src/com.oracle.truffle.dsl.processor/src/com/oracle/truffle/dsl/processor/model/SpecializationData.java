@@ -329,7 +329,7 @@ public final class SpecializationData extends TemplateMethod {
         return sinks;
     }
 
-    public boolean hasRewrite(ProcessorContext context) {
+    public boolean needsRewrite(ProcessorContext context) {
         if (!getExceptions().isEmpty()) {
             return true;
         }
@@ -340,9 +340,29 @@ public final class SpecializationData extends TemplateMethod {
             return true;
         }
 
+        if (!getCaches().isEmpty()) {
+            for (CacheExpression cache : getCaches()) {
+                if (!cache.isInitializedInFastPath()) {
+                    return true;
+                }
+            }
+        }
+
+        int signatureIndex = 0;
         for (Parameter parameter : getSignatureParameters()) {
+            for (ExecutableTypeData executableType : node.getExecutableTypes()) {
+                List<TypeMirror> evaluatedParameters = executableType.getEvaluatedParameters();
+                if (signatureIndex < evaluatedParameters.size()) {
+                    TypeMirror evaluatedParameterType = evaluatedParameters.get(signatureIndex);
+                    if (ElementUtils.needsCastTo(evaluatedParameterType, parameter.getType())) {
+                        return true;
+                    }
+                }
+            }
+
             NodeChildData child = parameter.getSpecification().getExecution().getChild();
             if (child != null) {
+
                 ExecutableTypeData type = child.findExecutableType(parameter.getType());
                 if (type == null) {
                     type = child.findAnyGenericExecutableType(context);
@@ -354,6 +374,7 @@ public final class SpecializationData extends TemplateMethod {
                     return true;
                 }
             }
+            signatureIndex++;
         }
         return false;
     }

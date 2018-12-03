@@ -222,6 +222,10 @@ public class FlatNodeGenFactory {
         List<Object> stateObjects = new ArrayList<>();
         List<SpecializationData> excludeObjects = new ArrayList<>();
         for (NodeData stateNode : stateSharingNodes) {
+            boolean needsRewrites = stateNode.needsRewrites(context);
+            if (!needsRewrites) {
+                continue;
+            }
             List<SpecializationData> specializations = calculateReachableSpecializations(stateNode);
             Set<TypeGuard> implicitCasts = new LinkedHashSet<>();
             for (SpecializationData specialization : specializations) {
@@ -263,6 +267,10 @@ public class FlatNodeGenFactory {
                         (binary) -> substituteLibraryCall(binary, createCachedDispatch));
         substitutions.put(ElementUtils.findExecutableElement(context.getDeclaredType(Libraries.class), "getUncachedDispatch"),
                         (binary) -> substituteLibraryCall(binary, getUncachedDispatch));
+    }
+
+    private boolean needsRewrites() {
+        return node.needsRewrites(context);
     }
 
     private boolean hasMultipleNodes() {
@@ -1377,7 +1385,7 @@ public class FlatNodeGenFactory {
     }
 
     private CodeExecutableElement createExecuteAndSpecialize() {
-        if (!node.needsRewrites(context)) {
+        if (!needsRewrites()) {
             return null;
         }
 
@@ -1580,7 +1588,10 @@ public class FlatNodeGenFactory {
                     FrameState frameState) {
         final CodeTreeBuilder builder = parent.create();
 
-        builder.tree(state.createLoad(frameState));
+        boolean needsRewrites = needsRewrites();
+        if (needsRewrites) {
+            builder.tree(state.createLoad(frameState));
+        }
 
         int sharedExecutes = 0;
         for (NodeExecutionData execution : node.getChildExecutions()) {
@@ -1685,6 +1696,7 @@ public class FlatNodeGenFactory {
         }
 
         builder.tree(visitSpecializationGroup(builder, group, currentType, frameState, allowedSpecializations));
+
         if (group.hasFallthrough()) {
             builder.tree(createTransferToInterpreterAndInvalidate());
             builder.tree(createCallExecuteAndSpecialize(currentType, originalFrameState));
@@ -2043,9 +2055,9 @@ public class FlatNodeGenFactory {
         if (uncached) {
             builder.startReturn().staticReference(getType(NodeCost.class), "MEGAMORPHIC").end();
         } else {
-            FrameState frameState = FrameState.load(this, NodeExecutionMode.UNCACHED);
-            builder.tree(state.createLoad(frameState));
-            if (node.needsRewrites(context)) {
+            if (needsRewrites()) {
+                FrameState frameState = FrameState.load(this, NodeExecutionMode.UNCACHED);
+                builder.tree(state.createLoad(frameState));
                 builder.startIf().tree(state.createIs(frameState, new Object[0], reachableSpecializationsArray)).end();
                 builder.startBlock();
                 builder.startReturn().staticReference(getType(NodeCost.class), "UNINITIALIZED").end();
@@ -2470,6 +2482,36 @@ public class FlatNodeGenFactory {
         return createCatchRewriteException(builder, specialization, forType, frameState, builder.build());
     }
 
+    static final class BlockState {
+
+        static final BlockState NONE = new BlockState(0, 0);
+
+        final int ifCount;
+        final int blockCount;
+
+        private BlockState(int ifCount, int blockCount) {
+            this.ifCount = ifCount;
+            this.blockCount = blockCount;
+        }
+
+        BlockState add(BlockState state) {
+            return new BlockState(ifCount + state.ifCount, blockCount + state.blockCount);
+        }
+
+        BlockState incrementIf() {
+            return new BlockState(ifCount + 1, blockCount + 1);
+        }
+
+        static BlockState create(int ifCount, int blockCount) {
+            if (ifCount == 0 && blockCount == 0) {
+                return NONE;
+            } else {
+                return new BlockState(ifCount, blockCount);
+            }
+        }
+
+    }
+
     private static class IfTriple {
 
         private CodeTree prepare;
@@ -2558,8 +2600,9 @@ public class FlatNodeGenFactory {
             return newTriples;
         }
 
-        public static int materialize(CodeTreeBuilder builder, Collection<IfTriple> triples, boolean forceNoBlocks) {
+        public static BlockState materialize(CodeTreeBuilder builder, Collection<IfTriple> triples, boolean forceNoBlocks) {
             int blockCount = 0;
+            int ifCount = 0;
             boolean otherPrepare = false;
             for (IfTriple triple : triples) {
                 if (triple.prepare != null && !triple.prepare.isEmpty()) {
@@ -2578,12 +2621,13 @@ public class FlatNodeGenFactory {
                     }
                     builder.startIf().tree(triple.condition).end().startBlock();
                     blockCount++;
+                    ifCount++;
                 }
                 if (triple.statements != null && !triple.statements.isEmpty()) {
                     builder.tree(triple.statements);
                 }
             }
-            return blockCount;
+            return BlockState.create(ifCount, blockCount);
         }
 
     }
@@ -2656,12 +2700,13 @@ public class FlatNodeGenFactory {
         }
 
         boolean useSpecializationClass = specialization != null && useSpecializationClass(specialization);
+        boolean needsRewrites = needsRewrites();
 
         if (mode.isFastPath()) {
-            int ifCount = 0;
+            BlockState ifCount = BlockState.NONE;
             final boolean stateGuaranteed = group.isLast() && allowedSpecializations != null && allowedSpecializations.size() == 1 &&
                             group.getAllSpecializations().size() == allowedSpecializations.size();
-            if ((!group.isEmpty() || specialization != null)) {
+            if (needsRewrites && (!group.isEmpty() || specialization != null)) {
                 CodeTree stateCheck = state.createContains(frameState, specializations);
                 CodeTree stateGuard = null;
                 CodeTree assertCheck = null;
@@ -2672,7 +2717,7 @@ public class FlatNodeGenFactory {
                 }
                 cachedTriples.add(0, new IfTriple(null, stateGuard, assertCheck));
             }
-            ifCount += IfTriple.materialize(builder, IfTriple.optimize(cachedTriples), false);
+            ifCount = ifCount.add(IfTriple.materialize(builder, IfTriple.optimize(cachedTriples), false));
             cachedTriples = new ArrayList<>(); // reset current triples
 
             String specializationLocalName = null;
@@ -2687,7 +2732,7 @@ public class FlatNodeGenFactory {
                 builder.string(specializationLocalName, " != null");
                 builder.end();
                 builder.startBlock();
-                ifCount++;
+                ifCount = ifCount.incrementIf();
             }
 
             if (specialization != null && !specialization.getAssumptionExpressions().isEmpty()) {
@@ -2732,11 +2777,11 @@ public class FlatNodeGenFactory {
                 throw new AssertionError("cannot push enclosing node and extract boundary");
             }
 
-            int nonBoundaryIfCount = 0;
-            int innerIfCount = 0;
+            BlockState nonBoundaryIfCount = BlockState.NONE;
+            BlockState innerIfCount = BlockState.NONE;
             final CodeTreeBuilder innerBuilder;
             if (extractInBoundary) {
-                nonBoundaryIfCount += IfTriple.materialize(builder, IfTriple.optimize(nonBoundaryGuards), false);
+                nonBoundaryIfCount = nonBoundaryIfCount.add(IfTriple.materialize(builder, IfTriple.optimize(nonBoundaryGuards), false));
                 innerBuilder = extractInBoundaryMethod(builder, frameState, specialization);
             } else if (pushEnclosingNode) {
                 innerBuilder = builder;
@@ -2752,7 +2797,7 @@ public class FlatNodeGenFactory {
                 innerBuilder.startTryBlock();
             }
 
-            innerIfCount += IfTriple.materialize(innerBuilder, IfTriple.optimize(cachedTriples), false);
+            innerIfCount = innerIfCount.add(IfTriple.materialize(innerBuilder, IfTriple.optimize(cachedTriples), false));
             SpecializationGroup prev = null;
             for (SpecializationGroup child : group.getChildren()) {
                 if (prev != null && !prev.hasFallthrough()) {
@@ -2764,8 +2809,8 @@ public class FlatNodeGenFactory {
                 innerBuilder.tree(createFastPathExecute(builder, forType, specialization, frameState));
             }
 
-            innerBuilder.end(innerIfCount);
-            hasFallthrough |= innerIfCount > 0;
+            innerBuilder.end(innerIfCount.blockCount);
+            hasFallthrough |= innerIfCount.ifCount > 0;
 
             if (pushEnclosingNode || extractInBoundary) {
                 innerBuilder.end().startFinallyBlock();
@@ -2773,15 +2818,15 @@ public class FlatNodeGenFactory {
                 innerBuilder.end();
             }
 
-            builder.end(nonBoundaryIfCount);
+            builder.end(nonBoundaryIfCount.blockCount);
 
             if (useSpecializationClass && specialization.getMaximumNumberOfInstances() > 1) {
                 String name = createSpecializationLocalName(specialization);
                 builder.startStatement().string(name, " = ", name, ".next_").end();
             }
 
-            builder.end(ifCount);
-            hasFallthrough |= ifCount > 0;
+            builder.end(ifCount.blockCount);
+            hasFallthrough |= ifCount.ifCount > 0;
 
         } else if (mode.isSlowPath()) {
 
@@ -2790,11 +2835,11 @@ public class FlatNodeGenFactory {
                 cachedTriples.add(0, new IfTriple(null, excludeCheck, null));
             }
 
-            int outerIfCount = 0;
+            BlockState outerIfCount = BlockState.NONE;
             if (specialization == null) {
                 cachedTriples.addAll(createMethodGuardChecks(frameState, group, guardExpressions, mode));
 
-                outerIfCount += IfTriple.materialize(builder, IfTriple.optimize(cachedTriples), false);
+                outerIfCount = outerIfCount.add(IfTriple.materialize(builder, IfTriple.optimize(cachedTriples), false));
 
                 SpecializationGroup prev = null;
                 for (SpecializationGroup child : group.getChildren()) {
@@ -2805,7 +2850,7 @@ public class FlatNodeGenFactory {
                     prev = child;
                 }
             } else {
-                outerIfCount += IfTriple.materialize(builder, IfTriple.optimize(cachedTriples), false);
+                outerIfCount = outerIfCount.add(IfTriple.materialize(builder, IfTriple.optimize(cachedTriples), false));
 
                 String countName = specialization != null ? "count" + specialization.getIndex() + "_" : null;
                 boolean needsDuplicationCheck = specialization.isGuardBindsCache() || specialization.hasMultipleInstances();
@@ -2820,7 +2865,7 @@ public class FlatNodeGenFactory {
                     builder.string(" prev_ = ").startStaticCall(context.getType(NodeUtil.class), "pushEncapsulatingNode").string("this").end().end();
                     builder.startTryBlock();
                 }
-                int innerIfCount = 0;
+                BlockState innerIfCount = BlockState.NONE;
 
                 String specializationLocalName = createSpecializationLocalName(specialization);
                 if (needsDuplicationCheck) {
@@ -2836,7 +2881,7 @@ public class FlatNodeGenFactory {
                         builder.string(createSpecializationLocalName(specialization), " == null");
                     }
                     builder.end().startBlock();
-                    innerIfCount++;
+                    innerIfCount = innerIfCount.incrementIf();
                 }
 
                 FrameState innerFrameState = frameState.copy();
@@ -2869,7 +2914,7 @@ public class FlatNodeGenFactory {
                     innerTripples.add(new IfTriple(null, state.createNotContains(innerFrameState, new Object[]{specialization}), null));
                 }
 
-                innerIfCount += IfTriple.materialize(builder, IfTriple.optimize(innerTripples), false);
+                innerIfCount = innerIfCount.add(IfTriple.materialize(builder, IfTriple.optimize(innerTripples), false));
                 builder.tree(createSpecialize(builder, innerFrameState, group, specialization));
 
                 if (needsDuplicationCheck) {
@@ -2877,7 +2922,7 @@ public class FlatNodeGenFactory {
                     if (useDuplicateFlag) {
                         builder.startStatement().string(duplicateFoundName, " = true").end();
                     }
-                    builder.end(innerIfCount);
+                    builder.end(innerIfCount.blockCount);
 
                     // need to ensure that we update the implicit cast specializations on duplicates
                     CodeTree updateImplicitCast = createUpdateImplicitCastState(builder, frameState, specialization);
@@ -2900,8 +2945,8 @@ public class FlatNodeGenFactory {
                     builder.end();
                 } else {
                     builder.tree(createCallSpecialization(builder, innerFrameState, executeAndSpecializeType, specialization));
-                    builder.end(innerIfCount);
-                    hasFallthrough |= innerIfCount > 0;
+                    builder.end(innerIfCount.blockCount);
+                    hasFallthrough |= innerIfCount.ifCount > 0;
                 }
 
                 if (pushBoundary) {
@@ -2913,17 +2958,17 @@ public class FlatNodeGenFactory {
 
             }
 
-            builder.end(outerIfCount);
-            hasFallthrough |= outerIfCount > 0;
+            builder.end(outerIfCount.blockCount);
+            hasFallthrough |= outerIfCount.ifCount > 0;
 
         } else if (mode.isGuardFallback()) {
-            int ifCount = 0;
+            BlockState ifCount = BlockState.NONE;
 
             if (specialization != null && specialization.getMaximumNumberOfInstances() > 1) {
                 throw new AssertionError("unsupported path. should be caught by parser..");
             }
 
-            int innerIfCount = 0;
+            BlockState innerIfCount = BlockState.NONE;
             cachedTriples.addAll(createMethodGuardChecks(frameState, group, guardExpressions, mode));
             cachedTriples.addAll(createAssumptionCheckTriples(frameState, specialization, NodeExecutionMode.FALLBACK_GUARD));
 
@@ -2942,7 +2987,7 @@ public class FlatNodeGenFactory {
                 }
             }
 
-            innerIfCount += IfTriple.materialize(builder, cachedTriples, false);
+            innerIfCount = innerIfCount.add(IfTriple.materialize(builder, cachedTriples, false));
 
             SpecializationGroup prev = null;
             for (SpecializationGroup child : group.getChildren()) {
@@ -2957,22 +3002,22 @@ public class FlatNodeGenFactory {
                 builder.returnFalse();
             }
 
-            builder.end(innerIfCount);
+            builder.end(innerIfCount.blockCount);
 
-            builder.end(ifCount);
-            hasFallthrough |= ifCount > 0 || innerIfCount > 0;
+            builder.end(ifCount.blockCount);
+            hasFallthrough |= ifCount.ifCount > 0 || innerIfCount.ifCount > 0;
 
         } else if (mode.isUncached()) {
-            int ifCount = 0;
+            BlockState ifCount = BlockState.NONE;
 
             if (specialization != null) {
                 cachedTriples.addAll(createAssumptionCheckTriples(frameState, specialization, NodeExecutionMode.UNCACHED));
             }
 
-            ifCount += IfTriple.materialize(builder, IfTriple.optimize(cachedTriples), false);
+            ifCount = ifCount.add(IfTriple.materialize(builder, IfTriple.optimize(cachedTriples), false));
             cachedTriples = createMethodGuardChecks(frameState, group, guardExpressions, mode);
 
-            int innerIfCount = IfTriple.materialize(builder, IfTriple.optimize(cachedTriples), false);
+            BlockState innerIfCount = IfTriple.materialize(builder, IfTriple.optimize(cachedTriples), false);
 
             SpecializationGroup prev = null;
             for (SpecializationGroup child : group.getChildren()) {
@@ -2984,9 +3029,9 @@ public class FlatNodeGenFactory {
             if (specialization != null && (prev == null || prev.hasFallthrough())) {
                 builder.tree(createCallSpecialization(builder, frameState, forType, specialization));
             }
-            builder.end(innerIfCount);
-            builder.end(ifCount);
-            hasFallthrough |= ifCount > 0 || innerIfCount > 0;
+            builder.end(innerIfCount.blockCount);
+            builder.end(ifCount.blockCount);
+            hasFallthrough |= ifCount.ifCount > 0 || innerIfCount.ifCount > 0;
         } else {
             throw new AssertionError("unexpected path");
         }
@@ -3107,14 +3152,14 @@ public class FlatNodeGenFactory {
         List<IfTriple> duplicationtriples = new ArrayList<>();
         duplicationtriples.addAll(createMethodGuardChecks(frameState, group, guardExpressions, NodeExecutionMode.FAST_PATH));
         duplicationtriples.addAll(createAssumptionCheckTriples(frameState, specialization, NodeExecutionMode.SLOW_PATH));
-        int duplicationIfCount = IfTriple.materialize(builder, IfTriple.optimize(duplicationtriples), false);
+        BlockState duplicationIfCount = IfTriple.materialize(builder, IfTriple.optimize(duplicationtriples), false);
         if (useDuplicate) {
             builder.startStatement().string(duplicateFoundName, " = true").end();
         }
         if (specialization.hasMultipleInstances()) {
             builder.statement("break");
         }
-        builder.end(duplicationIfCount);
+        builder.end(duplicationIfCount.blockCount);
 
         if (useDuplicate) {
             // no counting and next traversal necessary for duplication only check
@@ -3141,7 +3186,7 @@ public class FlatNodeGenFactory {
         triples.addAll(initializeCaches(frameState, frameState.getMode(), group, specialization.getCaches(), false, true));
         triples.addAll(persistAssumptions(frameState, specialization));
         triples.addAll(persistSpecializationClass(frameState, specialization));
-        builder.end(IfTriple.materialize(builder, triples, true));
+        builder.end(IfTriple.materialize(builder, triples, true).blockCount);
 
         List<SpecializationData> excludesSpecializations = new ArrayList<>();
         for (SpecializationData otherSpeciailzation : reachableSpecializations) {

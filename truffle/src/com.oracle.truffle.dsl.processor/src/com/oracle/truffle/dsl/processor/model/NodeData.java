@@ -433,15 +433,20 @@ public class NodeData extends Template implements Comparable<NodeData> {
     }
 
     public boolean needsRewrites(ProcessorContext context) {
-        boolean needsRewrites = false;
-
+        int count = 0;
         for (SpecializationData specialization : getSpecializations()) {
-            if (specialization.hasRewrite(context)) {
-                needsRewrites = true;
-                break;
+            if (specialization.getMethod() == null) {
+                continue;
             }
+            if (count == 1) {
+                return true;
+            }
+            if (specialization.needsRewrite(context)) {
+                return true;
+            }
+            count++;
         }
-        return needsRewrites || getSpecializations().size() > 1;
+        return false;
     }
 
     public SpecializationData getPolymorphicSpecialization() {
