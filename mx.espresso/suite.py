@@ -135,15 +135,6 @@ suite = {
             "checkstyle": "com.oracle.truffle.espresso.test",
         },
 
-        # "com.oracle.truffle.espresso.bench": {
-        #     "subDir": "src",
-        #     "sourceDirs": ["src"],
-        #     "dependencies": [
-        #     ],
-        #     "javaCompliance": "1.8+",
-        #     "checkstyle": "com.oracle.truffle.espresso",
-        # },
-
         # Native library for tests
         "com.oracle.truffle.espresso.test.native": {
             "testProject" : True,
@@ -197,8 +188,7 @@ suite = {
                 "truffle:TRUFFLE_NFI",
             ],
             "javaProperties": {
-                "nespresso.library": "<path:ESPRESSO_NATIVE>/bin/<lib:nespresso>",
-                "mokapot.library": "<path:ESPRESSO_MOKAPOT_NATIVE>/bin/<lib:mokapot>"
+                "espresso.library.path": "<path:ESPRESSO_SUPPORT>/lib",
             },
         },
 
@@ -287,35 +277,6 @@ suite = {
             ],
         },
 
-        "ESPRESSO_NATIVE": {
-            "native": True,
-            "relpath": True,
-            "platformDependent": True,
-            "platforms": [
-                "linux-amd64",
-                "darwin-amd64",
-            ],
-            "output": "<mxbuild>/espresso-native",
-            "dependencies": [
-                "com.oracle.truffle.espresso.native",
-            ],
-        },
-
-        "ESPRESSO_MOKAPOT_NATIVE": {
-            "native": True,
-            "relpath": True,
-            "platformDependent": True,
-            "platforms": [
-                "linux-amd64",
-                "darwin-amd64",
-            ],
-            "output": "<mxbuild>/espresso-mokapot-native",
-            "dependencies": [
-                "com.oracle.truffle.espresso.mokapot",
-            ],
-            "description": "Espresso libjvm surrogate",
-        },
-
         "ESPRESSO_TESTS_NATIVE": {
             "native": True,
             "relpath": True,
@@ -327,17 +288,6 @@ suite = {
             "testDistribution": True,
             "maven": False,
         },
-
-
-        # "ESPRESSO_BENCH": {
-        #     "subDir": "src",
-        #     "dependencies": [
-        #         "com.oracle.truffle.espresso.bench"
-        #     ],
-        #     "distDependencies": [
-        #     ],
-        #     "description": "Espresso benchmarks",
-        # },
 
     }
 }
