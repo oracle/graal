@@ -29,6 +29,7 @@ import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_6;
 import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_8;
 import static com.oracle.truffle.espresso.meta.Meta.meta;
 
+import java.io.File;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -42,11 +43,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.truffle.espresso.runtime.EspressoProperties;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
@@ -81,6 +83,7 @@ import com.oracle.truffle.espresso.nodes.LinkedNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
+import com.oracle.truffle.espresso.runtime.EspressoProperties;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
@@ -108,22 +111,28 @@ public class VM extends NativeEnv {
     // libmokapot must be loaded strictly before any other library in the private namespace to
     // avoid linking with HotSpot libjvm, then libjava is loaded and further system libraries,
     // libzip, libnet, libnio ...
-    private final TruffleObject mokapotLibrary = NativeLibrary.loadLibrary(System.getProperty("mokapot.library", "mokapot"));
+    private final TruffleObject mokapotLibrary;
 
     // libjava must be loaded after mokapot.
-    private final TruffleObject javaLibrary = NativeLibrary.loadLibrary(System.getProperty("java.library", "java"));
+    private final TruffleObject javaLibrary;
 
     public TruffleObject getJavaLibrary() {
         return javaLibrary;
     }
 
-    public TruffleObject getMokapotLibrary() {
-        return mokapotLibrary;
-    }
-
     private VM(JniEnv jniEnv) {
         this.jniEnv = jniEnv;
         try {
+            EspressoProperties props = EspressoLanguage.getCurrentContext().getVmProperties();
+
+            List<String> libjavaSearchPaths = new ArrayList<>(Arrays.asList(props.getBootLibraryPath().split(File.pathSeparator)));
+            libjavaSearchPaths.addAll(Arrays.asList(props.getJavaLibraryPath().split(File.pathSeparator)));
+
+            mokapotLibrary = loadLibrary(props.getEspressoLibraryPath().split(File.pathSeparator), "mokapot");
+
+            assert mokapotLibrary != null;
+            javaLibrary = loadLibrary(libjavaSearchPaths.toArray(new String[0]), "java");
+
             initializeMokapotContext = NativeLibrary.lookupAndBind(mokapotLibrary,
                             "initializeMokapotContext", "(env, sint64, (string): pointer): sint64");
 
@@ -375,6 +384,9 @@ public class VM extends NativeEnv {
     @JniImpl
     @SuppressFBWarnings(value = {"IMSE"}, justification = "Not dubious, .notifyAll is just forwarded from the guest.")
     public void JVM_MonitorNotifyAll(Object self) {
+        if (ImageInfo.inImageCode()) {
+            return ;
+        }
         try {
             MetaUtil.unwrap(self).notifyAll();
         } catch (IllegalMonitorStateException e) {
@@ -386,6 +398,9 @@ public class VM extends NativeEnv {
     @JniImpl
     @SuppressFBWarnings(value = {"IMSE"}, justification = "Not dubious, .notify is just forwarded from the guest.")
     public void JVM_MonitorNotify(Object self) {
+        if (ImageInfo.inImageCode()) {
+            return ;
+        }
         try {
             MetaUtil.unwrap(self).notify();
         } catch (IllegalMonitorStateException e) {
@@ -397,6 +412,9 @@ public class VM extends NativeEnv {
     @JniImpl
     @SuppressFBWarnings(value = {"IMSE"}, justification = "Not dubious, .wait is just forwarded from the guest.")
     public void JVM_MonitorWait(Object self, long timeout) {
+        if (ImageInfo.inImageCode()) {
+            return ;
+        }
         try {
             MetaUtil.unwrap(self).wait(timeout);
         } catch (InterruptedException | IllegalMonitorStateException | IllegalArgumentException e) {

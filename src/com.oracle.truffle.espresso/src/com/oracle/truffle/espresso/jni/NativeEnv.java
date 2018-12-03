@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.jni;
 
+import java.io.File;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -129,6 +130,18 @@ public class NativeEnv {
         if (returnType == long.class)
             return 0L;
         return StaticObject.NULL;
+    }
+
+    public static TruffleObject loadLibrary(String[] searchPaths, String name) {
+        for (String path : searchPaths) {
+            File libfile = new File(path, System.mapLibraryName(name));
+            try {
+                return NativeLibrary.loadLibrary(libfile.getAbsolutePath());
+            } catch (UnsatisfiedLinkError e) {
+                // continue
+            }
+        }
+        throw EspressoError.shouldNotReachHere("Cannot load library: " + name);
     }
 
 }

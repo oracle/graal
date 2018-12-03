@@ -26,8 +26,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
@@ -42,7 +40,6 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.MainLauncherRootNode;
-import com.oracle.truffle.espresso.runtime.Classpath;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
@@ -184,7 +181,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         return getCurrentContext(EspressoLanguage.class);
     }
 
-    public Path getEspressoHome() {
-        return Paths.get(getLanguageHome());
+    public String getEspressoHome() {
+        return getLanguageHome();
     }
 }

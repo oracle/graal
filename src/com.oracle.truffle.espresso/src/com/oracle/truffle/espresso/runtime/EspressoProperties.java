@@ -1,8 +1,6 @@
 package com.oracle.truffle.espresso.runtime;
 
 import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.Path;
 
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionValues;
@@ -21,6 +19,8 @@ public interface EspressoProperties {
     String getBootLibraryPath();
 
     String getExtDirs();
+
+    String getEspressoLibraryPath();
 
     static EspressoProperties getDefault() {
         if (ImageInfo.inImageCode()) {
@@ -62,6 +62,7 @@ public interface EspressoProperties {
         private String javaLibraryPath;
         private String bootLibraryPath;
         private String extDirs;
+        private String espressoLibraryPath;
 
         private final EspressoProperties fallback;
 
@@ -94,12 +95,18 @@ public interface EspressoProperties {
             return this;
         }
 
+        public Builder setEspressoLibraryPath(String espressoLibraryPath) {
+            this.espressoLibraryPath = espressoLibraryPath;
+            return this;
+        }
+
         public EspressoProperties build() {
             if ((javaHome == null || javaHome.equals(fallback.getJavaHome())) &&
                             (bootClasspath == null || bootClasspath.equals(fallback.getBootClasspath())) &&
                             (javaLibraryPath == null || javaLibraryPath.equals(fallback.getJavaLibraryPath())) &&
                             (bootLibraryPath == null || bootLibraryPath.equals(fallback.getBootLibraryPath())) &&
-                            (extDirs == null || extDirs.equals(fallback.getExtDirs()))) {
+                            (extDirs == null || extDirs.equals(fallback.getExtDirs())) &&
+                            (espressoLibraryPath == null || espressoLibraryPath.equals(fallback.getEspressoLibraryPath()))) {
                 // No overrides.
                 return fallback;
             }
@@ -129,6 +136,11 @@ public interface EspressoProperties {
                 public String getExtDirs() {
                     return extDirs != null ? extDirs : fallback.getExtDirs();
                 }
+
+                @Override
+                public String getEspressoLibraryPath() {
+                    return espressoLibraryPath != null ? espressoLibraryPath : fallback.getEspressoLibraryPath();
+                }
             };
         }
     }
@@ -141,6 +153,7 @@ class EspressoPropertiesHotSpot implements EspressoProperties {
     private final String javaLibraryPath = System.getProperty("java.library.path");
     private final String bootLibraryPath = System.getProperty("sun.boot.library.path");
     private final String extDirs = System.getProperty("java.ext.dirs");
+    private final String espressoLibraryPath = System.getProperty("espresso.library.path");
 
     @Override
     public String getJavaHome() {
@@ -166,6 +179,11 @@ class EspressoPropertiesHotSpot implements EspressoProperties {
     public String getExtDirs() {
         return extDirs;
     }
+
+    @Override
+    public String getEspressoLibraryPath() {
+        return espressoLibraryPath;
+    }
 }
 
 class EspressoPropertiesSVM implements EspressoProperties {
@@ -175,12 +193,11 @@ class EspressoPropertiesSVM implements EspressoProperties {
     private final String javaLibraryPath;
     private final String bootLibraryPath;
     private final String extDirs;
+    private final String espressoLibraryPath;
 
     public EspressoPropertiesSVM() {
-        OptionValues options = EspressoLanguage.getCurrentContext().getEnv().getOptions();
-        Path espressoHome = EspressoLanguage.getCurrentContext().getLanguage().getEspressoHome();
-        espressoHome.resolve("lib");
-
+        String espressoHome = EspressoLanguage.getCurrentContext().getLanguage().getEspressoHome();
+        espressoLibraryPath = espressoHome + "/lib";
         // Extensions directories.
         // Base path of extensions installed on the system.
         final String SYS_EXT_DIR = "/usr/java/packages";
@@ -188,29 +205,19 @@ class EspressoPropertiesSVM implements EspressoProperties {
         final String DEFAULT_LIBPATH = "/usr/lib64:/lib64:/lib:/usr/lib";
         final String cpuArch = "amd64";
 
-        Path graalVmHome = Engine.findHome();
-
-        Path maybeJre = graalVmHome.resolve("jre");
-
-        if (Files.isDirectory(maybeJre)) {
-            javaHome = maybeJre.toString();
-        } else {
-            javaHome = graalVmHome.toString();
-        }
-
-        bootClasspath = String.format(
-                        String.join(File.separator,
-                                        "%1$/lib/resources.jar",
-                                        "%1$/lib/rt.jar",
-                                        "%1$/lib/sunrsasign.jar",
-                                        "%1$/lib/jsse.jar",
-                                        "%1$/lib/jce.jar",
-                                        "%1$/lib/charsets.jar",
-                                        "%1$/lib/jfr.jar",
-                                        "%1$/classes").replaceAll("/", File.pathSeparator),
-                        javaHome);
-        extDirs = javaHome + EXTENSIONS_DIR + File.separator + SYS_EXT_DIR + EXTENSIONS_DIR;
-        javaLibraryPath = String.format(SYS_EXT_DIR + "/lib/%s:" + DEFAULT_LIBPATH, cpuArch);
+        String graalVmHome = Engine.findHome().toString();
+        javaHome = graalVmHome + "/jre";
+        bootClasspath = String.join(File.pathSeparator,
+                        javaHome + "/lib/resources.jar",
+                        javaHome + "/lib/rt.jar",
+                        javaHome + "/lib/sunrsasign.jar",
+                        javaHome + "/lib/jsse.jar",
+                        javaHome + "/lib/jce.jar",
+                        javaHome + "/lib/charsets.jar",
+                        javaHome + "/lib/jfr.jar",
+                        javaHome + "/classes");
+        extDirs = javaHome + EXTENSIONS_DIR + File.pathSeparator + SYS_EXT_DIR + EXTENSIONS_DIR;
+        javaLibraryPath = SYS_EXT_DIR + "/lib/" + cpuArch + ":" + DEFAULT_LIBPATH;
         bootLibraryPath = javaHome + "/lib/" + cpuArch;
     }
 
@@ -237,5 +244,10 @@ class EspressoPropertiesSVM implements EspressoProperties {
     @Override
     public String getExtDirs() {
         return extDirs;
+    }
+
+    @Override
+    public String getEspressoLibraryPath() {
+        return espressoLibraryPath;
     }
 }
