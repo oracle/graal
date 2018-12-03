@@ -31,6 +31,7 @@ import shutil
 from collections import namedtuple
 from argparse import ArgumentParser
 from os.path import join, exists, dirname
+import re
 
 import mx
 import mx_compiler
@@ -126,6 +127,7 @@ def updategraalinopenjdk(args):
         m_src_dir = join('src', m.name)
         mx.log('Checking ' + m_src_dir)
         out = run_output(['hg', 'status', m_src_dir], cwd=jdkrepo)
+        out = re.sub(r'^\?.*(\r\n|\r|\n)?', '', out, flags=re.MULTILINE)
         if out:
             mx.abort(jdkrepo + ' is not "hg clean":' + '\n' + out[:min(200, len(out))] + '...')
 
