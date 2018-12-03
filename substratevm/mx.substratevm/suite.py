@@ -66,7 +66,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": ["com.oracle.svm.core"],
             "javaCompliance": "8",
-            "checkstyleVersion" : "8.8",
+            "checkstyle": "com.oracle.svm.core",
             "workingSets": "SVM",
         },
 
@@ -80,7 +80,7 @@ suite = {
             ],
             "javaCompliance": "9+",
             "multiReleaseJarVersion": "9",
-            "checkstyleVersion" : "8.8",
+            "checkstyle": "com.oracle.svm.core",
             "workingSets": "SVM",
         },
 
