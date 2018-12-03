@@ -385,7 +385,7 @@ public class VM extends NativeEnv {
     @SuppressFBWarnings(value = {"IMSE"}, justification = "Not dubious, .notifyAll is just forwarded from the guest.")
     public void JVM_MonitorNotifyAll(Object self) {
         if (ImageInfo.inImageCode()) {
-            return ;
+            return;
         }
         try {
             MetaUtil.unwrap(self).notifyAll();
@@ -399,7 +399,7 @@ public class VM extends NativeEnv {
     @SuppressFBWarnings(value = {"IMSE"}, justification = "Not dubious, .notify is just forwarded from the guest.")
     public void JVM_MonitorNotify(Object self) {
         if (ImageInfo.inImageCode()) {
-            return ;
+            return;
         }
         try {
             MetaUtil.unwrap(self).notify();
@@ -413,7 +413,7 @@ public class VM extends NativeEnv {
     @SuppressFBWarnings(value = {"IMSE"}, justification = "Not dubious, .wait is just forwarded from the guest.")
     public void JVM_MonitorWait(Object self, long timeout) {
         if (ImageInfo.inImageCode()) {
-            return ;
+            return;
         }
         try {
             MetaUtil.unwrap(self).wait(timeout);
