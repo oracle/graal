@@ -70,7 +70,7 @@ public class ClassfileParser {
     public static final int NO_RELAX_ACCESS_CTRL_CHECK_VERSION = JAVA_8_VERSION;
     public static final int DYNAMICCONSTANT_MAJOR_VERSION = JAVA_11_VERSION;
 
-    private final Object classLoader;
+    private final StaticObject classLoader;
     private final ClasspathFile classfile;
 
     private final String requestedClassName;
@@ -104,13 +104,10 @@ public class ClassfileParser {
 
     static final DebugCounter parsedClasses = DebugCounter.create("Parsed classes");
 
-    public ClassfileParser(Object classLoader, ClasspathFile classpathFile, String requestedClassName, Klass hostClass, EspressoContext context) {
+    public ClassfileParser(StaticObject classLoader, ClasspathFile classpathFile, String requestedClassName, Klass hostClass, EspressoContext context) {
+        assert classLoader != null;
         this.requestedClassName = requestedClassName;
-        this.classLoader = classLoader == StaticObject.NULL ? null : classLoader; // The BCL is
-                                                                                  // SO.NULL on the
-                                                                                  // guest, we store
-                                                                                  // as null on the
-                                                                                  // host.
+        this.classLoader = classLoader;
         this.className = requestedClassName;
         this.hostClass = hostClass;
         this.context = context;
@@ -118,13 +115,10 @@ public class ClassfileParser {
         this.stream = new ClassfileStream(classfile);
     }
 
-    public ClassfileParser(Object classLoader, ClassfileStream stream, String requestedClassName, Klass hostClass, EspressoContext context) {
+    public ClassfileParser(StaticObject classLoader, ClassfileStream stream, String requestedClassName, Klass hostClass, EspressoContext context) {
+        assert classLoader != null;
         this.requestedClassName = requestedClassName;
-        this.classLoader = classLoader == StaticObject.NULL ? null : classLoader; // The BCL is
-                                                                                  // SO.NULL on the
-                                                                                  // guest, we store
-                                                                                  // as null on the
-                                                                                  // host.
+        this.classLoader = classLoader;
         this.className = requestedClassName;
         this.hostClass = hostClass;
         this.context = context;

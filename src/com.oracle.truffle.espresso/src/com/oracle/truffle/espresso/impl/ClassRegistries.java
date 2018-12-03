@@ -39,15 +39,17 @@ import com.oracle.truffle.espresso.types.TypeDescriptor;
 public class ClassRegistries {
 
     private final ClassRegistry bootClassRegistry;
-    private final ConcurrentHashMap<Object, ClassRegistry> registries = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<StaticObject, ClassRegistry> registries;
     private final EspressoContext context;
 
     public ClassRegistries(EspressoContext context) {
         this.context = context;
-        bootClassRegistry = new BootClassRegistry(context);
+        this.registries = new ConcurrentHashMap<>();
+        this.bootClassRegistry = new BootClassRegistry(context);
     }
 
-    public Klass findLoadedClass(TypeDescriptor type, Object classLoader) {
+    public Klass findLoadedClass(TypeDescriptor type, StaticObject classLoader) {
+        assert classLoader != null;
         if (type.isArray()) {
             Klass pepe = findLoadedClass(type.getComponentType(), classLoader);
             if (pepe != null) {
@@ -55,7 +57,7 @@ public class ClassRegistries {
             }
             return null;
         }
-        if (classLoader == null) {
+        if (StaticObject.isNull(classLoader)) {
             return bootClassRegistry.findLoadedClass(type);
         }
         ClassRegistry registry = registries.get(classLoader);
@@ -66,20 +68,27 @@ public class ClassRegistries {
     }
 
     @CompilerDirectives.TruffleBoundary
-    public Klass resolve(TypeDescriptor type, Object classLoader) {
+    public Klass resolveWithBootClassLoader(TypeDescriptor type) {
+        return resolve(type, StaticObject.NULL);
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    public Klass resolve(TypeDescriptor type, StaticObject classLoader) {
+        assert classLoader != null;
         Klass k = findLoadedClass(type, classLoader);
         if (k != null) {
             return k;
         }
-        if (classLoader == null) {
+        if (StaticObject.isNull(classLoader)) {
             return bootClassRegistry.resolve(type);
         } else {
-            ClassRegistry registry = registries.computeIfAbsent(classLoader, cl -> new GuestClassRegistry(context, (StaticObject) cl));
+            ClassRegistry registry = registries.computeIfAbsent(classLoader, cl -> new GuestClassRegistry(context, cl));
             return registry.resolve(type);
         }
     }
 
-    public Klass defineKlass(String name, byte[] bytes, Object classLoader) {
+    public Klass defineKlass(String name, byte[] bytes, StaticObject classLoader) {
+        assert classLoader != null;
         ClasspathFile cpf = new ClasspathFile(bytes, null, name);
         ClassfileParser parser = new ClassfileParser(classLoader, new ClassfileStream(bytes, 0, bytes.length, cpf), name, null, EspressoLanguage.getCurrentContext());
 
@@ -87,7 +96,7 @@ public class ClassRegistries {
         // Class parsing should be moved to ClassRegistry.
         StaticObjectClass klass = (StaticObjectClass) parser.parseClass().mirror();
 
-        ClassRegistry registry = (classLoader == null || classLoader == StaticObject.NULL) ? bootClassRegistry : registries.get(classLoader);
+        ClassRegistry registry = StaticObject.isNull(classLoader) ? bootClassRegistry : registries.get(classLoader);
         TypeDescriptor descriptor = context.getTypeDescriptors().make(MetaUtil.toInternalName(name));
         registry.defineKlass(descriptor, klass.getMirror());
         return klass.getMirror();

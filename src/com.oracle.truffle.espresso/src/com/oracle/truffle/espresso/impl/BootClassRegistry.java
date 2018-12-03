@@ -31,6 +31,7 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.types.TypeDescriptor;
 
 /**
@@ -95,7 +96,7 @@ public class BootClassRegistry implements ClassRegistry {
             if (classpathFile == null) {
                 return null;
             }
-            ClassfileParser parser = new ClassfileParser(null, classpathFile, className, hostClass, context);
+            ClassfileParser parser = new ClassfileParser(StaticObject.NULL, classpathFile, className, hostClass, context);
             klass = parser.parseClass();
             Klass loadedFirst = classes.putIfAbsent(type, klass);
             if (loadedFirst != null) {

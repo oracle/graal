@@ -141,7 +141,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     private static StaticObjectClass loadMainClass(EspressoContext context, LaunchMode mode, String name) {
         assert context.isInitialized();
         Meta meta = context.getMeta();
-        Meta.Klass launcherHelperKlass = meta.loadKlass("sun.launcher.LauncherHelper", null);
+        Meta.Klass launcherHelperKlass = meta.loadKlass("sun.launcher.LauncherHelper", StaticObject.NULL);
         return (StaticObjectClass) launcherHelperKlass.staticMethod("checkAndLoadMain", Class.class, boolean.class, int.class, String.class).invokeDirect(true, mode.ordinal(), meta.toGuest(name));
     }
 

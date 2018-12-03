@@ -52,6 +52,7 @@ import com.oracle.truffle.espresso.nodes.IntrinsicRootNode;
 import com.oracle.truffle.espresso.nodes.JniNativeNode;
 import com.oracle.truffle.espresso.nodes.NativeRootNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.types.SignatureDescriptor;
 import com.oracle.truffle.espresso.vm.VM;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
@@ -217,7 +218,7 @@ public final class MethodInfo implements ModifiersProvider {
 
                     // If the loader is null we have a system class, so we attempt a lookup in
                     // the native Java library.
-                    if (getDeclaringClass().getClassLoader() == null) {
+                    if (StaticObject.isNull(getDeclaringClass().getClassLoader())) {
                         // Look in libjava
                         VM vm = EspressoLanguage.getCurrentContext().getVM();
                         for (boolean withSignature : new boolean[]{false, true}) {
@@ -327,7 +328,7 @@ public final class MethodInfo implements ModifiersProvider {
         return getParameterTypes().length;
     }
 
-    public Object getClassLoader() {
+    public StaticObject getClassLoader() {
         ConstantPool pool = getConstantPool();
         if (pool == null) {
             return null;

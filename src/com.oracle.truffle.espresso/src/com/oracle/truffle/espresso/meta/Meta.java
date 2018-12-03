@@ -174,7 +174,7 @@ public final class Meta {
     public final Klass SERIALIZABLE;
 
     private static boolean isKnownClass(java.lang.Class<?> clazz) {
-        // Cheap check: known classes are loaded by the BCL.
+        // Cheap check: (host) known classes are loaded by the BCL.
         return clazz.getClassLoader() == null;
     }
 
@@ -225,11 +225,12 @@ public final class Meta {
     public Meta.Klass knownKlass(java.lang.Class<?> hostClass) {
         assert isKnownClass(hostClass);
         // Resolve classes using BCL.
-        return meta(context.getRegistries().resolve(context.getTypeDescriptors().make(MetaUtil.toInternalName(hostClass.getName())), null));
+        return meta(context.getRegistries().resolve(context.getTypeDescriptors().make(MetaUtil.toInternalName(hostClass.getName())), StaticObject.NULL));
     }
 
     @CompilerDirectives.TruffleBoundary
-    public Meta.Klass loadKlass(String className, Object classLoader) {
+    public Meta.Klass loadKlass(String className, StaticObject classLoader) {
+        assert classLoader != null : "use StaticObject.NULL for BCL";
         return meta(context.getRegistries().resolve(context.getTypeDescriptors().make(MetaUtil.toInternalName(className)), classLoader));
     }
 
@@ -514,7 +515,10 @@ public final class Meta {
         public Object allocateArray(int length, IntFunction<Object> generator) {
             StaticObjectArray arr = (StaticObjectArray) klass.getContext().getInterpreterToVM().newArray(klass, length);
             // TODO(peterssen): Store check is missing.
-            Arrays.setAll(arr.getWrapped(), generator);
+            Object[] array = arr.getWrapped();
+            for (int i = 0; i < array.length; ++i) {
+                array[i] = generator.apply(i);
+            }
             return arr;
         }
 

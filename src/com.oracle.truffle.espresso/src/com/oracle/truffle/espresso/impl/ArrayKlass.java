@@ -29,6 +29,7 @@ import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public final class ArrayKlass extends Klass {
     private final Klass componentType;
@@ -136,7 +137,7 @@ public final class ArrayKlass extends Klass {
     }
 
     @Override
-    public Object getClassLoader() {
+    public StaticObject getClassLoader() {
         return getComponentType().getClassLoader();
     }
 

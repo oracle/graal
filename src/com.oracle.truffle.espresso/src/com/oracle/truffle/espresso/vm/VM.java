@@ -545,7 +545,7 @@ public class VM extends NativeEnv {
 
     @VmImpl
     @JniImpl
-    public @Type(Class.class) StaticObject JVM_DefineClass(String name, Object loader, long bufPtr, int len, @Type(ProtectionDomain.class) Object pd) {
+    public @Type(Class.class) StaticObject JVM_DefineClass(String name, @Type(ClassLoader.class) StaticObject loader, long bufPtr, int len, @Type(ProtectionDomain.class) Object pd) {
         ByteBuffer buf = JniEnv.directByteBuffer(bufPtr, len, JavaKind.Byte);
         final byte[] bytes = new byte[len];
         buf.get(bytes);
@@ -555,7 +555,7 @@ public class VM extends NativeEnv {
 
     @VmImpl
     @JniImpl
-    public @Type(Class.class) StaticObject JVM_DefineClassWithSource(String name, Object loader, long bufPtr, int len,
+    public @Type(Class.class) StaticObject JVM_DefineClassWithSource(String name, @Type(ClassLoader.class) StaticObject loader, long bufPtr, int len,
                     @Type(ProtectionDomain.class) Object pd, String source) {
         // FIXME(peterssen): source is ignored.
         return JVM_DefineClass(name, loader, bufPtr, len, pd);
@@ -591,7 +591,7 @@ public class VM extends NativeEnv {
 
     @VmImpl
     @JniImpl
-    public @Type(Class.class) StaticObject JVM_FindLoadedClass(Object loader, @Type(String.class) StaticObject name) {
+    public @Type(Class.class) StaticObject JVM_FindLoadedClass(@Type(ClassLoader.class) StaticObject loader, @Type(String.class) StaticObject name) {
         EspressoContext context = EspressoLanguage.getCurrentContext();
         TypeDescriptor type = context.getTypeDescriptors().make(MetaUtil.toInternalName(Meta.toHost(name)));
         Klass klass = EspressoLanguage.getCurrentContext().getRegistries().findLoadedClass(type, loader);
@@ -782,8 +782,7 @@ public class VM extends NativeEnv {
     @JniImpl
     public @Type(Class.class) StaticObject JVM_FindClassFromBootLoader(String name) {
         EspressoContext context = EspressoLanguage.getCurrentContext();
-        Klass klass = context.getRegistries().resolve(
-                        context.getTypeDescriptors().make(MetaUtil.toInternalName(name)), null);
+        Klass klass = context.getRegistries().resolveWithBootClassLoader(context.getTypeDescriptors().make(MetaUtil.toInternalName(name)));
         if (klass == null) {
             return StaticObject.NULL;
         }

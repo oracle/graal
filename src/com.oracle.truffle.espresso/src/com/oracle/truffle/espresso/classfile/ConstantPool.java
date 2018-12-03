@@ -42,6 +42,7 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.types.TypeDescriptor;
 
 public final class ConstantPool {
@@ -116,12 +117,12 @@ public final class ConstantPool {
         return context;
     }
 
-    private final Object classLoader;
+    private final StaticObject classLoader;
 
     /**
      * Creates a constant pool from a class file.
      */
-    public ConstantPool(EspressoContext context, Object classLoader, ClassfileStream stream, ClassfileParser parser) {
+    public ConstantPool(EspressoContext context, StaticObject classLoader, ClassfileStream stream, ClassfileParser parser) {
         this.context = context;
         final int length = stream.readU2();
         if (length < 1) {
@@ -251,7 +252,7 @@ public final class ConstantPool {
         constants = entries;
     }
 
-    public Object getClassLoader() {
+    public StaticObject getClassLoader() {
         return classLoader;
     }
 

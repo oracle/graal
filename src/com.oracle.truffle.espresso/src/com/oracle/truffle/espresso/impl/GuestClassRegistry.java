@@ -66,7 +66,7 @@ public class GuestClassRegistry implements ClassRegistry {
         if (type.isArray()) {
             return resolve(type.getComponentType()).getArrayClass();
         }
-        assert classLoader != null;
+        assert StaticObject.notNull(classLoader);
         // TODO(peterssen): Should the class be resolved?
         StaticObjectClass guestClass = (StaticObjectClass) Meta.meta(classLoader).method("loadClass", Class.class, String.class, boolean.class).invokeDirect(
                         context.getMeta().toGuest(type.toJavaName()), false);

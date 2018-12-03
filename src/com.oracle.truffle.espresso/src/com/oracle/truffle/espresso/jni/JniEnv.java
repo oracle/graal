@@ -1553,7 +1553,7 @@ public class JniEnv extends NativeEnv {
      * @return Returns a Java class object or NULL if an error occurs.
      */
     @JniImpl
-    public @Type(Class.class) StaticObject DefineClass(String name, Object loader, long bufPtr, int bufLen) {
+    public @Type(Class.class) StaticObject DefineClass(String name, @Type(ClassLoader.class) StaticObject loader, long bufPtr, int bufLen) {
         // TODO(peterssen): Propagete errors and verifications, e.g. no class win the java package.
         return EspressoLanguage.getCurrentContext().getVM().JVM_DefineClass(name, loader, bufPtr, bufLen, StaticObject.NULL);
     }

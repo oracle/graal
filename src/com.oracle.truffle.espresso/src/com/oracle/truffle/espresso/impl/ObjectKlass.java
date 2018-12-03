@@ -37,6 +37,7 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.runtime.AttributeInfo;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
  * Represents resolved non-primitive, non-array types in Espresso.
@@ -208,7 +209,7 @@ public final class ObjectKlass extends Klass {
     }
 
     @Override
-    public Object getClassLoader() {
+    public StaticObject getClassLoader() {
         return getConstantPool().getClassLoader();
     }
 
