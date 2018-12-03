@@ -56,7 +56,8 @@ public abstract class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     public static final String MAIN_ARGS_KEY = "Sulong Main Args";
     public static final String PARSE_ONLY_KEY = "Parse only";
 
-    public static final String NAME = "llvm";
+    public static final String ID = "llvm";
+    public static final String NAME = "LLVM";
 
     public abstract LLVMContext findLLVMContext();
 
