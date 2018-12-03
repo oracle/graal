@@ -56,6 +56,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
@@ -69,6 +70,7 @@ import com.oracle.truffle.polyglot.HostMethodDesc.OverloadedMethod;
 import com.oracle.truffle.polyglot.HostMethodDesc.SingleMethod;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValueNode;
 
+@ReportPolymorphism
 abstract class HostExecuteNode extends Node {
     static final int LIMIT = 3;
     private static final Class<?>[] EMPTY_CLASS_ARRAY = new Class<?>[0];

@@ -24,23 +24,21 @@
  */
 package org.graalvm.compiler.replacements.jdk12.test;
 
-import jdk.vm.ci.aarch64.AArch64;
-import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.code.TargetDescription;
 import org.graalvm.compiler.api.test.Graal;
-import org.graalvm.compiler.core.phases.HighTier;
-import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.test.MethodSubstitutionTest;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.graalvm.compiler.test.AddExports;
 import org.junit.Test;
 
-import java.lang.reflect.Field;
+import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.TargetDescription;
 
 /**
- * Starting from JDK12 jdk.internal.misc.Unsafe::.*Object() methods were renamed to .*Reference().
+ * As of JDK 12 {@code jdk.internal.misc.Unsafe::.*Object()} methods were renamed to
+ * {@code .*Reference()}.
  *
- * @see <a href=https://bugs.openjdk.java.net/browse/JDK-8207146>JDK-8207146</a>
+ * @see "https://bugs.openjdk.java.net/browse/JDK-8207146"
  */
 @AddExports("java.base/jdk.internal.misc")
 public class UnsafeObjectReplacementsTest extends MethodSubstitutionTest {

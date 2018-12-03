@@ -75,8 +75,10 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 if (cpArgs == null) {
                     NativeImage.showError(headArg + " requires class path specification");
                 }
-                for (String cp : cpArgs.split(File.pathSeparator)) {
-                    nativeImage.addCustomImageClasspath(Paths.get(cp));
+                for (String cp : cpArgs.split(File.pathSeparator, Integer.MAX_VALUE)) {
+                    /* Conform to `java` command empty cp entry handling. */
+                    String cpEntry = cp.isEmpty() ? "." : cp;
+                    nativeImage.addCustomImageClasspath(Paths.get(cpEntry));
                 }
                 return true;
             case "--configurations-path":
@@ -168,7 +170,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             if (headArg.equals(optimizeOption)) {
                 NativeImage.showError("The " + optimizeOption + " option should not be followed by a space");
             } else {
-                nativeImage.addPlainImageBuilderArg(NativeImage.oHOptimize + headArg.substring(2));
+                nativeImage.addPlainImageBuilderArg(nativeImage.oHOptimize + headArg.substring(2));
             }
             return true;
         }
@@ -183,7 +185,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             if (mainClass == null) {
                 NativeImage.showError("No main manifest attribute, in " + filePath);
             }
-            nativeImage.addPlainImageBuilderArg(NativeImage.oHClass + mainClass);
+            nativeImage.addPlainImageBuilderArg(nativeImage.oHClass + mainClass);
             String jarFileName = filePath.getFileName().toString();
             String jarSuffix = ".jar";
             String jarFileNameBase;
@@ -193,7 +195,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 jarFileNameBase = jarFileName;
             }
             if (!jarFileNameBase.isEmpty()) {
-                nativeImage.addPlainImageBuilderArg(NativeImage.oHName + jarFileNameBase);
+                nativeImage.addPlainImageBuilderArg(nativeImage.oHName + jarFileNameBase);
             }
             String classPath = mainAttributes.getValue("Class-Path");
             /* Missing Class-Path Attribute is tolerable */
@@ -207,7 +209,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                     nativeImage.addImageProvidedClasspath(manifestClassPath);
                 }
             }
-            nativeImage.addImageClasspath(filePath);
+            nativeImage.addCustomImageClasspath(filePath);
         } catch (NativeImage.NativeImageError ex) {
             throw ex;
         } catch (Throwable ex) {

@@ -86,7 +86,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
 
     public final void enter(int frameSize) {
         if (NumUtil.isUShort(frameSize)) {
-            // Can use leave instruction only for frame size that fits in 16 bits.
+            // Can use enter instruction only for frame size that fits in 16 bits.
             emitByte(0xC8);
             emitShort(frameSize);
             emitByte(0x00);

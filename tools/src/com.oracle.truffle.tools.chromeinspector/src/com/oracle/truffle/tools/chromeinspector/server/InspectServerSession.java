@@ -90,7 +90,7 @@ public final class InspectServerSession implements MessageEndpoint {
 
     public void setMessageListener(MessageEndpoint messageListener) {
         this.messageEndpoint = messageListener;
-        if (processThread == null) {
+        if (messageListener != null && processThread == null) {
             EventHandler eh = new EventHandlerImpl();
             runtime.setEventHandler(eh);
             debugger.setEventHandler(eh);
@@ -154,7 +154,7 @@ public final class InspectServerSession implements MessageEndpoint {
                                 json.optBoolean("awaitPromise"));
                 break;
             case "Runtime.runIfWaitingForDebugger":
-                runtime.runIfWaitingForDebugger();
+                runtime.runIfWaitingForDebugger(postProcessor);
                 break;
             case "Runtime.getProperties":
                 json = cmd.getParams().getJSONObject();

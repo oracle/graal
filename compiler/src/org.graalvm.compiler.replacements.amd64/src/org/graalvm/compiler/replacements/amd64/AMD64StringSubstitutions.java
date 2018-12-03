@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -87,6 +87,13 @@ public class AMD64StringSubstitutions {
         if (targetCount == 1) {
             Pointer sourcePointer = Word.objectToTrackedPointer(source).add(charArrayBaseOffset(INJECTED)).add(totalOffset * charArrayIndexScale(INJECTED));
             int indexOfResult = AMD64ArrayIndexOf.indexOf1Char(sourcePointer, sourceCount - fromIndex, target[targetOffset]);
+            if (indexOfResult >= 0) {
+                return indexOfResult + totalOffset;
+            }
+            return indexOfResult;
+        } else if (targetCount == 2) {
+            Pointer sourcePointer = Word.objectToTrackedPointer(source).add(charArrayBaseOffset(INJECTED)).add(totalOffset * charArrayIndexScale(INJECTED));
+            int indexOfResult = AMD64ArrayIndexOf.indexOfTwoConsecutiveChars(sourcePointer, sourceCount - fromIndex, target[targetOffset], target[targetOffset + 1]);
             if (indexOfResult >= 0) {
                 return indexOfResult + totalOffset;
             }

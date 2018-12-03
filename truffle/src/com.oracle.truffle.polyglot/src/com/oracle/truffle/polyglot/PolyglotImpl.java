@@ -695,6 +695,12 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
+        public boolean inContextPreInitialization(Object vmObject) {
+            PolyglotLanguageContext context = (PolyglotLanguageContext) vmObject;
+            return context.context.inContextPreInitialization;
+        }
+
+        @Override
         @TruffleBoundary
         public void exportSymbol(Object vmObject, String symbolName, Object value) {
             PolyglotLanguageContext context = (PolyglotLanguageContext) vmObject;
@@ -935,7 +941,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         @Override
         public boolean isDefaultFileSystem(FileSystem fs) {
-            return FileSystems.getDefaultFileSystem() == fs;
+            return FileSystems.isDefaultFileSystem(fs);
         }
 
         @Override

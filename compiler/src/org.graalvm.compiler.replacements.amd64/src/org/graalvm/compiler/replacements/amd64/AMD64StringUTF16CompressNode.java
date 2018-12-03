@@ -57,6 +57,7 @@ public final class AMD64StringUTF16CompressNode extends FixedWithNextNode
     @Input private ValueNode src;
     @Input private ValueNode dst;
     @Input private ValueNode len;
+    final JavaKind readKind;
 
     @OptionalInput(Memory) private MemoryNode lla; // Last access location registered.
 
@@ -66,17 +67,18 @@ public final class AMD64StringUTF16CompressNode extends FixedWithNextNode
     //
     // Represented as a graph node by:
 
-    public AMD64StringUTF16CompressNode(ValueNode src, ValueNode dst, ValueNode len) {
+    public AMD64StringUTF16CompressNode(ValueNode src, ValueNode dst, ValueNode len, JavaKind readKind) {
         super(TYPE, StampFactory.forInteger(32));
         this.src = src;
         this.dst = dst;
         this.len = len;
+        this.readKind = readKind;
     }
 
     @Override
     public LocationIdentity getLocationIdentity() {
         // Model read access via 'src' using:
-        return NamedLocationIdentity.getArrayLocation(JavaKind.Char);
+        return NamedLocationIdentity.getArrayLocation(readKind);
     }
 
     @Override
@@ -104,5 +106,5 @@ public final class AMD64StringUTF16CompressNode extends FixedWithNextNode
     }
 
     @NodeIntrinsic
-    public static native int compress(Pointer src, Pointer dst, int len);
+    public static native int compress(Pointer src, Pointer dst, int len, @ConstantNodeParameter JavaKind readKind);
 }

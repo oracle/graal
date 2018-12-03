@@ -33,6 +33,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.RegexObject;
 import com.oracle.truffle.regex.runtime.RegexObjectMessageResolutionFactory.ReadCacheNodeGen;
+import com.oracle.truffle.regex.runtime.RegexObjectMessageResolutionFactory.ReceiverCacheNodeGen;
 
 @MessageResolution(receiverType = RegexObject.class)
 public class RegexObjectMessageResolution {
@@ -74,6 +75,24 @@ public class RegexObjectMessageResolution {
         }
     }
 
+    abstract static class ReceiverCacheNode extends Node {
+
+        @Child ReadCacheNode cache = ReadCacheNodeGen.create();
+
+        abstract Object execute(RegexObject receiver, String symbol);
+
+        @Specialization(guards = "receiver == cachedReceiver", limit = "1")
+        Object readCached(@SuppressWarnings("unused") RegexObject receiver, String symbol,
+                        @Cached("receiver") RegexObject cachedReceiver) {
+            return cache.execute(cachedReceiver, symbol);
+        }
+
+        @Specialization(replaces = "readCached")
+        Object readDynamic(RegexObject receiver, String symbol) {
+            return cache.execute(receiver, symbol);
+        }
+    }
+
     abstract static class ReadCacheNode extends Node {
 
         abstract Object execute(RegexObject receiver, String symbol);
@@ -111,7 +130,7 @@ public class RegexObjectMessageResolution {
     @Resolve(message = "READ")
     abstract static class RegexObjectReadNode extends Node {
 
-        @Child ReadCacheNode cache = ReadCacheNodeGen.create();
+        @Child ReceiverCacheNode cache = ReceiverCacheNodeGen.create();
 
         public Object access(RegexObject receiver, String symbol) {
             return cache.execute(receiver, symbol);

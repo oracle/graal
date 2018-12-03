@@ -33,9 +33,13 @@ import static org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.overrid
 import org.graalvm.compiler.truffle.runtime.GraalCompilerDirectives;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions;
+import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope;
+import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -46,6 +50,19 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
 
 public class MultiTierCompilationTest extends PartialEvaluationTest {
+
+    private static TruffleRuntimeOptionsOverrideScope immediateCompilationScope;
+
+    @BeforeClass
+    public static void setup() {
+        immediateCompilationScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleCompileImmediately, false);
+    }
+
+    @AfterClass
+    public static void tearDown() {
+        immediateCompilationScope.close();
+    }
+
     public static class MultiTierCalleeNode extends RootNode {
         protected MultiTierCalleeNode() {
             super(null);
@@ -92,6 +109,7 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
     @SuppressWarnings("try")
     @Test
     public void testCompilationTiers() {
+        Assume.assumeTrue(TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompileImmediately));
         try (TruffleRuntimeOptionsOverrideScope scope = overrideOptions(
                         TruffleBackgroundCompilation, false,
                         TruffleMultiTier, true,

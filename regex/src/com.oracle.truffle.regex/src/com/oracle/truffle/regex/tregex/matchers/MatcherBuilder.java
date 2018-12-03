@@ -823,20 +823,9 @@ public final class MatcherBuilder implements Comparable<MatcherBuilder>, JsonCon
     }
 
     private boolean preferRangeListMatcherOverBitSetMatcher() {
-        if (size() <= 2) {
-            // for up to two ranges, RangeListMatcher is faster than any BitSet matcher
-            return true;
-        }
-        if (size() <= 4) {
-            // up to four single character checks are still faster than a bit set
-            for (int i = 0; i < size(); i++) {
-                if (!isSingle(i)) {
-                    return false;
-                }
-            }
-            return true;
-        }
-        return false;
+        // for up to two ranges, RangeListMatcher is faster than any BitSet matcher
+        // also, up to four single character checks are still faster than a bit set
+        return size() <= 2 || charCount() <= 4;
     }
 
     private CompilationFinalBitSet convertToBitSet(int iMinArg, int iMaxArg) {

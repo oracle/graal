@@ -58,11 +58,13 @@ public final class StackTrace {
             ScriptsHandler sch = context.acquireScriptsHandler();
             try {
                 int scriptId = sch.assureLoaded(source);
-                callFrame.put("scriptId", Integer.toString(scriptId));
-                callFrame.put("url", sch.getScript(scriptId).getUrl());
-                callFrame.put("lineNumber", sourceSection.getStartLine() - 1);
-                callFrame.put("columnNumber", sourceSection.getStartColumn() - 1);
-                callFrames.put(callFrame);
+                if (scriptId != -1) {
+                    callFrame.put("scriptId", Integer.toString(scriptId));
+                    callFrame.put("url", sch.getScript(scriptId).getUrl());
+                    callFrame.put("lineNumber", sourceSection.getStartLine() - 1);
+                    callFrame.put("columnNumber", sourceSection.getStartColumn() - 1);
+                    callFrames.put(callFrame);
+                }
             } finally {
                 context.releaseScriptsHandler();
             }

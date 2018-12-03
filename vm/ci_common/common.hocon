@@ -122,6 +122,30 @@ gate_vm_darwin: ${vm_darwin} {
   targets: [gate]
 }
 
+bench_vm_linux: ${vm_linux} {
+  targets: [bench, post-merge]
+}
+
+bench_vm_darwin: ${vm_darwin} {
+  targets: [bench, post-merge]
+}
+
+bench_daily_vm_linux: ${vm_linux} {
+  targets: [bench, daily]
+}
+
+bench_daily_vm_darwin: ${vm_darwin} {
+  targets: [bench, daily]
+}
+
+deploy_vm_linux: ${vm_linux} {
+  targets: [deploy, post-merge]
+}
+
+deploy_daily_vm_darwin: ${vm_darwin} {
+  targets: [deploy, daily]
+}
+
 deploy_vm_linux: ${vm_linux} {
   targets: [deploy, post-merge]
 }

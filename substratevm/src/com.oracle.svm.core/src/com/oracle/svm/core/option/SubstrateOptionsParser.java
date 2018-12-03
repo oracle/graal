@@ -49,6 +49,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.VMError;
 
@@ -229,7 +230,7 @@ public class SubstrateOptionsParser {
                 selectedOptionTypes = EnumSet.noneOf(OptionType.class);
                 String enumString = null;
                 try {
-                    String[] enumStrings = optionValue.split(",");
+                    String[] enumStrings = SubstrateUtil.split(optionValue, ",");
                     for (int i = 0; i < enumStrings.length; i++) {
                         enumString = enumStrings[i];
                         selectedOptionTypes.add(OptionType.valueOf(enumString));
@@ -268,7 +269,7 @@ public class SubstrateOptionsParser {
         } else if (optionType == String.class) {
             value = valueString;
         } else if (optionType == Double.class) {
-            value = Double.parseDouble(valueString);
+            value = parseDouble(valueString);
         } else if (optionType == Boolean.class) {
             if (valueString.equals("true")) {
                 value = true;
@@ -344,7 +345,7 @@ public class SubstrateOptionsParser {
         String indent = spaces(indentation);
         String desc = wrap(description != null ? description : "", wrapWidth);
         String nl = System.lineSeparator();
-        String[] descLines = desc.split(nl);
+        String[] descLines = SubstrateUtil.split(desc, nl);
         if (option.length() >= optionWidth && description != null) {
             println.accept(indent + option + nl + indent + spaces(optionWidth) + descLines[0]);
         } else {
@@ -366,8 +367,38 @@ public class SubstrateOptionsParser {
             if (helpLen > 0 && helpMsg.charAt(helpLen - 1) != '.') {
                 helpMsg += '.';
             }
+            boolean stringifiedArrayValue = false;
+            Object defaultValue = descriptor.getOptionKey().getDefaultValue();
+            if (defaultValue != null && defaultValue.getClass().isArray()) {
+                Object[] defaultValues = (Object[]) defaultValue;
+                if (defaultValues.length == 1) {
+                    defaultValue = defaultValues[0];
+                } else {
+                    List<String> stringList = new ArrayList<>();
+                    String optionPrefix = prefix + entry.getKey() + "=";
+                    for (Object rawValue : defaultValues) {
+                        String value;
+                        if (rawValue instanceof String) {
+                            value = '"' + String.valueOf(rawValue) + '"';
+                        } else {
+                            value = String.valueOf(rawValue);
+                        }
+                        stringList.add(optionPrefix + value);
+                    }
+                    if (helpLen != 0) {
+                        helpMsg += ' ';
+                    }
+                    helpMsg += "Default: ";
+                    if (stringList.isEmpty()) {
+                        helpMsg += "None";
+                    } else {
+                        helpMsg += String.join(" ", stringList);
+                    }
+                    stringifiedArrayValue = true;
+                }
+            }
             if (descriptor.getOptionValueType() == Boolean.class) {
-                Boolean val = (Boolean) descriptor.getOptionKey().getDefaultValue();
+                Boolean val = (Boolean) defaultValue;
                 if (helpLen != 0) {
                     helpMsg += ' ';
                 }
@@ -378,17 +409,26 @@ public class SubstrateOptionsParser {
                 }
                 printOption(out, prefix + "\u00b1" + entry.getKey(), helpMsg);
             } else {
-                Object def = descriptor.getOptionKey().getDefaultValue();
-                if (def instanceof String) {
-                    def = '"' + String.valueOf(def) + '"';
+                if (defaultValue == null) {
+                    if (helpLen != 0) {
+                        helpMsg += ' ';
+                    }
+                    helpMsg += "Default: None";
                 }
-                printOption(out, prefix + entry.getKey() + "=" + def, helpMsg);
+                if (stringifiedArrayValue || defaultValue == null) {
+                    printOption(out, prefix + entry.getKey() + "=...", helpMsg);
+                } else {
+                    if (defaultValue instanceof String) {
+                        defaultValue = '"' + String.valueOf(defaultValue) + '"';
+                    }
+                    printOption(out, prefix + entry.getKey() + "=" + defaultValue, helpMsg);
+                }
             }
         }
     }
 
     public static long parseLong(String v) {
-        String valueString = v.toLowerCase();
+        String valueString = v.trim().toLowerCase();
         long scale = 1;
         if (valueString.endsWith("k")) {
             scale = 1024L;
@@ -406,6 +446,48 @@ public class SubstrateOptionsParser {
         }
 
         return Long.parseLong(valueString) * scale;
+    }
+
+    /**
+     * Parses the provide string to a double number, avoiding the JDK dependencies (which pull in a
+     * lot of classes, including the regular expression library). Only simple numbers are supported,
+     * without fancy exponent styles.
+     */
+    public static double parseDouble(String v) {
+        String valueString = v.trim();
+
+        int dotPos = valueString.indexOf('.');
+        if (dotPos == -1) {
+            return parseLong(valueString);
+        }
+
+        String beforeDot = valueString.substring(0, dotPos);
+        String afterDot = valueString.substring(dotPos + 1);
+
+        double sign = 1;
+        if (beforeDot.startsWith("-")) {
+            sign = -1;
+            beforeDot = beforeDot.substring(1);
+        } else if (beforeDot.startsWith("+")) {
+            beforeDot = beforeDot.substring(1);
+        }
+
+        if (beforeDot.startsWith("-") || beforeDot.startsWith("+") || afterDot.startsWith("-") || afterDot.startsWith("+") ||
+                        (beforeDot.length() == 0 && afterDot.length() == 0)) {
+            throw new NumberFormatException(v);
+        }
+
+        double integral = 0;
+        if (beforeDot.length() > 0) {
+            integral = Long.parseLong(beforeDot);
+        }
+
+        double fraction = 0;
+        if (afterDot.length() > 0) {
+            fraction = Long.parseLong(afterDot) * Math.pow(10, -afterDot.length());
+        }
+
+        return sign * (integral + fraction);
     }
 
     /**

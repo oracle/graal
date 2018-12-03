@@ -138,7 +138,10 @@ public final class ImageClassLoader {
         if (entry.getFileName() != null && entry.getFileName().toString().endsWith("*")) {
             return Arrays.stream(entry.getParent().toFile().listFiles()).filter(File::isFile).map(File::toPath);
         }
-        return Stream.of(entry);
+        if (Files.isReadable(entry)) {
+            return Stream.of(entry);
+        }
+        return Stream.empty();
     }
 
     private static Set<Path> excludeDirectories = getExcludeDirectories();
@@ -221,7 +224,7 @@ public final class ImageClassLoader {
                         String unversionedClassName = unversionedFileName(fileName);
                         String className = curtail(unversionedClassName, CLASS_EXTENSION_LENGTH).replace('/', '.');
                         try {
-                            Class<?> systemClass = Class.forName(className, false, classLoader);
+                            Class<?> systemClass = forName(className);
                             if (includedInPlatform(systemClass)) {
                                 synchronized (systemClasses) {
                                     systemClasses.add(systemClass);
@@ -326,14 +329,27 @@ public final class ImageClassLoader {
                         return void.class;
                 }
             }
-
-            return Class.forName(name, false, classLoader);
+            return forName(name);
         } catch (ClassNotFoundException ex) {
             if (failIfClassMissing) {
                 throw shouldNotReachHere("class " + name + " not found");
             }
+            return null;
         }
-        return null;
+    }
+
+    private Class<?> forName(String name) throws ClassNotFoundException {
+        Class<?> clazz = Class.forName(name, false, classLoader);
+        if (NativeImageClassLoader.classIsMissing(clazz)) {
+            /*
+             * This is a ghost interface. Although Class.forName() doesn't trigger the creation of
+             * ghost interfaces it is possible that the class was referenced in the bytecode, loaded
+             * at an earlier stage and replaced with a ghost interface. Throw a
+             * ClassNotFoundException to maintain the contract of findClassByName().
+             */
+            throw new ClassNotFoundException(name);
+        }
+        return clazz;
     }
 
     public List<String> getClasspath() {
@@ -387,7 +403,7 @@ public final class ImageClassLoader {
         return result;
     }
 
-    List<Field> findAnnotatedFields(Class<? extends Annotation> annotationClass) {
+    public List<Field> findAnnotatedFields(Class<? extends Annotation> annotationClass) {
         ArrayList<Field> result = new ArrayList<>();
         for (Field field : systemFields) {
             if (field.getAnnotation(annotationClass) != null) {

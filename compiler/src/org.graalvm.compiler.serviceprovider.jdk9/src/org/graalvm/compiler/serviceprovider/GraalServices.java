@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,7 @@ import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 import java.util.concurrent.atomic.AtomicLong;
 
+import jdk.vm.ci.runtime.JVMCI;
 import jdk.vm.ci.services.JVMCIPermission;
 import jdk.vm.ci.services.Services;
 
@@ -116,6 +117,11 @@ public final class GraalServices {
         if (jvmciModule != otherModule) {
             for (String pkg : jvmciModule.getPackages()) {
                 if (!jvmciModule.isOpen(pkg, otherModule)) {
+                    // JVMCI initialization opens all JVMCI packages
+                    // to Graal which is a prerequisite for Graal to
+                    // open JVMCI packages to other modules.
+                    JVMCI.initialize();
+
                     jvmciModule.addOpens(pkg, otherModule);
                 }
             }

@@ -46,9 +46,14 @@ import java.util.List;
 
 import static org.junit.Assert.assertTrue;
 import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.ExecuteSourceEvent;
 import com.oracle.truffle.api.instrumentation.ExecuteSourceListener;
@@ -67,6 +72,21 @@ import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Source;
 
 public class SourceListenerTest extends AbstractInstrumentationTest {
+
+    private static boolean isCompileImmediately() {
+        CallTarget target = Truffle.getRuntime().createCallTarget(new RootNode(null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return CompilerDirectives.inCompiledCode();
+            }
+        });
+        return (boolean) target.call();
+    }
+
+    @BeforeClass
+    public static void beforeClass() {
+        Assume.assumeFalse(isCompileImmediately());
+    }
 
     @Test
     public void testLoadSource1() throws IOException {

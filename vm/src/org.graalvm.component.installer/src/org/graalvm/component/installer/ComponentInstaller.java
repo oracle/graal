@@ -75,7 +75,8 @@ public final class ComponentInstaller {
     static final Map<String, InstallerCommand> commands = new HashMap<>();
     static final Map<String, String> globalOptions = new HashMap<>();
 
-    static {
+    @SuppressWarnings("deprecation")
+    static void initCommands() {
         commands.put("install", new InstallCommand()); // NOI18N
         commands.put("uninstall", new UninstallCommand()); // NOI18N
         commands.put("list", new ListInstalledCommand()); // NOI18N
@@ -88,6 +89,7 @@ public final class ComponentInstaller {
         globalOptions.put(Commands.OPTION_HELP, "");
         globalOptions.put(Commands.OPTION_CATALOG, "");
         globalOptions.put(Commands.OPTION_FILES, "");
+        globalOptions.put(Commands.OPTION_FILES_OLD, "=L");
         globalOptions.put(Commands.OPTION_FOREIGN_CATALOG, "s");
         globalOptions.put(Commands.OPTION_URLS, "");
         globalOptions.put(Commands.OPTION_NO_DOWNLOAD_PROGRESS, "");
@@ -95,11 +97,16 @@ public final class ComponentInstaller {
         globalOptions.put(Commands.LONG_OPTION_VERBOSE, Commands.OPTION_VERBOSE);
         globalOptions.put(Commands.LONG_OPTION_DEBUG, Commands.OPTION_DEBUG);
         globalOptions.put(Commands.LONG_OPTION_HELP, Commands.OPTION_HELP);
+        globalOptions.put(Commands.LONG_OPTION_FILES_OLD, Commands.OPTION_FILES);
         globalOptions.put(Commands.LONG_OPTION_FILES, Commands.OPTION_FILES);
         globalOptions.put(Commands.LONG_OPTION_CATALOG, Commands.OPTION_CATALOG);
         globalOptions.put(Commands.LONG_OPTION_FOREIGN_CATALOG, Commands.OPTION_FOREIGN_CATALOG);
         globalOptions.put(Commands.LONG_OPTION_URLS, Commands.OPTION_URLS);
         globalOptions.put(Commands.LONG_OPTION_NO_DOWNLOAD_PROGRESS, Commands.OPTION_NO_DOWNLOAD_PROGRESS);
+    }
+
+    static {
+        initCommands();
     }
 
     private static final ResourceBundle BUNDLE = ResourceBundle.getBundle(

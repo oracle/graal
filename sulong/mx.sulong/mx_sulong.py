@@ -42,7 +42,7 @@ import mx_benchmark
 import mx_sulong_benchmarks
 import mx_buildtools
 
-from mx_gate import Task, add_gate_runner
+from mx_gate import Task, add_gate_runner, add_gate_argument
 
 import mx_testsuites
 
@@ -145,7 +145,7 @@ def _sulong_gate_testsuite(title, test_suite, tasks, args, tags=None, testClasse
     with Task('Build' + title, tasks, tags=tags + build_tags) as t:
         if t: mx_testsuites.compileTestSuite(test_suite, args.extra_build_args)
     with Task('Test' + title, tasks, tags=tags + run_tags) as t:
-        if t: mx_testsuites.runTestSuite(test_suite, args, testClasses, vmArgs)
+        if t: mx_testsuites.runTestSuite(test_suite, args, testClasses, (vmArgs or []) + args.extra_llvm_arguments)
 
 def _sulong_gate_unittest(title, test_suite, tasks, args, tags=None, testClasses=None, unittestArgs=None):
     if tags is None:
@@ -156,6 +156,7 @@ def _sulong_gate_unittest(title, test_suite, tasks, args, tags=None, testClasses
     run_tags = ['run_' + t for t in tags]
     if not unittestArgs:
         unittestArgs = []
+    unittestArgs += args.extra_llvm_arguments
     with Task('Build' + title, tasks, tags=tags + build_tags) as t:
         if t: mx_testsuites.compileTestSuite(test_suite, args.extra_build_args)
     with Task('Test' + title, tasks, tags=tags + run_tags) as t:
@@ -191,7 +192,11 @@ def _sulong_gate_runner(args, tasks):
         _sulong_gate_testsuite('Callback', 'other', tasks, args, tags=['callback', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.test.CallbackTest'])
         _sulong_gate_testsuite('Varargs', 'other', tasks, args, tags=['vaargs', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.test.VAArgsTest'])
 
+
 add_gate_runner(_suite, _sulong_gate_runner)
+add_gate_argument('--extra-llvm-argument', dest='extra_llvm_arguments', action='append',
+                  help='add extra llvm arguments to gate tasks', default=[])
+
 
 
 def testLLVMImage(image, imageArgs=None, testFilter=None, libPath=True, test=None, unittestArgs=None):
@@ -241,8 +246,8 @@ def runLLVMUnittests(unittest_runner):
     mx_testsuites.compileTestSuite(test_suite, extra_build_args=[])
 
     run_args = [libpath, libs] + java_run_props
-    build_args = unittest_runner.keywords.get('build_args', []) + java_run_props
-    unittest_runner(unittest_args=['com.oracle.truffle.llvm.test.interop'], run_args=run_args, build_args=build_args)
+    build_args = ['--language:llvm'] + java_run_props
+    unittest_runner(['com.oracle.truffle.llvm.test.interop', '--run-args'] + run_args + ['--build-args'] + build_args)
 
 
 def clangformatcheck(args=None):

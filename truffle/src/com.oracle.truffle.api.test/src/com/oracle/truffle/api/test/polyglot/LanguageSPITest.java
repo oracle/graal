@@ -83,6 +83,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Scope;
@@ -867,6 +868,21 @@ public class LanguageSPITest {
         MultiContextLanguage lang2 = OneContextLanguage.getInstance(context2);
         assertEquals(0, lang1.initializeMultiContextCalled.size());
         assertEquals(0, lang2.initializeMultiContextCalled.size());
+    }
+
+    @Test
+    public void testInitializeCalledWithEngineOptions() {
+        Engine engine = Engine.newBuilder().option(MultiContextLanguage.ID + ".DummyOption", "42").build();
+        Context context = Context.newBuilder().engine(engine).build();
+        context.initialize(MultiContextLanguage.ID);
+        MultiContextLanguage lang = MultiContextLanguage.getInstance(context);
+        assertEquals(1, lang.initializeMultiContextCalled.size());
+        assertEquals(1, lang.initializeMultipleContextsCalled.size());
+        assertEquals(1, (int) lang.initializeMultipleContextsCalled.get(0));
+        assertEquals(2, (int) lang.initializeMultiContextCalled.get(0));
+        assertEquals(1, lang.createContextCalled.size());
+        context.close();
+        engine.close();
     }
 
     @Test
@@ -1674,11 +1690,16 @@ public class LanguageSPITest {
                     public Object execute(VirtualFrame frame) {
                         Object bindings = getCurrentContext(ProxyLanguage.class).env.getPolyglotBindings();
                         try {
-                            ForeignAccess.sendWrite(Message.WRITE.createNode(), (TruffleObject) bindings, "exportedValue", "convertOnToString");
+                            boundary((TruffleObject) bindings);
                         } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
                             throw new AssertionError(e);
                         }
                         return bindings;
+                    }
+
+                    @CompilerDirectives.TruffleBoundary
+                    private void boundary(TruffleObject bindings) throws UnknownIdentifierException, UnsupportedTypeException, UnsupportedMessageException {
+                        ForeignAccess.sendWrite(Message.WRITE.createNode(), bindings, "exportedValue", "convertOnToString");
                     }
                 });
             }

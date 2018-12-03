@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -101,7 +101,7 @@ import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.common.inlining.info.InlineInfo;
-import org.graalvm.compiler.phases.common.util.HashSetNodeEventListener;
+import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
 import org.graalvm.compiler.phases.util.ValueMergeUtil;
 
 import jdk.vm.ci.code.BytecodeFrame;
@@ -471,8 +471,7 @@ public class InliningUtil extends ValueMergeUtil {
             // the intrinsified method.
             Invoke dup = (Invoke) duplicates.get(exit.asNode());
             if (dup instanceof InvokeNode) {
-                InvokeNode repl = graph.add(new InvokeNode(invoke.callTarget(), invoke.bci()));
-                dup.intrinsify(repl.asNode());
+                ((InvokeNode) dup).replaceWithNewBci(invoke.bci());
             } else {
                 ((InvokeWithExceptionNode) dup).replaceWithNewBci(invoke.bci());
             }
@@ -507,7 +506,7 @@ public class InliningUtil extends ValueMergeUtil {
     @SuppressWarnings("try")
     public static EconomicSet<Node> inlineForCanonicalization(Invoke invoke, StructuredGraph inlineGraph, boolean receiverNullCheck, ResolvedJavaMethod inlineeMethod,
                     Consumer<UnmodifiableEconomicMap<Node, Node>> duplicatesConsumer, String reason, String phase) {
-        HashSetNodeEventListener listener = new HashSetNodeEventListener();
+        EconomicSetNodeEventListener listener = new EconomicSetNodeEventListener();
         /*
          * This code relies on the fact that Graph.addDuplicates doesn't trigger the
          * NodeEventListener to track only nodes which were modified into the process of inlining
@@ -915,9 +914,7 @@ public class InliningUtil extends ValueMergeUtil {
                         // replace the InvokeWithExceptionNode with a normal
                         // InvokeNode -- the deoptimization occurs when the invoke throws.
                         InvokeWithExceptionNode oldInvoke = (InvokeWithExceptionNode) fixedStateSplit.predecessor();
-                        FrameState oldFrameState = oldInvoke.stateAfter();
                         InvokeNode newInvoke = oldInvoke.replaceWithInvoke();
-                        newInvoke.setStateAfter(oldFrameState.duplicate());
                         if (replacements != null) {
                             replacements.put(oldInvoke, newInvoke);
                         }

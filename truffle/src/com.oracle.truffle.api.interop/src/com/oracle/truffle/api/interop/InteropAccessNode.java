@@ -44,11 +44,15 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
 
 abstract class InteropAccessNode extends Node {
@@ -258,10 +262,17 @@ abstract class InteropAccessNode extends Node {
             ct = fa.access(message);
         }
         if (ct == null) {
-            throw UnsupportedMessageException.raise(message);
+            return targetThatThrows;
         }
         return ct;
     }
+
+    private final RootCallTarget targetThatThrows = Truffle.getRuntime().createCallTarget(new RootNode(null) {
+        @Override
+        public Object execute(VirtualFrame frame) {
+            throw UnsupportedMessageException.raise(message);
+        }
+    });
 
     public static InteropAccessNode create(Message message) {
         return InteropAccessNodeGen.create(message);

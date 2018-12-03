@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import static org.graalvm.compiler.debug.DebugOptions.DebugStubsAndSnippets;
 import static org.graalvm.compiler.hotspot.meta.HotSpotSuitesProvider.withNodeSourcePosition;
 import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.getOptions;
 
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
@@ -189,8 +190,8 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
     }
 
     @Override
-    protected DebugContext createDebugContext(OptionValues options, CompilationIdentifier compilationId, CompilableTruffleAST compilable) {
-        return hotspotGraalRuntime.openDebugContext(options, compilationId, compilable, getDebugHandlerFactories());
+    protected DebugContext createDebugContext(OptionValues options, CompilationIdentifier compilationId, CompilableTruffleAST compilable, PrintStream logStream) {
+        return hotspotGraalRuntime.openDebugContext(options, compilationId, compilable, getDebugHandlerFactories(), logStream);
     }
 
     @Override
@@ -213,7 +214,8 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         for (ResolvedJavaMethod method : runtime.getTruffleCallBoundaryMethods()) {
             HotSpotCompilationIdentifier compilationId = (HotSpotCompilationIdentifier) backend.getCompilationIdentifier(method);
             OptionValues options = getOptions();
-            try (DebugContext debug = DebugStubsAndSnippets.getValue(options) ? hotspotGraalRuntime.openDebugContext(options, compilationId, method, getDebugHandlerFactories())
+            try (DebugContext debug = DebugStubsAndSnippets.getValue(options)
+                            ? hotspotGraalRuntime.openDebugContext(options, compilationId, method, getDebugHandlerFactories(), DebugContext.DEFAULT_LOG_STREAM)
                             : DebugContext.DISABLED;
                             Activation a = debug.activate();
                             DebugContext.Scope d = debug.scope("InstallingTruffleStub")) {

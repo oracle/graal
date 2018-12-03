@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.truffle.api;
 
+import java.io.PrintStream;
 import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -94,8 +95,8 @@ public class SubstrateTruffleCompiler extends TruffleCompilerImpl {
     }
 
     @Override
-    public DebugContext createDebugContext(OptionValues options, CompilationIdentifier compilationId, CompilableTruffleAST callTarget) {
-        return GraalSupport.get().openDebugContext(options, compilationId, callTarget);
+    public DebugContext createDebugContext(OptionValues options, CompilationIdentifier compilationId, CompilableTruffleAST callTarget, PrintStream logStream) {
+        return GraalSupport.get().openDebugContext(options, compilationId, callTarget, logStream);
     }
 
     @Override

@@ -279,6 +279,7 @@ public abstract class JavaThreads {
         }
         /* If the thread was manually started, finish initializing it. */
         if (manuallyStarted) {
+            setThreadStatus(thread, ThreadStatus.RUNNABLE);
             final ThreadGroup group = thread.getThreadGroup();
             toTarget(group).addUnstarted();
             toTarget(group).add(thread);

@@ -50,4 +50,4 @@ Each GraalVM component is licensed:
 * The [Graal compiler](/compiler/) is licensed under the [GPL 2 with Classpath exception](compiler/LICENSE.md).
 * [Substrate VM](/substratevm/) is licensed under the [GPL 2 with Classpath exception](substratevm/LICENSE.md).
 * [Sulong](/sulong/) is licensed under [3-clause BSD](sulong/LICENSE).
-* [VM](/vm/) is licensed under the [GPL 2 with Classpath exception](vm/GraalCE_license_3rd_party_license.txt).
+* [VM](/vm/) is licensed under the [GPL 2 with Classpath exception](vm/LICENSE_GRAALVM_CE).

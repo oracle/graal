@@ -367,7 +367,7 @@ class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, mx.LayoutTARDistr
             config_components_set = set(config_components)
             config_additional_components = sorted(components_set - config_components_set)
             if config_components_set <= components_set and len(config_additional_components) <= len(vm_config_additional_components):
-                vm_config_name = config_name
+                vm_config_name = config_name.replace('-', '_')
                 vm_config_additional_components = config_additional_components
 
         name = (base_name + (('_' + vm_config_name) if vm_config_name else '') + ('_' if vm_config_additional_components else '') + '_'.join(vm_config_additional_components)).upper()
@@ -1047,6 +1047,8 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
             build_args += ['-cp', mx.classpath(self.subject.native_image_jar_distributions)]
         build_args += self.subject.build_args()
         build_args += ['-H:NumberOfThreads={}'.format(self.parallelism)]
+        if _extra_image_builder_args():
+            build_args += _extra_image_builder_args()
 
         # rewrite --language:all & --tool:all
         final_build_args = []
@@ -1730,12 +1732,18 @@ mx.add_argument('--force-bash-launchers', action='store', help='Force the use of
                                                                'This can be a comma-separated list of disabled launchers or `true` to disable all native launchers.', default=None)
 mx.add_argument('--no-sources', action='store_true', help='Do not include the archives with the source files of open-source components.')
 mx.add_argument('--snapshot-catalog', action='store', help='Change the default URL of the component catalog for snapshots.', default=None)
+mx.add_argument('--extra-image-builder-argument', action='append', help='Add extra arguments to the image builder.', default=[])
 
 register_vm_config('ce', ['cmp', 'gu', 'gvm', 'ins', 'js', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'tfl', 'libpoly', 'poly', 'vvm'])
+register_vm_config('ce-no_native', ['bjs', 'blli', 'bnative-image', 'bpolyglot', 'cmp', 'gu', 'gvm', 'ins', 'js', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'tfl', 'poly', 'vvm'])
 
 
 def _debug_images():
     return mx.get_opts().debug_images or _env_var_to_bool('DEBUG_IMAGES')
+
+
+def _extra_image_builder_args():
+    return mx.get_opts().extra_image_builder_argument or mx.get_env('EXTRA_IMAGE_BUILDER_ARGUMENTS', '').split()
 
 
 def _with_polyglot_lib_project():

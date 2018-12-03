@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -57,7 +57,7 @@ public class TimerKeyTest {
         try {
             /* Trigger loading of the management library using the bootstrap class loader. */
             GraalServices.getCurrentThreadAllocatedBytes();
-        } catch (UnsatisfiedLinkError | NoClassDefFoundError e) {
+        } catch (UnsatisfiedLinkError | NoClassDefFoundError | UnsupportedOperationException e) {
             throw new AssumptionViolatedException("Management interface is unavailable: " + e);
         }
     }

@@ -48,6 +48,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.AccessMode;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.FileTime;
@@ -63,21 +64,30 @@ import org.graalvm.polyglot.io.FileSystem;
 public class FileSystemProviderTest {
 
     private Path workDir;
+    private Path invalidWorkDir;
     private Path existingAbsolute;
     private Path existingRelative;
     private FileSystem fs;
 
     @Before
     public void setUp() throws IOException {
+        invalidWorkDir = Files.createTempDirectory(FileSystemProviderTest.class.getSimpleName());
         workDir = Files.createTempDirectory(FileSystemProviderTest.class.getSimpleName());
         existingAbsolute = Files.write(workDir.resolve("existing.txt"), getClass().getSimpleName().getBytes(StandardCharsets.UTF_8));
         existingRelative = workDir.relativize(existingAbsolute);
-        fs = newFullIOFileSystem(workDir);
+        // Use FileSystem.setCurrentWorkingDirectory to verify that all FileSystem operations are
+        // correctly using current working directory
+        fs = newFullIOFileSystem();
+        fs.setCurrentWorkingDirectory(workDir);
     }
 
     @After
     public void tearDown() throws IOException {
-        delete(workDir);
+        try {
+            delete(workDir);
+        } finally {
+            delete(invalidWorkDir);
+        }
     }
 
     @Test
@@ -201,6 +211,23 @@ public class FileSystemProviderTest {
         Assert.assertEquals(existingAbsolute.toRealPath(), fs.toRealPath(existingRelative));
     }
 
+    @Test
+    public void testSetCurrentWorkingDirectory() throws IOException {
+        fs.checkAccess(existingRelative, EnumSet.noneOf(AccessMode.class));
+        try {
+            fs.setCurrentWorkingDirectory(invalidWorkDir);
+            try {
+                fs.checkAccess(existingRelative, EnumSet.noneOf(AccessMode.class));
+                Assert.fail("Should not reach here, NoSuchFileException expected.");
+            } catch (NoSuchFileException nsf) {
+                // expected
+            }
+        } finally {
+            fs.setCurrentWorkingDirectory(workDir);
+        }
+        fs.checkAccess(existingRelative, EnumSet.noneOf(AccessMode.class));
+    }
+
     private void delete(Path path) throws IOException {
         if (Files.isDirectory(path)) {
             try (DirectoryStream<Path> childen = Files.newDirectoryStream(path)) {
@@ -215,7 +242,7 @@ public class FileSystemProviderTest {
     static FileSystem newFullIOFileSystem(final Path workDir) {
         try {
             final Class<?> clz = Class.forName("com.oracle.truffle.polyglot.FileSystems");
-            final Method m = clz.getDeclaredMethod("newFullIOFileSystem", Path.class);
+            final Method m = clz.getDeclaredMethod("newDefaultFileSystem", Path.class);
             m.setAccessible(true);
             return (FileSystem) m.invoke(null, workDir);
         } catch (ReflectiveOperationException e) {
@@ -226,7 +253,7 @@ public class FileSystemProviderTest {
     static FileSystem newFullIOFileSystem() {
         try {
             final Class<?> clz = Class.forName("com.oracle.truffle.polyglot.FileSystems");
-            final Method m = clz.getDeclaredMethod("getDefaultFileSystem");
+            final Method m = clz.getDeclaredMethod("newDefaultFileSystem");
             m.setAccessible(true);
             return (FileSystem) m.invoke(null);
         } catch (ReflectiveOperationException e) {

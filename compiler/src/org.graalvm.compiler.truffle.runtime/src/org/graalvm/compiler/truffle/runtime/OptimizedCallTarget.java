@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -274,9 +274,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         try {
             return getRootNode().execute(frame);
         } catch (ControlFlowException t) {
-            throw rethrow(compilationProfile.profileExceptionType(t));
+            throw rethrow(getCompilationProfile().profileExceptionType(t));
         } catch (Throwable t) {
-            Throwable profiledT = compilationProfile.profileExceptionType(t);
+            Throwable profiledT = getCompilationProfile().profileExceptionType(t);
             runtime().getTvmci().onThrowable(null, this, profiledT, frame);
             throw rethrow(profiledT);
         } finally {
@@ -752,7 +752,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                     if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplittingDumpDecisions)) {
                         pullOutParentChain(onlyCaller, toDump);
                     }
-                    needsSplit = callerTarget.maybeSetNeedsSplit(depth + 1, toDump);
+                    if (callerTarget.maybeSetNeedsSplit(depth + 1, toDump)) {
+                        needsSplit = true;
+                    }
                 }
             }
         } else {

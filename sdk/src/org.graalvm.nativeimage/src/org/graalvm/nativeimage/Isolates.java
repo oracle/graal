@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -193,9 +193,9 @@ public final class Isolates {
     }
 
     /**
-     * Given an isolate thread structure for the current thread, determines to which isolate it
-     * belongs and returns the address of the isolate structure. May return {@code null} if the
-     * specified isolate thread structure is no longer valid.
+     * Given an isolate thread structure, determines to which isolate it belongs and returns the
+     * address of the isolate structure. May return {@code null} if the specified isolate thread
+     * structure is no longer valid.
      *
      * @param thread The isolate thread for which to retrieve the isolate.
      * @return A pointer to the isolate, or {@code null}.

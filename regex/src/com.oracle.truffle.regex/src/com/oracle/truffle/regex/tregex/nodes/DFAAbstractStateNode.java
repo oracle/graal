@@ -24,17 +24,18 @@
  */
 package com.oracle.truffle.regex.tregex.nodes;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.tregex.nodesplitter.DFANodeSplit;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 
+import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+
 public abstract class DFAAbstractStateNode extends Node implements JsonConvertible {
 
     static final int FS_RESULT_NO_SUCCESSOR = -1;
 
-    @CompilerDirectives.CompilationFinal(dimensions = 1) protected final short[] successors;
+    @CompilationFinal(dimensions = 1) protected final short[] successors;
 
     DFAAbstractStateNode(short[] successors) {
         this.successors = successors;
@@ -61,7 +62,7 @@ public abstract class DFAAbstractStateNode extends Node implements JsonConvertib
      * {@link TRegexDFAExecutorNode#setSuccessorIndex(VirtualFrame, int)}. This return value is
      * called "successor index" and may either be an index of the successors array (between 0 and
      * {@link #getSuccessors()}{@code .length}) or {@link #FS_RESULT_NO_SUCCESSOR}.
-     * 
+     *
      * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @param executor this node's parent {@link TRegexDFAExecutorNode}.
      */

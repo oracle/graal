@@ -137,28 +137,26 @@ public class VirtualizedFileSystemTest {
         assert cfgs == null;
         final List<Configuration> result = new ArrayList<>();
         final FileSystem fullIO = FileSystemProviderTest.newFullIOFileSystem();
-        final Path cwd = Paths.get("").toAbsolutePath();
         // Full IO
         Path accessibleDir = createContent(
                         Files.createTempDirectory(VirtualizedFileSystemTest.class.getSimpleName()),
                         fullIO);
         Context ctx = Context.newBuilder(LANGAUGE_ID).allowIO(true).build();
-        result.add(new Configuration("Full IO", ctx, accessibleDir, cwd, fullIO, true, true, true, true));
+        setCwd(ctx, accessibleDir, null);
+        result.add(new Configuration("Full IO", ctx, accessibleDir, fullIO, true, true, true, true));
         // No IO
         ctx = Context.newBuilder(LANGAUGE_ID).allowIO(false).build();
         Path privateDir = createContent(
                         Files.createTempDirectory(VirtualizedFileSystemTest.class.getSimpleName()),
                         fullIO);
-        result.add(new Configuration("No IO", ctx, privateDir, cwd, fullIO, false, false, false, true));
+        result.add(new Configuration("No IO", ctx, privateDir, Paths.get("").toAbsolutePath(), fullIO, false, false, false, true));
         // No IO under language home
         ctx = Context.newBuilder(LANGAUGE_ID).allowIO(false).build();
         privateDir = createContent(
                         Files.createTempDirectory(VirtualizedFileSystemTest.class.getSimpleName()),
                         fullIO);
-        final String langHome = privateDir.toString();
-        result.add(new Configuration("No IO under language home", ctx, privateDir, cwd, fullIO, false, true, false, true, () -> {
-            System.setProperty(LANGAUGE_ID + ".home", langHome);
-        }));
+        setCwd(ctx, privateDir, privateDir);
+        result.add(new Configuration("No IO under language home", ctx, privateDir, fullIO, false, true, false, true));
         // Checked IO
         accessibleDir = createContent(
                         Files.createTempDirectory(VirtualizedFileSystemTest.class.getSimpleName()),
@@ -169,29 +167,33 @@ public class VirtualizedFileSystemTest {
         privateDir = createContent(
                         Files.createTempDirectory(VirtualizedFileSystemTest.class.getSimpleName()),
                         fullIO);
-        FileSystem fileSystem = new RestrictedFileSystem(
-                        FileSystemProviderTest.newFullIOFileSystem(accessibleDir),
-                        new AccessPredicate(Arrays.asList(accessibleDir, readOnlyDir)),
-                        new AccessPredicate(Collections.singleton(accessibleDir)));
+        AccessPredicate read = new AccessPredicate(Arrays.asList(accessibleDir, readOnlyDir));
+        AccessPredicate write = new AccessPredicate(Arrays.asList(accessibleDir, readOnlyDir));
+        FileSystem fileSystem = new RestrictedFileSystem(FileSystemProviderTest.newFullIOFileSystem(accessibleDir), read, write);
+        read.setFileSystem(fileSystem);
+        write.setFileSystem(fileSystem);
         ctx = Context.newBuilder(LANGAUGE_ID).allowIO(true).fileSystem(fileSystem).build();
         result.add(new Configuration("Conditional IO - read/write part", ctx, accessibleDir, fullIO, false, true, true, true));
+        read = new AccessPredicate(Arrays.asList(accessibleDir, readOnlyDir));
+        write = new AccessPredicate(Collections.singleton(accessibleDir));
         fileSystem = new RestrictedFileSystem(
-                        FileSystemProviderTest.newFullIOFileSystem(readOnlyDir),
-                        new AccessPredicate(Arrays.asList(accessibleDir, readOnlyDir)),
-                        new AccessPredicate(Collections.singleton(accessibleDir)));
+                        FileSystemProviderTest.newFullIOFileSystem(readOnlyDir), read, write);
+        read.setFileSystem(fileSystem);
+        write.setFileSystem(fileSystem);
         ctx = Context.newBuilder(LANGAUGE_ID).allowIO(true).fileSystem(fileSystem).build();
         result.add(new Configuration("Conditional IO - read only part", ctx, readOnlyDir, fullIO, false, true, false, true));
-        fileSystem = new RestrictedFileSystem(
-                        FileSystemProviderTest.newFullIOFileSystem(privateDir),
-                        new AccessPredicate(Arrays.asList(accessibleDir, readOnlyDir)),
-                        new AccessPredicate(Collections.singleton(accessibleDir)));
+        read = new AccessPredicate(Arrays.asList(accessibleDir, readOnlyDir));
+        write = new AccessPredicate(Collections.singleton(accessibleDir));
+        fileSystem = new RestrictedFileSystem(FileSystemProviderTest.newFullIOFileSystem(privateDir), read, write);
+        read.setFileSystem(fileSystem);
+        write.setFileSystem(fileSystem);
         ctx = Context.newBuilder(LANGAUGE_ID).allowIO(true).fileSystem(fileSystem).build();
         result.add(new Configuration("Conditional IO - private part", ctx, privateDir, fullIO, false, false, false, true));
 
         // Memory
         fileSystem = new MemoryFileSystem();
         Path memDir = mkdirs(fileSystem.parsePath(URI.create("file:///work")), fileSystem);
-        ((MemoryFileSystem) fileSystem).setUserDir(memDir);
+        ((MemoryFileSystem) fileSystem).setCurrentWorkingDirectory(memDir);
         createContent(memDir, fileSystem);
         ctx = Context.newBuilder(LANGAUGE_ID).allowIO(true).fileSystem(fileSystem).build();
         result.add(new Configuration("Memory FileSystem", ctx, memDir, fileSystem, false, true, true, true));
@@ -215,7 +217,6 @@ public class VirtualizedFileSystemTest {
 
     @Before
     public void setUp() {
-        Optional.ofNullable(this.cfg.getBeforeAction()).ifPresent(Runnable::run);
         resetLanguageHomes();
     }
 
@@ -679,10 +680,29 @@ public class VirtualizedFileSystemTest {
             try {
                 final URI uri = file.toUri();
                 Assert.assertTrue(cfg.formatErrorMessage("Expected SecurityException"), allowsUserDir);
+                Assert.assertTrue(uri.isAbsolute());
                 Assert.assertEquals(cfg.formatErrorMessage("URI"), userDir.resolve(FOLDER_EXISTING).resolve(FILE_EXISTING).toUri(), uri);
             } catch (SecurityException se) {
                 Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), allowsUserDir);
             }
+        };
+        ctx.eval(LANGAUGE_ID, "");
+    }
+
+    @Test
+    public void testToRelativeUri() {
+        final Context ctx = cfg.getContext();
+        final Path userDir = cfg.getUserDir();
+        languageAction = (Env env) -> {
+            TruffleFile relativeFile = env.getTruffleFile(FILE_EXISTING);
+            URI uri = relativeFile.toRelativeUri();
+            Assert.assertFalse(uri.isAbsolute());
+            URI expectedUri = userDir.toUri().relativize(userDir.resolve(FILE_EXISTING).toUri());
+            Assert.assertEquals(cfg.formatErrorMessage("Relative URI"), expectedUri, uri);
+            final TruffleFile absoluteFile = env.getTruffleFile("/").resolve(FOLDER_EXISTING).resolve(FILE_EXISTING);
+            uri = absoluteFile.toUri();
+            Assert.assertTrue(uri.isAbsolute());
+            Assert.assertEquals(cfg.formatErrorMessage("Absolute URI"), Paths.get("/").resolve(FOLDER_EXISTING).resolve(FILE_EXISTING).toUri(), uri);
         };
         ctx.eval(LANGAUGE_ID, "");
     }
@@ -729,6 +749,31 @@ public class VirtualizedFileSystemTest {
             relative = parent.relativize(sibling);
             Assert.assertEquals("../sibling", relative.getPath());
             Assert.assertEquals(sibling.normalize(), parent.resolve(relative.getPath()).normalize());
+        };
+        ctx.eval(LANGAUGE_ID, "");
+    }
+
+    @Test
+    public void testResolve() {
+        Context ctx = cfg.getContext();
+        final boolean canRead = cfg.canRead();
+        languageAction = (Env env) -> {
+            TruffleFile parent = env.getTruffleFile(FOLDER_EXISTING);
+            TruffleFile child = parent.resolve(FILE_EXISTING);
+            try {
+                Assert.assertTrue(child.exists());
+                Assert.assertTrue(cfg.formatErrorMessage("Expected SecurityException"), canRead);
+            } catch (SecurityException se) {
+                Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canRead);
+            }
+            TruffleFile childRelativeToParent = parent.relativize(child);
+            Assert.assertEquals(FILE_EXISTING, childRelativeToParent.getPath());
+            try {
+                Assert.assertFalse(childRelativeToParent.exists());
+                Assert.assertTrue(cfg.formatErrorMessage("Expected SecurityException"), canRead);
+            } catch (SecurityException se) {
+                Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canRead);
+            }
         };
         ctx.eval(LANGAUGE_ID, "");
     }
@@ -1166,6 +1211,54 @@ public class VirtualizedFileSystemTest {
         ctx.eval(LANGAUGE_ID, "");
     }
 
+    @Test
+    public void testSetCurrentWorkingDirectory() {
+        final Context ctx = cfg.getContext();
+        final boolean allowsUserDir = cfg.allowsUserDir();
+        final boolean canRead = cfg.canRead();
+        final Path path = cfg.getPath();
+        languageAction = (Env env) -> {
+            try {
+                TruffleFile oldCwd = env.getCurrentWorkingDirectory();
+                Assert.assertTrue(cfg.formatErrorMessage("Expected SecurityException"), allowsUserDir);
+                Assert.assertNotNull(oldCwd);
+                Assert.assertTrue(oldCwd.isAbsolute());
+                TruffleFile relative = env.getTruffleFile(FILE_EXISTING);
+                Assert.assertNotNull(relative);
+                Assert.assertFalse(relative.isAbsolute());
+                Assert.assertEquals(oldCwd.resolve(FILE_EXISTING), relative.getAbsoluteFile());
+                try {
+                    Assert.assertFalse(relative.exists());
+                    Assert.assertTrue(cfg.formatErrorMessage("Expected SecurityException"), canRead);
+                } catch (SecurityException se) {
+                    Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canRead);
+                }
+                TruffleFile newCwd = env.getTruffleFile(path.toString()).resolve(FOLDER_EXISTING).getAbsoluteFile();
+                try {
+                    env.setCurrentWorkingDirectory(newCwd);
+                    try {
+                        Assert.assertTrue(cfg.formatErrorMessage("Expected SecurityException"), canRead);
+                        Assert.assertEquals(newCwd, env.getCurrentWorkingDirectory());
+                        Assert.assertEquals(newCwd.resolve(FILE_EXISTING), relative.getAbsoluteFile());
+                        try {
+                            Assert.assertTrue(relative.exists());
+                            Assert.assertTrue(cfg.formatErrorMessage("Expected SecurityException"), canRead);
+                        } catch (SecurityException se) {
+                            Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canRead);
+                        }
+                    } finally {
+                        env.setCurrentWorkingDirectory(oldCwd);
+                    }
+                } catch (SecurityException se) {
+                    Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canRead);
+                }
+            } catch (SecurityException se) {
+                Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), allowsUserDir);
+            }
+        };
+        ctx.eval(LANGAUGE_ID, "");
+    }
+
     public static final class Configuration implements Closeable {
         private final String name;
         private final Context ctx;
@@ -1176,7 +1269,6 @@ public class VirtualizedFileSystemTest {
         private final boolean readable;
         private final boolean writable;
         private final boolean allowsUserDir;
-        private final Runnable beforeAction;
 
         Configuration(
                         final String name,
@@ -1187,7 +1279,7 @@ public class VirtualizedFileSystemTest {
                         final boolean readable,
                         final boolean writable,
                         final boolean allowsUserDir) {
-            this(name, context, path, path, fileSystem, isDefaultFileSystem, readable, writable, allowsUserDir, null);
+            this(name, context, path, path, fileSystem, isDefaultFileSystem, readable, writable, allowsUserDir);
         }
 
         Configuration(
@@ -1200,20 +1292,6 @@ public class VirtualizedFileSystemTest {
                         final boolean readable,
                         final boolean writable,
                         final boolean allowsUserDir) {
-            this(name, context, path, userDir, fileSystem, isDefaultFileSystem, readable, writable, allowsUserDir, null);
-        }
-
-        Configuration(
-                        final String name,
-                        final Context context,
-                        final Path path,
-                        final Path userDir,
-                        final FileSystem fileSystem,
-                        final boolean isDefaultFileSystem,
-                        final boolean readable,
-                        final boolean writable,
-                        final boolean allowsUserDir,
-                        final Runnable beforeAction) {
             Objects.requireNonNull(name, "Name must be non null.");
             Objects.requireNonNull(context, "Context must be non null.");
             Objects.requireNonNull(path, "Path must be non null.");
@@ -1228,11 +1306,6 @@ public class VirtualizedFileSystemTest {
             this.readable = readable;
             this.writable = writable;
             this.allowsUserDir = allowsUserDir;
-            this.beforeAction = beforeAction;
-        }
-
-        Runnable getBeforeAction() {
-            return beforeAction;
         }
 
         String getName() {
@@ -1243,22 +1316,48 @@ public class VirtualizedFileSystemTest {
             return ctx;
         }
 
+        /**
+         * Returns the work directory containing the test data.
+         *
+         * @return the work directory
+         */
         Path getPath() {
             return path;
         }
 
+        /**
+         * The current working directory the test configuration was created with.
+         *
+         * @return the current working directory
+         */
         Path getUserDir() {
             return userDir;
         }
 
+        /**
+         * Returns true if the test configuration allows read operations.
+         *
+         * @return {@code true} if reading is enabled
+         */
         boolean canRead() {
             return readable;
         }
 
+        /**
+         * Returns true if the test configuration allows write operations.
+         *
+         * @return {@code true} if writing is enabled
+         */
         boolean canWrite() {
             return writable;
         }
 
+        /**
+         * Returns true if the test configuration allows reading or setting current working
+         * directory.
+         *
+         * @return {@code true} if get and set of current working directory is enabled
+         */
         boolean allowsUserDir() {
             return allowsUserDir;
         }
@@ -1416,6 +1515,25 @@ public class VirtualizedFileSystemTest {
         }
     }
 
+    /**
+     * Sets the current working directory to a work folder. Used by configurations running on local
+     * file system which have work folder in temp directory.
+     *
+     * @param ctx the context to set the cwd for
+     * @param cwd the new current working directory
+     * @param langHome language home to set
+     */
+    private static void setCwd(Context ctx, Path cwd, Path langHome) {
+        languageAction = (env) -> {
+            env.setCurrentWorkingDirectory(env.getTruffleFile(cwd.toString()));
+        };
+        if (langHome != null) {
+            System.setProperty(LANGAUGE_ID + ".home", langHome.toString());
+            resetLanguageHomes();
+        }
+        ctx.eval(LANGAUGE_ID, "");
+    }
+
     static class ForwardingFileSystem implements FileSystem {
 
         private final FileSystem delegate;
@@ -1507,6 +1625,11 @@ public class VirtualizedFileSystemTest {
         @Override
         public Path toRealPath(Path path, LinkOption... linkOptions) throws IOException {
             return delegate.toRealPath(path, linkOptions);
+        }
+
+        @Override
+        public void setCurrentWorkingDirectory(Path currentWorkingDirectory) {
+            delegate.setCurrentWorkingDirectory(currentWorkingDirectory);
         }
     }
 
@@ -1661,21 +1784,27 @@ public class VirtualizedFileSystemTest {
     }
 
     private static final class AccessPredicate implements Predicate<Path> {
-        private final Collection<? extends Path> allowedRoots;
 
-        AccessPredicate(
-                        final Collection<? extends Path> allowedRoots) {
+        private final Collection<? extends Path> allowedRoots;
+        private volatile FileSystem fs;
+
+        AccessPredicate(final Collection<? extends Path> allowedRoots) {
             this.allowedRoots = allowedRoots;
         }
 
-        @Override
-        @SuppressWarnings("fallthrough")
-        public boolean test(Path path) {
-            return getOwnerRoot(path, allowedRoots) != null;
+        void setFileSystem(FileSystem fileSystem) {
+            this.fs = fileSystem;
         }
 
-        private static Path getOwnerRoot(final Path path, final Collection<? extends Path> roots) {
-            final Path absolutePath = path.toAbsolutePath();
+        @Override
+        public boolean test(Path path) {
+            if (fs == null) {
+                throw new IllegalStateException("FileSystem is not set.");
+            }
+            return getOwnerRoot(fs.toAbsolutePath(path), allowedRoots) != null;
+        }
+
+        private static Path getOwnerRoot(final Path absolutePath, final Collection<? extends Path> roots) {
             for (Path root : roots) {
                 for (Path currentPath = absolutePath; currentPath != null; currentPath = currentPath.getParent()) {
                     if (currentPath.equals(root)) {

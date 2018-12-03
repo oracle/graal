@@ -27,20 +27,14 @@ package com.oracle.svm.core;
 import java.util.Collections;
 import java.util.List;
 
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.CContext;
 
 import com.oracle.svm.core.c.ProjectHeaderFile;
 
 public class LibCHelperDirectives implements CContext.Directives {
-    @Override
-    public boolean isInConfiguration() {
-        /* Necessary until GR-7932 is resolved. */
-        return !Platform.includedIn(Platform.WINDOWS.class);
-    }
 
     @Override
     public List<String> getHeaderFiles() {
-        return Collections.singletonList(ProjectHeaderFile.resolve("com.oracle.svm.native", "include/cpufeatures.h"));
+        return Collections.singletonList(ProjectHeaderFile.resolve("com.oracle.svm.native.libchelper", "include/cpufeatures.h"));
     }
 }

@@ -221,12 +221,12 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         this.engineOptionValues.putAll(originalEngineOptions);
         this.compilerOptionValues.putAll(originalCompilerOptions);
 
-        for (PolyglotLanguage language : languagesOptions.keySet()) {
-            language.getOptionValues().putAll(languagesOptions.get(language));
-        }
-
         if (!boundEngine) {
             initializeMultiContext(null);
+        }
+
+        for (PolyglotLanguage language : languagesOptions.keySet()) {
+            language.getOptionValues().putAll(languagesOptions.get(language));
         }
 
         ENGINES.put(this, null);
@@ -1037,7 +1037,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         }
         final FileSystem fs;
         if (allowHostIO) {
-            fs = fileSystem != null ? fileSystem : FileSystems.getDefaultFileSystem();
+            fs = fileSystem != null ? fileSystem : FileSystems.newDefaultFileSystem();
         } else {
             fs = FileSystems.newNoIOFileSystem();
         }
