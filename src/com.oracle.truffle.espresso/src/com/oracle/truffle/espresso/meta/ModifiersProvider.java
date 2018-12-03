@@ -66,9 +66,7 @@ public interface ModifiersProvider {
 
     /**
      * The setting of the final modifier bit for types is somewhat confusing, so don't export
-     * isFinal by default. Subclasses like {@link ResolvedJavaField} and {@link ResolvedJavaMethod}
-     * can export it as isFinal, but {@link ResolvedJavaType} can provide a more sensible equivalent
-     * like {@link ResolvedJavaType#isLeaf}.
+     * isFinal by default.
      *
      * @see Modifier#isFinal(int)
      */

@@ -53,20 +53,21 @@ public class Target_sun_misc_Perf {
     private final static Perf hostPerf = Perf.getPerf();
 
     @Intrinsic(hasReceiver = true)
-    public static long highResCounter(Object self) {
+    public static long highResCounter(@SuppressWarnings("unused") Object self) {
         return hostPerf.highResCounter();
     }
 
     @Intrinsic(hasReceiver = true)
-    public static long highResFrequency(Object self) {
+    public static long highResFrequency(@SuppressWarnings("unused") Object self) {
         return hostPerf.highResFrequency();
     }
 
+    @SuppressWarnings("unused")
     @Intrinsic(hasReceiver = true)
     public static @Type(ByteBuffer.class) StaticObject createLong(Object self, @Type(String.class) StaticObject var1, int var2, int var3, long var4) {
         EspressoContext context = EspressoLanguage.getCurrentContext();
         MethodInfo wrap = context.getRegistries().resolveWithBootClassLoader(context.getTypeDescriptors().make("Ljava/nio/ByteBuffer;")).findDeclaredMethod("wrap", ByteBuffer.class, byte[].class);
-        return (StaticObject) wrap.getCallTarget().call((Object) ByteUtils.longToBytes(var4));
+        return (StaticObject) wrap.getCallTarget().call(ByteUtils.longToBytes(var4));
     }
 
     @Intrinsic

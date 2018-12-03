@@ -95,6 +95,11 @@ public class FieldInfo implements ModifiersProvider {
         return offset;
     }
 
+    public boolean isInternal() {
+        // No internal fields.
+        return false;
+    }
+
     @Override
     public String toString() {
         return "EspressoField<" + getDeclaringClass() + "." + getName() + ">";

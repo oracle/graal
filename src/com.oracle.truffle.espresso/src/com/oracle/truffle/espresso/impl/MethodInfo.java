@@ -39,7 +39,6 @@ import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ExceptionsAttribute;
 import com.oracle.truffle.espresso.jni.Mangle;
 import com.oracle.truffle.espresso.jni.NativeLibrary;
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.LineNumberTable;
@@ -130,36 +129,12 @@ public final class MethodInfo implements ModifiersProvider {
         return maxStackSize;
     }
 
-    public boolean isVarArgs() {
-        throw EspressoError.unimplemented();
-    }
-
-    public boolean canBeStaticallyBound() {
-        throw EspressoError.unimplemented();
-    }
-
     public ExceptionHandler[] getExceptionHandlers() {
         return exceptionHandlers;
     }
 
-    public StackTraceElement asStackTraceElement(int bci) {
-        throw EspressoError.unimplemented();
-    }
-
     public ConstantPool getConstantPool() {
         return declaringClass.getConstantPool();
-    }
-
-    public boolean canBeInlined() {
-        throw EspressoError.unimplemented();
-    }
-
-    public boolean hasNeverInlineDirective() {
-        throw EspressoError.unimplemented();
-    }
-
-    public boolean shouldBeInlined() {
-        throw EspressoError.unimplemented();
     }
 
     private static String buildJniNativeSignature(Meta.Method method) {

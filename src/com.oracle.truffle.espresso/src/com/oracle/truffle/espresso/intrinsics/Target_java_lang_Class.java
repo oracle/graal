@@ -68,7 +68,7 @@ public class Target_java_lang_Class {
     }
 
     @Intrinsic(hasReceiver = true)
-    public static boolean desiredAssertionStatus(Object self) {
+    public static boolean desiredAssertionStatus(@SuppressWarnings("unused") Object self) {
         return false;
     }
 
@@ -77,7 +77,7 @@ public class Target_java_lang_Class {
                     @Type(String.class) StaticObject name,
                     boolean initialize,
                     @Type(ClassLoader.class) StaticObject loader,
-                    @Type(Class.class) StaticObject caller) {
+                    @SuppressWarnings("unused") @Type(Class.class) StaticObject caller) {
 
         assert loader != null;
         EspressoContext context = EspressoLanguage.getCurrentContext();
@@ -317,7 +317,6 @@ public class Target_java_lang_Class {
         ConstantPool pool = klass.getConstantPool();
 
         boolean found = false;
-        boolean isMember = false;
         Klass outerKlass = null;
 
         for (InnerClassesAttribute.Entry entry : innerClasses.entries()) {
@@ -331,7 +330,6 @@ public class Target_java_lang_Class {
                     found = (innerKlass == klass);
                     if (found && entry.outerClassIndex != 0) {
                         outerKlass = pool.classAt(entry.outerClassIndex).resolve(pool, entry.outerClassIndex);
-                        isMember = true;
                     }
                 }
             }

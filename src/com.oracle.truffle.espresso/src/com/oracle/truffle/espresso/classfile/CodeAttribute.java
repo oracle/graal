@@ -50,6 +50,10 @@ public class CodeAttribute extends AttributeInfo {
         return maxLocals;
     }
 
+    public AttributeInfo[] getAttributes() {
+        return attributes;
+    }
+
     public byte[] getCode() {
         return code;
     }

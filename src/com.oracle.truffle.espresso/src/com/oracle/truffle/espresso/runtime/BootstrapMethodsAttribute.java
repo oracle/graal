@@ -2,6 +2,10 @@ package com.oracle.truffle.espresso.runtime;
 
 public class BootstrapMethodsAttribute extends AttributeInfo {
 
+    public Entry[] getEntries() {
+        return entries;
+    }
+
     public static class Entry {
         final char bootstrapMethodRef;
         final char[] bootstrapArguments;

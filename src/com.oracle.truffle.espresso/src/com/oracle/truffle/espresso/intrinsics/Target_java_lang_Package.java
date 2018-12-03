@@ -28,7 +28,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 @EspressoIntrinsics
 public class Target_java_lang_Package {
     @Intrinsic
-    public static @Type(String.class) Object getSystemPackage0(@Type(String.class) StaticObject name) {
+    public static @Type(String.class) Object getSystemPackage0(@SuppressWarnings("unused") @Type(String.class) StaticObject name) {
         // TODO(peterssen): This is a workaround, mainly to be able to run on SVM.
         return StaticObject.NULL;
     }

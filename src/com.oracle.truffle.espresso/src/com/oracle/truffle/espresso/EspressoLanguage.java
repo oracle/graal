@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.espresso;
 
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.URL;
 import java.net.URLClassLoader;
 
@@ -80,8 +78,9 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     @Override
     protected EspressoContext createContext(final TruffleLanguage.Env env) {
         OptionValues options = env.getOptions();
-        InputStream in = env.in();
-        OutputStream out = env.out();
+        // TODO(peterssen): Redirect in/out to env.in()/out()
+        // InputStream in = env.in();
+        // OutputStream out = env.out();
         EspressoContext context = new EspressoContext(env, this);
         context.setMainArguments(env.getApplicationArguments());
 

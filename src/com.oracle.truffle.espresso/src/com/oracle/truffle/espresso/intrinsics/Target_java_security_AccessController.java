@@ -57,7 +57,7 @@ public class Target_java_security_AccessController {
     }
 
     @Intrinsic(methodName = "doPrivileged")
-    public static Object doPrivileged3(@Type(PrivilegedExceptionAction.class) StaticObject action, @Type(AccessControlContext.class) StaticObject context) {
+    public static Object doPrivileged3(@Type(PrivilegedExceptionAction.class) StaticObject action, @SuppressWarnings("unused") @Type(AccessControlContext.class) StaticObject context) {
         try {
             return doPrivileged(action);
         } catch (EspressoException e) {
@@ -71,7 +71,7 @@ public class Target_java_security_AccessController {
     }
 
     @Intrinsic(methodName = "doPrivileged")
-    public static Object doPrivileged4(@Type(PrivilegedAction.class) StaticObject action, @Type(AccessControlContext.class) StaticObject context) {
+    public static Object doPrivileged4(@Type(PrivilegedAction.class) StaticObject action, @SuppressWarnings("unused") @Type(AccessControlContext.class) StaticObject context) {
         return doPrivileged(action);
     }
 }

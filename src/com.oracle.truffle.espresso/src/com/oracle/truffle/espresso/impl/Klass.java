@@ -101,9 +101,9 @@ public abstract class Klass implements ModifiersProvider {
 
     public abstract EspressoContext getContext();
 
-    public MethodInfo findDeclaredMethod(String name, Class<?> returnType, Class<?>... parameterTypes) {
+    public MethodInfo findDeclaredMethod(String klassName, Class<?> returnType, Class<?>... parameterTypes) {
         SignatureDescriptor signature = getContext().getSignatureDescriptors().create(returnType, parameterTypes);
-        return findDeclaredConcreteMethod(name, signature);
+        return findDeclaredConcreteMethod(klassName, signature);
     }
 
     public StaticObject getStatics() {
@@ -320,23 +320,23 @@ public abstract class Klass implements ModifiersProvider {
         return Arrays.stream(getDeclaredMethods()).filter(m -> "<clinit>".equals(m.getName())).findAny().orElse(null);
     }
 
-    public MethodInfo findDeclaredConcreteMethod(String name, SignatureDescriptor signature) {
+    public MethodInfo findDeclaredConcreteMethod(String methodName, SignatureDescriptor signature) {
         for (MethodInfo method : getDeclaredMethods()) {
-            if (!method.isAbstract() && method.getName().equals(name) && method.getSignature().equals(signature)) {
+            if (!method.isAbstract() && method.getName().equals(methodName) && method.getSignature().equals(signature)) {
                 return method;
             }
         }
         return null;
     }
 
-    public MethodInfo findMethod(String name, SignatureDescriptor signature) {
+    public MethodInfo findMethod(String methodName, SignatureDescriptor signature) {
         for (MethodInfo method : getDeclaredMethods()) {
-            if (method.getName().equals(name) && method.getSignature().equals(signature)) {
+            if (method.getName().equals(methodName) && method.getSignature().equals(signature)) {
                 return method;
             }
         }
         if (getSuperclass() != null) {
-            MethodInfo m = getSuperclass().findMethod(name, signature);
+            MethodInfo m = getSuperclass().findMethod(methodName, signature);
             if (m != null) {
                 return m;
             }
@@ -346,7 +346,7 @@ public abstract class Klass implements ModifiersProvider {
         if (isAbstract()) {
             // Look
             for (Klass i : getInterfaces()) {
-                MethodInfo m = i.findMethod(name, signature);
+                MethodInfo m = i.findMethod(methodName, signature);
                 if (m != null) {
                     return m;
                 }
@@ -356,9 +356,9 @@ public abstract class Klass implements ModifiersProvider {
         return null;
     }
 
-    public MethodInfo findConcreteMethod(String name, SignatureDescriptor signature) {
+    public MethodInfo findConcreteMethod(String methodName, SignatureDescriptor signature) {
         for (Klass c = this; c != null; c = c.getSuperclass()) {
-            MethodInfo method = c.findDeclaredConcreteMethod(name, signature);
+            MethodInfo method = c.findDeclaredConcreteMethod(methodName, signature);
             if (method != null && !method.isAbstract()) {
                 return method;
             }

@@ -37,15 +37,15 @@ public class VmNativeNode extends NativeRootNode {
         this.isJni = isJni;
     }
 
+    @Override
     public Object[] preprocessArgs(Object[] args) {
         JniEnv jniEnv = EspressoLanguage.getCurrentContext().getJNI();
         assert jniEnv.getNativePointer() != 0;
 
-        args = super.preprocessArgs(args);
-
+        Object[] processedArgs = super.preprocessArgs(args);
         Object[] argsWithEnv = getOriginalMethod().isStatic()
-                        ? prepend1(getOriginalMethod().getDeclaringClass().rawKlass().mirror(), args)
-                        : args;
+                        ? prepend1(getOriginalMethod().getDeclaringClass().rawKlass().mirror(), processedArgs)
+                        : processedArgs;
 
         if (isJni) {
             argsWithEnv = prepend1(jniEnv.getNativePointer(), argsWithEnv);

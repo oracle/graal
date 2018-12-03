@@ -33,7 +33,7 @@ public class Target_java_lang_ClassLoader {
     }
 
     @Intrinsic
-    public static @Type(String.class) StaticObject findBuiltinLib(@Type(String.class) StaticObject name) {
+    public static @Type(String.class) StaticObject findBuiltinLib(@SuppressWarnings("unused") @Type(String.class) StaticObject name) {
         /**
          * The native implementation assumes builtin libraries are loaded in the default namespace,
          * Espresso loads isolated copies (mainly libjava).

@@ -170,7 +170,7 @@ public final class FrameBoxedStack implements FrameOperandStack {
     private void popIllegal(final VirtualFrame frame) {
         assert peekTag(frame) == FrameSlotKind.Illegal;
         int stackSize = addAndGet(frame, -1);
-        // assert stackSize > 0;
+        assert stackSize >= 0;
     }
 
     private static int numberOfSlots(FrameSlotKind kind) {

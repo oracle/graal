@@ -26,7 +26,6 @@ package com.oracle.truffle.espresso.impl;
 import java.lang.reflect.Modifier;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -63,6 +62,7 @@ public final class PrimitiveKlass extends Klass {
         return super.getArrayClass();
     }
 
+    @Override
     public Klass getElementalType() {
         return this;
     }
@@ -112,6 +112,7 @@ public final class PrimitiveKlass extends Klass {
         return true;
     }
 
+    @Override
     public boolean isLinked() {
         return true;
     }
@@ -166,34 +167,6 @@ public final class PrimitiveKlass extends Klass {
     @Override
     public FieldInfo[] getStaticFields() {
         return FieldInfo.EMPTY_ARRAY;
-    }
-
-    /**
-     * Performs a fast-path check that this type is resolved in the context of a given accessing
-     * class. A negative result does not mean this type is not resolved with respect to
-     * {@code accessingClass}. That can only be determined by re-resolving the type.
-     */
-    public boolean isDefinitelyResolvedWithRespectTo(Klass accessingClass) {
-        assert accessingClass != null;
-        Klass elementType = getElementalType();
-        if (elementType.isPrimitive()) {
-            // Primitive type resolution is context free.
-            return true;
-        }
-
-        throw EspressoError.unimplemented();
-
-        // if (elementType.getName().startsWith("Ljava/")) {
-        // // Classes in a java.* package can only be defined by the
-        // // boot class loader. This is enforced by ClassLoader.preDefineClass()
-        // assert mirror().getClassLoader() == null;
-        // return true;
-        // }
-
-        // ClassLoader thisCl = mirror().getClassLoader();
-        // ClassLoader accessingClassCl = ((HotSpotResolvedObjectTypeImpl)
-        // accessingClass).mirror().getClassLoader();
-        // return thisCl == accessingClassCl;
     }
 
     @Override

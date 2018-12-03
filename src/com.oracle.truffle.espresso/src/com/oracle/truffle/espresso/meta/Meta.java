@@ -39,7 +39,6 @@ import java.util.stream.Stream;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.FieldInfo;
-import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.MethodInfo;
 import com.oracle.truffle.espresso.intrinsics.Type;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -184,7 +183,7 @@ public final class Meta {
         return ex;
     }
 
-    public StaticObject initEx(Meta.Klass clazz, String message) {
+    public static StaticObject initEx(Meta.Klass clazz, String message) {
         StaticObject ex = clazz.allocateInstance();
         meta(ex).method("<init>", void.class, String.class).invoke(message);
         return ex;
@@ -710,7 +709,6 @@ public final class Meta {
          */
         @CompilerDirectives.TruffleBoundary
         public Object invokeDirect(Object self, Object... args) {
-            Object result;
             if (isStatic()) {
                 assert args.length == method.getSignature().getParameterCount(false);
                 return method.getCallTarget().call(args);

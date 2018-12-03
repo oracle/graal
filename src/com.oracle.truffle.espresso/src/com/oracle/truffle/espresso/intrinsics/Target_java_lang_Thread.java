@@ -53,27 +53,33 @@ public class Target_java_lang_Thread {
         return context.getMainThread();
     }
 
+    @SuppressWarnings("unused")
     @Intrinsic(hasReceiver = true)
     public static void setPriority0(@Type(Thread.class) StaticObject self, int newPriority) {
         /* nop */ }
 
+    @SuppressWarnings("unused")
     @Intrinsic(hasReceiver = true)
     public static void setDaemon(@Type(Thread.class) StaticObject self, boolean on) {
         /* nop */ }
 
+    @SuppressWarnings("unused")
     @Intrinsic(hasReceiver = true)
     public static boolean isAlive(@Type(Thread.class) StaticObject self) {
         return false;
     }
 
+    @SuppressWarnings("unused")
     @Intrinsic
     public static void registerNatives() {
         /* nop */ }
 
+    @SuppressWarnings("unused")
     @Intrinsic(hasReceiver = true)
     public static void start0(@Type(Thread.class) StaticObject self) {
         /* nop */ }
 
+    @SuppressWarnings("unused")
     @Intrinsic(hasReceiver = true)
     public static boolean isInterrupted(@Type(Thread.class) StaticObject self, boolean ClearInterrupted) {
         return false;

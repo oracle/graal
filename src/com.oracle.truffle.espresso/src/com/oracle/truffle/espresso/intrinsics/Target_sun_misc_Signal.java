@@ -35,6 +35,7 @@ public class Target_sun_misc_Signal {
         return new Signal(Meta.toHost(name)).getNumber();
     }
 
+    @SuppressWarnings("unused")
     @Intrinsic
     public static long handle0(int sig, long nativeH) {
         // TODO(peterssen): Find out how to properly manage host/guest signals.

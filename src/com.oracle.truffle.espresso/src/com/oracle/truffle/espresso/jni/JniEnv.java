@@ -62,7 +62,6 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.nodes.VmNativeNode;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoProperties;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -737,54 +736,63 @@ public class JniEnv extends NativeEnv {
         return method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParameterTypes()));
     }
 
+    @SuppressWarnings("unused")
     @JniImpl
     public boolean CallBooleanMethodVarargs(Object receiver, long methodHandle, long varargsPtr) {
         Meta.Method method = meta(methodIds.getObject(methodHandle));
         throw EspressoError.unimplemented();
     }
 
+    @SuppressWarnings("unused")
     @JniImpl
     public char CallCharMethodVarargs(Object receiver, long methodHandle, long varargsPtr) {
         Meta.Method method = meta(methodIds.getObject(methodHandle));
         throw EspressoError.unimplemented();
     }
 
+    @SuppressWarnings("unused")
     @JniImpl
     public byte CallByteMethodVarargs(Object receiver, long methodHandle, long varargsPtr) {
         Meta.Method method = meta(methodIds.getObject(methodHandle));
         throw EspressoError.unimplemented();
     }
 
+    @SuppressWarnings("unused")
     @JniImpl
     public short CallShortMethodVarargs(Object receiver, long methodHandle, long varargsPtr) {
         Meta.Method method = meta(methodIds.getObject(methodHandle));
         throw EspressoError.unimplemented();
     }
 
+    @SuppressWarnings("unused")
     @JniImpl
     public int CallIntMethodVarargs(Object receiver, long methodHandle, long varargsPtr) {
         Meta.Method method = meta(methodIds.getObject(methodHandle));
         throw EspressoError.unimplemented();
     }
 
+    @SuppressWarnings("unused")
     @JniImpl
     public float CallFloatMethodVarargs(Object receiver, long methodHandle, long varargsPtr) {
         Meta.Method method = meta(methodIds.getObject(methodHandle));
         throw EspressoError.unimplemented();
     }
 
+    @SuppressWarnings("unused")
     @JniImpl
     public double CallDoubleMethodVarargs(Object receiver, long methodHandle, long varargsPtr) {
         Meta.Method method = meta(methodIds.getObject(methodHandle));
         throw EspressoError.unimplemented();
     }
 
+    @SuppressWarnings("unused")
     @JniImpl
     public long CallLongMethodVarargs(Object receiver, long methodHandle, long varargsPtr) {
         Meta.Method method = meta(methodIds.getObject(methodHandle));
         throw EspressoError.unimplemented();
     }
 
+    @SuppressWarnings("unused")
     @JniImpl
     public void CallVoidMethodVarargs(Object receiver, long methodHandle, long varargsPtr) {
         Meta.Method method = meta(methodIds.getObject(methodHandle));
@@ -796,68 +804,79 @@ public class JniEnv extends NativeEnv {
     // region CallNonvirtual*Method
 
     @JniImpl
-    public Object CallNonvirtualObjectMethodVarargs(Object receiver, Object clazz, long methodHandle, long varargsPtr) {
+    public Object CallNonvirtualObjectMethodVarargs(Object receiver, @Type(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Meta.Method method = meta(methodIds.getObject(methodHandle));
+        assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringClass().rawKlass();
         return method.invokeDirect(receiver, popVarArgs(varargsPtr, method.getParameterTypes()));
     }
 
     @JniImpl
-    public boolean CallNonvirtualBooleanMethodVarargs(Object receiver, Object clazz, long methodHandle, long varargsPtr) {
+    public boolean CallNonvirtualBooleanMethodVarargs(Object receiver, @Type(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Meta.Method method = meta(methodIds.getObject(methodHandle));
+        assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringClass().rawKlass();
         return (boolean) method.invoke(receiver, popVarArgs(varargsPtr, method.getParameterTypes()));
     }
 
     @JniImpl
-    public char CallNonvirtualCharMethodVarargs(Object receiver, Object clazz, long methodHandle, long varargsPtr) {
+    public char CallNonvirtualCharMethodVarargs(Object receiver, @Type(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Meta.Method method = meta(methodIds.getObject(methodHandle));
+        assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringClass().rawKlass();
         return (char) method.invoke(receiver, popVarArgs(varargsPtr, method.getParameterTypes()));
     }
 
     @JniImpl
-    public byte CallNonvirtualByteMethodVarargs(Object receiver, Object clazz, long methodHandle, long varargsPtr) {
+    public byte CallNonvirtualByteMethodVarargs(Object receiver, @Type(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Meta.Method method = meta(methodIds.getObject(methodHandle));
+        assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringClass().rawKlass();
         return (byte) method.invoke(receiver, popVarArgs(varargsPtr, method.getParameterTypes()));
     }
 
     @JniImpl
-    public short CallNonvirtualShortMethodVarargs(Object receiver, Object clazz, long methodHandle, long varargsPtr) {
+    public short CallNonvirtualShortMethodVarargs(Object receiver, @Type(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Meta.Method method = meta(methodIds.getObject(methodHandle));
+        assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringClass().rawKlass();
         return (short) method.invoke(receiver, popVarArgs(varargsPtr, method.getParameterTypes()));
     }
 
     @JniImpl
-    public int CallNonvirtualIntMethodVarargs(Object receiver, Object clazz, long methodHandle, long varargsPtr) {
+    public int CallNonvirtualIntMethodVarargs(Object receiver, @Type(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Meta.Method method = meta(methodIds.getObject(methodHandle));
+        assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringClass().rawKlass();
         return (int) method.invoke(receiver, popVarArgs(varargsPtr, method.getParameterTypes()));
     }
 
     @JniImpl
-    public float CallNonvirtualFloatMethodVarargs(Object receiver, Object clazz, long methodHandle, long varargsPtr) {
+    public float CallNonvirtualFloatMethodVarargs(Object receiver, @Type(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Meta.Method method = meta(methodIds.getObject(methodHandle));
+        assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringClass().rawKlass();
         return (float) method.invoke(receiver, popVarArgs(varargsPtr, method.getParameterTypes()));
     }
 
     @JniImpl
-    public double CallNonvirtualDoubleMethodVarargs(Object receiver, Object clazz, long methodHandle, long varargsPtr) {
+    public double CallNonvirtualDoubleMethodVarargs(Object receiver, @Type(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Meta.Method method = meta(methodIds.getObject(methodHandle));
+        assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringClass().rawKlass();
         return (double) method.invoke(receiver, popVarArgs(varargsPtr, method.getParameterTypes()));
     }
 
     @JniImpl
-    public long CallNonvirtualLongMethodVarargs(Object receiver, Object clazz, long methodHandle, long varargsPtr) {
+    public long CallNonvirtualLongMethodVarargs(Object receiver, @Type(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Meta.Method method = meta(methodIds.getObject(methodHandle));
+        assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringClass().rawKlass();
         return (long) method.invoke(receiver, popVarArgs(varargsPtr, method.getParameterTypes()));
     }
 
     @JniImpl
-    public void CallNonvirtualVoidMethodVarargs(Object receiver, Object clazz, long methodHandle, long varargsPtr) {
+    public void CallNonvirtualVoidMethodVarargs(Object receiver, @Type(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Meta.Method method = meta(methodIds.getObject(methodHandle));
+        assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringClass().rawKlass();
         method.invoke(receiver, popVarArgs(varargsPtr, method.getParameterTypes()));
     }
 
     @JniImpl
-    public Object CallNonvirtualtualObjectMethodVarargs(Object receiver, Object clazz, long methodHandle, long varargsPtr) {
+    public Object CallNonvirtualtualObjectMethodVarargs(Object receiver, @Type(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Meta.Method method = meta(methodIds.getObject(methodHandle));
+        assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringClass().rawKlass();
         return method.invoke(receiver, popVarArgs(varargsPtr, method.getParameterTypes()));
     }
 
@@ -866,62 +885,72 @@ public class JniEnv extends NativeEnv {
     // region CallStatic*Method
 
     @JniImpl
-    public Object CallStaticObjectMethodVarargs(Object clazz, long methodHandle, long varargsPtr) {
+    public Object CallStaticObjectMethodVarargs(@Type(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Meta.Method method = meta(methodIds.getObject(methodHandle));
+        assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringClass().rawKlass();
         return method.asStatic().invokeDirect(popVarArgs(varargsPtr, method.getParameterTypes()));
     }
 
     @JniImpl
-    public boolean CallStaticBooleanMethodVarargs(Object clazz, long methodHandle, long varargsPtr) {
+    public boolean CallStaticBooleanMethodVarargs(@Type(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Meta.Method method = meta(methodIds.getObject(methodHandle));
+        assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringClass().rawKlass();
         return (boolean) method.asStatic().invokeDirect(popVarArgs(varargsPtr, method.getParameterTypes()));
     }
 
     @JniImpl
-    public char CallStaticCharMethodVarargs(Object clazz, long methodHandle, long varargsPtr) {
+    public char CallStaticCharMethodVarargs(@Type(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Meta.Method method = meta(methodIds.getObject(methodHandle));
+        assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringClass().rawKlass();
         return (char) method.asStatic().invokeDirect(popVarArgs(varargsPtr, method.getParameterTypes()));
     }
 
     @JniImpl
-    public byte CallStaticByteMethodVarargs(Object clazz, long methodHandle, long varargsPtr) {
+    public byte CallStaticByteMethodVarargs(@Type(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Meta.Method method = meta(methodIds.getObject(methodHandle));
+        assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringClass().rawKlass();
         return (byte) method.asStatic().invokeDirect(popVarArgs(varargsPtr, method.getParameterTypes()));
     }
 
     @JniImpl
-    public short CallStaticShortMethodVarargs(Object clazz, long methodHandle, long varargsPtr) {
+    public short CallStaticShortMethodVarargs(@Type(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Meta.Method method = meta(methodIds.getObject(methodHandle));
+        assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringClass().rawKlass();
         return (short) method.asStatic().invokeDirect(popVarArgs(varargsPtr, method.getParameterTypes()));
     }
 
     @JniImpl
-    public int CallStaticIntMethodVarargs(Object clazz, long methodHandle, long varargsPtr) {
+    public int CallStaticIntMethodVarargs(@Type(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Meta.Method method = meta(methodIds.getObject(methodHandle));
+        assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringClass().rawKlass();
         return (int) method.asStatic().invoke(popVarArgs(varargsPtr, method.getParameterTypes()));
     }
 
     @JniImpl
-    public float CallStaticFloatMethodVarargs(Object clazz, long methodHandle, long varargsPtr) {
+    public float CallStaticFloatMethodVarargs(@Type(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Meta.Method method = meta(methodIds.getObject(methodHandle));
+        assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringClass().rawKlass();
         return (float) method.asStatic().invoke(popVarArgs(varargsPtr, method.getParameterTypes()));
     }
 
     @JniImpl
-    public double CallStaticDoubleMethodVarargs(Object clazz, long methodHandle, long varargsPtr) {
+    public double CallStaticDoubleMethodVarargs(@Type(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Meta.Method method = meta(methodIds.getObject(methodHandle));
+        assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringClass().rawKlass();
         return (double) method.asStatic().invoke(popVarArgs(varargsPtr, method.getParameterTypes()));
     }
 
     @JniImpl
-    public long CallStaticLongMethodVarargs(Object clazz, long methodHandle, long varargsPtr) {
+    public long CallStaticLongMethodVarargs(@Type(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Meta.Method method = meta(methodIds.getObject(methodHandle));
+        assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringClass().rawKlass();
         return (long) method.asStatic().invoke(popVarArgs(varargsPtr, method.getParameterTypes()));
     }
 
     @JniImpl
-    public void CallStaticVoidMethodVarargs(Object clazz, long methodHandle, long varargsPtr) {
+    public void CallStaticVoidMethodVarargs(@Type(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Meta.Method method = meta(methodIds.getObject(methodHandle));
+        assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringClass().rawKlass();
         method.asStatic().invoke(popVarArgs(varargsPtr, method.getParameterTypes()));
     }
 
@@ -1370,24 +1399,24 @@ public class JniEnv extends NativeEnv {
     }
 
     @JniImpl
-    public void ReleaseStringUTFChars(@Type(String.class) StaticObject str, long charsPtr) {
+    public void ReleaseStringUTFChars(@SuppressWarnings("unused") @Type(String.class) StaticObject str, long charsPtr) {
         assert nativeBuffers.containsKey(charsPtr);
         nativeBuffers.remove(charsPtr);
     }
 
     @JniImpl
-    public void ReleaseStringCritical(@Type(String.class) StaticObject str, long criticalRegionPtr) {
+    public void ReleaseStringCritical(@SuppressWarnings("unused") @Type(String.class) StaticObject str, long criticalRegionPtr) {
         assert nativeBuffers.containsKey(criticalRegionPtr);
         nativeBuffers.remove(criticalRegionPtr);
     }
 
     @JniImpl
-    public int EnsureLocalCapacity(int capacity) {
+    public int EnsureLocalCapacity(@SuppressWarnings("unused") int capacity) {
         return JNI_OK;
     }
 
     @JniImpl
-    public void DeleteLocalRef(Object localRef) {
+    public void DeleteLocalRef(@SuppressWarnings("unused") Object localRef) {
         // nop
     }
 
@@ -1421,11 +1450,11 @@ public class JniEnv extends NativeEnv {
      *
      * @return 0 on success; a negative value on failure.
      *
-     * @throws Exception the newly constructed {@link java.lang.Throwable} object.
+     * @throws EspressoException the newly constructed {@link java.lang.Throwable} object.
      */
     @JniImpl
     public int ThrowNew(@Type(Class.class) StaticObject clazz, String message) {
-        StaticObject ex = EspressoLanguage.getCurrentContext().getMeta().initEx(meta(clazz.getKlass()), message);
+        StaticObject ex = Meta.initEx(meta(((StaticObjectClass) clazz).getMirror()), message);
         // The TLS exception slot will be set by the JNI wrapper.
         // Throwing methods always return the default value, in this case 0 (success).
         throw new EspressoException(ex);
@@ -1495,7 +1524,7 @@ public class JniEnv extends NativeEnv {
         buf.put(chars, start, len);
     }
 
-    private String nfiSignature(String signature, boolean isJni) {
+    private static String nfiSignature(String signature, boolean isJni) {
         SignatureDescriptor descriptor = EspressoLanguage.getCurrentContext().getSignatureDescriptors().make(signature);
         int argCount = descriptor.getParameterCount(false);
         StringBuilder sb = new StringBuilder("(");
@@ -1576,7 +1605,7 @@ public class JniEnv extends NativeEnv {
      *
      * Determines whether an object of clazz1 can be safely cast to clazz2.
      *
-     * @param clazz1: the first class argument.
+     * @param clazz1 the first class argument.
      * @param clazz2 the second class argument.
      *
      * @return Returns JNI_TRUE if either of the following is true:

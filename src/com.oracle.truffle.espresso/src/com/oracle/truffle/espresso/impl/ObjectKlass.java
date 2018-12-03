@@ -68,14 +68,14 @@ public final class ObjectKlass extends Klass {
     public static final int PREPARED = 2;
     public static final int INITIALIZED = 3;
 
-    public ObjectKlass(EspressoContext context, String name, Klass superclass, Klass[] interfaces,
+    public ObjectKlass(String klassName, Klass superclass, Klass[] interfaces,
                     MethodInfo[] declaredMethods,
                     FieldInfo[] declaredFields,
                     int accessFlags,
                     EnclosingMethodAttribute enclosingMethod,
                     InnerClassesAttribute innerClasses,
                     ConstantPool pool, AttributeInfo runtimeVisibleAnnotations) {
-        super(name);
+        super(klassName);
         this.superclass = superclass;
         this.interfaces = interfaces;
         this.declaredMethods = declaredMethods;
@@ -92,18 +92,17 @@ public final class ObjectKlass extends Klass {
         return pool.getContext();
     }
 
-    public static Klass create(EspressoContext context, String className, Klass superClass, Klass[] localInterfaces, MethodInfo.Builder[] methodBuilders, FieldInfo.Builder[] fieldBuilders,
+    public static Klass create(String className, Klass superClass, Klass[] localInterfaces, MethodInfo.Builder[] methodBuilders, FieldInfo.Builder[] fieldBuilders,
                     int accessFlags, EnclosingMethodAttribute enclosingMethod, InnerClassesAttribute innerClasses, ConstantPool pool, AttributeInfo runtimeVisibleAnnotations) {
         MethodInfo[] methods = new MethodInfo[methodBuilders.length];
         FieldInfo[] fields = new FieldInfo[fieldBuilders.length];
-        ObjectKlass result = new ObjectKlass(context, className, superClass, localInterfaces, methods, fields, accessFlags, enclosingMethod, innerClasses, pool, runtimeVisibleAnnotations);
+        ObjectKlass result = new ObjectKlass(className, superClass, localInterfaces, methods, fields, accessFlags, enclosingMethod, innerClasses, pool, runtimeVisibleAnnotations);
         for (int i = 0; i < methods.length; ++i) {
             methods[i] = methodBuilders[i].setDeclaringClass(result).build();
         }
         for (int i = 0; i < fields.length; ++i) {
             fields[i] = fieldBuilders[i].setDeclaringClass(result).build();
         }
-        assert result.getConstantPool().getContext() == context;
         return result;
     }
 

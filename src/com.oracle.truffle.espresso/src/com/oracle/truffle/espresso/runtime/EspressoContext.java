@@ -56,7 +56,6 @@ public class EspressoContext {
     private final StringTable strings;
     private final ClassRegistries registries;
     private boolean initialized = false;
-    private Classpath classpath;
     private Classpath bootClasspath;
     private String[] mainArguments;
     private Source mainSourceFile;

@@ -28,12 +28,8 @@ import static com.oracle.truffle.espresso.classfile.Constants.ACC_INTERFACE;
 import static com.oracle.truffle.espresso.classfile.Constants.JVM_RECOGNIZED_CLASS_MODIFIERS;
 
 import java.util.Arrays;
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.impl.FieldInfo;
@@ -84,7 +80,6 @@ public class ClassfileParser {
     private ConstantPool pool;
 
     private int maxBootstrapMethodAttrIndex;
-    private boolean needVerify;
     private int accessFlags;
     private Tag badConstantSeen;
 
@@ -235,7 +230,7 @@ public class ClassfileParser {
 
         parsedClasses.inc();
 
-        return ObjectKlass.create(context, typeDescriptor.toString(), superClass, localInterfaces, methods, fields, accessFlags,
+        return ObjectKlass.create(typeDescriptor.toString(), superClass, localInterfaces, methods, fields, accessFlags,
                         (EnclosingMethodAttribute) optEnclosingMethod.orElse(null),
                         (InnerClassesAttribute) optInnerClasses.orElse(null),
                         pool,
@@ -251,10 +246,6 @@ public class ClassfileParser {
         return methods;
     }
 
-    private static <T> List<T> parseN(int n, Supplier<T> supplier) {
-        return Stream.generate(supplier).limit(n).collect(Collectors.toList());
-    }
-
     private MethodInfo.Builder parseMethod() {
         int flags = stream.readU2();
         int nameIndex = stream.readU2();
@@ -263,12 +254,12 @@ public class ClassfileParser {
         int descriptorIndex = stream.readU2();
         String value = pool.utf8At(descriptorIndex).getValue();
 
-        AttributeInfo[] attributes = parseAttributes();
+        AttributeInfo[] methodAttributes = parseAttributes();
 
         MethodInfo.Builder builder = new MethodInfo.Builder().setName(name).setSignature(context.getSignatureDescriptors().make(value)).setModifiers(flags);
 
-        Optional<AttributeInfo> optCode = Arrays.stream(attributes).filter(a -> a.getName().equals("Code")).findAny();
-        Optional<AttributeInfo> optExceptions = Arrays.stream(attributes).filter(a -> a.getName().equals("Exceptions")).findAny();
+        Optional<AttributeInfo> optCode = Arrays.stream(methodAttributes).filter(a -> a.getName().equals("Code")).findAny();
+        Optional<AttributeInfo> optExceptions = Arrays.stream(methodAttributes).filter(a -> a.getName().equals("Exceptions")).findAny();
 
         if (optCode.isPresent()) {
             CodeAttribute code = (CodeAttribute) optCode.get();
@@ -285,11 +276,11 @@ public class ClassfileParser {
 
     private AttributeInfo[] parseAttributes() {
         int count = stream.readU2();
-        AttributeInfo[] attributes = new AttributeInfo[count];
+        AttributeInfo[] attrs = new AttributeInfo[count];
         for (int i = 0; i < count; i++) {
-            attributes[i] = parseAttribute();
+            attrs[i] = parseAttribute();
         }
-        return attributes;
+        return attrs;
     }
 
     private AttributeInfo parseAttribute() {
@@ -314,7 +305,7 @@ public class ClassfileParser {
     }
 
     private ExceptionsAttribute parseExceptions(String name) {
-        int length = stream.readS4();
+        /* int length = */ stream.readS4();
         int entryCount = stream.readU2();
         int[] entries = new int[entryCount];
         for (int i = 0; i < entryCount; ++i) {
@@ -325,7 +316,7 @@ public class ClassfileParser {
     }
 
     private BootstrapMethodsAttribute parseBootstrapMethods(String name) {
-        int length = stream.readS4();
+        /* int length = */ stream.readS4();
         int entryCount = stream.readU2();
         BootstrapMethodsAttribute.Entry[] entries = new BootstrapMethodsAttribute.Entry[entryCount];
         for (int i = 0; i < entryCount; ++i) {
@@ -341,7 +332,7 @@ public class ClassfileParser {
     }
 
     private InnerClassesAttribute parseInnerClasses(String name) {
-        int length = stream.readS4();
+        /* int length = */ stream.readS4();
         int entryCount = stream.readU2();
         InnerClassesAttribute.Entry[] entries = new InnerClassesAttribute.Entry[entryCount];
         for (int i = 0; i < entryCount; ++i) {
@@ -359,21 +350,21 @@ public class ClassfileParser {
     }
 
     private EnclosingMethodAttribute parseEnclosingMethodAttribute(String name) {
-        int length = stream.readS4();
+        /* int length = */ stream.readS4();
         int classIndex = stream.readU2();
         int methodIndex = stream.readU2();
         return new EnclosingMethodAttribute(name, classIndex, methodIndex);
     }
 
     private CodeAttribute parseCodeAttribute(String name) {
-        int length = stream.readS4();
+        /* int length = */ stream.readS4();
         int maxStack = stream.readU2();
         int maxLocals = stream.readU2();
         int codeLength = stream.readS4();
         byte[] code = stream.readByteArray(codeLength);
         ExceptionHandler[] entries = parseExceptionHandlerEntries();
-        AttributeInfo[] attributes = parseAttributes();
-        return new CodeAttribute(name, maxStack, maxLocals, code, entries, attributes);
+        AttributeInfo[] codeAttributes = parseAttributes();
+        return new CodeAttribute(name, maxStack, maxLocals, code, entries, codeAttributes);
     }
 
     private ExceptionHandler[] parseExceptionHandlerEntries() {
@@ -407,11 +398,11 @@ public class ClassfileParser {
 
     private FieldInfo.Builder[] parseFields() {
         int fieldCount = stream.readU2();
-        FieldInfo.Builder[] fields = new FieldInfo.Builder[fieldCount];
+        FieldInfo.Builder[] fieldBuilders = new FieldInfo.Builder[fieldCount];
         for (int i = 0; i < fieldCount; i++) {
-            fields[i] = parseField();
+            fieldBuilders[i] = parseField();
         }
-        return fields;
+        return fieldBuilders;
     }
 
     /**

@@ -31,11 +31,10 @@ public class Utf8 {
     public static int UTFLength(String str) {
         int strlen = str.length();
         int utflen = 0;
-        int c, count = 0;
 
         /* use charAt instead of copying String to char array */
         for (int i = 0; i < strlen; i++) {
-            c = str.charAt(i);
+            int c = str.charAt(i);
             if ((c >= 0x0001) && (c <= 0x007F)) {
                 utflen++;
             } else if (c > 0x07FF) {

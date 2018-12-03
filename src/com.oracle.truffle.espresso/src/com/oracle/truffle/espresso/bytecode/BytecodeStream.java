@@ -65,15 +65,6 @@ public final class BytecodeStream {
     }
 
     /**
-     * Gets the current bytecode index.
-     *
-     * @return the current bytecode index
-     */
-    public int currentBCI(int curBCI) {
-        return curBCI;
-    }
-
-    /**
      * Gets the bytecode index of the end of the code.
      *
      * @return the index of the end of the code
