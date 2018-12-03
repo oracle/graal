@@ -705,6 +705,7 @@ public class NativeImageGenerator {
                                 int numMethods = aUniverse.getMethods().size();
                                 int numFields = aUniverse.getFields().size();
 
+                                svmHost.notifyClassReachabilityListener(aUniverse, config);
                                 featureHandler.forEachFeature(feature -> feature.duringAnalysis(config));
 
                                 if (!config.getAndResetRequireAnalysisIteration()) {

@@ -84,6 +84,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     private boolean isInHeap;
     private boolean isAllocated;
     private boolean isInTypeCheck;
+    private boolean reachabilityListenerNotified;
     private boolean unsafeFieldsRecomputed;
     private boolean unsafeAccessedFieldsRegistered;
 
@@ -501,6 +502,14 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
 
     public void registerAsInTypeCheck() {
         isInTypeCheck = true;
+    }
+
+    public boolean getReachabilityListenerNotified() {
+        return reachabilityListenerNotified;
+    }
+
+    public void setReachabilityListenerNotified(boolean reachabilityListenerNotified) {
+        this.reachabilityListenerNotified = reachabilityListenerNotified;
     }
 
     /**
