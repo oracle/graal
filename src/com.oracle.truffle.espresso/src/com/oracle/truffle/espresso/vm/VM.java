@@ -347,7 +347,7 @@ public class VM extends NativeEnv {
                 // Substitute raw pointer by proper `this` reference.
                 // System.err.print("Call DEFINED method: " + m.getName() +
                 // Arrays.toString(shiftedArgs));
-                Object ret = m.invoke(this, rawArgs);
+                Object ret = m.invoke(this, args);
 
                 if (ret instanceof Boolean) {
                     return (boolean) ret ? (byte) 1 : (byte) 0;
