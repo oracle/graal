@@ -1,8 +1,8 @@
 {
   local jdk8 = {
     downloads: {
-      JAVA_HOME: {name: 'labsjdk', version: '8u172-jvmci-0.48', platformspecific: true},
-      JDT: {name: 'ecj', version: '4.5.1', platformspecific: false},
+      JAVA_HOME: {name: 'labsjdk', version: '8u192-jvmci-0.53', platformspecific: true},
+      JDT: {name: 'ecj', version: '4.6.1', platformspecific: false},
     },
   },
 
