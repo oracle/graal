@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.hotspot.test;
 
+import static org.graalvm.compiler.hotspot.test.HotSpotGraalCompilerTest.assumeGraalIsNotJIT;
 import static org.graalvm.compiler.hotspot.test.HotSpotGraalManagementTest.JunitShield.findAttributeInfo;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -72,6 +73,7 @@ public class HotSpotGraalManagementTest {
     private static final boolean DEBUG = Boolean.getBoolean(HotSpotGraalManagementTest.class.getSimpleName() + ".debug");
 
     public HotSpotGraalManagementTest() {
+        assumeGraalIsNotJIT("random flipping of Graal options can cause havoc if Graal is being used as a JIT");
         try {
             /* Trigger loading of the management library using the bootstrap class loader. */
             ManagementFactory.getThreadMXBean();

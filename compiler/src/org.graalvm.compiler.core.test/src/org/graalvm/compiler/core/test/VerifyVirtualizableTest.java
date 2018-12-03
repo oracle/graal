@@ -54,7 +54,6 @@ import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.VerifyPhase.VerificationError;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.phases.verify.VerifyVirtualizableUsage;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.junit.Test;
 

@@ -30,13 +30,10 @@ import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.
 import java.util.zip.CRC32;
 
 import org.graalvm.compiler.api.replacements.ClassSubstitution;
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
-import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.nodes.ComputeObjectAddressNode;
 import org.graalvm.compiler.hotspot.nodes.GraalHotSpotVMConfigNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
@@ -54,14 +51,6 @@ import jdk.vm.ci.meta.JavaKind;
  */
 @ClassSubstitution(CRC32.class)
 public class CRC32Substitutions {
-
-    /**
-     * Gets the address of {@code StubRoutines::x86::_crc_table} in {@code stubRoutines_x86.hpp}.
-     */
-    @Fold
-    static long crcTableAddress(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.crcTableAddress;
-    }
 
     /**
      * Removed in 9.
