@@ -75,7 +75,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
 /**
- * Replaces graal related objects during analysis in the universe.
+ * Replaces Graal related objects during analysis in the universe.
  *
  * It is mainly used to replace the Hosted* meta data with the Substrate* meta data.
  */
