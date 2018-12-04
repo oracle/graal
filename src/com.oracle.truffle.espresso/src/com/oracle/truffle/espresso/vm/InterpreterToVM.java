@@ -37,8 +37,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import org.graalvm.nativeimage.ImageInfo;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -277,7 +275,7 @@ public class InterpreterToVM {
     }
 
     private static RootNode createRootNodeForMethod(EspressoLanguage language, Method method) {
-        if (!ImageInfo.inImageRuntimeCode() && language.getContextReference().get().getEnv().getOptions().get(EspressoOptions.IntrinsicsViaMethodHandles)) {
+        if (!EspressoOptions.RUNNING_ON_SVM && language.getContextReference().get().getEnv().getOptions().get(EspressoOptions.IntrinsicsViaMethodHandles)) {
             MethodHandle handle;
             try {
                 handle = MethodHandles.publicLookup().unreflect(method);
@@ -451,10 +449,11 @@ public class InterpreterToVM {
     // endregion
 
     // region Monitor enter/exit
+
     @SuppressWarnings({"deprecation"})
     public void monitorEnter(Object obj) {
         // TODO(peterssen): Nop for single-threaded language + enable on SVM.
-        if (!ImageInfo.inImageCode()) {
+        if (!EspressoOptions.RUNNING_ON_SVM) {
             hostUnsafe.monitorEnter(obj);
         }
     }
@@ -462,7 +461,7 @@ public class InterpreterToVM {
     @SuppressWarnings({"deprecation"})
     public void monitorExit(Object obj) {
         // TODO(peterssen): Nop for single-threaded language + enable on SVM.
-        if (!ImageInfo.inImageCode()) {
+        if (!EspressoOptions.RUNNING_ON_SVM) {
             hostUnsafe.monitorExit(obj);
         }
     }

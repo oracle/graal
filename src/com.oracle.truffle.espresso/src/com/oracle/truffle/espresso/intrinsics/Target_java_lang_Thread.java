@@ -24,10 +24,10 @@
 package com.oracle.truffle.espresso.intrinsics;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import org.graalvm.nativeimage.ImageInfo;
 
 @EspressoIntrinsics
 public class Target_java_lang_Thread {
@@ -87,7 +87,7 @@ public class Target_java_lang_Thread {
 
     @Intrinsic
     public static boolean holdsLock(Object object) {
-        if (!ImageInfo.inImageCode()) {
+        if (!EspressoOptions.RUNNING_ON_SVM) {
             // Sane behavior on HotSpot.
             return Thread.holdsLock(object);
         }

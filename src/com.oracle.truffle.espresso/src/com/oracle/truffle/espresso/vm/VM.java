@@ -48,7 +48,6 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
@@ -388,7 +387,7 @@ public class VM extends NativeEnv {
     @JniImpl
     @SuppressFBWarnings(value = {"IMSE"}, justification = "Not dubious, .notifyAll is just forwarded from the guest.")
     public void JVM_MonitorNotifyAll(Object self) {
-        if (ImageInfo.inImageCode()) {
+        if (EspressoOptions.RUNNING_ON_SVM) {
             return;
         }
         try {
@@ -402,7 +401,7 @@ public class VM extends NativeEnv {
     @JniImpl
     @SuppressFBWarnings(value = {"IMSE"}, justification = "Not dubious, .notify is just forwarded from the guest.")
     public void JVM_MonitorNotify(Object self) {
-        if (ImageInfo.inImageCode()) {
+        if (EspressoOptions.RUNNING_ON_SVM) {
             return;
         }
         try {
@@ -416,7 +415,7 @@ public class VM extends NativeEnv {
     @JniImpl
     @SuppressFBWarnings(value = {"IMSE"}, justification = "Not dubious, .wait is just forwarded from the guest.")
     public void JVM_MonitorWait(Object self, long timeout) {
-        if (ImageInfo.inImageCode()) {
+        if (EspressoOptions.RUNNING_ON_SVM) {
             return;
         }
         try {

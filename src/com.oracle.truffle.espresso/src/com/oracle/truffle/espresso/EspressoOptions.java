@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso;
 
 import java.util.Map;
 
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionKey;
@@ -56,4 +57,6 @@ public final class EspressoOptions {
 
     @Option(help = "Installation directory for Java Runtime Environment (JRE)", category = OptionCategory.USER) //
     public static final OptionKey<String> JavaHome = new OptionKey<>("");
+
+    public static final boolean RUNNING_ON_SVM = ImageInfo.inImageCode();
 }
