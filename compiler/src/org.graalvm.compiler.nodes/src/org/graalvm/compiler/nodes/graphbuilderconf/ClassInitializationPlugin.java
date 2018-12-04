@@ -30,13 +30,41 @@ import org.graalvm.compiler.nodes.ValueNode;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+/**
+ * Plugin for emitting a class initialization check.
+ *
+ * This plugin also supports separating class resolution from class initialization with
+ * {@link #supportsLazyInitialization(ConstantPool)} and
+ * {@link #loadReferencedType(GraphBuilderContext, ConstantPool, int, int)}.
+ *
+ * @see "https://bugs.openjdk.java.net/browse/JDK-8146201"
+ */
 public interface ClassInitializationPlugin extends GraphBuilderPlugin {
+    /**
+     * Determines if {@code type} requires a class initialization check in the context of
+     * {@code builder}'s state.
+     */
     boolean shouldApply(GraphBuilderContext builder, ResolvedJavaType type);
 
+    /**
+     * Emits a class initialization check for {@code type}.
+     */
     ValueNode apply(GraphBuilderContext builder, ResolvedJavaType type, FrameState frameState);
 
+    /**
+     * Determines if {@code cp} has a variation of {@link ConstantPool#loadReferencedType} that can
+     * resolved a type without initializing it.
+     */
     boolean supportsLazyInitialization(ConstantPool cp);
 
+    /**
+     * Ensures that the type referenced by the constant pool entry specified by {@code cp} and
+     * {@code cpi} is loaded. If {@code cp} does not support
+     * {@linkplain #supportsLazyInitialization(ConstantPool) lazy} initialization, then the type is
+     * initialized after resolution.
+     *
+     * @param cpi the index of the constant pool entry that references the type
+     * @param bytecode the opcode of the instruction that references the type
+     */
     void loadReferencedType(GraphBuilderContext builder, ConstantPool cp, int cpi, int bytecode);
-
 }
