@@ -921,12 +921,64 @@ public class EspressoRootNode extends RootNode implements LinkedNode {
                     case RET:
                         curBCI = getIntLocal(frame, bs.readLocalIndex(curBCI));
                         continue loop;
-                    case TABLESWITCH:
-                        curBCI = tableSwitch(bs, curBCI, stack.popInt());
+                    case TABLESWITCH: {
+                        // curBCI = tableSwitch(bs, curBCI, stack.popInt());
+                        int index = stack.popInt();
+                        BytecodeTableSwitch switchHelper = bs.getBytecodeTableSwitch();
+                        int low = switchHelper.lowKey(curBCI);
+                        CompilerAsserts.partialEvaluationConstant(low);
+                        int high = switchHelper.highKey(curBCI);
+                        CompilerAsserts.partialEvaluationConstant(high);
+                        CompilerAsserts.partialEvaluationConstant(switchHelper);
+                        assert low <= high;
+
+                        // Interpreter uses direct lookup.
+                        if (CompilerDirectives.inInterpreter()) {
+                            if (low <= index && index <= high) {
+                                curBCI = switchHelper.targetAt(curBCI, index - low);
+                            } else {
+                                curBCI = switchHelper.defaultTarget(curBCI);
+                            }
+                            continue loop;
+                        }
+
+                        for (int i = low; i <= high; ++i) {
+                            if (i == index) {
+                                CompilerAsserts.partialEvaluationConstant(i);
+                                CompilerAsserts.partialEvaluationConstant(i - low);
+                                CompilerAsserts.partialEvaluationConstant(switchHelper.targetAt(curBCI, i - low));
+                                curBCI = switchHelper.targetAt(curBCI, i - low);
+                                continue loop;
+                            }
+                        }
+
+                        CompilerAsserts.partialEvaluationConstant(switchHelper.defaultTarget(curBCI));
+                        curBCI = switchHelper.defaultTarget(curBCI);
                         continue loop;
-                    case LOOKUPSWITCH:
-                        curBCI = lookupSwitch(bs, curBCI, stack.popInt());
+                    }
+                    case LOOKUPSWITCH: {
+                        // curBCI = lookupSwitch(bs, curBCI, stack.popInt());
+                        int key = stack.popInt();
+                        BytecodeLookupSwitch switchHelper = bs.getBytecodeLookupSwitch();
+                        int low = 0;
+                        int high = switchHelper.numberOfCases(curBCI) - 1;
+                        CompilerAsserts.partialEvaluationConstant(switchHelper);
+                        while (low <= high) {
+                            int mid = (low + high) >>> 1;
+                            int midVal = switchHelper.keyAt(curBCI, mid);
+
+                            if (midVal < key) {
+                                low = mid + 1;
+                            } else if (midVal > key) {
+                                high = mid - 1;
+                            } else {
+                                curBCI = curBCI + switchHelper.offsetAt(curBCI, mid); // key found.
+                                continue loop;
+                            }
+                        }
+                        curBCI = switchHelper.defaultTarget(curBCI); // key not found.
                         continue loop;
+                    }
                     case IRETURN:
                         return exitMethodAndReturn(stack.popInt());
                     case LRETURN:
@@ -1409,54 +1461,67 @@ public class EspressoRootNode extends RootNode implements LinkedNode {
         return value >>> bits;
     }
 
-    private static int lookupSwitch(BytecodeStream bs, int curBCI, int key) {
-        return lookupSearch(new BytecodeLookupSwitch(bs, curBCI), key);
-    }
-
     /**
      * Binary search implementation for the lookup switch.
      */
+    @SuppressWarnings("unused")
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE)
-    private static int lookupSearch(BytecodeLookupSwitch switchHelper, int key) {
+    private static int lookupSearch(BytecodeStream bs, int curBCI, int key) {
+        BytecodeLookupSwitch switchHelper = bs.getBytecodeLookupSwitch();
         int low = 0;
-        int high = switchHelper.numberOfCases() - 1;
+        int high = switchHelper.numberOfCases(curBCI) - 1;
+        CompilerAsserts.partialEvaluationConstant(switchHelper);
         while (low <= high) {
             int mid = (low + high) >>> 1;
-            int midVal = switchHelper.keyAt(mid);
+            int midVal = switchHelper.keyAt(curBCI, mid);
 
             if (midVal < key) {
                 low = mid + 1;
             } else if (midVal > key) {
                 high = mid - 1;
             } else {
-                return switchHelper.bci() + switchHelper.offsetAt(mid); // key found.
+                return curBCI + switchHelper.offsetAt(curBCI, mid); // key found.
             }
         }
-        return switchHelper.defaultTarget(); // key not found.
+        return switchHelper.defaultTarget(curBCI); // key not found.
     }
 
     /**
-     * The switch lookup can be efficiently implemented using a binary search. It was intentionally
-     * replaced by a linear search to help partial evaluation infer control flow structure
-     * correctly.
+     * The table switch lookup can be efficiently implemented using a constant lookup. It was
+     * intentionally replaced by a linear search to help partial evaluation infer control flow
+     * structure correctly.
      */
-    @ExplodeLoop
+    @SuppressWarnings("unused")
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
     private static int tableSwitch(BytecodeStream bs, int curBCI, int index) {
-        BytecodeTableSwitch switchHelper = new BytecodeTableSwitch(bs, curBCI);
-        int low = switchHelper.lowKey();
+        BytecodeTableSwitch switchHelper = bs.getBytecodeTableSwitch();
+        int low = switchHelper.lowKey(curBCI);
         CompilerAsserts.partialEvaluationConstant(low);
-        int high = switchHelper.highKey();
-
+        int high = switchHelper.highKey(curBCI);
         CompilerAsserts.partialEvaluationConstant(high);
+        CompilerAsserts.partialEvaluationConstant(switchHelper);
         assert low <= high;
-        for (int i = low; i <= high; ++i) {
-            if (i == index) {
-                CompilerAsserts.partialEvaluationConstant(switchHelper.targetAt(i - low));
-                return switchHelper.targetAt(i - low);
+
+        // Interpreter uses direct lookup.
+        if (CompilerDirectives.inInterpreter()) {
+            if (low <= index && index <= high) {
+                return switchHelper.targetAt(curBCI, index - low);
+            } else {
+                return switchHelper.defaultTarget(curBCI);
             }
         }
-        CompilerAsserts.partialEvaluationConstant(switchHelper.defaultTarget());
-        return switchHelper.defaultTarget();
+
+        for (int i = low; i <= high; ++i) {
+            if (i == index) {
+                CompilerAsserts.partialEvaluationConstant(i);
+                CompilerAsserts.partialEvaluationConstant(i - low);
+                CompilerAsserts.partialEvaluationConstant(switchHelper.targetAt(curBCI, i - low));
+                return switchHelper.targetAt(curBCI, i - low);
+            }
+        }
+
+        CompilerAsserts.partialEvaluationConstant(switchHelper.defaultTarget(curBCI));
+        return switchHelper.defaultTarget(curBCI);
     }
 
     private Object checkCast(Object instance, Klass typeToCheck) {

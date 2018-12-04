@@ -36,10 +36,9 @@ public class BytecodeTableSwitch extends BytecodeSwitch {
      * Constructor for a {@link BytecodeStream}.
      *
      * @param stream the {@code BytecodeStream} containing the switch instruction
-     * @param bci the index in the stream of the switch instruction
      */
-    public BytecodeTableSwitch(BytecodeStream stream, int bci) {
-        super(stream, bci);
+    public BytecodeTableSwitch(BytecodeStream stream) {
+        super(stream);
     }
 
     /**
@@ -47,8 +46,8 @@ public class BytecodeTableSwitch extends BytecodeSwitch {
      *
      * @return the low key
      */
-    public int lowKey() {
-        return stream.readInt(alignedBci + OFFSET_TO_LOW_KEY);
+    public int lowKey(int bci) {
+        return stream.readInt(getAlignedBci(bci) + OFFSET_TO_LOW_KEY);
     }
 
     /**
@@ -56,27 +55,27 @@ public class BytecodeTableSwitch extends BytecodeSwitch {
      *
      * @return the high key
      */
-    public int highKey() {
-        return stream.readInt(alignedBci + OFFSET_TO_HIGH_KEY);
+    public int highKey(int bci) {
+        return stream.readInt(getAlignedBci(bci) + OFFSET_TO_HIGH_KEY);
     }
 
     @Override
-    public int keyAt(int i) {
-        return lowKey() + i;
+    public int keyAt(int bci, int i) {
+        return lowKey(bci) + i;
     }
 
     @Override
-    public int offsetAt(int i) {
-        return stream.readInt(alignedBci + OFFSET_TO_FIRST_JUMP_OFFSET + JUMP_OFFSET_SIZE * i);
+    public int offsetAt(int bci, int i) {
+        return stream.readInt(getAlignedBci(bci) + OFFSET_TO_FIRST_JUMP_OFFSET + JUMP_OFFSET_SIZE * i);
     }
 
     @Override
-    public int numberOfCases() {
-        return highKey() - lowKey() + 1;
+    public int numberOfCases(int bci) {
+        return highKey(bci) - lowKey(bci) + 1;
     }
 
     @Override
-    public int size() {
-        return alignedBci + OFFSET_TO_FIRST_JUMP_OFFSET + JUMP_OFFSET_SIZE * numberOfCases() - bci;
+    public int size(int bci) {
+        return getAlignedBci(bci) + OFFSET_TO_FIRST_JUMP_OFFSET + JUMP_OFFSET_SIZE * numberOfCases(bci) - bci;
     }
 }
