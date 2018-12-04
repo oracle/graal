@@ -31,7 +31,8 @@ import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * Plugin for emitting a class initialization check.
+ * Plugin for emitting a class initialization barrier (i.e., initializes a class if it's not already
+ * initialized).
  *
  * This plugin also supports separating class resolution from class initialization with
  * {@link #supportsLazyInitialization(ConstantPool)} and
