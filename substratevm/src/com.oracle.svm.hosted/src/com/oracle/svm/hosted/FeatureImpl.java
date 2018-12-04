@@ -37,12 +37,14 @@ import java.util.Collections;
 import java.util.Deque;
 import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.RuntimeReflection;
+import org.graalvm.nativeimage.Feature.DuringAnalysisAccess;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.UnsafePartitionKind;
@@ -185,6 +187,23 @@ public class FeatureImpl {
             getUniverse().registerFeatureNativeSubstitution(substitution);
         }
 
+        /**
+         * Registers a listener that is notified for every class that is identified as reachable by
+         * the analysis. The newly discovered class is passed as a parameter to the listener.
+         * <p>
+         * The listener is called during the analysis, at similar times as
+         * {@link Feature#duringAnalysis}. The first argument is a {@link DuringAnalysisAccess
+         * access} object that allows to query the analysis state. If the handler performs changes
+         * the analysis universe, e.g., makes new types or methods reachable, it needs to call
+         * {@link DuringAnalysisAccess#requireAnalysisIteration()} to trigger a new iteration of the
+         * analysis.
+         *
+         * @since 1.0
+         */
+        public void registerClassReachabilityListener(BiConsumer<DuringAnalysisAccess, Class<?>> listener) {
+            getHostVM().registerClassReachabilityListener(listener);
+        }
+
         public SVMHost getHostVM() {
             return hostVM;
         }
@@ -263,8 +282,13 @@ public class FeatureImpl {
         }
 
         public void registerAsUnsafeAccessed(AnalysisField aField, UnsafePartitionKind partitionKind) {
-            registerAsAccessed(aField);
-            aField.registerAsUnsafeAccessed(partitionKind);
+            if (!aField.isUnsafeAccessed()) {
+                /* Register the field as unsafe accessed. */
+                aField.registerAsAccessed();
+                aField.registerAsUnsafeAccessed(partitionKind);
+                /* Force the update of registered unsafe loads and stores. */
+                bb.forceUnsafeUpdate(aField);
+            }
         }
 
         public void registerAsInvoked(Executable method) {

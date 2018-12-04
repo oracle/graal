@@ -311,6 +311,8 @@ public final class GraalFeature implements Feature {
 
         objectReplacer = new GraalObjectReplacer(config.getUniverse(), config.getMetaAccess());
         config.registerObjectReplacer(objectReplacer);
+
+        config.registerClassReachabilityListener(GraalSupport::registerPhaseStatistics);
     }
 
     @Override
@@ -426,8 +428,6 @@ public final class GraalFeature implements Feature {
     @Override
     public void duringAnalysis(DuringAnalysisAccess c) {
         DuringAnalysisAccessImpl config = (DuringAnalysisAccessImpl) c;
-
-        GraalSupport.registerPhaseStatistics(config);
 
         Deque<CallTreeNode> worklist = new ArrayDeque<>();
         worklist.addAll(methods.values());

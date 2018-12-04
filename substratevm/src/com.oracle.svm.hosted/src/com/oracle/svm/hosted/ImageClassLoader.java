@@ -442,8 +442,4 @@ public final class ImageClassLoader {
     public ClassLoader getClassLoader() {
         return classLoader;
     }
-
-    public static boolean isHostedClass(Class<?> clazz) {
-        return clazz.getName().contains("hosted") || clazz.getName().contains("hotspot");
-    }
 }
