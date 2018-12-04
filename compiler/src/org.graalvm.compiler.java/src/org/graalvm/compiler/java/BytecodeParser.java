@@ -245,7 +245,6 @@ import static org.graalvm.compiler.core.common.GraalOptions.DeoptALot;
 import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.core.common.GraalOptions.HotSpotPrintInlining;
 import static org.graalvm.compiler.core.common.GraalOptions.PrintProfilingInformation;
-import static org.graalvm.compiler.core.common.GraalOptions.ResolveClassBeforeStaticInvoke;
 import static org.graalvm.compiler.core.common.GraalOptions.StressExplicitExceptionCode;
 import static org.graalvm.compiler.core.common.GraalOptions.StressInvokeWithExceptionNode;
 import static org.graalvm.compiler.core.common.type.StampFactory.objectNonNull;
@@ -1447,7 +1446,7 @@ public class BytecodeParser implements GraphBuilderContext {
         if (callTargetIsResolved(target)) {
             ResolvedJavaMethod resolvedTarget = (ResolvedJavaMethod) target;
             ResolvedJavaType holder = resolvedTarget.getDeclaringClass();
-            if (!holder.isInitialized() && ResolveClassBeforeStaticInvoke.getValue(options)) {
+            if (!holder.isInitialized()) {
                 handleUnresolvedInvoke(target, InvokeKind.Static);
             } else {
                 ValueNode classInit = null;
