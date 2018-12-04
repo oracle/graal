@@ -217,7 +217,9 @@ public class JNIAccessFeature implements Feature {
     private static JNIAccessibleClass addClass(Class<?> classObj, DuringAnalysisAccessImpl access) {
         return JNIReflectionDictionary.singleton().addClassIfAbsent(classObj, c -> {
             AnalysisType analysisClass = access.getMetaAccess().lookupJavaType(classObj);
-            if (analysisClass.isArray() || (analysisClass.isInstanceClass() && !analysisClass.isAbstract())) {
+            if (analysisClass.isInterface() || (analysisClass.isInstanceClass() && analysisClass.isAbstract())) {
+                analysisClass.registerAsInTypeCheck();
+            } else {
                 analysisClass.registerAsAllocated(null);
             }
             return new JNIAccessibleClass(classObj);
