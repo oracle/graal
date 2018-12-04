@@ -51,6 +51,8 @@ public abstract class NativeRootNode extends RootNode implements LinkedNode {
 
     @Node.Child Node execute = Message.EXECUTE.createNode();
 
+    @Node.Child Node isNullNode = Message.IS_NULL.createNode();
+
     public final static DebugCounter nativeCalls = DebugCounter.create("Native calls");
 
     public NativeRootNode(TruffleLanguage<?> language, TruffleObject boundNative) {
@@ -127,7 +129,7 @@ public abstract class NativeRootNode extends RootNode implements LinkedNode {
                 return (short) result;
             case Object:
                 if (result instanceof TruffleObject) {
-                    if (ForeignAccess.sendIsNull(Message.IS_NULL.createNode(), (TruffleObject) result)) {
+                    if (ForeignAccess.sendIsNull(isNullNode, (TruffleObject) result)) {
                         return StaticObject.NULL;
                     }
                 }

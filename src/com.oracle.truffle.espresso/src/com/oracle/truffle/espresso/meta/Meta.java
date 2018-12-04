@@ -486,6 +486,7 @@ public final class Meta {
             return getInterfacesStream(includeSuperclasses).collect(collectingAndThen(toList(), Collections::unmodifiableList));
         }
 
+        @CompilerDirectives.TruffleBoundary
         public StaticObject allocateInstance() {
             assert !klass.isArray();
             return klass.getContext().getInterpreterToVM().newObject(klass);
@@ -507,10 +508,12 @@ public final class Meta {
             return klass.isPrimitive();
         }
 
+        @CompilerDirectives.TruffleBoundary
         public Object allocateArray(int length) {
             return klass.getContext().getInterpreterToVM().newArray(klass, length);
         }
 
+        @CompilerDirectives.TruffleBoundary
         public Object allocateArray(int length, IntFunction<Object> generator) {
             StaticObjectArray arr = (StaticObjectArray) klass.getContext().getInterpreterToVM().newArray(klass, length);
             // TODO(peterssen): Store check is missing.
@@ -680,7 +683,6 @@ public final class Meta {
          * and StaticObject.NULL/null. There's no parameter casting based on the method's signature,
          * widening nor narrowing.
          */
-        @CompilerDirectives.TruffleBoundary
         public Object invoke(Object self, Object... args) {
             assert args.length == method.getSignature().getParameterCount(false);
             assert !isStatic() || ((StaticObjectImpl) self).isStatic();
@@ -707,7 +709,6 @@ public final class Meta {
          * Invoke a guest method without parameter/return type conversion. There's no parameter
          * casting based on the method's signature, widening nor narrowing.
          */
-        @CompilerDirectives.TruffleBoundary
         public Object invokeDirect(Object self, Object... args) {
             if (isStatic()) {
                 assert args.length == method.getSignature().getParameterCount(false);
@@ -754,12 +755,10 @@ public final class Meta {
                 instance = obj;
             }
 
-            @CompilerDirectives.TruffleBoundary
             public Object invoke(Object... args) {
                 return Method.this.invoke(instance, args);
             }
 
-            @CompilerDirectives.TruffleBoundary
             public Object invokeDirect(Object... args) {
                 return Method.this.invokeDirect(instance, args);
             }
