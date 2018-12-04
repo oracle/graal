@@ -31,8 +31,8 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 import com.oracle.truffle.api.debug.DebugException;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.tools.chromeinspector.InspectorExecutionContext;
 import com.oracle.truffle.tools.chromeinspector.ScriptsHandler;
-import com.oracle.truffle.tools.chromeinspector.TruffleExecutionContext;
 
 public final class ExceptionDetails {
 
@@ -54,7 +54,7 @@ public final class ExceptionDetails {
         this.exceptionId = LAST_ID.incrementAndGet();
     }
 
-    public JSONObject createJSON(TruffleExecutionContext context) {
+    public JSONObject createJSON(InspectorExecutionContext context) {
         JSONObject json = new JSONObject();
         json.put("exceptionId", exceptionId);
         if (debugException == null || debugException.getCatchLocation() != null) {

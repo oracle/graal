@@ -66,14 +66,14 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
+import com.oracle.truffle.tools.chromeinspector.InspectorExecutionContext.CancellableRunnable;
+import com.oracle.truffle.tools.chromeinspector.InspectorExecutionContext.NoSuspendedThreadException;
+import com.oracle.truffle.tools.chromeinspector.InspectorExecutionContext.SuspendedThreadExecutor;
+import com.oracle.truffle.tools.chromeinspector.ScriptsHandler.LoadScriptListener;
 import com.oracle.truffle.tools.chromeinspector.commands.Params;
+import com.oracle.truffle.tools.chromeinspector.commands.Result;
 import com.oracle.truffle.tools.chromeinspector.domains.DebuggerDomain;
 import com.oracle.truffle.tools.chromeinspector.events.Event;
-import com.oracle.truffle.tools.chromeinspector.ScriptsHandler.LoadScriptListener;
-import com.oracle.truffle.tools.chromeinspector.TruffleExecutionContext.CancellableRunnable;
-import com.oracle.truffle.tools.chromeinspector.TruffleExecutionContext.NoSuspendedThreadException;
-import com.oracle.truffle.tools.chromeinspector.TruffleExecutionContext.SuspendedThreadExecutor;
-import com.oracle.truffle.tools.chromeinspector.commands.Result;
 import com.oracle.truffle.tools.chromeinspector.server.CommandProcessException;
 import com.oracle.truffle.tools.chromeinspector.server.InspectServerSession.CommandPostProcessor;
 import com.oracle.truffle.tools.chromeinspector.types.CallArgument;
@@ -86,11 +86,11 @@ import com.oracle.truffle.tools.chromeinspector.types.Script;
 
 import org.graalvm.collections.Pair;
 
-public final class TruffleDebugger extends DebuggerDomain {
+public final class InspectorDebugger extends DebuggerDomain {
 
     private static final StepConfig STEP_CONFIG = StepConfig.newBuilder().suspendAnchors(SourceElement.ROOT, SuspendAnchor.AFTER).build();
 
-    private final TruffleExecutionContext context;
+    private final InspectorExecutionContext context;
     private final Object suspendLock = new Object();
     private DebuggerSession ds;
     private ScriptsHandler slh;
@@ -105,11 +105,11 @@ public final class TruffleDebugger extends DebuggerDomain {
     private final Phaser onSuspendPhaser = new Phaser();
     private final BlockingQueue<CancellableRunnable> suspendThreadExecutables = new LinkedBlockingQueue<>();
 
-    public TruffleDebugger(TruffleExecutionContext context) {
+    public InspectorDebugger(InspectorExecutionContext context) {
         this(context, false);
     }
 
-    public TruffleDebugger(TruffleExecutionContext context, boolean suspend) {
+    public InspectorDebugger(InspectorExecutionContext context, boolean suspend) {
         this.context = context;
         context.setSuspendThreadExecutor(new SuspendedThreadExecutor() {
             @Override
@@ -535,7 +535,7 @@ public final class TruffleDebugger extends DebuggerDomain {
                 @Override
                 public JSONObject processException(DebugException dex) {
                     JSONObject json = new JSONObject();
-                    TruffleRuntime.fillExceptionDetails(json, dex, context);
+                    InspectorRuntime.fillExceptionDetails(json, dex, context);
                     DebugValue exceptionObject = dex.getExceptionObject();
                     if (exceptionObject != null) {
                         RemoteObject ro = context.createAndRegister(exceptionObject);

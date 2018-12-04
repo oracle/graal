@@ -59,7 +59,7 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.tools.utils.json.JSONArray;
 import com.oracle.truffle.tools.utils.json.JSONObject;
 
-import com.oracle.truffle.tools.chromeinspector.TruffleExecutionContext;
+import com.oracle.truffle.tools.chromeinspector.InspectorExecutionContext;
 import com.oracle.truffle.tools.chromeinspector.instrument.KeyStoreOptions;
 import com.oracle.truffle.tools.chromeinspector.instrument.InspectorWSConnection;
 
@@ -86,7 +86,7 @@ public final class WebSocketServer extends NanoWSD implements InspectorWSConnect
         }
     }
 
-    public static WebSocketServer get(InetSocketAddress isa, String path, TruffleExecutionContext context, boolean debugBrk,
+    public static WebSocketServer get(InetSocketAddress isa, String path, InspectorExecutionContext context, boolean debugBrk,
                     boolean secure, KeyStoreOptions keyStoreOptions, ConnectionWatcher connectionWatcher,
                     InspectServerSession initialSession) throws IOException {
         WebSocketServer wss;
@@ -276,19 +276,19 @@ public final class WebSocketServer extends NanoWSD implements InspectorWSConnect
 
     private static class ServerPathSession {
 
-        private final TruffleExecutionContext context;
+        private final InspectorExecutionContext context;
         private final AtomicReference<InspectServerSession> serverSession;
         private final AtomicBoolean debugBrk;
         private final ConnectionWatcher connectionWatcher;
 
-        ServerPathSession(TruffleExecutionContext context, InspectServerSession serverSession, boolean debugBrk, ConnectionWatcher connectionWatcher) {
+        ServerPathSession(InspectorExecutionContext context, InspectServerSession serverSession, boolean debugBrk, ConnectionWatcher connectionWatcher) {
             this.context = context;
             this.serverSession = new AtomicReference<>(serverSession);
             this.debugBrk = new AtomicBoolean(debugBrk);
             this.connectionWatcher = connectionWatcher;
         }
 
-        TruffleExecutionContext getContext() {
+        InspectorExecutionContext getContext() {
             return context;
         }
 
