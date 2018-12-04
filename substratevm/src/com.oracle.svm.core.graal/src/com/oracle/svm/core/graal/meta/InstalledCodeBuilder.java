@@ -342,7 +342,7 @@ public class InstalledCodeBuilder {
                  * immediately. So all metadata must be registered at this point.
                  */
                 installedCode.setAddress(code.rawValue(), method);
-                int tier = compilation.getName().endsWith(TruffleCompiler.SECOND_TIER_COMPILATION_SUFFIX) ? 2 : 1;
+                int tier = compilation.getName().endsWith(TruffleCompiler.SECOND_TIER_COMPILATION_SUFFIX) ? TruffleCompiler.LAST_TIER_INDEX : TruffleCompiler.FIRST_TIER_INDEX;
                 installedCode.setTier(tier);
             } catch (Throwable e) {
                 errorBox[0] = e;

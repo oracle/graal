@@ -46,8 +46,6 @@ public interface SubstrateInstalledCode {
 
     void setTier(int tier);
 
-    int getTier();
-
     /**
      * Provides access to a {@link SubstrateInstalledCode}.
      *

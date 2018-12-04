@@ -80,11 +80,6 @@ public class SubstrateInstalledCodeImpl extends InstalledCode implements Substra
     }
 
     @Override
-    public int getTier() {
-        return 1;
-    }
-
-    @Override
     public long getStart() {
         throw shouldNotReachHere("No implementation in Substrate VM");
     }

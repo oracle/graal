@@ -26,6 +26,7 @@ package com.oracle.svm.truffle.api;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
+import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.WordFactory;
@@ -41,14 +42,12 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements SubstrateInstalledCode, OptimizedAssumptionDependency {
 
-    private static final int LAST_TIER_INDEX = 2;
-
     protected long address;
-    protected int tier;
+    protected volatile int tier;
 
     public SubstrateOptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
         super(sourceCallTarget, rootNode);
-        this.tier = 1;
+        this.tier = TruffleCompiler.FIRST_TIER_INDEX;
     }
 
     @SuppressWarnings("sync-override")
@@ -60,11 +59,6 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
     @Override
     public void setTier(int tier) {
         this.tier = tier;
-    }
-
-    @Override
-    public int getTier() {
-        return tier;
     }
 
     @Override
@@ -89,13 +83,14 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
 
     @Override
     public boolean isValidLastTier() {
-        // Note: this is correct because the tier field can only change once from 1 to 2.
+        // Note: this is correct because the tier field can only grow
+        // (i.e. change once from 1 to 2).
         while (true) {
             int tier0 = this.tier;
             long address1 = this.address;
             int tier2 = this.tier;
             if (tier0 == tier2) {
-                return address1 != 0 && tier0 == LAST_TIER_INDEX;
+                return address1 != 0 && tier0 == TruffleCompiler.LAST_TIER_INDEX;
             }
         }
     }
