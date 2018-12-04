@@ -51,7 +51,6 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.lir.CompositeValueClass;
 import org.graalvm.compiler.lir.LIRInstructionClass;
-import org.graalvm.compiler.lir.alloc.trace.TraceAllocationPhase;
 import org.graalvm.compiler.lir.phases.LIRPhase;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.nodes.EncodedGraph;
@@ -98,7 +97,6 @@ public class GraalSupport {
 
     protected Map<Class<?>, BasePhase.BasePhaseStatistics> basePhaseStatistics;
     protected Map<Class<?>, LIRPhase.LIRPhaseStatistics> lirPhaseStatistics;
-    protected Map<Class<?>, TraceAllocationPhase.AllocationStatistics> traceAllocationPhaseStatistics;
     protected Function<Providers, Backend> runtimeBackendProvider;
 
     protected final GlobalMetrics metricValues = new GlobalMetrics();
@@ -182,7 +180,6 @@ public class GraalSupport {
     public static void allocatePhaseStatisticsCache() {
         GraalSupport.get().basePhaseStatistics = new HashMap<>();
         GraalSupport.get().lirPhaseStatistics = new HashMap<>();
-        GraalSupport.get().traceAllocationPhaseStatistics = new HashMap<>();
     }
 
     /* Invoked once for every class that is reachable in the native image. */
@@ -197,8 +194,6 @@ public class GraalSupport {
             } else if (LIRPhase.class.isAssignableFrom(newlyReachableClass)) {
                 registerStatistics(newlyReachableClass, GraalSupport.get().lirPhaseStatistics, new LIRPhase.LIRPhaseStatistics(newlyReachableClass), access);
 
-            } else if (TraceAllocationPhase.class.isAssignableFrom(newlyReachableClass)) {
-                registerStatistics(newlyReachableClass, GraalSupport.get().traceAllocationPhaseStatistics, new TraceAllocationPhase.AllocationStatistics(newlyReachableClass), access);
             }
         }
     }
