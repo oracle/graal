@@ -142,24 +142,6 @@ gateLinuxAArch64 : ${linux-aarch64} ${gateCommon} {
   }
 }
 
-gateLinuxAMD64TraceRA : ${gateLinuxAMD64} {
-  environment : {
-    EXTRA_VM_ARGS : "-Dgraal.TraceRA=true"
-  }
-}
-
-gateLinuxAMD64TraceRABU : ${gateLinuxAMD64} {
-  environment : {
-    EXTRA_VM_ARGS : "-Dgraal.TraceRA=true -Dgraal.TraceRAPolicy=BottomUpOnly"
-  }
-}
-
-gateLinuxAMD64TraceRASingleBlock : ${gateLinuxAMD64} {
-  environment : {
-    EXTRA_VM_ARGS : "-Dgraal.TraceRA=true -Dgraal.TraceRAPolicy=BottomUpOnly -Dgraal.TraceBuilding=SingleBlock"
-  }
-}
-
 gateJAOTC : {
   environment : {
     EXTRA_VM_ARGS : ""
@@ -173,5 +155,3 @@ gateLinuxAMD64Bootstrap : ${gateLinuxAMD64} { capabilities : ${gateLinuxAMD64.ca
 gateDarwinAMD64Bootstrap : ${gateDarwinAMD64}
 gateSolarisSPARCBootstrap : ${gateSolarisSPARC} { capabilities : ${gateSolarisSPARC.capabilities} [manycores] }
 gateLinuxSPARCBootstrap : ${gateLinuxSPARC} # No manycore
-gateLinuxAMD64TraceRABootstrap : ${gateLinuxAMD64TraceRA} { capabilities : ${gateLinuxAMD64TraceRA.capabilities} [manycores] }
-gateLinuxAMD64TraceRABUBootstrap : ${gateLinuxAMD64TraceRABU} { capabilities : ${gateLinuxAMD64TraceRABU.capabilities} [manycores] }
