@@ -50,6 +50,31 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.amd64.AMD64;
 
+/**
+ * <pre>
+ *                     ALGORITHM DESCRIPTION - LOG()
+ *                     ---------------------
+ *
+ *    x=2^k * mx, mx in [1,2)
+ *
+ *    Get B~1/mx based on the output of rcpss instruction (B0)
+ *    B = int((B0*2^7+0.5))/2^7
+ *
+ *    Reduced argument: r=B*mx-1.0 (computed accurately in high and low parts)
+ *
+ *    Result:  k*log(2) - log(B) + p(r) if |x-1| >= small value (2^-6)  and
+ *             p(r) is a degree 7 polynomial
+ *             -log(B) read from data table (high, low parts)
+ *             Result is formed from high and low parts
+ *
+ * Special cases:
+ *  log(NaN) = quiet NaN, and raise invalid exception
+ *  log(+INF) = that INF
+ *  log(0) = -INF with divide-by-zero exception raised
+ *  log(1) = +0
+ *  log(x) = NaN with invalid exception raised if x < -0, including -INF
+ * </pre>
+ */
 public final class AMD64MathLogOp extends AMD64MathIntrinsicUnaryOp {
 
     public static final LIRInstructionClass<AMD64MathLogOp> TYPE = LIRInstructionClass.create(AMD64MathLogOp.class);
@@ -58,31 +83,6 @@ public final class AMD64MathLogOp extends AMD64MathIntrinsicUnaryOp {
         super(TYPE, /* GPR */ rax, rcx, rdx, r8, r11,
                         /* XMM */ xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7);
     }
-
-    /******************************************************************************/
-// ALGORITHM DESCRIPTION - LOG()
-// ---------------------
-//
-// x=2^k * mx, mx in [1,2)
-//
-// Get B~1/mx based on the output of rcpss instruction (B0)
-// B = int((B0*2^7+0.5))/2^7
-//
-// Reduced argument: r=B*mx-1.0 (computed accurately in high and low parts)
-//
-// Result: k*log(2) - log(B) + p(r) if |x-1| >= small value (2^-6) and
-// p(r) is a degree 7 polynomial
-// -log(B) read from data table (high, low parts)
-// Result is formed from high and low parts
-//
-// Special cases:
-// log(NaN) = quiet NaN, and raise invalid exception
-// log(+INF) = that INF
-// log(0) = -INF with divide-by-zero exception raised
-// log(1) = +0
-// log(x) = NaN with invalid exception raised if x < -0, including -INF
-//
-    /******************************************************************************/
 
     private ArrayDataPointerConstant lTbl = pointerConstant(16, new int[]{
             // @formatter:off

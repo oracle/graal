@@ -55,6 +55,75 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.amd64.AMD64;
 
+/**
+ * <pre>
+ *                     ALGORITHM DESCRIPTION - TAN()
+ *                     ---------------------
+ *
+ * Polynomials coefficients and other constants.
+ *
+ * Note that in this algorithm, there is a different polynomial for
+ * each breakpoint, so there are 32 sets of polynomial coefficients
+ * as well as 32 instances of the other constants.
+ *
+ * The polynomial coefficients and constants are offset from the start
+ * of the main block as follows:
+ *
+ *   0:  c8 | c0
+ *  16:  c9 | c1
+ *  32: c10 | c2
+ *  48: c11 | c3
+ *  64: c12 | c4
+ *  80: c13 | c5
+ *  96: c14 | c6
+ * 112: c15 | c7
+ * 128: T_hi
+ * 136: T_lo
+ * 144: Sigma
+ * 152: T_hl
+ * 160: Tau
+ * 168: Mask
+ * 176: (end of block)
+ *
+ * The total table size is therefore 5632 bytes.
+ *
+ * Note that c0 and c1 are always zero. We could try storing
+ * other constants here, and just loading the low part of the
+ * SIMD register in these cases, after ensuring the high part
+ * is zero.
+ *
+ * The higher terms of the polynomial are computed in the *low*
+ * part of the SIMD register. This is so we can overlap the
+ * multiplication by r^8 and the unpacking of the other part.
+ *
+ * The constants are:
+ * T_hi + T_lo = accurate constant term in power series
+ * Sigma + T_hl = accurate coefficient of r in power series (Sigma=1 bit)
+ * Tau = multiplier for the reciprocal, always -1 or 0
+ *
+ * The basic reconstruction formula using these constants is:
+ *
+ * High = tau * recip_hi + t_hi
+ * Med = (sgn * r + t_hl * r)_hi
+ * Low = (sgn * r + t_hl * r)_lo +
+ *       tau * recip_lo + T_lo + (T_hl + sigma) * c + pol
+ *
+ * where pol = c0 + c1 * r + c2 * r^2 + ... + c15 * r^15
+ *
+ * (c0 = c1 = 0, but using them keeps SIMD regularity)
+ *
+ * We then do a compensated sum High + Med, add the low parts together
+ * and then do the final sum.
+ *
+ * Here recip_hi + recip_lo is an accurate reciprocal of the remainder
+ * modulo pi/2
+ *
+ * Special cases:
+ *  tan(NaN) = quiet NaN, and raise invalid exception
+ *  tan(INF) = NaN and raise invalid exception
+ *  tan(+/-0) = +/-0
+ * </pre>
+ */
 public final class AMD64MathTanOp extends AMD64MathIntrinsicUnaryOp {
 
     public static final LIRInstructionClass<AMD64MathTanOp> TYPE = LIRInstructionClass.create(AMD64MathTanOp.class);
@@ -64,76 +133,6 @@ public final class AMD64MathTanOp extends AMD64MathIntrinsicUnaryOp {
                         /* XMM */ xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7);
     }
 
-    /******************************************************************************/
-// ALGORITHM DESCRIPTION - TAN()
-// ---------------------
-//
-// Polynomials coefficients and other constants.
-//
-// Note that in this algorithm, there is a different polynomial for
-// each breakpoint, so there are 32 sets of polynomial coefficients
-// as well as 32 instances of the other constants.
-//
-// The polynomial coefficients and constants are offset from the start
-// of the main block as follows:
-//
-// 0: c8 | c0
-// 16: c9 | c1
-// 32: c10 | c2
-// 48: c11 | c3
-// 64: c12 | c4
-// 80: c13 | c5
-// 96: c14 | c6
-// 112: c15 | c7
-// 128: T_hi
-// 136: T_lo
-// 144: Sigma
-// 152: T_hl
-// 160: Tau
-// 168: Mask
-// 176: (end of block)
-//
-// The total table size is therefore 5632 bytes.
-//
-// Note that c0 and c1 are always zero. We could try storing
-// other constants here, and just loading the low part of the
-// SIMD register in these cases, after ensuring the high part
-// is zero.
-//
-// The higher terms of the polynomial are computed in the *low*
-// part of the SIMD register. This is so we can overlap the
-// multiplication by r^8 and the unpacking of the other part.
-//
-// The constants are:
-// T_hi + T_lo = accurate constant term in power series
-// Sigma + T_hl = accurate coefficient of r in power series (Sigma=1 bit)
-// Tau = multiplier for the reciprocal, always -1 or 0
-//
-// The basic reconstruction formula using these constants is:
-//
-// High = tau * recip_hi + t_hi
-// Med = (sgn * r + t_hl * r)_hi
-// Low = (sgn * r + t_hl * r)_lo +
-// tau * recip_lo + T_lo + (T_hl + sigma) * c + pol
-//
-// where pol = c0 + c1 * r + c2 * r^2 + ... + c15 * r^15
-//
-// (c0 = c1 = 0, but using them keeps SIMD regularity)
-//
-// We then do a compensated sum High + Med, add the low parts together
-// and then do the final sum.
-//
-// Here recip_hi + recip_lo is an accurate reciprocal of the remainder
-// modulo pi/2
-//
-// Special cases:
-// tan(NaN) = quiet NaN, and raise invalid exception
-// tan(INF) = NaN and raise invalid exception
-// tan(+/-0) = +/-0
-//
-    /******************************************************************************/
-
-// The 64 bit code is at most SSE2 compliant
     private ArrayDataPointerConstant onehalf = pointerConstant(16, new int[]{
             // @formatter:off
             0x00000000, 0x3fe00000, 0x00000000, 0x3fe00000

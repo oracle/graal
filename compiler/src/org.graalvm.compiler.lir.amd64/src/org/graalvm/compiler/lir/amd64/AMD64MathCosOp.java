@@ -53,6 +53,149 @@ import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.asm.ArrayDataPointerConstant;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
+/**
+ * <pre>
+ *                     ALGORITHM DESCRIPTION - COS()
+ *                     ---------------------
+ *
+ *     1. RANGE REDUCTION
+ *
+ *     We perform an initial range reduction from X to r with
+ *
+ *          X =~= N * pi/32 + r
+ *
+ *     so that |r| <= pi/64 + epsilon. We restrict inputs to those
+ *     where |N| <= 932560. Beyond this, the range reduction is
+ *     insufficiently accurate. For extremely small inputs,
+ *     denormalization can occur internally, impacting performance.
+ *     This means that the main path is actually only taken for
+ *     2^-252 <= |X| < 90112.
+ *
+ *     To avoid branches, we perform the range reduction to full
+ *     accuracy each time.
+ *
+ *          X - N * (P_1 + P_2 + P_3)
+ *
+ *     where P_1 and P_2 are 32-bit numbers (so multiplication by N
+ *     is exact) and P_3 is a 53-bit number. Together, these
+ *     approximate pi well enough for all cases in the restricted
+ *     range.
+ *
+ *     The main reduction sequence is:
+ *
+ *             y = 32/pi * x
+ *             N = integer(y)
+ *     (computed by adding and subtracting off SHIFTER)
+ *
+ *             m_1 = N * P_1
+ *             m_2 = N * P_2
+ *             r_1 = x - m_1
+ *             r = r_1 - m_2
+ *     (this r can be used for most of the calculation)
+ *
+ *             c_1 = r_1 - r
+ *             m_3 = N * P_3
+ *             c_2 = c_1 - m_2
+ *             c = c_2 - m_3
+ *
+ *     2. MAIN ALGORITHM
+ *
+ *     The algorithm uses a table lookup based on B = M * pi / 32
+ *     where M = N mod 64. The stored values are:
+ *       sigma             closest power of 2 to cos(B)
+ *       C_hl              53-bit cos(B) - sigma
+ *       S_hi + S_lo       2 * 53-bit sin(B)
+ *
+ *     The computation is organized as follows:
+ *
+ *          sin(B + r + c) = [sin(B) + sigma * r] +
+ *                           r * (cos(B) - sigma) +
+ *                           sin(B) * [cos(r + c) - 1] +
+ *                           cos(B) * [sin(r + c) - r]
+ *
+ *     which is approximately:
+ *
+ *          [S_hi + sigma * r] +
+ *          C_hl * r +
+ *          S_lo + S_hi * [(cos(r) - 1) - r * c] +
+ *          (C_hl + sigma) * [(sin(r) - r) + c]
+ *
+ *     and this is what is actually computed. We separate this sum
+ *     into four parts:
+ *
+ *          hi + med + pols + corr
+ *
+ *     where
+ *
+ *          hi       = S_hi + sigma r
+ *          med      = C_hl * r
+ *          pols     = S_hi * (cos(r) - 1) + (C_hl + sigma) * (sin(r) - r)
+ *          corr     = S_lo + c * ((C_hl + sigma) - S_hi * r)
+ *
+ *     3. POLYNOMIAL
+ *
+ *     The polynomial S_hi * (cos(r) - 1) + (C_hl + sigma) *
+ *     (sin(r) - r) can be rearranged freely, since it is quite
+ *     small, so we exploit parallelism to the fullest.
+ *
+ *          psc4       =   SC_4 * r_1
+ *          msc4       =   psc4 * r
+ *          r2         =   r * r
+ *          msc2       =   SC_2 * r2
+ *          r4         =   r2 * r2
+ *          psc3       =   SC_3 + msc4
+ *          psc1       =   SC_1 + msc2
+ *          msc3       =   r4 * psc3
+ *          sincospols =   psc1 + msc3
+ *          pols       =   sincospols *
+ *                         <S_hi * r^2 | (C_hl + sigma) * r^3>
+ *
+ *     4. CORRECTION TERM
+ *
+ *     This is where the "c" component of the range reduction is
+ *     taken into account; recall that just "r" is used for most of
+ *     the calculation.
+ *
+ *          -c   = m_3 - c_2
+ *          -d   = S_hi * r - (C_hl + sigma)
+ *          corr = -c * -d + S_lo
+ *
+ *     5. COMPENSATED SUMMATIONS
+ *
+ *     The two successive compensated summations add up the high
+ *     and medium parts, leaving just the low parts to add up at
+ *     the end.
+ *
+ *          rs        =  sigma * r
+ *          res_int   =  S_hi + rs
+ *          k_0       =  S_hi - res_int
+ *          k_2       =  k_0 + rs
+ *          med       =  C_hl * r
+ *          res_hi    =  res_int + med
+ *          k_1       =  res_int - res_hi
+ *          k_3       =  k_1 + med
+ *
+ *     6. FINAL SUMMATION
+ *
+ *     We now add up all the small parts:
+ *
+ *          res_lo = pols(hi) + pols(lo) + corr + k_1 + k_3
+ *
+ *     Now the overall result is just:
+ *
+ *          res_hi + res_lo
+ *
+ *     7. SMALL ARGUMENTS
+ *
+ *     Inputs with |X| < 2^-252 are treated specially as
+ *     1 - |x|.
+ *
+ * Special cases:
+ *  cos(NaN) = quiet NaN, and raise invalid exception
+ *  cos(INF) = NaN and raise invalid exception
+ *  cos(0) = 1
+ * </pre>
+ */
 public final class AMD64MathCosOp extends AMD64MathIntrinsicUnaryOp {
 
     public static final LIRInstructionClass<AMD64MathCosOp> TYPE = LIRInstructionClass.create(AMD64MathCosOp.class);
@@ -61,149 +204,6 @@ public final class AMD64MathCosOp extends AMD64MathIntrinsicUnaryOp {
         super(TYPE, /* GPR */ rax, rcx, rdx, rbx, rsi, rdi, r8, r9, r10, r11,
                         /* XMM */ xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7);
     }
-
-    /******************************************************************************/
-// ALGORITHM DESCRIPTION - COS()
-// ---------------------
-//
-// 1. RANGE REDUCTION
-//
-// We perform an initial range reduction from X to r with
-//
-// X =~= N * pi/32 + r
-//
-// so that |r| <= pi/64 + epsilon. We restrict inputs to those
-// where |N| <= 932560. Beyond this, the range reduction is
-// insufficiently accurate. For extremely small inputs,
-// denormalization can occur internally, impacting performance.
-// This means that the main path is actually only taken for
-// 2^-252 <= |X| < 90112.
-//
-// To avoid branches, we perform the range reduction to full
-// accuracy each time.
-//
-// X - N * (P_1 + P_2 + P_3)
-//
-// where P_1 and P_2 are 32-bit numbers (so multiplication by N
-// is exact) and P_3 is a 53-bit number. Together, these
-// approximate pi well enough for all cases in the restricted
-// range.
-//
-// The main reduction sequence is:
-//
-// y = 32/pi * x
-// N = integer(y)
-// (computed by adding and subtracting off SHIFTER)
-//
-// m_1 = N * P_1
-// m_2 = N * P_2
-// r_1 = x - m_1
-// r = r_1 - m_2
-// (this r can be used for most of the calculation)
-//
-// c_1 = r_1 - r
-// m_3 = N * P_3
-// c_2 = c_1 - m_2
-// c = c_2 - m_3
-//
-// 2. MAIN ALGORITHM
-//
-// The algorithm uses a table lookup based on B = M * pi / 32
-// where M = N mod 64. The stored values are:
-// sigma closest power of 2 to cos(B)
-// C_hl 53-bit cos(B) - sigma
-// S_hi + S_lo 2 * 53-bit sin(B)
-//
-// The computation is organized as follows:
-//
-// sin(B + r + c) = [sin(B) + sigma * r] +
-// r * (cos(B) - sigma) +
-// sin(B) * [cos(r + c) - 1] +
-// cos(B) * [sin(r + c) - r]
-//
-// which is approximately:
-//
-// [S_hi + sigma * r] +
-// C_hl * r +
-// S_lo + S_hi * [(cos(r) - 1) - r * c] +
-// (C_hl + sigma) * [(sin(r) - r) + c]
-//
-// and this is what is actually computed. We separate this sum
-// into four parts:
-//
-// hi + med + pols + corr
-//
-// where
-//
-// hi = S_hi + sigma r
-// med = C_hl * r
-// pols = S_hi * (cos(r) - 1) + (C_hl + sigma) * (sin(r) - r)
-// corr = S_lo + c * ((C_hl + sigma) - S_hi * r)
-//
-// 3. POLYNOMIAL
-//
-// The polynomial S_hi * (cos(r) - 1) + (C_hl + sigma) *
-// (sin(r) - r) can be rearranged freely, since it is quite
-// small, so we exploit parallelism to the fullest.
-//
-// psc4 = SC_4 * r_1
-// msc4 = psc4 * r
-// r2 = r * r
-// msc2 = SC_2 * r2
-// r4 = r2 * r2
-// psc3 = SC_3 + msc4
-// psc1 = SC_1 + msc2
-// msc3 = r4 * psc3
-// sincospols = psc1 + msc3
-// pols = sincospols *
-// <S_hi * r^2 | (C_hl + sigma) * r^3>
-//
-// 4. CORRECTION TERM
-//
-// This is where the "c" component of the range reduction is
-// taken into account; recall that just "r" is used for most of
-// the calculation.
-//
-// -c = m_3 - c_2
-// -d = S_hi * r - (C_hl + sigma)
-// corr = -c * -d + S_lo
-//
-// 5. COMPENSATED SUMMATIONS
-//
-// The two successive compensated summations add up the high
-// and medium parts, leaving just the low parts to add up at
-// the end.
-//
-// rs = sigma * r
-// res_int = S_hi + rs
-// k_0 = S_hi - res_int
-// k_2 = k_0 + rs
-// med = C_hl * r
-// res_hi = res_int + med
-// k_1 = res_int - res_hi
-// k_3 = k_1 + med
-//
-// 6. FINAL SUMMATION
-//
-// We now add up all the small parts:
-//
-// res_lo = pols(hi) + pols(lo) + corr + k_1 + k_3
-//
-// Now the overall result is just:
-//
-// res_hi + res_lo
-//
-// 7. SMALL ARGUMENTS
-//
-// Inputs with |X| < 2^-252 are treated specially as
-// 1 - |x|.
-//
-// Special cases:
-// cos(NaN) = quiet NaN, and raise invalid exception
-// cos(INF) = NaN and raise invalid exception
-// cos(0) = 1
-//
-    /******************************************************************************/
 
     private ArrayDataPointerConstant onehalf = pointerConstant(16, new int[]{
             // @formatter:off

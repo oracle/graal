@@ -48,6 +48,31 @@ import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.asm.ArrayDataPointerConstant;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
+/**
+ * <pre>
+ *                     ALGORITHM DESCRIPTION - LOG10()
+ *                     ---------------------
+ *
+ *    Let x=2^k * mx, mx in [1,2)
+ *
+ *    Get B~1/mx based on the output of rcpss instruction (B0)
+ *    B = int((B0*LH*2^7+0.5))/2^7
+ *    LH is a short approximation for log10(e)
+ *
+ *    Reduced argument: r=B*mx-LH (computed accurately in high and low parts)
+ *
+ *    Result:  k*log10(2) - log(B) + p(r)
+ *             p(r) is a degree 7 polynomial
+ *             -log(B) read from data table (high, low parts)
+ *             Result is formed from high and low parts
+ *
+ * Special cases:
+ *  log10(0) = -INF with divide-by-zero exception raised
+ *  log10(1) = +0
+ *  log10(x) = NaN with invalid exception raised if x < -0, including -INF
+ *  log10(+INF) = +INF
+ * </pre>
+ */
 public final class AMD64MathLog10Op extends AMD64MathIntrinsicUnaryOp {
 
     public static final LIRInstructionClass<AMD64MathLog10Op> TYPE = LIRInstructionClass.create(AMD64MathLog10Op.class);
@@ -57,32 +82,6 @@ public final class AMD64MathLog10Op extends AMD64MathIntrinsicUnaryOp {
                         /* XMM */ xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7);
     }
 
-    /******************************************************************************/
-// ALGORITHM DESCRIPTION - LOG10()
-// ---------------------
-//
-// Let x=2^k * mx, mx in [1,2)
-//
-// Get B~1/mx based on the output of rcpss instruction (B0)
-// B = int((B0*LH*2^7+0.5))/2^7
-// LH is a short approximation for log10(e)
-//
-// Reduced argument: r=B*mx-LH (computed accurately in high and low parts)
-//
-// Result: k*log10(2) - log(B) + p(r)
-// p(r) is a degree 7 polynomial
-// -log(B) read from data table (high, low parts)
-// Result is formed from high and low parts
-//
-// Special cases:
-// log10(0) = -INF with divide-by-zero exception raised
-// log10(1) = +0
-// log10(x) = NaN with invalid exception raised if x < -0, including -INF
-// log10(+INF) = +INF
-//
-    /******************************************************************************/
-
-// The 64 bit code is at most SSE2 compliant
     private ArrayDataPointerConstant highsigmask = pointerConstant(16, new int[]{
             // @formatter:off
             0xf8000000, 0xffffffff, 0x00000000, 0xffffe000

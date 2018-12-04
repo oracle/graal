@@ -52,68 +52,67 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.code.Register;
 
+/**
+ * <pre>
+ *                     ALGORITHM DESCRIPTION  - POW()
+ *                     ---------------------
+ *
+ *    Let x=2^k * mx, mx in [1,2)
+ *
+ *    log2(x) calculation:
+ *
+ *    Get B~1/mx based on the output of rcpps instruction (B0)
+ *    B = int((B0*LH*2^9+0.5))/2^9
+ *    LH is a short approximation for log2(e)
+ *
+ *    Reduced argument, scaled by LH:
+ *                r=B*mx-LH (computed accurately in high and low parts)
+ *
+ *    log2(x) result:  k - log2(B) + p(r)
+ *             p(r) is a degree 8 polynomial
+ *             -log2(B) read from data table (high, low parts)
+ *             log2(x) is formed from high and low parts
+ *    For |x| in [1-1/32, 1+1/16), a slower but more accurate computation
+ *    based om the same table design is performed.
+ *
+ *   Main path is taken if | floor(log2(|log2(|x|)|) + floor(log2|y|) | < 8,
+ *   to filter out all potential OF/UF cases.
+ *   exp2(y*log2(x)) is computed using an 8-bit index table and a degree 5
+ *   polynomial
+ *
+ * Special cases:
+ *  pow(-0,y) = -INF and raises the divide-by-zero exception for y an odd
+ *  integer < 0.
+ *  pow(-0,y) = +INF and raises the divide-by-zero exception for y < 0 and
+ *  not an odd integer.
+ *  pow(-0,y) = -0 for y an odd integer > 0.
+ *  pow(-0,y) = +0 for y > 0 and not an odd integer.
+ *  pow(-1,-INF) = NaN.
+ *  pow(+1,y) = NaN for any y, even a NaN.
+ *  pow(x,-0) = 1 for any x, even a NaN.
+ *  pow(x,y) = a NaN and raises the invalid exception for finite x < 0 and
+ *  finite non-integer y.
+ *  pow(x,-INF) = +INF for |x|<1.
+ *  pow(x,-INF) = +0 for |x|>1.
+ *  pow(x,+INF) = +0 for |x|<1.
+ *  pow(x,+INF) = +INF for |x|>1.
+ *  pow(-INF,y) = -0 for y an odd integer < 0.
+ *  pow(-INF,y) = +0 for y < 0 and not an odd integer.
+ *  pow(-INF,y) = -INF for y an odd integer > 0.
+ *  pow(-INF,y) = +INF for y > 0 and not an odd integer.
+ *  pow(+INF,y) = +0 for y <0.
+ *  pow(+INF,y) = +INF for y >0.
+ * </pre>
+ */
 public final class AMD64MathPowOp extends AMD64MathIntrinsicBinaryOp {
 
     public static final LIRInstructionClass<AMD64MathPowOp> TYPE = LIRInstructionClass.create(AMD64MathPowOp.class);
 
     public AMD64MathPowOp() {
         super(TYPE, /* GPR */ rax, rcx, rdx, r8, r9, r10, r11,
-                /* XMM */ xmm2, xmm3, xmm4, xmm5, xmm6, xmm7);
+                        /* XMM */ xmm2, xmm3, xmm4, xmm5, xmm6, xmm7);
     }
 
-    /******************************************************************************/
-// ALGORITHM DESCRIPTION - POW()
-// ---------------------
-//
-// Let x=2^k * mx, mx in [1,2)
-//
-// log2(x) calculation:
-//
-// Get B~1/mx based on the output of rcpps instruction (B0)
-// B = int((B0*LH*2^9+0.5))/2^9
-// LH is a short approximation for log2(e)
-//
-// Reduced argument, scaled by LH:
-// r=B*mx-LH (computed accurately in high and low parts)
-//
-// log2(x) result: k - log2(B) + p(r)
-// p(r) is a degree 8 polynomial
-// -log2(B) read from data table (high, low parts)
-// log2(x) is formed from high and low parts
-// For |x| in [1-1/32, 1+1/16), a slower but more accurate computation
-// based om the same table design is performed.
-//
-// Main path is taken if | floor(log2(|log2(|x|)|) + floor(log2|y|) | < 8,
-// to filter out all potential OF/UF cases.
-// exp2(y*log2(x)) is computed using an 8-bit index table and a degree 5
-// polynomial
-//
-// Special cases:
-// pow(-0,y) = -INF and raises the divide-by-zero exception for y an odd
-// integer < 0.
-// pow(-0,y) = +INF and raises the divide-by-zero exception for y < 0 and
-// not an odd integer.
-// pow(-0,y) = -0 for y an odd integer > 0.
-// pow(-0,y) = +0 for y > 0 and not an odd integer.
-// pow(-1,-INF) = NaN.
-// pow(+1,y) = NaN for any y, even a NaN.
-// pow(x,-0) = 1 for any x, even a NaN.
-// pow(x,y) = a NaN and raises the invalid exception for finite x < 0 and
-// finite non-integer y.
-// pow(x,-INF) = +INF for |x|<1.
-// pow(x,-INF) = +0 for |x|>1.
-// pow(x,+INF) = +0 for |x|<1.
-// pow(x,+INF) = +INF for |x|>1.
-// pow(-INF,y) = -0 for y an odd integer < 0.
-// pow(-INF,y) = +0 for y < 0 and not an odd integer.
-// pow(-INF,y) = -INF for y an odd integer > 0.
-// pow(-INF,y) = +INF for y > 0 and not an odd integer.
-// pow(+INF,y) = +0 for y <0.
-// pow(+INF,y) = +INF for y >0.
-//
-    /******************************************************************************/
-
-// The 64 bit code is at most SSE2 compliant
     private ArrayDataPointerConstant highsigmask = pointerConstant(16, new int[]{
             //@formatter:off
             0x00000000, 0xfffff800, 0x00000000, 0xfffff800
@@ -827,7 +826,6 @@ public final class AMD64MathPowOp extends AMD64MathIntrinsicBinaryOp {
             //@formatter:on
     });
 
-
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         // registers,
@@ -899,7 +897,6 @@ public final class AMD64MathPowOp extends AMD64MathIntrinsicBinaryOp {
         Register tmp2 = r9;
         Register tmp3 = r10;
         Register tmp4 = r11;
-
 
         masm.subq(rsp, 40);
         masm.movsd(new AMD64Address(rsp, 8), xmm0);

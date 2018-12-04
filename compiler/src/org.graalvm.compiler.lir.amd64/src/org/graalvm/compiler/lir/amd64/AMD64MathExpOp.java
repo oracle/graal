@@ -47,6 +47,40 @@ import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.asm.ArrayDataPointerConstant;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
+/**
+ * <pre>
+ *                     ALGORITHM DESCRIPTION - EXP()
+ *                     ---------------------
+ *
+ * Description:
+ *  Let K = 64 (table size).
+ *        x    x/log(2)     n
+ *       e  = 2          = 2 * T[j] * (1 + P(y))
+ *  where
+ *       x = m*log(2)/K + y,    y in [-log(2)/K..log(2)/K]
+ *       m = n*K + j,           m,n,j - signed integer, j in [-K/2..K/2]
+ *                  j/K
+ *       values of 2   are tabulated as T[j] = T_hi[j] ( 1 + T_lo[j]).
+ *
+ *       P(y) is a minimax polynomial approximation of exp(x)-1
+ *       on small interval [-log(2)/K..log(2)/K] (were calculated by Maple V).
+ *
+ *  To avoid problems with arithmetic overflow and underflow,
+ *            n                        n1  n2
+ *  value of 2  is safely computed as 2 * 2 where n1 in [-BIAS/2..BIAS/2]
+ *  where BIAS is a value of exponent bias.
+ *
+ * Special cases:
+ *  exp(NaN) = NaN
+ *  exp(+INF) = +INF
+ *  exp(-INF) = 0
+ *  exp(x) = 1 for subnormals
+ *  for finite argument, only exp(0)=1 is exact
+ *  For IEEE double
+ *    if x >  709.782712893383973096 then exp(x) overflow
+ *    if x < -745.133219101941108420 then exp(x) underflow
+ * </pre>
+ */
 public final class AMD64MathExpOp extends AMD64MathIntrinsicUnaryOp {
 
     public static final LIRInstructionClass<AMD64MathExpOp> TYPE = LIRInstructionClass.create(AMD64MathExpOp.class);
@@ -55,40 +89,6 @@ public final class AMD64MathExpOp extends AMD64MathIntrinsicUnaryOp {
         super(TYPE, /* GPR */ rax, rcx, rdx, r11,
                         /* XMM */ xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7);
     }
-
-    /******************************************************************************/
-// ALGORITHM DESCRIPTION - EXP()
-// ---------------------
-//
-// Description:
-// Let K = 64 (table size).
-// x x/log(2) n
-// e = 2 = 2 * T[j] * (1 + P(y))
-// where
-// x = m*log(2)/K + y, y in [-log(2)/K..log(2)/K]
-// m = n*K + j, m,n,j - signed integer, j in [-K/2..K/2]
-// j/K
-// values of 2 are tabulated as T[j] = T_hi[j] ( 1 + T_lo[j]).
-//
-// P(y) is a minimax polynomial approximation of exp(x)-1
-// on small interval [-log(2)/K..log(2)/K] (were calculated by Maple V).
-//
-// To avoid problems with arithmetic overflow and underflow,
-// n n1 n2
-// value of 2 is safely computed as 2 * 2 where n1 in [-BIAS/2..BIAS/2]
-// where BIAS is a value of exponent bias.
-//
-// Special cases:
-// exp(NaN) = NaN
-// exp(+INF) = +INF
-// exp(-INF) = 0
-// exp(x) = 1 for subnormals
-// for finite argument, only exp(0)=1 is exact
-// For IEEE double
-// if x > 709.782712893383973096 then exp(x) overflow
-// if x < -745.133219101941108420 then exp(x) underflow
-//
-    /******************************************************************************/
 
     private ArrayDataPointerConstant cv = pointerConstant(16, new int[]{
             // @formatter:off
