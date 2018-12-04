@@ -24,8 +24,9 @@
  */
 package com.oracle.svm.jni.access;
 
-// Checkstyle: allow reflection
+import static com.oracle.svm.core.SubstrateOptions.JNIVerboseLookupErrors;
 
+import java.io.PrintStream;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -40,12 +41,15 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.jni.nativeapi.JNIFieldId;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.Signature;
+
+// Checkstyle: allow reflection
 
 /**
  * Provides JNI access to predetermined classes, methods and fields at runtime.
@@ -65,6 +69,35 @@ public final class JNIReflectionDictionary {
     private final Map<JNINativeLinkage, JNINativeLinkage> nativeLinkages = new HashMap<>();
 
     private JNIReflectionDictionary() {
+    }
+
+    private void dump(boolean condition, String label) {
+        if (JNIVerboseLookupErrors.getValue() && condition) {
+            PrintStream ps = Log.logStream();
+            ps.println(label);
+            ps.println(" classesByName:");
+            for (Map.Entry<String, JNIAccessibleClass> e : classesByName.entrySet()) {
+                ps.print("  ");
+                ps.println(e.getKey());
+                JNIAccessibleClass clazz = e.getValue();
+                ps.println("   methods:");
+                for (Map.Entry<JNIAccessibleMethodDescriptor, JNIAccessibleMethod> m : clazz.getMethodsByDescriptor().entrySet()) {
+                    ps.print("      ");
+                    ps.println(m.getKey().getNameAndSignature());
+                }
+                ps.println("   fields:");
+                for (Map.Entry<String, JNIAccessibleField> f : clazz.getFieldsByName().entrySet()) {
+                    ps.print("      ");
+                    ps.println(f.getKey());
+                }
+            }
+
+            ps.println(" classesByClassObject:");
+            for (Map.Entry<Class<?>, JNIAccessibleClass> e : classesByClassObject.entrySet()) {
+                ps.print("  ");
+                ps.println(e.getKey());
+            }
+        }
     }
 
     @Platforms(HOSTED_ONLY.class)
@@ -88,6 +121,7 @@ public final class JNIReflectionDictionary {
 
     public Class<?> getClassObjectByName(String name) {
         JNIAccessibleClass clazz = classesByName.get(name);
+        dump(clazz == null, "getClassObjectByName");
         return (clazz != null) ? clazz.getClassObject() : null;
     }
 
@@ -117,6 +151,7 @@ public final class JNIReflectionDictionary {
     public JNIMethodId getMethodID(Class<?> classObject, JNIAccessibleMethodDescriptor descriptor, boolean isStatic) {
         JNIMethodId methodID = WordFactory.nullPointer();
         JNIAccessibleClass clazz = classesByClassObject.get(classObject);
+        dump(clazz == null, "getMethodID");
         if (clazz != null) {
             JNIAccessibleMethod method = clazz.getMethod(descriptor);
             if (method != null && method.isStatic() == isStatic) {
@@ -138,6 +173,7 @@ public final class JNIReflectionDictionary {
 
     public JNIAccessibleField getField(Class<?> classObject, String name) {
         JNIAccessibleClass clazz = classesByClassObject.get(classObject);
+        dump(clazz == null, "getFieldID");
         return (clazz != null) ? clazz.getField(name) : null;
     }
 
