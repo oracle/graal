@@ -106,6 +106,9 @@ public class NativeImageOptions {
     @Option(help = "Suppress console normal output for unittests")//
     public static final HostedOptionKey<Boolean> SuppressStdout = new HostedOptionKey<>(false);
 
+    @Option(help = "Allow MethodTypeFlow to see @Fold methods")//
+    public static final HostedOptionKey<Boolean> AllowFoldMethods = new HostedOptionKey<>(false);
+
     @APIOption(name = "report-unsupported-elements-at-runtime")//
     @Option(help = "Report usage of unsupported methods and fields at run time when they are accessed the first time, instead of as an error during image building", type = User)//
     public static final HostedOptionKey<Boolean> ReportUnsupportedElementsAtRuntime = new HostedOptionKey<>(false);
