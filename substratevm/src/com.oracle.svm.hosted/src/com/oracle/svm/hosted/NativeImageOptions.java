@@ -119,6 +119,13 @@ public class NativeImageOptions {
         }
     };
 
+    private static boolean areAssertionsEnabled() {
+        boolean assertsEnabled = false;
+        // Next assignment will be executed when asserts are enabled.
+        assert assertsEnabled = true;
+        return assertsEnabled;
+    }
+
     @Option(help = "Report the original exception cause for unsupported features.")//
     public static final HostedOptionKey<Boolean> ReportUnsupportedFeaturesCause = new HostedOptionKey<>(false);
 
@@ -176,6 +183,9 @@ public class NativeImageOptions {
 
     @Option(help = "Print unsafe operation offset warnings.)")//
     public static final HostedOptionKey<Boolean> UnsafeOffsetWarningsAreFatal = new HostedOptionKey<>(false);
+
+    @Option(help = "Show exception stack traces for exceptions during image building.)")//
+    public static final HostedOptionKey<Boolean> ReportExceptionStackTraces = new HostedOptionKey<>(areAssertionsEnabled());
 
     @Option(help = "Maximum number of types allowed in the image. Used for tests where small number of types in necessary.", type = Debug)//
     public static final HostedOptionKey<Integer> MaxReachableTypes = new HostedOptionKey<>(-1);

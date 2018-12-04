@@ -295,8 +295,10 @@ public class GraalObjectReplacer implements Function<Object, Object> {
     private static AnalysisType toAnalysisType(JavaType original) {
         if (original instanceof HostedType) {
             return ((HostedType) original).getWrapped();
-        } else {
+        } else if (original instanceof AnalysisType) {
             return (AnalysisType) original;
+        } else {
+            throw new InternalError("unexpected type " + original);
         }
     }
 

@@ -268,7 +268,7 @@ public abstract class ObjectScanner {
             for (AnalysisField field : type.getInstanceFields(true)) {
                 if (field.getJavaKind() == JavaKind.Object && field.isAccessed()) {
                     assert !Modifier.isStatic(field.getModifiers());
-                    scanField(field, entry.constant, entry);
+                    scanField(field, entry.constant, entry.getReason());
                 }
             }
         } else if (type.isArray() && bb.getProviders().getWordTypes().asKind(type.getComponentType()) == JavaKind.Object) {

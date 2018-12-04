@@ -246,7 +246,13 @@ public final class NativeImageHeap {
              * not seen - so this check actually protects against much more than just missing class
              * initialization information.
              */
-            throw VMError.shouldNotReachHere("DynamicHub written to the image that has not been seen as reachable during static analysis: " + original);
+            throw VMError.shouldNotReachHere("Image heap writing found a class not seen as instantiated during static analysis. " +
+                            "Did a static field or an object referenced from a static field change during native image generation? " +
+                            "For example, a lazily initialized cache could have been initialized during image generation, " +
+                            "in which case you need to force eager initialization of the cache before static analysis or reset the cache using a field value recomputation.\n" +
+                            "  class: " + original + "\n" +
+                            "  reachable through:\n" +
+                            fillReasonStack(new StringBuilder(), reason));
         }
 
         int identityHashCode;
@@ -339,10 +345,10 @@ public final class NativeImageHeap {
         final Optional<HostedType> optionalType = getMetaAccess().optionalLookupJavaType(object.getClass());
         if (!optionalType.isPresent() || !optionalType.get().isInstantiated()) {
             throw UserError.abort("Image heap writing found an object whose class was not seen as instantiated during static analysis. " +
-                            "Did a static field or an object referenced from a static field changed during native image generation? " +
+                            "Did a static field or an object referenced from a static field change during native image generation? " +
                             "For example, a lazily initialized cache could have been initialized during image generation, " +
                             "in which case you need to force eager initialization of the cache before static analysis or reset the cache using a field value recomputation.\n" +
-                            "  object: " + object + "  of class: " + object.getClass().getTypeName() + "\n" +
+                            "  object: " + object + " of class: " + object.getClass().getTypeName() + "\n" +
                             "  reachable through:\n" +
                             fillReasonStack(new StringBuilder(), reason));
         }

@@ -129,7 +129,7 @@ public class FieldsOffsetsFeature implements Feature {
              * All instances of Fields must have been registered before, otherwise we miss the
              * substitution of its offsets array.
              */
-            assert !ImageSingletons.lookup(FieldsOffsetsReplacements.class).newValuesAvailable || getReplacements().containsKey(((Fields) source).getOffsets());
+            assert !ImageSingletons.lookup(FieldsOffsetsReplacements.class).newValuesAvailable || getReplacements().containsKey(((Fields) source).getOffsets()) : source;
 
         } else if (source instanceof long[]) {
             FieldsOffsetsReplacement replacement = getReplacements().get(source);

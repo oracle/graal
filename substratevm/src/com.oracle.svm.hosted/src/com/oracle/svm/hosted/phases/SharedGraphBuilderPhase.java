@@ -310,9 +310,9 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 boolean isWordValue = value.getStackKind() == getWordTypes().getWordKind();
 
                 if (isWordTypeExpected && !isWordValue) {
-                    throw UserError.abort("Expected Word but got Object for " + reason + " at " + method.format("%H.%n(%p)") + " in " + method.asStackTraceElement(bci()));
+                    throw UserError.abort("Expected Word but got Object for " + reason + " in " + method.asStackTraceElement(bci()));
                 } else if (!isWordTypeExpected && isWordValue) {
-                    throw UserError.abort("Expected Object but got Word for " + reason + " at " + method.format("%H.%n(%p)") + " in " + method.asStackTraceElement(bci()));
+                    throw UserError.abort("Expected Object but got Word for " + reason + " in " + method.asStackTraceElement(bci()));
                 }
             }
         }
