@@ -53,7 +53,6 @@ import org.graalvm.compiler.lir.CompositeValue;
 import org.graalvm.compiler.lir.CompositeValueClass;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstructionClass;
-import org.graalvm.compiler.lir.alloc.trace.TraceAllocationPhase;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.lir.phases.LIRPhase;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
@@ -331,19 +330,6 @@ final class Target_org_graalvm_compiler_lir_phases_LIRPhase {
     @Substitute
     static LIRPhase.LIRPhaseStatistics getLIRPhaseStatistics(Class<?> clazz) {
         LIRPhase.LIRPhaseStatistics result = GraalSupport.get().lirPhaseStatistics.get(clazz);
-        if (result == null) {
-            throw VMError.shouldNotReachHere("Missing statistics for phase class: " + clazz.getName() + "\n");
-        }
-        return result;
-    }
-}
-
-@TargetClass(value = org.graalvm.compiler.lir.alloc.trace.TraceAllocationPhase.class, onlyWith = GraalFeature.IsEnabled.class)
-final class Target_org_graalvm_compiler_lir_alloc_trace_TraceAllocationPhase {
-
-    @Substitute
-    static TraceAllocationPhase.AllocationStatistics getAllocationStatistics(Class<?> clazz) {
-        TraceAllocationPhase.AllocationStatistics result = GraalSupport.get().traceAllocationPhaseStatistics.get(clazz);
         if (result == null) {
             throw VMError.shouldNotReachHere("Missing statistics for phase class: " + clazz.getName() + "\n");
         }

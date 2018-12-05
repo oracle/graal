@@ -52,7 +52,6 @@ import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.java.BciBlockMapping;
 import org.graalvm.compiler.lir.LIR;
-import org.graalvm.compiler.lir.alloc.trace.GlobalLivenessInfo;
 import org.graalvm.compiler.lir.debug.IntervalDumper;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -178,7 +177,6 @@ public class CFGPrinterObserver implements DebugDumpHandler {
                 cfgPrinter.lir = debug.contextLookup(LIR.class);
             }
             cfgPrinter.nodeLirGenerator = debug.contextLookup(NodeLIRBuilder.class);
-            cfgPrinter.livenessInfo = debug.contextLookup(GlobalLivenessInfo.class);
             cfgPrinter.res = debug.contextLookup(LIRGenerationResult.class);
             if (cfgPrinter.nodeLirGenerator != null) {
                 cfgPrinter.target = cfgPrinter.nodeLirGenerator.getLIRGeneratorTool().target();
@@ -247,7 +245,6 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             cfgPrinter.lir = null;
             cfgPrinter.res = null;
             cfgPrinter.nodeLirGenerator = null;
-            cfgPrinter.livenessInfo = null;
             cfgPrinter.cfg = null;
             cfgPrinter.flush();
         }
