@@ -1,3 +1,15 @@
+# Version 1.0.0 RC11
+
+Changes:
+
+* Stack traces report line numbers even if the original source file can not
+  be found.
+
+Deprecations:
+
+* Deprecate `--llvm.sourcePath` option in favour of the more general
+  `--inspect.SourcePath` option.
+
 # Version 1.0.0 RC10
 
 New features:
