@@ -43,37 +43,39 @@ final class Target_java_lang_ProcessHandleImpl {
     @Alias//
     @InjectAccessors(ProcessReaperExecutorAccessor.class)//
     static Executor processReaperExecutor;
+}
 
-    public static class ProcessReaperExecutorAccessor {
-        private static Executor executor;
+class ProcessReaperExecutorAccessor {
+    private static Executor executor;
 
-        /**
-         * The get accessor for {@link Target_java_lang_ProcessHandleImpl#processReaperExecutor}.
-         */
-        static Executor get() {
-            if (executor == null) {
-                /**
-                 * Same implementation as {@link java.lang.ProcessHandleImpl#processReaperExecutor}
-                 * but delayed to image runtime.
-                 */
-                ThreadGroup tg = Thread.currentThread().getThreadGroup();
-                while (tg.getParent() != null) {
-                    tg = tg.getParent();
-                }
-                ThreadGroup systemThreadGroup = tg;
-                long stackSize = Boolean.getBoolean("jdk.lang.processReaperUseDefaultStackSize") ? 0 : REAPER_DEFAULT_STACKSIZE;
-                ThreadFactory threadFactory = grimReaper -> {
-                    Thread t = new Thread(systemThreadGroup, grimReaper, "process reaper",
-                                    stackSize, false);
-                    t.setDaemon(true);
-                    // A small attempt (probably futile) to avoid priority inversion
-                    t.setPriority(Thread.MAX_PRIORITY);
-                    return t;
-                };
-
-                executor = Executors.newCachedThreadPool(threadFactory);
+    /**
+     * The get accessor for {@link Target_java_lang_ProcessHandleImpl#processReaperExecutor}.
+     */
+    static Executor get() {
+        if (executor == null) {
+            /**
+             * Same implementation as {@link java.lang.ProcessHandleImpl#processReaperExecutor} but
+             * delayed to image runtime.
+             */
+            ThreadGroup tg = Thread.currentThread().getThreadGroup();
+            while (tg.getParent() != null) {
+                tg = tg.getParent();
             }
-            return executor;
+            ThreadGroup systemThreadGroup = tg;
+            long stackSize = Boolean.getBoolean("jdk.lang.processReaperUseDefaultStackSize")
+                            ? 0
+                            : Target_java_lang_ProcessHandleImpl.REAPER_DEFAULT_STACKSIZE;
+            ThreadFactory threadFactory = grimReaper -> {
+                Thread t = new Thread(systemThreadGroup, grimReaper, "process reaper",
+                                stackSize, false);
+                t.setDaemon(true);
+                // A small attempt (probably futile) to avoid priority inversion
+                t.setPriority(Thread.MAX_PRIORITY);
+                return t;
+            };
+
+            executor = Executors.newCachedThreadPool(threadFactory);
         }
+        return executor;
     }
 }
