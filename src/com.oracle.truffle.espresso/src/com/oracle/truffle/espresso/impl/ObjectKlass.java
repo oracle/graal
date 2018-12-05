@@ -62,6 +62,16 @@ public final class ObjectKlass extends Klass {
 
     private final AttributeInfo runtimeVisibleAnnotations;
 
+    private final int instanceFieldSlots;
+
+    public int getInstanceFieldSlots() {
+        return instanceFieldSlots;
+    }
+
+    public int getStaticFieldSlots() {
+        return getStaticFields().length;
+    }
+
     private int initState = LOADED;
     public static final int LOADED = 0;
     public static final int LINKED = 1;
@@ -85,6 +95,8 @@ public final class ObjectKlass extends Klass {
         this.innerClasses = innerClasses;
         this.pool = pool;
         this.runtimeVisibleAnnotations = runtimeVisibleAnnotations;
+
+        this.instanceFieldSlots = getDeclaredFields().length + (getSuperclass() == null ? 0 : ((ObjectKlass) getSuperclass()).getInstanceFieldSlots());
     }
 
     @Override

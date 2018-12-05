@@ -28,6 +28,7 @@ import static com.oracle.truffle.espresso.meta.Meta.meta;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.security.ProtectionDomain;
 import java.util.Arrays;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -376,6 +377,11 @@ public class Target_java_lang_Class {
     @Intrinsic
     public static void registerNatives() {
         /* nop */
+    }
+
+    @Intrinsic(hasReceiver = true)
+    public static @Type(ProtectionDomain.class) StaticObject getProtectionDomain0(Object self) {
+        return StaticObject.NULL;
     }
 
     @Intrinsic(hasReceiver = true)

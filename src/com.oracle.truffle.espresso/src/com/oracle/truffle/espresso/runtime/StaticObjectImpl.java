@@ -32,6 +32,7 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.FieldInfo;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
 
 public class StaticObjectImpl implements StaticObject {
@@ -39,29 +40,29 @@ public class StaticObjectImpl implements StaticObject {
     private final boolean isStatic;
     private final Klass klass;
 
+    private final Object[] fieldValues;
+
     public boolean isStatic() {
         return isStatic;
     }
 
-    public StaticObjectImpl(Klass klass, Map<String, Object> fields, boolean isStatic) {
+    public StaticObjectImpl(Klass klass, Map<String, Object> fields, Object[] fieldValues, boolean isStatic) {
         this.klass = klass;
         this.fields = fields;
         this.isStatic = isStatic;
+        this.fieldValues = fieldValues;
     }
 
     // Shallow copy.
     public StaticObject copy() {
-        return new StaticObjectImpl(getKlass(), new HashMap<>(fields), isStatic);
-    }
-
-    private static String getStorageName(FieldInfo fi) {
-        return fi.getDeclaringClass().getName() + "#" + fi.getName();
+        return new StaticObjectImpl(getKlass(), new HashMap<>(fields), fieldValues.clone(), isStatic);
     }
 
     public StaticObjectImpl(Klass klass) {
         this.klass = klass;
         this.fields = new HashMap<>();
         this.isStatic = false;
+        this.fieldValues = isStatic ? new Object[((ObjectKlass) klass).getStaticFieldSlots()] : new Object[((ObjectKlass) klass).getInstanceFieldSlots()];
         FieldInfo[] allFields = klass.getInstanceFields(true);
         for (FieldInfo fi : allFields) {
             Object value = null;
@@ -97,7 +98,7 @@ public class StaticObjectImpl implements StaticObject {
                 case Void:
                     throw new RuntimeException("Invalid type " + fi.getKind() + " for field: " + fi.getName());
             }
-            this.fields.put(getStorageName(fi), value);
+            this.fieldValues[fi.getSlot()] = value;
         }
     }
 
@@ -107,6 +108,7 @@ public class StaticObjectImpl implements StaticObject {
             klass.getSuperclass().initialize();
         }
         this.fields = new HashMap<>();
+        this.fieldValues = isStatic ? new Object[((ObjectKlass) klass).getStaticFieldSlots()] : new Object[((ObjectKlass) klass).getInstanceFieldSlots()];
         FieldInfo[] allFields = isStatic ? klass.getStaticFields() : klass.getInstanceFields(true);
         for (FieldInfo fi : allFields) {
             if (fi.isStatic() == isStatic) {
@@ -143,16 +145,15 @@ public class StaticObjectImpl implements StaticObject {
                     case Void:
                         throw new RuntimeException("Invalid type " + fi.getKind() + " for field: " + fi.getName());
                 }
-                this.fields.put(getStorageName(fi), value);
+                this.fieldValues[fi.getSlot()] = value;
             }
         }
         this.isStatic = isStatic;
     }
 
-    @CompilerDirectives.TruffleBoundary
     public Object getField(FieldInfo field) {
         // TODO(peterssen): Klass check
-        Object result = fields.get(getStorageName(field));
+        Object result = fieldValues[field.getSlot()];
         assert result != null;
         return result;
     }
@@ -167,11 +168,9 @@ public class StaticObjectImpl implements StaticObject {
         return getKlass().getName();
     }
 
-    @CompilerDirectives.TruffleBoundary
     public void setField(FieldInfo field, Object value) {
         // TODO(peterssen): Klass check
-        assert fields.containsKey(getStorageName(field));
-        fields.put(getStorageName(field), value);
+        fieldValues[field.getSlot()] = value;
     }
 
     @CompilerDirectives.TruffleBoundary

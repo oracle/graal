@@ -27,6 +27,7 @@ import static com.oracle.truffle.espresso.classfile.Constants.ACC_ABSTRACT;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_INTERFACE;
 import static com.oracle.truffle.espresso.classfile.Constants.JVM_RECOGNIZED_CLASS_MODIFIERS;
 
+import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Optional;
@@ -49,6 +50,7 @@ public class ClassfileParser {
 
     public static final int MAGIC = 0xCAFEBABE;
 
+    public static final int JAVA_4_VERSION = 48;
     public static final int JAVA_5_VERSION = 49;
     public static final int JAVA_6_VERSION = 50;
     public static final int JAVA_7_VERSION = 51;
@@ -57,7 +59,7 @@ public class ClassfileParser {
     public static final int JAVA_10_VERSION = 54;
     public static final int JAVA_11_VERSION = 55;
 
-    private static final int MAJOR_VERSION_JAVA_MIN = JAVA_5_VERSION;
+    private static final int MAJOR_VERSION_JAVA_MIN = 0;
     private static final int MAJOR_VERSION_JAVA_MAX = JAVA_11_VERSION;
 
     public static final int STRICTER_ACCESS_CTRL_CHECK_VERSION = JAVA_5_VERSION;
@@ -213,16 +215,16 @@ public class ClassfileParser {
         this.superClassIndex = parseSuperClass();
         this.localInterfaces = parseInterfaces();
 
-        this.fields = parseFields();
-        this.methods = parseMethods();
-
-        this.attributes = parseAttributes();
-
         if (superClassIndex != 0) {
             this.superClass = pool.classAt(superClassIndex).resolve(pool, superClassIndex);
         } else {
             this.superClass = null;
         }
+
+        this.fields = parseFields();
+        this.methods = parseMethods();
+
+        this.attributes = parseAttributes();
 
         Optional<AttributeInfo> optEnclosingMethod = Arrays.stream(attributes).filter(a -> a.getName().equals("EnclosingMethod")).findAny();
         Optional<AttributeInfo> optInnerClasses = Arrays.stream(attributes).filter(a -> a.getName().equals("InnerClasses")).findAny();
@@ -397,10 +399,19 @@ public class ClassfileParser {
     }
 
     private FieldInfo.Builder[] parseFields() {
+
+        int instanceFieldSlots = (superClass == null) ? 0 : ((ObjectKlass) superClass).getInstanceFieldSlots();
+        int staticFieldSlots = 0;
+
         int fieldCount = stream.readU2();
         FieldInfo.Builder[] fieldBuilders = new FieldInfo.Builder[fieldCount];
         for (int i = 0; i < fieldCount; i++) {
             fieldBuilders[i] = parseField();
+            if (fieldBuilders[i].isStatic()) {
+                fieldBuilders[i].setSlot(staticFieldSlots++);
+            } else {
+                fieldBuilders[i].setSlot(instanceFieldSlots++);
+            }
         }
         return fieldBuilders;
     }
