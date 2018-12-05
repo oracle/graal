@@ -436,14 +436,13 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
     }
 
     private void maybeEmitClassInitialization(GraphBuilderContext b, boolean isStatic, ResolvedJavaType declaringClass) {
-        if (isStatic && classInitializationPlugin.shouldApply(b, declaringClass)) {
+        if (isStatic) {
             /*
              * We know that this code only runs during bytecode parsing, so the casts to
              * BytecodeParser are safe. We want to avoid putting additional rarely used methods into
              * GraphBuilderContext.
              */
-            FrameState stateBefore = ((BytecodeParser) b).getFrameStateBuilder().create(b.bci(), (BytecodeParser) b.getNonIntrinsicAncestor(), false, null, null);
-            classInitializationPlugin.apply(b, declaringClass, stateBefore);
+            classInitializationPlugin.apply(b, declaringClass, () -> ((BytecodeParser) b).getFrameStateBuilder().create(b.bci(), (BytecodeParser) b.getNonIntrinsicAncestor(), false, null, null));
         }
     }
 

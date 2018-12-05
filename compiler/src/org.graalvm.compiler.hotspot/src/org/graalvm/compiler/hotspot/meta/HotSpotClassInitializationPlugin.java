@@ -24,6 +24,11 @@
  */
 package org.graalvm.compiler.hotspot.meta;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+import java.util.function.Supplier;
+
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -38,17 +43,12 @@ import org.graalvm.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
+import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.ConstantPool;
-
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
 
 public final class HotSpotClassInitializationPlugin implements ClassInitializationPlugin {
-    @Override
-    public boolean shouldApply(GraphBuilderContext builder, ResolvedJavaType type) {
+    private static boolean shouldApply(GraphBuilderContext builder, ResolvedJavaType type) {
         if (!builder.parsingIntrinsic()) {
             if (!type.isArray()) {
                 ResolvedJavaMethod method = builder.getGraph().method();
@@ -73,13 +73,18 @@ public final class HotSpotClassInitializationPlugin implements ClassInitializati
     }
 
     @Override
-    public ValueNode apply(GraphBuilderContext builder, ResolvedJavaType type, FrameState frameState) {
-        assert shouldApply(builder, type);
-        Stamp hubStamp = builder.getStampProvider().createHubStamp((ObjectStamp) StampFactory.objectNonNull());
-        ConstantNode hub = builder.append(ConstantNode.forConstant(hubStamp, ((HotSpotResolvedObjectType) type).klass(), builder.getMetaAccess(), builder.getGraph()));
-        DeoptimizingFixedWithNextNode result = builder.append(type.isArray() ? new ResolveConstantNode(hub) : new InitializeKlassNode(hub));
-        result.setStateBefore(frameState);
-        return result;
+    public boolean apply(GraphBuilderContext builder, ResolvedJavaType type, Supplier<FrameState> frameState, ValueNode[] classInit) {
+        if (shouldApply(builder, type)) {
+            Stamp hubStamp = builder.getStampProvider().createHubStamp((ObjectStamp) StampFactory.objectNonNull());
+            ConstantNode hub = builder.append(ConstantNode.forConstant(hubStamp, ((HotSpotResolvedObjectType) type).klass(), builder.getMetaAccess(), builder.getGraph()));
+            DeoptimizingFixedWithNextNode result = builder.append(type.isArray() ? new ResolveConstantNode(hub) : new InitializeKlassNode(hub));
+            result.setStateBefore(frameState.get());
+            if (classInit != null) {
+                classInit[0] = result;
+            }
+            return true;
+        }
+        return false;
     }
 
     private static final Class<? extends ConstantPool> hscp;

@@ -24,13 +24,14 @@
  */
 package com.oracle.svm.hosted.phases;
 
+import java.util.function.Supplier;
+
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 
 import com.oracle.graal.pointsto.infrastructure.WrappedConstantPool;
-import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -53,13 +54,7 @@ public class NoClassInitializationPlugin implements ClassInitializationPlugin {
     }
 
     @Override
-    public boolean shouldApply(GraphBuilderContext builder, ResolvedJavaType type) {
-        /* Do not emit any class initialization checks. */
+    public boolean apply(GraphBuilderContext builder, ResolvedJavaType type, Supplier<FrameState> frameState, ValueNode[] classInit) {
         return false;
-    }
-
-    @Override
-    public ValueNode apply(GraphBuilderContext builder, ResolvedJavaType type, FrameState frameState) {
-        throw VMError.shouldNotReachHere("Not called since shouldApply returns false");
     }
 }
