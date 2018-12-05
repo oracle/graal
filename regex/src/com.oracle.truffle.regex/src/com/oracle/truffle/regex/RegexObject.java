@@ -33,6 +33,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.runtime.RegexObjectExecMethod;
 import com.oracle.truffle.regex.runtime.RegexObjectMessageResolutionForeign;
+import com.oracle.truffle.regex.tregex.parser.flavors.PythonFlags;
 import com.oracle.truffle.regex.util.TruffleNull;
 import com.oracle.truffle.regex.util.TruffleReadOnlyMap;
 
@@ -42,7 +43,12 @@ import com.oracle.truffle.regex.util.TruffleReadOnlyMap;
  * three properties:
  * <ol>
  * <li>{@link String} {@code pattern}: the source of the compiled regular expression</li>
- * <li>{@link RegexFlags} {@code flags}: the set of flags passed to the regular expression compiler
+ * <li>{@link TruffleObject} {@code flags}: the set of flags passed to the regular expression
+ * compiler. The type differs based on the flavor of regular expressions used:
+ * <ul>
+ * <li>{@link RegexFlags} if the flavor was {@code ECMAScript}</li>
+ * <li>{@link PythonFlags} if the flavor was {@code PythonStr} or {@code PythonBytes}</li>
+ * </ul>
  * </li>
  * <li>{@link RegexObjectExecMethod} {@code exec}: an executable method that matches the compiled
  * regular expression against a string. The method accepts two parameters:
