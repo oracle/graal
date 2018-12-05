@@ -168,8 +168,8 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
     private static ReflectionSubstitutionMethod createWriteMethod(ResolvedJavaMethod method, Field field, JavaKind kind) {
         ReflectionDataBuilder reflectionDataBuilder = (ReflectionDataBuilder) ImageSingletons.lookup(RuntimeReflectionSupport.class);
         if (Modifier.isFinal(field.getModifiers()) && !reflectionDataBuilder.inspectFinalFieldWritableForAnalysis(field)) {
-            return new ThrowingMethod(method, IllegalAccessException.class, "Cannot set final field: " + field.getName() + ". " +
-                            "Enable by specifying \"allowWrite\" for this field in the reflection configuration.");
+            return new ThrowingMethod(method, IllegalAccessException.class, "Cannot set final field: " + field.getDeclaringClass().getName() +
+                            "." + field.getName() + ". " + "Enable by specifying \"allowWrite\" for this field in the reflection configuration.");
         }
         return new ReflectiveWriteMethod(method, field, kind);
     }
