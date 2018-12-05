@@ -59,6 +59,13 @@ public class Option {
             .help("Compile call target when call count exceeds this threshold.")
             .javadocExtra("Deprecated: Use {@code PolyglotCompilerOptions.CompilationThreshold} instead."),
 
+        option("TruffleFirstTierCompilationThreshold")
+            .type("Integer")
+            .category("EXPERT")
+            .def("100")
+            .help("Compile call target in the first tier when call count exceeds this threshold.")
+            .javadocExtra("Deprecated: Use {@code PolyglotCompilerOptions.CompilationThreshold} instead."),
+
         option("TruffleFirstTierMinInvokeThreshold")
             .type("Integer")
             .category("EXPERT")

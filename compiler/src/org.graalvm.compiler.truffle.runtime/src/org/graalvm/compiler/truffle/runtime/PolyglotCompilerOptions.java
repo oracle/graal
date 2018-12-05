@@ -106,6 +106,7 @@ public final class PolyglotCompilerOptions {
 
     private static void initializePolyglotToGraalMapping() {
         POLYGLOT_TO_TRUFFLE.put(CompilationThreshold, SharedTruffleRuntimeOptions.TruffleCompilationThreshold);
+        POLYGLOT_TO_TRUFFLE.put(FirstTierCompilationThreshold, SharedTruffleRuntimeOptions.TruffleFirstTierCompilationThreshold);
     }
 
     static OptionValues getPolyglotValues(RootNode root) {
