@@ -1,5 +1,5 @@
 suite = {
-    "mxversion": "5.176.0",
+    "mxversion": "5.195.1",
     "name": "tools",
     "defaultLicense" : "GPLv2-CPE",
 
@@ -64,7 +64,6 @@ suite = {
             ],
             "javaCompliance" : "8+",
             "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
-            "checkstyleVersion" : "8.8",
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "workingSets" : "Tools",
         },
@@ -80,7 +79,6 @@ suite = {
               "com.oracle.truffle.tools.profiler.impl to org.graalvm.truffle",
             ],
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
-            "checkstyleVersion" : "8.8",
             "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
             "javaCompliance" : "8+",
             "workingSets" : "Tools",
@@ -94,7 +92,6 @@ suite = {
                 "mx:JUNIT"
             ],
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
-            "checkstyleVersion" : "8.8",
             "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
             "javaCompliance" : "8+",
             "workingSets" : "Tools",
