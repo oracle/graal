@@ -32,6 +32,8 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.TargetClass;
 
+// Checkstyle: stop
+
 @TargetClass(className = "java.lang.ProcessHandleImpl", onlyWith = JDK9OrLater.class)
 final class Target_java_lang_ProcessHandleImpl {
 
@@ -50,17 +52,19 @@ final class Target_java_lang_ProcessHandleImpl {
          */
         static Executor get() {
             if (executor == null) {
+                /**
+                 * Same implementation as {@link java.lang.ProcessHandleImpl#processReaperExecutor}
+                 * but delayed to image runtime.
+                 */
                 ThreadGroup tg = Thread.currentThread().getThreadGroup();
-                while (tg.getParent() != null)
+                while (tg.getParent() != null) {
                     tg = tg.getParent();
+                }
                 ThreadGroup systemThreadGroup = tg;
-                final long stackSize = Boolean.getBoolean("jdk.lang.processReaperUseDefaultStackSize")
-                                ? 0
-                                : REAPER_DEFAULT_STACKSIZE;
-
+                long stackSize = Boolean.getBoolean("jdk.lang.processReaperUseDefaultStackSize") ? 0 : REAPER_DEFAULT_STACKSIZE;
                 ThreadFactory threadFactory = grimReaper -> {
-                    Thread t = new Thread(systemThreadGroup, grimReaper,
-                                    "process reaper", stackSize, false);
+                    Thread t = new Thread(systemThreadGroup, grimReaper, "process reaper",
+                                    stackSize, false);
                     t.setDaemon(true);
                     // A small attempt (probably futile) to avoid priority inversion
                     t.setPriority(Thread.MAX_PRIORITY);

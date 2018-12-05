@@ -51,3 +51,4 @@ final class Target_java_security_Policy {
 
 public final class JDK9OrLaterSecuritySubstitutions {
 }
+
