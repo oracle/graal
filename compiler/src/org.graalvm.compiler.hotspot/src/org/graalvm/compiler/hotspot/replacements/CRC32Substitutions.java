@@ -25,7 +25,6 @@
 package org.graalvm.compiler.hotspot.replacements;
 
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfigBase.INJECTED_METAACCESS;
-import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.getArrayBaseOffset;
 
 import java.util.zip.CRC32;
 
@@ -34,9 +33,10 @@ import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
-import org.graalvm.compiler.hotspot.nodes.ComputeObjectAddressNode;
 import org.graalvm.compiler.hotspot.nodes.GraalHotSpotVMConfigNode;
+import org.graalvm.compiler.nodes.ComputeObjectAddressNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
+import org.graalvm.compiler.replacements.ReplacementsUtil;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordBase;
@@ -72,7 +72,7 @@ public class CRC32Substitutions {
      */
     @MethodSubstitution(optional = true)
     static int updateBytes(int crc, byte[] buf, int off, int len) {
-        Word bufAddr = WordFactory.unsigned(ComputeObjectAddressNode.get(buf, getArrayBaseOffset(INJECTED_METAACCESS, JavaKind.Byte) + off));
+        Word bufAddr = WordFactory.unsigned(ComputeObjectAddressNode.get(buf, ReplacementsUtil.getArrayBaseOffset(INJECTED_METAACCESS, JavaKind.Byte) + off));
         return updateBytesCRC32(UPDATE_BYTES_CRC32, crc, bufAddr, len);
     }
 
@@ -81,7 +81,7 @@ public class CRC32Substitutions {
      */
     @MethodSubstitution(optional = true)
     static int updateBytes0(int crc, byte[] buf, int off, int len) {
-        Word bufAddr = WordFactory.unsigned(ComputeObjectAddressNode.get(buf, getArrayBaseOffset(INJECTED_METAACCESS, JavaKind.Byte) + off));
+        Word bufAddr = WordFactory.unsigned(ComputeObjectAddressNode.get(buf, ReplacementsUtil.getArrayBaseOffset(INJECTED_METAACCESS, JavaKind.Byte) + off));
         return updateBytesCRC32(UPDATE_BYTES_CRC32, crc, bufAddr, len);
     }
 

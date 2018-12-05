@@ -30,7 +30,7 @@ import java.util.HashMap;
 
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.hotspot.replacements.arraycopy.ArrayCopySnippets;
+import org.graalvm.compiler.replacements.arraycopy.ArrayCopySnippets;
 import org.graalvm.compiler.nodes.DirectCallTargetNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.LoweredCallTargetNode;

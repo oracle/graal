@@ -28,9 +28,9 @@ import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfigBase.INJECTED_MET
 import static org.graalvm.compiler.hotspot.HotSpotBackend.DECRYPT_BLOCK;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.DECRYPT_BLOCK_WITH_ORIGINAL_KEY;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.ENCRYPT_BLOCK;
-import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.getArrayBaseOffset;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
+import static org.graalvm.compiler.replacements.ReplacementsUtil.getArrayBaseOffset;
 
 import org.graalvm.compiler.api.replacements.ClassSubstitution;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
@@ -38,7 +38,7 @@ import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
-import org.graalvm.compiler.hotspot.nodes.ComputeObjectAddressNode;
+import org.graalvm.compiler.nodes.ComputeObjectAddressNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;

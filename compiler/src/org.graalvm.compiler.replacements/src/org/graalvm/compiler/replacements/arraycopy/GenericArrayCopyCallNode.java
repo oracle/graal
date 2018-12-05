@@ -23,22 +23,20 @@
  * questions.
  */
 //JaCoCo Exclude
-package org.graalvm.compiler.hotspot.replacements.arraycopy;
+package org.graalvm.compiler.replacements.arraycopy;
 
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
+import static org.graalvm.compiler.replacements.arraycopy.ArrayCopyForeignCalls.GENERIC_ARRAYCOPY;
 
+import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.hotspot.HotSpotBackend;
-import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
-import org.graalvm.compiler.hotspot.nodes.GetObjectAddressNode;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.GetObjectAddressNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.calc.IntegerConvertNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.memory.AbstractMemoryCheckpoint;
 import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
@@ -52,38 +50,33 @@ import jdk.vm.ci.meta.JavaKind;
 public final class GenericArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single {
 
     public static final NodeClass<GenericArrayCopyCallNode> TYPE = NodeClass.create(GenericArrayCopyCallNode.class);
+    private final ForeignCallsProvider foreignCalls;
     @Input ValueNode src;
     @Input ValueNode srcPos;
     @Input ValueNode dest;
     @Input ValueNode destPos;
     @Input ValueNode length;
 
-    protected final HotSpotGraalRuntimeProvider runtime;
+    private ForeignCallsProvider getForeignCalls() {
+        return foreignCalls;
+    }
 
-    protected GenericArrayCopyCallNode(@InjectedNodeParameter HotSpotGraalRuntimeProvider runtime, ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length) {
+    protected GenericArrayCopyCallNode(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length) {
         super(TYPE, StampFactory.forKind(JavaKind.Int));
+        this.foreignCalls = foreignCalls;
         this.src = src;
         this.srcPos = srcPos;
         this.dest = dest;
         this.destPos = destPos;
         this.length = length;
-        this.runtime = runtime;
     }
 
     public ValueNode getSource() {
         return src;
     }
 
-    public ValueNode getSourcePosition() {
-        return srcPos;
-    }
-
     public ValueNode getDestination() {
         return dest;
-    }
-
-    public ValueNode getDestinationPosition() {
-        return destPos;
     }
 
     public ValueNode getLength() {
@@ -96,7 +89,7 @@ public final class GenericArrayCopyCallNode extends AbstractMemoryCheckpoint imp
             StructuredGraph graph = graph();
             ValueNode srcAddr = objectAddress(getSource());
             ValueNode destAddr = objectAddress(getDestination());
-            ForeignCallNode call = graph.add(new ForeignCallNode(runtime.getHostBackend().getForeignCalls(), HotSpotBackend.GENERIC_ARRAYCOPY, srcAddr, srcPos, destAddr, destPos, length));
+            ForeignCallNode call = graph.add(new ForeignCallNode(getForeignCalls(), GENERIC_ARRAYCOPY, srcAddr, srcPos, destAddr, destPos, length));
             call.setStateAfter(stateAfter());
             graph.replaceFixedWithFixed(this, call);
         }
@@ -106,13 +99,6 @@ public final class GenericArrayCopyCallNode extends AbstractMemoryCheckpoint imp
         GetObjectAddressNode result = graph().add(new GetObjectAddressNode(obj));
         graph().addBeforeFixed(this, result);
         return result;
-    }
-
-    private ValueNode wordValue(ValueNode value) {
-        if (value.stamp(NodeView.DEFAULT).getStackKind() != runtime.getTarget().wordJavaKind) {
-            return IntegerConvertNode.convert(value, StampFactory.forKind(runtime.getTarget().wordJavaKind), graph(), NodeView.DEFAULT);
-        }
-        return value;
     }
 
     @Override

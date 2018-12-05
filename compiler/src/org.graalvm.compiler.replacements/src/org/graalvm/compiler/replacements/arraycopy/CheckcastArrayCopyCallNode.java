@@ -23,7 +23,7 @@
  * questions.
  */
 //JaCoCo Exclude
-package org.graalvm.compiler.hotspot.replacements.arraycopy;
+package org.graalvm.compiler.replacements.arraycopy;
 
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
@@ -32,13 +32,11 @@ import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
-import org.graalvm.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
-import org.graalvm.compiler.hotspot.nodes.GetObjectAddressNode;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.GetObjectAddressNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -52,6 +50,7 @@ import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.word.Word;
+import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.code.CodeUtil;
@@ -61,6 +60,10 @@ import jdk.vm.ci.meta.JavaKind;
 public final class CheckcastArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single {
 
     public static final NodeClass<CheckcastArrayCopyCallNode> TYPE = NodeClass.create(CheckcastArrayCopyCallNode.class);
+
+    private final ArrayCopyForeignCalls foreignCalls;
+    private final JavaKind wordKind;
+
     @Input ValueNode src;
     @Input ValueNode srcPos;
     @Input ValueNode dest;
@@ -71,11 +74,13 @@ public final class CheckcastArrayCopyCallNode extends AbstractMemoryCheckpoint i
 
     protected final boolean uninit;
 
-    protected final HotSpotGraalRuntimeProvider runtime;
-
-    protected CheckcastArrayCopyCallNode(@InjectedNodeParameter HotSpotGraalRuntimeProvider runtime, ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length,
+    protected CheckcastArrayCopyCallNode(@InjectedNodeParameter ArrayCopyForeignCalls foreignCalls, @InjectedNodeParameter WordTypes wordTypes,
+                    ValueNode src, ValueNode srcPos, ValueNode dest,
+                    ValueNode destPos, ValueNode length,
                     ValueNode superCheckOffset, ValueNode destElemKlass, boolean uninit) {
         super(TYPE, StampFactory.forKind(JavaKind.Int));
+        this.foreignCalls = foreignCalls;
+        this.wordKind = wordTypes.getWordKind();
         this.src = src;
         this.srcPos = srcPos;
         this.dest = dest;
@@ -84,7 +89,6 @@ public final class CheckcastArrayCopyCallNode extends AbstractMemoryCheckpoint i
         this.superCheckOffset = superCheckOffset;
         this.destElemKlass = destElemKlass;
         this.uninit = uninit;
-        this.runtime = runtime;
     }
 
     public ValueNode getSource() {
@@ -116,7 +120,7 @@ public final class CheckcastArrayCopyCallNode extends AbstractMemoryCheckpoint i
         graph().addBeforeFixed(this, basePtr);
 
         int shift = CodeUtil.log2(tool.getMetaAccess().getArrayIndexScale(JavaKind.Object));
-        ValueNode extendedPos = IntegerConvertNode.convert(pos, StampFactory.forKind(runtime.getTarget().wordJavaKind), graph(), NodeView.DEFAULT);
+        ValueNode extendedPos = IntegerConvertNode.convert(pos, StampFactory.forKind(wordKind), graph(), NodeView.DEFAULT);
         ValueNode scaledIndex = graph().unique(new LeftShiftNode(extendedPos, ConstantNode.forInt(shift, graph())));
         ValueNode offset = graph().unique(
                         new AddNode(scaledIndex,
@@ -127,15 +131,15 @@ public final class CheckcastArrayCopyCallNode extends AbstractMemoryCheckpoint i
     @Override
     public void lower(LoweringTool tool) {
         if (graph().getGuardsStage().areFrameStatesAtDeopts()) {
-            ForeignCallDescriptor desc = HotSpotHostForeignCallsProvider.lookupCheckcastArraycopyDescriptor(isUninit());
+            ForeignCallDescriptor desc = foreignCalls.lookupCheckcastArraycopyDescriptor(isUninit());
             StructuredGraph graph = graph();
             ValueNode srcAddr = computeBase(tool, getSource(), getSourcePosition());
             ValueNode destAddr = computeBase(tool, getDestination(), getDestinationPosition());
             ValueNode len = getLength();
-            if (len.stamp(NodeView.DEFAULT).getStackKind() != runtime.getTarget().wordJavaKind) {
-                len = IntegerConvertNode.convert(len, StampFactory.forKind(runtime.getTarget().wordJavaKind), graph(), NodeView.DEFAULT);
+            if (len.stamp(NodeView.DEFAULT).getStackKind() != wordKind) {
+                len = IntegerConvertNode.convert(len, StampFactory.forKind(wordKind), graph(), NodeView.DEFAULT);
             }
-            ForeignCallNode call = graph.add(new ForeignCallNode(runtime.getHostBackend().getForeignCalls(), desc, srcAddr, destAddr, len, superCheckOffset, destElemKlass));
+            ForeignCallNode call = graph.add(new ForeignCallNode(foreignCalls, desc, srcAddr, destAddr, len, superCheckOffset, destElemKlass));
             call.setStateAfter(stateAfter());
             graph.replaceFixedWithFixed(this, call);
         }

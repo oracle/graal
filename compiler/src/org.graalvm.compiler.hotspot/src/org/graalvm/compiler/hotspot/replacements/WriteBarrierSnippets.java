@@ -328,7 +328,7 @@ public class WriteBarrierSnippets implements Snippets {
         Word bufferAddress = thread.readWord(g1SATBQueueBufferOffset(INJECTED_VMCONFIG));
         Word indexAddress = thread.add(g1SATBQueueIndexOffset(INJECTED_VMCONFIG));
         long indexValue = indexAddress.readWord(0).rawValue();
-        final int scale = HotSpotReplacementsUtil.arrayIndexScale(INJECTED_METAACCESS, JavaKind.Object);
+        final int scale = ReplacementsUtil.arrayIndexScale(INJECTED_METAACCESS, JavaKind.Object);
         long start = getPointerToFirstArrayElement(address, length, elementStride);
 
         for (int i = 0; i < length; i++) {

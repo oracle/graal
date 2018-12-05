@@ -31,18 +31,19 @@ import java.util.Map;
 
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.replacements.arraycopy.ArrayCopyForeignCalls;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
 
-public class SubstrateForeignCallsProvider implements ForeignCallsProvider {
+public class SubstrateForeignCallsProvider implements ArrayCopyForeignCalls {
 
     private final Map<SubstrateForeignCallDescriptor, SubstrateForeignCallLinkage> foreignCalls;
 
@@ -87,5 +88,15 @@ public class SubstrateForeignCallsProvider implements ForeignCallsProvider {
     @Override
     public LIRKind getValueKind(JavaKind javaKind) {
         return LIRKind.fromJavaKind(ImageSingletons.lookup(TargetDescription.class).arch, javaKind);
+    }
+
+    @Override
+    public ForeignCallDescriptor lookupCheckcastArraycopyDescriptor(boolean uninit) {
+        throw VMError.unsupportedFeature("Fast ArrayCopy not supported yet.");
+    }
+
+    @Override
+    public ForeignCallDescriptor lookupArraycopyDescriptor(JavaKind kind, boolean aligned, boolean disjoint, boolean uninit, boolean killAny) {
+        throw VMError.unsupportedFeature("Fast ArrayCopy not supported yet.");
     }
 }

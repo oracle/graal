@@ -130,7 +130,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
     protected abstract ConstantFieldProvider createConstantFieldProvider(Providers p);
 
     protected SnippetReflectionProvider createSnippetReflectionProvider() {
-        return new SubstrateSnippetReflectionProvider();
+        return new SubstrateSnippetReflectionProvider(getWordTypes());
     }
 
     protected ForeignCallsProvider createForeignCallsProvider() {

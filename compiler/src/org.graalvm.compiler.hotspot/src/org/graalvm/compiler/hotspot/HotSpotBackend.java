@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.hotspot;
 
+import static org.graalvm.compiler.replacements.arraycopy.ArrayCopyForeignCalls.UNSAFE_ARRAYCOPY;
+
 import java.util.EnumSet;
 
 import org.graalvm.collections.EconomicMap;
@@ -259,16 +261,9 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     @NodeIntrinsic(ForeignCallNode.class)
     private static native void sha5ImplCompressStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word bufAddr, Object state);
 
-    /**
-     * @see org.graalvm.compiler.hotspot.meta.HotSpotUnsafeSubstitutions#copyMemory
-     */
-    public static final ForeignCallDescriptor UNSAFE_ARRAYCOPY = new ForeignCallDescriptor("unsafe_arraycopy", void.class, Word.class, Word.class, Word.class);
-
     public static void unsafeArraycopy(Word srcAddr, Word dstAddr, Word size) {
-        unsafeArraycopyStub(HotSpotBackend.UNSAFE_ARRAYCOPY, srcAddr, dstAddr, size);
+        unsafeArraycopyStub(UNSAFE_ARRAYCOPY, srcAddr, dstAddr, size);
     }
-
-    public static final ForeignCallDescriptor GENERIC_ARRAYCOPY = new ForeignCallDescriptor("generic_arraycopy", int.class, Word.class, int.class, Word.class, int.class, int.class);
 
     @NodeIntrinsic(ForeignCallNode.class)
     private static native void unsafeArraycopyStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word srcAddr, Word dstAddr, Word size);

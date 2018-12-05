@@ -40,7 +40,7 @@ import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
-import org.graalvm.compiler.hotspot.nodes.ComputeObjectAddressNode;
+import org.graalvm.compiler.nodes.ComputeObjectAddressNode;
 import org.graalvm.compiler.hotspot.word.KlassPointer;
 import org.graalvm.compiler.nodes.CanonicalizableLocation;
 import org.graalvm.compiler.nodes.CompressionNode;
@@ -70,7 +70,6 @@ import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 //JaCoCo Exclude
@@ -136,6 +135,11 @@ public class HotSpotReplacementsUtil {
 
     public static HotSpotJVMCIRuntime runtime() {
         return HotSpotJVMCIRuntime.runtime();
+    }
+
+    @Fold
+    public static int getHeapWordSize(@InjectedParameter GraalHotSpotVMConfig injectedVMConfig) {
+        return injectedVMConfig.heapWordSize;
     }
 
     @Fold
@@ -506,18 +510,8 @@ public class HotSpotReplacementsUtil {
         return config.arrayOopDescLengthOffset();
     }
 
-    @Fold
-    public static int getArrayBaseOffset(@InjectedParameter MetaAccessProvider metaAccessProvider, JavaKind elementKind) {
-        return metaAccessProvider.getArrayBaseOffset(elementKind);
-    }
-
-    @Fold
-    public static int arrayIndexScale(@InjectedParameter MetaAccessProvider metaAccessProvider, JavaKind elementKind) {
-        return metaAccessProvider.getArrayIndexScale(elementKind);
-    }
-
     public static Word arrayStart(int[] a) {
-        return WordFactory.unsigned(ComputeObjectAddressNode.get(a, getArrayBaseOffset(INJECTED_METAACCESS, JavaKind.Int)));
+        return WordFactory.unsigned(ComputeObjectAddressNode.get(a, ReplacementsUtil.getArrayBaseOffset(INJECTED_METAACCESS, JavaKind.Int)));
     }
 
     /**
