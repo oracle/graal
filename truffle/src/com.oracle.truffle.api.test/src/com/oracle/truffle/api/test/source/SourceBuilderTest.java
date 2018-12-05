@@ -199,7 +199,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         assertFails(() -> source.getBytes(), UnsupportedOperationException.class);
         assertFails(() -> source.getCharacters(), UnsupportedOperationException.class);
         // Absolute file
-        Path tempFile = Files.createTempFile("Test", ".java");
+        Path tempFile = Files.createTempFile("Test", ".java").toRealPath();
         tempFile.toFile().deleteOnExit();
         String content = "// Test";
         Files.write(tempFile, content.getBytes("UTF-8"));
@@ -207,7 +207,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         Source source2 = Source.newBuilder("", truffleFile).content(Source.CONTENT_NONE).mimeType("text/x-java").build();
         assertFalse(source2.hasBytes());
         assertFalse(source2.hasCharacters());
-        assertEquals(tempFile.toString(), source2.getPath());
+        assertTrue(tempFile.toString() + " x " + source2.getPath(), Files.isSameFile(tempFile, new File(source2.getPath()).toPath()));
         assertEquals(tempFile.getFileName().toString(), source2.getName());
         assertTrue(source2.getURI().toString(), source2.getURI().isAbsolute());
         assertFails(() -> source2.getLength(), UnsupportedOperationException.class);
