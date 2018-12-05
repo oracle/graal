@@ -56,7 +56,7 @@ import sun.misc.Unsafe;
 
 @TargetClass(classNameProvider = Package_jdk_internal_misc.class, className = "Unsafe")
 @SuppressWarnings({"static-method"})
-final class Target_Unsafe {
+final class Target_Unsafe_Core {
 
     @Substitute
     private long allocateMemory(long bytes) {

@@ -37,7 +37,7 @@ import com.oracle.svm.core.annotate.TargetClass;
  * a recomputed value during image building does not recompute the value. See GR-12640.
  */
 @TargetClass(value = sun.misc.Unsafe.class, onlyWith = JDK9OrLater.class)
-final class Target_sun_misc_Unsafe {
+final class Target_sun_misc_Unsafe_JDK9OrLater {
 
     /* { Checkstyle: stop */
 

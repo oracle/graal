@@ -34,7 +34,7 @@ import com.oracle.svm.core.util.VMError;
 
 @TargetClass(classNameProvider = Package_jdk_internal_misc.class, className = "Unsafe")
 @SuppressWarnings({"static-method"})
-public final class Target_Unsafe {
+public final class Target_Unsafe_Reflection {
 
     @Substitute
     public long objectFieldOffset(Target_java_lang_reflect_Field field) {
