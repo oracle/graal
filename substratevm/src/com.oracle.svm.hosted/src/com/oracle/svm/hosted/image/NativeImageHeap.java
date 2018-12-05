@@ -724,16 +724,15 @@ public final class NativeImageHeap {
         patcher.patchReference("lastReadOnlyPrimitiveObject", readOnlyPrimitive.lastAllocatedObject);
 
         /*
-         * Expand the read-only reference partition to include the objects in the read-only
-         * relocated partition.
+         * Set the boundaries of read-only references to include the read-only reference partition
+         * followed by the read-only relocatable partition.
          */
-        /* The start of the read-only reference partition. */
         Object firstReadOnlyReferenceObject = readOnlyReference.firstAllocatedObject;
         if (firstReadOnlyReferenceObject == null) {
             firstReadOnlyReferenceObject = readOnlyRelocatable.firstAllocatedObject;
         }
         patcher.patchReference("firstReadOnlyReferenceObject", firstReadOnlyReferenceObject);
-        /* The end of the read-only reference partition. */
+
         Object lastReadOnlyReferenceObject = readOnlyRelocatable.lastAllocatedObject;
         if (lastReadOnlyReferenceObject == null) {
             lastReadOnlyReferenceObject = readOnlyReference.lastAllocatedObject;
