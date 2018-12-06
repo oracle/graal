@@ -342,7 +342,7 @@ public class InstalledCodeBuilder {
                  * immediately. So all metadata must be registered at this point.
                  */
                 installedCode.setAddress(code.rawValue(), method);
-                int tier = compilation.getName().endsWith(TruffleCompiler.SECOND_TIER_COMPILATION_SUFFIX) ? TruffleCompiler.LAST_TIER_INDEX : TruffleCompiler.FIRST_TIER_INDEX;
+                int tier = compilation.getName().endsWith(TruffleCompiler.FIRST_TIER_COMPILATION_SUFFIX) ? TruffleCompiler.FIRST_TIER_INDEX : TruffleCompiler.LAST_TIER_INDEX;
                 installedCode.setTier(tier);
             } catch (Throwable e) {
                 errorBox[0] = e;
@@ -379,7 +379,7 @@ public class InstalledCodeBuilder {
         assert codeInfoEncoder.verifyMethod(compilation, 0);
 
         DeoptimizationSourcePositionEncoder sourcePositionEncoder = new DeoptimizationSourcePositionEncoder(metaInfoAllocator);
-        sourcePositionEncoder.encode(compilation.getDeoptimzationSourcePositions());
+        sourcePositionEncoder.encode(compilation.getDeoptimizationSourcePositions());
         sourcePositionEncoder.install(runtimeMethodInfo);
     }
 
