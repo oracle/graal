@@ -1205,7 +1205,8 @@ public class NativeImageGenerator {
                 ListIterator<BasePhase<? super MidTierContext>> it = midTier.findPhase(FrameStateAssignmentPhase.class);
                 it.add(new CollectDeoptimizationSourcePositionsPhase());
 
-                // On SVM, the economy configuration requires a canonicalization run at the end of mid tier.
+                // On SVM, the economy configuration requires a canonicalization run at the end of
+                // mid tier.
                 it = midTier.findLastPhase();
                 it.add(new CanonicalizerPhase());
             } else {
