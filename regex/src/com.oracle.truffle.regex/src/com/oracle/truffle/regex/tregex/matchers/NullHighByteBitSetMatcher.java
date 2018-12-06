@@ -25,13 +25,14 @@
 package com.oracle.truffle.regex.tregex.matchers;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 /**
  * Specialized {@link BitSetMatcher} that exists simply because ascii bit set matchers occur often
  * and we can save one comparison when the high byte is {@code 0x00}.
  */
-public final class NullHighByteBitSetMatcher extends InvertibleCharMatcher {
+public abstract class NullHighByteBitSetMatcher extends InvertibleCharMatcher {
 
     private final CompilationFinalBitSet bitSet;
 
@@ -40,9 +41,13 @@ public final class NullHighByteBitSetMatcher extends InvertibleCharMatcher {
         this.bitSet = bitSet;
     }
 
-    @Override
-    protected boolean matchChar(char c) {
-        return bitSet.get(c);
+    public static NullHighByteBitSetMatcher create(boolean inverse, CompilationFinalBitSet bitSet) {
+        return NullHighByteBitSetMatcherNodeGen.create(inverse, bitSet);
+    }
+
+    @Specialization
+    protected boolean match(char c, @SuppressWarnings("unused") boolean compactString) {
+        return result(bitSet.get(c));
     }
 
     @Override

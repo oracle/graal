@@ -25,12 +25,13 @@
 package com.oracle.truffle.regex.tregex.matchers;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 
 /**
  * Matcher that matches two characters. Used for things like dot (.) or ignore-case.
  */
-public final class TwoCharMatcher extends InvertibleCharMatcher {
+public abstract class TwoCharMatcher extends InvertibleCharMatcher {
 
     private final char c1;
     private final char c2;
@@ -42,15 +43,19 @@ public final class TwoCharMatcher extends InvertibleCharMatcher {
      * @param c1 first character to match.
      * @param c2 second character to match.
      */
-    public TwoCharMatcher(boolean invert, char c1, char c2) {
+    TwoCharMatcher(boolean invert, char c1, char c2) {
         super(invert);
         this.c1 = c1;
         this.c2 = c2;
     }
 
-    @Override
-    public boolean matchChar(char m) {
-        return m == c1 || m == c2;
+    public static TwoCharMatcher create(boolean invert, char c1, char c2) {
+        return TwoCharMatcherNodeGen.create(invert, c1, c2);
+    }
+
+    @Specialization
+    public boolean match(char m, boolean compactString) {
+        return result((!compactString || c1 < 256) && m == c1 || (!compactString || c2 < 256) && m == c2);
     }
 
     @Override

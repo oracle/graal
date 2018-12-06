@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,36 +22,43 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package com.oracle.truffle.regex.tregex.matchers;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.Specialization;
 
-/**
- * A character matcher that always matches.
- */
-public abstract class AnyMatcher extends CharMatcher {
+public abstract class ProfilingCharMatcher extends CharMatcher {
 
-    public static CharMatcher create() {
-        return AnyMatcherNodeGen.create();
+    @Child private CharMatcher byteMatcher;
+    @Child private CharMatcher charMatcher;
+
+    ProfilingCharMatcher(CharMatcher byteMatcher, CharMatcher charMatcher) {
+        this.byteMatcher = byteMatcher;
+        this.charMatcher = charMatcher;
     }
 
-    public static CharMatcher create(boolean invert) {
-        return invert ? EmptyMatcher.create() : create();
+    public static ProfilingCharMatcher create(CharMatcher byteMatcher, CharMatcher charMatcher) {
+        return ProfilingCharMatcherNodeGen.create(byteMatcher, charMatcher);
     }
 
-    @Specialization
-    @SuppressWarnings("unused")
-    boolean match(char c, boolean compactString) {
-        return true;
+    @Specialization(guards = "isByte(c, compactString)")
+    boolean matchByte(char c, boolean compactString) {
+        return byteMatcher.execute(c, compactString);
+    }
+
+    @Specialization(replaces = "matchByte")
+    boolean matchChar(char c, boolean compactString) {
+        return charMatcher.execute(c, compactString);
+    }
+
+    static boolean isByte(char c, boolean compactString) {
+        CompilerAsserts.partialEvaluationConstant(compactString);
+        return compactString || c < 256;
     }
 
     @Override
     public int estimatedCost() {
-        return 0;
-    }
-
-    @Override
-    public String toString() {
-        return "any";
+        return charMatcher.estimatedCost();
     }
 }

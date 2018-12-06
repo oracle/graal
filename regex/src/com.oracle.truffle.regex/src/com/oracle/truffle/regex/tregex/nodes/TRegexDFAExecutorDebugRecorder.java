@@ -37,10 +37,10 @@ import java.util.List;
 
 /**
  * This class is used to store a trace of the execution of a
- * {@link TRegexDFAExecutorNode#execute(VirtualFrame)}. A trace contains the arguments received by
- * {@link TRegexDFAExecutorNode#execute(VirtualFrame)}, and the ID of the DFA transition taken for
- * all characters of the input string that have been traversed. After execution, the recorded trace
- * can be dumped to disk as JSON with {@link #finishRecording()}.
+ * {@link TRegexDFAExecutorNode#execute(VirtualFrame, boolean)}. A trace contains the arguments
+ * received by {@link TRegexDFAExecutorNode#execute(VirtualFrame, boolean)}, and the ID of the DFA
+ * transition taken for all characters of the input string that have been traversed. After
+ * execution, the recorded trace can be dumped to disk as JSON with {@link #finishRecording()}.
  */
 public class TRegexDFAExecutorDebugRecorder implements JsonConvertible {
 
