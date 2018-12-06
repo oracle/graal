@@ -712,7 +712,7 @@ public class NativeImageGenerator {
                                 if (!config.getAndResetRequireAnalysisIteration()) {
                                     if (numTypes != aUniverse.getTypes().size() || numMethods != aUniverse.getMethods().size() || numFields != aUniverse.getFields().size()) {
                                         throw UserError.abort(
-                                                        "When a feature makes more types, methods, of fields reachable, it must require another analysis iteration via DuringAnalysisAccess.requireAnalysisIteration()");
+                                                        "When a feature makes more types, methods, or fields reachable, it must require another analysis iteration via DuringAnalysisAccess.requireAnalysisIteration()");
                                     }
                                     break;
                                 }

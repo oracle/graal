@@ -287,19 +287,19 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             e.getReason().ifPresent(NativeImageGeneratorRunner::info);
             return 0;
         } catch (UserException e) {
-            e.getMessages().iterator().forEachRemaining(NativeImageGeneratorRunner::reportUserError);
+            reportUserError(e);
             return -1;
         } catch (AnalysisError e) {
-            NativeImageGeneratorRunner.reportUserError(e.getMessage());
+            reportUserError(e);
             return -1;
         } catch (ParallelExecutionException pee) {
             boolean hasUserError = false;
             for (Throwable exception : pee.getExceptions()) {
                 if (exception instanceof UserException) {
-                    ((UserException) exception).getMessages().iterator().forEachRemaining(NativeImageGeneratorRunner::reportUserError);
+                    reportUserError(exception);
                     hasUserError = true;
                 } else if (exception instanceof AnalysisError) {
-                    NativeImageGeneratorRunner.reportUserError(exception.getMessage());
+                    reportUserError(exception);
                     hasUserError = true;
                 }
             }
@@ -359,6 +359,25 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
      */
     public static void reportUserError(String msg) {
         System.err.println("error: " + msg);
+    }
+
+    /**
+     * Function for reporting all fatal errors in SVM.
+     *
+     * @param e error message that is printed.
+     */
+    public static void reportUserError(Throwable e) {
+        if (e instanceof UserException) {
+            UserException ue = (UserException) e;
+            for (String message : ue.getMessages()) {
+                reportUserError(message);
+            }
+        } else {
+            reportUserError(e.getMessage());
+        }
+        if (NativeImageOptions.ReportExceptionStackTraces.getValue()) {
+            e.printStackTrace();
+        }
     }
 
     /**

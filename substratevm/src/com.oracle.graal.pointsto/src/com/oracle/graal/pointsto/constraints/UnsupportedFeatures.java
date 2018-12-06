@@ -50,7 +50,7 @@ public class UnsupportedFeatures {
         Data(String key, AnalysisMethod method, String message, String trace, Throwable originalException) {
             this.key = key;
             this.method = method;
-            this.message = message;
+            this.message = message != null ? message : "";
             this.trace = trace;
             this.originalException = originalException;
         }

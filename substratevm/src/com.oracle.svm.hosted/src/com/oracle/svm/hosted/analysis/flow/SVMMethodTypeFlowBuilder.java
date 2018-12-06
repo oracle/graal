@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.analysis.flow;
 
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -120,7 +121,7 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
     }
 
     @Override
-    protected void checkUnsafeOffset(ValueNode offsetNode) {
+    protected void checkUnsafeOffset(ValueNode base, ValueNode offsetNode) {
         if (!NativeImageOptions.ThrowUnsafeOffsetErrors.getValue()) {
             /* Skip the checks bellow. */
             return;
@@ -146,17 +147,23 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
          * if it was properly intercepted or not is LoadFieldNode.
          */
 
+        NodeSourcePosition pos = offsetNode.getNodeSourcePosition();
         if (offsetNode instanceof LoadFieldNode) {
             LoadFieldNode offsetLoadNode = (LoadFieldNode) offsetNode;
             AnalysisField field = (AnalysisField) offsetLoadNode.field();
-            if (!(field.wrapped instanceof ComputedValueField)) {
-                UnsafeOffsetError.report("Field " + field + " is used as an offset in an unsafe operation, but no value recomputation found. \n Wrapped field: " + field.wrapped);
+            if (!(field.wrapped instanceof ComputedValueField) && !(base.isConstant() && base.asConstant().isDefaultForKind())) {
+                String message = String.format("Field %s is used as an offset in an unsafe operation, but no value recomputation found.%n Wrapped field: %s", field, field.wrapped);
+                if (pos != null) {
+                    message += String.format("%n Location: %s", pos);
+                }
+                UnsafeOffsetError.report(message);
             }
         } else if (NativeImageOptions.ReportUnsafeOffsetWarnings.getValue()) {
-
             String message = "Offset used in an unsafe operation. Cannot determine if the offset value is recomputed.";
-            message += "Location: " + offsetNode.getNodeSourcePosition() + "\n";
-            message += "Node class: " + offsetNode.getClass().getName() + "\n";
+            message += String.format("%nNode class: %s" + offsetNode.getClass().getName());
+            if (pos != null) {
+                message += String.format("%n Location: %s", pos);
+            }
             if (NativeImageOptions.UnsafeOffsetWarningsAreFatal.getValue()) {
                 UnsafeOffsetError.report(message);
             } else {

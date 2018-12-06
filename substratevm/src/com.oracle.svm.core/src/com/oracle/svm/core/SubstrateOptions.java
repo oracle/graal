@@ -166,6 +166,9 @@ public class SubstrateOptions {
     @Option(help = "Resources describing program elements to be made accessible via JNI (see JNIConfigurationFiles).", type = OptionType.User)//
     public static final HostedOptionKey<String[]> JNIConfigurationResources = new HostedOptionKey<>(null);
 
+    @Option(help = "Report information about known JNI elements when lookup fails", type = OptionType.User)//
+    public static final HostedOptionKey<Boolean> JNIVerboseLookupErrors = new HostedOptionKey<>(false);
+
     /*
      * Object and array allocation options.
      */

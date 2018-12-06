@@ -246,7 +246,12 @@ public final class NativeImageHeap {
              * not seen - so this check actually protects against much more than just missing class
              * initialization information.
              */
-            throw VMError.shouldNotReachHere("DynamicHub written to the image that has not been seen as reachable during static analysis: " + original);
+            throw VMError.shouldNotReachHere(String.format(
+                            "Image heap writing found a class not seen as instantiated during static analysis. Did a static field or an object referenced " +
+                                            "from a static field change during native image generation? For example, a lazily initialized cache could have been " +
+                                            "initialized during image generation, in which case you need to force eager initialization of the cache before static analysis " +
+                                            "or reset the cache using a field value recomputation.%n  class: %s%n  reachable through:%n%s",
+                            original, fillReasonStack(new StringBuilder(), reason)));
         }
 
         int identityHashCode;
@@ -338,13 +343,13 @@ public final class NativeImageHeap {
 
         final Optional<HostedType> optionalType = getMetaAccess().optionalLookupJavaType(object.getClass());
         if (!optionalType.isPresent() || !optionalType.get().isInstantiated()) {
-            throw UserError.abort("Image heap writing found an object whose class was not seen as instantiated during static analysis. " +
-                            "Did a static field or an object referenced from a static field changed during native image generation? " +
-                            "For example, a lazily initialized cache could have been initialized during image generation, " +
-                            "in which case you need to force eager initialization of the cache before static analysis or reset the cache using a field value recomputation.\n" +
-                            "  object: " + object + "  of class: " + object.getClass().getTypeName() + "\n" +
-                            "  reachable through:\n" +
-                            fillReasonStack(new StringBuilder(), reason));
+            throw UserError.abort(
+                            String.format("Image heap writing found an object whose class was not seen as instantiated during static analysis. " +
+                                            "Did a static field or an object referenced from a static field change during native image generation? " +
+                                            "For example, a lazily initialized cache could have been initialized during image generation, in which case " +
+                                            "you need to force eager initialization of the cache before static analysis or reset the cache using a field " +
+                                            "value recomputation.%n  object: %s of class: %s%n  reachable through:%n%s",
+                                            object, object.getClass().getTypeName(), fillReasonStack(new StringBuilder(), reason)));
         }
         final HostedType type = optionalType.get();
         final DynamicHub hub = type.getHub();
@@ -552,20 +557,18 @@ public final class NativeImageHeap {
 
     private static void verifyTargetDidNotChange(Object target, Object reason, Object targetInfo) {
         if (targetInfo == null) {
-            throw UserError.abort("Static field or an object referenced from a static field changed during native image generation?\n" +
-                            "  object:" + target + "  of class: " + target.getClass().getTypeName() + "\n" +
-                            "  reachable through:\n" +
-                            fillReasonStack(new StringBuilder(), reason));
+            throw UserError.abort(String.format("Static field or an object referenced from a static field changed during native image generation?%n" +
+                            "  object:%s  of class: %s%n  reachable through:%n%s", target, target.getClass().getTypeName(), fillReasonStack(new StringBuilder(), reason)));
         }
     }
 
     private static StringBuilder fillReasonStack(StringBuilder msg, Object reason) {
         if (reason instanceof ObjectInfo) {
             ObjectInfo info = (ObjectInfo) reason;
-            msg.append("    object: ").append(info.getObject()).append("  of class: ").append(info.getObject().getClass().getTypeName()).append("\n");
+            msg.append("    object: ").append(info.getObject()).append("  of class: ").append(info.getObject().getClass().getTypeName()).append(System.lineSeparator());
             return fillReasonStack(msg, info.reason);
         }
-        return msg.append("    root: ").append(reason).append("\n");
+        return msg.append("    root: ").append(reason).append(System.lineSeparator());
     }
 
     private void writeField(RelocatableBuffer buffer, ObjectInfo fields, HostedField field, JavaConstant receiver, ObjectInfo info) {
@@ -1192,7 +1195,7 @@ public final class NativeImageHeap {
         }
 
         void printSize() {
-            System.out.printf("PrintImageHeapPartitionSizes:  partition: %s  size: %d\n", name, getSize());
+            System.out.printf("PrintImageHeapPartitionSizes:  partition: %s  size: %d%n", name, getSize());
         }
 
         private HeapPartition(String name, NativeImageHeap heap, boolean writable) {
