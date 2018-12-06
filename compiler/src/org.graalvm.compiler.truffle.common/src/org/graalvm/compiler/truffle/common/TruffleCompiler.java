@@ -34,35 +34,41 @@ public interface TruffleCompiler {
     String SECOND_TIER_COMPILATION_SUFFIX = "#2";
 
     /**
-     * Creates a new, unique compilation identifier for {@code compilable}. Each call results in a
-     * new identifier.
+     * Opens a new compilation for {@code compilable}. Each call results in a new compilation
+     * object. The returned compilation object may be associated with external resources which are
+     * only released by calling {@link TruffleCompilation#close() close}.
+     *
+     * @param compilable the Truffle AST to be compiled
      */
-    String getCompilationIdentifier(CompilableTruffleAST compilable);
+    TruffleCompilation openCompilation(CompilableTruffleAST compilable);
 
     /**
      * Opens a debug context for Truffle compilation. The {@code close()} method should be called on
      * the returned object once the compilation is finished.
      *
      * @param options the options for the debug context
-     * @param compilationId an unique identifier to be used for a single compilation. Ignored if
-     *            {@code compilable == null}.
-     * @param compilable the Truffle AST to be compiled or {@code null} if the returned context will
-     *            be used for multiple Truffle compilations
+     * @param compilation a compilation object created by
+     *            {@link #openCompilation(org.graalvm.compiler.truffle.common.CompilableTruffleAST)
+     *            openCompilation} to be used for a single compilation or {@code null} if the
+     *            returned context will be used for multiple Truffle compilations
      * @return the new {@link TruffleDebugContext}
      */
-    TruffleDebugContext openDebugContext(Map<String, Object> options, String compilationId, CompilableTruffleAST compilable);
+    TruffleDebugContext openDebugContext(Map<String, Object> options, TruffleCompilation compilation);
 
     /**
      * Compiles {@code compilable} to machine code.
      *
      * @param debug a debug context to use
-     * @param compilationId an unique identifier to be used for the compilation
+     * @param compilation a compilation object created by
+     *            {@link #openCompilation(org.graalvm.compiler.truffle.common.CompilableTruffleAST)
+     *            openCompilation} to be used for the compilation
      * @param options option values relevant to compilation
-     * @param compilable the Truffle AST to be compiled
      * @param inlining a guide for Truffle level inlining to be performed during compilation
      * @param task an object that must be periodically queried during compilation to see if the
+     *            compilation is cancelled
+     * @param listener a listener receiving events about compilation success or failure
      */
-    void doCompile(TruffleDebugContext debug, String compilationId, Map<String, Object> options, CompilableTruffleAST compilable, TruffleInliningPlan inlining, TruffleCompilationTask task,
+    void doCompile(TruffleDebugContext debug, TruffleCompilation compilation, Map<String, Object> options, TruffleInliningPlan inlining, TruffleCompilationTask task,
                     TruffleCompilerListener listener);
 
     /**

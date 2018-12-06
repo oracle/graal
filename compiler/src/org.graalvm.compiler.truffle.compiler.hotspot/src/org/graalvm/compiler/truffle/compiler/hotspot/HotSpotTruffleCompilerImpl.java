@@ -94,6 +94,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.runtime.JVMCI;
 import jdk.vm.ci.runtime.JVMCICompiler;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
 
 public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implements HotSpotTruffleCompiler {
 
@@ -160,7 +161,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
     }
 
     @Override
-    public CompilationIdentifier createCompilationIdentifier(CompilableTruffleAST compilable) {
+    public TruffleCompilationIdentifier createCompilationIdentifier(CompilableTruffleAST compilable) {
         ResolvedJavaMethod rootMethod = partialEvaluator.rootForCallTarget(compilable);
         HotSpotCompilationRequest request = new HotSpotCompilationRequest((HotSpotResolvedJavaMethod) rootMethod, JVMCICompiler.INVOCATION_ENTRY_BCI, 0L);
         return new HotSpotTruffleCompilationIdentifier(request, compilable);
