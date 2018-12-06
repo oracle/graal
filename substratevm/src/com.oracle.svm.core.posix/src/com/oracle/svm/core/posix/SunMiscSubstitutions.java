@@ -34,6 +34,7 @@ import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Alias;
@@ -50,6 +51,7 @@ import com.oracle.svm.core.posix.headers.CSunMiscSignal;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Signal.SignalDispatcher;
+import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.util.VMError;
 
 @Platforms(Platform.HOSTED_ONLY.class)
@@ -434,6 +436,30 @@ class IgnoreSIGPIPEFeature implements Feature {
                 VMError.guarantee(signalResult != Signal.SIG_ERR(), "IgnoreSIGPIPEFeature.run: Could not ignore SIGPIPE");
             }
         });
+    }
+}
+
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@TargetClass(className = "jdk.internal.misc.VM", onlyWith = JDK9OrLater.class)
+final class Target_jdk_internal_misc_VM {
+
+    /* Implementation from src/hotspot/share/prims/jvm.cpp#L286 translated to Java. */
+    @Substitute
+    public static long getNanoTimeAdjustment(long offsetInSeconds) {
+        final long MAX_DIFF_SECS = 0x0100000000L;
+        final long MIN_DIFF_SECS = -MAX_DIFF_SECS;
+
+        Time.timeval tv = StackValue.get(Time.timeval.class);
+        int status = Time.gettimeofday(tv, WordFactory.nullPointer());
+        assert status != -1 : "linux error";
+        long seconds = tv.tv_sec();
+        long nanos = tv.tv_usec() * 1000;
+
+        long diff = seconds - offsetInSeconds;
+        if (diff >= MAX_DIFF_SECS || diff <= MIN_DIFF_SECS) {
+            return -1;
+        }
+        return (diff * (long) 1000000000) + nanos;
     }
 }
 
