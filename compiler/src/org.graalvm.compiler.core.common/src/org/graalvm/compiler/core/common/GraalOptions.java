@@ -197,9 +197,6 @@ public final class GraalOptions {
     public static final OptionKey<Boolean> AlwaysInlineVTableStubs = new OptionKey<>(false);
 
     @Option(help = "", type = OptionType.Debug)
-    public static final OptionKey<Boolean> ResolveClassBeforeStaticInvoke = new OptionKey<>(false);
-
-    @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> CanOmitFrame = new OptionKey<>(true);
 
     // Ahead of time compilation
