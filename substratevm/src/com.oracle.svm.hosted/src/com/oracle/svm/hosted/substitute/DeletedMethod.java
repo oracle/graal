@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.substitute;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
@@ -56,6 +57,24 @@ public class DeletedMethod extends CustomSubstitutionMethod {
     public DeletedMethod(ResolvedJavaMethod original, Delete deleteAnnotation) {
         super(original);
         this.deleteAnnotation = deleteAnnotation;
+    }
+
+    @Override
+    public Annotation[] getAnnotations() {
+        return AnnotatedField.appendAnnotationTo(original.getAnnotations(), deleteAnnotation);
+    }
+
+    @Override
+    public Annotation[] getDeclaredAnnotations() {
+        return AnnotatedField.appendAnnotationTo(original.getDeclaredAnnotations(), deleteAnnotation);
+    }
+
+    @Override
+    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
+        if (annotationClass.isInstance(deleteAnnotation)) {
+            return annotationClass.cast(deleteAnnotation);
+        }
+        return original.getAnnotation(annotationClass);
     }
 
     public static final Method reportErrorMethod;
