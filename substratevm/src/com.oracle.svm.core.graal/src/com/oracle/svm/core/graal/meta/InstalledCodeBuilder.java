@@ -337,13 +337,13 @@ public class InstalledCodeBuilder {
             try {
                 CodeInfoTable.getRuntimeCodeCache().addMethod(runtimeMethodInfo);
 
+                int tier = compilation.getName().endsWith(TruffleCompiler.FIRST_TIER_COMPILATION_SUFFIX) ? TruffleCompiler.FIRST_TIER_INDEX : TruffleCompiler.LAST_TIER_INDEX;
+                installedCode.setTier(tier);
                 /*
                  * This call makes the new code visible, i.e., other threads can start executing it
                  * immediately. So all metadata must be registered at this point.
                  */
                 installedCode.setAddress(code.rawValue(), method);
-                int tier = compilation.getName().endsWith(TruffleCompiler.FIRST_TIER_COMPILATION_SUFFIX) ? TruffleCompiler.FIRST_TIER_INDEX : TruffleCompiler.LAST_TIER_INDEX;
-                installedCode.setTier(tier);
             } catch (Throwable e) {
                 errorBox[0] = e;
             }
