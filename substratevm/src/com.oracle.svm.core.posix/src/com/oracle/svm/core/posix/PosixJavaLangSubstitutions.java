@@ -438,6 +438,38 @@ final class Target_java_lang_ProcessImpl {
     }
 }
 
+@TargetClass(className = "java.lang.ProcessHandleImpl", onlyWith = JDK9OrLater.class)
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+final class Target_java_lang_ProcessHandleImpl {
+
+    /**
+     * Returns the process start time depending on whether the pid is alive. This must not reap the
+     * exitValue.
+     *
+     * @param pid the pid to check
+     * @return the start time in milliseconds since 1970, 0 if the start time cannot be determined,
+     *         -1 if the pid does not exist.
+     */
+    @Substitute
+    private static long isAlive0(long pid) {
+        return -1;
+    }
+
+    /**
+     * Wait for the process to exit, return the value. Conditionally reap the value if requested
+     *
+     * @param pid the processId
+     * @param reapvalue if true, the value is retrieved, else return the value and leave the process
+     *            waitable
+     *
+     * @return the value or -1 if an error occurs
+     */
+    @Substitute
+    private static int waitForProcessExit0(long pid, boolean reapvalue) {
+        return -1;
+    }
+}
+
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Java_lang_UNIXProcess_Supplement {
 
