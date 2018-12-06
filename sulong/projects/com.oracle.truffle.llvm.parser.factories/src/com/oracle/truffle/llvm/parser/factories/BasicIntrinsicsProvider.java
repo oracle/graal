@@ -418,23 +418,23 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
         add("@polyglot_fits_in_float", (args, context) -> LLVMPolyglotBoxedPredicateNodeGen.create(FitsInFloatNodeGen.create(), args.get(1)));
         add("@polyglot_fits_in_double", (args, context) -> LLVMPolyglotBoxedPredicateNodeGen.create(FitsInDoubleNodeGen.create(), args.get(1)));
 
-        add("@polyglot_put_member", "@truffle_write", (args, context) -> LLVMTruffleWriteToNameNodeGen.create(args.get(1), args.get(2), args.get(3)));
+        add("@polyglot_put_member", "@truffle_write", (args, context) -> LLVMTruffleWriteToNameNodeGen.create(args.size() - 1, args.get(1), args.get(2), args.get(3)));
 
-        add("@truffle_write_i", (args, context) -> LLVMTruffleWriteToNameNodeGen.create(args.get(1), args.get(2), args.get(3)));
-        add("@truffle_write_l", (args, context) -> LLVMTruffleWriteToNameNodeGen.create(args.get(1), args.get(2), args.get(3)));
-        add("@truffle_write_c", (args, context) -> LLVMTruffleWriteToNameNodeGen.create(args.get(1), args.get(2), args.get(3)));
-        add("@truffle_write_f", (args, context) -> LLVMTruffleWriteToNameNodeGen.create(args.get(1), args.get(2), args.get(3)));
-        add("@truffle_write_d", (args, context) -> LLVMTruffleWriteToNameNodeGen.create(args.get(1), args.get(2), args.get(3)));
-        add("@truffle_write_b", (args, context) -> LLVMTruffleWriteToNameNodeGen.create(args.get(1), args.get(2), args.get(3)));
+        add("@truffle_write_i", (args, context) -> LLVMTruffleWriteToNameNodeGen.create(args.size() - 1, args.get(1), args.get(2), args.get(3)));
+        add("@truffle_write_l", (args, context) -> LLVMTruffleWriteToNameNodeGen.create(args.size() - 1, args.get(1), args.get(2), args.get(3)));
+        add("@truffle_write_c", (args, context) -> LLVMTruffleWriteToNameNodeGen.create(args.size() - 1, args.get(1), args.get(2), args.get(3)));
+        add("@truffle_write_f", (args, context) -> LLVMTruffleWriteToNameNodeGen.create(args.size() - 1, args.get(1), args.get(2), args.get(3)));
+        add("@truffle_write_d", (args, context) -> LLVMTruffleWriteToNameNodeGen.create(args.size() - 1, args.get(1), args.get(2), args.get(3)));
+        add("@truffle_write_b", (args, context) -> LLVMTruffleWriteToNameNodeGen.create(args.size() - 1, args.get(1), args.get(2), args.get(3)));
 
-        add("@polyglot_set_array_element", "@truffle_write_idx", (args, context) -> LLVMTruffleWriteToIndexNodeGen.create(args.get(1), args.get(2), args.get(3)));
+        add("@polyglot_set_array_element", "@truffle_write_idx", (args, context) -> LLVMTruffleWriteToIndexNodeGen.create(args.size() - 1, args.get(1), args.get(2), args.get(3)));
 
-        add("@truffle_write_idx_i", (args, context) -> LLVMTruffleWriteToIndexNodeGen.create(args.get(1), args.get(2), args.get(3)));
-        add("@truffle_write_idx_l", (args, context) -> LLVMTruffleWriteToIndexNodeGen.create(args.get(1), args.get(2), args.get(3)));
-        add("@truffle_write_idx_c", (args, context) -> LLVMTruffleWriteToIndexNodeGen.create(args.get(1), args.get(2), args.get(3)));
-        add("@truffle_write_idx_f", (args, context) -> LLVMTruffleWriteToIndexNodeGen.create(args.get(1), args.get(2), args.get(3)));
-        add("@truffle_write_idx_d", (args, context) -> LLVMTruffleWriteToIndexNodeGen.create(args.get(1), args.get(2), args.get(3)));
-        add("@truffle_write_idx_b", (args, context) -> LLVMTruffleWriteToIndexNodeGen.create(args.get(1), args.get(2), args.get(3)));
+        add("@truffle_write_idx_i", (args, context) -> LLVMTruffleWriteToIndexNodeGen.create(args.size() - 1, args.get(1), args.get(2), args.get(3)));
+        add("@truffle_write_idx_l", (args, context) -> LLVMTruffleWriteToIndexNodeGen.create(args.size() - 1, args.get(1), args.get(2), args.get(3)));
+        add("@truffle_write_idx_c", (args, context) -> LLVMTruffleWriteToIndexNodeGen.create(args.size() - 1, args.get(1), args.get(2), args.get(3)));
+        add("@truffle_write_idx_f", (args, context) -> LLVMTruffleWriteToIndexNodeGen.create(args.size() - 1, args.get(1), args.get(2), args.get(3)));
+        add("@truffle_write_idx_d", (args, context) -> LLVMTruffleWriteToIndexNodeGen.create(args.size() - 1, args.get(1), args.get(2), args.get(3)));
+        add("@truffle_write_idx_b", (args, context) -> LLVMTruffleWriteToIndexNodeGen.create(args.size() - 1, args.get(1), args.get(2), args.get(3)));
 
         add("@polyglot_get_member", "@truffle_read", (args, context) -> LLVMTruffleReadFromNameNodeGen.create(context.getNodeFactory().createForeignToLLVM(POINTER), args.get(1), args.get(2)));
 
