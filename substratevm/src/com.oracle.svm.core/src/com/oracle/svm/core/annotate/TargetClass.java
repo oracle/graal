@@ -105,7 +105,7 @@ public @interface TargetClass {
     /**
      * Specifies the suffix of the substitutee class name when it is an inner class.
      */
-    String innerClass() default "";
+    String[] innerClass() default {};
 
     /**
      * Substitute only if all provided predicates are true (default: unconditional substitution that

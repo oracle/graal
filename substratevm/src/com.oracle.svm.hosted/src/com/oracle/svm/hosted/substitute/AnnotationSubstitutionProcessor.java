@@ -73,8 +73,8 @@ import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.annotation.AnnotationSubstitutionType;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
-import jdk.vm.ci.common.NativeImageReinitialize;
 
+import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -797,12 +797,14 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             throw UserError.abort("substitution target for " + annotatedBaseClass.getName() +
                             " is not loaded. Use field `onlyWith` in the `TargetClass` annotation to make substitution only active when needed.");
         }
-        if (!target.innerClass().isEmpty()) {
-            Class<?> outerClass = holder;
-            holder = findInnerClass(outerClass, target.innerClass());
-            if (holder == null) {
-                throw UserError.abort("substitution target for " + annotatedBaseClass.getName() + " is invalid as inner class " + target.innerClass() + " in " + outerClass.getName() +
-                                " can not be found. Make sure that the inner class is present.");
+        if (target.innerClass().length > 0) {
+            for (String innerClass : target.innerClass()) {
+                Class<?> prevHolder = holder;
+                holder = findInnerClass(prevHolder, innerClass);
+                if (holder == null) {
+                    throw UserError.abort("substitution target for " + annotatedBaseClass.getName() + " is invalid as inner class " + innerClass + " in " + prevHolder.getName() +
+                                    " can not be found. Make sure that the inner class is present.");
+                }
             }
         }
 

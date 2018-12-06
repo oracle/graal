@@ -77,7 +77,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             apiOptions = ImageSingletons.lookup(APIOptionCollector.class).options;
         } else {
             List<Class<? extends OptionDescriptors>> optionDescriptorsList = new ArrayList<>();
-            ServiceLoader<OptionDescriptors> serviceLoader = ServiceLoader.load(OptionDescriptors.class, OptionDescriptors.class.getClassLoader());
+            ServiceLoader<OptionDescriptors> serviceLoader = ServiceLoader.load(OptionDescriptors.class, nativeImage.getClass().getClassLoader());
             for (OptionDescriptors optionDescriptors : serviceLoader) {
                 optionDescriptorsList.add(optionDescriptors.getClass());
             }
