@@ -58,7 +58,7 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
 
     @Override
     public void setTier(int tier) {
-        assert tier > this.tier : "New tier " + tier + " should be greater than the old tier " + this.tier;
+        assert tier >= this.tier : "New tier " + tier + " should be greater or equal to the old tier " + this.tier;
         this.tier = tier;
     }
 
@@ -84,7 +84,7 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
 
     @Override
     public boolean isValidLastTier() {
-        // Note: this is correct because the tier field can only grow
+        // Note: this is correct because the tier field can only stay the same or grow
         // (i.e. change once from 1 to 2).
         while (true) {
             int tier0 = this.tier;
