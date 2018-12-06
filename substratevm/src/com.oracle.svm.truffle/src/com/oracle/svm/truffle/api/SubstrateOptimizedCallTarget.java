@@ -58,6 +58,7 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
 
     @Override
     public void setTier(int tier) {
+        assert tier > this.tier : "New tier " + tier + " should be greater than the old tier " + this.tier;
         this.tier = tier;
     }
 
