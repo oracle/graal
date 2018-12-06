@@ -44,7 +44,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.graalvm.nativeimage.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.util.UserError;
@@ -117,7 +119,6 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
         Field declaredPublicFieldsField = findField(originalReflectionDataClass, "declaredPublicFields");
         Field declaredPublicMethodsField = findField(originalReflectionDataClass, "declaredPublicMethods");
 
-        Field[] emptyFields = new Field[0];
         Method[] emptyMethods = new Method[0];
         Constructor<?>[] emptyConstructors = new Constructor<?>[0];
 
@@ -176,14 +177,14 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
             try {
                 Object originalReflectionData = reflectionDataMethod.invoke(clazz);
                 hub.setReflectionData(new DynamicHub.ReflectionData(
-                                filter(declaredFieldsField.get(originalReflectionData), reflectionFields.keySet(), emptyFields),
-                                filter(publicFieldsField.get(originalReflectionData), reflectionFields.keySet(), emptyFields),
+                                filterFields(declaredFieldsField.get(originalReflectionData), reflectionFields.keySet(), access.getMetaAccess()),
+                                filterFields(publicFieldsField.get(originalReflectionData), reflectionFields.keySet(), access.getMetaAccess()),
                                 filter(declaredMethodsField.get(originalReflectionData), reflectionMethods, emptyMethods),
                                 filter(publicMethodsField.get(originalReflectionData), reflectionMethods, emptyMethods),
                                 filter(declaredConstructorsField.get(originalReflectionData), reflectionMethods, emptyConstructors),
                                 filter(publicConstructorsField.get(originalReflectionData), reflectionMethods, emptyConstructors),
                                 nullaryConstructor(declaredConstructorsField.get(originalReflectionData), reflectionMethods),
-                                filter(declaredPublicFieldsField.get(originalReflectionData), reflectionFields.keySet(), emptyFields),
+                                filterFields(declaredPublicFieldsField.get(originalReflectionData), reflectionFields.keySet(), access.getMetaAccess()),
                                 filter(declaredPublicMethodsField.get(originalReflectionData), reflectionMethods, emptyMethods),
                                 enclosingMethodOrConstructor(clazz)));
             } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
@@ -225,7 +226,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
         if (enclosingMethod == null && enclosingConstructor == null) {
             return null;
         } else if (enclosingMethod != null && enclosingConstructor != null) {
-            throw VMError.shouldNotReachHere("Classs has both an enclosingMethod and an enclosingConstructor: " + clazz + ", " + enclosingMethod + ", " + enclosingConstructor);
+            throw VMError.shouldNotReachHere("Class has both an enclosingMethod and an enclosingConstructor: " + clazz + ", " + enclosingMethod + ", " + enclosingConstructor);
         }
 
         Executable enclosingMethodOrConstructor = enclosingMethod != null ? enclosingMethod : enclosingConstructor;
@@ -245,6 +246,16 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
             }
         }
         return result.toArray(prototypeArray);
+    }
+
+    private static Field[] filterFields(Object fields, Set<Field> filter, AnalysisMetaAccess metaAccess) {
+        List<Field> result = new ArrayList<>();
+        for (Field field : (Field[]) fields) {
+            if (filter.contains(field) && !metaAccess.lookupJavaField(field).isAnnotationPresent(Delete.class)) {
+                result.add(field);
+            }
+        }
+        return result.toArray(new Field[0]);
     }
 
     private static Method findMethod(Class<?> declaringClass, String methodName, Class<?>... parameterTypes) {

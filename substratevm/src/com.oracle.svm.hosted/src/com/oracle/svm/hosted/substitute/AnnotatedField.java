@@ -27,8 +27,9 @@ package com.oracle.svm.hosted.substitute;
 import java.lang.annotation.Annotation;
 import java.util.Arrays;
 
+import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.meta.ReadableJavaField;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.GraalAccess;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -75,7 +76,13 @@ public class AnnotatedField implements ReadableJavaField {
 
     @Override
     public boolean allowConstantFolding() {
-        throw VMError.shouldNotReachHere();
+        /*
+         * We assume that fields for which this class is used always have altered behavior for which
+         * constant folding is not valid.
+         */
+        assert (injectedAnnotation instanceof Delete) || (injectedAnnotation instanceof InjectAccessors) : "Unknown annotation @" +
+                        injectedAnnotation.annotationType().getSimpleName() + ", should constant folding be permitted?";
+        return false;
     }
 
     @Override

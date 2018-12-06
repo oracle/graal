@@ -58,7 +58,7 @@ public class DeletedMethod extends CustomSubstitutionMethod {
         this.deleteAnnotation = deleteAnnotation;
     }
 
-    static final Method reportErrorMethod;
+    public static final Method reportErrorMethod;
 
     static {
         try {
