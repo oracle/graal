@@ -23,8 +23,54 @@
  * questions.
  */
 
-#include <cpuid.h>
 #include "cpufeatures.h"
+
+#ifndef _WIN64
+#include <cpuid.h>
+
+unsigned int get_cpuid_max (unsigned int ext, unsigned int *sig) {
+    return __get_cpuid_max(ext, sig);
+}
+
+int get_cpuid_count (unsigned int leaf, unsigned int subleaf, unsigned int *eax, unsigned int *ebx, unsigned int *ecx, unsigned int *edx) {
+    int cpuInfo[4];
+
+    __cpuid_count (leaf, subleaf, *eax, *ebx, *ecx, *edx);
+    return 1;
+}
+
+int get_cpuid (unsigned int leaf, unsigned int *eax, unsigned int *ebx, unsigned int *ecx, unsigned int *edx) {
+    return (get_cpuid_count(leaf, 0, eax, ebx, ecx, edx));
+}
+
+#else
+#include <intrin.h>
+
+unsigned int get_cpuid_max (unsigned int ext, unsigned int *sig) {
+    int cpuInfo[4];
+
+    cpuInfo[0] = 0;
+    __cpuidex(cpuInfo, ext, 0);
+    *sig = cpuInfo[1];
+    return cpuInfo[0];
+}
+
+int get_cpuid_count (unsigned int leaf, unsigned int subleaf, unsigned int *eax, unsigned int *ebx, unsigned int *ecx, unsigned int *edx) {
+    int cpuInfo[4];
+
+    __cpuidex(cpuInfo, leaf, subleaf);
+    *eax = cpuInfo[0];
+    *ebx = cpuInfo[1];
+    *ecx = cpuInfo[2];
+    *edx = cpuInfo[3];
+    return 1;
+}
+
+int get_cpuid (unsigned int leaf, unsigned int *eax, unsigned int *ebx, unsigned int *ecx, unsigned int *edx) {
+    return (get_cpuid_count(leaf, 0, eax, ebx, ecx, edx));
+}
+
+#endif
 
 
 #define bit_CX8_compat           0x00000100
@@ -49,6 +95,15 @@
 #define bit_SSE4a_compat         0x00000040
 #define bit_LZCNT_compat         0x00000020
 #define bit_HTT_compat           0x10000000
+#define bit_CMOV_compat          0x00008000
+#define bit_FXSAVE_compat        0x01000000
+#define bit_MMX_compat           0x00800000
+#define bit_SSE_compat           0x02000000
+#define bit_SSE2_compat          0x04000000
+#define bit_SSE3_compat          0x00000001
+#define bit_SSSE3_compat         0x00000200
+#define bit_POPCNT_compat        0x00800000
+#define bit_AVX_compat           0x10000000
 
 /*
  * Extracts the CPU features by using cpuid.h.
@@ -61,33 +116,33 @@ void determineCPUFeatures(CPUFeatures* features) {
   unsigned int max_level, ext_level;
   unsigned int vendor;
 
-  max_level = __get_cpuid_max (0, &vendor);
+  max_level = get_cpuid_max (0, &vendor);
   if (max_level < 1) {
     return;
   }
 
-  __cpuid (1, eax, ebx, ecx, edx);
+  get_cpuid (1, &eax, &ebx, &ecx, &edx);
 
   features->fCX8  = !!(edx & bit_CX8_compat);
-  features->fCMOV = !!(edx & bit_CMOV);
-  features->fFXSR = !!(edx & bit_FXSAVE);
+  features->fCMOV = !!(edx & bit_CMOV_compat);
+  features->fFXSR = !!(edx & bit_FXSAVE_compat);
   features->fHT   = !!(edx & bit_HTT_compat);
-  features->fMMX  = !!(edx & bit_MMX);
-  features->fSSE  = !!(edx & bit_SSE);
-  features->fSSE2 = !!(edx & bit_SSE2);
+  features->fMMX  = !!(edx & bit_MMX_compat);
+  features->fSSE  = !!(edx & bit_SSE_compat);
+  features->fSSE2 = !!(edx & bit_SSE2_compat);
   features->fTSC  = !!(edx & bit_TSC_compat);
 
-  features->fSSE3   = !!(ecx & bit_SSE3);
-  features->fSSSE3  = !!(ecx & bit_SSSE3);
+  features->fSSE3   = !!(ecx & bit_SSE3_compat);
+  features->fSSSE3  = !!(ecx & bit_SSSE3_compat);
   features->fSSE41  = !!(ecx & bit_SSE41_compat);
   features->fSSE42  = !!(ecx & bit_SSE42_compat);
-  features->fPOPCNT = !!(ecx & bit_POPCNT);
-  features->fAVX    = !!(ecx & bit_AVX);
+  features->fPOPCNT = !!(ecx & bit_POPCNT_compat);
+  features->fAVX    = !!(ecx & bit_AVX_compat);
   features->fAES    = !!(ecx & bit_AES_compat);
   features->fCLMUL  = !!(ecx & bit_PCLMUL_compat);
 
   if (max_level >= 7) {
-    __cpuid_count (7, 0, eax, ebx, ecx, edx);
+    get_cpuid_count (7, 0, &eax, &ebx, &ecx, &edx);
 
     features->fERMS     = !!(ebx & bit_ERMS_compat);
     features->fAVX2     = !!(ebx & bit_AVX2_compat);
@@ -104,13 +159,14 @@ void determineCPUFeatures(CPUFeatures* features) {
   }
 
   // figuring out extended features
-  __cpuid (0x80000000, ext_level, ebx, ecx, edx);
+  get_cpuid (0x80000000, &ext_level, &ebx, &ecx, &edx);
 
   if (ext_level > 0x80000000) {
-    __cpuid (0x80000001, eax, ebx, ecx, edx);
+    get_cpuid (0x80000001, &eax, &ebx, &ecx, &edx);
 
     features->fSSE4A = !!(ecx & bit_SSE4a_compat);
     features->fLZCNT = !!(ecx & bit_LZCNT_compat);
     features->fAMD3DNOWPREFETCH = !!(ecx & bit_PREFETCHW_compat);
   }
 }
+

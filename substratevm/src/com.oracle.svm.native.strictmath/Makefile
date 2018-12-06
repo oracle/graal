@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,7 @@ ifeq (${OS},windows)
 CFLAGS := /I $(VPATH)/$(LIBM_INCLUDE) /O1 /D _LITTLE_ENDIAN
 OBJ_EXT := obj
 CC := CL
+AR := LIB
 else
 # The flags to be used when compiling C sources.
 CFLAGS := -I$(VPATH)/$(LIBM_INCLUDE) -fPIC -O1 -D _LITTLE_ENDIAN
@@ -47,16 +48,23 @@ OBJ_DIR = $(TARGET_DIR)/$(LIBM_SRC_DIR)
 LIBM_SRCS = $(wildcard $(VPATH)/$(LIBM_SRC_DIR)/*.c)
 LIBM_OBJS = $(LIBM_SRCS:$(VPATH)/%.c=$(TARGET_DIR)/%.$(OBJ_EXT))
 
+
+ifeq (${OS},windows)
+TARGET = $(TARGET_DIR)/$(LIBRARY_NAME).lib
+
+# The first target is what gets made by default.
+$(TARGET) : $(TARGET_DIR)/$(SRC_DIR)/StrictMath.$(OBJ_EXT) $(LIBM_OBJS) | $(TARGET_DIR)
+	$(AR) /OUT:$@ /NAME:strictmath $^
+
+$(TARGET_DIR)/%.$(OBJ_EXT) : %.c $(LIBM_INCLUDE)/fdlibm.h $(LIBM_INCLUDE)/jfdlibm.h | $(OBJ_DIR)
+	$(CC) -c $(CFLAGS) $< /Fo$@
+else
 TARGET = $(TARGET_DIR)/lib$(LIBRARY_NAME).a
 
 # The first target is what gets made by default.
 $(TARGET) : $(TARGET_DIR)/$(SRC_DIR)/StrictMath.$(OBJ_EXT) $(LIBM_OBJS) | $(TARGET_DIR)
 	$(AR) -cr $@ $^
 
-ifeq (${OS},windows)
-$(TARGET_DIR)/%.$(OBJ_EXT) : %.c $(LIBM_INCLUDE)/fdlibm.h $(LIBM_INCLUDE)/jfdlibm.h | $(OBJ_DIR)
-	$(CC) -c $(CFLAGS) $< /Fo$@
-else
 $(TARGET_DIR)/%.$(OBJ_EXT) : %.c $(LIBM_INCLUDE)/fdlibm.h $(LIBM_INCLUDE)/jfdlibm.h | $(OBJ_DIR)
 	$(CC) -c $(CFLAGS) $< -o $@
 endif

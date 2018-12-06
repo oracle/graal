@@ -1022,11 +1022,21 @@ final class JNIFunctions {
             // TODO: check signature
             Class<?> clazz = JNIObjectHandles.getObject(hclazz);
             String name = CTypeConversion.toJavaString(cname);
-            JNIFieldId fieldID = JNIReflectionDictionary.singleton().getFieldID(clazz, name);
-            if (fieldID.isNull()) {
+            JNIFieldId retFieldId = WordFactory.zero();
+            while (clazz != null) {
+                retFieldId = JNIReflectionDictionary.singleton().getFieldID(clazz, name);
+                if (retFieldId.isNonNull()) {
+                    break;
+                }
+                clazz = clazz.getSuperclass();
+                if (clazz == null) {
+                    break;
+                }
+            }
+            if (retFieldId.isNull()) {
                 throw new NoSuchFieldError(clazz.getName() + '.' + name);
             }
-            return fieldID;
+            return retFieldId;
         }
 
         static CShortPointer pinStringAndGetChars(JNIObjectHandle hstr, CCharPointer isCopy) {

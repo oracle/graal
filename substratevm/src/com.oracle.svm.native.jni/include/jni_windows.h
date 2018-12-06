@@ -22,27 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.headers.linux;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.function.CLibrary;
-import org.graalvm.nativeimage.c.type.CCharPointer;
-import com.oracle.svm.core.posix.headers.PosixDirectives;
-import com.oracle.svm.core.posix.headers.Pthread.pthread_t;
+#ifndef _JAVASOFT_JNI_WINDOWS_H_
+#define _JAVASOFT_JNI_WINDOWS_H_
 
-@CContext(PosixDirectives.class)
-@CLibrary("pthread")
-@Platforms(Platform.LINUX.class)
-public class LinuxPthread {
+#define JNIEXPORT __declspec(dllexport)
+#define JNIIMPORT __declspec(dllimport)
+#define JNICALL __stdcall
 
-    /* { Allow names with underscores: Checkstyle: stop */
+/*typedef long jint;*/
+typedef long jint;
+typedef __int64 jlong;
+typedef signed char jbyte;
 
-    /** Set thread name visible in the kernel and its interfaces. */
-    @CFunction
-    public static native int pthread_setname_np(pthread_t target_thread, CCharPointer name);
-
-    /* } Allow names with underscores: Checkstyle: resume */
-}
+#endif /* !_JAVASOFT_JNI_WINDOWS_H_ */

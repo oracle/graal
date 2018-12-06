@@ -79,7 +79,8 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
 
     private final TargetDescription target;
     private final int nativeParamsStackOffset;
-    private final RegisterArray generalParameterRegs;
+    private final RegisterArray javaGeneralParameterRegs;
+    private final RegisterArray nativeGeneralParameterRegs;
     private final RegisterArray xmmParameterRegs;
     private final RegisterArray allocatableRegs;
     private final RegisterArray calleeSaveRegisters;
@@ -96,7 +97,8 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
 
         if (OS.getCurrent() == OS.WINDOWS) {
             // This is the Windows 64-bit ABI for parameters.
-            generalParameterRegs = new RegisterArray(rcx, rdx, r8, r9);
+            nativeGeneralParameterRegs = new RegisterArray(rcx, rdx, r8, r9);
+            javaGeneralParameterRegs = new RegisterArray(rdx, r8, r9, rdi, rsi, rcx);
             xmmParameterRegs = new RegisterArray(xmm0, xmm1, xmm2, xmm3);
 
             // Windows reserves space on the stack for first 4 native parameters
@@ -114,7 +116,8 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
             allocatableRegs = new RegisterArray(regs);
         } else {
             // This is the Linux 64-bit ABI for parameters.
-            generalParameterRegs = new RegisterArray(rdi, rsi, rdx, rcx, r8, r9);
+            javaGeneralParameterRegs = new RegisterArray(rdi, rsi, rdx, rcx, r8, r9);
+            nativeGeneralParameterRegs = javaGeneralParameterRegs;
             xmmParameterRegs = new RegisterArray(xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7);
 
             nativeParamsStackOffset = 0;
@@ -218,7 +221,8 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
     }
 
     @Override
-    public RegisterArray getCallingConventionRegisters(Type type, JavaKind kind) {
+    public RegisterArray getCallingConventionRegisters(Type t, JavaKind kind) {
+        SubstrateCallingConventionType type = (SubstrateCallingConventionType) t;
         switch (kind) {
             case Boolean:
             case Byte:
@@ -227,7 +231,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
             case Int:
             case Long:
             case Object:
-                return generalParameterRegs;
+                return (type.nativeABI ? nativeGeneralParameterRegs : javaGeneralParameterRegs);
             case Float:
             case Double:
                 return xmmParameterRegs;
@@ -269,8 +273,8 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
                 case Int:
                 case Long:
                 case Object:
-                    if (currentGeneral < generalParameterRegs.size()) {
-                        Register register = generalParameterRegs.get(currentGeneral++);
+                    if (currentGeneral < (type.nativeABI ? nativeGeneralParameterRegs.size() : javaGeneralParameterRegs.size())) {
+                        Register register = (type.nativeABI ? nativeGeneralParameterRegs.get(currentGeneral++) : javaGeneralParameterRegs.get(currentGeneral++));
                         locations[i] = register.asValue(valueKindFactory.getValueKind(kind.getStackKind()));
                     }
                     break;

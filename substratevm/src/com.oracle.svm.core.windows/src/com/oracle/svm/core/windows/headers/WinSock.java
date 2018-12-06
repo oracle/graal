@@ -22,48 +22,41 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.windows.headers;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+package com.oracle.svm.core.windows.headers;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.function.CFunction.Transition;
+import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 
-import com.oracle.svm.core.util.VMError;
+// Checkstyle: stop
 
+@CContext(WindowsDirectives.class)
 @Platforms(Platform.WINDOWS.class)
-public class WindowsDirectives implements CContext.Directives {
+public class WinSock {
 
-    private static final String[] windowsLibs = new String[]{
-                    "<windows.h>",
-                    "<winsock.h>",
-                    "<process.h>",
-                    "<stdio.h>",
-                    "<stdlib.h>",
-                    "<string.h>",
-                    "<io.h>"
-    };
-
-    @Override
-    public boolean isInConfiguration() {
-        return Platform.includedIn(Platform.WINDOWS.class);
+    /**
+     * Structure containing information about the WinSock implementation
+     */
+    @CStruct("WSADATA")
+    public interface WSADATA extends CCharPointer {
     }
 
-    @Override
-    public List<String> getHeaderFiles() {
-        if (Platform.includedIn(Platform.WINDOWS.class)) {
-            List<String> result = new ArrayList<>(Arrays.asList(windowsLibs));
-            return result;
-        } else {
-            throw VMError.shouldNotReachHere("Unsupported OS");
-        }
+    /**
+     * Initialize the WinSock library
+     */
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native int WSAStartup(int wVersionRequired, WSADATA lpWSAData);
+
+    public static int init() {
+        WSADATA lpWSAData = (WSADATA) StackValue.get(SizeOf.get(WSADATA.class), CCharPointer.class);
+        return WSAStartup(0x202 /* Version 2.2 */, lpWSAData);
     }
 
-    @Override
-    public List<String> getMacroDefinitions() {
-        return Arrays.asList("_WIN64");
-    }
 }

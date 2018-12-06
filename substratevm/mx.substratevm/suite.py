@@ -137,7 +137,9 @@ suite = {
         "com.oracle.svm.core.windows": {
             "subDir": "src",
             "sourceDirs": ["src"],
-            "dependencies": ["com.oracle.svm.core"],
+            "dependencies": [
+                "com.oracle.svm.hosted",
+            ],
             "checkstyle": "com.oracle.svm.core",
             "javaCompliance": "8+",
             "annotationProcessors": [
@@ -192,27 +194,33 @@ suite = {
                 "ARCH": "<arch>",
                 "OS": "<os>"
             },
-            "results": [
-                "<os>-<arch>/include/jni.h",
-                "<os>-<arch>/include/jni_md.h",
-            ],
-            "os_arch": {
-                "solaris": {
-                    "<others>": {
-                        "ignore": "solaris is not supported",
+            "os_arch" : {
+                "linux": {
+                    "amd64" : {
+                        "results": [
+                            "<os>-<arch>/include/jni.h",
+                            "<os>-<arch>/include/jni_md.h",
+                            "<os>-<arch>/include/jni_posix.h",
+                        ],
+                    },
+                },
+                "darwin": {
+                    "amd64" : {
+                        "results": [
+                            "<os>-<arch>/include/jni.h",
+                            "<os>-<arch>/include/jni_md.h",
+                            "<os>-<arch>/include/jni_posix.h",
+                        ],
                     },
                 },
                 "windows": {
-                    "<others>": {
+                    "amd64" : {
                         "ignore": "windows is not supported",
-                    },
-                },
-                "<others>": {
-                    "sparcv9": {
-                        "ignore": "sparcv9 is not supported",
-                    },
-                    "<others>": {
-                        "ignore": False,
+                        "results": [
+                            "<os>-<arch>/include/jni.h",
+                            "<os>-<arch>/include/jni_md.h",
+                            "<os>-<arch>/include/jni_windows.h",
+                        ],
                     },
                 },
             },
@@ -226,19 +234,35 @@ suite = {
                 "ARCH": "<arch>",
                 "OS": "<os>"
             },
-            "results": [
-                "<os>-<arch>/liblibchelper.a",
-                "<os>-<arch>/include/cpufeatures.h",
-            ],
-            "os_arch": {
-                "solaris": {
-                    "<others>": {
-                        "ignore": "solaris is not supported",
+            "os_arch" : {
+                "linux": {
+                    "amd64" : {
+                        "results": [
+                            "<os>-<arch>/liblibchelper.a",
+                            "<os>-<arch>/include/cpufeatures.h",
+                        ],
+                    },
+                },
+                "darwin": {
+                    "amd64" : {
+                        "results": [
+                            "<os>-<arch>/liblibchelper.a",
+                            "<os>-<arch>/include/cpufeatures.h",
+                        ],
                     },
                 },
                 "windows": {
-                    "<others>": {
+                    "amd64" : {
                         "ignore": "windows is not supported",
+                        "results": [
+                            "<os>-<arch>/libchelper.lib",
+                            "<os>-<arch>/include/cpufeatures.h",
+                        ],
+                    },
+                },
+                "solaris": {
+                    "<others>": {
+                        "ignore": "solaris is not supported",
                     },
                 },
                 "<others>": {
@@ -260,24 +284,63 @@ suite = {
                 "ARCH": "<arch>",
                 "OS": "<os>"
             },
-            "results": [
-                "<os>-<arch>/libstrictmath.a",
-            ],
-            "os_arch": {
-                "solaris": {
-                    "<others>": {
-                        "ignore": "solaris is not supported",
+            "os_arch" : {
+                "linux": {
+                    "amd64" : {
+                        "results": [
+                            "<os>-<arch>/libstrictmath.a",
+                        ],
+                    },
+                },
+                "darwin": {
+                    "amd64" : {
+                        "results": [
+                            "<os>-<arch>/libstrictmath.a",
+                        ],
                     },
                 },
                 "windows": {
-                    "<others>": {
+                    "amd64" : {
                         "ignore": "windows is not supported",
+                        "results": [
+                            "<os>-<arch>/strictmath.lib",
+                        ],
+                    },
+                },
+                "solaris": {
+                    "<others>": {
+                        "ignore": "solaris is not supported",
                     },
                 },
                 "<others>": {
                     "sparcv9": {
                         "ignore": "sparcv9 is not supported",
                     },
+                    "<others>": {
+                        "ignore": False,
+                    },
+                },
+            },
+        },
+
+        "com.oracle.svm.native.jvmfuncs": {
+            "subDir": "src",
+            "native": True,
+            "vpath": True,
+            "buildEnv": {
+                "ARCH": "<arch>",
+                "OS": "<os>"
+            },
+            "os_arch" : {
+                "windows": {
+                    "amd64" : {
+                        "ignore": "windows is not supported",
+                        "results": [
+                            "<os>-<arch>/jvm.lib",
+                        ],
+                    },
+                },
+                "<others>": {
                     "<others>": {
                         "ignore": False,
                     },
@@ -682,6 +745,7 @@ suite = {
                 "com.oracle.svm.native.jni",
                 "com.oracle.svm.native.libchelper",
                 "com.oracle.svm.native.strictmath",
+                "com.oracle.svm.native.jvmfuncs",
                 "com.oracle.svm.libffi"
             ],
             "native": True,
@@ -689,6 +753,7 @@ suite = {
             "platforms" : [
                 "linux-amd64",
                 "darwin-amd64",
+                "windows-amd64",
             ],
             "description" : "SubstrateVM image builder native components",
             "relpath": True,
@@ -783,6 +848,7 @@ suite = {
                 },
                 "windows": {
                     "amd64" : {
+                         "ignore": "windows is not supported",
                          "layout" : {
                              "./" : [
                                  "dependency:org.graalvm.polyglot.nativeapi.native/<os>-<arch>/*.obj",

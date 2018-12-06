@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -350,7 +350,7 @@ public class NativeImage {
         @Override
         public Path getJavaExecutable() {
             Path javaHomePath = rootDir.getParent();
-            Path binJava = Paths.get("bin", "java");
+            Path binJava = Paths.get("bin", OS.getCurrent() == OS.WINDOWS ? "java.exe" : "java");
             if (Files.isExecutable(javaHomePath.resolve(binJava))) {
                 return javaHomePath.resolve(binJava);
             }
@@ -562,7 +562,7 @@ public class NativeImage {
             if (!config.getBuilderJVMCIClasspathAppend().isEmpty()) {
                 String builderJavaArg = config.getBuilderJVMCIClasspathAppend()
                                 .stream().map(path -> canonicalize(path).toString())
-                                .collect(Collectors.joining(":", "-Djvmci.class.path.append=", ""));
+                                .collect(Collectors.joining(File.pathSeparator, "-Djvmci.class.path.append=", ""));
                 addImageBuilderJavaArgs(builderJavaArg);
             }
 
@@ -620,7 +620,7 @@ public class NativeImage {
     private Stream<String> getRelativeLauncherClassPath() {
         return optionRegistry.getEnabledOptionsStream(MacroOptionKind.Language, MacroOptionKind.Tool)
                         .map(lang -> lang.getProperty("LauncherClassPath"))
-                        .filter(Objects::nonNull).flatMap(Pattern.compile(":", Pattern.LITERAL)::splitAsStream);
+                        .filter(Objects::nonNull).flatMap(Pattern.compile(File.pathSeparator, Pattern.LITERAL)::splitAsStream);
     }
 
     protected static String consolidateSingleValueArg(Collection<String> args, String argPrefix) {
@@ -682,7 +682,7 @@ public class NativeImage {
                 processNativeImageProperties(nativeImageMetaInfBase);
             } else {
                 List<Path> jarFileMatches;
-                if (classpathEntry.endsWith("*")) {
+                if (classpathEntry.getFileName() != null && classpathEntry.getFileName().toString().equals("*")) {
                     jarFileMatches = Files.list(classpathEntry.getParent())
                                     .filter(p -> p.getFileName().toString().toLowerCase().endsWith(".jar"))
                                     .collect(Collectors.toList());
@@ -708,7 +708,6 @@ public class NativeImage {
             List<Path> nativeImageProperties = Files.walk(nativeImageMetaInfBase)
                             .filter(p -> p.endsWith(nativeImagePropertiesFilename))
                             .collect(Collectors.toList());
-
             for (Path nativeImagePropertyFile : nativeImageProperties) {
                 Function<String, String> resolver = str -> {
                     Path resourceRoot = nativeImageMetaInfBase.getParent().getParent();
@@ -886,9 +885,9 @@ public class NativeImage {
         command.add(canonicalize(config.getJavaExecutable()).toString());
         command.addAll(javaArgs);
         if (!bcp.isEmpty()) {
-            command.add(bcp.stream().map(Path::toString).collect(Collectors.joining(":", "-Xbootclasspath/a:", "")));
+            command.add(bcp.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator, "-Xbootclasspath/a:", "")));
         }
-        command.addAll(Arrays.asList("-cp", cp.stream().map(Path::toString).collect(Collectors.joining(":"))));
+        command.addAll(Arrays.asList("-cp", cp.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator))));
         command.add("com.oracle.svm.hosted.NativeImageGeneratorRunner");
         if (IS_AOT && OS.getCurrent().hasProcFS) {
             /*
@@ -898,7 +897,7 @@ public class NativeImage {
             command.addAll(Arrays.asList("-watchpid", "" + ProcessProperties.getProcessID()));
         }
         command.addAll(imageArgs);
-        command.addAll(Arrays.asList("-imagecp", imagecp.stream().map(Path::toString).collect(Collectors.joining(":"))));
+        command.addAll(Arrays.asList("-imagecp", imagecp.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator))));
 
         showVerboseMessage(isVerbose() || dryRun, "Executing [");
         showVerboseMessage(isVerbose() || dryRun, command.stream().collect(Collectors.joining(" \\\n")));
@@ -947,7 +946,7 @@ public class NativeImage {
 
     Path canonicalize(Path path) {
         Path absolutePath = path.isAbsolute() ? path : config.getWorkingDirectory().resolve(path);
-        boolean hasWildcard = absolutePath.endsWith("*");
+        boolean hasWildcard = absolutePath.getFileName() != null && absolutePath.getFileName().toString().equals("*");
         if (hasWildcard) {
             absolutePath = absolutePath.getParent();
         }
