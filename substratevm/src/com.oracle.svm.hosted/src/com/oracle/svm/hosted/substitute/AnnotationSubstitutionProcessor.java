@@ -799,9 +799,10 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         }
         if (target.innerClass().length > 0) {
             for (String innerClass : target.innerClass()) {
-                holder = findInnerClass(holder, innerClass);
+                Class<?> prevHolder = holder;
+                holder = findInnerClass(prevHolder, innerClass);
                 if (holder == null) {
-                    throw UserError.abort("substitution target for " + annotatedBaseClass.getName() + " is invalid as inner class " + innerClass + " in " + holder.getName() +
+                    throw UserError.abort("substitution target for " + annotatedBaseClass.getName() + " is invalid as inner class " + innerClass + " in " + prevHolder.getName() +
                                     " can not be found. Make sure that the inner class is present.");
                 }
             }
