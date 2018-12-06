@@ -60,6 +60,7 @@ import com.oracle.svm.core.heap.NativeImageInfo;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
+import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.PinnedAllocator;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -272,9 +273,9 @@ public class HeapImpl extends Heap {
     public boolean isAllocationDisallowed() {
         /*
          * This method exists because Heap is the place clients should ask this question, and to
-         * aggregate all the reasons allocation might be disallowed. Currently there is only ...
+         * aggregate all the reasons allocation might be disallowed.
          */
-        return NoAllocationVerifier.isActive() || getGCImpl().collectionInProgress.getState();
+        return (NoAllocationVerifier.isActive() || getGCImpl().collectionInProgress.getState());
     }
 
     /** A guard to place before an allocation, giving the call site and the allocation type. */
@@ -686,6 +687,8 @@ public class HeapImpl extends Heap {
      *         in bytes
      */
     public UnsignedWord maxMemory() {
+        /* Get physical memory size, so it gets set correctly instead of being estimated. */
+        PhysicalMemory.size();
         /*
          * This only reports the memory that will be used for heap-allocated objects. For example,
          * it does not include memory in the chunk free list, or memory in the image heap.

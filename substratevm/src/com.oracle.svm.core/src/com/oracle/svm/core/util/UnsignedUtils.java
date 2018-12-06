@@ -25,6 +25,7 @@
 package com.oracle.svm.core.util;
 
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
 
@@ -32,6 +33,9 @@ import com.oracle.svm.core.annotate.Uninterruptible;
  * Utility methods on Unsigned values.
  */
 public final class UnsignedUtils {
+
+    /** The UnsignedWord of the greatest magnitude. */
+    public static final UnsignedWord MAX_VALUE = WordFactory.unsigned(0xffffffffffffffffL);
 
     private UnsignedUtils() {
         // This is a class of static methods, so no need for any instances.
