@@ -103,6 +103,13 @@ public class NativeImageCodeCache {
         int numDuringCallEntryPoints;
 
         @Override
+        protected Class<?> getDeclaringJavaClass(ResolvedJavaMethod method) {
+            HostedType type = (HostedType) method.getDeclaringClass();
+            assert type.getWrapped().isInTypeCheck() : "Declaring class not marked as used, therefore the DynamicHub is not initialized properly: " + method.format("%H.%n(%p)");
+            return type.getJavaClass();
+        }
+
+        @Override
         protected boolean shouldStoreMethod() {
             return false;
         }
