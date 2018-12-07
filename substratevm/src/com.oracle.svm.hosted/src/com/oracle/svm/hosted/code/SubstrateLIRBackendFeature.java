@@ -22,15 +22,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.code;
+package com.oracle.svm.hosted.code;
 
-import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
 
-public abstract class SubstrateBackendFactory {
-    public abstract SubstrateBackend newBackend(Providers newProviders);
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.hosted.image.LIRNativeImageCodeCache;
+import com.oracle.svm.hosted.image.NativeImageCodeCache;
+import com.oracle.svm.hosted.image.NativeImageCodeCacheFactory;
+import com.oracle.svm.hosted.image.NativeImageHeap;
 
-    public static SubstrateBackendFactory get() {
-        return ImageSingletons.lookup(SubstrateBackendFactory.class);
+@AutomaticFeature
+class SubstrateLIRBackendFeature implements Feature {
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return Platform.usesLIR();
+    }
+
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(NativeImageCodeCacheFactory.class, new NativeImageCodeCacheFactory() {
+            @Override
+            public NativeImageCodeCache newCodeCache(CompileQueue compileQueue, NativeImageHeap heap) {
+                return new LIRNativeImageCodeCache(compileQueue.getCompilations(), heap);
+            }
+        });
     }
 }

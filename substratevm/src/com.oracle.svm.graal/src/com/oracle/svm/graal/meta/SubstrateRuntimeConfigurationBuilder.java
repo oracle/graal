@@ -30,13 +30,13 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
-import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.AnalysisConstantFieldProvider;
@@ -53,7 +53,7 @@ public class SubstrateRuntimeConfigurationBuilder extends SharedRuntimeConfigura
     private final ConstantReflectionProvider originalReflectionProvider;
 
     public SubstrateRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, AnalysisUniverse aUniverse, MetaAccessProvider metaAccess,
-                    ConstantReflectionProvider originalReflectionProvider, Function<Providers, Backend> backendProvider) {
+                    ConstantReflectionProvider originalReflectionProvider, Function<Providers, SubstrateBackend> backendProvider) {
         super(options, hostVM, metaAccess, backendProvider);
         this.aUniverse = aUniverse;
         this.originalReflectionProvider = originalReflectionProvider;

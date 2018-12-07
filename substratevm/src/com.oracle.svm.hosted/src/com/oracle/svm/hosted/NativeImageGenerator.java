@@ -65,12 +65,10 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
-import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.phases.CommunityCompilerConfiguration;
 import org.graalvm.compiler.core.phases.EconomyCompilerConfiguration;
-import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpScope;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
@@ -151,13 +149,12 @@ import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptTester;
 import com.oracle.svm.core.graal.GraalConfiguration;
-import com.oracle.svm.core.graal.code.amd64.SubstrateAMD64AddressLowering;
+import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.jdk.ArraycopySnippets;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.meta.SubstrateLoweringProvider;
-import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
 import com.oracle.svm.core.graal.meta.SubstrateSnippetReflectionProvider;
 import com.oracle.svm.core.graal.meta.SubstrateStampProvider;
@@ -1057,7 +1054,7 @@ public class NativeImageGenerator {
         replacements.setGraphBuilderPlugins(plugins);
         if (runtimeConfig != null && runtimeConfig.getProviders() instanceof HostedProviders) {
             ((HostedProviders) runtimeConfig.getProviders()).setGraphBuilderPlugins(plugins);
-            for (Backend backend : runtimeConfig.getBackends()) {
+            for (SubstrateBackend backend : runtimeConfig.getBackends()) {
                 ((HostedProviders) backend.getProviders()).setGraphBuilderPlugins(plugins);
             }
         }
@@ -1134,22 +1131,25 @@ public class NativeImageGenerator {
     }
 
     public static Suites createSuites(FeatureHandler featureHandler, RuntimeConfiguration runtimeConfig, SnippetReflectionProvider snippetReflection, boolean hosted) {
-        Providers runtimeCallProviders = runtimeConfig.getBackendForNormalMethod().getProviders();
+        SubstrateBackend backend = runtimeConfig.getBackendForNormalMethod();
+
         OptionValues options = hosted ? HostedOptionValues.singleton() : RuntimeOptionValues.singleton();
         Suites suites = GraalConfiguration.instance().createSuites(options, hosted);
-        return modifySuites(runtimeCallProviders, suites, featureHandler, runtimeConfig, snippetReflection, hosted, false);
+        return modifySuites(backend, suites, featureHandler, runtimeConfig, snippetReflection, hosted, false);
     }
 
     public static Suites createFirstTierSuites(FeatureHandler featureHandler, RuntimeConfiguration runtimeConfig, SnippetReflectionProvider snippetReflection, boolean hosted) {
-        Providers runtimeCallProviders = runtimeConfig.getBackendForNormalMethod().getProviders();
+        SubstrateBackend backend = runtimeConfig.getBackendForNormalMethod();
         OptionValues options = hosted ? HostedOptionValues.singleton() : RuntimeOptionValues.singleton();
         Suites suites = GraalConfiguration.instance().createFirstTierSuites(options, hosted);
-        return modifySuites(runtimeCallProviders, suites, featureHandler, runtimeConfig, snippetReflection, hosted, true);
+        return modifySuites(backend, suites, featureHandler, runtimeConfig, snippetReflection, hosted, true);
     }
 
     @SuppressWarnings("unused")
-    private static Suites modifySuites(Providers runtimeCallProviders, Suites suites, FeatureHandler featureHandler, RuntimeConfiguration runtimeConfig,
+    private static Suites modifySuites(SubstrateBackend backend, Suites suites, FeatureHandler featureHandler, RuntimeConfiguration runtimeConfig,
                     SnippetReflectionProvider snippetReflection, boolean hosted, boolean firstTier) {
+        Providers runtimeCallProviders = backend.getProviders();
+
         PhaseSuite<HighTierContext> highTier = suites.getHighTier();
         PhaseSuite<MidTierContext> midTier = suites.getMidTier();
         PhaseSuite<LowTierContext> lowTier = suites.getLowTier();
@@ -1175,9 +1175,7 @@ public class NativeImageGenerator {
 
         lowTier.addBeforeLast(new OptimizeExceptionCallsPhase());
 
-        CompressEncoding compressEncoding = ImageSingletons.lookup(CompressEncoding.class);
-        SubstrateRegisterConfig registerConfig = (SubstrateRegisterConfig) runtimeCallProviders.getCodeCache().getRegisterConfig();
-        SubstrateAMD64AddressLowering addressLowering = new SubstrateAMD64AddressLowering(compressEncoding, registerConfig);
+        AddressLoweringPhase.AddressLowering addressLowering = backend.newAddressLowering(runtimeCallProviders.getCodeCache());
         if (firstTier) {
             lowTier.findPhase(ExpandLogicPhase.class).add(new AddressLoweringPhase(addressLowering));
         } else {

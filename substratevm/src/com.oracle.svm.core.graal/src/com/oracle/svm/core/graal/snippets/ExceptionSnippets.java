@@ -35,7 +35,6 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
@@ -43,7 +42,6 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
-import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
@@ -66,7 +64,6 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.Value;
 
 public final class ExceptionSnippets extends SubstrateTemplates implements Snippets {
 
@@ -112,7 +109,7 @@ public final class ExceptionSnippets extends SubstrateTemplates implements Snipp
             assert exceptionState != null;
 
             StructuredGraph graph = node.graph();
-            FixedWithNextNode readRegNode = graph.add(new ReadReturnRegisterNode(StampFactory.objectNonNull()));
+            FixedWithNextNode readRegNode = graph.add(new ReadExceptionObjectNode(StampFactory.objectNonNull()));
             graph.replaceFixedWithFixed(node, readRegNode);
 
             graph.addAfterFixed(readRegNode, graph.add(new ExceptionStateNode(exceptionState)));
@@ -121,8 +118,8 @@ public final class ExceptionSnippets extends SubstrateTemplates implements Snipp
 }
 
 @NodeInfo(cycles = NodeCycles.CYCLES_1, size = NodeSize.SIZE_1)
-final class ReadReturnRegisterNode extends FixedWithNextNode implements LIRLowerable {
-    public static final NodeClass<ReadReturnRegisterNode> TYPE = NodeClass.create(ReadReturnRegisterNode.class);
+final class ReadExceptionObjectNode extends FixedWithNextNode implements LIRLowerable {
+    public static final NodeClass<ReadExceptionObjectNode> TYPE = NodeClass.create(ReadExceptionObjectNode.class);
 
     /*
      * Make every node unique to prevent de-duplication. The node reads a fixed register, so it
@@ -132,22 +129,18 @@ final class ReadReturnRegisterNode extends FixedWithNextNode implements LIRLower
     private final long uniqueId;
     private static final AtomicLong nextUniqueId = new AtomicLong();
 
-    protected ReadReturnRegisterNode(Stamp stamp) {
+    protected ReadExceptionObjectNode(Stamp stamp) {
         super(TYPE, stamp);
         uniqueId = nextUniqueId.getAndIncrement();
     }
 
-    protected ReadReturnRegisterNode(JavaKind kind) {
+    protected ReadExceptionObjectNode(JavaKind kind) {
         this(StampFactory.forKind(kind));
     }
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        LIRGeneratorTool lirGenTool = gen.getLIRGeneratorTool();
-        Value returnRegister = lirGenTool.getRegisterConfig().getReturnRegister(getStackKind()).asValue(
-                        LIRKind.fromJavaKind(lirGenTool.target().arch, getStackKind()));
-        lirGenTool.emitIncomingValues(new Value[]{returnRegister});
-        gen.setResult(this, lirGenTool.emitMove(returnRegister));
+        gen.emitReadExceptionObject(this);
     }
 }
 

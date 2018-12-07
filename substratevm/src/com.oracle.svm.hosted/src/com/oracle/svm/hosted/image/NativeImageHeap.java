@@ -669,7 +669,7 @@ public final class NativeImageHeap {
 
         ResolvedJavaMethod method = ((MethodPointer) pointer).getMethod();
         HostedMethod hMethod = method instanceof HostedMethod ? (HostedMethod) method : universe.lookup(method);
-        if (hMethod.isCodeAddressOffsetValid()) {
+        if (hMethod.isCompiled()) {
             // Only compiled methods inserted in vtables require relocation.
             int pointerSize = ConfigurationValues.getTarget().wordSize;
             addDirectRelocationWithoutAddend(buffer, index, pointerSize, pointer);
