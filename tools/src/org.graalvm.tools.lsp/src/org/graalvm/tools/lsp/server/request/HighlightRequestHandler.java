@@ -31,7 +31,7 @@ public class HighlightRequestHandler extends AbstractRequestHandler {
 
     public List<? extends DocumentHighlight> highlightWithEnteredContext(URI uri, int line, int character) {
         TextDocumentSurrogate surrogate = surrogateMap.get(uri);
-        InstrumentableNode nodeAtCaret = findNodeAtCaret(surrogate, line, character, StandardTags.WriteVariableTag.class, StandardTags.ReadVariableTag.class);
+        InstrumentableNode nodeAtCaret = findNodeAtCaret(surrogate, line, character);
         if (nodeAtCaret != null) {
             if (nodeAtCaret.hasTag(StandardTags.ReadVariableTag.class) || nodeAtCaret.hasTag(StandardTags.WriteVariableTag.class)) {
                 return findOtherReadOrWrites(surrogate, nodeAtCaret);
