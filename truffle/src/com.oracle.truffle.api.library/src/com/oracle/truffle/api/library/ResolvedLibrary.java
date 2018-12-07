@@ -153,9 +153,9 @@ public abstract class ResolvedLibrary<T extends Library> {
         }
         ResolvedExports<T> exports = lookupExport(receiver, dispatchClass);
         cached = exports.createCached(receiver);
-        assert cached.accepts(receiver) : String.format("Invalid accepts implementation detected in '%s'", dispatchClass.getName());
         assert (cached = createAssertions(cached)) != null;
         if (!NodeUtil.isAdoptable(cached)) {
+            assert cached.accepts(receiver) : String.format("Invalid accepts implementation detected in '%s'", dispatchClass.getName());
             cachedCache.putIfAbsent(dispatchClass, cached);
         }
         return cached;
