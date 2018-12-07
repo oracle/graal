@@ -721,6 +721,14 @@ public class CompilationResult {
         }
     }
 
+    public void clearInfopoints() {
+        infopoints.clear();
+    }
+
+    public void clearExceptionHandlers() {
+        exceptionHandlers.clear();
+    }
+
     private void checkOpen() {
         if (closed) {
             throw new IllegalStateException();
