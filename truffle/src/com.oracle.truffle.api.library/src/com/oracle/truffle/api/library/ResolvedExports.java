@@ -81,7 +81,7 @@ public abstract class ResolvedExports<T extends Library> {
     }
 
     public static <T extends Library> void register(Class<?> receiverClass, ResolvedExports<?>... libs) {
-        ResolvedReceiver.register(receiverClass, libs);
+        ResolvedDispatch.register(receiverClass, libs);
     }
 
 }

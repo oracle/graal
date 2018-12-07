@@ -248,7 +248,7 @@ public abstract class ResolvedLibrary<T extends Library> {
         if (lib != null) {
             return lib;
         }
-        ResolvedReceiver resolvedLibrary = ResolvedReceiver.lookup(dispatchedClass);
+        ResolvedDispatch resolvedLibrary = ResolvedDispatch.lookup(dispatchedClass);
         lib = resolvedLibrary.getLibrary(libraryClass);
 
         if (lib == null) {
@@ -257,7 +257,7 @@ public abstract class ResolvedLibrary<T extends Library> {
                 lib = proxyExports;
             } else {
                 Class<?> defaultClass = getDefaultClass(receiver);
-                lib = ResolvedReceiver.lookup(defaultClass).getLibrary(libraryClass);
+                lib = ResolvedDispatch.lookup(defaultClass).getLibrary(libraryClass);
             }
         } else {
             assert !lib.isDefaultExport() : String.format("Dynamic dispatch from receiver class '%s' to default export '%s' detected. " +
@@ -357,6 +357,11 @@ public abstract class ResolvedLibrary<T extends Library> {
         if (lib != null) {
             throw new AssertionError("Reflection cannot be installed for a library twice.");
         }
+    }
+
+    @Override
+    public String toString() {
+        return "ResolvedLibrary [libraryClass=" + libraryClass.getName() + "]";
     }
 
     private static final ResolvedLibrary<ReflectionLibrary> REFLECTION_LIBRARY = ResolvedLibrary.lookup(ReflectionLibrary.class);

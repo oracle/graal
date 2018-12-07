@@ -242,6 +242,7 @@ public class DynamicDispatchTest extends AbstractParametrizedLibraryTest {
     @ExportLibrary(value = TestDispatchLibrary.class)
     @ExportLibrary(value = DynamicDispatchLibrary.class)
     static final class ErrorFinalDispatch1 {
+        @SuppressWarnings("static-method")
         @ExportMessage
         String m0() {
             return "m0_non_final";
@@ -256,6 +257,7 @@ public class DynamicDispatchTest extends AbstractParametrizedLibraryTest {
             super(dispatch);
         }
 
+        @SuppressWarnings("static-method")
         @ExportMessage
         String m0() {
             return "m0_non_final";

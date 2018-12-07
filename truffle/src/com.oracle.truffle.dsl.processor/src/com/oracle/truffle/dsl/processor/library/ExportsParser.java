@@ -107,7 +107,6 @@ import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
 import com.oracle.truffle.dsl.processor.parser.NodeParser;
-import com.sun.xml.internal.bind.v2.schemagen.xmlschema.ExplicitGroup;
 
 public class ExportsParser extends AbstractParser<ExportsData> {
 
@@ -344,7 +343,6 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             mappedMirrors.putIfAbsent(getTypeId(library), mirror);
         }
 
-        boolean foundReceiverDynamicDispatch = false;
         for (Entry<String, AnnotationMirror> entry : mappedMirrors.entrySet()) {
             AnnotationMirror exportAnnotationMirror = entry.getValue();
             String libraryId = entry.getKey();

@@ -51,19 +51,19 @@ import com.oracle.truffle.api.TruffleOptions;
 /**
  * Helper class representing a single resolved receiver class that exports multiple libraries.
  */
-final class ResolvedReceiver {
+final class ResolvedDispatch {
 
-    private static final ConcurrentHashMap<Class<?>, ResolvedReceiver> CACHE = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<Class<?>, ResolvedDispatch> CACHE = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<Class<?>, ResolvedExports<?>[]> REGISTRY = new ConcurrentHashMap<>();
 
     // the root of every receiver class chain.
-    private static final ResolvedReceiver OBJECT_RECEIVER = new ResolvedReceiver(null, Object.class);
-    private final ResolvedReceiver parent;
+    private static final ResolvedDispatch OBJECT_RECEIVER = new ResolvedDispatch(null, Object.class);
+    private final ResolvedDispatch parent;
     private final Class<?> dispatchClass;
     private final Map<Class<?>, ResolvedExports<?>> libraries;
 
     @SuppressWarnings({"hiding", "unchecked"})
-    private ResolvedReceiver(ResolvedReceiver parent, Class<?> dispatchClass, ResolvedExports<?>... libs) {
+    private ResolvedDispatch(ResolvedDispatch parent, Class<?> dispatchClass, ResolvedExports<?>... libs) {
         this.parent = parent;
         this.dispatchClass = dispatchClass;
         Map<Class<?>, ResolvedExports<?>> libraries = new LinkedHashMap<>();
@@ -83,8 +83,8 @@ final class ResolvedReceiver {
     }
 
     @TruffleBoundary
-    static ResolvedReceiver lookup(Class<?> receiverClass) {
-        ResolvedReceiver type = CACHE.get(receiverClass);
+    static ResolvedDispatch lookup(Class<?> receiverClass) {
+        ResolvedDispatch type = CACHE.get(receiverClass);
         if (type == null) {
             type = resolveClass(receiverClass);
         }
@@ -115,12 +115,12 @@ final class ResolvedReceiver {
         return c.getAnnotationsByType(ExportLibrary.class).length > 0;
     }
 
-    private static ResolvedReceiver resolveClass(Class<?> dispatchClass) {
+    private static ResolvedDispatch resolveClass(Class<?> dispatchClass) {
         if (dispatchClass == null) {
             return OBJECT_RECEIVER;
         }
-        ResolvedReceiver parent = resolveClass(dispatchClass.getSuperclass());
-        ResolvedReceiver resolved;
+        ResolvedDispatch parent = resolveClass(dispatchClass.getSuperclass());
+        ResolvedDispatch resolved;
         ResolvedExports<?>[] libs = REGISTRY.get(dispatchClass);
         if (libs == null && hasExports(dispatchClass)) {
             /*
@@ -137,12 +137,12 @@ final class ResolvedReceiver {
         }
 
         if (libs != null) {
-            resolved = new ResolvedReceiver(parent, dispatchClass, libs);
+            resolved = new ResolvedDispatch(parent, dispatchClass, libs);
         } else {
             resolved = parent;
         }
 
-        ResolvedReceiver concurrent = CACHE.putIfAbsent(dispatchClass, resolved);
+        ResolvedDispatch concurrent = CACHE.putIfAbsent(dispatchClass, resolved);
         if (concurrent != null) {
             return concurrent;
         } else {

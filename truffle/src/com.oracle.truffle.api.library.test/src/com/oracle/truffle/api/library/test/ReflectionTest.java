@@ -91,7 +91,7 @@ public class ReflectionTest extends AbstractParametrizedLibraryTest {
         static class VoidReturnNode extends Node {
 
             @Specialization
-            static void doDefault(ReflectiveObject arg) {
+            static void doDefault(@SuppressWarnings("unused") ReflectiveObject arg) {
                 voidReturnCount++;
             }
 

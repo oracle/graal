@@ -56,14 +56,14 @@ final class ReflectionLibraryDefault {
         @Specialization(guards = {"message == cachedMessage", "cachedLibrary.accepts(receiver)"}, limit = "LIMIT")
         static Object doSendCached(Object receiver, Message message, Object[] args,
                         @Cached("message") Message cachedMessage,
-                        @Cached("message.getLibrary().createCached(receiver)") Library cachedLibrary) throws Exception {
-            return message.getLibrary().genericDispatch(cachedLibrary, receiver, cachedMessage, args, 0);
+                        @Cached("message.getResolvedLibrary().createCached(receiver)") Library cachedLibrary) throws Exception {
+            return message.getResolvedLibrary().genericDispatch(cachedLibrary, receiver, cachedMessage, args, 0);
         }
 
         @Specialization(replaces = "doSendCached")
         @TruffleBoundary
         static Object doSendGeneric(Object receiver, Message message, Object[] args) throws Exception {
-            ResolvedLibrary<?> lib = message.getLibrary();
+            ResolvedLibrary<?> lib = message.getResolvedLibrary();
             return lib.genericDispatch(lib.getUncached(receiver), receiver, message, args, 0);
         }
     }
