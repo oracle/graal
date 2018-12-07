@@ -102,7 +102,7 @@ public class Target_sun_misc_Unsafe {
             }
         }
 
-        return SAFETY_FIELD_OFFSET + meta(target).getUnsafeInstanceOffset();
+        return SAFETY_FIELD_OFFSET + target.getSlot();
     }
 
     @Intrinsic(hasReceiver = true)
@@ -111,7 +111,7 @@ public class Target_sun_misc_Unsafe {
             return U.compareAndSwapObject(((StaticObjectArray) holder).getWrapped(), offset, before, after);
         }
         // TODO(peterssen): Current workaround assumes it's a field access, offset <-> field index.
-        Meta.Field f = getInstanceFieldFromOffset(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        Meta.Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         Object inTheField = f.get(holder);
         if (inTheField == before) {
             f.set(holder, after);
@@ -122,47 +122,27 @@ public class Target_sun_misc_Unsafe {
     }
 
     // FIXME(peterssen): This abomination must go, once the object model land.
-    private static Meta.Field getInstanceFieldFromOffset(StaticObject holder, int offset) {
-        if (!(0 <= offset && offset < 1 << 16)) {
+    private static Meta.Field getInstanceFieldFromIndex(StaticObject holder, int index) {
+        if (!(0 <= index && index < (1 << 16))) {
             throw EspressoError.shouldNotReachHere("the field offset is not normalized");
         }
         Meta.Klass klass = meta(holder.getKlass());
-        List<Meta.Klass> superKlasses = new ArrayList<>();
-        // Includes own.
-        for (Meta.Klass superKlass = klass; superKlass != null; superKlass = superKlass.getSuperclass()) {
-            superKlasses.add(superKlass);
-        }
-        Collections.reverse(superKlasses);
-
-        int curOffset = 0;
-        for (Meta.Klass superKlass : superKlasses) {
-            FieldInfo declFields[] = superKlass.rawKlass().getDeclaredFields();
-            if (curOffset + declFields.length < offset) {
-                curOffset += declFields.length;
-                continue;
-            }
-
-            if (offset != meta(declFields[offset - curOffset]).getUnsafeInstanceOffset()) {
-                throw EspressoError.shouldNotReachHere("Field offset for Unsafe do NOT match.");
-            }
-
-            return meta(declFields[offset - curOffset]);
-        }
-
-        throw EspressoError.shouldNotReachHere();
+        FieldInfo field = klass.rawKlass().getInstanceFields(true)[index];
+        assert field.getSlot() == index;
+        return meta(field);
     }
 
     @Intrinsic(hasReceiver = true)
     public static int getIntVolatile(@SuppressWarnings("unused") Object unsafe, @Type(Object.class) StaticObject holder, long offset) {
         // TODO(peterssen): Use holder.getKlass().findInstanceFieldWithOffset
-        Meta.Field f = getInstanceFieldFromOffset(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        Meta.Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         return (int) f.get(holder);
     }
 
     @Intrinsic(hasReceiver = true)
     public static long getLongVolatile(@SuppressWarnings("unused") Object unsafe, @Type(Object.class) StaticObject holder, long offset) {
         // TODO(peterssen): Use holder.getKlass().findInstanceFieldWithOffset
-        Meta.Field f = getInstanceFieldFromOffset(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        Meta.Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         return (long) f.get(holder);
     }
 
@@ -179,7 +159,7 @@ public class Target_sun_misc_Unsafe {
     @Intrinsic(hasReceiver = true)
     public static boolean compareAndSwapInt(@SuppressWarnings("unused") Object self, @Type(Object.class) StaticObject holder, long offset, int before, int after) {
         // TODO(peterssen): Use holder.getKlass().findInstanceFieldWithOffset
-        Meta.Field f = getInstanceFieldFromOffset(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        Meta.Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         int inTheField = (int) f.get(holder);
         if (inTheField == before) {
             f.set(holder, after);
@@ -192,7 +172,7 @@ public class Target_sun_misc_Unsafe {
     @Intrinsic(hasReceiver = true)
     public static boolean compareAndSwapLong(@SuppressWarnings("unused") Object self, @Type(Object.class) StaticObject holder, long offset, long before, long after) {
         // TODO(peterssen): Use holder.getKlass().findInstanceFieldWithOffset
-        Meta.Field f = getInstanceFieldFromOffset(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        Meta.Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         long inTheField = (long) f.get(holder);
         if (inTheField == before) {
             f.set(holder, after);
@@ -220,7 +200,7 @@ public class Target_sun_misc_Unsafe {
     @Intrinsic(hasReceiver = true)
     public static void putLong(@SuppressWarnings("unused") Object self, Object holder, long offset, long x) {
         // TODO(peterssen): Use holder.getKlass().findInstanceFieldWithOffset
-        Meta.Field f = getInstanceFieldFromOffset((StaticObject) holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        Meta.Field f = getInstanceFieldFromIndex((StaticObject) holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         f.set((StaticObject) holder, x);
     }
 
@@ -232,14 +212,14 @@ public class Target_sun_misc_Unsafe {
     @Intrinsic(hasReceiver = true)
     public static byte getByte(@SuppressWarnings("unused") Object self, Object holder, long offset) {
         // TODO(peterssen): Use holder.getKlass().findInstanceFieldWithOffset
-        Meta.Field f = getInstanceFieldFromOffset((StaticObject) holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        Meta.Field f = getInstanceFieldFromIndex((StaticObject) holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         return (byte) f.get((StaticObject) holder);
     }
 
     @Intrinsic(hasReceiver = true)
     public static int getInt(@SuppressWarnings("unused") Object self, Object holder, long offset) {
         // TODO(peterssen): Use holder.getKlass().findInstanceFieldWithOffset
-        Meta.Field f = getInstanceFieldFromOffset((StaticObject) holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        Meta.Field f = getInstanceFieldFromIndex((StaticObject) holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         return (int) f.get((StaticObject) holder);
     }
 
@@ -261,7 +241,7 @@ public class Target_sun_misc_Unsafe {
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
         // TODO(peterssen): Use holder.getKlass().findInstanceFieldWithOffset
-        Meta.Field f = getInstanceFieldFromOffset((StaticObject) holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        Meta.Field f = getInstanceFieldFromIndex((StaticObject) holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         return f.get((StaticObject) holder);
     }
 
@@ -274,7 +254,7 @@ public class Target_sun_misc_Unsafe {
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
         // TODO(peterssen): Use holder.getKlass().findInstanceFieldWithOffset
-        Meta.Field f = getInstanceFieldFromOffset((StaticObject) holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        Meta.Field f = getInstanceFieldFromIndex((StaticObject) holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         f.set((StaticObject) holder, value);
     }
 
@@ -316,5 +296,19 @@ public class Target_sun_misc_Unsafe {
     @Intrinsic(hasReceiver = true)
     public static void setMemory(@SuppressWarnings("unused") Object self, Object o, long offset, long bytes, byte value) {
         U.setMemory(StaticObject.isNull(o) ? null : o, offset, bytes, value);
+    }
+
+    @Intrinsic(hasReceiver = true)
+    public static Object staticFieldBase(@Type(Field.class) StaticObject field) {
+        StaticObject curField = field;
+        FieldInfo target = null;
+        while (target == null) {
+            target = (FieldInfo) ((StaticObjectImpl) curField).getHiddenField(Target_java_lang_Class.HIDDEN_FIELD_KEY);
+            if (target == null) {
+                curField = (StaticObject) meta(curField).declaredField("root").get();
+            }
+        }
+        Meta.Field f = meta(target);
+        return f.getDeclaringClass().rawKlass().getStatics();
     }
 }

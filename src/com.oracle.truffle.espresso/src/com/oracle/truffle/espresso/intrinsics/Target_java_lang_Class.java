@@ -134,7 +134,7 @@ public class Target_java_lang_Class {
                             Meta.Field.set("type", f.getType().rawKlass().mirror()),
                             Meta.Field.set("name", context.getStrings().intern(f.getName())),
                             Meta.Field.set("clazz", f.getDeclaringClass().rawKlass().mirror()),
-                            Meta.Field.set("slot", i)).getInstance();
+                            Meta.Field.set("slot", f.getSlot())).getInstance();
 
             instance.setHiddenField(HIDDEN_FIELD_KEY, f.rawField());
 

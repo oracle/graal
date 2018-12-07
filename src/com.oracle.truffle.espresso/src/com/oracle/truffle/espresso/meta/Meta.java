@@ -793,6 +793,10 @@ public final class Meta {
             return field.getModifiers();
         }
 
+        public int getSlot() {
+            return field.getSlot();
+        }
+
         public static class SetField extends FieldAction {
             public SetField(String name, Object value) {
                 super(name, f -> f.set(value));
@@ -919,26 +923,6 @@ public final class Meta {
             public void set(Object value) {
                 Field.this.set(instance, value);
             }
-        }
-
-        // TODO(peterssen): Hack to make inherited fields offset work for Unsafe.
-        public int getUnsafeInstanceOffset() {
-            int totalOffset = 0;
-            Meta.Klass superKlass = getDeclaringClass().getSuperclass();
-            while (superKlass != null) {
-                totalOffset += superKlass.rawKlass().getDeclaredFields().length;
-                superKlass = superKlass.getSuperclass();
-            }
-            FieldInfo[] declaredFields = getDeclaringClass().rawKlass().getDeclaredFields();
-            for (int i = 0; i < declaredFields.length; ++i) {
-                // Fields are singletons, == comparison is enough.
-                if (declaredFields[i] == field) {
-                    totalOffset += i;
-                    return totalOffset;
-                }
-            }
-
-            throw EspressoError.shouldNotReachHere("Cannot find field in declaring klass.");
         }
     }
 
