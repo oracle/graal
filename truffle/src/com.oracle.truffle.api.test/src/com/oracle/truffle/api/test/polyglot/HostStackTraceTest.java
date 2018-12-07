@@ -65,7 +65,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.library.Libraries;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -140,7 +139,7 @@ public class HostStackTraceTest extends AbstractPolyglotTest {
 
     static class CallNode extends Node {
 
-        @Child private InteropLibrary interop = Libraries.createCachedDispatch(InteropLibrary.class, 1);
+        @Child private InteropLibrary interop = InteropLibrary.resolve().createCachedDispatch(1);
 
         private final SourceSection sourceSection;
 

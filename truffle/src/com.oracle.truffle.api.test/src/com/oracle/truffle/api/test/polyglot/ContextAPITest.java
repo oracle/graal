@@ -584,8 +584,8 @@ public class ContextAPITest {
                     @Override
                     public Object execute(VirtualFrame frame) {
                         try {
-                            Object o = InteropLibrary.getUncached().readMember(ProxyLanguage.getCurrentContext().env.getPolyglotBindings(), "test");
-                            return InteropLibrary.getUncached().execute(o);
+                            Object o = InteropLibrary.resolve().getUncachedDispatch().readMember(ProxyLanguage.getCurrentContext().env.getPolyglotBindings(), "test");
+                            return InteropLibrary.resolve().getUncachedDispatch().execute(o);
                         } catch (Exception e) {
                             throw new RuntimeException(e);
                         }

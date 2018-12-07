@@ -65,11 +65,6 @@ public @interface ExportMessage {
      */
     Class<? extends Library> library() default Library.class;
 
-    /**
-     * If a library class name can be used if the library literal is not available.
-     */
-    String libraryName() default "";
-
     String limit() default "";
 
     @Retention(RetentionPolicy.RUNTIME)

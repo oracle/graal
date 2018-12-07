@@ -50,4 +50,23 @@ public abstract class ReflectionLibrary extends Library {
     }
 
     public abstract Object send(Object receiver, Message message, Object... args) throws Exception;
+
+    public static ResolvedLibrary<ReflectionLibrary> resolve() {
+        return Lazy.RESOLVED_LIBRARY;
+    }
+
+    /*
+     * This indirection is needed to avoid cyclic class initialization. The enclosing class needs to
+     * be loaded before ResolvedLibrary.resolve can be used.
+     */
+    static final class Lazy {
+
+        private Lazy() {
+            /* No instances */
+        }
+
+        static final ResolvedLibrary<ReflectionLibrary> RESOLVED_LIBRARY = ResolvedLibrary.resolve(ReflectionLibrary.class);
+
+    }
+
 }

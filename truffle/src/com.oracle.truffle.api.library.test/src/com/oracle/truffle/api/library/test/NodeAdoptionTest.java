@@ -42,7 +42,6 @@ package com.oracle.truffle.api.library.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.fail;
 
 import org.junit.Test;
 
@@ -51,8 +50,8 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
-import com.oracle.truffle.api.library.Libraries;
 import com.oracle.truffle.api.library.Library;
+import com.oracle.truffle.api.library.ResolvedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 
 @SuppressWarnings({"unused", "static-method"})
@@ -101,10 +100,10 @@ public class NodeAdoptionTest extends AbstractLibraryTest {
         Object o = new Object();
 
         // defaults are cached as singleton and don't have a parent.
-        NodeAdoptionLibrary cached = Libraries.createCached(NodeAdoptionLibrary.class, o);
+        NodeAdoptionLibrary cached = ResolvedLibrary.resolve(NodeAdoptionLibrary.class).createCached(o);
         assertEquals("default", cached.m0(o));
 
-        NodeAdoptionLibrary dispatched = Libraries.createCachedDispatch(NodeAdoptionLibrary.class, 3);
+        NodeAdoptionLibrary dispatched = ResolvedLibrary.resolve(NodeAdoptionLibrary.class).createCachedDispatch(3);
         assertEquals("default", dispatched.m0(o));
     }
 
@@ -112,12 +111,12 @@ public class NodeAdoptionTest extends AbstractLibraryTest {
     public void testExports() {
         NodeAdoptionObject o = new NodeAdoptionObject();
 
-        NodeAdoptionLibrary cached = Libraries.createCached(NodeAdoptionLibrary.class, new NodeAdoptionObject());
+        NodeAdoptionLibrary cached = ResolvedLibrary.resolve(NodeAdoptionLibrary.class).createCached(new NodeAdoptionObject());
         assertAssertionError(() -> cached.m0(o));
         adopt(cached);
         assertEquals("cached", cached.m0(o));
 
-        NodeAdoptionLibrary dispatched = Libraries.createCachedDispatch(NodeAdoptionLibrary.class, 3);
+        NodeAdoptionLibrary dispatched = ResolvedLibrary.resolve(NodeAdoptionLibrary.class).createCachedDispatch(3);
         assertAssertionError(() -> dispatched.m0(o));
         adopt(dispatched);
         assertEquals("cached", dispatched.m0(o));

@@ -48,10 +48,28 @@ public abstract class DynamicDispatchLibrary extends Library {
 
     /**
      * Returns a class that {@link ExportLibrary exports} at least one library with an explicit
-     * receiver. The result of this method must be stable, i.e. multiple calls to dispatch for the
-     * same instance must lead to the same result.
+     * receiver. Returns <code>null</code> to indicate that the default dispatch of the library
+     * should be used.
      */
     public Class<?> dispatch(@SuppressWarnings("unused") Object receiver) {
         return null;
+    }
+
+    public static ResolvedLibrary<DynamicDispatchLibrary> resolve() {
+        return Lazy.RESOLVED_LIBRARY;
+    }
+
+    /*
+     * This indirection is needed to avoid cyclic class initialization. The enclosing class needs to
+     * be loaded before ResolvedLibrary.resolve can be used.
+     */
+    static final class Lazy {
+
+        private Lazy() {
+            /* No instances */
+        }
+
+        static final ResolvedLibrary<DynamicDispatchLibrary> RESOLVED_LIBRARY = ResolvedLibrary.resolve(DynamicDispatchLibrary.class);
+
     }
 }

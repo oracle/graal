@@ -44,8 +44,8 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
-import com.oracle.truffle.api.library.Libraries;
 import com.oracle.truffle.api.library.Library;
+import com.oracle.truffle.api.library.ResolvedLibrary;
 
 public class UseCases {
 
@@ -68,7 +68,6 @@ public class UseCases {
                         @CachedLibrary("this") DynamicObjectLibrary library) {
             return library.put(this, key, value, SET_PROPERTY);
         }
-
     }
 
     @SuppressWarnings("null")
@@ -78,7 +77,7 @@ public class UseCases {
         Object key = null;
         Object value = null;
 
-        Libraries.createCached(DynamicObjectLibrary.class, receiver);
+        ResolvedLibrary.resolve(DynamicObjectLibrary.class).createCached(receiver);
 
         if ((lib.accepts(receiver))) {
             lib.put(receiver, key, value, JSObject.SET_PROPERTY);

@@ -56,7 +56,7 @@ import com.oracle.truffle.api.nodes.NodeCost;
 @GeneratedBy(ReflectionLibraryDefault.class)
 final class ReflectionLibraryDefaultGen {
 
-    private static final ResolvedLibrary<DynamicDispatchLibrary> DYNAMIC_DISPATCH_LIBRARY_ = ResolvedLibrary.lookup(DynamicDispatchLibrary.class);
+    private static final ResolvedLibrary<DynamicDispatchLibrary> DYNAMIC_DISPATCH_LIBRARY_ = ResolvedLibrary.resolve(DynamicDispatchLibrary.class);
 
     static {
         ResolvedExports.register(ReflectionLibraryDefault.class, new ReflectionLibraryExports());

@@ -53,7 +53,6 @@ import com.oracle.truffle.api.interop.InteropLibrary.Asserts;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary.Abstract;
 import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
-import com.oracle.truffle.api.library.Libraries;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.ResolvedLibrary;
 
@@ -393,20 +392,15 @@ public abstract class InteropLibrary extends Library {
         throw UnsupportedMessageException.create();
     }
 
-    public static InteropLibrary createDispatched(int limit) {
-        return Lazy.INTEROP_LIBRARY.createCachedDispatch(limit);
-    }
-
-    public static InteropLibrary create(Object receiver) {
-        return Lazy.INTEROP_LIBRARY.createCached(receiver);
-    }
-
-    public static InteropLibrary getUncached() {
-        return Lazy.UNCACHED_DISPATCH;
-    }
-
-    public static InteropLibrary getUncached(Object receiver) {
-        return Lazy.INTEROP_LIBRARY.getUncached(receiver);
+    /**
+     * Returns the resolved language interoperability library that allows to instantiate libraries
+     * and inspect its messages. Short-cut for {@link ResolvedLibrary#resolve(Class)
+     * ResolvedLibrary.resolve(InteropLibrary.class)}.
+     *
+     * @see ResolvedLibrary#resolve(Class)
+     */
+    public static ResolvedLibrary<InteropLibrary> resolve() {
+        return Lazy.INTEROP_LIBRARY;
     }
 
     /*
@@ -419,8 +413,7 @@ public abstract class InteropLibrary extends Library {
             /* No instances */
         }
 
-        static final ResolvedLibrary<InteropLibrary> INTEROP_LIBRARY = ResolvedLibrary.lookup(InteropLibrary.class);
-        static final InteropLibrary UNCACHED_DISPATCH = INTEROP_LIBRARY.getUncachedDispatch();
+        static final ResolvedLibrary<InteropLibrary> INTEROP_LIBRARY = ResolvedLibrary.resolve(InteropLibrary.class);
 
     }
 
@@ -797,7 +790,7 @@ public abstract class InteropLibrary extends Library {
 
         private static boolean assertMemberKeys(Object receiver, Object result, boolean internal) {
             assert result != null : violationPost(receiver, result);
-            InteropLibrary uncached = Libraries.getUncached(InteropLibrary.class, result);
+            InteropLibrary uncached = InteropLibrary.resolve().getUncached(result);
             assert uncached.isArray(result) : violationPost(receiver, result);
             long arraySize;
             try {
@@ -815,10 +808,9 @@ public abstract class InteropLibrary extends Library {
                     assert false : violationPost(receiver, result);
                     return true;
                 }
-                InteropLibrary uncachedElement = Libraries.getUncached(InteropLibrary.class, element);
-                assert uncachedElement.isString(element) : violationPost(receiver, element);
+                assert InteropLibrary.resolve().getUncachedDispatch().isString(element) : violationPost(receiver, element);
                 try {
-                    uncachedElement.asString(element);
+                    InteropLibrary.resolve().getUncachedDispatch().asString(element);
                 } catch (UnsupportedMessageException e) {
                     assert false : violationInvariant(result, i);
                 }

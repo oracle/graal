@@ -65,7 +65,7 @@ import com.oracle.truffle.api.test.polyglot.ValueHostInteropTest.Data;
 
 public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
 
-    private static final InteropLibrary INTEROP = InteropLibrary.getUncached();
+    private static final InteropLibrary INTEROP = InteropLibrary.resolve().getUncachedDispatch();
 
     @Before
     public void before() {

@@ -295,7 +295,7 @@ abstract class HostExecuteNode extends Node {
             cachedArgTypes[i] = argType;
         }
 
-        assert checkArgTypes(args, cachedArgTypes, InteropLibrary.getUncached(), false) : Arrays.toString(cachedArgTypes);
+        assert checkArgTypes(args, cachedArgTypes, InteropLibrary.resolve().getUncachedDispatch(), false) : Arrays.toString(cachedArgTypes);
     }
 
     @ExplodeLoop
@@ -465,7 +465,7 @@ abstract class HostExecuteNode extends Node {
                     boolean applicable = true;
                     for (int i = 0; i < paramCount; i++) {
                         if (!isSubtypeOf(args[i], parameterTypes[i]) &&
-                                        !ToHostNode.canConvert(args[i], parameterTypes[i], genericParameterTypes[i], languageContext, priority, InteropLibrary.getUncached(args[i]))) {
+                                        !ToHostNode.canConvert(args[i], parameterTypes[i], genericParameterTypes[i], languageContext, priority, InteropLibrary.resolve().getUncached(args[i]))) {
                             applicable = false;
                             break;
                         }
@@ -484,7 +484,7 @@ abstract class HostExecuteNode extends Node {
                     boolean applicable = true;
                     for (int i = 0; i < parameterCount - 1; i++) {
                         if (!isSubtypeOf(args[i], parameterTypes[i]) &&
-                                        !ToHostNode.canConvert(args[i], parameterTypes[i], genericParameterTypes[i], languageContext, priority, InteropLibrary.getUncached(args[i]))) {
+                                        !ToHostNode.canConvert(args[i], parameterTypes[i], genericParameterTypes[i], languageContext, priority, InteropLibrary.resolve().getUncached(args[i]))) {
                             applicable = false;
                             break;
                         }
@@ -500,7 +500,8 @@ abstract class HostExecuteNode extends Node {
                         }
                         for (int i = parameterCount - 1; i < args.length; i++) {
                             if (!isSubtypeOf(args[i], varArgsComponentType) &&
-                                            !ToHostNode.canConvert(args[i], varArgsComponentType, varArgsGenericComponentType, languageContext, priority, InteropLibrary.getUncached(args[i]))) {
+                                            !ToHostNode.canConvert(args[i], varArgsComponentType, varArgsGenericComponentType, languageContext, priority,
+                                                            InteropLibrary.resolve().getUncached(args[i]))) {
                                 applicable = false;
                                 break;
                             }
@@ -612,7 +613,7 @@ abstract class HostExecuteNode extends Node {
         if (priority <= ToHostNode.STRICT) {
             return 0;
         }
-        InteropLibrary argInterop = InteropLibrary.getUncached(arg);
+        InteropLibrary argInterop = InteropLibrary.resolve().getUncached(arg);
         for (int p : ToHostNode.PRIORITIES) {
             if (p > priority) {
                 break;

@@ -108,7 +108,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Introspection;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
-import com.oracle.truffle.api.library.Libraries;
 import com.oracle.truffle.api.library.ResolvedLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
@@ -195,7 +194,7 @@ public class FlatNodeGenFactory {
     private final Set<SpecializationData> usedInsertAccessorsSimple = new LinkedHashSet<>();
     private final boolean primaryNode;
     private final Map<CacheExpression, String> sharedCaches;
-    private final Map<ExecutableElement, Function<Call, Call>> substitutions = new LinkedHashMap<>();
+    private final Map<ExecutableElement, Function<Call, DSLExpression>> substitutions = new LinkedHashMap<>();
     private final Map<String, CodeVariableElement> libraryConstants;
 
     private final boolean needsLocking;
@@ -255,18 +254,8 @@ public class FlatNodeGenFactory {
         this.executeAndSpecializeType = createExecuteAndSpecializeType();
         this.needsLocking = exclude.computeStateLength() != 0 || reachableSpecializations.stream().anyMatch((s) -> !s.getCaches().isEmpty());
         this.libraryConstants = libraryConstants;
-        ExecutableElement createCached = ElementUtils.findExecutableElement(context.getDeclaredType(ResolvedLibrary.class), "createCached");
-        ExecutableElement getUncached = ElementUtils.findExecutableElement(context.getDeclaredType(ResolvedLibrary.class), "getUncached");
-        ExecutableElement createCachedDispatch = ElementUtils.findExecutableElement(context.getDeclaredType(ResolvedLibrary.class), "createCachedDispatch");
-        ExecutableElement getUncachedDispatch = ElementUtils.findExecutableElement(context.getDeclaredType(ResolvedLibrary.class), "getUncachedDispatch");
-        substitutions.put(ElementUtils.findExecutableElement(context.getDeclaredType(Libraries.class), "createCached"),
-                        (binary) -> substituteLibraryCall(binary, createCached));
-        substitutions.put(ElementUtils.findExecutableElement(context.getDeclaredType(Libraries.class), "getUncached"),
-                        (binary) -> substituteLibraryCall(binary, getUncached));
-        substitutions.put(ElementUtils.findExecutableElement(context.getDeclaredType(Libraries.class), "createCachedDispatch"),
-                        (binary) -> substituteLibraryCall(binary, createCachedDispatch));
-        substitutions.put(ElementUtils.findExecutableElement(context.getDeclaredType(Libraries.class), "getUncachedDispatch"),
-                        (binary) -> substituteLibraryCall(binary, getUncachedDispatch));
+        substitutions.put(ElementUtils.findExecutableElement(context.getDeclaredType(ResolvedLibrary.class), "resolve"),
+                        (binary) -> substituteLibraryCall(binary));
     }
 
     private boolean needsRewrites() {
@@ -972,18 +961,14 @@ public class FlatNodeGenFactory {
         return method;
     }
 
-    private Call substituteLibraryCall(Call call, ExecutableElement other) {
+    private DSLExpression substituteLibraryCall(Call call) {
         ClassLiteral literal = (ClassLiteral) call.getParameters().get(0);
         CodeVariableElement var = createLibraryConstant(libraryConstants, literal.getLiteral());
         String constantName = var.getSimpleName().toString();
         Variable singleton = new Variable(null, constantName);
         singleton.setResolvedTargetType(var.asType());
         singleton.setResolvedVariable(var);
-        List<DSLExpression> newParameters = call.getParameters().subList(1, call.getParameters().size());
-        Call newCall = new Call(singleton, other.getSimpleName().toString(), newParameters);
-        newCall.setResolvedMethod(other);
-        newCall.setResolvedTargetType(other.asType());
-        return newCall;
+        return singleton;
     }
 
     public static CodeVariableElement createLibraryConstant(Map<String, CodeVariableElement> constants, TypeMirror libraryTypeMirror) {
@@ -997,7 +982,7 @@ public class FlatNodeGenFactory {
             DeclaredCodeTypeMirror constantType = new DeclaredCodeTypeMirror(resolvedLibrary, Arrays.asList(libraryType.asType()));
             var = constants.computeIfAbsent(constantName, (c) -> {
                 CodeVariableElement newVar = new CodeVariableElement(modifiers(PRIVATE, STATIC, FINAL), constantType, useConstantName);
-                newVar.createInitBuilder().startStaticCall(resolvedLibrary.asType(), "lookup").typeLiteral(libraryType.asType()).end();
+                newVar.createInitBuilder().startStaticCall(resolvedLibrary.asType(), "resolve").typeLiteral(libraryType.asType()).end();
                 return newVar;
             });
         } while (!ElementUtils.typeEquals(libraryType.asType(), ((DeclaredType) var.getType()).getTypeArguments().get(0)));

@@ -52,7 +52,6 @@ import org.junit.runners.Parameterized.Parameters;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
-import com.oracle.truffle.api.library.Libraries;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.Message;
 import com.oracle.truffle.api.library.ReflectionLibrary;
@@ -100,7 +99,7 @@ public class ProxyTest extends AbstractParametrizedLibraryTest {
         @ExportMessage
         Object send(Message message, Object... arguments) {
             try {
-                ReflectionLibrary reflect = Libraries.getUncached(ReflectionLibrary.class, delegate);
+                ReflectionLibrary reflect = ReflectionLibrary.resolve().getUncached(delegate);
                 if (!"incrementMethod".equals(message.getSimpleName())) {
                     return reflect.send(delegate, message, arguments);
                 } else {

@@ -69,6 +69,7 @@ import org.junit.runners.Parameterized.UseParametersRunnerFactory;
 import org.junit.runners.model.FrameworkMethod;
 import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.Statement;
+import org.junit.runners.model.TestClass;
 import org.junit.runners.parameterized.BlockJUnit4ClassRunnerWithParameters;
 import org.junit.runners.parameterized.ParametersRunnerFactory;
 import org.junit.runners.parameterized.TestWithParameters;
@@ -87,7 +88,6 @@ import com.oracle.truffle.tck.TruffleRunner.Inject;
 import com.oracle.truffle.tck.TruffleRunner.RunWithPolyglotRule;
 import com.oracle.truffle.tck.TruffleRunner.Warmup;
 import com.oracle.truffle.tck.TruffleTestInvoker.TruffleTestClass;
-import org.junit.runners.model.TestClass;
 
 /**
  * JUnit test runner for unit testing Truffle AST interpreters.

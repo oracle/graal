@@ -64,7 +64,7 @@ import com.oracle.truffle.api.source.SourceSection;
  */
 public abstract class DebugValue {
 
-    static final InteropLibrary INTEROP = InteropLibrary.getUncached();
+    static final InteropLibrary INTEROP = InteropLibrary.resolve().getUncachedDispatch();
 
     final LanguageInfo preferredLanguage;
 

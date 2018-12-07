@@ -1726,7 +1726,7 @@ public class ValueAPITest {
 
     }
 
-    static final InteropLibrary INTEROP = InteropLibrary.getUncached();
+    static final InteropLibrary INTEROP = InteropLibrary.resolve().getUncachedDispatch();
 
     @ExportLibrary(InteropLibrary.class)
     static final class NumberWrapper implements TruffleObject {

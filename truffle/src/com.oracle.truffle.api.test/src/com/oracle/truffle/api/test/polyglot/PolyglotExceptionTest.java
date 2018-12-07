@@ -196,7 +196,7 @@ public class PolyglotExceptionTest {
         final Object execute(Object[] arguments) {
             Object arg = arguments[0];
             try {
-                InteropLibrary.getUncached().execute(arg);
+                InteropLibrary.resolve().getUncachedDispatch().execute(arg);
                 Assert.fail();
             } catch (Throwable e) {
                 verifyError.accept(e);

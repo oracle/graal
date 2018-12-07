@@ -255,7 +255,7 @@ final class LibraryToLegacy {
             CompilerDirectives.transferToInterpreter();
             try {
                 if (identifier instanceof String) {
-                    InteropLibrary uncached = InteropLibrary.getUncached();
+                    InteropLibrary uncached = InteropLibrary.resolve().getUncachedDispatch();
                     Object keys = uncached.getMembers(receiver);
                     long size = uncached.getArraySize(keys);
                     for (long i = 0; i < size; i++) {
@@ -270,7 +270,7 @@ final class LibraryToLegacy {
             }
             try {
                 if (identifier instanceof Number) {
-                    InteropLibrary uncached = InteropLibrary.getUncached(receiver);
+                    InteropLibrary uncached = InteropLibrary.resolve().getUncached(receiver);
                     boolean hasSize = uncached.isArray(receiver);
                     if (hasSize) {
                         int id = ((Number) identifier).intValue();

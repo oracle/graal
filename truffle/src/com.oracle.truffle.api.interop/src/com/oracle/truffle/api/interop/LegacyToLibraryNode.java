@@ -42,7 +42,6 @@ package com.oracle.truffle.api.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.library.Libraries;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -53,7 +52,7 @@ final class LegacyToLibraryNode extends Node {
 
     private final Message message;
 
-    @Child private InteropLibrary interop = Libraries.createCachedDispatch(InteropLibrary.class, LIMIT);
+    @Child private InteropLibrary interop = InteropLibrary.resolve().createCachedDispatch(LIMIT);
     @Child private InteropAccessNode legacyUnbox;
     @Child private InteropAccessNode legacyIsBoxed;
 

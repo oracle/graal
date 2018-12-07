@@ -69,7 +69,7 @@ final class DefaultScope {
 
     static Iterable<Scope> topScope(Object global) {
         TruffleObject globalObject;
-        if (global != null && InteropLibrary.getUncached().isObject(global)) {
+        if (global != null && InteropLibrary.resolve().getUncachedDispatch().isObject(global)) {
             globalObject = (TruffleObject) global;
         } else {
             globalObject = new EmptyGlobalBindings();

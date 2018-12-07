@@ -117,8 +117,8 @@ import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.library.Libraries;
 import com.oracle.truffle.api.library.Library;
+import com.oracle.truffle.api.library.ResolvedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.Node.Children;
@@ -138,7 +138,6 @@ import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
-import com.oracle.truffle.dsl.processor.java.model.GeneratedElement;
 import com.oracle.truffle.dsl.processor.library.LibraryData;
 import com.oracle.truffle.dsl.processor.library.LibraryParser;
 import com.oracle.truffle.dsl.processor.model.AssumptionExpression;
@@ -158,8 +157,6 @@ import com.oracle.truffle.dsl.processor.model.SpecializationData.SpecializationK
 import com.oracle.truffle.dsl.processor.model.SpecializationThrowsData;
 import com.oracle.truffle.dsl.processor.model.TemplateMethod;
 import com.oracle.truffle.dsl.processor.model.TypeSystemData;
-
-import jdk.Exported;
 
 public final class NodeParser extends AbstractParser<NodeData> {
 
@@ -1788,13 +1785,14 @@ public final class NodeParser extends AbstractParser<NodeData> {
                         continue;
                     }
                     TypeMirror libraryType = context.getType(Library.class);
-                    TypeMirror librariesType = context.getType(Libraries.class);
-                    DSLExpressionResolver cachedResolver = importStatics(resolver, librariesType);
+                    DSLExpressionResolver cachedResolver = importStatics(resolver, context.getType(ResolvedLibrary.class));
+                    TypeMirror usedLibraryType = parameter.getType();
 
-                    DSLExpression defaultExpression = new DSLExpression.Call(null, "createCachedDispatch",
-                                    Arrays.asList(new DSLExpression.ClassLiteral(parameter.getType()), limitExpression));
-                    DSLExpression uncachedExpression = new DSLExpression.Call(null, "getUncachedDispatch",
-                                    Arrays.asList(new DSLExpression.ClassLiteral(parameter.getType())));
+                    DSLExpression resolveCall = new DSLExpression.Call(null, "resolve", Arrays.asList(new DSLExpression.ClassLiteral(usedLibraryType)));
+                    DSLExpression defaultExpression = new DSLExpression.Call(resolveCall, "createCachedDispatch",
+                                    Arrays.asList(limitExpression));
+                    DSLExpression uncachedExpression = new DSLExpression.Call(resolveCall, "getUncachedDispatch",
+                                    Arrays.asList());
 
                     library.setDefaultExpression(resolveCachedExpression(cachedResolver, library, libraryType, defaultExpression, null));
                     library.setUncachedExpression(resolveCachedExpression(cachedResolver, library, libraryType, uncachedExpression, null));
@@ -1920,16 +1918,18 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 specialization.getGuards().add(guard);
             }
             TypeMirror libraryType = context.getType(Library.class);
-            TypeMirror librariesType = context.getType(Libraries.class);
-            DSLExpressionResolver cachedResolver = importStatics(resolver, librariesType);
 
-            DSLExpression defaultExpression = new DSLExpression.Call(null, "createCached",
-                            Arrays.asList(new DSLExpression.ClassLiteral(parameterType), receiverExpression));
+            TypeMirror usedLibraryType = parameterType;
+            DSLExpression resolveCall = new DSLExpression.Call(null, "resolve", Arrays.asList(new DSLExpression.ClassLiteral(usedLibraryType)));
+            DSLExpressionResolver cachedResolver = importStatics(resolver, context.getType(ResolvedLibrary.class));
+
+            DSLExpression defaultExpression = new DSLExpression.Call(resolveCall, "createCached",
+                            Arrays.asList(receiverExpression));
             defaultExpression = resolveCachedExpression(cachedResolver, cachedLibrary, libraryType, defaultExpression, value);
             cachedLibrary.setDefaultExpression(defaultExpression);
 
-            DSLExpression uncachedExpression = new DSLExpression.Call(null, "getUncached",
-                            Arrays.asList(new DSLExpression.ClassLiteral(parameterType), receiverExpression));
+            DSLExpression uncachedExpression = new DSLExpression.Call(resolveCall, "getUncached",
+                            Arrays.asList(receiverExpression));
             cachedLibrary.setUncachedExpression(uncachedExpression);
 
             uncachedExpression = resolveCachedExpression(cachedResolver, cachedLibrary, libraryType, uncachedExpression, value);

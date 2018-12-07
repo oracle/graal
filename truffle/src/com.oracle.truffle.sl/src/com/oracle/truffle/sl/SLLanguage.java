@@ -62,7 +62,6 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.Libraries;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -268,7 +267,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
 
     @Override
     protected boolean isVisible(SLContext context, Object value) {
-        return !Libraries.getUncached(InteropLibrary.class, value).isNull(value);
+        return !InteropLibrary.resolve().getUncached(value).isNull(value);
     }
 
     @Override
@@ -294,7 +293,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
             if (value == null) {
                 return "ANY";
             }
-            InteropLibrary interop = Libraries.getUncached(InteropLibrary.class, value);
+            InteropLibrary interop = InteropLibrary.resolve().getUncached(value);
             if (interop.fitsInLong(value)) {
                 return Long.toString(interop.asLong(value));
             } else if (interop.isBoolean(value)) {
@@ -329,7 +328,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         if (value == null) {
             return "ANY";
         }
-        InteropLibrary interop = Libraries.getUncached(InteropLibrary.class, value);
+        InteropLibrary interop = InteropLibrary.resolve().getUncached(value);
         if (interop.isNumber(value)) {
             return "Number";
         } else if (interop.isBoolean(value)) {

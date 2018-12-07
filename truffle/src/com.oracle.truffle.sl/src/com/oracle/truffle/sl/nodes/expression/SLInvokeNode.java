@@ -48,7 +48,6 @@ import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.library.Libraries;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
@@ -72,7 +71,7 @@ public final class SLInvokeNode extends SLExpressionNode {
     public SLInvokeNode(SLExpressionNode functionNode, SLExpressionNode[] argumentNodes) {
         this.functionNode = functionNode;
         this.argumentNodes = argumentNodes;
-        this.library = Libraries.createCachedDispatch(InteropLibrary.class, 3);
+        this.library = InteropLibrary.resolve().createCachedDispatch(3);
     }
 
     @ExplodeLoop

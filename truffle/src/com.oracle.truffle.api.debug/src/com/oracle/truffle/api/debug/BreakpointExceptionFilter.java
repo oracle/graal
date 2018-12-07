@@ -134,7 +134,7 @@ final class BreakpointExceptionFilter {
                 Object exceptionObject = ((TruffleException) exception).getExceptionObject();
                 Object nodeObject = inode.getNodeObject();
                 if (nodeObject != null && exceptionObject != null) {
-                    InteropLibrary library = InteropLibrary.getUncached(nodeObject);
+                    InteropLibrary library = InteropLibrary.resolve().getUncached(nodeObject);
                     TruffleObject object = (TruffleObject) nodeObject;
                     if (library.isMemberInvokable(nodeObject, "catches")) {
                         Object catches;

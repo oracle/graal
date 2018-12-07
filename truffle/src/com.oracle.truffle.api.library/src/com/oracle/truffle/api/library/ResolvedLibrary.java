@@ -52,7 +52,7 @@ import com.oracle.truffle.api.dsl.GeneratedBy;
 import com.oracle.truffle.api.nodes.NodeUtil;
 
 /**
- * Represents a resolved library. Library classes may be resolved using {@link #lookup(Class)}.
+ * Represents a resolved library. Library classes may be resolved using {@link #resolve(Class)}.
  * Resolving a library class into a constant is useful if performance is a critical requirement,
  * otherwise it is recommended to use the static methods in {@link Library} instead.
  * <p>
@@ -98,7 +98,7 @@ public abstract class ResolvedLibrary<T extends Library> {
         if (libraryClass == DynamicDispatchLibrary.class) {
             this.dispatchLibrary = null;
         } else {
-            this.dispatchLibrary = ResolvedLibrary.lookup(DynamicDispatchLibrary.class).getUncachedDispatch();
+            this.dispatchLibrary = ResolvedLibrary.resolve(DynamicDispatchLibrary.class).getUncachedDispatch();
         }
     }
 
@@ -135,9 +135,13 @@ public abstract class ResolvedLibrary<T extends Library> {
     }
 
     /**
-     * Returns an cached and manually dispatched version of this library.
+     * Creates a new cached library given a receiver. The returned library implementation only works
+     * with the provided receiver or for other receivers that are {@link Library#accepts(Object)
+     * accepted} by the returned library. This method is rarely used directly. Use the
+     * {@link CachedLibrary} annotation in specializations instead.
+     * <p>
      *
-     * @see Library#createCached(Class) for further details.
+     * @see CachedLibrary
      * @since 1.0
      */
     public final T createCached(Object receiver) {
@@ -288,7 +292,7 @@ public abstract class ResolvedLibrary<T extends Library> {
      * @since 1.0
      */
     @SuppressWarnings("unchecked")
-    public static <T extends Library> ResolvedLibrary<T> lookup(Class<T> library) {
+    public static <T extends Library> ResolvedLibrary<T> resolve(Class<T> library) {
         Objects.requireNonNull(library);
         ResolvedLibrary<?> lib = LIBRARIES.get(library);
         if (lib == null) {
@@ -328,14 +332,14 @@ public abstract class ResolvedLibrary<T extends Library> {
     @SuppressWarnings("unchecked")
     static ResolvedLibrary<?> resolveLibraryByName(String name) {
         try {
-            return lookup((Class<? extends Library>) Class.forName(name));
+            return resolve((Class<? extends Library>) Class.forName(name));
         } catch (ClassNotFoundException e) {
             return null;
         }
     }
 
     static Message resolveMessage(Class<? extends Library> library, String message) {
-        ResolvedLibrary<?> lib = lookup(library);
+        ResolvedLibrary<?> lib = resolve(library);
         if (lib == null) {
             return null;
         } else {
@@ -364,7 +368,7 @@ public abstract class ResolvedLibrary<T extends Library> {
         return "ResolvedLibrary [libraryClass=" + libraryClass.getName() + "]";
     }
 
-    private static final ResolvedLibrary<ReflectionLibrary> REFLECTION_LIBRARY = ResolvedLibrary.lookup(ReflectionLibrary.class);
+    private static final ResolvedLibrary<ReflectionLibrary> REFLECTION_LIBRARY = ResolvedLibrary.resolve(ReflectionLibrary.class);
 
     final class ProxyExports extends ResolvedExports<T> {
         protected ProxyExports() {
