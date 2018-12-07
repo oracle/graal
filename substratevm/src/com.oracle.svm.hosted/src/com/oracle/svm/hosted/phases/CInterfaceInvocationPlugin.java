@@ -173,7 +173,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
         boolean isUnsigned = sizableInfo.isUnsigned();
 
         assert args.length == accessorInfo.parameterCount(true);
-        ValueNode base = args[accessorInfo.baseParameterNumber(true)];
+        ValueNode base = args[AccessorInfo.baseParameterNumber(true)];
         switch (accessorInfo.getAccessorKind()) {
             case ADDRESS: {
                 ValueNode address = makeAddress(graph, args, accessorInfo, base, displacement, elementSize);
@@ -272,7 +272,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
         assert computeBits >= numBits;
 
         assert args.length == accessorInfo.parameterCount(true);
-        ValueNode base = args[accessorInfo.baseParameterNumber(true)];
+        ValueNode base = args[AccessorInfo.baseParameterNumber(true)];
         StructuredGraph graph = b.getGraph();
         /*
          * Read the memory location. This is also necessary for writes, since we need to keep the

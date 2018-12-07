@@ -25,14 +25,21 @@
 package com.oracle.svm.hosted.c.info;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class AccessorInfo extends ElementInfo {
+public final class AccessorInfo extends ElementInfo {
 
     public enum AccessorKind {
-        GETTER,
-        SETTER,
-        ADDRESS,
-        OFFSET
+        GETTER("get"),
+        SETTER("set"),
+        OFFSET("offsetOf"),
+        ADDRESS("addressOf");
+
+        private final String prefix;
+
+        AccessorKind(String prefix) {
+            this.prefix = prefix;
+        }
     }
 
     private final ResolvedJavaMethod annotatedMethod;
@@ -54,6 +61,10 @@ public class AccessorInfo extends ElementInfo {
         return accessorKind;
     }
 
+    String getAccessorPrefix() {
+        return accessorKind.prefix;
+    }
+
     public boolean isIndexed() {
         return isIndexed;
     }
@@ -66,7 +77,7 @@ public class AccessorInfo extends ElementInfo {
         return hasUniqueLocationIdentity;
     }
 
-    public int baseParameterNumber(boolean withReceiver) {
+    public static int baseParameterNumber(boolean withReceiver) {
         assert withReceiver;
         /* Convention: the accessed pointer is the receiver of the accessor method. */
         return 0;
@@ -95,12 +106,32 @@ public class AccessorInfo extends ElementInfo {
     }
 
     @Override
-    public Object getAnnotatedElement() {
+    public ResolvedJavaMethod getAnnotatedElement() {
         return annotatedMethod;
     }
 
     @Override
     public void accept(InfoTreeVisitor visitor) {
         visitor.visitAccessorInfo(this);
+    }
+
+    public ResolvedJavaType getReturnType() {
+        return getReturnType(annotatedMethod);
+    }
+
+    public ResolvedJavaType getParameterType(int index) {
+        return getParameterType(annotatedMethod, index);
+    }
+
+    public ResolvedJavaType getValueParameterType() {
+        return getParameterType(valueParameterNumber(false));
+    }
+
+    public static ResolvedJavaType getReturnType(ResolvedJavaMethod method) {
+        return (ResolvedJavaType) method.getSignature().getReturnType(method.getDeclaringClass());
+    }
+
+    public static ResolvedJavaType getParameterType(ResolvedJavaMethod method, int index) {
+        return (ResolvedJavaType) method.getSignature().getParameterType(index, method.getDeclaringClass());
     }
 }
