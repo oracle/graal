@@ -80,6 +80,10 @@ public abstract class SnippetStub extends Stub implements Snippets {
     public SnippetStub(Class<? extends Snippets> snippetDeclaringClass, String snippetMethodName, OptionValues options, HotSpotProviders providers, HotSpotForeignCallLinkage linkage) {
         super(options, providers, linkage);
         this.method = SnippetTemplate.AbstractTemplates.findMethod(providers.getMetaAccess(), snippetDeclaringClass == null ? getClass() : snippetDeclaringClass, snippetMethodName);
+        registerSnippet();
+    }
+
+    protected void registerSnippet() {
         providers.getReplacements().registerSnippet(method, null, null, false);
     }
 

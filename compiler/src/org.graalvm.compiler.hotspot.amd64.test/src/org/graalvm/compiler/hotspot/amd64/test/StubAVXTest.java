@@ -186,6 +186,10 @@ public class StubAVXTest extends LIRTest {
         }
 
         @Override
+        protected void registerSnippet() {
+        }
+
+        @Override
         protected StructuredGraph buildInitialGraph(DebugContext debug, CompilationIdentifier compilationId, Object[] args) {
             // Build the snippet graph directly since snippet registration is closed at this point.
             ReplacementsImpl d = (ReplacementsImpl) providers.getReplacements();
