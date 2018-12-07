@@ -43,10 +43,8 @@ import java.util.Collections;
 import java.util.Formattable;
 import java.util.Formatter;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
@@ -775,15 +773,7 @@ public class SnippetTemplate {
         final StructuredGraph snippetCopy = new StructuredGraph.Builder(options, debug).name(snippetGraph.name).method(snippetGraph.method()).trackNodeSourcePosition(
                         snippetGraph.trackNodeSourcePosition()).setIsSubstitution(true).build();
         assert !GraalOptions.TrackNodeSourcePosition.getValue(options) || snippetCopy.trackNodeSourcePosition();
-        if (providers.getCodeCache() != null && providers.getCodeCache().shouldDebugNonSafepoints()) {
-            snippetCopy.setTrackNodeSourcePosition();
-        }
-        if (instantiating.get().contains(method)) {
-            throw new InternalError("recursive instantiation " + args);
-        }
-
         try (DebugContext.Scope scope = debug.scope("SpecializeSnippet", snippetCopy)) {
-            instantiating.get().add(method);
             if (!snippetGraph.isUnsafeAccessTrackingEnabled()) {
                 snippetCopy.disableUnsafeAccessTracking();
             }
@@ -1037,8 +1027,6 @@ public class SnippetTemplate {
 
         } catch (Throwable ex) {
             throw debug.handle(ex);
-        } finally {
-            instantiating.get().remove(method);
         }
     }
 
@@ -1051,8 +1039,6 @@ public class SnippetTemplate {
         }
         return true;
     }
-
-    private static ThreadLocal<Set<ResolvedJavaMethod>> instantiating = ThreadLocal.withInitial(LinkedHashSet::new);
 
     public static void explodeLoops(final StructuredGraph snippetCopy, PhaseContext phaseContext) {
         // Do any required loop explosion
