@@ -53,12 +53,6 @@ import com.oracle.truffle.api.library.ExportMessage;
 class DefaultTruffleObjectExports {
 
     @ExportMessage
-    static boolean accepts(TruffleObject receiver,
-                    @Cached(value = "receiver.getClass()") Class<?> receiverClass) {
-        return receiver.getClass() == receiverClass;
-    }
-
-    @ExportMessage
     static boolean isBoolean(TruffleObject receiver,
                     @Cached(parameters = "IS_BOXED") InteropAccessNode isBoxed,
                     @Cached(parameters = "UNBOX") InteropAccessNode unbox) {

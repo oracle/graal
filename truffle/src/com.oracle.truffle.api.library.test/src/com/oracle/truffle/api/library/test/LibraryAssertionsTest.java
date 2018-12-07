@@ -99,7 +99,6 @@ public class LibraryAssertionsTest extends AbstractLibraryTest {
         } else {
             assertFalse(lib instanceof TestLibrary1Assertions);
         }
-
         assertEquals(42, lib.foo("", 42));
         assertEquals(expectedCalls, fooCalls);
 

@@ -61,7 +61,7 @@ public abstract class AbstractParametrizedLibraryTest extends AbstractLibraryTes
     public /* NOT private */ TestRun run;
 
     protected final <T extends Library> T createLibrary(Class<T> library, Object receiver) {
-        ResolvedLibrary<T> lib = ResolvedLibrary.resolve(library);
+        ResolvedLibrary<T> lib = ResolvedLibrary.lookup(library);
         switch (run) {
             case CACHED:
                 return adopt(lib.createCached(receiver));

@@ -59,19 +59,19 @@ public final class Libraries {
     @SuppressWarnings("unchecked")
     @TruffleBoundary
     public static <T extends Library> T getUncachedDispatch(Class<T> libraryClass) {
-        return ResolvedLibrary.resolve(libraryClass).getUncachedDispatch();
+        return ResolvedLibrary.lookup(libraryClass).getUncachedDispatch();
     }
 
     @SuppressWarnings("unchecked")
     @TruffleBoundary
     public static <T extends Library> T createCachedDispatch(Class<T> libraryClass, int limit) {
-        return ResolvedLibrary.resolve(libraryClass).createCachedDispatch(limit);
+        return ResolvedLibrary.lookup(libraryClass).createCachedDispatch(limit);
     }
 
     @SuppressWarnings("unchecked")
     @TruffleBoundary
     public static <T extends Library> T getUncached(Class<T> libraryClass, Object receiver) {
-        return ResolvedLibrary.resolve(libraryClass).getUncached(receiver);
+        return ResolvedLibrary.lookup(libraryClass).getUncached(receiver);
     }
 
     /**
@@ -81,7 +81,7 @@ public final class Libraries {
      * directly. Use the {@link CachedLibrary} annotation in specializations instead.
      * <p>
      * Calling this method is short-hand for:
-     * <code>{@link ResolvedLibrary#resolve(Class) resolve(libraryClass)}.{@link ResolvedLibrary#createCached(Object) createCached(receiver)} </code>.
+     * <code>{@link ResolvedLibrary#lookup(Class) resolve(libraryClass)}.{@link ResolvedLibrary#createCached(Object) createCached(receiver)} </code>.
      *
      * @see ResolvedLibrary#createCached(Object)
      * @see CachedLibrary
@@ -90,12 +90,12 @@ public final class Libraries {
     @SuppressWarnings("unchecked")
     @TruffleBoundary
     public static <T extends Library> T createCached(Class<T> libraryClass, Object receiver) {
-        return ResolvedLibrary.resolve(libraryClass).createCached(receiver);
+        return ResolvedLibrary.lookup(libraryClass).createCached(receiver);
     }
 
     @TruffleBoundary
     public static List<Message> getMessages(Class<? extends Library> libraryClass) {
-        return ResolvedLibrary.resolve(libraryClass).getMessages();
+        return ResolvedLibrary.lookup(libraryClass).getMessages();
     }
 
 }

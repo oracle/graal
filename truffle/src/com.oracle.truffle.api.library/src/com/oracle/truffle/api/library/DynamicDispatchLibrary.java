@@ -40,26 +40,18 @@
  */
 package com.oracle.truffle.api.library;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.nodes.Node;
+/**
+ * Base library if the receiver export needs to be dispatched.
+ */
+@GenerateLibrary
+public abstract class DynamicDispatchLibrary extends Library {
 
-abstract class ReflectiveDispatchNode extends Node {
-
-    static final int LIMIT = 8;
-
-    abstract Object executeSend(Object receiver, Message message, Object[] args, int parameterOffset) throws Exception;
-
-    Object doSendCached(Object receiver, Message message, Object[] args, int parameterOffset,
-                    @Cached("message.library") ResolvedLibrary<?> cachedReflection,
-                    @Cached("message.library.lookupExport(receiver).createCached(receiver)") Library cachedLibrary) throws Exception {
-        return cachedReflection.genericDispatch(cachedLibrary, receiver, message, args, parameterOffset);
+    /**
+     * Returns a class that {@link ExportLibrary exports} at least one library with an explicit
+     * receiver. The result of this method must be stable, i.e. multiple calls to dispatch for the
+     * same instance must lead to the same result.
+     */
+    public Class<?> dispatch(@SuppressWarnings("unused") Object receiver) {
+        return null;
     }
-
-    @TruffleBoundary
-    Object doSendGeneric(Object receiver, Message message, Object[] args, int parameterOffset) throws Exception {
-        ResolvedLibrary<?> lib = message.library;
-        return lib.genericDispatch(lib.getUncached(receiver), receiver, message, args, parameterOffset);
-    }
-
 }

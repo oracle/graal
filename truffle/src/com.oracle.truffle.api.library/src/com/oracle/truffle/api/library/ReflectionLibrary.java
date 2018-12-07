@@ -40,12 +40,14 @@
  */
 package com.oracle.truffle.api.library;
 
+import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
+
 @GenerateLibrary
+@DefaultExport(ReflectionLibraryDefault.class)
 public abstract class ReflectionLibrary extends Library {
 
     protected ReflectionLibrary() {
     }
 
     public abstract Object send(Object receiver, Message message, Object... args) throws Exception;
-
 }

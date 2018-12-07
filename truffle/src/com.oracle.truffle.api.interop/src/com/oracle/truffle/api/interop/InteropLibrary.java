@@ -419,7 +419,7 @@ public abstract class InteropLibrary extends Library {
             /* No instances */
         }
 
-        static final ResolvedLibrary<InteropLibrary> INTEROP_LIBRARY = ResolvedLibrary.resolve(InteropLibrary.class);
+        static final ResolvedLibrary<InteropLibrary> INTEROP_LIBRARY = ResolvedLibrary.lookup(InteropLibrary.class);
         static final InteropLibrary UNCACHED_DISPATCH = INTEROP_LIBRARY.getUncachedDispatch();
 
     }

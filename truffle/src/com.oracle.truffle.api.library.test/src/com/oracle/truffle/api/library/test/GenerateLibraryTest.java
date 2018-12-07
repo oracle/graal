@@ -365,8 +365,7 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
         }
     }
 
-    @ExpectError("The annotated type 'InvalidDefaultTypeImpl' is not specified using @DefaultExport in the library 'ExportsTypeLibrary'. " +
-                    "Using explicit receiver classes is only supported for default exports or receiver types that implement DynamicDispatch.")
+    @ExpectError("Using explicit receiver classes is only supported%")
     @ExportLibrary(value = ExportsTypeLibrary.class, receiverClass = Double.class)
     public static class InvalidDefaultTypeImpl {
         @ExportMessage

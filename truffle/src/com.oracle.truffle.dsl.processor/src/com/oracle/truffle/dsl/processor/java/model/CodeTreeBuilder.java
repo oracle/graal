@@ -277,7 +277,11 @@ public class CodeTreeBuilder {
     }
 
     public CodeTreeBuilder staticReference(VariableElement field) {
-        return staticReference(field.getEnclosingElement().asType(), field.getSimpleName().toString());
+        if (field.getEnclosingElement() == null) {
+            return string(field.getSimpleName().toString());
+        } else {
+            return staticReference(field.getEnclosingElement().asType(), field.getSimpleName().toString());
+        }
     }
 
     private CodeTreeBuilder endAndWhitespaceAfter() {

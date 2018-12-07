@@ -71,12 +71,12 @@ public class DefaultExportTest extends AbstractParametrizedLibraryTest {
 
     }
 
-    public static class ValidSubClass extends ValidClass {
+    public static final class ValidSubClass extends ValidClass {
 
     }
 
     @ExportLibrary(value = DefaultLibrary.class, receiverClass = ValidClass.class)
-    static class ValidImpl {
+    static final class ValidImpl {
         @ExportMessage
         static int abstractMethod(ValidClass receiver) {
             return 43;
@@ -111,7 +111,7 @@ public class DefaultExportTest extends AbstractParametrizedLibraryTest {
     }
 
     @ExportLibrary(DefaultLibrary.class)
-    static class Custom {
+    static final class Custom {
 
         final int value;
 
@@ -150,7 +150,7 @@ public class DefaultExportTest extends AbstractParametrizedLibraryTest {
         assertEquals(43, createLibrary(DefaultLibrary.class, new ValidSubClass()).abstractMethod(new ValidSubClass()));
     }
 
-    public static class OtherClass {
+    public static final class OtherClass {
 
     }
 
@@ -225,12 +225,11 @@ public class DefaultExportTest extends AbstractParametrizedLibraryTest {
 
     @ExportLibrary(value = DefaultLibrary.class)
     @ExpectError("The following message(s) of library DefaultLibrary%")
-    static class DefaultExportError1 {
+    static final class DefaultExportError1 {
 
     }
 
-    @ExpectError("The annotated type 'DefaultExportError2' is not specified using @DefaultExport in the library 'DefaultLibrary'. " +
-                    "Using explicit receiver classes is only supported for default exports or receiver types that implement DynamicDispatch.")
+    @ExpectError("Using explicit receiver classes is only supported%")
     @ExportLibrary(value = DefaultLibrary.class, receiverClass = Integer.class)
     static class DefaultExportError2 {
 
@@ -241,8 +240,7 @@ public class DefaultExportTest extends AbstractParametrizedLibraryTest {
         }
     }
 
-    @ExpectError("The annotated type 'DefaultExportError3' is not specified using @DefaultExport in the library 'DefaultLibrary'. " +
-                    "Using explicit receiver classes is only supported for default exports or receiver types that implement DynamicDispatch.")
+    @ExpectError("Using explicit receiver classes is only supported%")
     @ExportLibrary(value = DefaultLibrary.class, receiverClass = Integer.class)
     static class DefaultExportError3 {
 

@@ -49,16 +49,17 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.GeneratedBy;
+import com.oracle.truffle.api.nodes.NodeUtil;
 
 /**
- * Represents a resolved library. Library classes may be resolved using {@link #resolve(Class)}.
+ * Represents a resolved library. Library classes may be resolved using {@link #lookup(Class)}.
  * Resolving a library class into a constant is useful if performance is a critical requirement,
  * otherwise it is recommended to use the static methods in {@link Library} instead.
  * <p>
  * This class also serves as base class for generated library classes. It is only open to allow
  * generated code to implement it. Do not implement this class manually.
  *
- * @see Library#createCached(Class, Object)
+ * @see Library#createCached(Class)
  * @see Library#createCachedDispatch(Class, int)
  * @see Library#getUncached(Class, Object)
  * @see Library#getUncachedDispatch(Class)
@@ -72,9 +73,12 @@ public abstract class ResolvedLibrary<T extends Library> {
     private final List<Message> messages;
     private final ConcurrentHashMap<Class<?>, ResolvedExports<T>> exportCache = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Class<?>, T> uncachedCache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Class<?>, T> cachedCache = new ConcurrentHashMap<>();
     private final ProxyExports proxyExports = new ProxyExports();
     final Map<String, Message> nameToMessages;
     private final T uncachedDispatch;
+
+    final DynamicDispatchLibrary dispatchLibrary;
 
     @SuppressWarnings("unchecked")
     protected ResolvedLibrary(Class<T> libraryClass, List<Message> messages, T uncachedDispatch) {
@@ -91,6 +95,11 @@ public abstract class ResolvedLibrary<T extends Library> {
         }
         this.nameToMessages = messagesMap;
         this.uncachedDispatch = uncachedDispatch;
+        if (libraryClass == DynamicDispatchLibrary.class) {
+            this.dispatchLibrary = null;
+        } else {
+            this.dispatchLibrary = ResolvedLibrary.lookup(DynamicDispatchLibrary.class).getUncachedDispatch();
+        }
     }
 
     final Class<T> getLibraryClass() {
@@ -128,13 +137,32 @@ public abstract class ResolvedLibrary<T extends Library> {
     /**
      * Returns an cached and manually dispatched version of this library.
      *
-     * @see Library#createCached(Class, Object) for further details.
+     * @see Library#createCached(Class) for further details.
      * @since 1.0
      */
     public final T createCached(Object receiver) {
-        T cached = lookupExport(receiver).createCached(receiver);
+        Class<?> dispatchClass = dispatch(receiver);
+        T cached = cachedCache.get(dispatchClass);
+        if (cached != null) {
+            assert validateExport(receiver, dispatchClass, cached);
+            return cached;
+        }
+        ResolvedExports<T> exports = lookupExport(receiver, dispatchClass);
+        cached = exports.createCached(receiver);
+        assert cached.accepts(receiver) : String.format("Invalid accepts implementation detected in '%s'", dispatchClass.getName());
         assert (cached = createAssertions(cached)) != null;
+        if (!NodeUtil.isAdoptable(cached)) {
+            cachedCache.putIfAbsent(dispatchClass, cached);
+        }
         return cached;
+    }
+
+    private boolean validateExport(Object receiver, Class<?> dispatchClass, T library) {
+        validateExport(receiver, dispatchClass, lookupExport(receiver, dispatchClass));
+
+        // this last check should only be a sanity check and not trigger in practice
+        assert library.accepts(receiver) : library.getClass().getName();
+        return true;
     }
 
     /**
@@ -144,31 +172,32 @@ public abstract class ResolvedLibrary<T extends Library> {
      * @since 1.0
      */
     public final T getUncached(Object receiver) {
-        Class<?> receiverClass = getReceiverClass(receiver);
-        T uncached = uncachedCache.get(receiverClass);
+        Class<?> dispatchClass = dispatch(receiver);
+        T uncached = uncachedCache.get(dispatchClass);
         if (uncached != null) {
-            assert uncached.accepts(receiver);
+            assert validateExport(receiver, dispatchClass, uncached);
             return uncached;
         }
-        uncached = lookupExport(receiver).createUncached(receiver);
+        uncached = lookupExport(receiver, dispatchClass).createUncached(receiver);
+        assert validateExport(receiver, dispatchClass, uncached);
         assert uncached.accepts(receiver);
         assert (uncached = createAssertions(uncached)) != null;
-        uncachedCache.putIfAbsent(receiverClass, uncached);
+        uncachedCache.putIfAbsent(dispatchClass, uncached);
         return uncached;
     }
 
-    private static Class<?> getReceiverClass(Object receiver) {
-        if (receiver instanceof DynamicDispatch) {
-            Class<?> receiverClass = ((DynamicDispatch) receiver).dispatch();
-            if (receiverClass == null) {
-                receiverClass = receiver.getClass();
-            }
-            return receiverClass;
-        } else {
-            if (receiver == null) {
-                throw new NullPointerException("Null receiver values are not supported by libraries.");
-            }
+    private Class<?> dispatch(Object receiver) {
+        if (receiver == null) {
+            throw new NullPointerException("Null receiver values are not supported by libraries.");
+        }
+        if (dispatchLibrary == null) {
             return receiver.getClass();
+        } else {
+            Class<?> dispatch = dispatchLibrary.dispatch(receiver);
+            if (dispatch == null) {
+                return receiver.getClass();
+            }
+            return dispatch;
         }
     }
 
@@ -214,25 +243,38 @@ public abstract class ResolvedLibrary<T extends Library> {
      */
     protected abstract Object genericDispatch(Library library, Object receiver, Message message, Object[] arguments, int parameterOffset) throws Exception;
 
-    final ResolvedExports<T> lookupExport(Object receiver) {
-        Class<?> receiverClass = getReceiverClass(receiver);
-        ResolvedExports<T> lib = this.exportCache.get(receiverClass);
+    final ResolvedExports<T> lookupExport(Object receiver, Class<?> dispatchedClass) {
+        ResolvedExports<T> lib = this.exportCache.get(dispatchedClass);
         if (lib != null) {
             return lib;
         }
-        ResolvedReceiver resolvedLibrary = ResolvedReceiver.lookup(receiverClass);
+        ResolvedReceiver resolvedLibrary = ResolvedReceiver.lookup(dispatchedClass);
         lib = resolvedLibrary.getLibrary(libraryClass);
+
         if (lib == null) {
-            if (resolvedLibrary.getLibrary(ReflectionLibrary.class) != null) {
+            // dynamic dispatch cannot be reflected. it is not supported.
+            if (libraryClass != DynamicDispatchLibrary.class && resolvedLibrary.getLibrary(ReflectionLibrary.class) != null) {
                 lib = proxyExports;
             } else {
                 Class<?> defaultClass = getDefaultClass(receiver);
                 lib = ResolvedReceiver.lookup(defaultClass).getLibrary(libraryClass);
             }
+        } else {
+            assert !lib.isDefaultExport() : String.format("Dynamic dispatch from receiver class '%s' to default export '%s' detected. " +
+                            "Use null instead to dispatch to a default export.", receiver.getClass().getName(), dispatchedClass.getName());
+            validateExport(receiver, dispatchedClass, lib);
         }
 
-        ResolvedExports<T> concurrent = this.exportCache.putIfAbsent(receiverClass, lib);
+        ResolvedExports<T> concurrent = this.exportCache.putIfAbsent(dispatchedClass, lib);
         return concurrent != null ? concurrent : lib;
+    }
+
+    private void validateExport(Object receiver, Class<?> dispatchedClass, ResolvedExports<T> exports) throws AssertionError {
+        if (!exports.getReceiverClass().isInstance(receiver)) {
+            throw new AssertionError(
+                            String.format("Receiver class %s was dynamically dispatched to incompatible exports %s. Expected receiver class %s.",
+                                            receiver.getClass().getName(), dispatchedClass.getName(), exports.getReceiverClass().getName()));
+        }
     }
 
     /**
@@ -246,7 +288,7 @@ public abstract class ResolvedLibrary<T extends Library> {
      * @since 1.0
      */
     @SuppressWarnings("unchecked")
-    public static <T extends Library> ResolvedLibrary<T> resolve(Class<T> library) {
+    public static <T extends Library> ResolvedLibrary<T> lookup(Class<T> library) {
         Objects.requireNonNull(library);
         ResolvedLibrary<?> lib = LIBRARIES.get(library);
         if (lib == null) {
@@ -286,14 +328,14 @@ public abstract class ResolvedLibrary<T extends Library> {
     @SuppressWarnings("unchecked")
     static ResolvedLibrary<?> resolveLibraryByName(String name) {
         try {
-            return resolve((Class<? extends Library>) Class.forName(name));
+            return lookup((Class<? extends Library>) Class.forName(name));
         } catch (ClassNotFoundException e) {
             return null;
         }
     }
 
     static Message resolveMessage(Class<? extends Library> library, String message) {
-        ResolvedLibrary<?> lib = resolve(library);
+        ResolvedLibrary<?> lib = lookup(library);
         if (lib == null) {
             return null;
         } else {
@@ -317,11 +359,11 @@ public abstract class ResolvedLibrary<T extends Library> {
         }
     }
 
-    private static final ResolvedLibrary<ReflectionLibrary> REFLECTION_LIBRARY = ResolvedLibrary.resolve(ReflectionLibrary.class);
+    private static final ResolvedLibrary<ReflectionLibrary> REFLECTION_LIBRARY = ResolvedLibrary.lookup(ReflectionLibrary.class);
 
     final class ProxyExports extends ResolvedExports<T> {
         protected ProxyExports() {
-            super(libraryClass);
+            super(libraryClass, Object.class, true);
         }
 
         @Override

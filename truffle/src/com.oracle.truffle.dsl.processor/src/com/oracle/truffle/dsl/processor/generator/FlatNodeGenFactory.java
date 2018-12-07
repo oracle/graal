@@ -974,22 +974,8 @@ public class FlatNodeGenFactory {
 
     private Call substituteLibraryCall(Call call, ExecutableElement other) {
         ClassLiteral literal = (ClassLiteral) call.getParameters().get(0);
-        TypeElement libraryType = ElementUtils.castTypeElement(literal.getLiteral());
-        String name = libraryType.getSimpleName().toString();
-        String constantName = ElementUtils.createConstantName(name);
-        CodeVariableElement var;
-        do {
-            String useConstantName = constantName = constantName + "_";
-
-            TypeElement resolvedLibrary = context.getTypeElement(ResolvedLibrary.class);
-            DeclaredCodeTypeMirror constantType = new DeclaredCodeTypeMirror(context.getTypeElement(ResolvedLibrary.class), Arrays.asList(libraryType.asType()));
-            var = libraryConstants.computeIfAbsent(constantName, (c) -> {
-                CodeVariableElement newVar = new CodeVariableElement(modifiers(PRIVATE, STATIC, FINAL), constantType, useConstantName);
-                newVar.createInitBuilder().startStaticCall(resolvedLibrary.asType(), "resolve").typeLiteral(libraryType.asType()).end();
-                return newVar;
-            });
-        } while (!ElementUtils.typeEquals(libraryType.asType(), ((DeclaredType) var.getType()).getTypeArguments().get(0)));
-
+        CodeVariableElement var = createLibraryConstant(libraryConstants, literal.getLiteral());
+        String constantName = var.getSimpleName().toString();
         Variable singleton = new Variable(null, constantName);
         singleton.setResolvedTargetType(var.asType());
         singleton.setResolvedVariable(var);
@@ -998,6 +984,24 @@ public class FlatNodeGenFactory {
         newCall.setResolvedMethod(other);
         newCall.setResolvedTargetType(other.asType());
         return newCall;
+    }
+
+    public static CodeVariableElement createLibraryConstant(Map<String, CodeVariableElement> constants, TypeMirror libraryTypeMirror) {
+        TypeElement libraryType = ElementUtils.castTypeElement(libraryTypeMirror);
+        String name = libraryType.getSimpleName().toString();
+        String constantName = ElementUtils.createConstantName(name);
+        CodeVariableElement var;
+        do {
+            String useConstantName = constantName = constantName + "_";
+            TypeElement resolvedLibrary = ProcessorContext.getInstance().getTypeElement(ResolvedLibrary.class);
+            DeclaredCodeTypeMirror constantType = new DeclaredCodeTypeMirror(resolvedLibrary, Arrays.asList(libraryType.asType()));
+            var = constants.computeIfAbsent(constantName, (c) -> {
+                CodeVariableElement newVar = new CodeVariableElement(modifiers(PRIVATE, STATIC, FINAL), constantType, useConstantName);
+                newVar.createInitBuilder().startStaticCall(resolvedLibrary.asType(), "lookup").typeLiteral(libraryType.asType()).end();
+                return newVar;
+            });
+        } while (!ElementUtils.typeEquals(libraryType.asType(), ((DeclaredType) var.getType()).getTypeArguments().get(0)));
+        return var;
     }
 
     private DSLExpression optimizeExpression(DSLExpression expression) {
@@ -2778,14 +2782,13 @@ public class FlatNodeGenFactory {
             }
 
             BlockState nonBoundaryIfCount = BlockState.NONE;
-            BlockState innerIfCount = BlockState.NONE;
             final CodeTreeBuilder innerBuilder;
             if (extractInBoundary) {
                 nonBoundaryIfCount = nonBoundaryIfCount.add(IfTriple.materialize(builder, IfTriple.optimize(nonBoundaryGuards), false));
                 innerBuilder = extractInBoundaryMethod(builder, frameState, specialization);
             } else if (pushEnclosingNode) {
                 innerBuilder = builder;
-                innerIfCount = IfTriple.materialize(innerBuilder, IfTriple.optimize(nonBoundaryGuards), false);
+                nonBoundaryIfCount = IfTriple.materialize(innerBuilder, IfTriple.optimize(nonBoundaryGuards), false);
             } else {
                 innerBuilder = builder;
                 cachedTriples.addAll(0, nonBoundaryGuards);
@@ -2797,6 +2800,7 @@ public class FlatNodeGenFactory {
                 innerBuilder.startTryBlock();
             }
 
+            BlockState innerIfCount = BlockState.NONE;
             innerIfCount = innerIfCount.add(IfTriple.materialize(innerBuilder, IfTriple.optimize(cachedTriples), false));
             SpecializationGroup prev = null;
             for (SpecializationGroup child : group.getChildren()) {
@@ -2817,7 +2821,6 @@ public class FlatNodeGenFactory {
                 innerBuilder.startStatement().startStaticCall(context.getType(NodeUtil.class), "popEncapsulatingNode").string("prev_").end().end();
                 innerBuilder.end();
             }
-
             builder.end(nonBoundaryIfCount.blockCount);
 
             if (useSpecializationClass && specialization.getMaximumNumberOfInstances() > 1) {

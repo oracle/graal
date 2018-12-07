@@ -44,6 +44,7 @@ import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -189,7 +190,7 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
             generators.add(new AnnotationProcessor<>(new TypeSystemParser(), new TypeSystemCodeGenerator()));
             generators.add(new AnnotationProcessor<>(NodeParser.createDefaultParser(), new NodeCodeGenerator()));
             generators.add(new AnnotationProcessor<>(new LibraryParser(), new LibraryGenerator()));
-            generators.add(new AnnotationProcessor<>(new ExportsParser(), new ExportsGenerator()));
+            generators.add(new AnnotationProcessor<>(new ExportsParser(), new ExportsGenerator(new LinkedHashMap<>())));
         }
         return generators;
     }

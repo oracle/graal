@@ -59,13 +59,13 @@ final class ResolvedReceiver {
     // the root of every receiver class chain.
     private static final ResolvedReceiver OBJECT_RECEIVER = new ResolvedReceiver(null, Object.class);
     private final ResolvedReceiver parent;
-    private final Class<?> receiverClass;
+    private final Class<?> dispatchClass;
     private final Map<Class<?>, ResolvedExports<?>> libraries;
 
     @SuppressWarnings({"hiding", "unchecked"})
-    private ResolvedReceiver(ResolvedReceiver parent, Class<?> receiverClass, ResolvedExports<?>... libs) {
+    private ResolvedReceiver(ResolvedReceiver parent, Class<?> dispatchClass, ResolvedExports<?>... libs) {
         this.parent = parent;
-        this.receiverClass = receiverClass;
+        this.dispatchClass = dispatchClass;
         Map<Class<?>, ResolvedExports<?>> libraries = new LinkedHashMap<>();
         for (ResolvedExports<?> lib : libs) {
             libraries.put(lib.getLibrary(), lib);
@@ -104,7 +104,7 @@ final class ResolvedReceiver {
 
     @Override
     public String toString() {
-        return "ResolvedReceiver[" + receiverClass.getName() + "]";
+        return "ResolvedReceiver[" + dispatchClass.getName() + "]";
     }
 
     Set<Class<?>> getLibraries() {
@@ -115,34 +115,34 @@ final class ResolvedReceiver {
         return c.getAnnotationsByType(ExportLibrary.class).length > 0;
     }
 
-    private static ResolvedReceiver resolveClass(Class<?> receiverClass) {
-        if (receiverClass == null) {
+    private static ResolvedReceiver resolveClass(Class<?> dispatchClass) {
+        if (dispatchClass == null) {
             return OBJECT_RECEIVER;
         }
-        ResolvedReceiver parent = resolveClass(receiverClass.getSuperclass());
+        ResolvedReceiver parent = resolveClass(dispatchClass.getSuperclass());
         ResolvedReceiver resolved;
-        ResolvedExports<?>[] libs = REGISTRY.get(receiverClass);
-        if (libs == null && hasExports(receiverClass)) {
+        ResolvedExports<?>[] libs = REGISTRY.get(dispatchClass);
+        if (libs == null && hasExports(dispatchClass)) {
             /*
              * We can omit loading classes in AOT mode as they are resolved eagerly using the
              * TruffleFeature. We can also omit if the type was already resolved.
              */
             if (!TruffleOptions.AOT) {
-                loadGeneratedClass(receiverClass);
-                libs = REGISTRY.get(receiverClass);
+                loadGeneratedClass(dispatchClass);
+                libs = REGISTRY.get(dispatchClass);
             }
             if (libs == null) {
-                throw new AssertionError(String.format("Libraries for class '%s' could not be resolved. Not registered?", receiverClass.getName()));
+                throw new AssertionError(String.format("Libraries for class '%s' could not be resolved. Not registered?", dispatchClass.getName()));
             }
         }
 
         if (libs != null) {
-            resolved = new ResolvedReceiver(parent, receiverClass, libs);
+            resolved = new ResolvedReceiver(parent, dispatchClass, libs);
         } else {
             resolved = parent;
         }
 
-        ResolvedReceiver concurrent = CACHE.putIfAbsent(receiverClass, resolved);
+        ResolvedReceiver concurrent = CACHE.putIfAbsent(dispatchClass, resolved);
         if (concurrent != null) {
             return concurrent;
         } else {

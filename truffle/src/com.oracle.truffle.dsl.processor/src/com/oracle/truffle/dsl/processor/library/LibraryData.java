@@ -47,11 +47,13 @@ import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 
+import com.oracle.truffle.api.library.DynamicDispatchLibrary;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 import com.oracle.truffle.dsl.processor.model.Template;
 
-public class LibraryData extends Template {
+public final class LibraryData extends Template {
 
     private final List<LibraryMessage> methods = new ArrayList<>();
     private final List<LibraryData> superTypes = new ArrayList<>();
@@ -62,6 +64,8 @@ public class LibraryData extends Template {
     private TypeMirror signatureReceiverType;
     private TypeMirror exportsReceiverType;
     private TypeMirror assertions;
+
+    private ExportsLibrary objectExports;
 
     public LibraryData(TypeElement type, AnnotationMirror annotationMirror) {
         super(ProcessorContext.getInstance(), type, annotationMirror);
@@ -123,6 +127,18 @@ public class LibraryData extends Template {
 
     public TypeMirror getAssertions() {
         return assertions;
+    }
+
+    public boolean isDynamicDispatch() {
+        return getTemplateType().getSimpleName().toString().equals(DynamicDispatchLibrary.class.getSimpleName());
+    }
+
+    void setObjectExports(ExportsLibrary objectExports) {
+        this.objectExports = objectExports;
+    }
+
+    public ExportsLibrary getObjectExports() {
+        return objectExports;
     }
 
 }

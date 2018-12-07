@@ -121,9 +121,6 @@ public class LibraryParser extends AbstractParser<LibraryData> {
                 defaultExportReachable = false;
             }
         }
-        if (defaultExportReachable) {
-            model.getDefaultExports().add(new LibraryDefaultExportData(null, context.getType(Object.class)));
-        }
         parseAssertions(element, mirror, type, model);
 
         List<ExecutableElement> allMethods = ElementFilter.methodsIn(CompilerFactory.getCompiler(type).getEnclosedElementsInDeclarationOrder(type));
@@ -236,6 +233,23 @@ public class LibraryParser extends AbstractParser<LibraryData> {
             model.setExportsReceiverType(inferredReceiverType);
         }
         model.setSignatureReceiverType(inferredReceiverType);
+
+        if (defaultExportReachable) {
+            model.getDefaultExports().add(new LibraryDefaultExportData(null, context.getType(Object.class)));
+            ExportsData exports = new ExportsData(context, type, mirror);
+            ExportsLibrary objectExports = new ExportsLibrary(context, type, mirror, exports, model, context.getType(Object.class), true);
+
+            for (LibraryMessage message : objectExports.getLibrary().getMethods()) {
+                if (message.getName().equals("accepts")) {
+                    continue;
+                }
+                ExportMessageData exportMessage = new ExportMessageData(objectExports, message);
+                exportMessage.setExportedMethod(new ExportMessageElement(exportMessage, null, null));
+                objectExports.getExportedMessages().put(message.getName(), exportMessage);
+            }
+
+            model.setObjectExports(objectExports);
+        }
 
         return model;
     }

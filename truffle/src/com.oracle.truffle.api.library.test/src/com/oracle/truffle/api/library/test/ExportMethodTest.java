@@ -61,7 +61,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.ExpectError;
 
-@SuppressWarnings("unused")
+@SuppressWarnings({"unused", "static-method"})
 public class ExportMethodTest extends AbstractLibraryTest {
 
     @GenerateLibrary
@@ -136,7 +136,7 @@ public class ExportMethodTest extends AbstractLibraryTest {
     }
 
     @ExportLibrary(ExportsTestLibrary1.class)
-    static class ExportsTestObject1 {
+    static final class ExportsTestObject1 {
 
         @ExportMessage
         String foo(int arg) {
@@ -180,7 +180,7 @@ public class ExportMethodTest extends AbstractLibraryTest {
 
     // allow covariant return types in exports
     @ExportLibrary(ExportsTestLibrary4.class)
-    static class ExportsTestObject2 {
+    static final class ExportsTestObject2 {
 
         @ExportMessage
         TestSubInterface interfaceArg(TestInterface arg) {
@@ -212,7 +212,7 @@ public class ExportMethodTest extends AbstractLibraryTest {
 
     // export varargs as non-varargs
     @ExportLibrary(ExportsTestLibrary4.class)
-    static class ExportsTestVarArgs {
+    static final class ExportsTestVarArgs {
 
         @ExportMessage
         public Object varArgsObject(Object[] args, @Cached CachedTestNode node) {
@@ -230,12 +230,13 @@ public class ExportMethodTest extends AbstractLibraryTest {
 
     // export method as static method.
     @ExportLibrary(ExportsTestLibrary1.class)
-    static class ExportsTestStaticMethod {
+    static final class ExportsTestStaticMethod {
 
         @ExportMessage
         public static String foo(ExportsTestStaticMethod receiver, int arg) {
             return "foo";
         }
+
     }
 
     @Test
@@ -247,7 +248,7 @@ public class ExportMethodTest extends AbstractLibraryTest {
 
     // test implicit receiver + CachedNode
     @ExportLibrary(ExportsTestLibrary1.class)
-    static class ExportsTestInstanceWithCachedNode {
+    static final class ExportsTestInstanceWithCachedNode {
 
         @ExportMessage
         public String foo(int arg, @Cached CachedTestNode node) {
@@ -264,7 +265,7 @@ public class ExportMethodTest extends AbstractLibraryTest {
 
     // test static receiver + cached node
     @ExportLibrary(ExportsTestLibrary1.class)
-    static class ExportsTestStaticWithCachedNode {
+    static final class ExportsTestStaticWithCachedNode {
 
         @ExportMessage
         public static String foo(ExportsTestStaticWithCachedNode receiver, int arg, @Cached CachedTestNode node) {
@@ -280,11 +281,11 @@ public class ExportMethodTest extends AbstractLibraryTest {
     }
 
     @ExportLibrary(ExportsTestLibrary1.class)
-    static class ExportsTestInstanceWithLibrary {
+    static final class ExportsTestInstanceWithLibrary {
 
         static final Object DELEGATE = new ExportsTestStaticWithCachedNode();
 
-        @ExportMessage(limit = "3")
+        @ExportMessage
         String foo(int arg, @CachedLibrary("DELEGATE") ExportsTestLibrary1 lib) {
             return lib.foo(DELEGATE, arg);
         }
@@ -298,11 +299,11 @@ public class ExportMethodTest extends AbstractLibraryTest {
     }
 
     @ExportLibrary(ExportsTestLibrary1.class)
-    static class ExportsTestStaticWithLibrary {
+    static final class ExportsTestStaticWithLibrary {
 
         static final Object DELEGATE = new ExportsTestStaticWithCachedNode();
 
-        @ExportMessage(limit = "3")
+        @ExportMessage
         public static String foo(ExportsTestStaticWithLibrary receiver, int arg, @CachedLibrary("DELEGATE") ExportsTestLibrary1 lib) {
             return lib.foo(DELEGATE, 42);
         }
@@ -320,7 +321,7 @@ public class ExportMethodTest extends AbstractLibraryTest {
 
     @ExportLibrary(ExportsTestLibrary1.class)
     @ExpectError("Class 'com.oracle.truffle.api.library.test.ExportMethodTest.NoLibrary' is not a library annotated with @GenerateLibrary.")
-    static class ExportsTestObjectError2 {
+    static final class ExportsTestObjectError2 {
 
         @ExportMessage(library = NoLibrary.class)
         String foo() {
@@ -411,14 +412,14 @@ public class ExportMethodTest extends AbstractLibraryTest {
 
         // wrong primitive type
         @ExportMessage
-        @ExpectError("Invalid exported type. Expected 'int' but was 'double'.%")
+        @ExpectError("Invalid parameter type. Expected 'int' but was 'double'.%")
         public int intArg(double arg) {
             return 42;
         }
 
         // wront class type
         @ExportMessage
-        @ExpectError("Invalid exported type. Expected 'TestClass' but was 'Object'.%")
+        @ExpectError("Invalid parameter type. Expected 'TestClass' but was 'Object'.%")
         public TestClass classArg(Object arg) {
             return (TestClass) arg;
         }
@@ -432,7 +433,7 @@ public class ExportMethodTest extends AbstractLibraryTest {
 
         // wrong multiple types
         @ExportMessage
-        @ExpectError({"Invalid exported type. Expected 'int' but was 'byte'.%"})
+        @ExpectError({"Invalid parameter type. Expected 'int' but was 'byte'.%"})
         public int multiArg(byte intArg, String arg) {
             return intArg;
         }

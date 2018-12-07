@@ -89,7 +89,7 @@ import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.library.DynamicDispatch;
+import com.oracle.truffle.api.library.DynamicDispatchLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
@@ -107,7 +107,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
 import com.oracle.truffle.dsl.processor.parser.NodeParser;
-import com.oracle.truffle.dsl.processor.parser.NodeParser.ParseMode;
+import com.sun.xml.internal.bind.v2.schemagen.xmlschema.ExplicitGroup;
 
 public class ExportsParser extends AbstractParser<ExportsData> {
 
@@ -232,7 +232,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                     }
                 }
                 if (message.isAbstract() && !message.getName().equals("accepts")) {
-                    ExportMessageData exportMessage = exportLib.getExportedMesssages().get(message.getName());
+                    ExportMessageData exportMessage = exportLib.getExportedMessages().get(message.getName());
 
                     if (exportMessage == null || exportMessage.getResolvedMessage() != message) {
 
@@ -240,7 +240,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                         if (!message.getAbstractIfExported().isEmpty()) {
                             isAbstract = false;
                             for (LibraryMessage abstractIfExported : message.getAbstractIfExported()) {
-                                if (exportLib.getExportedMesssages().containsKey(abstractIfExported.getName())) {
+                                if (exportLib.getExportedMessages().containsKey(abstractIfExported.getName())) {
                                     isAbstract = true;
                                     break;
                                 }
@@ -344,30 +344,52 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             mappedMirrors.putIfAbsent(getTypeId(library), mirror);
         }
 
+        boolean foundReceiverDynamicDispatch = false;
         for (Entry<String, AnnotationMirror> entry : mappedMirrors.entrySet()) {
-            AnnotationMirror mirror = entry.getValue();
+            AnnotationMirror exportAnnotationMirror = entry.getValue();
             String libraryId = entry.getKey();
-            TypeMirror libraryMirror = getAnnotationValue(TypeMirror.class, mirror, "value");
-            TypeMirror receiverClass = getAnnotationValue(TypeMirror.class, mirror, "receiverClass", false);
-            AnnotationValue receiverClassValue = getAnnotationValue(mirror, "receiverClass");
-            boolean staticReceiver;
+            TypeMirror libraryMirror = getAnnotationValue(TypeMirror.class, exportAnnotationMirror, "value");
+            AnnotationValue receiverClassValue = getAnnotationValue(exportAnnotationMirror, "receiverClass");
+            boolean explicitReceiver;
+
+            TypeMirror receiverClass = getAnnotationValue(TypeMirror.class, exportAnnotationMirror, "receiverClass", false);
             if (receiverClass == null) {
-                staticReceiver = false;
+                explicitReceiver = false;
                 receiverClass = type.asType();
             } else {
-                staticReceiver = true;
+                explicitReceiver = true;
             }
 
             LibraryParser parser = new LibraryParser();
             LibraryData libraryData = parser.parse(fromTypeMirror(libraryMirror));
-            ExportsLibrary lib = new ExportsLibrary(context, type, mirror, libraryData, receiverClass, staticReceiver);
 
+            ExportsLibrary lib = new ExportsLibrary(context, type, exportAnnotationMirror, model, libraryData, receiverClass, explicitReceiver);
             ExportsLibrary otherLib = model.getExportedLibraries().get(libraryId);
             model.getExportedLibraries().put(libraryId, lib);
 
             if (ElementUtils.isPrimitive(receiverClass)) {
-                lib.addError(mirror, receiverClassValue, "Primitive receiver classes are not supported yet.");
+                lib.addError(exportAnnotationMirror, receiverClassValue, "Primitive receiver classes are not supported yet.");
                 continue;
+            }
+
+            if (explicitReceiver) {
+                boolean foundInvalidExportsOnReceiver = false;
+                superType = ElementUtils.castTypeElement(receiverClass);
+                while ((superType = getSuperType(superType)) != null) {
+                    List<AnnotationMirror> exports = getRepeatedAnnotation(superType.getAnnotationMirrors(), ExportLibrary.class);
+                    for (AnnotationMirror export : exports) {
+                        TypeMirror exportedLibrary = getAnnotationValue(TypeMirror.class, export, "value");
+                        if (!ElementUtils.typeEquals(exportedLibrary, context.getType(DynamicDispatchLibrary.class))) {
+                            foundInvalidExportsOnReceiver = true;
+                            break;
+                        }
+                    }
+                }
+                if (foundInvalidExportsOnReceiver) {
+                    lib.addError(exportAnnotationMirror, receiverClassValue, "An explicit receiver type must not export any libraries other than %s.",
+                                    DynamicDispatchLibrary.class.getSimpleName());
+                    continue;
+                }
             }
 
             if (libraryData == null) {
@@ -378,28 +400,6 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                 continue;
             }
 
-            boolean dispatched = lib.isDispatched();
-            if (!staticReceiver && dispatched) {
-                lib.addError("@%s cannot be used on types that implement %s. They are mutually exclusive.",
-                                ExportLibrary.class.getSimpleName(),
-                                DynamicDispatch.class.getSimpleName());
-            } else if (staticReceiver && !dispatched) {
-                boolean foundDefault = false;
-                for (LibraryDefaultExportData defaultExport : libraryData.getDefaultExports()) {
-                    if (typeEquals(defaultExport.getImplType(), type.asType())) {
-                        foundDefault = true;
-                        break;
-                    }
-                }
-                if (!foundDefault) {
-                    lib.addError(mirror, getAnnotationValue(mirror, "receiverClass"),
-                                    "The annotated type '%s' is not specified using @DefaultExport in the library '%s'. " +
-                                                    "Using explicit receiver classes is only supported for default exports or receiver types that implement %s.",
-                                    getSimpleName(model.getTemplateType()), getSimpleName(libraryMirror), DynamicDispatch.class.getSimpleName());
-                    continue;
-                }
-            }
-
             if (otherLib != null) {
                 String message = String.format("Duplicate library specified %s.", getSimpleName(libraryMirror));
                 otherLib.addError(message);
@@ -407,9 +407,9 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                 continue;
             }
 
-            if (staticReceiver) {
+            if (explicitReceiver) {
                 if (!isSubtype(receiverClass, libraryData.getSignatureReceiverType())) {
-                    lib.addError(mirror, receiverClassValue, "The export receiver class %s is not compatible with the library receiver type '%s' of library '%s'. ",
+                    lib.addError(exportAnnotationMirror, receiverClassValue, "The export receiver class %s is not compatible with the library receiver type '%s' of library '%s'. ",
                                     getSimpleName(receiverClass),
                                     getSimpleName(libraryData.getSignatureReceiverType()),
                                     getSimpleName(libraryData.getTemplateType().asType()));
@@ -427,6 +427,28 @@ public class ExportsParser extends AbstractParser<ExportsData> {
 
             for (LibraryMessage message : libraryData.getMethods()) {
                 model.getLibraryMessages().computeIfAbsent(message.getName(), (n) -> new ArrayList<>()).add(message);
+            }
+        }
+
+        // initialize dynamic dispatch
+        for (ExportsLibrary exportedLibrary : model.getExportedLibraries().values()) {
+            if (exportedLibrary.hasErrors()) {
+                continue;
+            }
+
+            boolean explicitReceiver = exportedLibrary.isExplicitReceiver();
+            if (exportedLibrary.getLibrary().isDynamicDispatch() && model.getExportedLibraries().size() > 1) {
+                exportedLibrary.addError(
+                                "@%s cannot be used for other libraries if the %s library is exported. " +
+                                                "Using dynamic dispatch and other libraries is mutually exclusive. " +
+                                                "To resolve this use the dynamic dispatch mechanism of the receiver type instead to export libraries.",
+                                ExportLibrary.class.getSimpleName(),
+                                DynamicDispatchLibrary.class.getSimpleName());
+            } else if (explicitReceiver && !exportedLibrary.isDynamicDispatchTarget() && !exportedLibrary.isDefaultExport()) {
+                exportedLibrary.addError(exportedLibrary.getTemplateTypeAnnotation(), //
+                                getAnnotationValue(exportedLibrary.getTemplateTypeAnnotation(), "receiverClass"),
+                                "Using explicit receiver classes is only supported for default exports or receiver types that export %s.",
+                                DynamicDispatchLibrary.class.getSimpleName());
             }
         }
         return model;
@@ -570,7 +592,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
     }
 
     private static ExportMessageData findOrCreateExport(ExportsLibrary exportsLibrary, LibraryMessage message) {
-        return exportsLibrary.getExportedMesssages().computeIfAbsent(message.getName(), (n) -> new ExportMessageData(exportsLibrary, message));
+        return exportsLibrary.getExportedMessages().computeIfAbsent(message.getName(), (n) -> new ExportMessageData(exportsLibrary, message));
     }
 
     private void initializeExportedNode(ExportMessageElement exportElement) {
@@ -847,23 +869,10 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             VariableElement exportedArg = exportedParameters.get(i);
             VariableElement libraryArg = expectedParameters.get(i);
             TypeMirror exportedArgType = exportedArg.asType();
-            TypeMirror libraryArgType = libraryArg.asType();
-
-            boolean valid = true;
+            TypeMirror libraryArgType = (explicitReceiver && i == 0) ? receiverType : libraryArg.asType();
             if (!typeEquals(exportedArgType, libraryArgType)) {
-                if (explicitReceiver && i == 0) {
-                    // special case for receiver type
-                    if (!typeEquals(exportedArgType, receiverType)) {
-                        valid = false;
-                    }
-                } else {
-                    valid = false;
-                }
-            }
-
-            if (!valid) {
                 if (emitErrors) {
-                    exportedMessage.addError(exportedArg, "Invalid exported type. Expected '%s' but was '%s'. Expected signature:\n    %s",
+                    exportedMessage.addError(exportedArg, "Invalid parameter type. Expected '%s' but was '%s'. Expected signature:\n    %s",
                                     getSimpleName(libraryArgType),
                                     getSimpleName(exportedArgType),
                                     generateExpectedSignature(type, message, expectedStaticReceiverType));

@@ -44,10 +44,11 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import java.util.Arrays;
 import java.util.List;
+
+import javax.xml.ws.Dispatch;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -56,12 +57,13 @@ import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.library.DynamicDispatch;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
 import com.oracle.truffle.api.library.Library;
+import com.oracle.truffle.api.library.test.AcceptsTest.CustomAccepts1;
+import com.oracle.truffle.api.library.test.AcceptsTest.CustomAccepts2;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.ExpectError;
 
@@ -69,299 +71,102 @@ import com.oracle.truffle.api.test.ExpectError;
 @SuppressWarnings("unused")
 public class AcceptsTest extends AbstractParametrizedLibraryTest {
 
+    //
+
     @Parameters(name = "{0}")
     public static List<TestRun> data() {
         return Arrays.asList(TestRun.CACHED, TestRun.UNCACHED);
     }
 
-    static class NonDispatch {
-
-    }
-
-    static class Dispatch implements DynamicDispatch {
-        private final Class<?> dispatch;
-
-        Dispatch(Class<?> dispatch) {
-            this.dispatch = dispatch;
-        }
-
-        public Class<?> dispatch() {
-            return dispatch;
-        }
-    }
-
     @GenerateLibrary
-    abstract static class DispatchLibrary extends Library {
-
+    abstract static class AcceptsTestLibrary extends Library {
         public String m0(Object receiver) {
             return "m0";
         }
-
     }
 
-    @ExpectError("The annotated type 'DispatchError1' is not specified using @DefaultExport in the library 'DispatchLibrary'. Using explicit receiver classes is only supported for default exports or receiver types that implement DynamicDispatch.")
-    @ExportLibrary(value = DispatchLibrary.class, receiverClass = NonDispatch.class)
-    static class DispatchError1 {
-    }
-
-    @ExpectError("@ExportLibrary cannot be used on types that implement DynamicDispatch. They are mutually exclusive.")
-    @ExportLibrary(DispatchLibrary.class)
-    static class DispatchError2 implements DynamicDispatch {
-
-        public Class<?> dispatch() {
-            return null;
-        }
-    }
-
-    @ExportLibrary(value = DispatchLibrary.class, receiverClass = Dispatch.class)
-    static class DispatchValid1 {
-
-        @ExportMessage
-        static String m0(@SuppressWarnings("unused") Dispatch receiver) {
-            assertSame(receiver.dispatch, DispatchValid1.class);
-            return "d";
-        }
-    }
-
-    @ExportLibrary(value = DispatchLibrary.class, receiverClass = Dispatch.class)
-    static class DispatchValid2 {
-
-        @ExportMessage
-        static String m0(@SuppressWarnings("unused") Dispatch receiver) {
-            assertSame(receiver.dispatch, DispatchValid2.class);
-            return "d";
-        }
-    }
-
-    @Test
-    public void testNullDispatch() {
-        Dispatch d = new Dispatch(null);
-        assertAssertionError(() -> createLibrary(DispatchLibrary.class, d));
-    }
-
-    @Test
-    public void testValidAccepts() {
-        Dispatch d1 = new Dispatch(DispatchValid1.class);
-        Dispatch d2 = new Dispatch(DispatchValid2.class);
-        Dispatch d3 = new Dispatch(CustomAccepts1.class);
-        Dispatch d4 = new Dispatch(CustomAccepts2.class);
-        Dispatch d5 = new Dispatch(CustomAccepts3.class);
-
-        List<Object> ds = Arrays.asList(d1, d2, d3, d4, d5);
-
-        for (Object d : ds) {
-            DispatchLibrary l = createLibrary(DispatchLibrary.class, d);
-            assertTrue(l.accepts(d));
-
-            for (Object otherDispatch : ds) {
-                if (otherDispatch != d) {
-                    assertFalse(l.accepts(otherDispatch));
-                    assertAssertionError(() -> l.m0(d));
-                }
-            }
-            assertEquals("d", l.m0(d));
-            assertAssertionError(() -> l.m0(""));
-        }
-    }
-
-    @Test
-    public void testInvalidAccepts() {
-        Dispatch d1 = new Dispatch(InvalidAccepts1.class);
-        Dispatch d2 = new Dispatch(InvalidAccepts2.class);
-        Dispatch d3 = new Dispatch(InvalidAccepts3.class);
-        InvalidAccepts4 d4 = new InvalidAccepts4();
-        Dispatch d5 = new Dispatch(InvalidAccepts5.class);
-
-        List<Object> values = Arrays.asList(d1, d2, d3, d4, d5);
-        for (Object d : values) {
-            DispatchLibrary l = createLibrary(DispatchLibrary.class, d);
-            assertAssertionError(() -> l.accepts(d));
-        }
-    }
-
-    @ExportLibrary(value = DispatchLibrary.class, receiverClass = Dispatch.class)
+    @ExportLibrary(value = AcceptsTestLibrary.class)
     static class CustomAccepts1 {
 
         @ExportMessage
-        static boolean accepts(Object receiver) {
-            return receiver instanceof Dispatch && ((Dispatch) receiver).dispatch == CustomAccepts1.class;
+        static boolean accepts(CustomAccepts1 receiver) {
+            return true;
         }
 
         @ExportMessage
-        static String m0(@SuppressWarnings("unused") Dispatch receiver) {
-            return "d";
+        String m0() {
+            return "CustomAccepts1_m0";
         }
     }
 
-    @ExportLibrary(value = DispatchLibrary.class, receiverClass = Dispatch.class)
+    @Test
+    public void testCustomAccepts1() {
+        Object value = new CustomAccepts1();
+        AcceptsTestLibrary lib = createLibrary(AcceptsTestLibrary.class, value);
+        assertTrue(lib.accepts(value));
+        assertTrue(lib.accepts(new CustomAccepts1()));
+    }
+
+    @ExportLibrary(value = AcceptsTestLibrary.class)
     static class CustomAccepts2 {
 
         @ExportMessage
-        static boolean accepts(Dispatch receiver) {
-            return receiver.dispatch == CustomAccepts2.class;
+        static boolean accepts(CustomAccepts2 receiver, @Cached("receiver") Object cachedReceiver) {
+            return receiver == cachedReceiver;
         }
 
         @ExportMessage
-        static String m0(@SuppressWarnings("unused") Dispatch receiver) {
-            return "d";
+        String m0() {
+            return "CustomAccepts2_m0";
         }
     }
 
-    @ExportLibrary(value = DispatchLibrary.class, receiverClass = Dispatch.class)
-    static class CustomAccepts3 {
-
-        @ExportMessage
-        static boolean accepts(Object receiver, @Cached("receiver.getClass()") Class<?> receiverClass) {
-            return receiver instanceof Dispatch && ((Dispatch) receiver).dispatch == CustomAccepts3.class;
-        }
-
-        @ExportMessage
-        static String m0(@SuppressWarnings("unused") Dispatch receiver) {
-            return "d";
+    @Test
+    public void testCustomAccepts2() {
+        Object value = new CustomAccepts2();
+        AcceptsTestLibrary lib = createLibrary(AcceptsTestLibrary.class, value);
+        assertTrue(lib.accepts(value));
+        if (run == TestRun.CACHED) {
+            assertFalse(lib.accepts(new CustomAccepts2()));
+        } else {
+            assertTrue(lib.accepts(new CustomAccepts2()));
         }
     }
 
-    @ExportLibrary(value = DispatchLibrary.class, receiverClass = Dispatch.class)
+    @ExportLibrary(value = AcceptsTestLibrary.class)
     static class InvalidAccepts1 {
 
         @ExportMessage
-        static boolean accepts(Object receiver) {
-            return receiver instanceof Dispatch;
+        static boolean accepts(InvalidAccepts1 receiver) {
+            return false;
         }
 
         @ExportMessage
-        static String m0(@SuppressWarnings("unused") Dispatch receiver) {
-            assertSame(receiver.dispatch, DispatchValid1.class);
-            return "d1";
-        }
-    }
-
-    @ExportLibrary(value = DispatchLibrary.class, receiverClass = Dispatch.class)
-    static class InvalidAccepts2 {
-
-        @ExportMessage
-        static boolean accepts(Object receiver) {
-            return true;
-        }
-
-        @ExportMessage
-        static String m0(@SuppressWarnings("unused") Dispatch receiver) {
-            assertSame(receiver.dispatch, DispatchValid1.class);
-            return "d1";
-        }
-    }
-
-    @ExportLibrary(value = DispatchLibrary.class, receiverClass = Dispatch.class)
-    static class InvalidAccepts3 {
-
-        @ExportMessage
-        static boolean accepts(Dispatch receiver) {
-            return true;
-        }
-
-        @ExportMessage
-        static String m0(@SuppressWarnings("unused") Dispatch receiver) {
-            assertSame(receiver.dispatch, DispatchValid1.class);
-            return "d1";
-        }
-    }
-
-    @ExportLibrary(DispatchLibrary.class)
-    static class InvalidAccepts4 {
-
-        @ExportMessage
-        static boolean accepts(Object receiver) {
-            return true;
-        }
-
-        @ExportMessage
-        static String m0(@SuppressWarnings("unused") InvalidAccepts4 receiver) {
-            return "d1";
-        }
-    }
-
-    @ExportLibrary(value = DispatchLibrary.class, receiverClass = Dispatch.class)
-    static class InvalidAccepts5 {
-
-        @ExportMessage
-        static class AcceptsNode extends Node {
-            @Specialization
-            static boolean accepts(Dispatch receiver) {
-                return true;
-            }
-        }
-
-        @ExportMessage
-        static String m0(@SuppressWarnings("unused") Dispatch receiver) {
-            return "d1";
-        }
-    }
-
-    private static void assertAssertionError(Runnable r) {
-        try {
-            r.run();
-        } catch (AssertionError e) {
-            return;
-        }
-        fail();
-    }
-
-    @GenerateLibrary
-    @DefaultExport(DefaultDispatchReceiver1.class)
-    abstract static class DefaultDispatchLibrary1 extends Library {
-
-        public String m0(Object receiver) {
-            return "default";
-        }
-
-    }
-
-    interface NonDispatchInterface {
-
-    }
-
-    @ExportLibrary(value = DefaultDispatchLibrary1.class, receiverClass = NonDispatchInterface.class)
-    abstract static class DefaultDispatchReceiver1 extends Library {
-
-        @ExportMessage
-        static String m0(NonDispatchInterface receiver) {
-            return "nonDispatchInterface";
-        }
-    }
-
-    @ExportLibrary(DefaultDispatchLibrary1.class)
-    static class SimpleDispatchReceiver implements NonDispatchInterface {
-
-        @ExportMessage
-        final String m0() {
-            return "simpleDispatch";
-        }
-    }
-
-    @ExportLibrary(value = DefaultDispatchLibrary1.class, receiverClass = Dispatch.class)
-    static class DefaultDispatchReceiver {
-
-        @ExportMessage
-        static String m0(@SuppressWarnings("unused") Dispatch receiver) {
-            return "customDispatch";
+        String m0() {
+            return "InvalidAccepts1_m0";
         }
     }
 
     @Test
-    public void testDefaultDispatchObject() {
-        Object defaultValue = new Object();
-        DefaultDispatchLibrary1 library = createLibrary(DefaultDispatchLibrary1.class, defaultValue);
-        assertEquals("default", library.m0(defaultValue));
-        assertAssertionError(() -> library.m0(new SimpleDispatchReceiver()));
+    public void testInvalidAccepts1() {
+        Object value = new InvalidAccepts1();
+        assertAssertionError(() -> createLibrary(AcceptsTestLibrary.class, value));
     }
 
-    @Test
-    public void testDefaultDispatchNonDispatchInterface() {
-        Object value = new NonDispatchInterface() {
-        };
-        DefaultDispatchLibrary1 library = createLibrary(DefaultDispatchLibrary1.class, value);
-        assertEquals("nonDispatchInterface", library.m0(value));
-        assertAssertionError(() -> library.m0(new SimpleDispatchReceiver()));
+    @ExportLibrary(value = AcceptsTestLibrary.class)
+    static class ErrorAccepts1 {
+
+        @ExportMessage
+        // invalid receiver type
+        @ExpectError("Invalid parameter type. Expected 'ErrorAccepts1' but was 'Object'. %")
+        static boolean accepts(Object receiver) {
+            return true;
+        }
+
+        @ExportMessage
+        String m0() {
+            return "InvalidAccepts1_m0";
+        }
     }
 
 }

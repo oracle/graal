@@ -260,6 +260,10 @@ public final class NodeUtil {
         CURRENT_ENCAPSULATING_NODE.set(prev);
     }
 
+    public static boolean isAdoptable(Node node) {
+        return node.isAdoptable();
+    }
+
     /*
      * Fast version of child adoption.
      */

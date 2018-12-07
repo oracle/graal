@@ -123,13 +123,4 @@ public class NodeAdoptionTest extends AbstractLibraryTest {
         assertEquals("cached", dispatched.m0(o));
     }
 
-    private static void assertAssertionError(Runnable r) {
-        try {
-            r.run();
-        } catch (AssertionError e) {
-            return;
-        }
-        fail();
-    }
-
 }

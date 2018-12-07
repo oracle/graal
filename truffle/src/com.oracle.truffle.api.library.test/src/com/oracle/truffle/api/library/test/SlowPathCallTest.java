@@ -86,7 +86,7 @@ public class SlowPathCallTest extends AbstractLibraryTest {
         Assert.assertEquals("uncached", getUncached(SlowPathCallLibrary.class, object).someCall(object));
         Assert.assertEquals("cached", createCached(SlowPathCallLibrary.class, object).someCall(object));
         try {
-            createCached(SlowPathCallLibrary.class, Object.class).someCall(new Object());
+            createCached(SlowPathCallLibrary.class, new Object()).someCall(new Object());
             Assert.fail();
         } catch (AbstractMethodError e) {
         }

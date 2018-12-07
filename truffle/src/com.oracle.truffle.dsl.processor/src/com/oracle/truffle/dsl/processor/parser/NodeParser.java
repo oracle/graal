@@ -1995,7 +1995,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         initializer = initializer.replace("$parameters", parameters);
         uncached = uncached.replace("$parameters", parameters);
 
-        if (ElementUtils.isAssignable(parameter.getType(), context.getType(Library.class))) {
+        if (ElementUtils.isAssignable(parameter.getType(), context.getType(Library.class)) && !ElementUtils.typeEquals(parameter.getType(), context.getType(Library.class))) {
             cache.addError("The use of @%s is not supported for libraries. Use @%s instead.",
                             Cached.class.getSimpleName(), CachedLibrary.class.getSimpleName());
         } else if (NodeCodeGenerator.isSpecializedNode(parameter.getType())) {

@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.DynamicDispatchLibrary;
 
 /**
  * An extensible object type descriptor for {@link DynamicObject}s.
@@ -88,7 +89,8 @@ public class ObjectType {
     }
 
     /**
-     * Returns the exports class that this object type is dispatched to.
+     * Returns the exports class that this object type is dispatched to using
+     * {@link DynamicDispatchLibrary dynamic dispatch}.
      *
      * @since 1.0
      */

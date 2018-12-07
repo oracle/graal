@@ -98,6 +98,10 @@ public abstract class Message {
         return libraryClass;
     }
 
+    public final ResolvedLibrary<?> getLibrary() {
+        return library;
+    }
+
     @Override
     public final boolean equals(Object obj) {
         return this == obj;

@@ -749,7 +749,7 @@ public abstract class Message {
      *         {@link ForeignAccess#send(com.oracle.truffle.api.nodes.Node, com.oracle.truffle.api.interop.TruffleObject, java.lang.Object...)}
      *         method.
      * @since 0.8 or earlier
-     * @deprecated use {@link Library#createCached(Class, Object)} or
+     * @deprecated use {@link Library#createCached(Class)} or
      *             {@link Library#getUncached(Class, Object)} instead. see {@link InteropLibrary}
      *             for examples.
      */
