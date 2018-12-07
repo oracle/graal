@@ -70,6 +70,7 @@ import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.library.DynamicDispatchLibrary;
 import com.oracle.truffle.api.library.Library;
@@ -105,6 +106,7 @@ import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.model.NodeExecutionData;
 import com.oracle.truffle.dsl.processor.model.Parameter;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
+import com.sun.rowset.internal.CachedRowSetReader;
 
 public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
 
@@ -251,44 +253,8 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
 
         CodeTypeElement cacheClass = createClass(libraryExports, null, modifiers(PRIVATE, STATIC, FINAL), "Cached", libraryBaseType);
 
-        CodeTree acceptsAssertions = null;
-        CodeTreeBuilder acceptsBuilder = CodeTreeBuilder.createBuilder();
-        if (libraryExports.needsDynamicDispatch()) {
-            CodeExecutableElement constructor = cacheClass.add(GeneratorUtils.createConstructorUsingFields(modifiers(), cacheClass));
-            constructor.addParameter(new CodeVariableElement(context.getType(Object.class), "receiver"));
-
-            CodeVariableElement dynamicDispatchLibrary = cacheClass.add(new CodeVariableElement(modifiers(PRIVATE), context.getType(DynamicDispatchLibrary.class), "dynamicDispatch_"));
-            dynamicDispatchLibrary.addAnnotationMirror(new CodeAnnotationMirror(context.getDeclaredType(Child.class)));
-
-            CodeVariableElement dispatchLibraryConstant = useDispatchLibraryConstant();
-
-            builder = constructor.createBuilder();
-            builder.startStatement().string("this.dynamicDispatch_ = ").staticReference(dispatchLibraryConstant).string(".createCached(receiver)").end();
-
-            acceptsBuilder.string("dynamicDispatch_.accepts(receiver) && dynamicDispatch_.dispatch(receiver) == ");
-
-            if (libraryExports.isDynamicDispatchTarget()) {
-                acceptsBuilder.typeLiteral(libraryExports.getTemplateType().asType());
-            } else {
-                acceptsBuilder.nullLiteral();
-            }
-        } else {
-            acceptsAssertions = createDynamicDispatchAssertions(libraryExports);
-
-            if (libraryExports.isFinalReceiver()) {
-                acceptsBuilder.string("receiver instanceof ").type(exportReceiverType);
-            } else {
-                CodeExecutableElement constructor = cacheClass.add(GeneratorUtils.createConstructorUsingFields(modifiers(), cacheClass));
-                constructor.addParameter(new CodeVariableElement(context.getType(Object.class), "receiver"));
-
-                cacheClass.add(new CodeVariableElement(modifiers(PRIVATE, FINAL), context.getType(Class.class), "receiverClass_"));
-                constructor.createBuilder().startStatement().string("this.receiverClass_ = receiver.getClass()").end();
-
-                acceptsBuilder.string("receiver.getClass() == this.receiverClass_");
-            }
-        }
-
-        CodeTree defaultAccepts = acceptsBuilder.build();
+        CodeTree acceptsAssertions = createDynamicDispatchAssertions(libraryExports);
+        CodeTree defaultAccepts = createDefaultAccepts(cacheClass, libraryExports, exportReceiverType, true);
 
         CodeExecutableElement accepts = CodeExecutableElement.clone(ElementUtils.findExecutableElement(context.getDeclaredType(Library.class), ACCEPTS));
         accepts.getModifiers().remove(Modifier.ABSTRACT);
@@ -378,7 +344,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                             executable.setVarArgs(message.getExecutable().isVarArgs());
                             cachedExecute = CodeExecutableElement.clone(executable);
                             cachedExecute.setSimpleName(CodeNames.of(message.getName()));
-                            injectReceiverType(cachedExecute, libraryExports, cachedExportReceiverType);
+                            injectReceiverType(cachedExecute, libraryExports, cachedExportReceiverType, true);
                             cacheClass.getEnclosedElements().add(cachedExecute);
                             continue;
                         }
@@ -407,12 +373,58 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         return cacheClass;
     }
 
+    private CodeTree createDefaultAccepts(CodeTypeElement libraryGen, ExportsLibrary libraryExports, TypeMirror exportReceiverType, boolean cached) {
+        CodeTreeBuilder builder;
+        CodeTreeBuilder acceptsBuilder = CodeTreeBuilder.createBuilder();
+        if (libraryExports.needsDynamicDispatch()) {
+            CodeExecutableElement constructor = libraryGen.add(GeneratorUtils.createConstructorUsingFields(modifiers(), libraryGen));
+            constructor.addParameter(new CodeVariableElement(context.getType(Object.class), "receiver"));
+
+            CodeVariableElement dynamicDispatchLibrary = libraryGen.add(new CodeVariableElement(modifiers(PRIVATE), context.getType(DynamicDispatchLibrary.class), "dynamicDispatch_"));
+            dynamicDispatchLibrary.addAnnotationMirror(new CodeAnnotationMirror(context.getDeclaredType(Child.class)));
+
+            CodeVariableElement dispatchLibraryConstant = useDispatchLibraryConstant();
+
+            builder = constructor.createBuilder();
+            if (cached) {
+                builder.startStatement().string("this.dynamicDispatch_ = ").staticReference(dispatchLibraryConstant).string(".createCached(receiver)").end();
+            } else {
+                builder.startStatement().string("this.dynamicDispatch_ = ").staticReference(dispatchLibraryConstant).string(".getUncached(receiver)").end();
+            }
+            acceptsBuilder.string("dynamicDispatch_.accepts(receiver) && dynamicDispatch_.dispatch(receiver) == ");
+
+            if (libraryExports.isDynamicDispatchTarget()) {
+                acceptsBuilder.typeLiteral(libraryExports.getTemplateType().asType());
+            } else {
+                acceptsBuilder.nullLiteral();
+            }
+        } else {
+            if (libraryExports.isFinalReceiver()) {
+                acceptsBuilder.string("receiver instanceof ").type(exportReceiverType);
+            } else {
+                CodeExecutableElement constructor = libraryGen.add(GeneratorUtils.createConstructorUsingFields(modifiers(), libraryGen));
+                constructor.addParameter(new CodeVariableElement(context.getType(Object.class), "receiver"));
+
+                TypeMirror receiverClassType = new CodeTypeMirror.DeclaredCodeTypeMirror(context.getTypeElement(Class.class),
+                                Arrays.asList(new CodeTypeMirror.WildcardTypeMirror(libraryExports.getReceiverClass(), null)));
+                libraryGen.add(new CodeVariableElement(modifiers(PRIVATE, FINAL), receiverClassType, "receiverClass_"));
+
+                constructor.createBuilder().startStatement().string("this.receiverClass_ = (").cast(libraryExports.getReceiverClass()).string("receiver).getClass()").end();
+
+                acceptsBuilder.string("receiver.getClass() == this.receiverClass_");
+            }
+        }
+
+        CodeTree defaultAccepts = acceptsBuilder.build();
+        return defaultAccepts;
+    }
+
     private CodeVariableElement useDispatchLibraryConstant() {
         return FlatNodeGenFactory.createLibraryConstant(libraryConstants, context.getType(DynamicDispatchLibrary.class));
     }
 
     private CodeTree createDynamicDispatchAssertions(ExportsLibrary libraryExports) {
-        if (libraryExports.getLibrary().isDynamicDispatch()) {
+        if (libraryExports.needsDynamicDispatch() || libraryExports.getLibrary().isDynamicDispatch()) {
             // no assertions for dynamic dispatch itself.
             return null;
         }
@@ -443,41 +455,8 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
 
         CodeTypeElement uncachedClass = createClass(libraryExports, null, modifiers(PRIVATE, STATIC, FINAL), "Uncached", libraryBaseType);
 
-        CodeTreeBuilder acceptsBuilder = CodeTreeBuilder.createBuilder();
-
-        CodeTree acceptsAssertions = null;
-        if (libraryExports.needsDynamicDispatch()) {
-            CodeExecutableElement constructor = uncachedClass.add(GeneratorUtils.createConstructorUsingFields(modifiers(), uncachedClass));
-            constructor.addParameter(new CodeVariableElement(context.getType(Object.class), "receiver"));
-            CodeVariableElement dynamicDispatchLibrary = uncachedClass.add(new CodeVariableElement(modifiers(PRIVATE), context.getType(DynamicDispatchLibrary.class), "dynamicDispatch_"));
-            dynamicDispatchLibrary.addAnnotationMirror(new CodeAnnotationMirror(context.getDeclaredType(Child.class)));
-
-            builder = constructor.createBuilder();
-            builder.startStatement().string("this.dynamicDispatch_ = ").staticReference(useDispatchLibraryConstant()).string(".getUncached(receiver)").end();
-
-            acceptsBuilder.string("dynamicDispatch_.accepts(receiver) && dynamicDispatch_.dispatch(receiver) == ");
-
-            if (libraryExports.isDynamicDispatchTarget()) {
-                acceptsBuilder.typeLiteral(libraryExports.getTemplateType().asType());
-            } else {
-                acceptsBuilder.nullLiteral();
-            }
-        } else {
-            acceptsAssertions = createDynamicDispatchAssertions(libraryExports);
-            if (libraryExports.isFinalReceiver()) {
-                acceptsBuilder.string("receiver instanceof ").type(exportReceiverType);
-            } else {
-                CodeExecutableElement constructor = uncachedClass.add(GeneratorUtils.createConstructorUsingFields(modifiers(), uncachedClass));
-                constructor.addParameter(new CodeVariableElement(context.getType(Object.class), "receiver"));
-
-                uncachedClass.add(new CodeVariableElement(modifiers(PRIVATE, FINAL), context.getType(Class.class), "receiverClass_"));
-                constructor.createBuilder().startStatement().string("this.receiverClass_ = receiver.getClass()").end();
-
-                acceptsBuilder.string("receiver.getClass() == this.receiverClass_");
-            }
-        }
-
-        CodeTree defaultAccepts = acceptsBuilder.build();
+        CodeTree acceptsAssertions = createDynamicDispatchAssertions(libraryExports);
+        CodeTree defaultAccepts = createDefaultAccepts(uncachedClass, libraryExports, exportReceiverType, false);
 
         CodeExecutableElement acceptUncached = CodeExecutableElement.clone(ElementUtils.findExecutableElement(context.getDeclaredType(Library.class), ACCEPTS));
         acceptUncached.getModifiers().remove(Modifier.ABSTRACT);
@@ -535,7 +514,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 ElementUtils.setVisibility(generatedUncached.getModifiers(), Modifier.PUBLIC);
                 generatedUncached.setSimpleName(CodeNames.of(message.getName()));
                 generatedUncached.setVarArgs(message.getExecutable().isVarArgs());
-                injectReceiverType(generatedUncached, libraryExports, uncachedReceiverType);
+                injectReceiverType(generatedUncached, libraryExports, uncachedReceiverType, false);
                 uncachedExecute = uncachedClass.add(generatedUncached);
             }
             if (message.getName().equals(ACCEPTS)) {
@@ -650,7 +629,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         return cachedExecute;
     }
 
-    private void injectReceiverType(CodeExecutableElement executable, ExportsLibrary library, TypeMirror receiverType) {
+    private void injectReceiverType(CodeExecutableElement executable, ExportsLibrary library, TypeMirror receiverType, boolean cached) {
         TypeMirror modelReceiverType;
         boolean isAccepts = executable.getSimpleName().toString().equals(ACCEPTS);
         if (isAccepts) {
@@ -670,7 +649,14 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         if (!isAccepts) {
             addAcceptsAssertion(executeBody);
         }
-        executeBody.declaration(receiverType, originalReceiverParamName, executeBody.create().cast(receiverType).string(originalReceiverParamName + "_").build());
+        CodeTree cast;
+        if (!cached || library.isFinalReceiver()) {
+            cast = CodeTreeBuilder.createBuilder().cast(receiverType).string(originalReceiverParamName, "_").build();
+        } else {
+            cast = CodeTreeBuilder.createBuilder().startStaticCall(context.getType(CompilerDirectives.class), "castExact").string(originalReceiverParamName,
+                            "_").string("receiverClass_").end().build();
+        }
+        executeBody.declaration(receiverType, originalReceiverParamName, cast);
         executeBody.tree(tree);
     }
 
