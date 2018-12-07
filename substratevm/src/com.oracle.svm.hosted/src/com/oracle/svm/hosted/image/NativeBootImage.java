@@ -109,7 +109,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public abstract class NativeBootImage extends AbstractBootImage {
 
-    private static final long RWDATA_CGLOBALS_PARTITION_OFFSET = 0;
+    public static final long RWDATA_CGLOBALS_PARTITION_OFFSET = 0;
 
     @Override
     public Section getTextSection() {

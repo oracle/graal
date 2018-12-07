@@ -2123,6 +2123,6 @@ suite = {
       "dependencies" : ["org.graalvm.micro.benchmarks"],
       "testDistribution" : True,
       "maven": False,
-    },
+    }
   },
 }
