@@ -26,7 +26,9 @@ package org.graalvm.compiler.hotspot;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
+import org.graalvm.compiler.hotspot.meta.HotSpotWordOperationPlugin;
 import org.graalvm.compiler.hotspot.word.HotSpotOperation;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
@@ -45,8 +47,8 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
     }
 
     @Override
-    public boolean hasGenericInvocationPluginAnnotation(ResolvedJavaMethod method) {
-        return method.getAnnotation(HotSpotOperation.class) != null || super.hasGenericInvocationPluginAnnotation(method);
+    public Class<? extends GraphBuilderPlugin> getIntrinsifyingPlugin(ResolvedJavaMethod method) {
+        return method.getAnnotation(HotSpotOperation.class) != null ? HotSpotWordOperationPlugin.class : super.getIntrinsifyingPlugin(method);
     }
 
     private boolean snippetRegistrationClosed;

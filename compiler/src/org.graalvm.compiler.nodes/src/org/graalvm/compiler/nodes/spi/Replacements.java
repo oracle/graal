@@ -33,6 +33,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.options.OptionValues;
 
@@ -51,9 +52,10 @@ public interface Replacements {
      */
     GraphBuilderConfiguration.Plugins getGraphBuilderPlugins();
 
-    boolean hasGeneratedInvocationPluginAnnotation(ResolvedJavaMethod method);
-
-    boolean hasGenericInvocationPluginAnnotation(ResolvedJavaMethod method);
+    /**
+     * Gets the plugin type that intrinsifies calls to {@code method}.
+     */
+    Class<? extends GraphBuilderPlugin> getIntrinsifyingPlugin(ResolvedJavaMethod method);
 
     /**
      * Gets the snippet graph derived from a given method.

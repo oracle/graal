@@ -90,7 +90,7 @@ public interface SnippetReflectionProvider {
      *
      * @param type the type for which the original Java class is requested
      * @return the original Java class corresponding to {@code type} or {@code null} if this object
-     *         does not support mapping {@link ResolvedJavaType} instances {@link Class} instances
+     *         cannot map {@link ResolvedJavaType} instances to {@link Class} instances
      */
     Class<?> originalClass(ResolvedJavaType type);
 }

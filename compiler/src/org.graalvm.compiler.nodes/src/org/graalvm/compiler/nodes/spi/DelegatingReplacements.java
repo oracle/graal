@@ -32,6 +32,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -57,13 +58,8 @@ public class DelegatingReplacements implements Replacements {
     }
 
     @Override
-    public boolean hasGeneratedInvocationPluginAnnotation(ResolvedJavaMethod method) {
-        return delegate.hasGeneratedInvocationPluginAnnotation(method);
-    }
-
-    @Override
-    public boolean hasGenericInvocationPluginAnnotation(ResolvedJavaMethod method) {
-        return delegate.hasGenericInvocationPluginAnnotation(method);
+    public Class<? extends GraphBuilderPlugin> getIntrinsifyingPlugin(ResolvedJavaMethod method) {
+        return delegate.getIntrinsifyingPlugin(method);
     }
 
     @Override

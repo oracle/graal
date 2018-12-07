@@ -48,6 +48,7 @@ import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.GraphEncoder;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -104,7 +105,7 @@ public class SubstrateReplacements extends ReplacementsImpl {
         public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
             assert b.parsingIntrinsic();
             assert builder != null;
-            if (hasGeneratedInvocationPluginAnnotation(method)) {
+            if (GeneratedInvocationPlugin.class.isAssignableFrom(getIntrinsifyingPlugin(method))) {
                 builder.delayedInvocationPluginMethods.add(method);
                 return InlineInfo.DO_NOT_INLINE_NO_EXCEPTION;
             }

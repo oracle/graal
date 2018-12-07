@@ -73,6 +73,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
@@ -141,13 +142,14 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
     }
 
     @Override
-    public boolean hasGeneratedInvocationPluginAnnotation(ResolvedJavaMethod method) {
-        return method.getAnnotation(Node.NodeIntrinsic.class) != null || method.getAnnotation(Fold.class) != null;
-    }
-
-    @Override
-    public boolean hasGenericInvocationPluginAnnotation(ResolvedJavaMethod method) {
-        return method.getAnnotation(Word.Operation.class) != null;
+    public Class<? extends GraphBuilderPlugin> getIntrinsifyingPlugin(ResolvedJavaMethod method) {
+        if (method.getAnnotation(Node.NodeIntrinsic.class) != null || method.getAnnotation(Fold.class) != null) {
+            return GeneratedInvocationPlugin.class;
+        }
+        if (method.getAnnotation(Word.Operation.class) != null) {
+            return WordOperationPlugin.class;
+        }
+        return null;
     }
 
     private static final int MAX_GRAPH_INLINING_DEPTH = 100; // more than enough
@@ -187,15 +189,15 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         if (b.parsingIntrinsic()) {
             IntrinsicContext intrinsic = b.getIntrinsic();
             if (!intrinsic.isCallToOriginal(method)) {
-                if (hasGeneratedInvocationPluginAnnotation(method)) {
-                    throw new GraalError("%s should have been handled by a %s",
-                                    method.format("%H.%n(%p)"), GeneratedInvocationPlugin.class.getSimpleName());
+                Class<? extends GraphBuilderPlugin> pluginClass = getIntrinsifyingPlugin(method);
+                if (pluginClass != null) {
+                    String methodDesc = method.format("%H.%n(%p)");
+                    throw new GraalError("Call to %s should have been intrinsified by a %s. " +
+                                    "This is typically caused by Eclipse failing to run an annotation " +
+                                    "processor. This can usually be fixed by forcing Eclipse to rebuild " +
+                                    "the source file in which %s is declared",
+                                    methodDesc, pluginClass.getSimpleName(), methodDesc);
                 }
-                if (hasGenericInvocationPluginAnnotation(method)) {
-                    throw new GraalError("%s should have been handled by %s",
-                                    method.format("%H.%n(%p)"), WordOperationPlugin.class.getSimpleName());
-                }
-
                 throw new GraalError("All non-recursive calls in the intrinsic %s must be inlined or intrinsified: found call to %s",
                                 intrinsic.getIntrinsicMethod().format("%H.%n(%p)"), method.format("%h.%n(%p)"));
             }
