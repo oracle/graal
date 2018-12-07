@@ -58,7 +58,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectFactory;
@@ -160,8 +159,8 @@ public abstract class ShapeImpl extends Shape {
      * @param parent predecessor shape
      * @param transitionFromParent direct transition from parent shape
      *
-     * @see #ShapeImpl(Layout, ShapeImpl, ObjectType, Object, PropertyMap, Transition, BaseAllocator,
-     *      int)
+     * @see #ShapeImpl(Layout, ShapeImpl, ObjectType, Object, PropertyMap, Transition,
+     *      BaseAllocator, int)
      */
     private ShapeImpl(Layout layout, ShapeImpl parent, ObjectType objectType, Object sharedData, PropertyMap propertyMap, Transition transitionFromParent, int objectArraySize, int objectFieldSize,
                     int primitiveFieldSize, int primitiveArraySize, boolean hasPrimitiveArray, int id) {
@@ -1250,8 +1249,12 @@ public abstract class ShapeImpl extends Shape {
     static final DebugCounter shapeCacheExpunged = DebugCounter.create("Shape cache expunged");
 
     /** @since 0.17 or earlier */
-    public ForeignAccess getForeignAccessFactory(DynamicObject object) {
-        return getObjectType().getForeignAccessFactory(object);
+    @SuppressWarnings("deprecation")
+    public com.oracle.truffle.api.interop.ForeignAccess getForeignAccessFactory(DynamicObject object) {
+        com.oracle.truffle.api.interop.ForeignAccess access = getObjectType().getForeignAccessFactory(object);
+        assert access == null || getObjectType().dispatch() == null : "Cannot use getForeignAccessFactory() and dispatch() at the same time.";
+        return access;
+
     }
 
 }
