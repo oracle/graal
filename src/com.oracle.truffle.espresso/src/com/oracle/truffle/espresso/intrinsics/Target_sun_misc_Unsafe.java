@@ -28,10 +28,7 @@ import static com.oracle.truffle.espresso.meta.Meta.meta;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.security.ProtectionDomain;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.FieldInfo;

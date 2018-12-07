@@ -380,7 +380,7 @@ public class Target_java_lang_Class {
     }
 
     @Intrinsic(hasReceiver = true)
-    public static @Type(ProtectionDomain.class) StaticObject getProtectionDomain0(Object self) {
+    public static @Type(ProtectionDomain.class) StaticObject getProtectionDomain0(@SuppressWarnings("unused") Object self) {
         return StaticObject.NULL;
     }
 

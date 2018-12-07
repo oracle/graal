@@ -4,7 +4,6 @@ import static com.oracle.truffle.espresso.meta.Meta.meta;
 
 import java.lang.reflect.Method;
 
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.MethodInfo;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
