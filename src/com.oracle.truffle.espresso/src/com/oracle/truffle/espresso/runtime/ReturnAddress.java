@@ -20,60 +20,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.bytecode;
+package com.oracle.truffle.espresso.runtime;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+/**
+ * Represents the "returnAddress" type, used for JSR/RET bytecodes.
+ *
+ * @see <a href="https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-2.html#jvms-2.3.3"</a>
+ */
+public final class ReturnAddress {
+    private final int bci;
 
-import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.espresso.impl.MethodInfo;
+    private ReturnAddress(int bci) {
+        this.bci = bci;
+    }
 
-public interface OperandStack {
+    public static ReturnAddress create(int bci) {
+        return new ReturnAddress(bci);
+    }
 
-    List<FrameSlotKind> KIND_VALUES = Collections.unmodifiableList(Arrays.asList(FrameSlotKind.values()));
-
-    int stackIndex();
-
-    void popVoid(int slots);
-
-    void pushObject(Object value);
-
-    void pushReturnAddress(int bci);
-
-    void pushInt(int value);
-
-    void pushLong(long value);
-
-    void pushFloat(float value);
-
-    void pushDouble(double value);
-
-    Object popObject();
-
-    int popInt();
-
-    float popFloat();
-
-    long popLong();
-
-    double popDouble();
-
-    void dup1();
-
-    void swapSingle();
-
-    void dupx1();
-
-    void dupx2();
-
-    void dup2();
-
-    void dup2x1();
-
-    void dup2x2();
-
-    void clear();
-
-    Object peekReceiver(MethodInfo method);
+    public int getBci() {
+        return bci;
+    }
 }

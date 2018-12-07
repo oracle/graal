@@ -27,6 +27,7 @@ import java.lang.reflect.Modifier;
 
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.espresso.impl.MethodInfo;
+import com.oracle.truffle.espresso.runtime.ReturnAddress;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public final class DualStack implements OperandStack {
@@ -64,8 +65,16 @@ public final class DualStack implements OperandStack {
     public void pushObject(Object value) {
         assert value != null;
         assert isEspressoReference(value);
+        assert !(value instanceof ReturnAddress) : "use pushReturnAddress";
         stackTag[stackSize] = (byte) FrameSlotKind.Object.ordinal();
         stack[stackSize++] = value;
+    }
+
+    @Override
+    public void pushReturnAddress(int bci) {
+        assert bci >= 0;
+        stackTag[stackSize] = (byte) FrameSlotKind.Object.ordinal();
+        stack[stackSize++] = ReturnAddress.create(bci);
     }
 
     public void pushInt(int value) {

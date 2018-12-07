@@ -264,6 +264,7 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.runtime.ReturnAddress;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
@@ -915,11 +916,11 @@ public class EspressoRootNode extends RootNode implements LinkedNode {
                         continue loop;
                     case JSR:
                     case JSR_W:
-                        stack.pushInt(curBCI);
+                        stack.pushReturnAddress(bs.nextBCI(curBCI));
                         curBCI = bs.readBranchDest(curBCI);
                         continue loop;
                     case RET:
-                        curBCI = getIntLocal(frame, bs.readLocalIndex(curBCI));
+                        curBCI = getReturnAddressLocal(frame, bs.readLocalIndex(curBCI));
                         continue loop;
                     case TABLESWITCH: {
                         // curBCI = tableSwitch(bs, curBCI, stack.popInt());
@@ -1182,7 +1183,13 @@ public class EspressoRootNode extends RootNode implements LinkedNode {
     }
 
     Object getObjectLocal(VirtualFrame frame, int n) {
-        return FrameUtil.getObjectSafe(frame, locals[n]);
+        Object result = FrameUtil.getObjectSafe(frame, locals[n]);
+        assert !(result instanceof ReturnAddress) : "use getReturnAddressLocal";
+        return result;
+    }
+
+    int getReturnAddressLocal(VirtualFrame frame, int n) {
+        return ((ReturnAddress) FrameUtil.getObjectSafe(frame, locals[n])).getBci();
     }
 
     @ExplodeLoop
