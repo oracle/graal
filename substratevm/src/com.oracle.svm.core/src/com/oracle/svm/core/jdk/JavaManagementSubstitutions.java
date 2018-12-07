@@ -156,6 +156,10 @@ final class Target_java_lang_management_ManagementFactory {
 
 @AutomaticFeature
 final class ManagementFactoryFeature implements Feature {
+    @Override
+    public List<Class<? extends Feature>> getRequiredFeatures() {
+        return Collections.singletonList(RuntimeFeature.class);
+    }
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
