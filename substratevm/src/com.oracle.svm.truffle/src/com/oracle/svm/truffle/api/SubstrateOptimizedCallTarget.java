@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.truffle.api;
 
+import com.oracle.svm.core.code.AbstractCodeInfo;
+import com.oracle.svm.core.code.RuntimeMethodInfo;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
@@ -43,23 +45,15 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements SubstrateInstalledCode, OptimizedAssumptionDependency {
 
     protected long address;
-    protected volatile int tier;
 
     public SubstrateOptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
         super(sourceCallTarget, rootNode);
-        this.tier = TruffleCompiler.FIRST_TIER_INDEX;
     }
 
     @SuppressWarnings("sync-override")
     @Override
     public SubstrateSpeculationLog getSpeculationLog() {
         return (SubstrateSpeculationLog) super.getSpeculationLog();
-    }
-
-    @Override
-    public void setTier(int tier) {
-        assert tier >= this.tier : "New tier " + tier + " should be greater or equal to the old tier " + this.tier;
-        this.tier = tier;
     }
 
     @Override
@@ -84,16 +78,16 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
 
     @Override
     public boolean isValidLastTier() {
-        // Note: this is correct because the tier field can only stay the same or grow
-        // (i.e. change once from 1 to 2).
-        while (true) {
-            int tier0 = this.tier;
-            long address1 = this.address;
-            int tier2 = this.tier;
-            if (tier0 == tier2) {
-                return address1 != 0 && tier0 == TruffleCompiler.LAST_TIER_INDEX;
-            }
+        long address0 = getAddress();
+        if (address0 == 0) {
+            return false;
         }
+        AbstractCodeInfo codeInfo = CodeInfoTable.lookupCodeInfo(WordFactory.pointer(address0));
+        if (!(codeInfo instanceof RuntimeMethodInfo)) {
+            return false;
+        }
+        RuntimeMethodInfo runtimeCodeInfo = (RuntimeMethodInfo) codeInfo;
+        return runtimeCodeInfo.getTier() == TruffleCompiler.LAST_TIER_INDEX;
     }
 
     @Override

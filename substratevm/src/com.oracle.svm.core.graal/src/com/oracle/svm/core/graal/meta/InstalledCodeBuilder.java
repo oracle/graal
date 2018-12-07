@@ -97,6 +97,7 @@ public class InstalledCodeBuilder {
 
     private final SharedRuntimeMethod method;
     private final SubstrateInstalledCode installedCode;
+    private final int tier;
     private final Map<SharedMethod, InstalledCodeBuilder> allInstalledCode;
     protected Pointer code;
     private final int codeSize;
@@ -170,6 +171,7 @@ public class InstalledCodeBuilder {
                     boolean testTrampolineJumps) {
         this.method = method;
         this.compilation = (SubstrateCompilationResult) compilation;
+        this.tier = compilation.getName().endsWith(TruffleCompiler.FIRST_TIER_COMPILATION_SUFFIX) ? TruffleCompiler.FIRST_TIER_INDEX : TruffleCompiler.LAST_TIER_INDEX;
         this.installedCode = installedCode;
         this.allInstalledCode = allInstalledCode;
         this.testTrampolineJumps = testTrampolineJumps;
@@ -327,7 +329,7 @@ public class InstalledCodeBuilder {
 
             InstalledCodeObserver.InstalledCodeObserverHandle[] observerHandles = InstalledCodeObserverSupport.installObservers(codeObservers, metaInfoAllocator);
 
-            runtimeMethodInfo.setData((CodePointer) code, WordFactory.unsigned(codeSize), installedCode, constantsWalker, metaInfoAllocator, observerHandles);
+            runtimeMethodInfo.setData((CodePointer) code, WordFactory.unsigned(codeSize), installedCode, tier, constantsWalker, metaInfoAllocator, observerHandles);
         } finally {
             metaInfoAllocator.close();
         }
@@ -336,9 +338,6 @@ public class InstalledCodeBuilder {
         VMOperation.enqueueBlockingSafepoint("Install code", () -> {
             try {
                 CodeInfoTable.getRuntimeCodeCache().addMethod(runtimeMethodInfo);
-
-                int tier = compilation.getName().endsWith(TruffleCompiler.FIRST_TIER_COMPILATION_SUFFIX) ? TruffleCompiler.FIRST_TIER_INDEX : TruffleCompiler.LAST_TIER_INDEX;
-                installedCode.setTier(tier);
                 /*
                  * This call makes the new code visible, i.e., other threads can start executing it
                  * immediately. So all metadata must be registered at this point.
