@@ -27,7 +27,6 @@ package org.graalvm.compiler.hotspot.stubs;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.api.replacements.Snippet.NonNullParameter;
-import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugContext;
@@ -89,7 +88,7 @@ public abstract class SnippetStub extends Stub implements Snippets {
     protected StructuredGraph getGraph(DebugContext debug, CompilationIdentifier compilationId) {
         // Stubs cannot have optimistic assumptions since they have
         // to be valid for the entire run of the VM.
-        final StructuredGraph graph = providers.getReplacements().getSnippet(method, makeConstArgs(), false, null).copyWithIdentifier(compilationId, debug);
+        final StructuredGraph graph = buildInitialGraph(debug, compilationId, makeConstArgs());
         try (DebugContext.Scope outer = debug.scope("SnippetStub", graph)) {
             for (ParameterNode param : graph.getNodes(ParameterNode.TYPE)) {
                 int index = param.index();
@@ -111,8 +110,8 @@ public abstract class SnippetStub extends Stub implements Snippets {
         return graph;
     }
 
-    protected BytecodeProvider getReplacementsBytecodeProvider() {
-        return providers.getReplacements().getDefaultReplacementBytecodeProvider();
+    protected StructuredGraph buildInitialGraph(DebugContext debug, CompilationIdentifier compilationId, Object[] args) {
+        return providers.getReplacements().getSnippet(method, args, false, null).copyWithIdentifier(compilationId, debug);
     }
 
     protected boolean checkConstArg(int index, String expectedName) {

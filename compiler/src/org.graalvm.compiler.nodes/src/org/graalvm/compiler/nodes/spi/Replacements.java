@@ -153,12 +153,4 @@ public interface Replacements {
      */
     default void closeSnippetRegistration() {
     }
-
-    /**
-     * Allow late registration of snippets. Should only be used in tests.
-     *
-     * This is a hook for an implementation to check for or forbid late registration.
-     */
-    default void reopenSnippetRegistration() {
-    }
 }
