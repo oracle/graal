@@ -55,9 +55,9 @@ import com.oracle.svm.core.code.InstalledCodeObserverSupport;
 import com.oracle.svm.core.code.RuntimeMethodInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
+import com.oracle.svm.core.graal.code.InstructionPatcher;
+import com.oracle.svm.core.graal.code.InstructionPatcher.PatchData;
 import com.oracle.svm.core.graal.code.SubstrateCompilationResult;
-import com.oracle.svm.core.graal.code.amd64.AMD64InstructionPatcher;
-import com.oracle.svm.core.graal.code.amd64.AMD64InstructionPatcher.PatchData;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
@@ -285,7 +285,7 @@ public class InstalledCodeBuilder {
          */
         ObjectConstantsHolder objectConstants = new ObjectConstantsHolder(compilation);
 
-        AMD64InstructionPatcher patcher = new AMD64InstructionPatcher(compilation);
+        InstructionPatcher patcher = new InstructionPatcher(compilation);
         patchData(patcher, objectConstants);
 
         int updatedCodeSize = patchCalls(patcher);
@@ -382,7 +382,7 @@ public class InstalledCodeBuilder {
         sourcePositionEncoder.install(runtimeMethodInfo);
     }
 
-    private void patchData(AMD64InstructionPatcher patcher, ObjectConstantsHolder objectConstants) {
+    private void patchData(InstructionPatcher patcher, ObjectConstantsHolder objectConstants) {
         for (DataPatch dataPatch : compilation.getDataPatches()) {
             if (dataPatch.reference instanceof DataSectionReference) {
                 DataSectionReference ref = (DataSectionReference) dataPatch.reference;
@@ -412,7 +412,7 @@ public class InstalledCodeBuilder {
         }
     }
 
-    private int patchCalls(AMD64InstructionPatcher patcher) {
+    private int patchCalls(InstructionPatcher patcher) {
         /*
          * Patch the direct call instructions. TODO: This is highly x64 specific. Should be
          * rewritten to generic backends.

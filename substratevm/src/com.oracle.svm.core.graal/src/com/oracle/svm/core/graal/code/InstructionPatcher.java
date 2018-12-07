@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.code.amd64;
+package com.oracle.svm.core.graal.code;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -33,11 +33,11 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
-public class AMD64InstructionPatcher {
+public class InstructionPatcher {
 
     private final Map<Integer, OperandDataAnnotation> operandAnnotations;
 
-    public AMD64InstructionPatcher(CompilationResult compilationResult) {
+    public InstructionPatcher(CompilationResult compilationResult) {
         /*
          * The AMD64Assembler emits additional information for instructions that describes the
          * location of the displacement in addresses and the location of the immediate operand for
