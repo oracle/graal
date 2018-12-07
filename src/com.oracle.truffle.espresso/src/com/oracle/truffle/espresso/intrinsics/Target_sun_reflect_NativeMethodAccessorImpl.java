@@ -26,8 +26,8 @@ public class Target_sun_reflect_NativeMethodAccessorImpl {
         Meta.Method m = meta(target);
 
         return m.invokeDirect(receiver,
-                StaticObject.isNull(args)
-                        ? new Object[0]
-                        : ((StaticObjectArray) args).getWrapped());
+                        StaticObject.isNull(args)
+                                        ? new Object[0]
+                                        : ((StaticObjectArray) args).getWrapped());
     }
 }
