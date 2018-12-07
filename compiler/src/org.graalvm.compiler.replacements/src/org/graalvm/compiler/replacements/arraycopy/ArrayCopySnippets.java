@@ -29,7 +29,6 @@ import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.LIKELY_P
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
-import static org.graalvm.compiler.nodes.java.ArrayLengthNode.arrayLength;
 
 import java.util.EnumMap;
 
@@ -54,6 +53,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.extended.RawStoreNode;
+import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -265,8 +265,8 @@ public abstract class ArrayCopySnippets implements Snippets {
         if (probability(SLOW_PATH_PROBABILITY, srcPos < 0) ||
                         probability(SLOW_PATH_PROBABILITY, destPos < 0) ||
                         probability(SLOW_PATH_PROBABILITY, length < 0) ||
-                        probability(SLOW_PATH_PROBABILITY, srcPos > arrayLength(src) - length) ||
-                        probability(SLOW_PATH_PROBABILITY, destPos > arrayLength(dest) - length)) {
+                        probability(SLOW_PATH_PROBABILITY, srcPos > ArrayLengthNode.arrayLength(src) - length) ||
+                        probability(SLOW_PATH_PROBABILITY, destPos > ArrayLengthNode.arrayLength(dest) - length)) {
             counters.checkAIOOBECounter.inc();
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
