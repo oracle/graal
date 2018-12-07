@@ -56,22 +56,22 @@ public class Test {
 
         System.out.println(getUncached(MyLibrary.class, o).foo(o, 42));
         System.out.println(createCached(MyLibrary.class, o).foo(o, 42));
-        System.out.println(getUncached(ReflectionLibrary.class, o).send(o, Message.resolve(MyLibrary.class, "foo"), 42));
+        System.out.println(getUncached(ReflectionLibrary.class, o).send(o, Message.lookup(MyLibrary.class, "foo"), 42));
 
         o = new Object();
         System.out.println(getUncached(MyLibrary.class, o).bar(o, 42));
         System.out.println(createCached(MyLibrary.class, o).bar(o, 42));
-        System.out.println(getUncached(ReflectionLibrary.class, o).send(o, Message.resolve(MyLibrary.class, "bar"), 42));
+        System.out.println(getUncached(ReflectionLibrary.class, o).send(o, Message.lookup(MyLibrary.class, "bar"), 42));
 
         o = new TestObjectProxy(new TestObject());
         System.out.println(getUncached(MyLibrary.class, o).foo(o, 42));
         System.out.println(createCached(MyLibrary.class, o).foo(o, 42));
-        System.out.println(getUncached(ReflectionLibrary.class, o).send(o, Message.resolve(MyLibrary.class, "foo"), 42));
+        System.out.println(getUncached(ReflectionLibrary.class, o).send(o, Message.lookup(MyLibrary.class, "foo"), 42));
 
         o = new TestObjectProxy(new Object());
         System.out.println(getUncached(MyLibrary.class, o).bar(o, 42));
         System.out.println(createCached(MyLibrary.class, o).bar(o, 42));
-        System.out.println(getUncached(ReflectionLibrary.class, o).send(o, Message.resolve(MyLibrary.class, "bar"), 42));
+        System.out.println(getUncached(ReflectionLibrary.class, o).send(o, Message.lookup(MyLibrary.class, "bar"), 42));
     }
 
     abstract static class TestNode extends Node {

@@ -126,7 +126,7 @@ public abstract class Message {
         return ResolvedLibrary.resolveMessage(libraryName, messageName);
     }
 
-    public static Message resolve(Class<? extends Library> libraryClass, String messageName) {
+    public static Message lookup(Class<? extends Library> libraryClass, String messageName) {
         return ResolvedLibrary.resolveMessage(libraryClass, messageName);
     }
 

@@ -129,9 +129,9 @@ public class ReflectionTest extends AbstractParametrizedLibraryTest {
         ReflectionLibrary reflection = createLibrary(ReflectionLibrary.class, receiver);
 
         Assert.assertNull(Message.resolve("foiobar", "voidReturn"));
-        Assert.assertNull(Message.resolve(ReflectionTestLibrary.class, "msg"));
-        Message primitive = Message.resolve(ReflectionTestLibrary.class, "primitive");
-        Message voidReturn = Message.resolve(ReflectionTestLibrary.class, "voidReturn");
+        Assert.assertNull(Message.lookup(ReflectionTestLibrary.class, "msg"));
+        Message primitive = Message.lookup(ReflectionTestLibrary.class, "primitive");
+        Message voidReturn = Message.lookup(ReflectionTestLibrary.class, "voidReturn");
 
         Assert.assertEquals(42, reflection.send(receiver, primitive, 12));
         try {
@@ -146,7 +146,7 @@ public class ReflectionTest extends AbstractParametrizedLibraryTest {
         ReflectiveObject object = new ReflectiveObject();
         ReflectionLibrary reflection = createLibrary(ReflectionLibrary.class, object);
 
-        Message primitive = Message.resolve(ReflectionTestLibrary.class, "primitive");
+        Message primitive = Message.lookup(ReflectionTestLibrary.class, "primitive");
 
         // TODO more tests necessary
 
