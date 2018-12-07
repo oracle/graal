@@ -81,8 +81,18 @@ public class SourceSectionTest extends AbstractPolyglotTest {
         assertEquals(section.getCharLength(), 0);
         assertEquals(section.getStartLine(), 1);
         assertEquals(section.getStartColumn(), 1);
+        assertEquals(section.getEndLine(), 1);
+        assertEquals(section.getEndColumn(), 1);
 
         SourceSection other = emptyLineSource.createSection(0, 0);
+        assertTrue(section.equals(other));
+        assertEquals(other.hashCode(), section.hashCode());
+
+        other = emptyLineSource.createSection(1);
+        assertTrue(section.equals(other));
+        assertEquals(other.hashCode(), section.hashCode());
+
+        other = emptyLineSource.createSection(1, 1, 0);
         assertTrue(section.equals(other));
         assertEquals(other.hashCode(), section.hashCode());
     }
@@ -102,6 +112,37 @@ public class SourceSectionTest extends AbstractPolyglotTest {
         SourceSection other = emptyLineSource.createSection(0, 1);
         assertTrue(section.equals(other));
         assertEquals(other.hashCode(), section.hashCode());
+
+        other = emptyLineSource.createSection(1, 1, 1);
+        assertTrue(section.equals(other));
+        assertEquals(other.hashCode(), section.hashCode());
+
+        other = emptyLineSource.createSection(1, 1, 1, 1);
+        assertTrue(section.equals(other));
+        assertEquals(other.hashCode(), section.hashCode());
+    }
+
+    @Test
+    public void emptyLineTest2() {
+        SourceSection section = emptyLineSource.createSection(1, 0);
+        assertNotNull(section);
+        assertEquals(section.getCharacters(), "");
+        assertEquals(section.getCharIndex(), 1);
+        assertEquals(section.getCharLength(), 0);
+        assertEquals(section.getStartLine(), 2);
+        assertEquals(section.getStartColumn(), 1);
+
+        SourceSection other = emptyLineSource.createSection(1, 0);
+        assertTrue(section.equals(other));
+        assertEquals(other.hashCode(), section.hashCode());
+
+        other = emptyLineSource.createSection(2);
+        assertTrue(section.equals(other));
+        assertEquals(other.hashCode(), section.hashCode());
+
+        other = emptyLineSource.createSection(2, 1, 0);
+        assertTrue(section.equals(other));
+        assertEquals(other.hashCode(), section.hashCode());
     }
 
     @Test
@@ -117,6 +158,14 @@ public class SourceSectionTest extends AbstractPolyglotTest {
         assertEquals("", section.getCharacters());
 
         SourceSection other = emptySource.createSection(0, 0);
+        assertTrue(section.equals(other));
+        assertEquals(other.hashCode(), section.hashCode());
+
+        other = emptySource.createSection(1, 1, 0);
+        assertTrue(section.equals(other));
+        assertEquals(other.hashCode(), section.hashCode());
+
+        other = emptySource.createSection(1, 1, 1, 1);
         assertTrue(section.equals(other));
         assertEquals(other.hashCode(), section.hashCode());
     }
@@ -135,6 +184,34 @@ public class SourceSectionTest extends AbstractPolyglotTest {
         SourceSection other = longSource.createSection(longSource.getCharacters().length() - 1, 0);
         assertTrue(section.equals(other));
         assertEquals(other.hashCode(), section.hashCode());
+
+        other = longSource.createSection(3, 2, 0);
+        assertTrue(section.equals(other));
+        assertEquals(other.hashCode(), section.hashCode());
+    }
+
+    @Test
+    public void emptySourceSectionOnLongSourceEnd() {
+        SourceSection section = longSource.createSection(longSource.getCharacters().length(), 0);
+        assertNotNull(section);
+        assertEquals(longSource.getCharacters().length(), section.getCharIndex());
+        assertEquals(0, section.getCharLength(), 0);
+        assertEquals(4, section.getStartLine());
+        assertEquals(4, section.getEndLine());
+        assertEquals(1, section.getStartColumn());
+        assertEquals(1, section.getEndColumn());
+
+        SourceSection other = longSource.createSection(longSource.getCharacters().length(), 0);
+        assertTrue(section.equals(other));
+        assertEquals(other.hashCode(), section.hashCode());
+
+        other = longSource.createSection(4, 1, 0);
+        assertTrue(section.equals(other));
+        assertEquals(other.hashCode(), section.hashCode());
+
+        other = longSource.createSection(4, 1, 4, 1);
+        assertTrue(section.equals(other));
+        assertEquals(other.hashCode(), section.hashCode());
     }
 
     @Test
@@ -149,6 +226,38 @@ public class SourceSectionTest extends AbstractPolyglotTest {
         SourceSection section = longSource.createSection(0, 0);
         assertNotNull(section);
         assertEquals(section.getCharacters(), "");
+    }
+
+    @Test
+    public void testAllSections() {
+        int sourceLength = longSource.getCharacters().length();
+        for (int i = 0; i <= sourceLength; i++) {
+            for (int j = i; j <= sourceLength; j++) {
+                int length = j - i;
+                SourceSection section = longSource.createSection(i, length);
+                int line1 = i <= 5 ? 1 : i <= 8 ? 2 : i <= 10 ? 3 : 4;
+                int col1 = i <= 5 ? i + 1 : i <= 8 ? i - 5 : i <= 10 ? i - 8 : i - 10;
+                int line2 = length == 0 ? line1 : j <= 6 ? 1 : j <= 9 ? 2 : 3;
+                int col2 = length == 0 ? col1 : j <= 6 ? j : j <= 9 ? j - 6 : j - 9;
+                assertEquals(i, section.getCharIndex());
+                assertEquals(length, section.getCharLength());
+                assertEquals(line1, section.getStartLine());
+                assertEquals(col1, section.getStartColumn());
+                assertEquals(line2, section.getEndLine());
+                assertEquals(col2, section.getEndColumn());
+
+                SourceSection other = longSource.createSection(line1, col1, length);
+                assertTrue(other.toString(), section.equals(other));
+                other = longSource.createSection(line1, col1, line2, col2);
+                if (length > 0 || j == sourceLength) {
+                    // It's not possible to specify zero-length sections via line:column intervals
+                    assertTrue(other.toString(), section.equals(other));
+                } else {
+                    assertEquals(1, other.getCharLength());
+                }
+                assertEquals(length, section.getCharacters().length());
+            }
+        }
     }
 
     @Test
@@ -204,7 +313,7 @@ public class SourceSectionTest extends AbstractPolyglotTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void testOutOfRange12() {
-        longSource.createSection(1, 6, 1);
+        longSource.createSection(1, 7, 1);
     }
 
     @Test(expected = IllegalArgumentException.class)

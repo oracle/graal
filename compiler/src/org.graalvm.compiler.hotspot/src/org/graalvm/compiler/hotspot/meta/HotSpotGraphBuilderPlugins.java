@@ -66,7 +66,7 @@ import org.graalvm.compiler.hotspot.replacements.SHA2Substitutions;
 import org.graalvm.compiler.hotspot.replacements.SHA5Substitutions;
 import org.graalvm.compiler.hotspot.replacements.SHASubstitutions;
 import org.graalvm.compiler.hotspot.replacements.ThreadSubstitutions;
-import org.graalvm.compiler.hotspot.replacements.arraycopy.ArrayCopyNode;
+import org.graalvm.compiler.replacements.arraycopy.ArrayCopyNode;
 import org.graalvm.compiler.hotspot.word.HotSpotWordTypes;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;

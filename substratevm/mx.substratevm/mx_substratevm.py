@@ -97,7 +97,8 @@ graal_compiler_export_packages = [
     'jdk.internal.vm.ci/jdk.vm.ci.amd64',
     'jdk.internal.vm.ci/jdk.vm.ci.meta',
     'jdk.internal.vm.ci/jdk.vm.ci.hotspot',
-    'jdk.internal.vm.ci/jdk.vm.ci.common']
+    'jdk.internal.vm.ci/jdk.vm.ci.common',
+    'jdk.internal.vm.ci/jdk.vm.ci.code.site']
 GRAAL_COMPILER_FLAGS_MAP['11'].extend(add_exports_from_packages(graal_compiler_export_packages))
 
 # Packages to open to allow reflective access at runtime.
@@ -113,6 +114,8 @@ GRAAL_COMPILER_FLAGS_MAP['11'].extend(add_opens_from_packages(jdk_opens_packages
 java_base_opens_packages = [
     # Reflective access to jdk.internal.ref.CleanerImpl$PhantomCleanableRef.
     'java.base/jdk.internal.ref',
+    # Reflective access to jdk.internal.reflect.MethodAccessor.
+    'java.base/jdk.internal.reflect',
     # Reflective access to private fields of java.lang.Class.
     'java.base/java.lang',
     # Reflective access to java.lang.invoke.VarHandle*.
@@ -318,7 +321,7 @@ class ToolDescriptor:
 
 tools_map = {
     'truffle' : ToolDescriptor(),
-    'native-image' : ToolDescriptor(image_deps=['substratevm:SVM_DRIVER']),
+    'native-image' : ToolDescriptor(),
     'junit' : ToolDescriptor(builder_deps=['mx:JUNIT_TOOL', 'JUNIT', 'HAMCREST']),
     'regex' : ToolDescriptor(image_deps=['regex:TREGEX']),
 }

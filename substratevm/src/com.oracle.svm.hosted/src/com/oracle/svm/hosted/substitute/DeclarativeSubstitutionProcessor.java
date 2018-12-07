@@ -444,8 +444,8 @@ class ClassDescriptor extends PlatformsDescriptor {
         }
 
         @Override
-        public String innerClass() {
-            return "";
+        public String[] innerClass() {
+            return new String[0];
         }
 
         /*

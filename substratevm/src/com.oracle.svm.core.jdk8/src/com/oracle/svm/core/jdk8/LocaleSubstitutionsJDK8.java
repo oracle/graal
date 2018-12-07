@@ -32,8 +32,10 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.util.VMError;
 
+// Checkstyle: stop
 import sun.text.normalizer.UBiDiProps;
 import sun.text.normalizer.UCharacterProperty;
+// Checkstyle: resume
 
 @TargetClass(value = sun.text.normalizer.UCharacterProperty.class, onlyWith = JDK8OrEarlier.class)
 final class Target_sun_text_normalizer_UCharacterProperty_JDK8 {

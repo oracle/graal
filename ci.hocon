@@ -39,7 +39,6 @@ include "compiler/ci_common/bench-hwloc.hocon"
 include "compiler/ci_common/bench-weekly.hocon"
 include "compiler/ci_common/x52.hocon"
 include "compiler/ci_common/x52-jfr.hocon"
-include "compiler/ci_common/x52-tracera.hocon"
 include "compiler/ci_common/m7_eighth.hocon"
 # C1 & C2 configs
 include "compiler/ci_includes/x52-c1.hocon"

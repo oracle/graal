@@ -134,10 +134,10 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * The main handler for running Graal in the Substrate VM at run time. This feature (and features it
- * depends on like {@link FieldsOffsetsFeature}) encode Graal graphs for runtime compilation, ensure
- * that all the {@link SubstrateType}, {@link SubstrateMethod}, {@link SubstrateField} are created
- * by the {@link GraalObjectReplacer} and put in the image. Data that is prepared during image
- * generation and used at run time is stored in the {@link GraalSupport}.
+ * depends on like {@link FieldsOffsetsFeature}) encodes Graal graphs for runtime compilation,
+ * ensures that all required {@link SubstrateType}, {@link SubstrateMethod}, {@link SubstrateField}
+ * objects are created by {@link GraalObjectReplacer} and added to the image. Data that is prepared
+ * during image generation and used at run time is stored in {@link GraalSupport}.
  */
 public final class GraalFeature implements Feature {
 
@@ -311,6 +311,8 @@ public final class GraalFeature implements Feature {
 
         objectReplacer = new GraalObjectReplacer(config.getUniverse(), config.getMetaAccess());
         config.registerObjectReplacer(objectReplacer);
+
+        config.registerClassReachabilityListener(GraalSupport::registerPhaseStatistics);
     }
 
     @Override
@@ -426,8 +428,6 @@ public final class GraalFeature implements Feature {
     @Override
     public void duringAnalysis(DuringAnalysisAccess c) {
         DuringAnalysisAccessImpl config = (DuringAnalysisAccessImpl) c;
-
-        GraalSupport.registerPhaseStatistics(config);
 
         Deque<CallTreeNode> worklist = new ArrayDeque<>();
         worklist.addAll(methods.values());

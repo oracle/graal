@@ -49,9 +49,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.nodes.Invoke;
-import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
-import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
@@ -892,11 +890,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
          */
         for (InvokeWithExceptionNode invoke : graph.getNodes().filter(InvokeWithExceptionNode.class)) {
             if (noCheckedExceptionsSet.contains(invoke.callTarget().targetMethod())) {
-                InvokeNode replacement = invoke.graph().add(new InvokeNode(invoke.callTarget(), invoke.bci(), invoke.stamp(NodeView.DEFAULT), invoke.getLocationIdentity()));
-                replacement.setStateAfter(invoke.stateAfter());
-
-                invoke.killExceptionEdge();
-                invoke.graph().replaceSplit(invoke, replacement, invoke.next());
+                invoke.replaceWithInvoke();
             }
         }
         new CanonicalizerPhase().apply(graph, context);

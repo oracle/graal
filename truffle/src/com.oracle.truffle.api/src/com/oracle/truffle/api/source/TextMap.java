@@ -240,7 +240,7 @@ final class TextMap {
      */
     public int lineColumnToOffset(int line, int column) {
         final int lineStartOffset = lineStartOffset(line);
-        if (column > lineLength(line)) {
+        if (column > (lineLength(line) + 1)) {
             throw new IllegalArgumentException("column out of range");
         }
         final int charIndex = lineStartOffset + column - 1;

@@ -51,7 +51,7 @@ import com.oracle.truffle.api.TruffleOptions;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 
-import com.oracle.truffle.tools.chromeinspector.TruffleExecutionContext;
+import com.oracle.truffle.tools.chromeinspector.InspectorExecutionContext;
 import com.oracle.truffle.tools.chromeinspector.instrument.InspectorWSConnection;
 import com.oracle.truffle.tools.chromeinspector.instrument.KeyStoreOptions;
 import com.oracle.truffle.tools.chromeinspector.server.ConnectionWatcher;
@@ -64,7 +64,7 @@ public class InspectWSClient extends WebSocketClient implements InspectorWSConne
 
     private final String host;
     private final int port;
-    private final TruffleExecutionContext executionContext;
+    private final InspectorExecutionContext executionContext;
     private final boolean debugBreak;
     private final ConnectionWatcher connectionWatcher;
     private final PrintStream traceLog;
@@ -78,7 +78,7 @@ public class InspectWSClient extends WebSocketClient implements InspectorWSConne
         }
     }
 
-    public InspectWSClient(InetSocketAddress isa, String wsspath, TruffleExecutionContext executionContext, boolean debugBreak, boolean secure, KeyStoreOptions keyStoreOptions,
+    public InspectWSClient(InetSocketAddress isa, String wsspath, InspectorExecutionContext executionContext, boolean debugBreak, boolean secure, KeyStoreOptions keyStoreOptions,
                     ConnectionWatcher connectionWatcher, PrintWriter info) throws IOException {
         super(getURI(isa, wsspath));
         this.host = isa.getHostString();

@@ -40,6 +40,7 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
+import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
@@ -62,11 +63,15 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionField;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionType;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
+import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
+import com.oracle.svm.hosted.substitute.DeletedMethod;
 import com.oracle.svm.reflect.helpers.ExceptionHelpers;
 import com.oracle.svm.reflect.hosted.ReflectionSubstitutionType.ReflectionSubstitutionMethod;
 
@@ -163,8 +168,8 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
     private static ReflectionSubstitutionMethod createWriteMethod(ResolvedJavaMethod method, Field field, JavaKind kind) {
         ReflectionDataBuilder reflectionDataBuilder = (ReflectionDataBuilder) ImageSingletons.lookup(RuntimeReflectionSupport.class);
         if (Modifier.isFinal(field.getModifiers()) && !reflectionDataBuilder.inspectFinalFieldWritableForAnalysis(field)) {
-            return new ThrowingMethod(method, IllegalAccessException.class, "Cannot set final field: " + field.getName() + ". " +
-                            "Enable by specifying \"allowWrite\" for this field in the reflection configuration.");
+            return new ThrowingMethod(method, IllegalAccessException.class, "Cannot set final field: " + field.getDeclaringClass().getName() +
+                            "." + field.getName() + ". " + "Enable by specifying \"allowWrite\" for this field in the reflection configuration.");
         }
         return new ReflectiveWriteMethod(method, field, kind);
     }
@@ -349,6 +354,23 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
         return doImplicitCast(graphKit, JavaKind.Int, to, intermediate);
     }
 
+    private static boolean isDeletedField(ResolvedJavaField field) {
+        return field.isAnnotationPresent(Delete.class);
+    }
+
+    private static void handleDeletedField(HostedGraphKit graphKit, HostedProviders providers, ResolvedJavaField field, JavaKind returnKind) {
+        Delete deleteAnnotation = field.getAnnotation(Delete.class);
+        String msg = AnnotationSubstitutionProcessor.deleteErrorMessage(field, deleteAnnotation.value(), false);
+        ValueNode msgNode = ConstantNode.forConstant(SubstrateObjectConstant.forObject(msg), providers.getMetaAccess(), graphKit.getGraph());
+        ResolvedJavaMethod reportErrorMethod = providers.getMetaAccess().lookupJavaMethod(DeletedMethod.reportErrorMethod);
+        graphKit.createInvokeWithExceptionAndUnwind(reportErrorMethod, InvokeKind.Static, graphKit.getFrameState(), graphKit.bci(), graphKit.bci(), msgNode);
+        ConstantNode returnValue = null;
+        if (returnKind != JavaKind.Void) {
+            returnValue = graphKit.unique(ConstantNode.defaultForKind(returnKind));
+        }
+        graphKit.createReturn(returnValue, returnKind);
+    }
+
     private static class ReflectiveReadMethod extends ReflectionSubstitutionMethod {
 
         private final Field field;
@@ -365,7 +387,10 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
             HostedGraphKit graphKit = new HostedGraphKit(ctx, providers, method);
             ResolvedJavaField targetField = providers.getMetaAccess().lookupJavaField(field);
 
-            if (canImplicitCast(targetField.getJavaKind(), kind)) {
+            if (isDeletedField(targetField)) {
+                handleDeletedField(graphKit, providers, targetField, kind);
+
+            } else if (canImplicitCast(targetField.getJavaKind(), kind)) {
 
                 ValueNode receiver;
                 if (targetField.isStatic()) {
@@ -406,7 +431,10 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
             ResolvedJavaField targetField = providers.getMetaAccess().lookupJavaField(field);
 
             JavaKind fieldKind = targetField.getJavaKind();
-            if (kind == JavaKind.Object || canImplicitCast(kind, fieldKind)) {
+            if (isDeletedField(targetField)) {
+                handleDeletedField(graphKit, providers, targetField, JavaKind.Void);
+
+            } else if (kind == JavaKind.Object || canImplicitCast(kind, fieldKind)) {
 
                 ValueNode receiver;
                 if (targetField.isStatic()) {

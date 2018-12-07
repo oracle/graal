@@ -78,7 +78,7 @@ public class RelativeSourceInspectDebugTest {
         // Create a file source-path
         sourceContent[0] = "relative source1\nVarA";
         relativePath[0] = "relative/test1.file";
-        Path testSourcePath1 = Files.createTempDirectory("testPath");
+        Path testSourcePath1 = Files.createTempDirectory("testPath").toRealPath();
         sourcePathURI[0] = testSourcePath1.toUri();
         Files.createDirectory(testSourcePath1.resolve("relative"));
         Path filePath1 = testSourcePath1.resolve(relativePath[0]);
@@ -206,9 +206,9 @@ public class RelativeSourceInspectDebugTest {
     public void testFileSourcePath() throws Exception {
         String workDir = System.getProperty("user.dir");
         checkSourcePathToURI("file", "[" + new File("file").toPath().toUri() + "]");
-        Path dirX = Files.createTempDirectory("x");
-        Path dirY = Files.createTempDirectory("y#.zip#.jar");
-        File zip = File.createTempFile("Test Zip#", ".zip", dirY.toFile());
+        Path dirX = Files.createTempDirectory("x").toRealPath();
+        Path dirY = Files.createTempDirectory("y#.zip#.jar").toRealPath();
+        File zip = File.createTempFile("Test Zip#", ".zip", dirY.toFile()).getCanonicalFile();
         File jar = new File(dirY.toFile(), "Test Jar#.Jar");
         try (ZipOutputStream out = new ZipOutputStream(new FileOutputStream(zip))) {
             ZipEntry e = new ZipEntry("src/my#project/File");
@@ -218,7 +218,7 @@ public class RelativeSourceInspectDebugTest {
             out.closeEntry();
         }
         Files.copy(zip.toPath(), jar.toPath());
-        File cwdZip = File.createTempFile("cwd#", ".zip", new File(workDir));
+        File cwdZip = File.createTempFile("cwd#", ".zip", new File(workDir)).getCanonicalFile();
         cwdZip.deleteOnExit();
         Files.copy(zip.toPath(), cwdZip.toPath(), StandardCopyOption.REPLACE_EXISTING);
         String zipURI = "jar:file://" + zip.toPath().toUri().getRawPath() + "!/";

@@ -25,6 +25,7 @@
 package com.oracle.truffle.regex.tregex.nodes;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
@@ -71,10 +72,10 @@ public final class DFACaptureGroupPartialTransitionDispatchNode extends Node {
                         return;
                     }
                 }
-                throw new IllegalStateException();
+                throw shouldNotReachHere();
             }
         }
-        throw new IllegalStateException();
+        throw shouldNotReachHere();
     }
 
     public void applyPreAnchoredFinalTransition(VirtualFrame frame, TRegexDFAExecutorNode executor, short transitionIndex, int currentIndex) {
@@ -100,7 +101,7 @@ public final class DFACaptureGroupPartialTransitionDispatchNode extends Node {
                 return;
             }
         }
-        throw new IllegalStateException();
+        throw shouldNotReachHere();
     }
 
     public void applyPreFinalTransition(VirtualFrame frame, TRegexDFAExecutorNode executor, short transitionIndex, int currentIndex) {
@@ -126,6 +127,11 @@ public final class DFACaptureGroupPartialTransitionDispatchNode extends Node {
                 return;
             }
         }
+        throw shouldNotReachHere();
+    }
+
+    private static RuntimeException shouldNotReachHere() {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         throw new IllegalStateException();
     }
 }

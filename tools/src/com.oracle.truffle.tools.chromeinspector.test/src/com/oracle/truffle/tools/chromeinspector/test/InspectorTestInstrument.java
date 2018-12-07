@@ -32,7 +32,7 @@ import java.util.List;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.test.ReflectionUtils;
 
-import com.oracle.truffle.tools.chromeinspector.TruffleExecutionContext;
+import com.oracle.truffle.tools.chromeinspector.InspectorExecutionContext;
 import com.oracle.truffle.tools.chromeinspector.server.ConnectionWatcher;
 import com.oracle.truffle.tools.chromeinspector.server.InspectServerSession;
 
@@ -53,9 +53,9 @@ public final class InspectorTestInstrument extends TruffleInstrument {
                     private long id;
 
                     InspectSessionInfo init() {
-                        TruffleExecutionContext context;
+                        InspectorExecutionContext context;
                         try {
-                            context = new TruffleExecutionContext("test", inspectInternal, inspectInitialization, env, sourcePath, new PrintWriter(env.err()));
+                            context = new InspectorExecutionContext("test", inspectInternal, inspectInitialization, env, sourcePath, new PrintWriter(env.err()));
                         } catch (IOException ex) {
                             throw new AssertionError(ex);
                         }

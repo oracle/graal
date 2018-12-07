@@ -81,7 +81,7 @@ public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfiguratio
 
     @Override
     protected SnippetReflectionProvider createSnippetReflectionProvider() {
-        return new HostedSnippetReflectionProvider(hostVM);
+        return new HostedSnippetReflectionProvider(hostVM, getWordTypes());
     }
 
     @Override

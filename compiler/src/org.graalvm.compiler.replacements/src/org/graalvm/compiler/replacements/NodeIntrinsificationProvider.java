@@ -31,6 +31,7 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodeIntrinsicPluginFactory.InjectionProvider;
+import org.graalvm.compiler.replacements.arraycopy.ArrayCopyForeignCalls;
 import org.graalvm.compiler.word.WordTypes;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -71,7 +72,7 @@ public class NodeIntrinsificationProvider implements InjectionProvider {
         T injected = snippetReflection.getInjectedNodeIntrinsicParameter(type);
         if (injected != null) {
             return injected;
-        } else if (type.equals(ForeignCallsProvider.class)) {
+        } else if (type.equals(ForeignCallsProvider.class) || type.equals(ArrayCopyForeignCalls.class)) {
             return type.cast(foreignCalls);
         } else if (type.equals(SnippetReflectionProvider.class)) {
             return type.cast(snippetReflection);

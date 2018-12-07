@@ -41,8 +41,4 @@ builds += [
   # Linux AArch64
   ${gateTest}                            ${gateLinuxAArch64} {name: "weekly-compiler-test-11-linux-aarch64",                   timelimit: "1:50:00"} ${graalWeekly}
   ${gateTestCTW}                         ${gateLinuxAArch64} {name: "weekly-test-compiler-ctw-11-linux-aarch64",               timelimit: "1:50:00"} ${graalWeekly}
-
-  # TraceRA
-  ${gateTest}          ${labsjdk8}       ${gateLinuxAMD64TraceRA} {name: "weekly-test-compiler-test-8-linux-amd64-tracera"} ${graalWeekly}
-  ${gateTest}          ${labsjdk8}       ${gateLinuxAMD64TraceRABU} {name: "weekly-test-compiler-test-8-linux-amd64-tracera-bu"} ${graalWeekly}
 ]

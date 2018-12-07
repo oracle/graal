@@ -29,7 +29,7 @@ import static org.graalvm.compiler.serviceprovider.GraalServices.Java8OrEarlier;
 import org.graalvm.compiler.api.replacements.ClassSubstitution;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.hotspot.HotSpotBackend;
-import org.graalvm.compiler.hotspot.nodes.ComputeObjectAddressNode;
+import org.graalvm.compiler.nodes.ComputeObjectAddressNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.WordFactory;
 

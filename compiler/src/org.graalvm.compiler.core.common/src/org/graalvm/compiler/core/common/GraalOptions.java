@@ -197,9 +197,6 @@ public final class GraalOptions {
     public static final OptionKey<Boolean> AlwaysInlineVTableStubs = new OptionKey<>(false);
 
     @Option(help = "", type = OptionType.Debug)
-    public static final OptionKey<Boolean> ResolveClassBeforeStaticInvoke = new OptionKey<>(false);
-
-    @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> CanOmitFrame = new OptionKey<>(true);
 
     // Ahead of time compilation
@@ -278,9 +275,6 @@ public final class GraalOptions {
 
     @Option(help = "Use a cache for snippet graphs.", type = OptionType.Debug)
     public static final OptionKey<Boolean> UseSnippetGraphCache = new OptionKey<>(true);
-
-    @Option(help = "Enable experimental Trace Register Allocation.", type = OptionType.Debug)
-    public static final OptionKey<Boolean> TraceRA = new OptionKey<>(false);
 
     @Option(help = "file:doc-files/TraceInliningHelp.txt", type = OptionType.Debug)
     public static final OptionKey<Boolean> TraceInlining = new OptionKey<>(false);

@@ -39,6 +39,7 @@ import java.util.regex.Pattern;
 
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.util.CollectionsUtil;
+import org.junit.Assume;
 
 /**
  * Utility methods for spawning a VM in a subprocess during unit tests.
@@ -61,6 +62,8 @@ public final class SubprocessUtil {
                 return Files.readAllLines(new File(processArgsFile).toPath());
             } catch (IOException e) {
             }
+        } else {
+            Assume.assumeTrue("Process command line unavailable", false);
         }
         return null;
     }

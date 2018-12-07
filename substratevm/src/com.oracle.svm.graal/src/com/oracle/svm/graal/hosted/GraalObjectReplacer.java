@@ -75,7 +75,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
 /**
- * Replaces graal related objects during analysis in the universe.
+ * Replaces Graal related objects during analysis in the universe.
  *
  * It is mainly used to replace the Hosted* meta data with the Substrate* meta data.
  */
@@ -295,8 +295,10 @@ public class GraalObjectReplacer implements Function<Object, Object> {
     private static AnalysisType toAnalysisType(JavaType original) {
         if (original instanceof HostedType) {
             return ((HostedType) original).getWrapped();
-        } else {
+        } else if (original instanceof AnalysisType) {
             return (AnalysisType) original;
+        } else {
+            throw new InternalError("unexpected type " + original);
         }
     }
 

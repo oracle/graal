@@ -540,13 +540,15 @@ public class NativeImageGenerator {
 
                     SubstitutionProcessor substitutions = SubstitutionProcessor.chainUpInOrder(harnessSubstitutions, new AnnotationSupport(originalMetaAccess, originalSnippetReflection),
                                     annotationSubstitutions, cfunctionSubstitutions, automaticSubstitutions, cEnumProcessor);
-                    aUniverse = new AnalysisUniverse(svmHost, target, substitutions, originalMetaAccess, originalSnippetReflection, new SubstrateSnippetReflectionProvider());
+                    aUniverse = new AnalysisUniverse(svmHost, target, substitutions, originalMetaAccess, originalSnippetReflection,
+                                    new SubstrateSnippetReflectionProvider(new WordTypes(originalMetaAccess, FrameAccess.getWordKind())));
                     aMetaAccess = new SVMAnalysisMetaAccess(aUniverse, originalMetaAccess);
+                    WordTypes aWordTypes = new WordTypes(aMetaAccess, FrameAccess.getWordKind());
 
                     // native libraries
                     AnalysisConstantReflectionProvider aConstantReflection = new AnalysisConstantReflectionProvider(svmHost, aUniverse, originalProviders.getConstantReflection());
                     AnalysisConstantFieldProvider aConstantFieldProvider = new AnalysisConstantFieldProvider(aUniverse, aMetaAccess, aConstantReflection);
-                    aSnippetReflection = new HostedSnippetReflectionProvider(svmHost);
+                    aSnippetReflection = new HostedSnippetReflectionProvider(svmHost, aWordTypes);
                     nativeLibs = processNativeLibraryImports(options, aMetaAccess, aConstantReflection, aSnippetReflection);
 
                     ImageSingletons.add(NativeLibraries.class, nativeLibs);
@@ -562,7 +564,6 @@ public class NativeImageGenerator {
                     ForeignCallsProvider aForeignCalls = new SubstrateForeignCallsProvider();
                     LoweringProvider aLoweringProvider = SubstrateLoweringProvider.create(aMetaAccess, null);
                     StampProvider aStampProvider = new SubstrateStampProvider(aMetaAccess);
-                    WordTypes aWordTypes = new WordTypes(aMetaAccess, FrameAccess.getWordKind());
                     aProviders = new HostedProviders(aMetaAccess, null, aConstantReflection, aConstantFieldProvider, aForeignCalls, aLoweringProvider, null, aStampProvider, aSnippetReflection,
                                     aWordTypes);
                     BytecodeProvider bytecodeProvider = new ResolvedJavaMethodBytecodeProvider();
@@ -706,12 +707,13 @@ public class NativeImageGenerator {
                                 int numMethods = aUniverse.getMethods().size();
                                 int numFields = aUniverse.getFields().size();
 
+                                svmHost.notifyClassReachabilityListener(aUniverse, config);
                                 featureHandler.forEachFeature(feature -> feature.duringAnalysis(config));
 
                                 if (!config.getAndResetRequireAnalysisIteration()) {
                                     if (numTypes != aUniverse.getTypes().size() || numMethods != aUniverse.getMethods().size() || numFields != aUniverse.getFields().size()) {
                                         throw UserError.abort(
-                                                        "When a feature makes more types, methods, of fields reachable, it must require another analysis iteration via DuringAnalysisAccess.requireAnalysisIteration()");
+                                                        "When a feature makes more types, methods, or fields reachable, it must require another analysis iteration via DuringAnalysisAccess.requireAnalysisIteration()");
                                     }
                                     break;
                                 }
@@ -1016,7 +1018,7 @@ public class NativeImageGenerator {
 
         featureHandler.forEachGraalFeature(feature -> feature.registerNodePlugins(analysis ? aMetaAccess : hMetaAccess, plugins, analysis, hosted));
 
-        HostedSnippetReflectionProvider hostedSnippetReflection = new HostedSnippetReflectionProvider((SVMHost) aUniverse.getHostVM());
+        HostedSnippetReflectionProvider hostedSnippetReflection = new HostedSnippetReflectionProvider((SVMHost) aUniverse.getHostVM(), new WordTypes(aMetaAccess, FrameAccess.getWordKind()));
         NodeIntrinsificationProvider nodeIntrinsificationProvider = new NodeIntrinsificationProvider(providers.getMetaAccess(), hostedSnippetReflection, providers.getForeignCalls(),
                         providers.getWordTypes());
         for (Class<? extends NodeIntrinsicPluginFactory> factoryClass : loader.findSubclasses(NodeIntrinsicPluginFactory.class)) {

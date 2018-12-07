@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.192.10",
+  "mxversion" : "5.195.1",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
@@ -117,7 +117,7 @@ suite = {
         "groupId" : "org.openjdk.jol",
         "artifactId" : "jol-cli",
         "version" : "0.9",
-        "suffix" : "full",
+        "classifier" : "full",
       },
     },
 
