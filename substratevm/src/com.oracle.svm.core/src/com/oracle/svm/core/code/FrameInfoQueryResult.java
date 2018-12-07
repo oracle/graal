@@ -26,6 +26,7 @@ package com.oracle.svm.core.code;
 
 import org.graalvm.nativeimage.c.function.CodePointer;
 
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.SharedMethod;
 
@@ -135,19 +136,15 @@ public class FrameInfoQueryResult {
     protected int numLocks;
     protected ValueInfo[] valueInfos;
     protected ValueInfo[][] virtualObjects;
-    protected String sourceClassName;
+    protected Class<?> sourceClass;
     protected String sourceMethodName;
-    protected String sourceFileName;
     protected int sourceLineNumber;
 
-    // Index of sourceClassName in CodeInfoDecoder.frameInfoSourceClassNames
-    protected int sourceClassNameIndex;
+    // Index of sourceClass in CodeInfoDecoder.frameInfoSourceClasses
+    protected int sourceClassIndex;
 
     // Index of sourceMethodName in CodeInfoDecoder.frameInfoSourceMethodNames
     protected int sourceMethodNameIndex;
-
-    // Index of sourceFileName in CodeInfoDecoder.frameInfoSourceFileNames
-    protected int sourceFileNameIndex;
 
     public FrameInfoQueryResult() {
         init();
@@ -165,13 +162,11 @@ public class FrameInfoQueryResult {
         numLocks = 0;
         valueInfos = null;
         virtualObjects = null;
-        sourceClassName = "";
+        sourceClass = null;
         sourceMethodName = "";
-        sourceFileName = null;
         sourceLineNumber = -1;
-        sourceClassNameIndex = -1;
+        sourceClassIndex = -1;
         sourceMethodNameIndex = -1;
-        sourceFileNameIndex = -1;
     }
 
     /**
@@ -267,6 +262,10 @@ public class FrameInfoQueryResult {
         return virtualObjects;
     }
 
+    public Class<?> getSourceClass() {
+        return sourceClass;
+    }
+
     /**
      * Returns the name and source code location of the method, for debugging purposes only.
      */
@@ -275,7 +274,8 @@ public class FrameInfoQueryResult {
          * According to StackTraceElement undefined className is denoted by "", undefined fileName
          * is denoted by null
          */
-        final String className = sourceClassName != null ? sourceClassName : "";
+        final String className = sourceClass != null ? sourceClass.getName() : "";
+        String sourceFileName = sourceClass != null ? DynamicHub.fromClass(sourceClass).getSourceFileName() : null;
         return new StackTraceElement(className, sourceMethodName, sourceFileName, sourceLineNumber);
     }
 
@@ -284,7 +284,7 @@ public class FrameInfoQueryResult {
     }
 
     public Log log(Log log) {
-        String className = sourceClassName != null ? sourceClassName : "";
+        String className = sourceClass != null ? sourceClass.getName() : "";
         String methodName = sourceMethodName != null ? sourceMethodName : "";
         log.string(className);
         if (!(className.isEmpty() || methodName.isEmpty())) {
@@ -299,6 +299,7 @@ public class FrameInfoQueryResult {
         if (isNativeMethod()) {
             log.string("Native Method");
         } else {
+            String sourceFileName = sourceClass != null ? DynamicHub.fromClass(sourceClass).getSourceFileName() : null;
             if (sourceFileName != null) {
                 if (sourceLineNumber >= 0) {
                     log.string(sourceFileName).string(":").signed(sourceLineNumber);
