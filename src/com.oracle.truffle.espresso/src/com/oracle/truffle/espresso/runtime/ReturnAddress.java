@@ -25,7 +25,8 @@ package com.oracle.truffle.espresso.runtime;
 /**
  * Represents the "returnAddress" type, used for JSR/RET bytecodes.
  *
- * @see <a href="https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-2.html#jvms-2.3.3"</a>
+ * @see <a href="https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-2.html#jvms-2.3.3">The
+ *      returnAddress Type and Values</a>
  */
 public final class ReturnAddress {
     private final int bci;
