@@ -86,6 +86,7 @@ public class DefaultExportTest extends AbstractParametrizedLibraryTest {
     @GenerateLibrary
     @DefaultExport(IntegerImpl.class)
     @DefaultExport(ValidImpl.class)
+    @DefaultExport(PrimitiveArrayExport.class)
     public abstract static class DefaultLibrary extends Library {
 
         public int foo(@SuppressWarnings("unused") Object receiver) {
@@ -131,6 +132,16 @@ public class DefaultExportTest extends AbstractParametrizedLibraryTest {
 
     }
 
+    @ExportLibrary(value = DefaultLibrary.class, receiverClass = int[].class)
+    static class PrimitiveArrayExport {
+
+        @ExportMessage
+        static int abstractMethod(int[] receiver) {
+            return receiver.length;
+        }
+
+    }
+
     @Test
     public void testDefaultImpl() {
         assertEquals(42, createLibrary(DefaultLibrary.class, 42.d).foo(42d));
@@ -148,6 +159,9 @@ public class DefaultExportTest extends AbstractParametrizedLibraryTest {
 
         assertEquals(43, createLibrary(DefaultLibrary.class, new ValidClass()).abstractMethod(new ValidClass()));
         assertEquals(43, createLibrary(DefaultLibrary.class, new ValidSubClass()).abstractMethod(new ValidSubClass()));
+
+        int[] testArray = new int[42];
+        assertEquals(42, createLibrary(DefaultLibrary.class, testArray).abstractMethod(testArray));
     }
 
     public static final class OtherClass {

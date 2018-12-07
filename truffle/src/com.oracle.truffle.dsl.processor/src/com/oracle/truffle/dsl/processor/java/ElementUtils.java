@@ -55,7 +55,6 @@ import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
@@ -80,7 +79,6 @@ import javax.lang.model.type.TypeVariable;
 import javax.lang.model.type.WildcardType;
 import javax.lang.model.util.AbstractAnnotationValueVisitor8;
 import javax.lang.model.util.ElementFilter;
-import javax.tools.Diagnostic.Kind;
 
 import com.oracle.truffle.dsl.processor.CompileErrorException;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
@@ -733,7 +731,9 @@ public class ElementUtils {
      * given type element.
      */
     public static TypeElement getSuperType(TypeElement element) {
-        if (element.getSuperclass() != null) {
+        if (element == null) {
+            return null;
+        } else if (element.getSuperclass() != null) {
             return fromTypeMirror(element.getSuperclass());
         }
         return null;
