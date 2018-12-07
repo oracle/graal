@@ -71,15 +71,6 @@ public final class SLObjectType extends ObjectType {
     }
 
     @ExportMessage
-    static boolean accepts(DynamicObject receiver) {
-        Class<? extends DynamicObject> type = SLContext.LAYOUT.getType();
-        if (type.isInstance(receiver)) {
-            return type.cast(receiver).getShape().getObjectType() == SINGLETON;
-        }
-        return false;
-    }
-
-    @ExportMessage
     @SuppressWarnings("unused")
     static boolean isObject(DynamicObject receiver) {
         return true;

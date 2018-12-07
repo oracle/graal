@@ -237,7 +237,7 @@ public final class SLContext {
         return object;
     }
 
-    public static boolean isSLObject(TruffleObject value) {
+    public static boolean isSLObject(Object value) {
         /*
          * LAYOUT.getType() returns a concrete implementation class, i.e., a class that is more
          * precise than the base class DynamicObject. This makes the type check faster.

@@ -109,7 +109,6 @@ import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.runtime.SLFunctionRegistry;
 import com.oracle.truffle.sl.runtime.SLNull;
-import com.oracle.truffle.sl.runtime.SLObjectType;
 
 /**
  * SL is a simple language to demonstrate and showcase features of Truffle. The implementation is as
@@ -276,13 +275,13 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     protected boolean isObjectOfLanguage(Object object) {
         if (!(object instanceof TruffleObject)) {
             return false;
-        }
-        if (object instanceof SLBigNumber || object instanceof SLFunction || object instanceof SLNull) {
+        } else if (object instanceof SLBigNumber || object instanceof SLFunction || object instanceof SLNull) {
             return true;
-        } else if (object instanceof DynamicObject) {
-            return ((DynamicObject) object).dispatch() == SLObjectType.class;
+        } else if (SLContext.isSLObject(object)) {
+            return true;
+        } else {
+            return false;
         }
-        return false;
     }
 
     @Override
