@@ -43,8 +43,10 @@ import java.util.Collections;
 import java.util.Formattable;
 import java.util.Formatter;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
@@ -64,6 +66,7 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.core.common.type.TypeReference;
+import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
@@ -170,7 +173,7 @@ public class SnippetTemplate {
     public abstract static class SnippetInfo {
 
         protected final ResolvedJavaMethod method;
-        protected ResolvedJavaMethod original;
+        protected final ResolvedJavaMethod original;
         protected final LocationIdentity[] privateLocations;
         protected final Object receiver;
 
@@ -269,8 +272,9 @@ public class SnippetTemplate {
 
         protected abstract Lazy lazy();
 
-        protected SnippetInfo(ResolvedJavaMethod method, LocationIdentity[] privateLocations, Object receiver) {
+        protected SnippetInfo(ResolvedJavaMethod method, ResolvedJavaMethod original, LocationIdentity[] privateLocations, Object receiver) {
             this.method = method;
+            this.original = original;
             this.privateLocations = privateLocations;
             instantiationCounter = DebugContext.counter("SnippetInstantiationCount[%s]", method.getName());
             instantiationTimer = DebugContext.timer("SnippetInstantiationTime[%s]", method.getName());
@@ -283,10 +287,6 @@ public class SnippetTemplate {
 
         public int getParameterCount() {
             return lazy().constantParameters.length;
-        }
-
-        public void setOriginalMethod(ResolvedJavaMethod original) {
-            this.original = original;
         }
 
         public boolean isConstantParameter(int paramIdx) {
@@ -318,8 +318,8 @@ public class SnippetTemplate {
     protected static class LazySnippetInfo extends SnippetInfo {
         protected final AtomicReference<Lazy> lazy = new AtomicReference<>(null);
 
-        protected LazySnippetInfo(ResolvedJavaMethod method, LocationIdentity[] privateLocations, Object receiver) {
-            super(method, privateLocations, receiver);
+        protected LazySnippetInfo(ResolvedJavaMethod method, ResolvedJavaMethod original, LocationIdentity[] privateLocations, Object receiver) {
+            super(method, original, privateLocations, receiver);
         }
 
         @Override
@@ -334,8 +334,8 @@ public class SnippetTemplate {
     protected static class EagerSnippetInfo extends SnippetInfo {
         protected final Lazy lazy;
 
-        protected EagerSnippetInfo(ResolvedJavaMethod method, LocationIdentity[] privateLocations, Object receiver) {
-            super(method, privateLocations, receiver);
+        protected EagerSnippetInfo(ResolvedJavaMethod method, ResolvedJavaMethod original, LocationIdentity[] privateLocations, Object receiver) {
+            super(method, original, privateLocations, receiver);
             lazy = new Lazy(method);
         }
 
@@ -642,28 +642,45 @@ public class SnippetTemplate {
             return null;
         }
 
+        public static ResolvedJavaMethod findMethod(MetaAccessProvider metaAccess, Class<?> declaringClass, String methodName) {
+            ResolvedJavaType type = metaAccess.lookupJavaType(declaringClass);
+            ResolvedJavaMethod result = null;
+            for (ResolvedJavaMethod m : type.getDeclaredMethods()) {
+                if (m.getName().equals(methodName)) {
+                    if (!Assertions.assertionsEnabled()) {
+                        return m;
+                    } else {
+                        assert result == null : "multiple definitions found";
+                        result = m;
+                    }
+                }
+            }
+            if (result == null) {
+                throw new GraalError("Could not find method in " + declaringClass + " named " + methodName);
+            }
+            return result;
+        }
+
         protected SnippetInfo snippet(Class<? extends Snippets> declaringClass, String methodName, LocationIdentity... initialPrivateLocations) {
-            return snippet(declaringClass, methodName, null, initialPrivateLocations);
+            return snippet(declaringClass, methodName, null, null, initialPrivateLocations);
         }
 
         /**
          * Finds the unique method in {@code declaringClass} named {@code methodName} annotated by
          * {@link Snippet} and returns a {@link SnippetInfo} value describing it. There must be
-         * exactly one snippet method in {@code declaringClass}.
+         * exactly one snippet method in {@code declaringClass} with a given name.
          */
-        protected SnippetInfo snippet(Class<? extends Snippets> declaringClass, String methodName, Object receiver, LocationIdentity... initialPrivateLocations) {
+        protected SnippetInfo snippet(Class<? extends Snippets> declaringClass, String methodName, ResolvedJavaMethod original, Object receiver, LocationIdentity... initialPrivateLocations) {
             assert methodName != null;
-            Method method = findMethod(declaringClass, methodName, null);
-            assert method != null : "did not find @" + Snippet.class.getSimpleName() + " method in " + declaringClass + " named " + methodName;
-            assert method.getAnnotation(Snippet.class) != null : method + " must be annotated with @" + Snippet.class.getSimpleName();
-            assert findMethod(declaringClass, methodName, method) == null : "found more than one method named " + methodName + " in " + declaringClass;
-            ResolvedJavaMethod javaMethod = providers.getMetaAccess().lookupJavaMethod(method);
-            providers.getReplacements().registerSnippet(javaMethod, GraalOptions.TrackNodeSourcePosition.getValue(options));
+            ResolvedJavaMethod javaMethod = findMethod(providers.getMetaAccess(), declaringClass, methodName);
+            assert javaMethod != null : "did not find @" + Snippet.class.getSimpleName() + " method in " + declaringClass + " named " + methodName;
+            assert javaMethod.getAnnotation(Snippet.class) != null : javaMethod + " must be annotated with @" + Snippet.class.getSimpleName();
+            providers.getReplacements().registerSnippet(javaMethod, original, receiver, GraalOptions.TrackNodeSourcePosition.getValue(options));
             LocationIdentity[] privateLocations = GraalOptions.SnippetCounters.getValue(options) ? SnippetCounterNode.addSnippetCounters(initialPrivateLocations) : initialPrivateLocations;
             if (GraalOptions.EagerSnippets.getValue(options)) {
-                return new EagerSnippetInfo(javaMethod, privateLocations, receiver);
+                return new EagerSnippetInfo(javaMethod, original, privateLocations, receiver);
             } else {
-                return new LazySnippetInfo(javaMethod, privateLocations, receiver);
+                return new LazySnippetInfo(javaMethod, original, privateLocations, receiver);
             }
         }
 
@@ -758,7 +775,15 @@ public class SnippetTemplate {
         final StructuredGraph snippetCopy = new StructuredGraph.Builder(options, debug).name(snippetGraph.name).method(snippetGraph.method()).trackNodeSourcePosition(
                         snippetGraph.trackNodeSourcePosition()).setIsSubstitution(true).build();
         assert !GraalOptions.TrackNodeSourcePosition.getValue(options) || snippetCopy.trackNodeSourcePosition();
+        if (providers.getCodeCache() != null && providers.getCodeCache().shouldDebugNonSafepoints()) {
+            snippetCopy.setTrackNodeSourcePosition();
+        }
+        if (instantiating.get().contains(method)) {
+            throw new InternalError("recursive instantiation " + args);
+        }
+
         try (DebugContext.Scope scope = debug.scope("SpecializeSnippet", snippetCopy)) {
+            instantiating.get().add(method);
             if (!snippetGraph.isUnsafeAccessTrackingEnabled()) {
                 snippetCopy.disableUnsafeAccessTracking();
             }
@@ -1012,6 +1037,8 @@ public class SnippetTemplate {
 
         } catch (Throwable ex) {
             throw debug.handle(ex);
+        } finally {
+            instantiating.get().remove(method);
         }
     }
 
@@ -1024,6 +1051,8 @@ public class SnippetTemplate {
         }
         return true;
     }
+
+    private static ThreadLocal<Set<ResolvedJavaMethod>> instantiating = ThreadLocal.withInitial(LinkedHashSet::new);
 
     public static void explodeLoops(final StructuredGraph snippetCopy, PhaseContext phaseContext) {
         // Do any required loop explosion
@@ -1038,7 +1067,7 @@ public class SnippetTemplate {
                     LoopEx loop = new LoopsData(snippetCopy).loop(loopBegin);
                     Mark mark = snippetCopy.getMark();
                     LoopTransformations.fullUnroll(loop, phaseContext, new CanonicalizerPhase());
-                    new CanonicalizerPhase().applyIncremental(snippetCopy, phaseContext, mark);
+                    new CanonicalizerPhase().applyIncremental(snippetCopy, phaseContext, mark, false);
                     loop.deleteUnusedNodes();
                 }
                 GraphUtil.removeFixedWithUnusedInputs(explodeLoop);

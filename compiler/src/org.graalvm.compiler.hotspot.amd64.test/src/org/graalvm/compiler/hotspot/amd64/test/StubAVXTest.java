@@ -34,6 +34,7 @@ import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.DataPointerConstant;
+import org.graalvm.compiler.hotspot.HotSpotBackend;
 import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
@@ -67,7 +68,6 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
-import org.graalvm.compiler.hotspot.HotSpotBackend;
 
 public class StubAVXTest extends LIRTest {
 
@@ -185,7 +185,7 @@ public class StubAVXTest extends LIRTest {
         @Override
         protected BytecodeProvider getReplacementsBytecodeProvider() {
             ReplacementsImpl d = (ReplacementsImpl) providers.getReplacements();
-            MetaAccessProvider metaAccess = d.providers.getMetaAccess();
+            MetaAccessProvider metaAccess = d.getProviders().getMetaAccess();
             return new ClassfileBytecodeProvider(metaAccess, d.snippetReflection, ClassLoader.getSystemClassLoader());
         }
     }
@@ -226,7 +226,12 @@ public class StubAVXTest extends LIRTest {
         HotSpotProviders providers = (HotSpotProviders) getProviders();
         HotSpotForeignCallsProviderImpl foreignCalls = (HotSpotForeignCallsProviderImpl) providers.getForeignCalls();
         HotSpotForeignCallLinkage linkage = foreignCalls.registerStubCall(TEST_STUB, HotSpotForeignCallLinkage.Transition.LEAF_NOFP, HotSpotForeignCallLinkage.Reexecutability.REEXECUTABLE);
-        linkage.setCompiledStub(new TestStub(getInitialOptions(), providers, linkage));
+        try {
+            providers.getReplacements().reopenSnippetRegistration();
+            linkage.setCompiledStub(new TestStub(getInitialOptions(), providers, linkage));
+        } finally {
+            providers.getReplacements().closeSnippetRegistration();
+        }
         runTest("testStub");
     }
 }

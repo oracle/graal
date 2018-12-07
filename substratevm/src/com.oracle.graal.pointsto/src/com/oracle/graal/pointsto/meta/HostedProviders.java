@@ -67,4 +67,10 @@ public class HostedProviders extends Providers {
     public void setGraphBuilderPlugins(GraphBuilderConfiguration.Plugins graphBuilderPlugins) {
         this.graphBuilderPlugins = graphBuilderPlugins;
     }
+
+    @Override
+    public Providers copyWith(Replacements substitution) {
+        return new HostedProviders(getMetaAccess(), getCodeCache(), getConstantReflection(), getConstantFieldProvider(), getForeignCalls(), getLowerer(), substitution, getStampProvider(),
+                        getSnippetReflection(), getWordTypes());
+    }
 }

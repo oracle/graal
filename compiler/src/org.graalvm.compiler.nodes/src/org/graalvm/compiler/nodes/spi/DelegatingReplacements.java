@@ -57,6 +57,16 @@ public class DelegatingReplacements implements Replacements {
     }
 
     @Override
+    public boolean hasGeneratedInvocationPluginAnnotation(ResolvedJavaMethod method) {
+        return delegate.hasGeneratedInvocationPluginAnnotation(method);
+    }
+
+    @Override
+    public boolean hasGenericInvocationPluginAnnotation(ResolvedJavaMethod method) {
+        return delegate.hasGenericInvocationPluginAnnotation(method);
+    }
+
+    @Override
     public StructuredGraph getSnippet(ResolvedJavaMethod method, Object[] args, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition) {
         return delegate.getSnippet(method, args, trackNodeSourcePosition, replaceePosition);
     }
@@ -67,8 +77,8 @@ public class DelegatingReplacements implements Replacements {
     }
 
     @Override
-    public void registerSnippet(ResolvedJavaMethod method, boolean trackNodeSourcePosition) {
-        delegate.registerSnippet(method, trackNodeSourcePosition);
+    public void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition) {
+        delegate.registerSnippet(method, original, receiver, trackNodeSourcePosition);
     }
 
     @Override

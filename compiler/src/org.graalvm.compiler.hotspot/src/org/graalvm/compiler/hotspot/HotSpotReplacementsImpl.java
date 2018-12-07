@@ -40,13 +40,30 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * them.
  */
 public class HotSpotReplacementsImpl extends ReplacementsImpl {
-
     public HotSpotReplacementsImpl(OptionValues options, Providers providers, SnippetReflectionProvider snippetReflection, BytecodeProvider bytecodeProvider, TargetDescription target) {
         super(options, new GraalDebugHandlersFactory(snippetReflection), providers, snippetReflection, bytecodeProvider, target);
     }
 
     @Override
-    protected boolean hasGenericInvocationPluginAnnotation(ResolvedJavaMethod method) {
+    public boolean hasGenericInvocationPluginAnnotation(ResolvedJavaMethod method) {
         return method.getAnnotation(HotSpotOperation.class) != null || super.hasGenericInvocationPluginAnnotation(method);
+    }
+
+    private boolean snippetRegistrationClosed;
+
+    @Override
+    public void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition) {
+        assert !snippetRegistrationClosed;
+        super.registerSnippet(method, original, receiver, trackNodeSourcePosition);
+    }
+
+    @Override
+    public void closeSnippetRegistration() {
+        snippetRegistrationClosed = true;
+    }
+
+    @Override
+    public void reopenSnippetRegistration() {
+        snippetRegistrationClosed = false;
     }
 }

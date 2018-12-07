@@ -211,7 +211,7 @@ public class SubstrateReplacements extends ReplacementsImpl {
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     @Override
-    public void registerSnippet(ResolvedJavaMethod method, boolean trackNodeSourcePosition) {
+    public void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition) {
         assert method.getAnnotation(Snippet.class) != null : "Snippet must be annotated with @" + Snippet.class.getSimpleName() + " " + method;
         assert method.hasBytecodes() : "Snippet must not be abstract or native";
         assert builder.graphs.get(method) == null : "snippet registered twice: " + method.getName();
