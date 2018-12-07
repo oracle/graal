@@ -20,30 +20,39 @@
       'pip:astroid': '==1.1.0',
       'pip:pylint': '==1.1.0',
     },
+    setup+: [
+      ['mx', 'sversions'],
+    ],
   },
 
   local linux = common + {
     capabilities: ['linux', 'amd64'],
   },
 
-  local espresso = {
+  local espresso_gate = {
     downloads+: {
       ECLIPSE: {name: 'eclipse', version: '4.5.2.1', platformspecific: true},
     },
     environment+: {
       ECLIPSE_EXE: '$ECLIPSE/eclipse',
     },
-    setup+: [
-      ['mx', 'sversions'],
-    ],
     run+: [
       ['mx', '--strict-compliance', 'gate', '--strict-mode', '--tags', '${GATE_TAGS}'],
     ],
     timelimit: '15:00',
   },
 
+  local espresso_svm = {
+    run+: [
+      ['mx', '--env', 'espresso.svm', 'build'],
+      ['set-export', 'GRAALVM_HOME', ['mx', '--env', 'espresso.svm', 'graalvm-home']],
+      ['${GRAALVM_HOME}/bin/espresso', '-version'],
+    ],
+  },
+
   builds: [
-    jdk8 + gate + linux + espresso + {environment+: {GATE_TAGS: 'style,fullbuild'}} + {name: 'espresso-style-fullbuild-linux-amd64'},
-    jdk8 + gate + linux + espresso + {environment+: {GATE_TAGS: 'default'}} + {name: 'espresso-unittest-linux-amd64'},
+    jdk8 + gate + linux + espresso_gate + {environment+: {GATE_TAGS: 'style,fullbuild'}} + {name: 'espresso-style-fullbuild-linux-amd64'},
+    jdk8 + gate + linux + espresso_gate + {environment+: {GATE_TAGS: 'default'}}         + {name: 'espresso-unittest-linux-amd64'},
+    jdk8 + gate + linux + espresso_svm                                                   + {name: 'espresso-svm-linux-amd64'},
   ],
 }
