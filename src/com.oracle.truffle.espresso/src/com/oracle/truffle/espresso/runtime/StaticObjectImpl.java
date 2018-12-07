@@ -34,126 +34,51 @@ import com.oracle.truffle.espresso.impl.FieldInfo;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.meta.MetaUtil;
 
 public class StaticObjectImpl implements StaticObject {
-    private final Map<String, Object> fields;
+    private Map<String, Object> hiddenFields;
     private final boolean isStatic;
     private final Klass klass;
 
-    private final Object[] fieldValues;
+    private final Object[] fields;
 
     public boolean isStatic() {
         return isStatic;
     }
 
-    public StaticObjectImpl(Klass klass, Map<String, Object> fields, Object[] fieldValues, boolean isStatic) {
+    public StaticObjectImpl(Klass klass, Map<String, Object> hiddenFields, Object[] fields, boolean isStatic) {
         this.klass = klass;
-        this.fields = fields;
+        this.hiddenFields = hiddenFields;
         this.isStatic = isStatic;
-        this.fieldValues = fieldValues;
+        this.fields = fields;
     }
 
     // Shallow copy.
     public StaticObject copy() {
-        return new StaticObjectImpl(getKlass(), new HashMap<>(fields), fieldValues.clone(), isStatic);
+        HashMap<String, Object> hiddenFieldsCopy = hiddenFields != null ? new HashMap<>(hiddenFields) : null;
+        return new StaticObjectImpl(getKlass(), hiddenFieldsCopy, fields.clone(), isStatic);
     }
 
-    public StaticObjectImpl(Klass klass) {
-        this.klass = klass;
-        this.fields = new HashMap<>();
-        this.isStatic = false;
-        this.fieldValues = isStatic ? new Object[((ObjectKlass) klass).getStaticFieldSlots()] : new Object[((ObjectKlass) klass).getInstanceFieldSlots()];
-        FieldInfo[] allFields = klass.getInstanceFields(true);
-        for (FieldInfo fi : allFields) {
-            Object value = null;
-            switch (fi.getKind()) {
-                case Object:
-                    value = StaticObject.NULL;
-                    break;
-                case Float:
-                    value = 0f;
-                    break;
-                case Double:
-                    value = 0.0;
-                    break;
-                case Long:
-                    value = 0L;
-                    break;
-                case Char:
-                    value = (char) 0;
-                    break;
-                case Short:
-                    value = (short) 0;
-                    break;
-                case Int:
-                    value = 0;
-                    break;
-                case Byte:
-                    value = (byte) 0;
-                    break;
-                case Boolean:
-                    value = false;
-                    break;
-                case Illegal:
-                case Void:
-                    throw new RuntimeException("Invalid type " + fi.getKind() + " for field: " + fi.getName());
-            }
-            this.fieldValues[fi.getSlot()] = value;
-        }
+    public StaticObjectImpl(ObjectKlass klass) {
+        this(klass, false);
     }
 
-    public StaticObjectImpl(Klass klass, boolean isStatic) {
+    public StaticObjectImpl(ObjectKlass klass, boolean isStatic) {
+        assert !isStatic || klass.isInitialized();
         this.klass = klass;
-        if (klass.getSuperclass() != null) {
-            klass.getSuperclass().initialize();
-        }
-        this.fields = new HashMap<>();
-        this.fieldValues = isStatic ? new Object[((ObjectKlass) klass).getStaticFieldSlots()] : new Object[((ObjectKlass) klass).getInstanceFieldSlots()];
+        this.hiddenFields = null;
+        this.isStatic = isStatic;
+        this.fields = isStatic ? new Object[klass.getStaticFieldSlots()] : new Object[klass.getInstanceFieldSlots()];
         FieldInfo[] allFields = isStatic ? klass.getStaticFields() : klass.getInstanceFields(true);
         for (FieldInfo fi : allFields) {
-            if (fi.isStatic() == isStatic) {
-                Object value = null;
-                switch (fi.getKind()) {
-                    case Object:
-                        value = StaticObject.NULL;
-                        break;
-                    case Float:
-                        value = 0f;
-                        break;
-                    case Double:
-                        value = 0.0;
-                        break;
-                    case Char:
-                        value = (char) 0;
-                        break;
-                    case Short:
-                        value = (short) 0;
-                        break;
-                    case Int:
-                        value = 0;
-                        break;
-                    case Long:
-                        value = 0L;
-                        break;
-                    case Byte:
-                        value = (byte) 0;
-                        break;
-                    case Boolean:
-                        value = false;
-                        break;
-                    case Illegal:
-                    case Void:
-                        throw new RuntimeException("Invalid type " + fi.getKind() + " for field: " + fi.getName());
-                }
-                this.fieldValues[fi.getSlot()] = value;
-            }
+            this.fields[fi.getSlot()] = MetaUtil.defaultFieldValue(fi.getKind());
         }
-        this.isStatic = isStatic;
     }
 
     public Object getField(FieldInfo field) {
         // TODO(peterssen): Klass check
-        Object result = fieldValues[field.getSlot()];
+        Object result = fields[field.getSlot()];
         assert result != null;
         return result;
     }
@@ -170,17 +95,23 @@ public class StaticObjectImpl implements StaticObject {
 
     public void setField(FieldInfo field, Object value) {
         // TODO(peterssen): Klass check
-        fieldValues[field.getSlot()] = value;
+        fields[field.getSlot()] = value;
     }
 
     @CompilerDirectives.TruffleBoundary
     public void setHiddenField(String name, Object value) {
-        fields.putIfAbsent(name, value);
+        if (hiddenFields == null) {
+            hiddenFields = new HashMap<>();
+        }
+        hiddenFields.putIfAbsent(name, value);
     }
 
     @CompilerDirectives.TruffleBoundary
     public Object getHiddenField(String name) {
-        return fields.get(name);
+        if (hiddenFields == null) {
+            return null;
+        }
+        return hiddenFields.get(name);
     }
 
     @Override

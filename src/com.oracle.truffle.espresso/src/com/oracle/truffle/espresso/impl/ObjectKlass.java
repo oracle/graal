@@ -38,6 +38,7 @@ import com.oracle.truffle.espresso.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.runtime.AttributeInfo;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 
 /**
  * Represents resolved non-primitive, non-array types in Espresso.
@@ -51,6 +52,8 @@ public final class ObjectKlass extends Klass {
     private final int accessFlags;
     private final EnclosingMethodAttribute enclosingMethod;
     private final ConstantPool pool;
+
+    @CompilerDirectives.CompilationFinal private StaticObject statics;
 
     @CompilerDirectives.CompilationFinal(dimensions = 1) private FieldInfo[] instanceFieldsCache;
 
@@ -124,6 +127,15 @@ public final class ObjectKlass extends Klass {
 
     public int getInitState() {
         return initState;
+    }
+
+    @Override
+    public StaticObject getStatics() {
+        if (statics == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            statics = new StaticObjectImpl(this, true);
+        }
+        return statics;
     }
 
     @Override

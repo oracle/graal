@@ -153,4 +153,31 @@ public class MetaUtil {
         }
         return object;
     }
+
+    public static Object defaultFieldValue(JavaKind kind) {
+        switch (kind) {
+            case Object:
+                return StaticObject.NULL;
+            case Float:
+                return 0f;
+            case Double:
+                return 0.0;
+            case Char:
+                return (char) 0;
+            case Short:
+                return (short) 0;
+            case Int:
+                return 0;
+            case Long:
+                return 0L;
+            case Byte:
+                return (byte) 0;
+            case Boolean:
+                return false;
+            case Illegal: // fall-though
+            case Void:    // fall-though
+            default:
+                throw EspressoError.shouldNotReachHere("Invalid field type " + kind);
+        }
+    }
 }

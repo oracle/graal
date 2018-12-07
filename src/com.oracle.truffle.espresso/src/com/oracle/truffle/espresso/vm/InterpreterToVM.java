@@ -44,6 +44,7 @@ import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.impl.FieldInfo;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.MethodInfo;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.intrinsics.EspressoIntrinsics;
 import com.oracle.truffle.espresso.intrinsics.Intrinsic;
 import com.oracle.truffle.espresso.intrinsics.Surrogate;
@@ -645,7 +646,7 @@ public class InterpreterToVM {
     public StaticObject newObject(Klass klass) {
         assert klass != null && !klass.isArray();
         klass.initialize();
-        return new StaticObjectImpl(klass);
+        return new StaticObjectImpl((ObjectKlass) klass);
     }
 
     public int arrayLength(Object arr) {
