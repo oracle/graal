@@ -42,7 +42,7 @@ public class ConstantInfo extends SizableInfo {
     }
 
     @Override
-    public Object getAnnotatedElement() {
+    public ResolvedJavaMethod getAnnotatedElement() {
         return annotatedMethod;
     }
 

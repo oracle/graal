@@ -41,7 +41,7 @@ public class EnumInfo extends ElementInfo {
     }
 
     @Override
-    public Object getAnnotatedElement() {
+    public ResolvedJavaType getAnnotatedElement() {
         return annotatedType;
     }
 
