@@ -821,11 +821,7 @@ public final class MatcherBuilder implements Comparable<MatcherBuilder>, JsonCon
                 charMatcher = RangeTreeMatcher.fromRanges(inverse, ranges);
             }
         }
-        if (charMatcher.estimatedCost() > 5) {
-            return ProfilingCharMatcher.create(createIntersectionMatcher(BYTE_RANGE, compilationBuffer).createMatcher(compilationBuffer, inverse, false), charMatcher);
-        } else {
-            return charMatcher;
-        }
+        return ProfilingCharMatcher.create(createIntersectionMatcher(BYTE_RANGE, compilationBuffer).createMatcher(compilationBuffer, inverse, false), charMatcher);
     }
 
     private boolean preferRangeListMatcherOverBitSetMatcher() {
