@@ -2,6 +2,7 @@ package org.graalvm.tools.lsp.instrument;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.util.concurrent.Future;
@@ -30,8 +31,6 @@ public class LSPInstrument extends TruffleInstrument implements LanguageServerBo
 
     private OptionValues options;
     private LanguageServerImpl languageServer;
-    private PrintWriter err;
-    private PrintWriter info;
 
     @Override
     protected void onCreate(Env env) {
@@ -42,11 +41,11 @@ public class LSPInstrument extends TruffleInstrument implements LanguageServerBo
             LanguageSpecificHacks.enableLanguageSpecificHacks = options.get(LSOptions.LanguageSpecificHacksOption).booleanValue();
         }
 
-        info = new PrintWriter(env.out(), true);
-        err = new PrintWriter(env.err(), true);
-
         TruffleAdapter truffleAdapter = new TruffleAdapter(env);
+        PrintWriter info = new PrintWriter(env.out(), true);
+        PrintWriter err = new PrintWriter(env.err(), true);
         languageServer = LanguageServerImpl.create(truffleAdapter, info, err);
+
         env.registerService(truffleAdapter);
         env.registerService(this);
     }
@@ -62,13 +61,15 @@ public class LSPInstrument extends TruffleInstrument implements LanguageServerBo
         assert options.hasSetOptions();
 
         HostAndPort hostAndPort = options.get(LSOptions.Lsp);
-        InetSocketAddress socketAddress;
         try {
-            socketAddress = hostAndPort.createSocket(options.get(LSOptions.Remote));
-            ServerSocket serverSocket = new ServerSocket(socketAddress.getPort(), 50, socketAddress.getAddress());
+            InetSocketAddress socketAddress = hostAndPort.createSocket();
+            int port = socketAddress.getPort();
+            Integer backlog = options.get(LSOptions.SocketBacklogSize);
+            InetAddress address = socketAddress.getAddress();
+            ServerSocket serverSocket = new ServerSocket(port, backlog, address);
             return languageServer.start(serverSocket);
         } catch (IOException e) {
-            String message = String.format("[Graal LSP] Starting server on %s failed: %s", hostAndPort.getHostPort(options.get(LSOptions.Remote)), e.getLocalizedMessage());
+            String message = String.format("[Graal LSP] Starting server on %s failed: %s", hostAndPort.getHostPort(), e.getLocalizedMessage());
             throw new LSPIOException(message, e);
         }
     }

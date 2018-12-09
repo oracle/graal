@@ -50,8 +50,8 @@ public final class LSOptions {
     @com.oracle.truffle.api.Option(name = "", help = "Start the Language Server on [[host:]port]. (default: <loopback address>:" + DEFAULT_PORT + ")", category = OptionCategory.USER) //
     static final OptionKey<HostAndPort> Lsp = new OptionKey<>(DEFAULT_ADDRESS, ADDRESS_OR_BOOLEAN);
 
-    @com.oracle.truffle.api.Option(help = "Don't use loopback address. (default:false)", category = OptionCategory.EXPERT) //
-    static final OptionKey<Boolean> Remote = new OptionKey<>(false);
+    @com.oracle.truffle.api.Option(help = "Requested maximum length of the Socket queue of incoming connections. (default: -1)", category = OptionCategory.EXPERT) //
+    static final OptionKey<Integer> SocketBacklogSize = new OptionKey<>(-1);
 
     static final class HostAndPort {
 
@@ -92,13 +92,11 @@ public final class LSOptions {
             }
         }
 
-        String getHostPort(boolean remote) {
+        String getHostPort() {
             String hostName = host;
             if (hostName == null || hostName.isEmpty()) {
                 if (inetAddress != null) {
                     hostName = inetAddress.toString();
-                } else if (remote) {
-                    hostName = "localhost";
                 } else {
                     hostName = InetAddress.getLoopbackAddress().toString();
                 }
@@ -106,14 +104,10 @@ public final class LSOptions {
             return hostName + ":" + port;
         }
 
-        InetSocketAddress createSocket(boolean remote) throws UnknownHostException {
+        InetSocketAddress createSocket() {
             InetAddress ia;
             if (inetAddress == null) {
-                if (remote) {
-                    ia = InetAddress.getLocalHost();
-                } else {
-                    ia = InetAddress.getLoopbackAddress();
-                }
+                ia = InetAddress.getLoopbackAddress();
             } else {
                 ia = inetAddress;
             }
