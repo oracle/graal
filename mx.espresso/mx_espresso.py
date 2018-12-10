@@ -21,7 +21,6 @@
 # questions.
 #
 
-import os
 from argparse import ArgumentParser
 
 import mx
@@ -47,29 +46,6 @@ def _run_espresso(args):
                 + args)
 
 
-def _run_espresso_native(graalvm_home, args, distributions=None):
-    espresso_native = os.path.join(graalvm_home, 'bin', 'espresso')
-    if not os.path.exists(espresso_native):
-        mx.abort(
-            'Cannot find Espresso native image: "{}". Did you forget to run "mx --env espresso.env build"?'.format(
-                espresso_native))
-
-    vm_args, args = mx.extract_VM_args(args, useDoubleDash=False, defaultAllVMArgs=False, allowClasspath=True)
-
-    native_cp = mx.classpath(distributions or [])
-    user_cp_index, user_cp_value = mx.find_classpath_arg(vm_args)
-
-    if user_cp_value:
-        native_cp = os.pathsep.join([native_cp, user_cp_value]) if native_cp else user_cp_value
-        vm_args[user_cp_index - 1:user_cp_index + 1] = []
-
-    return mx.run([espresso_native] +
-                  vm_args +
-                  mx.get_runtime_jvm_args(distributions or [], jdk=mx.get_jdk(), cp_suffix=native_cp) +
-                  args
-                  )
-
-
 def _run_espresso_playground(args, verbose=False):
     vm_args, args = mx.extract_VM_args(args, useDoubleDash=False, defaultAllVMArgs=False)
     parser = ArgumentParser(prog='mx espresso-playground')
@@ -77,9 +53,10 @@ def _run_espresso_playground(args, verbose=False):
     parser.add_argument('main_class_args', nargs='*')
     args = parser.parse_args(args)
 
-    return _run_espresso(vm_args +
-                         ['-cp', mx.classpath("ESPRESSO_PLAYGROUND"),
-                          'com.oracle.truffle.espresso.playground.' + args.main_class] + args.main_class_args,
+    return _run_espresso(vm_args
+                         + ['-cp', mx.classpath('ESPRESSO_PLAYGROUND'),
+                            'com.oracle.truffle.espresso.playground.' + args.main_class]
+                         + args.main_class_args,
                          verbose)
 
 
@@ -87,10 +64,6 @@ def _espresso_gate_runner(args, tasks):
     with Task('UnitTests', tasks, tags=[EspressoDefaultTags.default, EspressoDefaultTags.all]) as t:
         if t:
             unittest(['--enable-timing', '--very-verbose', 'com.oracle.truffle.espresso.test'])
-
-    with Task('HelloWorld', tasks, tags=[EspressoDefaultTags.native]) as t:
-        if t:
-            _run_espresso_native(['--distribution', 'ESPRESSO_PLAYGROUND', 'com.oracle.truffle.espresso.playground.HelloWorld'])
 
 
 # REGISTER MX GATE RUNNER
@@ -123,5 +96,4 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
 mx.update_commands(_suite, {
     'espresso': [_run_espresso, ''],
     'espresso-playground': [_run_espresso_playground, ''],
-    'espresso-native': [_run_espresso_native, ''],
 })

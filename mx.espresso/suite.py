@@ -205,6 +205,7 @@ suite = {
             "dependencies": [
                 "com.oracle.truffle.espresso.launcher",
             ],
+            "mainClass": "com.oracle.truffle.espresso.launcher.EspressoLauncher",
             "distDependencies": [
                 "sdk:GRAAL_SDK",
                 "sdk:LAUNCHER_COMMON",
