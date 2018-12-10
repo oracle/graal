@@ -85,16 +85,12 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 
 public class ValueHostInteropTest extends AbstractPolyglotTest {
@@ -884,42 +880,6 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
             return array.size();
         }
 
-    }
-
-    @ExportLibrary(InteropLibrary.class)
-    static final class KeysArray implements TruffleObject {
-
-        private final String[] keys;
-
-        KeysArray(String[] keys) {
-            this.keys = keys;
-        }
-
-        @SuppressWarnings("static-method")
-        @ExportMessage
-        boolean isArray() {
-            return true;
-        }
-
-        @ExportMessage
-        boolean isElementReadable(long index) {
-            return index >= 0 && index < keys.length;
-        }
-
-        @ExportMessage
-        long getArraySize() {
-            return keys.length;
-        }
-
-        @ExportMessage
-        Object readElement(long index) throws InvalidArrayIndexException {
-            try {
-                return keys[(int) index];
-            } catch (IndexOutOfBoundsException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw InvalidArrayIndexException.create(index);
-            }
-        }
     }
 
     static final class RemoveKeysObject implements TruffleObject {
