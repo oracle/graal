@@ -55,16 +55,17 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeKind;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
+@SuppressWarnings("deprecation")
 final class LanguageCheckGenerator extends InteropNodeGenerator {
     protected static final String TEST_METHOD_NAME = "test";
 
     protected String receiverClassName;
 
-    LanguageCheckGenerator(ProcessingEnvironment processingEnv, MessageResolution messageResolutionAnnotation, TypeElement element, ForeignAccessFactoryGenerator containingForeignAccessFactory) {
+    LanguageCheckGenerator(ProcessingEnvironment processingEnv, com.oracle.truffle.api.interop.MessageResolution messageResolutionAnnotation, TypeElement element,
+                    ForeignAccessFactoryGenerator containingForeignAccessFactory) {
         super(processingEnv, element, containingForeignAccessFactory);
         this.receiverClassName = Utils.getReceiverTypeFullClassName(messageResolutionAnnotation);
     }
@@ -166,7 +167,7 @@ final class LanguageCheckGenerator extends InteropNodeGenerator {
         w.append("\n");
         w.append(indent).append("        @Override\n");
         w.append(indent).append("        public Object execute(VirtualFrame frame) {\n");
-        w.append(indent).append("            Object receiver = ForeignAccess.getReceiver(frame);\n");
+        w.append(indent).append("            Object receiver = com.oracle.truffle.api.interop.ForeignAccess.getReceiver(frame);\n");
         w.append(indent).append("            try {\n");
         w.append(indent).append("                return node.executeWithTarget(frame, receiver);\n");
         w.append(indent).append("            } catch (UnsupportedSpecializationException e) {\n");

@@ -54,6 +54,7 @@ import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
+@SuppressWarnings("deprecation")
 final class ReadGenerator extends MessageGenerator {
 
     private static final int NUMBER_OF_READ = 2; // TruffleObject receiver,
@@ -78,7 +79,7 @@ final class ReadGenerator extends MessageGenerator {
         appendGetName(w);
         w.append(indent).append("        @Override\n");
         w.append(indent).append("        public Object execute(VirtualFrame frame) {\n");
-        w.append(indent).append("            Object receiver = ForeignAccess.getReceiver(frame);\n");
+        w.append(indent).append("            Object receiver = com.oracle.truffle.api.interop.ForeignAccess.getReceiver(frame);\n");
         w.append(indent).append("            Object identifier = frame.getArguments()[1];\n");
         w.append(indent).append("            try {\n");
         w.append(indent).append("                return node.executeWithTarget(frame, receiver, identifier);\n");

@@ -72,7 +72,6 @@ abstract class InteropNodeGenerator {
         imports.add("com.oracle.truffle.api.dsl.Specialization");
         imports.add("com.oracle.truffle.api.dsl.UnsupportedSpecializationException");
         imports.add("com.oracle.truffle.api.frame.VirtualFrame");
-        imports.add("com.oracle.truffle.api.interop.ForeignAccess");
         imports.add("com.oracle.truffle.api.interop.UnsupportedTypeException");
         imports.add("com.oracle.truffle.api.nodes.RootNode");
     }

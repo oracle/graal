@@ -45,7 +45,8 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.Node;
 
-@SuppressWarnings("deprecation") public class Snippets {
+@SuppressWarnings("deprecation")
+public class Snippets {
 
 //@formatter:off
 public static class ExampleTruffleObject implements TruffleObject {

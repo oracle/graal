@@ -75,11 +75,16 @@ import com.oracle.truffle.dsl.processor.java.ElementUtils;
 /**
  * THIS IS NOT PUBLIC API.
  */
+@SuppressWarnings("deprecation")
 public final class InteropDSLProcessor extends AbstractProcessor {
 
-    static final List<Message> KNOWN_MESSAGES = Arrays.asList(new Message[]{Message.READ, Message.WRITE, Message.REMOVE, Message.IS_NULL, Message.IS_EXECUTABLE,
-                    Message.IS_INSTANTIABLE, Message.IS_BOXED, Message.UNBOX, Message.HAS_SIZE, Message.GET_SIZE, Message.KEY_INFO, Message.HAS_KEYS, Message.KEYS,
-                    Message.IS_POINTER, Message.AS_POINTER, Message.TO_NATIVE, Message.EXECUTE, Message.INVOKE, Message.NEW});
+    static final List<Message> KNOWN_MESSAGES = Arrays.asList(new Message[]{com.oracle.truffle.api.interop.Message.READ, com.oracle.truffle.api.interop.Message.WRITE,
+                    com.oracle.truffle.api.interop.Message.REMOVE, com.oracle.truffle.api.interop.Message.IS_NULL, com.oracle.truffle.api.interop.Message.IS_EXECUTABLE,
+                    com.oracle.truffle.api.interop.Message.IS_INSTANTIABLE, com.oracle.truffle.api.interop.Message.IS_BOXED, com.oracle.truffle.api.interop.Message.UNBOX,
+                    com.oracle.truffle.api.interop.Message.HAS_SIZE, com.oracle.truffle.api.interop.Message.GET_SIZE, com.oracle.truffle.api.interop.Message.KEY_INFO,
+                    com.oracle.truffle.api.interop.Message.HAS_KEYS, com.oracle.truffle.api.interop.Message.KEYS,
+                    com.oracle.truffle.api.interop.Message.IS_POINTER, com.oracle.truffle.api.interop.Message.AS_POINTER, com.oracle.truffle.api.interop.Message.TO_NATIVE,
+                    com.oracle.truffle.api.interop.Message.EXECUTE, com.oracle.truffle.api.interop.Message.INVOKE, com.oracle.truffle.api.interop.Message.NEW});
 
     @Override
     public Set<String> getSupportedAnnotationTypes() {
