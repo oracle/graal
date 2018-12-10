@@ -436,11 +436,11 @@ suite = {
             "native": True,
             "vpath": True,
             "results": [
-                "<os>-<arch>/libffi.a",
-                "<os>-<arch>/include/ffi.h",
-                "<os>-<arch>/include/ffitarget.h",
-                "<os>-<arch>/include/trufflenfi.h",
-                "<os>-<arch>/include/svm_libffi.h",
+                "libffi.a",
+                "include/ffi.h",
+                "include/ffitarget.h",
+                "include/trufflenfi.h",
+                "include/svm_libffi.h",
             ],
             "buildEnv": {
                 "LIBFFI_SRC": "<path:truffle:LIBFFI>",
@@ -650,7 +650,7 @@ suite = {
                 "com.oracle.svm.native.libchelper",
                 "com.oracle.svm.native.strictmath",
                 "com.oracle.svm.native.jvm",
-                # "com.oracle.svm.libffi"
+                "com.oracle.svm.libffi"
             ],
             "native": True,
             "platformDependent" : True,
