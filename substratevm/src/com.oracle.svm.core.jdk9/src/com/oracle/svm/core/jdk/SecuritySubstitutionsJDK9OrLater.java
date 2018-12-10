@@ -36,7 +36,8 @@ import com.oracle.svm.core.util.VMError;
 final class Target_sun_security_jca_ProviderConfig_ProviderLoader {
     @Substitute
     private Provider legacyLoad(String classname) {
-        throw VMError.unsupportedFeature("JDK9OrLater: sun.security.jca.ProviderConfig.legacyLoad(String classname)");
+        /* Provider lookup via legacyLoad not supported */
+        return null;
     }
 }
 
