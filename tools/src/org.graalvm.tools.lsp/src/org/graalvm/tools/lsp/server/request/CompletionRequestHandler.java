@@ -91,14 +91,10 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
         //@formatter:off
         return env.getLanguages().values().stream()
                         .filter(lang -> !lang.isInternal())
-                        .flatMap(info -> env.getCompletionTriggerCharacters(info.getId()).stream())
+                        .flatMap(info -> env.getCompletionTriggerCharacters(info).stream())
                         .distinct()
                         .collect(Collectors.toList());
         //@formatter:on
-    }
-
-    public List<String> getCompletionTriggerCharactersWithEnteredContext(String langId) {
-        return env.getCompletionTriggerCharacters(langId);
     }
 
     public CompletionList completionWithEnteredContext(final URI uri, int line, int originalCharacter, CompletionContext completionContext) throws DiagnosticsNotification {

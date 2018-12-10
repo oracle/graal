@@ -108,7 +108,7 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
                     if (langInfo.isInternal()) {
                         continue;
                     }
-                    langId2CompletionTriggerCharacters.put(langInfo.getId(), env.getCompletionTriggerCharacters(langInfo.getId()));
+                    langId2CompletionTriggerCharacters.put(langInfo.getId(), env.getCompletionTriggerCharacters(langInfo));
                 }
                 return langId2CompletionTriggerCharacters;
             });
@@ -350,10 +350,6 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
 
     public Future<List<String>> getCompletionTriggerCharactersOfAllLanguages() {
         return contextAwareExecutor.executeWithDefaultContext(() -> completionHandler.getCompletionTriggerCharactersWithEnteredContext());
-    }
-
-    public Future<List<String>> getCompletionTriggerCharacters(String langId) {
-        return contextAwareExecutor.executeWithDefaultContext(() -> completionHandler.getCompletionTriggerCharactersWithEnteredContext(langId));
     }
 
     public Future<List<String>> getSignatureHelpTriggerCharactersOfAllLanguages() {

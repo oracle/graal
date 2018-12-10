@@ -15,6 +15,7 @@ import org.graalvm.tools.lsp.interop.GetSignature;
 import org.graalvm.tools.lsp.interop.ObjectStructures;
 import org.graalvm.tools.lsp.server.utils.EvaluationResult;
 import org.graalvm.tools.lsp.server.utils.InteropUtils;
+import org.graalvm.tools.lsp.server.utils.SourceUtils;
 import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogate;
 import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogateMap;
 
@@ -29,6 +30,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 public class SignatureHelpRequestHandler extends AbstractRequestHandler {
@@ -44,6 +46,9 @@ public class SignatureHelpRequestHandler extends AbstractRequestHandler {
 
     public SignatureHelp signatureHelpWithEnteredContext(URI uri, int line, int originalCharacter) throws DiagnosticsNotification {
         TextDocumentSurrogate surrogate = surrogateMap.get(uri);
+        if (!isSignatureHelpTriggerCharOfLanguage(surrogate, line, originalCharacter)) {
+            return new SignatureHelp();
+        }
         InstrumentableNode nodeAtCaret = findNodeAtCaret(surrogate, line, originalCharacter, StandardTags.CallTag.class);
         if (nodeAtCaret != null) {
             SourceSection signatureSection = ((Node) nodeAtCaret).getSourceSection();
@@ -84,17 +89,23 @@ public class SignatureHelpRequestHandler extends AbstractRequestHandler {
         return new SignatureHelp();
     }
 
+    private boolean isSignatureHelpTriggerCharOfLanguage(TextDocumentSurrogate surrogate, int line, int charOffset) {
+        Source source = surrogate.getSource();
+        CharSequence characters = source.getCharacters(SourceUtils.zeroBasedLineToOneBasedLine(line, source));
+        int triggerCharOffset = charOffset - 1;
+        char signatureTirggerChar = characters.charAt(triggerCharOffset);
+
+        List<String> signatureHelpTriggerCharacters = env.getSignatureHelpTriggerCharacters(surrogate.getLanguageInfo());
+        return signatureHelpTriggerCharacters.contains(String.valueOf(signatureTirggerChar));
+    }
+
     public List<String> getSignatureHelpTriggerCharactersWithEnteredContext() {
         //@formatter:off
         return env.getLanguages().values().stream()
                         .filter(lang -> !lang.isInternal())
-                        .flatMap(info -> env.getSignatureHelpTriggerCharacters(info.getId()).stream())
+                        .flatMap(info -> env.getSignatureHelpTriggerCharacters(info).stream())
                         .distinct()
                         .collect(Collectors.toList());
         //@formatter:on
-    }
-
-    public List<String> getSignatureHelpTriggerCharactersWithEnteredContext(String langId) {
-        return env.getSignatureHelpTriggerCharacters(langId);
     }
 }
