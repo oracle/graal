@@ -172,7 +172,7 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
 
             masm.movl(result, length); // copy
 
-            emitArrayCompare(crb, masm, kind, result, array1, array2, length, temp4, temp5, tempXMM, vectorTemp1, vectorTemp2, trueLabel, falseLabel);
+            emitArrayCompare(crb, masm, result, array1, array2, length, trueLabel, falseLabel);
         }
 
         // Return true
@@ -188,19 +188,18 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
         masm.bind(done);
     }
 
-    private static void emitArrayCompare(CompilationResultBuilder crb, AMD64MacroAssembler masm, JavaKind kind,
+    private void emitArrayCompare(CompilationResultBuilder crb, AMD64MacroAssembler masm,
                     Register result, Register array1, Register array2, Register length,
-                    Value temp4, Value temp5, Value tempXMM, Value vectorTemp1, Value vectorTemp2,
                     Label trueLabel, Label falseLabel) {
         if (supportsAVX2(crb.target)) {
-            emitAVXCompare(crb, masm, kind, result, array1, array2, length, temp4, temp5, tempXMM, vectorTemp1, vectorTemp2, trueLabel, falseLabel);
+            emitAVXCompare(crb, masm, result, array1, array2, length, trueLabel, falseLabel);
         } else if (supportsSSE41(crb.target)) {
             // this code is used for AVX as well because our backend correctly ensures that
             // VEX-prefixed instructions are emitted if AVX is supported
-            emitSSE41Compare(crb, masm, kind, result, array1, array2, length, temp4, temp5, tempXMM, vectorTemp1, vectorTemp2, trueLabel, falseLabel);
+            emitSSE41Compare(crb, masm, result, array1, array2, length, trueLabel, falseLabel);
         }
-        emit8ByteCompare(crb, masm, kind, result, array1, array2, length, temp4, tempXMM, trueLabel, falseLabel);
-        emitTailCompares(masm, kind, result, array1, array2, length, temp4, tempXMM, trueLabel, falseLabel);
+        emit8ByteCompare(crb, masm, result, array1, array2, length, trueLabel, falseLabel);
+        emitTailCompares(masm, result, array1, array2, length, trueLabel, falseLabel);
     }
 
     /**
@@ -222,9 +221,8 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
     /**
      * Emits code that uses SSE4.1 128-bit (16-byte) vector compares.
      */
-    private static void emitSSE41Compare(CompilationResultBuilder crb, AMD64MacroAssembler masm, JavaKind kind,
+    private void emitSSE41Compare(CompilationResultBuilder crb, AMD64MacroAssembler masm,
                     Register result, Register array1, Register array2, Register length,
-                    Value temp4, Value temp5, Value tempXMM, Value vectorTemp1, Value vectorTemp2,
                     Label trueLabel, Label falseLabel) {
         assert supportsSSE41(crb.target);
 
@@ -267,7 +265,7 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
             Label unalignedCheck = new Label();
             masm.jmpb(unalignedCheck);
             masm.bind(nanCheck);
-            emitFloatCompareWithinRange(crb, masm, kind, array1, array2, length, temp4, temp5, tempXMM, 0, falseLabel, SSE4_1_VECTOR_SIZE);
+            emitFloatCompareWithinRange(crb, masm, array1, array2, length, 0, falseLabel, SSE4_1_VECTOR_SIZE);
             masm.jmpb(loopCheck);
             masm.bind(unalignedCheck);
         }
@@ -282,7 +280,7 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
         masm.ptest(vector1, vector1);
         if (requiresNaNCheck) {
             masm.jcc(ConditionFlag.Zero, trueLabel);
-            emitFloatCompareWithinRange(crb, masm, kind, array1, array2, result, temp4, temp5, tempXMM, -SSE4_1_VECTOR_SIZE, falseLabel, SSE4_1_VECTOR_SIZE);
+            emitFloatCompareWithinRange(crb, masm, array1, array2, result, -SSE4_1_VECTOR_SIZE, falseLabel, SSE4_1_VECTOR_SIZE);
         } else {
             masm.jcc(ConditionFlag.NotZero, falseLabel);
         }
@@ -308,9 +306,8 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
      */
     private static final int AVX_VECTOR_SIZE = 32;
 
-    private static void emitAVXCompare(CompilationResultBuilder crb, AMD64MacroAssembler masm, JavaKind kind, Register result,
+    private void emitAVXCompare(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register result,
                     Register array1, Register array2, Register length,
-                    Value temp4, Value temp5, Value tempXMM, Value vectorTemp1, Value vectorTemp2,
                     Label trueLabel, Label falseLabel) {
         assert supportsAVX2(crb.target);
 
@@ -353,7 +350,7 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
             Label unalignedCheck = new Label();
             masm.jmpb(unalignedCheck);
             masm.bind(nanCheck);
-            emitFloatCompareWithinRange(crb, masm, kind, array1, array2, length, temp4, temp5, tempXMM, 0, falseLabel, AVX_VECTOR_SIZE);
+            emitFloatCompareWithinRange(crb, masm, array1, array2, length, 0, falseLabel, AVX_VECTOR_SIZE);
             masm.jmpb(loopCheck);
             masm.bind(unalignedCheck);
         }
@@ -368,7 +365,7 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
         masm.vptest(vector1, vector1);
         if (requiresNaNCheck) {
             masm.jcc(ConditionFlag.Zero, trueLabel);
-            emitFloatCompareWithinRange(crb, masm, kind, array1, array2, result, temp4, temp5, tempXMM, -AVX_VECTOR_SIZE, falseLabel, AVX_VECTOR_SIZE);
+            emitFloatCompareWithinRange(crb, masm, array1, array2, result, -AVX_VECTOR_SIZE, falseLabel, AVX_VECTOR_SIZE);
         } else {
             masm.jcc(ConditionFlag.NotZero, falseLabel);
         }
@@ -386,8 +383,8 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
     /**
      * Emits code that uses 8-byte vector compares.
      */
-    private static void emit8ByteCompare(CompilationResultBuilder crb, AMD64MacroAssembler masm, JavaKind kind, Register result, Register array1, Register array2, Register length, Value temp4,
-                    Value tempXMM, Label trueLabel, Label falseLabel) {
+    private void emit8ByteCompare(CompilationResultBuilder crb, AMD64MacroAssembler masm,
+                    Register result, Register array1, Register array2, Register length, Label trueLabel, Label falseLabel) {
         Label loop = new Label();
         Label compareTail = new Label();
 
@@ -426,7 +423,7 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
             masm.bind(nanCheck);
             // At most two iterations, unroll in the emitted code.
             for (int offset = 0; offset < VECTOR_SIZE; offset += kind.getByteCount()) {
-                emitFloatCompare(masm, kind, array1, array2, length, temp4, tempXMM, offset, falseLabel, kind.getByteCount() == VECTOR_SIZE);
+                emitFloatCompare(masm, array1, array2, length, offset, falseLabel, kind.getByteCount() == VECTOR_SIZE);
             }
             masm.jmpb(loopCheck);
             masm.bind(unalignedCheck);
@@ -442,7 +439,7 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
             masm.jcc(ConditionFlag.Equal, trueLabel);
             // At most two iterations, unroll in the emitted code.
             for (int offset = 0; offset < VECTOR_SIZE; offset += kind.getByteCount()) {
-                emitFloatCompare(masm, kind, array1, array2, result, temp4, tempXMM, -VECTOR_SIZE + offset, falseLabel, kind.getByteCount() == VECTOR_SIZE);
+                emitFloatCompare(masm, array1, array2, result, -VECTOR_SIZE + offset, falseLabel, kind.getByteCount() == VECTOR_SIZE);
             }
         } else {
             masm.jccb(ConditionFlag.NotEqual, falseLabel);
@@ -456,8 +453,8 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
     /**
      * Emits code to compare the remaining 1 to 4 bytes.
      */
-    private static void emitTailCompares(AMD64MacroAssembler masm, JavaKind kind, Register result, Register array1, Register array2, Register length, Value temp4, Value tempXMM,
-                    Label trueLabel, Label falseLabel) {
+    private void emitTailCompares(AMD64MacroAssembler masm,
+                    Register result, Register array1, Register array2, Register length, Label trueLabel, Label falseLabel) {
         Label compare2Bytes = new Label();
         Label compare1Byte = new Label();
 
@@ -471,7 +468,7 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
             masm.cmpl(temp, new AMD64Address(array2, 0));
             if (kind == JavaKind.Float) {
                 masm.jccb(ConditionFlag.Equal, trueLabel);
-                emitFloatCompare(masm, kind, array1, array2, Register.None, temp4, tempXMM, 0, falseLabel, true);
+                emitFloatCompare(masm, array1, array2, Register.None, 0, falseLabel, true);
                 masm.jmpb(trueLabel);
             } else {
                 masm.jccb(ConditionFlag.NotEqual, falseLabel);
@@ -516,7 +513,7 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
     /**
      * Emits code to fall through if {@code src} is NaN, otherwise jump to {@code branchOrdered}.
      */
-    private static void emitNaNCheck(AMD64MacroAssembler masm, JavaKind kind, Value tempXMM, AMD64Address src, Label branchIfNonNaN) {
+    private void emitNaNCheck(AMD64MacroAssembler masm, AMD64Address src, Label branchIfNonNaN) {
         assert kind.isNumericFloat();
         Register tempXMMReg = asRegister(tempXMM);
         if (kind == JavaKind.Float) {
@@ -531,7 +528,7 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
     /**
      * Emits code to compare if two floats are bitwise equal or both NaN.
      */
-    private static void emitFloatCompare(AMD64MacroAssembler masm, JavaKind kind, Register base1, Register base2, Register index, Value temp4, Value tempXMM, int offset, Label falseLabel,
+    private void emitFloatCompare(AMD64MacroAssembler masm, Register base1, Register base2, Register index, int offset, Label falseLabel,
                     boolean skipBitwiseCompare) {
         AMD64Address address1 = new AMD64Address(base1, index, Scale.Times1, offset);
         AMD64Address address2 = new AMD64Address(base2, index, Scale.Times1, offset);
@@ -552,8 +549,8 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
             masm.jccb(ConditionFlag.Equal, bitwiseEqual);
         }
 
-        emitNaNCheck(masm, kind, tempXMM, address1, falseLabel);
-        emitNaNCheck(masm, kind, tempXMM, address2, falseLabel);
+        emitNaNCheck(masm, address1, falseLabel);
+        emitNaNCheck(masm, address2, falseLabel);
 
         masm.bind(bitwiseEqual);
     }
@@ -561,8 +558,8 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
     /**
      * Emits code to compare float equality within a range.
      */
-    private static void emitFloatCompareWithinRange(CompilationResultBuilder crb, AMD64MacroAssembler masm, JavaKind kind, Register base1, Register base2, Register index, Value temp4, Value temp5,
-                    Value tempXMM, int offset, Label falseLabel, int range) {
+    private void emitFloatCompareWithinRange(CompilationResultBuilder crb, AMD64MacroAssembler masm,
+                    Register base1, Register base2, Register index, int offset, Label falseLabel, int range) {
         assert kind.isNumericFloat();
         Label loop = new Label();
         Register i = asRegister(temp5);
@@ -572,7 +569,7 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
         // Align the main loop
         masm.align(crb.target.wordSize * 2);
         masm.bind(loop);
-        emitFloatCompare(masm, kind, base1, base2, index, temp4, tempXMM, offset, falseLabel, kind.getByteCount() == range);
+        emitFloatCompare(masm, base1, base2, index, offset, falseLabel, kind.getByteCount() == range);
         masm.addq(index, kind.getByteCount());
         masm.addq(i, kind.getByteCount());
         masm.jccb(ConditionFlag.NotZero, loop);
