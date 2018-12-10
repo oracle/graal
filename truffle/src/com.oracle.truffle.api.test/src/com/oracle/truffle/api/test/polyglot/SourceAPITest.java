@@ -73,6 +73,9 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.test.ReflectionUtils;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.zip.ZipOutputStream;
 
 public class SourceAPITest {
 
@@ -420,6 +423,32 @@ public class SourceAPITest {
         assertNotEquals("So they are different", s1, s2);
         assertEquals("File URI", file.toURI(), s1.getURI());
         assertEquals("Source with different MIME type has the same URI", s1.getURI(), s2.getURI());
+    }
+
+    @Test
+    public void unassignedMimeTypeForURL() throws IOException {
+        File file = File.createTempFile("Hello", ".java");
+        file.deleteOnExit();
+        Path path = file.toPath();
+        byte[] content = "// Test".getBytes("UTF-8");
+        Files.write(path, content);
+        URL url = path.toUri().toURL();
+        assertEquals("text/x-java", Source.findMimeType(url));
+        Source.Builder builder = Source.newBuilder("TestJava", url);
+        Source source = builder.build();
+        assertNull("MIME type should be null if not specified", source.getMimeType());
+
+        File archive = File.createTempFile("hello", ".jar");
+        archive.deleteOnExit();
+        try (ZipOutputStream out = new ZipOutputStream(new FileOutputStream(archive))) {
+            out.putNextEntry(new ZipEntry("Hello.java"));
+            out.write(content);
+        }
+        url = new URL("jar:" + archive.toURI().toURL().toExternalForm() + "!/Hello.java");
+        assertEquals("text/x-java", Source.findMimeType(url));
+        builder = Source.newBuilder("TestJava", url);
+        source = builder.build();
+        assertNull("MIME type should be null if not specified", source.getMimeType());
     }
 
     @Test
