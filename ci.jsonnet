@@ -46,8 +46,10 @@
     run+: [
       ['mx', '--env', 'espresso.svm', 'build'],
       ['set-export', 'GRAALVM_HOME', ['mx', '--env', 'espresso.svm', 'graalvm-home']],
-      ['${GRAALVM_HOME}/bin/espresso', '-version'],
+      # Ugly hardcoded path until we can integrate Espresso properly to the VM suite.
+      ['${GRAALVM_HOME}/bin/espresso', '-cp', 'mxbuild/dists/jdk1.8/espresso-playground.jar', 'com.oracle.truffle.espresso.playground.HelloWorld'],
     ],
+    timelimit: '15:00',
   },
 
   builds: [
