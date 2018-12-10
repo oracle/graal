@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,7 +31,7 @@ import org.graalvm.compiler.test.AddExports;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.impl.ReadOnlyArrayList;
 
-@AddExports("com.oracle.truffle.truffle_api/com.oracle.truffle.api.interop.impl")
+@AddExports("org.graalvm.truffle/com.oracle.truffle.api.interop.impl")
 public class ReadOnlyArrayListConstantNode extends AbstractTestNode {
 
     private final int value;

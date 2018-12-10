@@ -24,14 +24,16 @@
  */
 package com.oracle.svm.graal;
 
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.graal.code.amd64.SubstrateAMD64Backend;
-import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
-import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
-import com.oracle.svm.core.option.RuntimeOptionValues;
-import com.oracle.svm.graal.meta.SubstrateMethod;
-import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
+import java.io.PrintStream;
+import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.api.replacements.Snippet;
@@ -49,7 +51,6 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.lir.CompositeValueClass;
 import org.graalvm.compiler.lir.LIRInstructionClass;
-import org.graalvm.compiler.lir.alloc.trace.TraceAllocationPhase;
 import org.graalvm.compiler.lir.phases.LIRPhase;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.nodes.EncodedGraph;
@@ -61,20 +62,18 @@ import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.Feature.CompilationAccess;
+import org.graalvm.nativeimage.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
-
-import static org.graalvm.compiler.debug.DebugContext.DEFAULT_LOG_STREAM;
+import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.graal.code.amd64.SubstrateAMD64Backend;
+import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
+import com.oracle.svm.core.option.RuntimeOptionValues;
+import com.oracle.svm.graal.meta.SubstrateMethod;
+import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 
 /**
  * Holds data that is pre-computed during native image generation and accessed at run time during a
@@ -91,14 +90,13 @@ public class GraalSupport {
     private Object[] graphObjects;
     private NodeClass<?>[] graphNodeTypes;
 
-    public Map<Class<?>, NodeClass<?>> nodeClasses;
-    public Map<Class<?>, LIRInstructionClass<?>> instructionClasses;
-    public Map<Class<?>, CompositeValueClass<?>> compositeValueClasses;
+    public final Map<Class<?>, NodeClass<?>> nodeClasses = new HashMap<>();
+    public final Map<Class<?>, LIRInstructionClass<?>> instructionClasses = new HashMap<>();
+    public final Map<Class<?>, CompositeValueClass<?>> compositeValueClasses = new HashMap<>();
     public HashMap<Class<? extends NodeMatchRules>, EconomicMap<Class<? extends Node>, List<MatchStatement>>> matchRuleRegistry;
 
     protected Map<Class<?>, BasePhase.BasePhaseStatistics> basePhaseStatistics;
     protected Map<Class<?>, LIRPhase.LIRPhaseStatistics> lirPhaseStatistics;
-    protected Map<Class<?>, TraceAllocationPhase.AllocationStatistics> traceAllocationPhaseStatistics;
     protected Function<Providers, Backend> runtimeBackendProvider;
 
     protected final GlobalMetrics metricValues = new GlobalMetrics();
@@ -106,9 +104,9 @@ public class GraalSupport {
     protected final DiagnosticsOutputDirectory outputDirectory = new DiagnosticsOutputDirectory(RuntimeOptionValues.singleton());
     protected final Map<ExceptionAction, Integer> compilationProblemsPerAction = new EnumMap<>(ExceptionAction.class);
 
-    public DebugContext openDebugContext(OptionValues options, CompilationIdentifier compilationId, Object compilable) {
+    public DebugContext openDebugContext(OptionValues options, CompilationIdentifier compilationId, Object compilable, PrintStream logStream) {
         Description description = new Description(compilable, compilationId.toString(CompilationIdentifier.Verbosity.ID));
-        return DebugContext.create(options, description, metricValues, DEFAULT_LOG_STREAM, runtimeConfig.getDebugHandlersFactories());
+        return DebugContext.create(options, description, metricValues, logStream, runtimeConfig.getDebugHandlersFactories());
     }
 
     public DiagnosticsOutputDirectory getDebugOutputDirectory() {
@@ -182,54 +180,29 @@ public class GraalSupport {
     public static void allocatePhaseStatisticsCache() {
         GraalSupport.get().basePhaseStatistics = new HashMap<>();
         GraalSupport.get().lirPhaseStatistics = new HashMap<>();
-        GraalSupport.get().traceAllocationPhaseStatistics = new HashMap<>();
     }
 
+    /* Invoked once for every class that is reachable in the native image. */
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void registerPhaseStatistics(DuringAnalysisAccessImpl access) {
+    public static void registerPhaseStatistics(DuringAnalysisAccess a, Class<?> newlyReachableClass) {
+        DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
 
-        GraalSupport.<BasePhase.BasePhaseStatistics> registerStatistics(GraalSupport.get().basePhaseStatistics,
-                        BasePhase.class, BasePhase.BasePhaseStatistics.class, clazz -> new BasePhase.BasePhaseStatistics(clazz), access);
+        if (!Modifier.isAbstract(newlyReachableClass.getModifiers())) {
+            if (BasePhase.class.isAssignableFrom(newlyReachableClass)) {
+                registerStatistics(newlyReachableClass, GraalSupport.get().basePhaseStatistics, new BasePhase.BasePhaseStatistics(newlyReachableClass), access);
 
-        GraalSupport.<LIRPhase.LIRPhaseStatistics> registerStatistics(GraalSupport.get().lirPhaseStatistics,
-                        LIRPhase.class, LIRPhase.LIRPhaseStatistics.class, clazz -> new LIRPhase.LIRPhaseStatistics(clazz), access);
+            } else if (LIRPhase.class.isAssignableFrom(newlyReachableClass)) {
+                registerStatistics(newlyReachableClass, GraalSupport.get().lirPhaseStatistics, new LIRPhase.LIRPhaseStatistics(newlyReachableClass), access);
 
-        GraalSupport.<TraceAllocationPhase.AllocationStatistics> registerStatistics(GraalSupport.get().traceAllocationPhaseStatistics,
-                        TraceAllocationPhase.class,
-                        TraceAllocationPhase.AllocationStatistics.class, clazz -> new TraceAllocationPhase.AllocationStatistics(clazz), access);
+            }
+        }
     }
 
-    private static <S> void registerStatistics(Map<Class<?>, S> cache, Class<?> phaseClass, Class<S> statisticsClass, Function<Class<?>, S> lookup,
-                    DuringAnalysisAccessImpl access) {
-        AnalysisType statisticsType = access.getMetaAccess().lookupJavaType(statisticsClass);
-        if (!statisticsType.isInstantiated()) {
-            /*
-             * There is no allocation of statistics objects at runtime, thus their type must be
-             * correctly registered as in heap.
-             */
-            statisticsType.registerAsInHeap();
-            access.requireAnalysisIteration();
-        }
-        for (Class<?> phaseSubClass : access.findSubclasses(phaseClass)) {
-            if (Modifier.isAbstract(phaseSubClass.getModifiers()) || phaseSubClass.getName().contains(".hosted.") || phaseSubClass.getName().contains(".hotspot.")) {
-                /* Class is abstract or SVM hosted. */
-                continue;
-            }
+    private static <S> void registerStatistics(Class<?> phaseSubClass, Map<Class<?>, S> cache, S newStatistics, DuringAnalysisAccessImpl access) {
+        assert !cache.containsKey(phaseSubClass);
 
-            AnalysisType phaseSubClassType = access.getMetaAccess().lookupJavaType(phaseSubClass);
-            if (!phaseSubClassType.isInstantiated()) {
-                /* The sub class is not instantiated, it doesn't need a statistics object. */
-                continue;
-            }
-
-            if (cache.containsKey(phaseSubClass)) {
-                /* The statistics object for the sub class was already registered. */
-                continue;
-            }
-
-            cache.put(phaseSubClass, lookup.apply(phaseSubClass));
-            access.requireAnalysisIteration();
-        }
+        cache.put(phaseSubClass, newStatistics);
+        access.requireAnalysisIteration();
     }
 
     public static GraalSupport get() {

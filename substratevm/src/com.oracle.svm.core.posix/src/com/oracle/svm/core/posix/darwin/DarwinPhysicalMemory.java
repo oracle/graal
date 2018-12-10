@@ -48,8 +48,18 @@ import com.oracle.svm.core.util.VMError;
 class DarwinPhysicalMemory extends PhysicalMemory {
 
     static class PhysicalMemorySupportImpl implements PhysicalMemorySupport {
+
+        /** A sentinel unset value. */
+        static final long UNSET_SENTINEL = Long.MIN_VALUE;
+
+        /** The cached size of physical memory, or an unset value. */
+        long cachedSize = UNSET_SENTINEL;
+
         @Override
         public UnsignedWord size() {
+            if (hasSize()) {
+                return getSize();
+            }
             final CIntPointer namePointer = StackValue.get(2, CIntPointer.class);
             namePointer.write(0, DarwinSysctl.CTL_HW());
             namePointer.write(1, DarwinSysctl.HW_MEMSIZE());
@@ -61,7 +71,26 @@ class DarwinPhysicalMemory extends PhysicalMemory {
                 Log.log().string("DarwinPhysicalMemory.PhysicalMemorySupportImpl.size(): sysctl() returns with errno: ").signed(Errno.errno()).newline();
                 VMError.shouldNotReachHere("DarwinPhysicalMemory.PhysicalMemorySupportImpl.size() failed.");
             }
-            return WordFactory.unsigned(physicalMemoryPointer.read());
+            /* Cache the value, races are idempotent. */
+            setSize(physicalMemoryPointer.read());
+            return getSize();
+        }
+
+        /** Check if the cache has a value. */
+        @Override
+        public boolean hasSize() {
+            return (cachedSize != UNSET_SENTINEL);
+        }
+
+        /** Update the cached size. */
+        void setSize(long value) {
+            cachedSize = value;
+        }
+
+        /** Get the cached size. */
+        UnsignedWord getSize() {
+            assert hasSize() : "DarwinPhysicalMemory.PhysicalMemorySupportImpl.getValue(): cachedSize has no value.";
+            return WordFactory.unsigned(cachedSize);
         }
     }
 

@@ -54,12 +54,12 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
  */
 final class ValueInteropList extends AbstractList<DebugValue> {
 
-    private final Debugger debugger;
+    private final DebuggerSession session;
     private final LanguageInfo language;
     private final List<Object> list;
 
-    ValueInteropList(Debugger debugger, LanguageInfo language, List<Object> list) {
-        this.debugger = debugger;
+    ValueInteropList(DebuggerSession session, LanguageInfo language, List<Object> list) {
+        this.session = session;
         this.language = language;
         this.list = list;
     }
@@ -72,7 +72,7 @@ final class ValueInteropList extends AbstractList<DebugValue> {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(debugger, ex, language, null, true, null);
+            throw new DebugException(session, ex, language, null, true, null);
         }
         String name = Integer.toString(index);
         Map.Entry<Object, Object> elementEntry = new Map.Entry<Object, Object>() {
@@ -92,7 +92,7 @@ final class ValueInteropList extends AbstractList<DebugValue> {
                 return objRef.getAndSet(value);
             }
         };
-        DebugValue dv = new DebugValue.PropertyValue(debugger, language, KeyInfo.READABLE | KeyInfo.MODIFIABLE, elementEntry, null);
+        DebugValue dv = new DebugValue.PropertyValue(session, language, KeyInfo.READABLE | KeyInfo.MODIFIABLE, elementEntry, null);
         return dv;
     }
 
@@ -104,7 +104,7 @@ final class ValueInteropList extends AbstractList<DebugValue> {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(debugger, ex, language, null, true, null);
+            throw new DebugException(session, ex, language, null, true, null);
         }
         return old;
     }

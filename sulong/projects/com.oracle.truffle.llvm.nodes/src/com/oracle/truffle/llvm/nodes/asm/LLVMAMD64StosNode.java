@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.nodes.asm;
 
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteValueNode;
@@ -44,7 +43,9 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-@NodeChildren({@NodeChild(value = "rax", type = LLVMExpressionNode.class), @NodeChild(value = "rdi", type = LLVMExpressionNode.class), @NodeChild(value = "df", type = LLVMExpressionNode.class)})
+@NodeChild(value = "rax", type = LLVMExpressionNode.class)
+@NodeChild(value = "rdi", type = LLVMExpressionNode.class)
+@NodeChild(value = "df", type = LLVMExpressionNode.class)
 public abstract class LLVMAMD64StosNode extends LLVMStatementNode {
     @Child protected LLVMStoreNode store;
     @Child protected LLVMAMD64WriteValueNode writeRDI;

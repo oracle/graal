@@ -300,7 +300,7 @@ public class SubstrateMethod implements SharedRuntimeMethod, Replaced {
     @Override
     public StackTraceElement asStackTraceElement(int bci) {
         int lineNumber = EncodedLineNumberTable.getLineNumber(bci, encodedLineNumberTable);
-        return new StackTraceElement(getDeclaringClass().toJavaName(true), getName(), getDeclaringClass().getSourceFileName(), lineNumber);
+        return new StackTraceElement(getDeclaringClass().toClassName(), getName(), getDeclaringClass().getSourceFileName(), lineNumber);
     }
 
     @Override

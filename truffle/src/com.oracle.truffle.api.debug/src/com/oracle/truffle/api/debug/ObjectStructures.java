@@ -213,13 +213,12 @@ final class ObjectStructures {
 
         @Override
         public Object setValue(Object value) {
-            Object prev = getValue();
             try {
                 ForeignAccess.sendWrite(nodes.write, object, key, value);
             } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException ex) {
                 throw ex.raise();
             }
-            return prev;
+            return null;
         }
     }
 

@@ -167,11 +167,11 @@ def _unittest_config_participant(config):
         vmArgs = vmArgs + ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED']
 
         # Needed for om.oracle.truffle.api.dsl.test.TestHelper#instrumentSlowPath
-        vmArgs = vmArgs + ['--add-opens=com.oracle.truffle.truffle_api/com.oracle.truffle.api.nodes=ALL-UNNAMED']
+        vmArgs = vmArgs + ['--add-opens=org.graalvm.truffle/com.oracle.truffle.api.nodes=ALL-UNNAMED']
 
         # This is required for the call to setAccessible in
         # TruffleTCK.testValueWithSource to work.
-        vmArgs = vmArgs + ['--add-opens=com.oracle.truffle.truffle_api/com.oracle.truffle.polyglot=ALL-UNNAMED', '--add-modules=ALL-MODULE-PATH']
+        vmArgs = vmArgs + ['--add-opens=org.graalvm.truffle/com.oracle.truffle.polyglot=ALL-UNNAMED', '--add-modules=ALL-MODULE-PATH']
     return (vmArgs, mainClass, mainClassArgs)
 
 mx_unittest.add_config_participant(_unittest_config_participant)

@@ -42,8 +42,7 @@ import mx_benchmark
 import mx_sulong_benchmarks
 import mx_buildtools
 
-from mx_unittest import add_config_participant
-from mx_gate import Task, add_gate_runner
+from mx_gate import Task, add_gate_runner, add_gate_argument
 
 import mx_testsuites
 
@@ -107,14 +106,6 @@ clangFormatVersions = [
     '4.0',
 ]
 
-def _unittest_config_participant(config):
-    (vmArgs, mainClass, mainClassArgs) = config
-    libs = [mx_subst.path_substitutions.substitute('<path:SULONG_TEST_NATIVE>/<lib:sulongtest>')]
-    vmArgs = getCommonOptions(True, libs) + vmArgs
-    return (vmArgs, mainClass, mainClassArgs)
-
-add_config_participant(_unittest_config_participant)
-
 
 # Temporary set environment variables. By default LC_ALL, LANGUAGE, and LANG are set.
 class TemporaryEnv(object):
@@ -154,7 +145,7 @@ def _sulong_gate_testsuite(title, test_suite, tasks, args, tags=None, testClasse
     with Task('Build' + title, tasks, tags=tags + build_tags) as t:
         if t: mx_testsuites.compileTestSuite(test_suite, args.extra_build_args)
     with Task('Test' + title, tasks, tags=tags + run_tags) as t:
-        if t: mx_testsuites.runTestSuite(test_suite, args, testClasses, vmArgs)
+        if t: mx_testsuites.runTestSuite(test_suite, args, testClasses, (vmArgs or []) + args.extra_llvm_arguments)
 
 def _sulong_gate_unittest(title, test_suite, tasks, args, tags=None, testClasses=None, unittestArgs=None):
     if tags is None:
@@ -165,6 +156,7 @@ def _sulong_gate_unittest(title, test_suite, tasks, args, tags=None, testClasses
     run_tags = ['run_' + t for t in tags]
     if not unittestArgs:
         unittestArgs = []
+    unittestArgs += args.extra_llvm_arguments
     with Task('Build' + title, tasks, tags=tags + build_tags) as t:
         if t: mx_testsuites.compileTestSuite(test_suite, args.extra_build_args)
     with Task('Test' + title, tasks, tags=tags + run_tags) as t:
@@ -183,24 +175,28 @@ def _sulong_gate_runner(args, tasks):
         with Task('ClangFormat', tasks, tags=['style', 'clangformat']) as t:
             if t: clangformatcheck()
         _sulong_gate_testsuite('Benchmarks', 'shootout', tasks, args, tags=['benchmarks', 'sulongMisc'])
-        _sulong_gate_unittest('Types', 'com.oracle.truffle.llvm.types.test', tasks, args, tags=['type', 'sulongMisc'], testClasses=['com.oracle.truffle.llvm.types.floating.test'])
-        _sulong_gate_unittest('Pipe', 'com.oracle.truffle.llvm.test', tasks, args, tags=['pipe', 'sulongMisc'], testClasses=['CaptureOutputTest'])
-        _sulong_gate_testsuite('LLVM', 'llvm', tasks, args)
-        _sulong_gate_testsuite('NWCC', 'nwcc', tasks, args)
-        _sulong_gate_testsuite('GCCParserTorture', 'parserTorture', tasks, args, tags=['parser'], vmArgs=['-Dpolyglot.llvm.parseOnly=true'])
-        _sulong_gate_testsuite('GCC_C', 'gcc_c', tasks, args)
-        _sulong_gate_testsuite('GCC_CPP', 'gcc_cpp', tasks, args)
-        _sulong_gate_testsuite('GCC_Fortran', 'gcc_fortran', tasks, args)
-        _sulong_gate_sulongsuite_unittest('Sulong', tasks, args, testClasses='SulongSuite', tags=['sulong', 'sulongBasic'])
-        _sulong_gate_sulongsuite_unittest('Interop', tasks, args, testClasses='com.oracle.truffle.llvm.test.interop', tags=['interop', 'sulongBasic'])
-        _sulong_gate_sulongsuite_unittest('Debug', tasks, args, testClasses='LLVMDebugTest', tags=['debug', 'sulongBasic'])
-        _sulong_gate_sulongsuite_unittest('IRDebug', tasks, args, testClasses='LLVMIRDebugTest', tags=['irdebug', 'sulongBasic'])
-        _sulong_gate_sulongsuite_unittest('Assembly', tasks, args, testClasses='com.oracle.truffle.llvm.test.InlineAssemblyTest', tags=['assembly'])
-        _sulong_gate_testsuite('Args', 'other', tasks, args, tags=['args', 'sulongMisc'], testClasses=['com.oracle.truffle.llvm.test.MainArgsTest'])
-        _sulong_gate_testsuite('Callback', 'other', tasks, args, tags=['callback', 'sulongMisc'], testClasses=['com.oracle.truffle.llvm.test.CallbackTest'])
-        _sulong_gate_testsuite('Varargs', 'other', tasks, args, tags=['vaargs', 'sulongMisc'], testClasses=['com.oracle.truffle.llvm.test.VAArgsTest'])
+        _sulong_gate_unittest('Types', 'com.oracle.truffle.llvm.types.test', tasks, args, tags=['type', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.types.floating.test'])
+        _sulong_gate_unittest('Pipe', 'com.oracle.truffle.llvm.test', tasks, args, tags=['pipe', 'sulongMisc', 'sulongCoverage'], testClasses=['CaptureOutputTest'])
+        _sulong_gate_testsuite('LLVM', 'llvm', tasks, args, tags=['llvm', 'sulongCoverage'])
+        _sulong_gate_testsuite('NWCC', 'nwcc', tasks, args, tags=['nwcc', 'sulongCoverage'])
+        _sulong_gate_testsuite('GCCParserTorture', 'parserTorture', tasks, args, tags=['parser', 'sulongCoverage'], vmArgs=['-Dpolyglot.llvm.parseOnly=true'])
+        _sulong_gate_testsuite('GCC_C', 'gcc_c', tasks, args, tags=['gcc_c', 'sulongCoverage'])
+        _sulong_gate_testsuite('GCC_CPP', 'gcc_cpp', tasks, args, tags=['gcc_cpp', 'sulongCoverage'])
+        _sulong_gate_testsuite('GCC_Fortran', 'gcc_fortran', tasks, args, tags=['gcc_fortran', 'sulongCoverage'])
+        _sulong_gate_sulongsuite_unittest('Sulong', tasks, args, testClasses='SulongSuite', tags=['sulong', 'sulongBasic', 'sulongCoverage'])
+        _sulong_gate_sulongsuite_unittest('Interop', tasks, args, testClasses='com.oracle.truffle.llvm.test.interop', tags=['interop', 'sulongBasic', 'sulongCoverage'])
+        _sulong_gate_sulongsuite_unittest('Debug', tasks, args, testClasses='LLVMDebugTest', tags=['debug', 'sulongBasic', 'sulongCoverage'])
+        _sulong_gate_sulongsuite_unittest('IRDebug', tasks, args, testClasses='LLVMIRDebugTest', tags=['irdebug', 'sulongBasic', 'sulongCoverage'])
+        _sulong_gate_sulongsuite_unittest('Assembly', tasks, args, testClasses='com.oracle.truffle.llvm.test.InlineAssemblyTest', tags=['assembly', 'sulongCoverage'])
+        _sulong_gate_testsuite('Args', 'other', tasks, args, tags=['args', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.test.MainArgsTest'])
+        _sulong_gate_testsuite('Callback', 'other', tasks, args, tags=['callback', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.test.CallbackTest'])
+        _sulong_gate_testsuite('Varargs', 'other', tasks, args, tags=['vaargs', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.test.VAArgsTest'])
+
 
 add_gate_runner(_suite, _sulong_gate_runner)
+add_gate_argument('--extra-llvm-argument', dest='extra_llvm_arguments', action='append',
+                  help='add extra llvm arguments to gate tasks', default=[])
+
 
 
 def testLLVMImage(image, imageArgs=None, testFilter=None, libPath=True, test=None, unittestArgs=None):
@@ -240,16 +236,18 @@ def _test_llvm_image(args):
 # routine for AOT downstream tests
 def runLLVMUnittests(unittest_runner):
     """runs the interop unit tests with a different unittest runner (e.g. AOT-based)"""
-    langhome = mx_subst.path_substitutions.substitute('-Dllvm.home=<path:SULONG_LIBS>')
     libpath = mx_subst.path_substitutions.substitute('-Dpolyglot.llvm.libraryPath=<path:SULONG_TEST_NATIVE>')
     libs = mx_subst.path_substitutions.substitute('-Dpolyglot.llvm.libraries=<lib:sulongtest>')
+
+    test_harness_dist = mx.distribution('SULONG_TEST')
+    java_run_props = [x for x in mx.get_runtime_jvm_args(test_harness_dist) if x.startswith('-D')]
+
     test_suite = 'SULONG_TEST_SUITES'
-    unittestArgs = [
-        mx_subst.path_substitutions.substitute("-Dsulongtest.testSuitePath=<path:SULONG_TEST_SUITES>"),
-        ]
     mx_testsuites.compileTestSuite(test_suite, extra_build_args=[])
-    unittest_runner(unittest_args=['com.oracle.truffle.llvm.test.interop'], run_args=[langhome, libpath, libs] + unittestArgs,
-                    build_args=unittestArgs + (unittest_runner.keywords['build_args'] if 'build_args' in unittest_runner.keywords else []))
+
+    run_args = [libpath, libs] + java_run_props
+    build_args = ['--language:llvm'] + java_run_props
+    unittest_runner(['com.oracle.truffle.llvm.test.interop', '--run-args'] + run_args + ['--build-args'] + build_args)
 
 
 def clangformatcheck(args=None):

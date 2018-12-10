@@ -44,7 +44,6 @@ import com.oracle.svm.core.heap.PinnedAllocator;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.log.StringBuilderLog;
 import com.oracle.svm.core.option.RuntimeOptionKey;
-import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.RingBuffer;
@@ -75,6 +74,14 @@ public class RuntimeCodeInfo {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public RuntimeCodeInfo() {
+    }
+
+    /** Tear down the heap, return all allocated virtual memory chunks to VirtualMemoryProvider. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public final void tearDown() {
+        for (int i = 0; i < numMethods; i++) {
+            methodInfos[i].freeInstalledCode();
+        }
     }
 
     protected RuntimeMethodInfo lookupMethod(CodePointer ip) {
@@ -262,21 +269,18 @@ public class RuntimeCodeInfo {
          * objects in the regular unpinned heap alive.
          */
         Arrays.fill(methodInfo.frameInfoObjectConstants, null);
-        if (methodInfo.frameInfoSourceClassNames != null) {
-            Arrays.fill(methodInfo.frameInfoSourceClassNames, null);
+        if (methodInfo.frameInfoSourceClasses != null) {
+            Arrays.fill(methodInfo.frameInfoSourceClasses, null);
         }
         if (methodInfo.frameInfoSourceMethodNames != null) {
             Arrays.fill(methodInfo.frameInfoSourceMethodNames, null);
-        }
-        if (methodInfo.frameInfoSourceFileNames != null) {
-            Arrays.fill(methodInfo.frameInfoSourceFileNames, null);
         }
         if (methodInfo.frameInfoNames != null) {
             Arrays.fill(methodInfo.frameInfoNames, null);
         }
 
         methodInfo.allocator.release();
-        CommittedMemoryProvider.get().free(methodInfo.getCodeStart(), methodInfo.getCodeSize(), CommittedMemoryProvider.UNALIGNED, true);
+        methodInfo.freeInstalledCode();
 
         if (Options.TraceCodeCache.getValue()) {
             logTable();

@@ -51,13 +51,9 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeList;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.DynamicPiNode;
-import org.graalvm.compiler.nodes.FixedGuardNode;
-import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.extended.FixedValueAnchorNode;
@@ -69,7 +65,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
-import org.graalvm.compiler.nodes.java.InstanceOfDynamicNode;
 import org.graalvm.compiler.nodes.java.NewArrayNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
 import org.graalvm.compiler.nodes.type.NarrowOopStamp;
@@ -93,7 +88,7 @@ import com.oracle.graal.pointsto.nodes.AnalysisArraysCopyOfNode;
 import com.oracle.graal.pointsto.nodes.AnalysisUnsafePartitionLoadNode;
 import com.oracle.graal.pointsto.nodes.AnalysisUnsafePartitionStoreNode;
 import com.oracle.graal.pointsto.nodes.ConvertUnknownValueNode;
-import com.oracle.svm.core.amd64.FrameAccess;
+import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.jdk.SubstrateArraysCopyOfNode;
 import com.oracle.svm.core.graal.jdk.SubstrateObjectCloneNode;
@@ -112,7 +107,6 @@ import com.oracle.svm.core.graal.nodes.SubstrateDynamicNewArrayNode;
 import com.oracle.svm.core.graal.nodes.SubstrateDynamicNewInstanceNode;
 import com.oracle.svm.core.graal.nodes.SubstrateNarrowOopStamp;
 import com.oracle.svm.core.graal.nodes.TestDeoptimizeNode;
-import com.oracle.svm.core.graal.nodes.WriteStackPointerNode;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode.StackSlotIdentity;
 import com.oracle.svm.core.heap.PinnedAllocator;
@@ -125,10 +119,10 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.GraalEdgeUnsafePartition;
+import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.DeoptimizationAction;
-import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Local;
@@ -314,7 +308,13 @@ public class SubstrateGraphBuilderPlugins {
                 assert store.array().equals(newArray);
                 ValueNode valueNode = store.value();
                 if (valueNode.isConstant() && !valueNode.isNullConstant()) {
-                    classList.add(snippetReflection.asObject(Class.class, valueNode.asJavaConstant()));
+                    Class<?> clazz = snippetReflection.asObject(Class.class, valueNode.asJavaConstant());
+                    /*
+                     * It is possible that the returned class is a substitution class, e.g.,
+                     * DynamicHub returned for a Class.class constant. Get the target class of the
+                     * substitution class.
+                     */
+                    classList.add(ImageSingletons.lookup(AnnotationSubstitutionProcessor.class).getTargetClass(clazz));
                 } else {
                     /* If not all classes are non-null constants we bail out. */
                     classList = null;
@@ -569,13 +569,6 @@ public class SubstrateGraphBuilderPlugins {
                 return true;
             }
         });
-        r.register1("writeStackPointer", Pointer.class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                b.add(new WriteStackPointerNode(value));
-                return true;
-            }
-        });
         r.register0("readInstructionPointer", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
@@ -746,30 +739,6 @@ public class SubstrateGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver type, ValueNode otherType) {
                 return false;
-            }
-        });
-
-        r.register2("cast", Receiver.class, Object.class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
-                ValueNode toType = receiver.get();
-                LogicNode condition = b.append(InstanceOfDynamicNode.create(b.getAssumptions(), b.getConstantReflection(), toType, object, true));
-                if (condition.isTautology()) {
-                    b.addPush(JavaKind.Object, object);
-                } else {
-                    FixedGuardNode fixedGuard = b.add(new FixedGuardNode(condition, DeoptimizationReason.ClassCastException, DeoptimizationAction.InvalidateReprofile, false));
-                    b.addPush(JavaKind.Object, DynamicPiNode.create(b.getAssumptions(), b.getConstantReflection(), object, fixedGuard, toType));
-                }
-                return true;
-            }
-        });
-        r.register2("isInstance", Receiver.class, Object.class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
-                ValueNode type = receiver.get();
-                LogicNode condition = b.append(InstanceOfDynamicNode.create(null, b.getConstantReflection(), type, object, false));
-                b.push(JavaKind.Boolean.getStackKind(), b.append(new ConditionalNode(condition).canonical(null)));
-                return true;
             }
         });
     }

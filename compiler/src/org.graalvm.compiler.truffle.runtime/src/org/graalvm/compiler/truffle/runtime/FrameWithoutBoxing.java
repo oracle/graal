@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,6 +49,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     private Object[] locals;
     private long[] primitiveLocals;
     private byte[] tags;
+
     public static final byte OBJECT_TAG = 0;
     public static final byte ILLEGAL_TAG = 1;
     public static final byte LONG_TAG = 2;
@@ -57,6 +58,10 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     public static final byte FLOAT_TAG = 5;
     public static final byte BOOLEAN_TAG = 6;
     public static final byte BYTE_TAG = 7;
+
+    private static final Object[] EMPTY_OBJECT_ARRAY = {};
+    private static final long[] EMPTY_LONG_ARRAY = {};
+    private static final byte[] EMPTY_BYTE_ARRAY = {};
 
     static {
         assert OBJECT_TAG == FrameSlotKind.Object.tag;
@@ -73,13 +78,19 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         this.descriptor = descriptor;
         this.arguments = arguments;
         int size = descriptor.getSize();
-        this.locals = new Object[size];
-        Object defaultValue = descriptor.getDefaultValue();
-        if (defaultValue != null) {
-            Arrays.fill(locals, defaultValue);
+        if (size == 0) {
+            this.locals = EMPTY_OBJECT_ARRAY;
+            this.primitiveLocals = EMPTY_LONG_ARRAY;
+            this.tags = EMPTY_BYTE_ARRAY;
+        } else {
+            this.locals = new Object[size];
+            Object defaultValue = descriptor.getDefaultValue();
+            if (defaultValue != null) {
+                Arrays.fill(locals, defaultValue);
+            }
+            this.primitiveLocals = new long[size];
+            this.tags = new byte[size];
         }
-        this.primitiveLocals = new long[size];
-        this.tags = new byte[size];
     }
 
     @Override

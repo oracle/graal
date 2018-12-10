@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,16 +24,15 @@
  */
 package org.graalvm.compiler.truffle.test.builtins;
 
-import org.graalvm.compiler.options.OptionDescriptor;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions_OptionDescriptors;
+import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import org.graalvm.options.OptionDescriptor;
 
 /**
- * Looks up the value of an option in {@link TruffleCompilerOptions}. In the future this builtin
+ * Looks up the value of an option in {@link TruffleRuntimeOptions}. In the future this builtin
  * might be extended to lookup other options as well.
  */
 @NodeInfo(shortName = "getOption")
@@ -42,13 +41,11 @@ public abstract class SLGetOptionBuiltin extends SLGraalRuntimeBuiltin {
     @Specialization
     @TruffleBoundary
     public Object getOption(String name) {
-        TruffleCompilerOptions_OptionDescriptors options = new TruffleCompilerOptions_OptionDescriptors();
-        for (OptionDescriptor option : options) {
-            if (option.getName().equals(name)) {
-                return convertValue(TruffleCompilerOptions.getValue(option.getOptionKey()));
-            }
+        final OptionDescriptor option = TruffleRuntimeOptions.getOptions().getDescriptors().get(name);
+        if (option == null) {
+            throw new SLAssertionError("No such option named \"" + name + "\" found in " + TruffleRuntimeOptions.class.getName(), this);
         }
-        throw new SLAssertionError("No such option named \"" + name + "\" found in " + TruffleCompilerOptions.class.getName(), this);
+        return convertValue(TruffleRuntimeOptions.getValue(option.getKey()));
     }
 
     private static Object convertValue(Object value) {

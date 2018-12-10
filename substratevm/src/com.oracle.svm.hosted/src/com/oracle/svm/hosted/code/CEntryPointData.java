@@ -45,7 +45,7 @@ public final class CEntryPointData {
 
     public static final String DEFAULT_NAME = "";
     public static final Class<? extends Function<String, String>> DEFAULT_NAME_TRANSFORMATION = DefaultNameTransformation.class;
-    public static final CEntryPoint.Builtin DEFAULT_BUILTIN = CEntryPoint.Builtin.NoBuiltin;
+    public static final CEntryPoint.Builtin DEFAULT_BUILTIN = CEntryPoint.Builtin.NO_BUILTIN;
     public static final Class<?> DEFAULT_PROLOGUE = CEntryPointOptions.AutomaticPrologue.class;
     public static final Class<?> DEFAULT_EPILOGUE = CEntryPointSetup.LeaveEpilogue.class;
     public static final Class<?> DEFAULT_EXCEPTION_HANDLER = CEntryPoint.FatalExceptionHandler.class;
@@ -58,7 +58,7 @@ public final class CEntryPointData {
     public static CEntryPointData create(ResolvedJavaMethod method, String name, Class<? extends Function<String, String>> nameTransformation,
                     String documentation, Class<?> prologue, Class<?> epilogue, Class<?> exceptionHandler, Publish publishAs) {
 
-        return create(name, () -> NativeBootImage.globalSymbolNameForMethod(method), nameTransformation, documentation, Builtin.NoBuiltin, prologue, epilogue, exceptionHandler, publishAs);
+        return create(name, () -> NativeBootImage.globalSymbolNameForMethod(method), nameTransformation, documentation, Builtin.NO_BUILTIN, prologue, epilogue, exceptionHandler, publishAs);
     }
 
     public static CEntryPointData create(Method method) {
@@ -69,7 +69,7 @@ public final class CEntryPointData {
     public static CEntryPointData create(Method method, String name, Class<? extends Function<String, String>> nameTransformation,
                     String documentation, Class<?> prologue, Class<?> epilogue, Class<?> exceptionHandler, Publish publishAs) {
 
-        return create(name, () -> NativeBootImage.globalSymbolNameForMethod(method), nameTransformation, documentation, Builtin.NoBuiltin, prologue, epilogue, exceptionHandler, publishAs);
+        return create(name, () -> NativeBootImage.globalSymbolNameForMethod(method), nameTransformation, documentation, Builtin.NO_BUILTIN, prologue, epilogue, exceptionHandler, publishAs);
     }
 
     @SuppressWarnings("deprecation")
@@ -86,14 +86,6 @@ public final class CEntryPointData {
             nameTransformation = options.nameTransformation();
             prologue = options.prologue();
             epilogue = options.epilogue();
-
-            /*
-             * Look at the deprecated specification for exceptionHandler too, until that code gets
-             * removed.
-             */
-            if (options.exceptionHandler() != CEntryPointData.DEFAULT_EXCEPTION_HANDLER) {
-                exceptionHandler = options.exceptionHandler();
-            }
             publishAs = options.publishAs();
         }
         return create(annotatedName, alternativeNameSupplier, nameTransformation, documentation, builtin, prologue, epilogue, exceptionHandler, publishAs);

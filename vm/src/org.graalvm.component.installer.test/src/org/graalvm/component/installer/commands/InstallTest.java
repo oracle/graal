@@ -24,14 +24,18 @@
  */
 package org.graalvm.component.installer.commands;
 
+import java.io.File;
 import org.graalvm.component.installer.CommandTestBase;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.graalvm.component.installer.CatalogIterable;
 import org.graalvm.component.installer.Commands;
 import org.graalvm.component.installer.CommonConstants;
@@ -174,6 +178,7 @@ public class InstallTest extends CommandTestBase {
 
         inst.execute();
 
+        options.put(Commands.OPTION_FAIL_EXISTING, "");
         inst = new InstallCommand();
         inst.init(this, withBundle(InstallCommand.class));
         files.add(dataFile("truffleruby3.jar").toFile());
@@ -181,6 +186,36 @@ public class InstallTest extends CommandTestBase {
         exception.expect(DependencyException.class);
         exception.expectMessage("VERIFY_ComponentExists");
         inst.execute();
+    }
+
+    @Test
+    public void testSkipExistingComponent() throws IOException {
+        inst = new InstallCommand();
+        inst.init(this, withBundle(InstallCommand.class));
+
+        inst.execute();
+
+        File f = new File(folder.getRoot(), "inst");
+        File binRuby = new File(f, "bin/ruby");
+        assertTrue("Ruby must be installed", binRuby.exists());
+
+        Files.walk(f.toPath()).forEach((p) -> {
+            try {
+                if (!p.equals(f.toPath()) && Files.isRegularFile(p, LinkOption.NOFOLLOW_LINKS)) {
+                    Files.delete(p);
+                }
+            } catch (IOException ex) {
+                Logger.getLogger(InstallTest.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        });
+
+        assertFalse("Ruby must be deleted", binRuby.exists());
+
+        inst = new InstallCommand();
+        inst.init(this, withBundle(InstallCommand.class));
+        files.add(dataFile("truffleruby3.jar").toFile());
+        inst.execute();
+        assertFalse("Component must not be processed", binRuby.exists());
     }
 
     Iterable<ComponentParam> componentIterable;
@@ -209,6 +244,7 @@ public class InstallTest extends CommandTestBase {
                                         u));
         storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "0.33-dev");
         textParams.add("ruby");
+        options.put(Commands.OPTION_FAIL_EXISTING, "");
         files.clear();
         inst = new InstallCommand();
         inst.init(this, withBundle(InstallCommand.class));
@@ -220,6 +256,36 @@ public class InstallTest extends CommandTestBase {
         }
 
         assertFalse(Handler.isVisited(u2));
+    }
+
+    @Test
+    public void testSkipExistingFromCatalog() throws Exception {
+        ComponentInfo fakeInfo = new ComponentInfo("ruby", "Fake ruby", "1.0");
+        storage.installed.add(fakeInfo);
+
+        URL u = new URL("test://graalvm.io/download/catalog");
+        URL u2 = new URL(u, "graalvm-ruby.zip");
+
+        Handler.bind(u.toString(), getClass().getResource("catalog"));
+        Handler.bind(u2.toString(), getClass().getResource("graalvm-ruby.zip"));
+        componentIterable = new CatalogIterable(this, this,
+                        new RemoteCatalogDownloader(
+                                        this,
+                                        this.getLocalRegistry(),
+                                        u));
+        storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "0.33-dev");
+        textParams.add("ruby");
+        files.clear();
+        inst = new InstallCommand();
+        inst.init(this, withBundle(InstallCommand.class));
+
+        try {
+            inst.execute();
+        } catch (DependencyException.Conflict ex) {
+            fail("Should not raise an error");
+        }
+
+        assertFalse("Should not touch the remote file", Handler.isVisited(u2));
     }
 
     @Test

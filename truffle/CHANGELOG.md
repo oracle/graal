@@ -2,13 +2,38 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 1.0.0 RC11
+* `Source` can be created from a relative `TruffleFile`.
+* `Source` can be created without content using `Source.CONTENT_NONE` constant.
+* `SourceSection` can be created from line/column information by [Source.createSection(startLine,startColumn,endLine,endColumn)](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/Source.html#createSection-int-int-int-int-).
+* Added [SourceSection.hasLines()](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/SourceSection.html#hasLines--), [SourceSection.hasColumns()](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/SourceSection.html#hasColumns--) and [SourceSection.hasCharIndex()](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/SourceSection.html#hasCharIndex--) to distinguish which positions are defined and which are not.
+* `DebuggerSession` [accepts source-path](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebuggerSession.html#setSourcePath-java.lang.Iterable-) for source [resolution](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebuggerSession.html#resolveSource-com.oracle.truffle.api.source.Source-).
+
+## Version 1.0.0 RC10
+* Added support for setting current working directory for TruffleFiles, see [Env.setCurrentWorkingDirectory](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#setCurrentWorkingDirectory-com.oracle.truffle.api.TruffleFile-)
+* Removed deprecated `TruffleLanguage.Env.newSourceBuilder`.
+* Added `TruffleLanguage.Env.isPreInitialization` method to determine whether the context is being pre-initialized.
+* Added `ArrayUtils` API providing additional array and/or string operations that may be intrinsified by the compiler.
+* Added a possibility to obtain a [relative URI](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#toRelativeUri--) for a relative `TruffleFile`.
+* Added `ForeignAccess.createAccess` method taking a [supplier of language check node](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/ForeignAccess.html#createAccess-com.oracle.truffle.api.interop.ForeignAccess.StandardFactory-java.util.function.Supplier-), deprecated the `ForeignAccess.create` method with languageCheck `RootNode` parameter.
+
+## Version 1.0.0 RC9
+
+* Added support for setting the `ThreadGroup` and `stackSize` on truffle thread creation in `TruffleLanguage.Env.createThread`.
+* Added `Instrumenter.lookupExecutionEventNode()` to find an execution event node inserted at the node's location by an event binding.
+* Added `SourceElement.ROOT` and `StepConfig.suspendAnchors()` to tune debugger stepping.
+* Added `KeyInfo.READ_SIDE_EFFECTS` and `KeyInfo.WRITE_SIDE_EFFECTS` to inform about side-effects of READ/WRITE messages.
+* Added `DebugValue.hasReadSideEffects()` and `DebugValue.hasWriteSideEffects()` to test for side-effects of reading or writing the value.
+
 ## Version 1.0.0 RC8
 
 * Added `SuspendedEvent.setReturnValue` to change the return value of the currently executed source location.
 * Deprecated `FrameSlot#getIndex` without replacement.
 * Added `TruffleInstrument.Env.startServer()` to get a virtual message-based server provided via `MessageTransport` service.
+* Added `TruffleFile.relativize`, `TruffleFile.startsWith`, `TruffleFile.endsWith`, `TruffleFile.createLink`,  `TruffleFile.createSymbolicLink`, `TruffleFile.getOwner`, `TruffleFile.getGroup`, `TruffleFile.newDirectoryStream`, `TruffleFile.visit`, `TruffleFile.copy` methods.
 
 ## Version 1.0.0 RC7
+
 * Truffle was relicensed from GPLv2 with CPE to Universal Permissive License (UPL).
 * Made all Truffle DSL annotations retention policy CLASS instead of RUNTIME. Reflecting DSL annotations at runtime is no longer possible. It is recommended to use `@Introspectable` instead. 
 

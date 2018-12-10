@@ -50,7 +50,6 @@ import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.VEXPrefixConfig.
 import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.VEXPrefixConfig.WIG;
 import static org.graalvm.compiler.core.common.NumUtil.isByte;
 
-import jdk.vm.ci.code.Register.RegisterCategory;
 import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
 import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
@@ -60,6 +59,7 @@ import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.Register.RegisterCategory;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.PlatformKind;
 
@@ -721,6 +721,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
 
         @Override
         public void simdPrefix(Register xreg, Register nds, AMD64Address adr, int sizePrefix, int opcodeEscapePrefix, boolean isRexW) {
+            assert (!nds.isValid()) || nds.equals(xreg);
             if (sizePrefix > 0) {
                 emitByte(sizePrefix);
             }
@@ -738,6 +739,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
 
         @Override
         public void simdPrefix(Register dst, Register nds, Register src, int sizePrefix, int opcodeEscapePrefix, boolean isRexW) {
+            assert (!nds.isValid()) || nds.equals(dst) || nds.equals(src);
             if (sizePrefix > 0) {
                 emitByte(sizePrefix);
             }
@@ -808,7 +810,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
         public void simdPrefix(Register reg, Register nds, AMD64Address rm, int sizePrefix, int opcodeEscapePrefix, boolean isRexW) {
             assert reg.encoding < 16 : "encoding out of range: " + reg.encoding;
             assert nds.encoding < 16 : "encoding out of range: " + nds.encoding;
-            emitVEX(L128, sizePrefixToPP(sizePrefix), opcodeEscapePrefixToMMMMM(opcodeEscapePrefix), isRexW ? W1 : W0, getRXB(reg, rm), nds.isValid() ? nds.encoding : 0);
+            emitVEX(L128, sizePrefixToPP(sizePrefix), opcodeEscapePrefixToMMMMM(opcodeEscapePrefix), isRexW ? W1 : W0, getRXB(reg, rm), nds.isValid() ? nds.encoding : 0, true);
         }
 
         @Override
@@ -816,7 +818,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
             assert dst.encoding < 16 : "encoding out of range: " + dst.encoding;
             assert src.encoding < 16 : "encoding out of range: " + src.encoding;
             assert nds.encoding < 16 : "encoding out of range: " + nds.encoding;
-            emitVEX(L128, sizePrefixToPP(sizePrefix), opcodeEscapePrefixToMMMMM(opcodeEscapePrefix), isRexW ? W1 : W0, getRXB(dst, src), nds.isValid() ? nds.encoding : 0);
+            emitVEX(L128, sizePrefixToPP(sizePrefix), opcodeEscapePrefixToMMMMM(opcodeEscapePrefix), isRexW ? W1 : W0, getRXB(dst, src), nds.isValid() ? nds.encoding : 0, true);
         }
     }
 
@@ -900,8 +902,8 @@ public abstract class AMD64BaseAssembler extends Assembler {
      * This function automatically chooses the 2 or 3 byte encoding, based on the XBW flags and the
      * m-mmmm field.
      */
-    protected final void emitVEX(int l, int pp, int mmmmm, int w, int rxb, int vvvv) {
-        assert ((AMD64) target.arch).getFeatures().contains(CPUFeature.AVX) : "emitting VEX prefix on a CPU without AVX support";
+    protected final void emitVEX(int l, int pp, int mmmmm, int w, int rxb, int vvvv, boolean checkAVX) {
+        assert !checkAVX || ((AMD64) target.arch).getFeatures().contains(CPUFeature.AVX) : "emitting VEX prefix on a CPU without AVX support";
 
         assert l == L128 || l == L256 : "invalid value for VEX.L";
         assert pp == P_ || pp == P_66 || pp == P_F3 || pp == P_F2 : "invalid value for VEX.pp";
@@ -954,12 +956,12 @@ public abstract class AMD64BaseAssembler extends Assembler {
         }
     }
 
-    public final void vexPrefix(Register dst, Register nds, Register src, AVXSize size, int pp, int mmmmm, int w) {
-        emitVEX(getLFlag(size), pp, mmmmm, w, getRXB(dst, src), nds.isValid() ? nds.encoding() : 0);
+    public final void vexPrefix(Register dst, Register nds, Register src, AVXSize size, int pp, int mmmmm, int w, boolean checkAVX) {
+        emitVEX(getLFlag(size), pp, mmmmm, w, getRXB(dst, src), nds.isValid() ? nds.encoding() : 0, checkAVX);
     }
 
-    public final void vexPrefix(Register dst, Register nds, AMD64Address src, AVXSize size, int pp, int mmmmm, int w) {
-        emitVEX(getLFlag(size), pp, mmmmm, w, getRXB(dst, src), nds.isValid() ? nds.encoding() : 0);
+    public final void vexPrefix(Register dst, Register nds, AMD64Address src, AVXSize size, int pp, int mmmmm, int w, boolean checkAVX) {
+        emitVEX(getLFlag(size), pp, mmmmm, w, getRXB(dst, src), nds.isValid() ? nds.encoding() : 0, checkAVX);
     }
 
     protected static final class EVEXPrefixConfig {

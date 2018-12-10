@@ -1,5 +1,6 @@
 common_vm: ${common} ${vm_java} {
   setup: [
+    [set-export, SNAPSHOT_CATALOG, [mx, urlrewrite, "http://www.graalvm.org/catalog"]]
     [cd, ${vm_subdir}]
   ]
   logs: [
@@ -12,7 +13,8 @@ common_vm: ${common} ${vm_java} {
 common_vm_linux: ${common_vm} ${linux}  {
   packages: {
     gcc-build-essentials: "==4.9.1" # GCC 4.9.0 fails on cluster
-    make : ">=3.83"
+    make: ">=3.83"
+    binutils: "==2.23.2"
   }
 }
 
@@ -120,6 +122,30 @@ gate_vm_darwin: ${vm_darwin} {
   targets: [gate]
 }
 
+bench_vm_linux: ${vm_linux} {
+  targets: [bench, post-merge]
+}
+
+bench_vm_darwin: ${vm_darwin} {
+  targets: [bench, post-merge]
+}
+
+bench_daily_vm_linux: ${vm_linux} {
+  targets: [bench, daily]
+}
+
+bench_daily_vm_darwin: ${vm_darwin} {
+  targets: [bench, daily]
+}
+
+deploy_vm_linux: ${vm_linux} {
+  targets: [deploy, post-merge]
+}
+
+deploy_daily_vm_darwin: ${vm_darwin} {
+  targets: [deploy, daily]
+}
+
 deploy_vm_linux: ${vm_linux} {
   targets: [deploy, post-merge]
 }
@@ -133,7 +159,7 @@ mx_vm_installables: ${mx_vm_common} [--disable-libpolyglot, --disable-polyglot, 
 maven_deploy_vm: [--suite, vm, maven-deploy, --validate, none, --all-distribution-types, --with-suite-revisions-metadata, ${binaries-repository}]
 maven_deploy_dry_run_vm: [--suite, vm, maven-deploy, --dry-run, --validate, none, --all-distribution-types, --with-suite-revisions-metadata, ${binaries-repository}]
 
-full_vm_build_linux: ${svm-common-linux} ${sulong_linux} ${truffleruby_linux} ${fastr_linux} ${graalpython_linux} ${custom_vm_linux}
+full_vm_build_linux: ${svm-common-linux-amd64} ${sulong_linux} ${truffleruby_linux} ${fastr_linux} ${graalpython_linux} ${custom_vm_linux}
 full_vm_build_darwin: ${svm-common-darwin} ${sulong_darwin} ${truffleruby_darwin} ${fastr_darwin} ${graalpython_darwin} ${custom_vm_darwin}
 
 builds += [
@@ -172,7 +198,7 @@ builds += [
     timelimit: "1:30:00"
     name: deploy-vm-base-darwin-amd64
   },
-  ${svm-common-linux} ${sulong_linux} ${custom_vm_linux} ${gate_vm_linux} {
+  ${svm-common-linux-amd64} ${sulong_linux} ${custom_vm_linux} ${gate_vm_linux} {
     run: [
       [export, "SVM_SUITE="${svm_suite}]
       [export, "NATIVE_IMAGE_TESTING=True"]
@@ -181,7 +207,7 @@ builds += [
     timelimit: "35:00"
     name: gate-vm-native-sulong
   },
-  ${svm-common-linux} ${sulong_linux} ${truffleruby_linux} ${custom_vm_linux} ${gate_vm_linux} {
+  ${svm-common-linux-amd64} ${sulong_linux} ${truffleruby_linux} ${custom_vm_linux} ${gate_vm_linux} {
     run: [
       [git, clone, --depth, "1", [mx, urlrewrite, "https://github.com/oracle/truffleruby.git"], "../../truffleruby"]
       [export, "SVM_SUITE="${svm_suite}]
@@ -191,7 +217,7 @@ builds += [
     timelimit: "35:00"
     name: gate-vm-native-truffleruby-tip
   },
-  ${svm-common-linux} ${sulong_linux} ${truffleruby_linux} ${custom_vm_linux} ${vm_linux} {
+  ${svm-common-linux-amd64} ${sulong_linux} ${truffleruby_linux} ${custom_vm_linux} ${vm_linux} {
     targets: [daily]
     run: [
       [export, "SVM_SUITE="${svm_suite}]
@@ -201,7 +227,7 @@ builds += [
     timelimit: "35:00"
     name: daily-vm-native-truffleruby
   },
-  ${svm-common-linux} ${sulong_linux} ${graalpython_linux} ${custom_vm_linux} ${gate_vm_linux} {
+  ${svm-common-linux-amd64} ${sulong_linux} ${graalpython_linux} ${custom_vm_linux} ${gate_vm_linux} {
     run: [
       [git, clone, --depth, "1", [mx, urlrewrite, "https://github.com/oracle/graalpython.git"], "../../graalpython"]
       [export, "SVM_SUITE="${svm_suite}]
@@ -211,7 +237,7 @@ builds += [
     timelimit: "35:00"
     name: gate-vm-native-graalpython-tip
   },
-  ${svm-common-linux} ${sulong_linux} ${graalpython_linux} ${custom_vm_linux} ${vm_linux} {
+  ${svm-common-linux-amd64} ${sulong_linux} ${graalpython_linux} ${custom_vm_linux} ${vm_linux} {
     targets: [daily]
     run: [
       [export, "SVM_SUITE="${svm_suite}]

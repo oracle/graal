@@ -89,4 +89,7 @@ public abstract class Heap {
 
     /** Get the MemoryMXBean for this heap. */
     public abstract MemoryMXBean getMemoryMXBean();
+
+    /** Tear down the heap, return all allocated virtual memory chunks to VirtualMemoryProvider. */
+    public abstract void tearDown();
 }

@@ -40,11 +40,11 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.ObjectHandles;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
-import org.graalvm.nativeimage.c.function.CEntryPointContext;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
@@ -1412,7 +1412,7 @@ public final class PolyglotNativeAPI {
                 }
                 PolyglotCallbackInfo cbInfo = (PolyglotCallbackInfo) createHandle(new PolyglotCallbackInfoInternal(handleArgs, data));
                 try {
-                    PolyglotValue result = callback.invoke((PolyglotIsolateThread) CEntryPointContext.getCurrentIsolateThread(), cbInfo);
+                    PolyglotValue result = callback.invoke((PolyglotIsolateThread) CurrentIsolate.getCurrentThread(), cbInfo);
                     CallbackException ce = exceptionsTL.get();
                     if (ce != null) {
                         exceptionsTL.remove();

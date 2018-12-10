@@ -32,7 +32,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
 
-import com.oracle.svm.core.amd64.FrameAccess;
+import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.util.VMError;
 

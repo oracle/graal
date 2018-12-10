@@ -40,9 +40,25 @@
  */
 package com.oracle.truffle.api.debug.test;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.URI;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -52,7 +68,12 @@ import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
+import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.test.GCUtils;
 import com.oracle.truffle.api.test.ReflectionUtils;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 
@@ -496,4 +517,215 @@ public class DebuggerSessionTest extends AbstractDebugTest {
         session.getDebugger();
     }
 
+    @Test
+    public void testNoContentSource() {
+        TestDebugNoContentLanguage language = new TestDebugNoContentLanguage("relative/test", true, true);
+        ProxyLanguage.setDelegate(language);
+        try (DebuggerSession session = tester.startSession()) {
+            session.suspendNextExecution();
+            Source source = Source.create(ProxyLanguage.ID, "relative source\nVarA");
+            tester.startEval(source);
+            expectSuspended((SuspendedEvent event) -> {
+                SourceSection sourceSection = event.getSourceSection();
+                Assert.assertTrue(sourceSection.isAvailable());
+                Assert.assertTrue(sourceSection.hasLines());
+                Assert.assertTrue(sourceSection.hasColumns());
+                Assert.assertFalse(sourceSection.hasCharIndex());
+                Assert.assertFalse(sourceSection.getSource().hasCharacters());
+                Assert.assertEquals(1, sourceSection.getStartLine());
+                Assert.assertEquals(1, sourceSection.getStartColumn());
+                Assert.assertEquals(1, sourceSection.getEndLine());
+                Assert.assertEquals(15, sourceSection.getEndColumn());
+
+                URI uri = sourceSection.getSource().getURI();
+                Assert.assertFalse(uri.toString(), uri.isAbsolute());
+                Assert.assertEquals("relative/test", uri.getPath());
+
+                sourceSection = event.getTopStackFrame().getSourceSection();
+                Assert.assertTrue(sourceSection.isAvailable());
+                Assert.assertFalse(sourceSection.getSource().hasCharacters());
+                Assert.assertSame(uri, sourceSection.getSource().getURI());
+
+                sourceSection = event.getTopStackFrame().getScope().getDeclaredValue("a").getSourceLocation();
+                Assert.assertTrue(sourceSection.isAvailable());
+                Assert.assertFalse(sourceSection.getSource().hasCharacters());
+                Assert.assertSame(uri, sourceSection.getSource().getURI());
+
+                event.prepareContinue();
+            });
+        }
+        expectDone();
+    }
+
+    @Test
+    public void testSourcePath() throws IOException {
+        String sourceContent = "\n  relative source\nVarA";
+        Source source = Source.newBuilder(ProxyLanguage.ID, sourceContent, "file").cached(false).build();
+        String relativePath = "relative/test.file";
+        Path testSourcePath = Files.createTempDirectory("testPath");
+        Files.createDirectory(testSourcePath.resolve("relative"));
+        Path filePath = testSourcePath.resolve(relativePath);
+        Files.write(filePath, sourceContent.getBytes());
+        URI resolvedURI = testSourcePath.resolve(relativePath).toUri();
+        boolean[] trueFalse = new boolean[]{true, false};
+        try (DebuggerSession session = tester.startSession()) {
+            session.setSourcePath(Arrays.asList(testSourcePath.toUri()));
+            for (boolean lineInfo : trueFalse) {
+                for (boolean columnInfo : trueFalse) {
+                    if (columnInfo && !lineInfo) {
+                        continue;
+                    }
+                    TestDebugNoContentLanguage language = new TestDebugNoContentLanguage(relativePath, lineInfo, columnInfo);
+                    ProxyLanguage.setDelegate(language);
+                    session.suspendNextExecution();
+                    tester.startEval(source);
+                    expectSuspended((SuspendedEvent event) -> {
+                        SourceSection sourceSection = event.getSourceSection();
+                        URI uri = sourceSection.getSource().getURI();
+                        Assert.assertTrue(uri.toString(), uri.isAbsolute());
+                        Assert.assertEquals(resolvedURI, uri);
+                        checkResolvedSourceSection(sourceSection, 2, 3, 17, 3, 15);
+                        Assert.assertEquals(sourceContent, sourceSection.getSource().getCharacters().toString());
+                        Assert.assertEquals(sourceContent.substring(3, sourceContent.indexOf('\n', 3)), sourceSection.getCharacters().toString());
+
+                        sourceSection = event.getTopStackFrame().getSourceSection();
+                        Assert.assertTrue(sourceSection.isAvailable());
+                        Assert.assertTrue(sourceSection.getSource().hasCharacters());
+                        Assert.assertEquals(sourceContent.substring(3, sourceContent.indexOf('\n', 3)), sourceSection.getCharacters().toString());
+                        checkResolvedSourceSection(sourceSection, 2, 3, 17, 3, 15);
+
+                        sourceSection = event.getTopStackFrame().getScope().getDeclaredValue("a").getSourceLocation();
+                        Assert.assertTrue(sourceSection.isAvailable());
+                        Assert.assertTrue(sourceSection.getSource().hasCharacters());
+                        Assert.assertEquals(sourceContent.substring(sourceContent.lastIndexOf('\n') + 1), sourceSection.getCharacters().toString());
+                        checkResolvedSourceSection(sourceSection, 3, 1, 4, 19, 4);
+                        event.prepareContinue();
+                    });
+                    expectDone();
+                }
+            }
+        } finally {
+            deleteRecursively(testSourcePath);
+        }
+    }
+
+    @Test
+    public void testSourcePathZip() throws IOException {
+        String sourceContent = "\n  relative source\nVarA";
+        Source source = Source.newBuilder(ProxyLanguage.ID, sourceContent, "file").cached(false).build();
+        String relativePath = "relative/test.file";
+        File zip = File.createTempFile("TestZip", ".zip");
+        zip.deleteOnExit();
+        try (ZipOutputStream out = new ZipOutputStream(new FileOutputStream(zip))) {
+            ZipEntry e = new ZipEntry("src/" + relativePath);
+            out.putNextEntry(e);
+            byte[] data = sourceContent.getBytes();
+            out.write(data, 0, data.length);
+            out.closeEntry();
+        }
+        URI sourcePathURI;
+        URI resolvedURI;
+        try (FileSystem fs = FileSystems.newFileSystem(zip.toPath(), null)) {
+            Path spInZip = fs.getPath("src");
+            sourcePathURI = spInZip.toUri();
+            resolvedURI = fs.getPath("src", relativePath).toUri();
+        }
+        boolean[] trueFalse = new boolean[]{true, false};
+        try (DebuggerSession session = tester.startSession()) {
+            session.setSourcePath(Arrays.asList(sourcePathURI));
+            for (boolean lineInfo : trueFalse) {
+                for (boolean columnInfo : trueFalse) {
+                    if (columnInfo && !lineInfo) {
+                        continue;
+                    }
+                    TestDebugNoContentLanguage language = new TestDebugNoContentLanguage(relativePath, lineInfo, columnInfo);
+                    ProxyLanguage.setDelegate(language);
+                    session.suspendNextExecution();
+                    tester.startEval(source);
+                    expectSuspended((SuspendedEvent event) -> {
+                        SourceSection sourceSection = event.getSourceSection();
+                        URI uri = sourceSection.getSource().getURI();
+                        Assert.assertTrue(uri.toString(), uri.isAbsolute());
+                        Assert.assertEquals(resolvedURI, uri);
+                        checkResolvedSourceSection(sourceSection, 2, 3, 17, 3, 15);
+                        Assert.assertEquals(sourceContent, sourceSection.getSource().getCharacters().toString());
+                        Assert.assertEquals(sourceContent.substring(3, sourceContent.indexOf('\n', 3)), sourceSection.getCharacters().toString());
+
+                        event.prepareContinue();
+                    });
+                    expectDone();
+                }
+            }
+        }
+    }
+
+    private static void checkResolvedSourceSection(SourceSection sourceSection, int line, int col1, int col2, int cind, int clen) {
+        Assert.assertTrue(sourceSection.isAvailable());
+        Assert.assertTrue(sourceSection.hasLines());
+        Assert.assertTrue(sourceSection.hasColumns());
+        Assert.assertTrue(sourceSection.hasCharIndex());
+        Assert.assertTrue(sourceSection.getSource().hasCharacters());
+        Assert.assertEquals(line, sourceSection.getStartLine());
+        Assert.assertEquals(col1, sourceSection.getStartColumn());
+        Assert.assertEquals(line, sourceSection.getEndLine());
+        Assert.assertEquals(col2, sourceSection.getEndColumn());
+        Assert.assertEquals(cind, sourceSection.getCharIndex());
+        Assert.assertEquals(cind + clen, sourceSection.getCharEndIndex());
+        Assert.assertEquals(clen, sourceSection.getCharLength());
+    }
+
+    @Test
+    public void testDebuggedSourcesCanBeReleasedAbsolute() {
+        testDebuggedSourcesCanBeReleased(() -> {
+            return Source.newBuilder(InstrumentationTestLanguage.ID, "STATEMENT", "file").cached(false).buildLiteral();
+        });
+    }
+
+    @Test
+    public void testDebuggedSourcesCanBeReleasedRelative() throws IOException {
+        String sourceContent = "\n  relative source\nVarA";
+        String relativePath = "relative/test.file";
+        Path testSourcePath = Files.createTempDirectory("testPath");
+        Files.createDirectory(testSourcePath.resolve("relative"));
+        Path filePath = testSourcePath.resolve(relativePath);
+        Files.write(filePath, sourceContent.getBytes());
+        testDebuggedSourcesCanBeReleased(() -> {
+            TestDebugNoContentLanguage language = new TestDebugNoContentLanguage(relativePath, true, true);
+            ProxyLanguage.setDelegate(language);
+            return Source.newBuilder(ProxyLanguage.ID, sourceContent, "file").cached(false).buildLiteral();
+        });
+    }
+
+    private void testDebuggedSourcesCanBeReleased(Supplier<Source> sourceFactory) {
+        try (DebuggerSession session = tester.startSession()) {
+            GCUtils.assertObjectsCollectible(iteration -> {
+                session.suspendNextExecution();
+                Source source = sourceFactory.get();
+                AtomicReference<com.oracle.truffle.api.source.Source> truffleSource = new AtomicReference<>();
+                tester.startEval(source);
+                expectSuspended((SuspendedEvent event) -> {
+                    SourceSection sourceSection = event.getSourceSection();
+                    truffleSource.set(sourceSection.getSource());
+                });
+                expectDone();
+                return truffleSource.get();
+            });
+        }
+    }
+
+    private static void deleteRecursively(Path path) throws IOException {
+        Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                Files.delete(file);
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                Files.delete(dir);
+                return FileVisitResult.CONTINUE;
+            }
+        });
+    }
 }

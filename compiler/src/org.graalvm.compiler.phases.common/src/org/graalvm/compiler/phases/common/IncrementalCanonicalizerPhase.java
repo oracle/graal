@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,7 +28,7 @@ import org.graalvm.compiler.graph.Graph.NodeEventScope;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.PhaseSuite;
-import org.graalvm.compiler.phases.common.util.HashSetNodeEventListener;
+import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
 
 /**
@@ -51,7 +51,7 @@ public class IncrementalCanonicalizerPhase<C extends PhaseContext> extends Phase
     @Override
     @SuppressWarnings("try")
     protected void run(StructuredGraph graph, C context) {
-        HashSetNodeEventListener listener = new HashSetNodeEventListener();
+        EconomicSetNodeEventListener listener = new EconomicSetNodeEventListener();
         try (NodeEventScope nes = graph.trackNodeEvents(listener)) {
             super.run(graph, context);
         }

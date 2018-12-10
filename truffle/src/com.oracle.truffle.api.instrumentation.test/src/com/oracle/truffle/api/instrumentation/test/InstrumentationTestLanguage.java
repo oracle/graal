@@ -145,7 +145,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * </ul>
  * </p>
  */
-@Registration(id = InstrumentationTestLanguage.ID, name = "", version = "2.0")
+@Registration(id = InstrumentationTestLanguage.ID, name = InstrumentationTestLanguage.NAME, version = "2.0")
 @ProvidedTags({StandardTags.ExpressionTag.class, DefineTag.class, LoopTag.class,
                 StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class,
                 StandardTags.TryBlockTag.class, BlockTag.class, ConstantTag.class})
@@ -153,6 +153,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                 implements SpecialService {
 
     public static final String ID = "instrumentation-test-language";
+    public static final String NAME = "Instrumentation Test Language";
     public static final String FILENAME_EXTENSION = ".titl";
 
     @Identifier("DEFINE")
@@ -1206,6 +1207,20 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         }
     }
 
+    private static class AllocatedObject implements TruffleObject {
+
+        final String metaObject;
+
+        AllocatedObject(String name) {
+            this.metaObject = name;
+        }
+
+        public ForeignAccess getForeignAccess() {
+            return null;
+        }
+
+    }
+
     private static class AllocationNode extends InstrumentedNode {
 
         AllocationNode(BaseNode[] children) {
@@ -1214,9 +1229,11 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         @Override
         public Object execute(VirtualFrame frame) {
-            getCurrentContext(InstrumentationTestLanguage.class).allocationReporter.onEnter(null, 0, 1);
-            getCurrentContext(InstrumentationTestLanguage.class).allocationReporter.onReturnValue("Not Important", 0, 1);
-            return null;
+            AllocationReporter reporter = getCurrentContext(InstrumentationTestLanguage.class).allocationReporter;
+            Object allocatedObject = new AllocatedObject("Integer");
+            reporter.onEnter(null, 0, 1);
+            reporter.onReturnValue(allocatedObject, 0, 1);
+            return allocatedObject;
         }
     }
 
@@ -1411,30 +1428,30 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         private final String name;
         private final Object value;
-        private final ContextReference<InstrumentContext> contextRef;
 
         @CompilationFinal private FrameSlot slot;
+        final AllocationReporter allocationReporter;
 
         private VariableNode(String name, String identifier, BaseNode[] children, ContextReference<InstrumentContext> contextRef) {
             super(children);
             this.name = name;
             this.value = parseIdent(identifier);
-            this.contextRef = contextRef;
+            this.allocationReporter = contextRef.get().allocationReporter;
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
-            if (contextRef.get().allocationReporter.isActive()) {
+            if (allocationReporter.isActive()) {
                 // Pretend we're allocating the value, for tests
-                contextRef.get().allocationReporter.onEnter(null, 0, getValueSize());
+                allocationReporter.onEnter(null, 0, getValueSize());
             }
             if (slot == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 slot = frame.getFrameDescriptor().findOrAddFrameSlot(name);
             }
             frame.setObject(slot, value);
-            if (contextRef.get().allocationReporter.isActive()) {
-                contextRef.get().allocationReporter.onReturnValue(value, 0, getValueSize());
+            if (allocationReporter.isActive()) {
+                allocationReporter.onReturnValue(value, 0, getValueSize());
             }
             super.execute(frame);
             return value;
@@ -1642,6 +1659,9 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         }
         if (obj instanceof Boolean) {
             return "Boolean";
+        }
+        if (obj instanceof AllocatedObject) {
+            return ((AllocatedObject) obj).metaObject;
         }
         if (obj != null && obj.equals(Double.POSITIVE_INFINITY)) {
             return "Infinity";

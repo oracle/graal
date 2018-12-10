@@ -79,7 +79,7 @@ public final class DebugContext {
             CallTarget target = debugger.getEnv().parse(Source.newBuilder(languageId, code, "eval").build());
             Object result = target.call();
             LanguageInfo languageInfo = debugger.getEnv().getLanguages().get(languageId);
-            return new DebugValue.HeapValue(debugger, languageInfo, null, result);
+            return new DebugValue.HeapValue(executionLifecycle.getSession(), languageInfo, null, result);
         } catch (IOException ex) {
             throw new RuntimeException(ex);
         } finally {

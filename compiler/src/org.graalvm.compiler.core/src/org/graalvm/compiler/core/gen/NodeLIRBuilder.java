@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -366,6 +366,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
             for (int i = 0; i < nodes.size(); i++) {
                 Node node = nodes.get(i);
                 if (node instanceof ValueNode) {
+                    setSourcePosition(node.getNodeSourcePosition());
                     DebugContext debug = node.getDebug();
                     ValueNode valueNode = (ValueNode) node;
                     if (trace) {
@@ -387,6 +388,8 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
                         debug.log("interior match for %s", valueNode);
                     } else if (operand instanceof ComplexMatchValue) {
                         debug.log("complex match for %s", valueNode);
+                        // Set current position to the position of the root matched node.
+                        setSourcePosition(node.getNodeSourcePosition());
                         ComplexMatchValue match = (ComplexMatchValue) operand;
                         operand = match.evaluate(this);
                         if (operand != null) {
@@ -466,7 +469,6 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         if (node.getDebug().isLogEnabled() && node.stamp(NodeView.DEFAULT).isEmpty()) {
             node.getDebug().log("This node has an empty stamp, we are emitting dead code(?): %s", node);
         }
-        setSourcePosition(node.getNodeSourcePosition());
         if (node instanceof LIRLowerable) {
             ((LIRLowerable) node).generate(this);
         } else {

@@ -39,12 +39,10 @@ import com.oracle.svm.hosted.c.info.NativeCodeInfo;
 import com.oracle.svm.hosted.c.info.RawStructureInfo;
 import com.oracle.svm.hosted.c.info.StructBitfieldInfo;
 import com.oracle.svm.hosted.c.info.StructFieldInfo;
-import com.oracle.svm.hosted.c.info.AccessorInfo.AccessorKind;
 import com.oracle.svm.hosted.c.info.SizableInfo.ElementKind;
 import com.oracle.svm.hosted.c.info.SizableInfo.SignednessValue;
 
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class RawStructureLayoutPlanner extends InfoTreeVisitor {
@@ -74,7 +72,7 @@ public final class RawStructureLayoutPlanner extends InfoTreeVisitor {
             return;
         }
 
-        ResolvedJavaType type = (ResolvedJavaType) info.getAnnotatedElement();
+        ResolvedJavaType type = info.getAnnotatedElement();
         for (ResolvedJavaType t : type.getInterfaces()) {
             if (!nativeLibs.isPointerBase(t)) {
                 throw UserError.abort("Type " + type + " must not implement " + t);
@@ -115,21 +113,22 @@ public final class RawStructureLayoutPlanner extends InfoTreeVisitor {
     }
 
     private void computeSize(StructFieldInfo info) {
-        AccessorInfo ainfo = info.getAccessorInfo();
+        AccessorInfo accessor = info.getAccessorInfo();
 
         /**
          * Resolve field size using the declared type in its accessors. Note that the field offsets
          * are not calculated before visiting all StructFieldInfos and collecting all field types.
          */
-        ResolvedJavaMethod accessor = (ResolvedJavaMethod) ainfo.getAnnotatedElement();
-        ResolvedJavaType fieldType;
-
-        if (ainfo.getAccessorKind() == AccessorKind.GETTER) {
-            fieldType = (ResolvedJavaType) accessor.getSignature().getReturnType(null);
-        } else if (ainfo.getAccessorKind() == AccessorKind.SETTER) {
-            fieldType = (ResolvedJavaType) accessor.getSignature().getParameterType(ainfo.valueParameterNumber(false), null);
-        } else {
-            throw shouldNotReachHere("Unexpected accessor kind " + ainfo.getAccessorKind());
+        final ResolvedJavaType fieldType;
+        switch (accessor.getAccessorKind()) {
+            case GETTER:
+                fieldType = accessor.getReturnType();
+                break;
+            case SETTER:
+                fieldType = accessor.getValueParameterType();
+                break;
+            default:
+                throw shouldNotReachHere("Unexpected accessor kind " + accessor.getAccessorKind());
         }
 
         TargetDescription target = nativeLibs.getTarget();

@@ -13,6 +13,15 @@ gateTest : {
   ]
 }
 
+gateCoverage : {
+  environment : {
+    EXTRA_VM_ARGS : ""
+  }
+  run : [
+    ${gateCmd} ["build,coverage", --jacoco-zip, report.zip]
+  ]
+}
+
 gateJavaBaseTest : {
   environment : {
     EXTRA_VM_ARGS : ""
@@ -25,6 +34,24 @@ gateJavaBaseTest : {
 gateTestMaxVS : ${gateTest} {
   environment : {
     EXTRA_VM_ARGS : "-Dgraal.DetailedAsserts=true -XX:MaxVectorSize=16"
+  }
+}
+
+gateTestAVX0 : ${gateTest} {
+  environment : {
+    EXTRA_VM_ARGS : "-XX:UseAVX=0"
+  }
+}
+
+gateTestAVX1 : ${gateTest} {
+  environment : {
+    EXTRA_VM_ARGS : "-XX:UseAVX=1"
+  }
+}
+
+gateTestCompileImmediately : ${gateTest} {
+  environment : {
+    EXTRA_VM_ARGS : "-Dgraal.TruffleBackgroundCompilation=false -Dgraal.TruffleCompileImmediately=true"
   }
 }
 
@@ -115,24 +142,6 @@ gateLinuxAArch64 : ${linux-aarch64} ${gateCommon} {
   }
 }
 
-gateLinuxAMD64TraceRA : ${gateLinuxAMD64} {
-  environment : {
-    EXTRA_VM_ARGS : "-Dgraal.TraceRA=true"
-  }
-}
-
-gateLinuxAMD64TraceRABU : ${gateLinuxAMD64} {
-  environment : {
-    EXTRA_VM_ARGS : "-Dgraal.TraceRA=true -Dgraal.TraceRAPolicy=BottomUpOnly"
-  }
-}
-
-gateLinuxAMD64TraceRASingleBlock : ${gateLinuxAMD64} {
-  environment : {
-    EXTRA_VM_ARGS : "-Dgraal.TraceRA=true -Dgraal.TraceRAPolicy=BottomUpOnly -Dgraal.TraceBuilding=SingleBlock"
-  }
-}
-
 gateJAOTC : {
   environment : {
     EXTRA_VM_ARGS : ""
@@ -146,5 +155,3 @@ gateLinuxAMD64Bootstrap : ${gateLinuxAMD64} { capabilities : ${gateLinuxAMD64.ca
 gateDarwinAMD64Bootstrap : ${gateDarwinAMD64}
 gateSolarisSPARCBootstrap : ${gateSolarisSPARC} { capabilities : ${gateSolarisSPARC.capabilities} [manycores] }
 gateLinuxSPARCBootstrap : ${gateLinuxSPARC} # No manycore
-gateLinuxAMD64TraceRABootstrap : ${gateLinuxAMD64TraceRA} { capabilities : ${gateLinuxAMD64TraceRA.capabilities} [manycores] }
-gateLinuxAMD64TraceRABUBootstrap : ${gateLinuxAMD64TraceRABU} { capabilities : ${gateLinuxAMD64TraceRABU.capabilities} [manycores] }

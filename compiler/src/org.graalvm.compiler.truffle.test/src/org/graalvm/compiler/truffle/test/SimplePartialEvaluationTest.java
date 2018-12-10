@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,8 +27,10 @@ package org.graalvm.compiler.truffle.test;
 import org.graalvm.compiler.core.common.GraalBailoutException;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.replacements.PEGraphDecoder;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
+import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.AddTestNode;
 import org.graalvm.compiler.truffle.test.nodes.BlockTestNode;
@@ -54,7 +56,9 @@ import org.graalvm.compiler.truffle.test.nodes.StringHashCodeFinalNode;
 import org.graalvm.compiler.truffle.test.nodes.StringHashCodeNonFinalNode;
 import org.graalvm.compiler.truffle.test.nodes.SynchronizedExceptionMergeNode;
 import org.graalvm.compiler.truffle.test.nodes.TwoMergesExplodedLoopTestNode;
+import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -63,6 +67,18 @@ import com.oracle.truffle.api.nodes.RootNode;
 import jdk.vm.ci.code.BailoutException;
 
 public class SimplePartialEvaluationTest extends PartialEvaluationTest {
+
+    private static TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope immediateCompilationScope;
+
+    @BeforeClass
+    public static void setup() {
+        immediateCompilationScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleCompileImmediately, false);
+    }
+
+    @AfterClass
+    public static void tearDown() {
+        immediateCompilationScope.close();
+    }
 
     public static Object constant42() {
         return 42;

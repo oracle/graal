@@ -187,18 +187,18 @@ public class TypedExportTest extends InteropTestBase {
             Value primArray = nested.getMember("primArray");
             for (int i = 0; i < primArray.getArraySize(); i++) {
                 long value = 5 * i + 3;
-                expected = 13 * expected + value;
+                expected = 13L * expected + value;
                 primArray.setArrayElement(i, value);
             }
 
             Value pointArray = nested.getMember("pointArray");
             for (int i = 0; i < pointArray.getArraySize(); i++) {
                 Value point = pointArray.getArrayElement(i);
-                long x = 7 * i + 2;
+                long x = 7L * i + 2;
                 point.putMember("x", x);
                 expected = 13 * expected + x;
 
-                long y = 7 * i + 5;
+                long y = 7L * i + 5;
                 point.putMember("y", y);
                 expected = 13 * expected + y;
             }
@@ -206,11 +206,11 @@ public class TypedExportTest extends InteropTestBase {
             Value ptrArray = nested.getMember("ptrArray");
             for (int i = 0; i < ptrArray.getArraySize(); i++) {
                 Value point = ptrArray.getArrayElement(i);
-                long x = 11 * i + 3;
+                long x = 11L * i + 3;
                 point.putMember("x", x);
                 expected = 13 * expected + x;
 
-                long y = 11 * i + 7;
+                long y = 11L * i + 7;
                 point.putMember("y", y);
                 expected = 13 * expected + y;
             }

@@ -30,6 +30,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 /**
  * A class annotated with this annotation denotes a class that modifies methods of fields of another
@@ -104,17 +105,19 @@ public @interface TargetClass {
     /**
      * Specifies the suffix of the substitutee class name when it is an inner class.
      */
-    String innerClass() default "";
+    String[] innerClass() default {};
 
     /**
-     * Substitute only if predicates are true (default: unconditional substitutions).
+     * Substitute only if all provided predicates are true (default: unconditional substitution that
+     * is always included).
+     *
+     * The classes must either implement {@link BooleanSupplier} or {@link Predicate}&lt;String&gt;
+     * (the parameter for {@link Predicate#test} is the "original" class name as a {@link String}).
      */
-    Class<? extends BooleanSupplier>[] onlyWith() default DefaultTargetClassPredicate.class;
+    Class<?>[] onlyWith() default TargetClass.AlwaysIncluded.class;
 
-    Class<? extends BooleanSupplier> DEFAULT_TARGETCLASS_PREDICATE = DefaultTargetClassPredicate.class;
-
-    /** A <@link BooleanSupplier} that always returns {@code true}. */
-    class DefaultTargetClassPredicate implements BooleanSupplier {
+    /** The default value for the {@link TargetClass#onlyWith()} attribute. */
+    class AlwaysIncluded implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
             return true;

@@ -24,10 +24,11 @@
  */
 package com.oracle.svm.hosted.meta;
 
+import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.core.amd64.FrameAccess;
+import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.graal.meta.SubstrateSnippetReflectionProvider;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -41,7 +42,8 @@ public class HostedSnippetReflectionProvider extends SubstrateSnippetReflectionP
 
     private final SVMHost hostVM;
 
-    public HostedSnippetReflectionProvider(SVMHost hostVM) {
+    public HostedSnippetReflectionProvider(SVMHost hostVM, WordTypes wordTypes) {
+        super(wordTypes);
         this.hostVM = hostVM;
     }
 

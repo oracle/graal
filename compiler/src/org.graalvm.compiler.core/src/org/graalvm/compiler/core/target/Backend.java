@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,6 +44,7 @@ import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.tiers.SuitesProvider;
 import org.graalvm.compiler.phases.tiers.TargetProvider;
 import org.graalvm.compiler.phases.util.Providers;
@@ -153,7 +154,7 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
      * Turns a Graal {@link CompilationResult} into a {@link CompiledCode} object that can be passed
      * to the VM for code installation.
      */
-    protected abstract CompiledCode createCompiledCode(ResolvedJavaMethod method, CompilationRequest compilationRequest, CompilationResult compilationResult);
+    protected abstract CompiledCode createCompiledCode(ResolvedJavaMethod method, CompilationRequest compilationRequest, CompilationResult compilationResult, boolean isDefault, OptionValues options);
 
     /**
      * @see #createInstalledCode(DebugContext, ResolvedJavaMethod, CompilationRequest,
@@ -213,7 +214,7 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
             InstalledCode installedCode;
             try {
                 preCodeInstallationTasks(tasks, compilationResult);
-                CompiledCode compiledCode = createCompiledCode(method, compilationRequest, compilationResult);
+                CompiledCode compiledCode = createCompiledCode(method, compilationRequest, compilationResult, isDefault, debug.getOptions());
                 installedCode = getProviders().getCodeCache().installCode(method, compiledCode, predefinedInstalledCode, speculationLog, isDefault);
                 assert predefinedInstalledCode == null || installedCode == predefinedInstalledCode;
             } catch (Throwable t) {

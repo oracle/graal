@@ -326,6 +326,12 @@ GRAALVM_VERSION={version}""".format(
             commit_info=json.dumps(_commit_info, sort_keys=True),
             version=_suite.release_version()
         )
+
+        if not _suite.is_release():
+            snapshot_catalog = _snapshot_catalog()
+            if snapshot_catalog:
+                _metadata += "\ncomponent_catalog={}/{}".format(snapshot_catalog, _suite.vc.parent(_suite.vc_dir))
+
         return _metadata
 
 
@@ -361,7 +367,7 @@ class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, mx.LayoutTARDistr
             config_components_set = set(config_components)
             config_additional_components = sorted(components_set - config_components_set)
             if config_components_set <= components_set and len(config_additional_components) <= len(vm_config_additional_components):
-                vm_config_name = config_name
+                vm_config_name = config_name.replace('-', '_')
                 vm_config_additional_components = config_additional_components
 
         name = (base_name + (('_' + vm_config_name) if vm_config_name else '') + ('_' if vm_config_additional_components else '') + '_'.join(vm_config_additional_components)).upper()
@@ -388,37 +394,44 @@ class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, mx.LayoutTARDistr
             **kw_args)
 
     def getBuildTask(self, args):
-        return GraalVmLayoutDistributionTask(args, self, join(_suite.dir, 'latest_graalvm'))
+        return GraalVmLayoutDistributionTask(args, self, 'latest_graalvm', 'latest_graalvm_home')
 
 
 class GraalVmLayoutDistributionTask(mx.LayoutArchiveTask):
-    def __init__(self, args, dist, link_path):
-        self._link_path = link_path
+    def __init__(self, args, dist, root_link_name, home_link_name):
+        self._root_link_path = join(_suite.dir, root_link_name)
+        self._home_link_path = join(_suite.dir, home_link_name)
         super(GraalVmLayoutDistributionTask, self).__init__(args, dist)
 
     def _add_link(self):
         self._rm_link()
-        os.symlink(self._link_target(), self._link_path)
+        os.symlink(self._root_link_target(), self._root_link_path)
+        os.symlink(self._home_link_target(), self._home_link_path)
 
-    def _link_target(self):
+    def _root_link_target(self):
         return relpath(self.subject.output, _suite.dir)
 
+    def _home_link_target(self):
+        return relpath(join(self.subject.output, self.subject.jdk_base), _suite.dir)
+
     def _rm_link(self):
-        if os.path.lexists(self._link_path):
-            os.unlink(self._link_path)
+        for l in [self._root_link_path, self._home_link_path]:
+            if os.path.lexists(l):
+                os.unlink(l)
 
     def needsBuild(self, newestInput):
         sup = super(GraalVmLayoutDistributionTask, self).needsBuild(newestInput)
         if sup[0]:
             return sup
-        if not os.path.lexists(self._link_path):
-            return True, '{} does not exist'.format(self._link_path)
-        link_file = mx.TimeStampFile(self._link_path, False)
-        if link_file.isOlderThan(self.subject.output):
-            return True, '{} is older than {}'.format(link_file, newestInput)
-        if self.subject == get_final_graalvm_distribution():
-            if self._link_target() != os.readlink(self._link_path):
-                return True, '{} is pointing to the wrong directory'.format(link_file)
+        for link_path, link_target in [(self._root_link_path, self._root_link_target()), (self._home_link_path, self._home_link_target())]:
+            if not os.path.lexists(link_path):
+                return True, '{} does not exist'.format(link_path)
+            link_file = mx.TimeStampFile(link_path, False)
+            if link_file.isOlderThan(self.subject.output):
+                return True, '{} is older than {}'.format(link_file, newestInput)
+            if self.subject == get_final_graalvm_distribution():
+                if link_target != os.readlink(link_path):
+                    return True, '{} is pointing to the wrong directory'.format(link_file)
         return False, None
 
     def build(self):
@@ -1033,6 +1046,9 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
         if self.subject.deps:
             build_args += ['-cp', mx.classpath(self.subject.native_image_jar_distributions)]
         build_args += self.subject.build_args()
+        build_args += ['-H:NumberOfThreads={}'.format(self.parallelism)]
+        if _extra_image_builder_args():
+            build_args += _extra_image_builder_args()
 
         # rewrite --language:all & --tool:all
         final_build_args = []
@@ -1707,20 +1723,27 @@ def check_versions(jdk_dir, jdk_version_regex, graalvm_version_regex, expect_gra
 
 
 mx_gate.add_gate_runner(_suite, mx_vm_gate.gate_body)
-mx.add_argument('--disable-libpolyglot', action='store_true', help='Disable the \'polyglot\' library project')
-mx.add_argument('--disable-polyglot', action='store_true', help='Disable the \'polyglot\' launcher project')
+mx.add_argument('--disable-libpolyglot', action='store_true', help='Disable the \'polyglot\' library project.')
+mx.add_argument('--disable-polyglot', action='store_true', help='Disable the \'polyglot\' launcher project.')
 mx.add_argument('--disable-installables', action='store', help='Disable the \'installable\' distributions for gu.'
                                                                'This can be a comma-separated list of disabled components short names or `true` to disable all installables.', default=None)
-mx.add_argument('--debug-images', action='store_true', help='Build native images in debug mode: -H:-AOTInline and with -ea')
+mx.add_argument('--debug-images', action='store_true', help='Build native images in debug mode: \'-H:-AOTInline\' and with \'-ea\'.')
 mx.add_argument('--force-bash-launchers', action='store', help='Force the use of bash launchers instead of native images.'
                                                                'This can be a comma-separated list of disabled launchers or `true` to disable all native launchers.', default=None)
-mx.add_argument('--no-sources', action='store_true', help='Do not include the archives with the source files of open-source components')
+mx.add_argument('--no-sources', action='store_true', help='Do not include the archives with the source files of open-source components.')
+mx.add_argument('--snapshot-catalog', action='store', help='Change the default URL of the component catalog for snapshots.', default=None)
+mx.add_argument('--extra-image-builder-argument', action='append', help='Add extra arguments to the image builder.', default=[])
 
 register_vm_config('ce', ['cmp', 'gu', 'gvm', 'ins', 'js', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'tfl', 'libpoly', 'poly', 'vvm'])
+register_vm_config('ce-no_native', ['bjs', 'blli', 'bnative-image', 'bpolyglot', 'cmp', 'gu', 'gvm', 'ins', 'js', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'tfl', 'poly', 'vvm'])
 
 
 def _debug_images():
     return mx.get_opts().debug_images or _env_var_to_bool('DEBUG_IMAGES')
+
+
+def _extra_image_builder_args():
+    return mx.get_opts().extra_image_builder_argument or mx.get_env('EXTRA_IMAGE_BUILDER_ARGUMENTS', '').split()
 
 
 def _with_polyglot_lib_project():
@@ -1770,6 +1793,10 @@ def _has_forced_launchers(component, forced=None):
 
 def _include_sources():
     return not (mx.get_opts().no_sources or _env_var_to_bool('NO_SOURCES'))
+
+
+def _snapshot_catalog():
+    return mx.get_opts().snapshot_catalog or mx.get_env('SNAPSHOT_CATALOG')
 
 
 def mx_post_parse_cmd_line(args):

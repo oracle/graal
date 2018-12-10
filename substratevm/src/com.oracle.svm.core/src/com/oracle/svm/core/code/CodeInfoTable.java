@@ -27,6 +27,7 @@ package com.oracle.svm.core.code;
 import java.util.Arrays;
 import java.util.List;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -65,6 +66,7 @@ public class CodeInfoTable {
         return ImageSingletons.lookup(ImageCodeInfo.class);
     }
 
+    @Fold
     public static RuntimeCodeInfo getRuntimeCodeCache() {
         return ImageSingletons.lookup(RuntimeCodeInfo.class);
     }
@@ -228,9 +230,8 @@ class CodeInfoFeature implements Feature {
         config.registerAsImmutable(imageInfo.referenceMapEncoding);
         config.registerAsImmutable(imageInfo.frameInfoEncodings);
         config.registerAsImmutable(imageInfo.frameInfoObjectConstants);
-        config.registerAsImmutable(imageInfo.frameInfoSourceClassNames);
+        config.registerAsImmutable(imageInfo.frameInfoSourceClasses);
         config.registerAsImmutable(imageInfo.frameInfoSourceMethodNames);
-        config.registerAsImmutable(imageInfo.frameInfoSourceFileNames);
         config.registerAsImmutable(imageInfo.frameInfoNames);
     }
 }

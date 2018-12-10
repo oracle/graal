@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryUsage;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
 import org.graalvm.compiler.api.replacements.Fold;
@@ -53,12 +53,14 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.NativeImageInfo;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
+import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.PinnedAllocator;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -68,6 +70,10 @@ import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
+
+//Checkstyle: stop
+import sun.management.Util;
+//Checkstyle: resume
 
 /** An implementation of a card remembered set generational heap. */
 public class HeapImpl extends Heap {
@@ -117,6 +123,7 @@ public class HeapImpl extends Heap {
         this.classList = null;
         SubstrateUtil.DiagnosticThunkRegister.getSingleton().register(() -> {
             bootImageHeapBoundariesToLog(Log.log()).newline();
+            zapValuesToLog(Log.log()).newline();
             report(Log.log(), true).newline();
             Log.log().newline();
         });
@@ -232,6 +239,15 @@ public class HeapImpl extends Heap {
         return result;
     }
 
+    /** Tear down the heap, return all allocated virtual memory chunks to VirtualMemoryProvider. */
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public final void tearDown() {
+        youngGeneration.tearDown();
+        oldGeneration.tearDown();
+        HeapChunkProvider.get().tearDown();
+    }
+
     /** State: Who handles object headers? */
     private final ObjectHeaderImpl objectHeaderImpl;
 
@@ -261,9 +277,9 @@ public class HeapImpl extends Heap {
     public boolean isAllocationDisallowed() {
         /*
          * This method exists because Heap is the place clients should ask this question, and to
-         * aggregate all the reasons allocation might be disallowed. Currently there is only ...
+         * aggregate all the reasons allocation might be disallowed.
          */
-        return NoAllocationVerifier.isActive() || getGCImpl().collectionInProgress.getState();
+        return (NoAllocationVerifier.isActive() || getGCImpl().collectionInProgress.getState());
     }
 
     /** A guard to place before an allocation, giving the call site and the allocation type. */
@@ -487,6 +503,39 @@ public class HeapImpl extends Heap {
         return log;
     }
 
+    /** Log the zap values to make it easier to search for them. */
+    Log zapValuesToLog(Log log) {
+        if (HeapPolicy.getZapProducedHeapChunks() || HeapPolicy.getZapConsumedHeapChunks()) {
+            log.string("[Heap Chunk zap values: ").indent(true);
+            /* Padded with spaces so the columns line up between the int and word variants. */
+            if (HeapPolicy.getZapProducedHeapChunks()) {
+                log.string("  producedHeapChunkZapInt: ")
+                                .string("  hex: ").spaces(8).hex(HeapPolicy.getProducedHeapChunkZapInt())
+                                .string("  signed: ").spaces(9).signed(HeapPolicy.getProducedHeapChunkZapInt())
+                                .string("  unsigned: ").spaces(10).unsigned(HeapPolicy.getProducedHeapChunkZapInt()).newline();
+                log.string("  producedHeapChunkZapWord:")
+                                .string("  hex: ").hex(HeapPolicy.getProducedHeapChunkZapWord())
+                                .string("  signed: ").signed(HeapPolicy.getProducedHeapChunkZapWord())
+                                .string("  unsigned: ").unsigned(HeapPolicy.getProducedHeapChunkZapWord());
+                if (HeapPolicy.getZapConsumedHeapChunks()) {
+                    log.newline();
+                }
+            }
+            if (HeapPolicy.getZapConsumedHeapChunks()) {
+                log.string("  consumedHeapChunkZapInt: ")
+                                .string("  hex: ").spaces(8).hex(HeapPolicy.getConsumedHeapChunkZapInt())
+                                .string("  signed: ").spaces(10).signed(HeapPolicy.getConsumedHeapChunkZapInt())
+                                .string("  unsigned: ").spaces(10).unsigned(HeapPolicy.getConsumedHeapChunkZapInt()).newline();
+                log.string("  consumedHeapChunkZapWord:")
+                                .string("  hex: ").hex(HeapPolicy.getConsumedHeapChunkZapWord())
+                                .string("  signed: ").signed(HeapPolicy.getConsumedHeapChunkZapWord())
+                                .string("  unsigned: ").unsigned(HeapPolicy.getConsumedHeapChunkZapWord());
+            }
+            log.redent(false).string("]");
+        }
+        return log;
+    }
+
     /** An accessor for the MemoryMXBean. */
     @Override
     public MemoryMXBean getMemoryMXBean() {
@@ -606,6 +655,11 @@ public class HeapImpl extends Heap {
         return assertHub(hub);
     }
 
+    /** For assertions: Verify that a Space is a valid Space. */
+    public boolean isValidSpace(Space space) {
+        return (getYoungGeneration().isValidSpace(space) || getOldGeneration().isValidSpace(space));
+    }
+
     /** State: The stack verifier. */
     private final StackVerifier stackVerifier;
 
@@ -637,6 +691,8 @@ public class HeapImpl extends Heap {
      *         in bytes
      */
     public UnsignedWord maxMemory() {
+        /* Get physical memory size, so it gets set correctly instead of being estimated. */
+        PhysicalMemory.size();
         /*
          * This only reports the memory that will be used for heap-allocated objects. For example,
          * it does not include memory in the chunk free list, or memory in the image heap.
@@ -661,23 +717,15 @@ final class HeapImplMemoryMXBean implements MemoryMXBean {
 
     /** Instance fields. */
     private final MemoryMXBeanMemoryVisitor visitor;
-    private final ObjectName objectName;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     HeapImplMemoryMXBean() {
         this.visitor = new MemoryMXBeanMemoryVisitor();
-        ObjectName name;
-        try {
-            name = new ObjectName("java.lang:type=Memory,name=HeapImpl");
-        } catch (MalformedObjectNameException mone) {
-            name = null;
-        }
-        this.objectName = name;
     }
 
     @Override
     public ObjectName getObjectName() {
-        return objectName;
+        return Util.newObjectName(ManagementFactory.MEMORY_MXBEAN_NAME);
     }
 
     @Override

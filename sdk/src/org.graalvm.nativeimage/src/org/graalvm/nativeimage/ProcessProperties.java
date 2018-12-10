@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,7 +50,7 @@ import org.graalvm.nativeimage.impl.ProcessPropertiesSupport;
  */
 public final class ProcessProperties {
     /**
-     * Return the name of the executable.
+     * Return the canonicalized absolute pathname of the executable.
      *
      * @since 1.0
      */
@@ -65,6 +65,48 @@ public final class ProcessProperties {
      */
     public static long getProcessID() {
         return ImageSingletons.lookup(ProcessPropertiesSupport.class).getProcessID();
+    }
+
+    /**
+     * Get the Process ID of the given process object.
+     *
+     * @since 1.0
+     */
+    public static long getProcessID(Process process) {
+        return ImageSingletons.lookup(ProcessPropertiesSupport.class).getProcessID(process);
+    }
+
+    /**
+     * Kills the process. Whether the process represented by the given Process ID is normally
+     * terminated or not is implementation dependent.
+     *
+     * @since 1.0
+     */
+    public static void destroy(long processID) {
+        ImageSingletons.lookup(ProcessPropertiesSupport.class).destroy(processID);
+    }
+
+    /**
+     * Kills the process forcibly. The process represented by the given Process ID is forcibly
+     * terminated. Forcible process destruction is defined as the immediate termination of a
+     * process, whereas normal termination allows the process to shut down cleanly.
+     *
+     * @since 1.0
+     */
+    public static void destroyForcibly(long processID) {
+        ImageSingletons.lookup(ProcessPropertiesSupport.class).destroyForcibly(processID);
+    }
+
+    /**
+     * Tests whether the process represented by the given Process ID is alive.
+     *
+     * @return true if the process represented by the given Process ID object has not yet
+     *         terminated.
+     *
+     * @since 1.0
+     */
+    public static boolean isAlive(long processID) {
+        return ImageSingletons.lookup(ProcessPropertiesSupport.class).isAlive(processID);
     }
 
     /**

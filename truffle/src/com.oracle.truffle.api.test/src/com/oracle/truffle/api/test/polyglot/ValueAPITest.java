@@ -53,10 +53,10 @@ import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.PROXY_OBJEC
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.STRING;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -87,17 +87,33 @@ import org.graalvm.polyglot.proxy.ProxyInstantiable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 import org.junit.After;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.ComparisonFailure;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.KeyInfo;
+import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.CompileImmediatelyCheck;
+import com.oracle.truffle.api.test.polyglot.ValueAssert.Trait;
 
 public class ValueAPITest {
 
     private Context context;
+
+    @BeforeClass
+    public static void beforeClass() {
+        Assume.assumeFalse(CompileImmediatelyCheck.isCompileImmediately());
+    }
 
     @Before
     public void setUp() {
@@ -130,8 +146,8 @@ public class ValueAPITest {
     @Test
     public void testString() {
         for (Object string : STRINGS) {
-            assertValue(context, context.asValue(string), STRING);
-            assertValue(context, context.asValue((org.graalvm.polyglot.proxy.ProxyPrimitive) () -> string), STRING, PROXY_OBJECT);
+            assertValue(context.asValue(string), STRING);
+            assertValue(context.asValue((org.graalvm.polyglot.proxy.ProxyPrimitive) () -> string), STRING, PROXY_OBJECT);
         }
     }
 
@@ -148,8 +164,8 @@ public class ValueAPITest {
     @Test
     public void testNumbers() {
         for (Object number : NUMBERS) {
-            assertValue(context, context.asValue(number), NUMBER);
-            assertValue(context, context.asValue((org.graalvm.polyglot.proxy.ProxyPrimitive) () -> number), NUMBER, PROXY_OBJECT);
+            assertValue(context.asValue(number), NUMBER);
+            assertValue(context.asValue((org.graalvm.polyglot.proxy.ProxyPrimitive) () -> number), NUMBER, PROXY_OBJECT);
         }
     }
 
@@ -161,14 +177,14 @@ public class ValueAPITest {
     @Test
     public void testBooleans() {
         for (Object bool : BOOLEANS) {
-            assertValue(context, context.asValue(bool), BOOLEAN);
-            assertValue(context, context.asValue((org.graalvm.polyglot.proxy.ProxyPrimitive) () -> bool), BOOLEAN, PROXY_OBJECT);
+            assertValue(context.asValue(bool), BOOLEAN);
+            assertValue(context.asValue((org.graalvm.polyglot.proxy.ProxyPrimitive) () -> bool), BOOLEAN, PROXY_OBJECT);
         }
     }
 
     @Test
     public void testNull() {
-        assertValue(context, context.asValue(null), HOST_OBJECT, NULL);
+        assertValue(context.asValue(null), HOST_OBJECT, NULL);
     }
 
     private static final Object[] HOST_OBJECTS = new Object[]{
@@ -200,6 +216,10 @@ public class ValueAPITest {
                                     return args[0];
                                 case "toString":
                                     return "Proxy";
+                                case "equals":
+                                    return proxy == args[0];
+                                case "hashCode":
+                                    return System.identityHashCode(proxy);
                                 default:
                                     throw new UnsupportedOperationException(method.getName());
                             }
@@ -215,13 +235,13 @@ public class ValueAPITest {
             boolean functionalInterface = value instanceof Supplier || value instanceof Function;
             boolean instantiable = value instanceof Class && value != Class.class;
             if (functionalInterface) {
-                assertValue(context, context.asValue(value), MEMBERS, HOST_OBJECT, EXECUTABLE);
+                assertValue(context.asValue(value), MEMBERS, HOST_OBJECT, EXECUTABLE);
             } else if (value instanceof List) {
-                assertValue(context, context.asValue(value), MEMBERS, HOST_OBJECT, ARRAY_ELEMENTS);
+                assertValue(context.asValue(value), MEMBERS, HOST_OBJECT, ARRAY_ELEMENTS);
             } else if (instantiable) {
-                assertValue(context, context.asValue(value), MEMBERS, HOST_OBJECT, INSTANTIABLE);
+                assertValue(context.asValue(value), MEMBERS, HOST_OBJECT, INSTANTIABLE);
             } else {
-                assertValue(context, context.asValue(value), MEMBERS, HOST_OBJECT);
+                assertValue(context.asValue(value), MEMBERS, HOST_OBJECT);
             }
         }
     }
@@ -254,7 +274,7 @@ public class ValueAPITest {
     @Test
     public void testArrays() {
         for (Object array : ARRAYS) {
-            assertValue(context, context.asValue(array), ARRAY_ELEMENTS, HOST_OBJECT, MEMBERS);
+            assertValue(context.asValue(array), ARRAY_ELEMENTS, HOST_OBJECT, MEMBERS);
         }
     }
 
@@ -500,10 +520,23 @@ public class ValueAPITest {
             assertFalse(value.hasArrayElements());
         });
 
+        MembersAndInvocable invocable = new MembersAndInvocable();
+        invocable.invokeMember = "foo";
+        invocable.invocableResult = "foobarbaz";
+
+        objectCoercionTest(invocable, Map.class, (v) -> {
+            Value value = context.asValue(v);
+            assertTrue(value.canInvokeMember("foo"));
+            assertEquals("foobarbaz", value.invokeMember("foo").asString());
+        }, false);
+    }
+
+    private <T> void objectCoercionTest(Object value, Class<T> expectedType, Consumer<T> validator) {
+        objectCoercionTest(value, expectedType, validator, true);
     }
 
     @SuppressWarnings({"unchecked"})
-    private <T> void objectCoercionTest(Object value, Class<T> expectedType, Consumer<T> validator) {
+    private <T> void objectCoercionTest(Object value, Class<T> expectedType, Consumer<T> validator, boolean valueTest) {
         Value coerce = context.asValue(new CoerceObject()).getMember("coerce");
         T result = (T) context.asValue(value).as(Object.class);
         if (result != null) {
@@ -519,8 +552,10 @@ public class ValueAPITest {
             coerce.execute(value, validator);
         }
 
-        assertValue(context, context.asValue(value));
-        assertValue(context, context.asValue(result));
+        if (valueTest) {
+            assertValue(context.asValue(value));
+            assertValue(context.asValue(result));
+        }
     }
 
     private static class DummyList extends DummyCollection implements List<Object> {
@@ -765,6 +800,118 @@ public class ValueAPITest {
 
         public Object execute(Value... arguments) {
             return executableResult;
+        }
+
+    }
+
+    static class MembersAndInvocable implements TruffleObject {
+
+        String invokeMember;
+        Object invocableResult;
+
+        @Override
+        public ForeignAccess getForeignAccess() {
+            return MembersAndInvocableMessageResolutionForeign.ACCESS;
+        }
+
+        public static boolean isInstance(TruffleObject obj) {
+            return obj instanceof MembersAndInvocable;
+        }
+
+        @MessageResolution(receiverType = MembersAndInvocable.class)
+        static final class MembersAndInvocableMessageResolution {
+
+            @Resolve(message = "HAS_KEYS")
+            abstract static class MemberHasKeysNode extends Node {
+
+                @SuppressWarnings("unused")
+                public Object access(MembersAndInvocable mi) {
+                    return true;
+                }
+            }
+
+            @Resolve(message = "KEYS")
+            abstract static class MemberKeysNode extends Node {
+
+                @SuppressWarnings("unused")
+                public Object access(MembersAndInvocable mi, boolean internal) {
+                    return new MemberKeysTruffleObject(mi.invokeMember);
+                }
+            }
+
+            @Resolve(message = "INVOKE")
+            abstract static class MemberInvokeNode extends Node {
+
+                @SuppressWarnings("unused")
+                public Object access(MembersAndInvocable mi, String name, Object... arguments) {
+                    if (name.equals(mi.invokeMember)) {
+                        return mi.invocableResult;
+                    } else {
+                        throw UnknownIdentifierException.raise(name);
+                    }
+                }
+            }
+
+            @Resolve(message = "KEY_INFO")
+            abstract static class MemberKeyInfoNode extends Node {
+
+                public int access(MembersAndInvocable mi, String propName) {
+                    if (propName.equals(mi.invokeMember)) {
+                        return KeyInfo.READABLE | KeyInfo.INVOCABLE;
+                    } else {
+                        return KeyInfo.NONE;
+                    }
+                }
+            }
+        }
+
+        static final class MemberKeysTruffleObject implements TruffleObject {
+
+            private final String keyName;
+
+            MemberKeysTruffleObject(String keyName) {
+                this.keyName = keyName;
+            }
+
+            @Override
+            public ForeignAccess getForeignAccess() {
+                return MemberKeysMessageResolutionForeign.ACCESS;
+            }
+
+            public static boolean isInstance(TruffleObject obj) {
+                return obj instanceof MemberKeysTruffleObject;
+            }
+
+            @MessageResolution(receiverType = MemberKeysTruffleObject.class)
+            static final class MemberKeysMessageResolution {
+
+                @Resolve(message = "HAS_SIZE")
+                abstract static class MemberKeysHasSizeNode extends Node {
+
+                    @SuppressWarnings("unused")
+                    public boolean access(MemberKeysTruffleObject keys) {
+                        return true;
+                    }
+                }
+
+                @Resolve(message = "GET_SIZE")
+                abstract static class MemberKeysGetSizeNode extends Node {
+
+                    @SuppressWarnings("unused")
+                    public int access(MemberKeysTruffleObject keys) {
+                        return 1;
+                    }
+                }
+
+                @Resolve(message = "READ")
+                abstract static class MemberKeysReadNode extends Node {
+
+                    @SuppressWarnings("unused")
+                    public Object access(MemberKeysTruffleObject keys, int index) {
+                        return keys.keyName;
+                    }
+                }
+            }
         }
 
     }
@@ -1194,6 +1341,43 @@ public class ValueAPITest {
                                         "'2'(language: Java, type: java.lang.Integer)].");
     }
 
+    public static class InvocableType {
+
+        @SuppressWarnings("unused")
+        public String f(int a, byte b) {
+            return "1";
+        }
+
+        @Override
+        public String toString() {
+            return getClass().getCanonicalName();
+        }
+    }
+
+    @Test
+    public void testInvokableErrors() {
+        Value value = context.asValue(new InvocableType());
+        assertTrue(value.canInvokeMember("f"));
+
+        assertFails(() -> value.invokeMember(""), IllegalArgumentException.class,
+                        "Invalid member key '' for object 'com.oracle.truffle.api.test.polyglot.ValueAPITest.InvocableType'" +
+                                        "(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$InvocableType).");
+        assertFails(() -> value.invokeMember("f", 2), IllegalArgumentException.class,
+                        "Invalid argument count when executing 'com.oracle.truffle.api.test.polyglot.ValueAPITest.InvocableType'" +
+                                        "(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$InvocableType) " +
+                                        "with arguments ['2'(language: Java, type: java.lang.Integer)]. Expected 2 argument(s) but got 1.");
+        assertFails(() -> value.invokeMember("f", "2", "3"), IllegalArgumentException.class,
+                        "Invalid argument when executing 'com.oracle.truffle.api.test.polyglot.ValueAPITest.InvocableType'" +
+                                        "(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$InvocableType) " +
+                                        "with arguments ['2'(language: Java, type: java.lang.String), '3'(language: Java, type: java.lang.String)].");
+        assertEquals("1", value.invokeMember("f", 2, 3).asString());
+
+        Value primitiveValue = context.asValue(42);
+        assertFails(() -> primitiveValue.invokeMember(""), UnsupportedOperationException.class,
+                        "Unsupported operation Value.invoke(, Object...) for '42'(language: Java, type: java.lang.Integer)." +
+                                        " You can ensure that the operation is supported using Value.canInvoke(String).");
+    }
+
     private static void assertFails(Runnable r, Class<?> hostExceptionType, String message) {
         try {
             r.run();
@@ -1256,8 +1440,8 @@ public class ValueAPITest {
         assertEquals(v1, v1);
         assertEquals(v2, v2);
 
-        ValueAssert.assertValue(context, v1);
-        ValueAssert.assertValue(context, v2);
+        ValueAssert.assertValue(v1);
+        ValueAssert.assertValue(v2);
     }
 
     public static class RecursiveObject {
@@ -1283,8 +1467,8 @@ public class ValueAPITest {
         assertEquals(v1, v1);
         assertEquals(v2, v2);
 
-        ValueAssert.assertValue(context, v1);
-        ValueAssert.assertValue(context, v2);
+        ValueAssert.assertValue(v1);
+        ValueAssert.assertValue(v2);
     }
 
     public interface EmptyInterface {
@@ -1361,7 +1545,203 @@ public class ValueAPITest {
         assertNotEquals(v.as(Map.class), v.as(List.class));
         assertNotEquals(v.as(List.class), v.as(Function.class));
         assertNotEquals(v.as(List.class), v.as(Map.class));
+    }
 
+    @Test
+    public void testAsValue() {
+        for (Object number : NUMBERS) {
+            ValueAssert.assertValue(Value.asValue(number), Trait.NUMBER);
+        }
+        for (Object string : STRINGS) {
+            ValueAssert.assertValue(Value.asValue(string), Trait.STRING);
+        }
+        for (Object b : BOOLEANS) {
+            ValueAssert.assertValue(Value.asValue(b), Trait.BOOLEAN);
+        }
+        for (Object b : HOST_OBJECTS) {
+            Value v = Value.asValue(b);
+            assertTrue(v.isHostObject());
+            ValueAssert.assertValue(v);
+        }
+        Object o = new Object();
+        Value v = Value.asValue(o);
+        ProxyExecutable executable = new ProxyExecutable() {
+            public Object execute(Value... arguments) {
+                return arguments[0].invokeMember("hashCode");
+            }
+        };
+        assertEquals(o.hashCode(), context.asValue(executable).execute(v).asInt());
+
+        Function<Object, Object> f = (a) -> Value.asValue(a).invokeMember("hashCode");
+        assertEquals(o.hashCode(), context.asValue(f).execute(v).asInt());
+
+        assertTrue(Value.asValue(null).isNull());
+        assertNull(Value.asValue(null).as(Object.class));
+        assertNull(Value.asValue(null).as(String.class));
+        assertNull(Value.asValue(null).as(Integer.class));
+
+        ProxyExecutable executableProxy = new ProxyExecutable() {
+            public Object execute(Value... arguments) {
+                return null;
+            }
+        };
+        assertTrue(Value.asValue(executableProxy).isProxyObject());
+        assertSame(executableProxy, Value.asValue(executableProxy).asProxyObject());
+        assertFalse(Value.asValue(executableProxy).isHostObject());
+        // proxy executables (and others) created without a context cannot normally function
+        assertFalse(Value.asValue(executableProxy).canExecute());
+
+        Object hostWrapper = context.asValue(executableProxy).as(Function.class);
+        assertTrue(Value.asValue(hostWrapper).canExecute());
+
+        ProxyObject objectProxy = ProxyObject.fromMap(new HashMap<>());
+        hostWrapper = context.asValue(objectProxy).as(Map.class);
+        assertTrue(Value.asValue(hostWrapper).hasMembers());
+
+        ProxyArray arrayProxy = ProxyArray.fromArray("");
+        hostWrapper = context.asValue(arrayProxy).as(List.class);
+        assertTrue(Value.asValue(hostWrapper).hasArrayElements());
+
+        // but when migrated they can
+        assertTrue(context.asValue(Value.asValue(executableProxy)).canExecute());
+        context.asValue(new ProxyExecutable() {
+            public Object execute(Value... arguments) {
+                assertTrue(arguments[0].canExecute());
+                return null;
+            }
+        }).execute(Value.asValue(executableProxy));
+
+    }
+
+    @Test
+    public void testHostObjectsAndPrimitivesNonSharable() {
+        Context context1 = Context.create();
+        Context context2 = Context.create();
+        List<Object> nonSharables = new ArrayList<>();
+        ProxyInteropObject interopObject = new ProxyInteropObject() {
+
+            @Override
+            public boolean isExecutable() {
+                return true;
+            }
+
+            @Override
+            public boolean hasKeys() {
+                return true;
+            }
+
+            @Override
+            public boolean hasSize() {
+                return true;
+            }
+
+        };
+        nonSharables.add(interopObject);
+        Value v = context1.asValue(interopObject);
+        nonSharables.add(v.as(Map.class));
+        nonSharables.add(v.as(EmptyInterface.class));
+        nonSharables.add(v.as(List.class));
+        nonSharables.add(v.as(Function.class));
+        nonSharables.add(v.as(EmptyFunctionalInterface.class));
+        nonSharables.add(v);
+        nonSharables.add(Value.asValue(v));
+
+        for (Object object : nonSharables) {
+            Object nonSharableObject = object;
+            if (nonSharableObject instanceof TruffleObject) {
+                nonSharableObject = context1.asValue(nonSharableObject);
+            }
+            try {
+                context2.getPolyglotBindings().putMember("foo", nonSharableObject);
+                fail();
+            } catch (IllegalArgumentException e) {
+            }
+            ProxyExecutable executable = new ProxyExecutable() {
+                public Object execute(Value... arguments) {
+                    return 42;
+                }
+            };
+            // supported
+            assertEquals(42, context1.asValue(executable).execute(nonSharableObject).asInt());
+            try {
+                context2.asValue(executable).execute(nonSharableObject);
+                fail();
+            } catch (IllegalArgumentException e) {
+            }
+            nonSharableObject.toString(); // does not fails
+            assertTrue(nonSharableObject.equals(nonSharableObject));
+            assertTrue(nonSharableObject.hashCode() == nonSharableObject.hashCode());
+        }
+        context1.close();
+        context2.close();
+    }
+
+    @Test
+    public void testHostObjectsAndPrimitivesSharable() {
+        Context context1 = Context.create();
+        Context context2 = Context.create();
+
+        List<Object> sharableObjects = new ArrayList<>();
+        sharableObjects.addAll(Arrays.asList(HOST_OBJECTS));
+        sharableObjects.addAll(Arrays.asList(NUMBERS));
+        sharableObjects.addAll(Arrays.asList(BOOLEANS));
+        sharableObjects.addAll(Arrays.asList(STRINGS));
+        sharableObjects.addAll(Arrays.asList(ARRAYS));
+
+        expandObjectVariants(context1, sharableObjects);
+        for (Object object : sharableObjects) {
+            List<Object> variants = new ArrayList<>();
+            variants.add(context1.asValue(object));
+            variants.add(object);
+            variants.add(Value.asValue(object));
+
+            ProxyExecutable executable = new ProxyExecutable() {
+                public Object execute(Value... arguments) {
+                    return 42;
+                }
+            };
+
+            for (Object variant : sharableObjects) {
+                context2.getPolyglotBindings().putMember("foo", variant);
+                assertEquals(42, context2.asValue(executable).execute(variant).asInt());
+            }
+            object.toString(); // does not fail
+            assertTrue(object.equals(object));
+            assertTrue(object.hashCode() == object.hashCode());
+        }
+
+        // special case for context less TruffleObject
+        Value contextLessValue = Value.asValue(new ProxyInteropObject() {
+        });
+        context1.getPolyglotBindings().putMember("foo", contextLessValue);
+        context2.getPolyglotBindings().putMember("foo", contextLessValue);
+
+        context1.close();
+        context2.close();
+
+    }
+
+    private static void expandObjectVariants(Context sourceContext, List<Object> objects) {
+        for (Object object : objects.toArray()) {
+            Value v = sourceContext.asValue(object);
+            if (v.hasMembers()) {
+                objects.add(v.as(Map.class));
+                objects.add(v.as(EmptyInterface.class));
+            }
+            if (v.hasArrayElements()) {
+                objects.add(v.as(List.class));
+                objects.add(v.as(Object[].class));
+            }
+            if (v.canExecute()) {
+                objects.add(v.as(Function.class));
+                objects.add(v.as(EmptyFunctionalInterface.class));
+            }
+
+            // add the value itself
+            objects.add(v);
+            objects.add(Value.asValue(v)); // migrate from Value
+            objects.add(Value.asValue(object)); // directly from object
+        }
     }
 
 }

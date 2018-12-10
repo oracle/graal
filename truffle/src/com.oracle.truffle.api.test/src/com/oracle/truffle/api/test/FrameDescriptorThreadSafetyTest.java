@@ -66,7 +66,7 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-@AddExports("com.oracle.truffle.truffle_api/com.oracle.truffle.api.frame")
+@AddExports("org.graalvm.truffle/com.oracle.truffle.api.frame")
 public class FrameDescriptorThreadSafetyTest {
 
     // Some of the thread safety tests may be not terminating when

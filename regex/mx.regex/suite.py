@@ -3,7 +3,7 @@ suite = {
 
   "name" : "regex",
 
-  "version" : "1.0.0-rc8",
+  "version" : "1.0.0-rc11",
   "release" : False,
   "groupId" : "org.graalvm.regex",
   "url" : "http://www.graalvm.org/",
@@ -12,6 +12,11 @@ suite = {
     "email" : "graalvm-users@oss.oracle.com",
     "organization" : "Graal",
     "organizationUrl" : "http://www.graalvm.org/",
+  },
+  "scm" : {
+    "url" : "https://github.com/oracle/graal",
+    "read" : "https://github.com/oracle/graal.git",
+    "write" : "git@github.com:oracle/graal.git",
   },
 
   "imports" : {

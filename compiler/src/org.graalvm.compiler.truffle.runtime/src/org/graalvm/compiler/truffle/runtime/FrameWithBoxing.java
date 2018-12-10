@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,14 +43,20 @@ public final class FrameWithBoxing implements VirtualFrame, MaterializedFrame {
     private final Object[] arguments;
     private Object[] locals;
 
+    private static final Object[] EMPTY_OBJECT_ARRAY = {};
+
     public FrameWithBoxing(FrameDescriptor descriptor, Object[] arguments) {
         this.descriptor = descriptor;
         this.arguments = arguments;
         int size = descriptor.getSize();
-        this.locals = new Object[size];
-        Object defaultValue = descriptor.getDefaultValue();
-        if (defaultValue != null) {
-            Arrays.fill(locals, defaultValue);
+        if (size == 0) {
+            this.locals = EMPTY_OBJECT_ARRAY;
+        } else {
+            this.locals = new Object[size];
+            Object defaultValue = descriptor.getDefaultValue();
+            if (defaultValue != null) {
+                Arrays.fill(locals, defaultValue);
+            }
         }
     }
 

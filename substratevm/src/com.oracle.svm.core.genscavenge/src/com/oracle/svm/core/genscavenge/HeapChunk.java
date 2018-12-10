@@ -239,6 +239,7 @@ public class HeapChunk {
     /**
      * Convenience method: Cast a {@link Header} to a {@link Pointer} to allow address arithmetic.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected static Pointer asPointer(Header<?> that) {
         return (Pointer) that;
     }

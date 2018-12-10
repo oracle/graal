@@ -26,11 +26,13 @@ package com.oracle.truffle.tools.chromeinspector.test;
 
 import java.io.PrintWriter;
 import java.io.IOException;
+import java.net.URI;
+import java.util.List;
 
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.test.ReflectionUtils;
 
-import com.oracle.truffle.tools.chromeinspector.TruffleExecutionContext;
+import com.oracle.truffle.tools.chromeinspector.InspectorExecutionContext;
 import com.oracle.truffle.tools.chromeinspector.server.ConnectionWatcher;
 import com.oracle.truffle.tools.chromeinspector.server.InspectServerSession;
 
@@ -43,7 +45,7 @@ public final class InspectorTestInstrument extends TruffleInstrument {
     protected void onCreate(final Env env) {
         env.registerService(new InspectSessionInfoProvider() {
             @Override
-            public InspectSessionInfo getSessionInfo(final boolean suspend, final boolean inspectInternal, final boolean inspectInitialization) {
+            public InspectSessionInfo getSessionInfo(final boolean suspend, final boolean inspectInternal, final boolean inspectInitialization, final List<URI> sourcePath) {
                 return new InspectSessionInfo() {
 
                     private InspectServerSession iss;
@@ -51,9 +53,9 @@ public final class InspectorTestInstrument extends TruffleInstrument {
                     private long id;
 
                     InspectSessionInfo init() {
-                        TruffleExecutionContext context;
+                        InspectorExecutionContext context;
                         try {
-                            context = new TruffleExecutionContext("test", inspectInternal, inspectInitialization, env, new PrintWriter(env.err()));
+                            context = new InspectorExecutionContext("test", inspectInternal, inspectInitialization, env, sourcePath, new PrintWriter(env.err()));
                         } catch (IOException ex) {
                             throw new AssertionError(ex);
                         }
@@ -87,7 +89,7 @@ public final class InspectorTestInstrument extends TruffleInstrument {
 }
 
 interface InspectSessionInfoProvider {
-    InspectSessionInfo getSessionInfo(boolean suspend, boolean inspectInternal, boolean inspectInitialization);
+    InspectSessionInfo getSessionInfo(boolean suspend, boolean inspectInternal, boolean inspectInitialization, List<URI> sourcePath);
 }
 
 interface InspectSessionInfo {

@@ -55,8 +55,8 @@ public final class SulongSuite extends BaseSuiteHarness {
     @Parameters(name = "{1}")
     public static Collection<Object[]> data() {
         Path suitesPath = new File(TestOptions.TEST_SUITE_PATH).toPath();
-        try {
-            Stream<Path> destDirs = Files.walk(suitesPath).filter(path -> path.endsWith("ref.out")).map(Path::getParent);
+        try (Stream<Path> files = Files.walk(suitesPath)) {
+            Stream<Path> destDirs = files.filter(path -> path.endsWith("ref.out")).map(Path::getParent);
             return destDirs.map(testPath -> new Object[]{testPath, suitesPath.relativize(testPath).toString()}).collect(Collectors.toList());
         } catch (IOException e) {
             throw new AssertionError("Test cases not found", e);

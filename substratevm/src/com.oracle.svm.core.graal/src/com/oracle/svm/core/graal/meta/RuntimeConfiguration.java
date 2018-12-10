@@ -37,11 +37,14 @@ import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.graal.code.amd64.SubstrateAMD64RegisterConfig.ConfigKind;
+import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig.ConfigKind;
 import com.oracle.svm.core.meta.SharedMethod;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+/**
+ * Configuration used by Graal at runtime to compile and install code in the same runtime.
+ */
 public class RuntimeConfiguration {
 
     private final Providers providers;

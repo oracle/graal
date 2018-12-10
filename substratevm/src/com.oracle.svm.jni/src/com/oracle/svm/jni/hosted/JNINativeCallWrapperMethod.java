@@ -184,7 +184,7 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
         kit.getFrameState().clearLocals();
 
         Signature jniSignature = new JNISignature(jniArgumentTypes, jniReturnType);
-        ValueNode returnValue = kit.createCFunctionCall(callAddress, method, jniArguments, jniSignature, true, false);
+        ValueNode returnValue = kit.createCFunctionCall(callAddress, jniArguments, jniSignature, true, false);
 
         if (getOriginal().isSynchronized()) {
             MonitorIdNode monitorId = kit.getFrameState().peekMonitorId();

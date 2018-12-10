@@ -105,12 +105,17 @@ public class SecurityServicesFeature implements Feature {
         /* java.util.UUID$Holder has a static final SecureRandom field. */
         RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.util.UUID$Holder"));
 
-        if (SubstrateOptions.EnableAllSecurityServices.getValue()) {
-            /* These classes have a static final SecureRandom field. */
-            RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("com.sun.crypto.provider.SunJCE$SecureRandomHolder"));
-            RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.security.jca.JCAUtil$CachedSecureRandomHolder"));
-            RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.security.krb5.Confounder"));
+        /*
+         * The classes bellow have a static final SecureRandom field. Note that if the classes are
+         * not found as reachable by the analaysis registering them form class initialization rerun
+         * doesn't have any effect.
+         */
+        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.security.jca.JCAUtil$CachedSecureRandomHolder"));
+        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("com.sun.crypto.provider.SunJCE$SecureRandomHolder"));
+        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.security.krb5.Confounder"));
+        RuntimeClassInitialization.rerunClassInitialization(javax.net.ssl.SSLContext.class);
 
+        if (SubstrateOptions.EnableAllSecurityServices.getValue()) {
             /* Prepare SunEC native library access. */
             prepareSunEC();
         }
@@ -183,6 +188,14 @@ public class SecurityServicesFeature implements Feature {
             } catch (NoSuchFieldException | IllegalAccessException e) {
                 VMError.shouldNotReachHere(e);
             }
+
+            /*
+             * Register the default JavaKeyStore, JKS. It is not returned by the
+             * provider.getServices() enumeration.
+             */
+            Class<?> javaKeyStoreJks = access.findClassByName("sun.security.provider.JavaKeyStore$JKS");
+            registerForReflection(javaKeyStoreJks);
+            trace("Class registered for reflection: " + javaKeyStoreJks);
 
             try {
                 /* Register the x509 certificate extension classes for reflection. */

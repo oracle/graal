@@ -25,9 +25,13 @@
 package org.graalvm.compiler.truffle.test;
 
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
+import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -40,6 +44,18 @@ import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
 import jdk.vm.ci.code.BailoutException;
 
 public class ContextLookupCompilationTest extends PartialEvaluationTest {
+
+    private static TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope immediateCompilationScope;
+
+    @BeforeClass
+    public static void classSetup() {
+        immediateCompilationScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleCompileImmediately, false);
+    }
+
+    @AfterClass
+    public static void tearDown() {
+        immediateCompilationScope.close();
+    }
 
     @Before
     public void setup() {

@@ -50,6 +50,8 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             NativeImage.showError(e1.getMessage(nativeImage.optionRegistry));
         } catch (InvalidMacroException | AddedTwiceException e) {
             NativeImage.showError(e.getMessage());
+        } catch (NativeImage.NativeImageError err) {
+            NativeImage.showError("Applying MacroOption " + headArg + " failed", err);
         }
         if (consumed) {
             args.poll();
@@ -78,15 +80,17 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
         String imageName = enabledOption.getProperty("ImageName");
         if (imageName != null) {
-            nativeImage.addImageBuilderArg(NativeImage.oHName + imageName);
+            nativeImage.addPlainImageBuilderArg(nativeImage.oHName + imageName);
         }
 
         String launcherClass = enabledOption.getProperty("LauncherClass");
         if (launcherClass != null) {
-            nativeImage.addImageBuilderArg(NativeImage.oHClass + launcherClass);
+            nativeImage.addPlainImageBuilderArg(nativeImage.oHClass + launcherClass);
         }
 
         enabledOption.forEachPropertyValue("JavaArgs", nativeImage::addImageBuilderJavaArgs);
-        enabledOption.forEachPropertyValue("Args", nativeImage::addImageBuilderArg);
+        NativeImage.NativeImageArgsProcessor args = nativeImage.new NativeImageArgsProcessor();
+        enabledOption.forEachPropertyValue("Args", args);
+        args.apply();
     }
 }

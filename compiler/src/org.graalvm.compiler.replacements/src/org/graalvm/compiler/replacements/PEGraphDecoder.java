@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,13 +24,14 @@
  */
 package org.graalvm.compiler.replacements;
 
-import java.net.URI;
 import static org.graalvm.compiler.debug.GraalError.unimplemented;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Formatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +41,7 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
+import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
 import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.core.common.cfg.CFGVerifier;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
@@ -399,16 +401,36 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         public JavaType getInvokeReturnType() {
             throw unimplemented();
         }
+
+        @Override
+        public String toString() {
+            Formatter fmt = new Formatter();
+            PEMethodScope scope = this.methodScope;
+            fmt.format("%s", new ResolvedJavaMethodBytecode(scope.method).asStackTraceElement(invoke.bci()));
+            NodeSourcePosition callers = scope.getCallerBytecodePosition();
+            if (callers != null) {
+                fmt.format("%n%s", callers);
+            }
+            return fmt.toString();
+        }
     }
 
     protected class PEAppendGraphBuilderContext extends PENonAppendGraphBuilderContext {
         protected FixedWithNextNode lastInstr;
         protected ValueNode pushedNode;
         protected boolean invokeConsumed;
+        protected final InvokeKind invokeKind;
+        protected final JavaType invokeReturnType;
 
         public PEAppendGraphBuilderContext(PEMethodScope inlineScope, FixedWithNextNode lastInstr) {
+            this(inlineScope, lastInstr, null, null);
+        }
+
+        public PEAppendGraphBuilderContext(PEMethodScope inlineScope, FixedWithNextNode lastInstr, InvokeKind invokeKind, JavaType invokeReturnType) {
             super(inlineScope, inlineScope.invokeData != null ? inlineScope.invokeData.invoke : null);
             this.lastInstr = lastInstr;
+            this.invokeKind = invokeKind;
+            this.invokeReturnType = invokeReturnType;
         }
 
         @Override
@@ -466,6 +488,22 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                     lastInstr = null;
                 }
             }
+        }
+
+        @Override
+        public InvokeKind getInvokeKind() {
+            if (invokeKind != null) {
+                return invokeKind;
+            }
+            return super.getInvokeKind();
+        }
+
+        @Override
+        public JavaType getInvokeReturnType() {
+            if (invokeReturnType != null) {
+                return invokeReturnType;
+            }
+            return super.getInvokeReturnType();
         }
 
         @Override
@@ -713,7 +751,9 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         invoke.asNode().replaceAtPredecessor(null);
 
         PEMethodScope inlineScope = new PEMethodScope(graph, methodScope, loopScope, null, targetMethod, invokeData, methodScope.inliningDepth + 1, loopExplosionPlugin, arguments);
-        PEAppendGraphBuilderContext graphBuilderContext = new PEAppendGraphBuilderContext(inlineScope, invokePredecessor);
+
+        JavaType returnType = targetMethod.getSignature().getReturnType(methodScope.method.getDeclaringClass());
+        PEAppendGraphBuilderContext graphBuilderContext = new PEAppendGraphBuilderContext(inlineScope, invokePredecessor, callTarget.invokeKind(), returnType);
         InvocationPluginReceiver invocationPluginReceiver = new InvocationPluginReceiver(graphBuilderContext);
 
         if (invocationPlugin.execute(graphBuilderContext, targetMethod, invocationPluginReceiver.init(targetMethod, arguments), arguments)) {

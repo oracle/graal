@@ -85,7 +85,7 @@ import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.svm.core.amd64.FrameAccess;
+import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.graal.phases.TrustedInterfaceTypePlugin;
 import com.oracle.svm.core.jdk.VarHandleFeature;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -300,6 +300,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         graphBuilderPlugins.appendTypePlugin(wordOperationPlugin);
         graphBuilderPlugins.appendTypePlugin(new TrustedInterfaceTypePlugin());
         graphBuilderPlugins.appendNodePlugin(wordOperationPlugin);
+        graphBuilderPlugins.setClassInitializationPlugin(new NoClassInitializationPlugin());
 
         GraphBuilderConfiguration graphBuilderConfig = GraphBuilderConfiguration.getSnippetDefault(graphBuilderPlugins);
         GraphBuilderPhase.Instance graphBuilder = new GraphBuilderPhase.Instance(originalProviders.getMetaAccess(), originalProviders.getStampProvider(), originalProviders.getConstantReflection(),
@@ -435,14 +436,13 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
     }
 
     private void maybeEmitClassInitialization(GraphBuilderContext b, boolean isStatic, ResolvedJavaType declaringClass) {
-        if (isStatic && classInitializationPlugin.shouldApply(b, declaringClass)) {
+        if (isStatic) {
             /*
              * We know that this code only runs during bytecode parsing, so the casts to
              * BytecodeParser are safe. We want to avoid putting additional rarely used methods into
              * GraphBuilderContext.
              */
-            FrameState stateBefore = ((BytecodeParser) b).getFrameStateBuilder().create(b.bci(), (BytecodeParser) b.getNonIntrinsicAncestor(), false, null, null);
-            classInitializationPlugin.apply(b, declaringClass, stateBefore);
+            classInitializationPlugin.apply(b, declaringClass, () -> ((BytecodeParser) b).getFrameStateBuilder().create(b.bci(), (BytecodeParser) b.getNonIntrinsicAncestor(), false, null, null));
         }
     }
 

@@ -24,28 +24,24 @@
  */
 package com.oracle.truffle.regex.tregex.matchers;
 
+import com.oracle.truffle.api.dsl.Specialization;
+
 /**
  * A character matcher that always matches.
  */
-public final class AnyMatcher implements CharMatcher {
-
-    private AnyMatcher() {
-    }
-
-    public static final AnyMatcher INSTANCE = new AnyMatcher();
-
-    public static final CharMatcher[] INSTANCE_ARRAY = new CharMatcher[]{INSTANCE};
+public abstract class AnyMatcher extends CharMatcher {
 
     public static CharMatcher create() {
-        return INSTANCE;
+        return AnyMatcherNodeGen.create();
     }
 
     public static CharMatcher create(boolean invert) {
         return invert ? EmptyMatcher.create() : create();
     }
 
-    @Override
-    public boolean match(char c) {
+    @Specialization
+    @SuppressWarnings("unused")
+    boolean match(char c, boolean compactString) {
         return true;
     }
 

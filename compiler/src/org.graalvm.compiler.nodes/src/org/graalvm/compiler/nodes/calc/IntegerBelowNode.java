@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -82,6 +82,24 @@ public final class IntegerBelowNode extends IntegerLowerThanNode {
         protected CompareNode duplicateModified(ValueNode newX, ValueNode newY, boolean unorderedIsTrue, NodeView view) {
             assert newX.stamp(NodeView.DEFAULT) instanceof IntegerStamp && newY.stamp(NodeView.DEFAULT) instanceof IntegerStamp;
             return new IntegerBelowNode(newX, newY);
+        }
+
+        @Override
+        protected LogicNode findSynonym(ValueNode forX, ValueNode forY, NodeView view) {
+            LogicNode result = super.findSynonym(forX, forY, view);
+            if (result != null) {
+                return result;
+            }
+            if (forX.stamp(view) instanceof IntegerStamp) {
+                assert forY.stamp(view) instanceof IntegerStamp;
+                int bits = ((IntegerStamp) forX.stamp(view)).getBits();
+                assert ((IntegerStamp) forY.stamp(view)).getBits() == bits;
+                LogicNode logic = canonicalizeRangeFlip(forX, forY, bits, false, view);
+                if (logic != null) {
+                    return logic;
+                }
+            }
+            return null;
         }
 
         @Override

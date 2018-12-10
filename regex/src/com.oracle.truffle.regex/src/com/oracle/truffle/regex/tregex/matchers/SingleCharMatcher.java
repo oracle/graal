@@ -24,25 +24,31 @@
  */
 package com.oracle.truffle.regex.tregex.matchers;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 
 /**
  * Matcher that matches a single character.
  */
-public final class SingleCharMatcher extends ProfiledCharMatcher {
+public abstract class SingleCharMatcher extends InvertibleCharMatcher {
 
     private final char c;
 
     /**
      * Constructs a new {@link SingleCharMatcher}.
      * 
-     * @param invert see {@link ProfiledCharMatcher}.
+     * @param invert see {@link InvertibleCharMatcher}.
      * @param c character to match.
      */
-    public SingleCharMatcher(boolean invert, char c) {
+    SingleCharMatcher(boolean invert, char c) {
         super(invert);
         this.c = c;
+    }
+
+    public static SingleCharMatcher create(boolean invert, char c) {
+        return SingleCharMatcherNodeGen.create(invert, c);
     }
 
     /**
@@ -52,9 +58,9 @@ public final class SingleCharMatcher extends ProfiledCharMatcher {
         return c;
     }
 
-    @Override
-    public boolean matchChar(char m) {
-        return c == m;
+    @Specialization
+    public boolean match(char m, boolean compactString) {
+        return result((!compactString || c < 256) && c == m);
     }
 
     @Override
@@ -63,7 +69,7 @@ public final class SingleCharMatcher extends ProfiledCharMatcher {
     }
 
     @Override
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public String toString() {
         return modifiersToString() + DebugUtil.charToString(c);
     }

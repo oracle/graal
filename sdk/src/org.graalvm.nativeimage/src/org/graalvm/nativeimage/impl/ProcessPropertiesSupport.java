@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,9 +47,17 @@ public interface ProcessPropertiesSupport {
 
     long getProcessID();
 
+    long getProcessID(Process process);
+
     String getObjectFile(String symbol);
 
     String getObjectFile(CEntryPointLiteral<?> symbol);
 
     String setLocale(String category, String locale);
+
+    void destroy(long processID);
+
+    void destroyForcibly(long processID);
+
+    boolean isAlive(long processID);
 }

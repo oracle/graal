@@ -136,7 +136,7 @@ def _unittest_config_participant(config):
 
         # This is required for the call to setAccessible in
         # TruffleTCK.testValueWithSource to work.
-        vmArgs = vmArgs + ['--add-opens=com.oracle.truffle.truffle_api/com.oracle.truffle.api.vm=ALL-UNNAMED', '--add-modules=ALL-MODULE-PATH']
+        vmArgs = vmArgs + ['--add-opens=org.graalvm.truffle/com.oracle.truffle.api.vm=ALL-UNNAMED', '--add-modules=ALL-MODULE-PATH']
     return (vmArgs, mainClass, mainClassArgs)
 
 mx_unittest.add_config_participant(_unittest_config_participant)
@@ -185,11 +185,11 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJdkComponent(
 ))
 
 for mode in ['jvm', 'native']:
-    mx_sdk.add_graalvm_hostvm_config(mode + '-cpusampler-exclude-inlined-roots', lang_args=['--' + mode, '--cpusampler', '--cpusampler.Mode=exclude_inlined_roots'])
-    mx_sdk.add_graalvm_hostvm_config(mode + '-cpusampler-roots', lang_args=['--' + mode, '--cpusampler', '--cpusampler.Mode=roots'])
-    mx_sdk.add_graalvm_hostvm_config(mode + '-cpusampler-statements', lang_args=['--' + mode, '--cpusampler', '--cpusampler.Mode=statements'])
-    mx_sdk.add_graalvm_hostvm_config(mode + '-cputracer-roots', lang_args=['--' + mode, '--cputracer', '--cputracer.TraceRoots=true'])
-    mx_sdk.add_graalvm_hostvm_config(mode + '-cputracer-statements', lang_args=['--' + mode, '--cputracer', '--cputracer.TraceStatements=true'])
+    mx_sdk.add_graalvm_hostvm_config(mode + '-cpusampler-exclude-inlined-roots', launcher_args=['--' + mode, '--cpusampler', '--cpusampler.Mode=exclude_inlined_roots'])
+    mx_sdk.add_graalvm_hostvm_config(mode + '-cpusampler-roots', launcher_args=['--' + mode, '--cpusampler', '--cpusampler.Mode=roots'])
+    mx_sdk.add_graalvm_hostvm_config(mode + '-cpusampler-statements', launcher_args=['--' + mode, '--cpusampler', '--cpusampler.Mode=statements'])
+    mx_sdk.add_graalvm_hostvm_config(mode + '-cputracer-roots', launcher_args=['--' + mode, '--cputracer', '--cputracer.TraceRoots=true'])
+    mx_sdk.add_graalvm_hostvm_config(mode + '-cputracer-statements', launcher_args=['--' + mode, '--cputracer', '--cputracer.TraceStatements=true'])
 
 mx.update_commands(_suite, {
     'javadoc' : [javadoc, ''],

@@ -89,8 +89,8 @@ public class AnalysisUniverse implements Universe {
 
     /**
      * True if the analysis has converged and the analysis data is valid. This is similar to
-     * {@sealed} but in contrast to {@sealed}, the analysis data can be set to invalid again, e.g.
-     * if features modify the universe.
+     * {@link #sealed} but in contrast to {@link #sealed}, the analysis data can be set to invalid
+     * again, e.g. if features modify the universe.
      */
     boolean analysisDataValid;
 
@@ -190,14 +190,14 @@ public class AnalysisUniverse implements Universe {
         ResolvedJavaType type = substitutions.lookup(hostType);
         AnalysisType result = optionalLookup(type);
         if (result == null) {
-            result = createType(type, hostType);
+            result = createType(type);
         }
         assert typesById[result.getId()].equals(result);
         return result;
     }
 
     @SuppressFBWarnings(value = {"ES_COMPARING_STRINGS_WITH_EQ"}, justification = "Bug in findbugs")
-    private AnalysisType createType(ResolvedJavaType type, ResolvedJavaType hostType) {
+    private AnalysisType createType(ResolvedJavaType type) {
         if (!hostVM.platformSupported(type)) {
             throw new UnsupportedFeatureException("type is not available in this platform: " + type.toJavaName(true));
         }
@@ -249,7 +249,7 @@ public class AnalysisUniverse implements Universe {
         try {
             JavaKind storageKind = getStorageKind(type, originalMetaAccess, getTarget());
             AnalysisType newValue = new AnalysisType(this, type, storageKind, objectClass);
-            hostVM.registerType(newValue, hostType);
+            hostVM.registerType(newValue);
 
             synchronized (this) {
                 /*

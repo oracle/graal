@@ -24,24 +24,30 @@
  */
 package com.oracle.truffle.regex.tregex.matchers;
 
-public interface CharMatcher {
+import com.oracle.truffle.api.nodes.Node;
 
-    CharMatcher[] EMPTY = {};
+public abstract class CharMatcher extends Node {
+
+    public static final CharMatcher[] EMPTY = {};
 
     /**
      * Check if a given character matches this {@link CharMatcher}.
      * 
      * @param c any character.
+     * @param compactString {@code true} if {@code c} was read from a compact string and can
+     *            therefore be treated as a {@code byte}. This parameter must always be partial
+     *            evaluation constant!
      * @return {@code true} if the character matches.
+     * @see com.oracle.truffle.api.CompilerDirectives#isPartialEvaluationConstant(Object)
      */
-    boolean match(char c);
+    public abstract boolean execute(char c, boolean compactString);
 
     /**
      * Conservatively estimate the equivalent number of integer comparisons of calling
-     * {@link #match(char)}.
+     * {@link #execute(char, boolean)}.
      * 
-     * @return the number of integer comparisons one call to {@link #match(char)} is roughly
-     *         equivalent to. Array loads are treated as two comparisons.
+     * @return the number of integer comparisons one call to {@link #execute(char, boolean)} is
+     *         roughly equivalent to. Array loads are treated as two comparisons.
      */
-    int estimatedCost();
+    public abstract int estimatedCost();
 }

@@ -73,21 +73,19 @@ class CodeInfoDecoder {
     @UnknownObjectField(types = {byte[].class}) protected byte[] referenceMapEncoding;
     @UnknownObjectField(types = {byte[].class}) protected byte[] frameInfoEncodings;
     @UnknownObjectField(types = {Object[].class}) protected Object[] frameInfoObjectConstants;
-    @UnknownObjectField(types = {String[].class}) protected String[] frameInfoSourceClassNames;
+    @UnknownObjectField(types = {Class[].class}) protected Class<?>[] frameInfoSourceClasses;
     @UnknownObjectField(types = {String[].class}) protected String[] frameInfoSourceMethodNames;
-    @UnknownObjectField(types = {String[].class}) protected String[] frameInfoSourceFileNames;
     @UnknownObjectField(types = {String[].class}) protected String[] frameInfoNames;
 
     protected void setData(byte[] codeInfoIndex, byte[] codeInfoEncodings, byte[] referenceMapEncoding, byte[] frameInfoEncodings, Object[] frameInfoObjectConstants,
-                    String[] frameInfoSourceClassNames, String[] frameInfoSourceMethodNames, String[] frameInfoSourceFileNames, String[] frameInfoNames) {
+                    Class<?>[] frameInfoSourceClasses, String[] frameInfoSourceMethodNames, String[] frameInfoNames) {
         this.codeInfoIndex = codeInfoIndex;
         this.codeInfoEncodings = codeInfoEncodings;
         this.referenceMapEncoding = referenceMapEncoding;
         this.frameInfoEncodings = frameInfoEncodings;
         this.frameInfoObjectConstants = frameInfoObjectConstants;
-        this.frameInfoSourceClassNames = frameInfoSourceClassNames;
+        this.frameInfoSourceClasses = frameInfoSourceClasses;
         this.frameInfoSourceMethodNames = frameInfoSourceMethodNames;
-        this.frameInfoSourceFileNames = frameInfoSourceFileNames;
         this.frameInfoNames = frameInfoNames;
     }
 
@@ -366,7 +364,7 @@ class CodeInfoDecoder {
     private FrameInfoQueryResult loadFrameInfo(boolean isDeoptEntry, long entryOffset, int entryFlags) {
         int frameInfoIndex = ByteArrayReader.getS4(codeInfoEncodings, offsetFI(entryOffset, entryFlags));
         return FrameInfoDecoder.decodeFrameInfo(isDeoptEntry, new ReusableTypeReader(frameInfoEncodings, frameInfoIndex), frameInfoObjectConstants,
-                        frameInfoSourceClassNames, frameInfoSourceMethodNames, frameInfoSourceFileNames, frameInfoNames,
+                        frameInfoSourceClasses, frameInfoSourceMethodNames, frameInfoNames,
                         FrameInfoDecoder.HeapBasedFrameInfoQueryResultAllocator, FrameInfoDecoder.HeapBasedValueInfoAllocator, true);
     }
 

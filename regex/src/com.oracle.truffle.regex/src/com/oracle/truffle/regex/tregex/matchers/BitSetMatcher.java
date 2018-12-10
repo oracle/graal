@@ -25,6 +25,7 @@
 package com.oracle.truffle.regex.tregex.matchers;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
@@ -34,13 +35,14 @@ import com.oracle.truffle.regex.util.CompilationFinalBitSet;
  * are matched by this high byte and a bit set that matches {@code 0x10}, {@code 0x20} and
  * {@code 0x30}.
  */
-public final class BitSetMatcher extends ProfiledCharMatcher {
+public abstract class BitSetMatcher extends InvertibleCharMatcher {
 
     private final int highByte;
     private final CompilationFinalBitSet bitSet;
 
-    private BitSetMatcher(boolean invert, int highByte, CompilationFinalBitSet bitSet) {
+    BitSetMatcher(boolean invert, int highByte, CompilationFinalBitSet bitSet) {
         super(invert);
+        assert highByte != 0 : "use NullHighByteBitSetMatcher instead!";
         this.highByte = highByte;
         this.bitSet = bitSet;
     }
@@ -48,25 +50,25 @@ public final class BitSetMatcher extends ProfiledCharMatcher {
     /**
      * Constructs a new bit-set-based character matcher.
      * 
-     * @param invert see {@link ProfiledCharMatcher}.
+     * @param invert see {@link InvertibleCharMatcher}.
      * @param highByte the high byte common to all characters to match.
      * @param bitSet the bit set to match the low byte of the characters to match.
      * @return a new {@link BitSetMatcher} or a {@link NullHighByteBitSetMatcher}.
      */
-    public static ProfiledCharMatcher create(boolean invert, int highByte, CompilationFinalBitSet bitSet) {
+    public static InvertibleCharMatcher create(boolean invert, int highByte, CompilationFinalBitSet bitSet) {
         if (highByte == 0) {
-            return new NullHighByteBitSetMatcher(invert, bitSet);
+            return NullHighByteBitSetMatcher.create(invert, bitSet);
         }
-        return new BitSetMatcher(invert, highByte, bitSet);
+        return BitSetMatcherNodeGen.create(invert, highByte, bitSet);
     }
 
     public CompilationFinalBitSet getBitSet() {
         return bitSet;
     }
 
-    @Override
-    public boolean matchChar(char c) {
-        return highByte(c) == highByte && bitSet.get(lowByte(c));
+    @Specialization
+    public boolean match(char c, boolean compactString) {
+        return result(!compactString && highByte(c) == highByte && bitSet.get(lowByte(c)));
     }
 
     @Override

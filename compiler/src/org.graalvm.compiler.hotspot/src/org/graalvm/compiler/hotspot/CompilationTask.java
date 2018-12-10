@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import static org.graalvm.compiler.core.GraalCompilerOptions.CompilationFailureA
 import static org.graalvm.compiler.core.phases.HighTier.Options.Inline;
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsing;
 
+import java.io.PrintStream;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
@@ -105,9 +106,9 @@ public class CompilationTask {
         }
 
         @Override
-        protected DebugContext createRetryDebugContext(OptionValues retryOptions) {
+        protected DebugContext createRetryDebugContext(OptionValues retryOptions, PrintStream logStream) {
             SnippetReflectionProvider snippetReflection = compiler.getGraalRuntime().getHostProviders().getSnippetReflection();
-            return DebugContext.create(retryOptions, new GraalDebugHandlersFactory(snippetReflection));
+            return DebugContext.create(retryOptions, logStream, new GraalDebugHandlersFactory(snippetReflection));
         }
 
         @Override

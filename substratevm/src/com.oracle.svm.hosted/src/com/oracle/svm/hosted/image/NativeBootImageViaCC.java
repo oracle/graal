@@ -42,6 +42,7 @@ import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
@@ -64,6 +65,11 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
     }
 
     class BinutilsCCLinkerInvocation extends CCLinkerInvocation {
+
+        BinutilsCCLinkerInvocation() {
+            additionalPreOptions.add("-z");
+            additionalPreOptions.add("noexecstack");
+        }
 
         @Override
         protected void addOneSymbolAliasOption(List<String> cmd, Entry<String, String> ent) {
@@ -151,7 +157,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             cmd.addAll(inputFilenames);
 
             // We could add a .drectve section instead of doing this
-            cmd.add("/link /DEFAULTLIB:LIBCMT /DEFAULTLIB:OLDNAMES");
+            cmd.add("/link /DEFAULTLIB:LIBCMT /DEFAULTLIB:OLDNAMES /INCREMENTAL:NO");
             return cmd;
         }
     }
@@ -183,7 +189,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
         for (String libraryPath : nativeLibs.getLibraryPaths()) {
             inv.addLibPath(libraryPath);
         }
-        for (String rPath : SubstrateOptions.LinkerRPath.getValue().split(",")) {
+        for (String rPath : OptionUtils.flatten(",", SubstrateOptions.LinkerRPath.getValue())) {
             inv.addRPath(rPath);
         }
 

@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.truffle.api;
 
+import java.io.PrintStream;
 import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -57,9 +58,12 @@ import jdk.vm.ci.code.InstalledCode;
 
 public class SubstrateTruffleCompiler extends TruffleCompilerImpl {
 
+    private final String compilerConfigurationName;
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public SubstrateTruffleCompiler(TruffleCompilerRuntime runtime, Plugins plugins, Suites suites, LIRSuites lirSuites, Backend backend, SnippetReflectionProvider snippetReflection) {
         super(runtime, plugins, suites, lirSuites, backend, null, null, null, snippetReflection);
+        compilerConfigurationName = GraalConfiguration.instance().getCompilerConfigurationName();
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -75,7 +79,7 @@ public class SubstrateTruffleCompiler extends TruffleCompilerImpl {
 
     @Override
     public String getCompilerConfigurationName() {
-        return GraalConfiguration.instance().getCompilerConfigurationName();
+        return compilerConfigurationName;
     }
 
     @Override
@@ -84,13 +88,13 @@ public class SubstrateTruffleCompiler extends TruffleCompilerImpl {
     }
 
     @Override
-    public CompilationIdentifier getCompilationIdentifier(CompilableTruffleAST optimizedCallTarget) {
+    public CompilationIdentifier createCompilationIdentifier(CompilableTruffleAST optimizedCallTarget) {
         return new SubstrateTruffleCompilationIdentifier((OptimizedCallTarget) optimizedCallTarget);
     }
 
     @Override
-    public DebugContext openDebugContext(OptionValues options, CompilationIdentifier compilationId, CompilableTruffleAST callTarget) {
-        return GraalSupport.get().openDebugContext(options, compilationId, callTarget);
+    public DebugContext createDebugContext(OptionValues options, CompilationIdentifier compilationId, CompilableTruffleAST callTarget, PrintStream logStream) {
+        return GraalSupport.get().openDebugContext(options, compilationId, callTarget, logStream);
     }
 
     @Override

@@ -34,7 +34,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -82,14 +81,19 @@ public final class LLVMTruffleWrite {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMTruffleWriteToName extends LLVMIntrinsic {
 
         @Child private Node foreignWrite = Message.WRITE.createNode();
         @Child protected LLVMDataEscapeNode prepareValueForEscape;
         @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.create();
 
-        public LLVMTruffleWriteToName() {
+        public LLVMTruffleWriteToName(int argCount) {
+            if (argCount != 3) {
+                throw new LLVMPolyglotException(this, "polyglot_put_member must be called with exactly 3 arguments.");
+            }
             this.prepareValueForEscape = LLVMDataEscapeNode.create();
         }
 
@@ -109,14 +113,19 @@ public final class LLVMTruffleWrite {
         }
     }
 
-    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMTruffleWriteToIndex extends LLVMIntrinsic {
 
         @Child private Node foreignWrite = Message.WRITE.createNode();
         @Child protected LLVMDataEscapeNode prepareValueForEscape;
         @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.create();
 
-        public LLVMTruffleWriteToIndex() {
+        public LLVMTruffleWriteToIndex(int argCount) {
+            if (argCount != 3) {
+                throw new LLVMPolyglotException(this, "polyglot_set_array_element must be called with exactly 3 arguments.");
+            }
             this.prepareValueForEscape = LLVMDataEscapeNode.create();
         }
 

@@ -145,8 +145,7 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            Debugger debugger = event.getSession().getDebugger();
-            throw new DebugException(debugger, ex, root.getLanguageInfo(), null, true, null);
+            throw new DebugException(event.getSession(), ex, root.getLanguageInfo(), null, true, null);
         }
     }
 
@@ -163,11 +162,11 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
         verifyValidState(true);
         if (currentFrame == null) {
             SuspendedContext context = getContext();
-            return context.getInstrumentedSourceSection();
+            return event.getSession().resolveSection(context.getInstrumentedSourceSection());
         } else {
             Node callNode = currentFrame.getCallNode();
             if (callNode != null) {
-                return callNode.getEncapsulatingSourceSection();
+                return event.getSession().resolveSection(callNode.getEncapsulatingSourceSection());
             }
             return null;
         }
@@ -221,19 +220,19 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
             // no language, no scopes
             return null;
         }
-        Debugger debugger = event.getSession().getDebugger();
+        DebuggerSession session = event.getSession();
         MaterializedFrame frame = findTruffleFrame();
         try {
-            Iterable<Scope> scopes = debugger.getEnv().findLocalScopes(node, frame);
+            Iterable<Scope> scopes = session.getDebugger().getEnv().findLocalScopes(node, frame);
             Iterator<Scope> it = scopes.iterator();
             if (!it.hasNext()) {
                 return null;
             }
-            return new DebugScope(it.next(), it, debugger, event, frame, root);
+            return new DebugScope(it.next(), it, session, event, frame, root);
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(debugger, ex, languageInfo, null, true, null);
+            throw new DebugException(session, ex, languageInfo, null, true, null);
         }
     }
 
@@ -277,7 +276,7 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
         } else {
             language = null;
         }
-        return new HeapValue(event.getSession().getDebugger(), language, null, result);
+        return new HeapValue(event.getSession(), language, null, result);
     }
 
     /**

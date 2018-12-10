@@ -84,6 +84,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     private boolean isInHeap;
     private boolean isAllocated;
     private boolean isInTypeCheck;
+    private boolean reachabilityListenerNotified;
     private boolean unsafeFieldsRecomputed;
     private boolean unsafeAccessedFieldsRegistered;
 
@@ -153,36 +154,6 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         this.unsafeAccessedFieldsRegistered = false;
         if (universe.hostVM.analysisPolicy().needsConstantCache()) {
             this.constantObjectsCache = new ConcurrentHashMap<>();
-        }
-
-        /*
-         * Eagerly ask the wrapped type to lookup the declared constructors. This will discover
-         * early any class resolution problems caused by missing parameter types. We cannot cache
-         * the result as AnalysisMethod[], i.e., by calling universe.lookup(JavaMethod[]), because
-         * that would lead to a deadlock, but we could cache it as ResolvedJavaMethod[] which we can
-         * later use in AnalysisType.getDeclaredConstructors().
-         */
-        wrapped.getDeclaredConstructors();
-        /*
-         * Eagerly resolve the enclosing type. It is possible that we are dealing with an incomplete
-         * classpath. While normally JVM doesn't care about missing classes unless they are really
-         * used the analysis is eager to load all reachable classes. The analysis client should deal
-         * with type resolution problems.
-         *
-         * We cannot cache the result as an AnalysisType, i.e., by calling
-         * universe.lookup(JavaType), because that could lead to a deadlock.
-         */
-        wrapped.getEnclosingType();
-
-        /*
-         * Eagerly resolve the instance fields. The wrapped type caches the result, so when
-         * AnalysisType.getInstanceFields(boolean) is called it will use that cached result. We
-         * cannot call AnalysisType.getInstanceFields(boolean), and create the corresponding
-         * AnalysisField objects, directly here because that could lead to a deadlock.
-         */
-        for (ResolvedJavaField field : wrapped.getInstanceFields(false)) {
-            /* Eagerly resolve the field declared type. */
-            field.getType();
         }
 
         /* Ensure the super types as well as the component type (for arrays) is created too. */
@@ -531,6 +502,14 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
 
     public void registerAsInTypeCheck() {
         isInTypeCheck = true;
+    }
+
+    public boolean getReachabilityListenerNotified() {
+        return reachabilityListenerNotified;
+    }
+
+    public void setReachabilityListenerNotified(boolean reachabilityListenerNotified) {
+        this.reachabilityListenerNotified = reachabilityListenerNotified;
     }
 
     /**

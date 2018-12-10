@@ -37,10 +37,10 @@ import com.oracle.truffle.tools.utils.json.JSONArray;
 import com.oracle.truffle.tools.utils.json.JSONException;
 import com.oracle.truffle.tools.utils.json.JSONObject;
 
-import com.oracle.truffle.tools.chromeinspector.TruffleDebugger;
-import com.oracle.truffle.tools.chromeinspector.TruffleExecutionContext;
-import com.oracle.truffle.tools.chromeinspector.TruffleProfiler;
-import com.oracle.truffle.tools.chromeinspector.TruffleRuntime;
+import com.oracle.truffle.tools.chromeinspector.InspectorDebugger;
+import com.oracle.truffle.tools.chromeinspector.InspectorExecutionContext;
+import com.oracle.truffle.tools.chromeinspector.InspectorProfiler;
+import com.oracle.truffle.tools.chromeinspector.InspectorRuntime;
 import com.oracle.truffle.tools.chromeinspector.commands.Command;
 import com.oracle.truffle.tools.chromeinspector.commands.ErrorResponse;
 import com.oracle.truffle.tools.chromeinspector.commands.Params;
@@ -58,22 +58,22 @@ public final class InspectServerSession implements MessageEndpoint {
     private final RuntimeDomain runtime;
     private final DebuggerDomain debugger;
     private final ProfilerDomain profiler;
-    private final TruffleExecutionContext context;
+    private final InspectorExecutionContext context;
     private volatile MessageEndpoint messageEndpoint;
     private CommandProcessThread processThread;
 
     private InspectServerSession(RuntimeDomain runtime, DebuggerDomain debugger, ProfilerDomain profiler,
-                    TruffleExecutionContext context) {
+                    InspectorExecutionContext context) {
         this.runtime = runtime;
         this.debugger = debugger;
         this.profiler = profiler;
         this.context = context;
     }
 
-    public static InspectServerSession create(TruffleExecutionContext context, boolean debugBreak, ConnectionWatcher connectionWatcher) {
-        RuntimeDomain runtime = new TruffleRuntime(context);
-        DebuggerDomain debugger = new TruffleDebugger(context, debugBreak);
-        ProfilerDomain profiler = new TruffleProfiler(context, connectionWatcher);
+    public static InspectServerSession create(InspectorExecutionContext context, boolean debugBreak, ConnectionWatcher connectionWatcher) {
+        RuntimeDomain runtime = new InspectorRuntime(context);
+        DebuggerDomain debugger = new InspectorDebugger(context, debugBreak);
+        ProfilerDomain profiler = new InspectorProfiler(context, connectionWatcher);
         return new InspectServerSession(runtime, debugger, profiler, context);
     }
 
@@ -90,7 +90,7 @@ public final class InspectServerSession implements MessageEndpoint {
 
     public void setMessageListener(MessageEndpoint messageListener) {
         this.messageEndpoint = messageListener;
-        if (processThread == null) {
+        if (messageListener != null && processThread == null) {
             EventHandler eh = new EventHandlerImpl();
             runtime.setEventHandler(eh);
             debugger.setEventHandler(eh);
@@ -154,7 +154,7 @@ public final class InspectServerSession implements MessageEndpoint {
                                 json.optBoolean("awaitPromise"));
                 break;
             case "Runtime.runIfWaitingForDebugger":
-                runtime.runIfWaitingForDebugger();
+                runtime.runIfWaitingForDebugger(postProcessor);
                 break;
             case "Runtime.getProperties":
                 json = cmd.getParams().getJSONObject();

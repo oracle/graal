@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -261,15 +261,10 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
         throw GraalError.unimplemented("String.compareTo substitution is not implemented on this architecture");
     }
 
-    Variable emitArrayEquals(JavaKind kind, Value array1, Value array2, Value length);
+    Variable emitArrayEquals(JavaKind kind, Value array1, Value array2, Value length, int constantLength, boolean directPointers);
 
     @SuppressWarnings("unused")
-    default Variable emitStringIndexOf(Value sourcePointer, Value sourceCount, Value targetPointer, Value targetCount, int constantTargetCount) {
-        throw GraalError.unimplemented("String.indexOf substitution is not implemented on this architecture");
-    }
-
-    @SuppressWarnings("unused")
-    default Variable emitArrayIndexOf(JavaKind kind, Value sourcePointer, Value sourceCount, Value charValue) {
+    default Variable emitArrayIndexOf(JavaKind kind, boolean findTwoConsecutive, Value sourcePointer, Value sourceCount, Value... searchValues) {
         throw GraalError.unimplemented("String.indexOf substitution is not implemented on this architecture");
     }
 

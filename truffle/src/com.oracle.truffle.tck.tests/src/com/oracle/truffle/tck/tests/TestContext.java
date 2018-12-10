@@ -61,6 +61,7 @@ import java.util.stream.Stream;
 import org.junit.Assert;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.tck.InlineSnippet;
 import org.graalvm.polyglot.tck.Snippet;
@@ -133,7 +134,8 @@ final class TestContext implements Closeable {
             }
             this.context = builder.build();
             if (!isTruffleCompileImmediately()) {
-                this.inlineVerifier = context.getEngine().getInstruments().get(InlineVerifier.ID).lookup(InlineVerifier.class);
+                Instrument instrument = context.getEngine().getInstruments().get(InlineVerifier.ID);
+                this.inlineVerifier = instrument.lookup(InlineVerifier.class);
                 Assert.assertNotNull(this.inlineVerifier);
             }
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@
 package org.graalvm.compiler.truffle.common.hotspot;
 
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 
 public interface HotSpotTruffleCompiler extends TruffleCompiler {
 
@@ -35,7 +34,5 @@ public interface HotSpotTruffleCompiler extends TruffleCompiler {
      */
     void installTruffleCallBoundaryMethods();
 
-    abstract class Factory {
-        public abstract HotSpotTruffleCompiler create(TruffleCompilerRuntime runtime);
-    }
+    int pendingTransferToInterpreterOffset();
 }

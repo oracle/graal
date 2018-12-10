@@ -35,10 +35,8 @@ import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
-import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMOperation;
@@ -126,6 +124,13 @@ public class Space {
         this.accounting = Accounting.factory();
 
         this.isYoungSpace = isYoungSpace;
+    }
+
+    /** Return all allocated virtual memory chunks to HeapChunkProvider. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public final void tearDown() {
+        HeapChunkProvider.freeAlignedChunkList(getFirstAlignedHeapChunk());
+        HeapChunkProvider.freeUnalignedChunkList(getFirstUnalignedHeapChunk());
     }
 
     final boolean isYoungSpace() {
@@ -585,6 +590,7 @@ public class Space {
         final AlignedHeapChunk.AlignedHeader chunk = AlignedHeapChunk.getEnclosingAlignedHeapChunk(original);
         trace.string("  chunk: ").hex(chunk).string("  this: ").string(getName());
         final Space originalSpace = chunk.getSpace();
+        assert promoteAlignedObjectSpaceAssert(originalSpace, chunk, original) : "Space.promoteAlignedObject: originalSpace is not valid.";
         if (trace.isEnabled()) {
             /* No other uses of fields of originalSpace, so do not get name unless tracing. */
             trace.string("  originalSpace: ").string(originalSpace.getName());
@@ -613,6 +619,20 @@ public class Space {
         return copy;
     }
 
+    /** An assert for the original Space in promoteAlignedObject. For GR-9912. */
+    private static boolean promoteAlignedObjectSpaceAssert(Space thatSpace, AlignedHeapChunk.AlignedHeader chunk, Object object) {
+        final boolean result = HeapImpl.getHeapImpl().isValidSpace(thatSpace);
+        if (!result) {
+            /* I am about to fail an assert, but first log some things about that Space. */
+            final Log failureLog = Log.log().string("[! Space.promoteAlignedObjectAssert:");
+            failureLog.string("  space: ").hex(Word.objectToUntrackedPointer(thatSpace))
+                            .string("  chunk: ").hex(chunk)
+                            .string("  original: ").hex(Word.objectToUntrackedPointer(object));
+            failureLog.string(" !]").newline();
+        }
+        return result;
+    }
+
     /** Copy an Object into the given memory. */
     private Object copyAlignedObject(Object originalObj) {
         VMOperation.guaranteeInProgress("Should only be called from the collector.");
@@ -627,8 +647,11 @@ public class Space {
         final Pointer copyMemory = allocateMemory(copySize);
         trace.string("  copyMemory: ").hex(copyMemory);
         if (copyMemory.isNull()) {
-            final Log failureLog = Log.log().string("[!SpaceImpl.copyAlignedObject:");
-            failureLog.string("  failure to allocate ").unsigned(copySize).string(" bytes").string("!]").newline();
+            /* I am about to fail, but first log some things about the object. */
+            final Log failureLog = Log.log().string("[! SpaceImpl.copyAlignedObject:").indent(true);
+            failureLog.string("  failure to allocate ").unsigned(copySize).string(" bytes").newline();
+            ObjectHeaderImpl.getObjectHeaderImpl().objectHeaderToLog(originalObj, failureLog);
+            failureLog.string(" !]").indent(false);
             throw VMError.shouldNotReachHere("Promotion failure");
         }
         /* - Copy the Object. */
@@ -655,14 +678,10 @@ public class Space {
     /** Assert that the hub of obj is well-formed. For GR-9912. */
     private static boolean copyAlignedObjectAssert(Object obj) {
         if (GCImpl.runtimeAssertions() && !HeapImpl.getHeapImpl().assertHubOfObject(obj)) {
-            final Log failureLog = Log.log().string("[Space.copyAlignedObjectAssert:").indent(true);
-            failureLog.string("  obj: ").hex(Word.objectToUntrackedPointer(obj)).indent(true);
-            final UnsignedWord header = ObjectHeader.readHeaderFromObject(obj);
-            final DynamicHub hub = ObjectHeader.dynamicHubFromObjectHeader(header);
-            failureLog.string("  header: ").hex(header)
-                            .string("  hub: ").hex(Word.objectToUntrackedPointer(hub))
-                            .string("  headerBits: ").string(Heap.getHeap().getObjectHeader().toStringFromHeader(header)).indent(false);
-            failureLog.string("  hub fails to verify.]").indent(false);
+            /* I am about to fail an assert, but first log some things about the object. */
+            final Log failureLog = Log.log().string("[! Space.copyAlignedObjectAssert:").indent(true);
+            ObjectHeaderImpl.getObjectHeaderImpl().objectHeaderToLog(obj, failureLog);
+            failureLog.string(" !]").indent(false);
             return false;
         }
         return true;

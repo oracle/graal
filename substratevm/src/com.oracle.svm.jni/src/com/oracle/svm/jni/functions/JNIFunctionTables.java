@@ -24,12 +24,15 @@
  */
 package com.oracle.svm.jni.functions;
 
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.UnmanagedMemory;
-import org.graalvm.nativeimage.c.function.CEntryPointContext;
 import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.UnknownObjectField;
+import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicPointer;
 import com.oracle.svm.jni.nativeapi.JNIInvokeInterface;
 import com.oracle.svm.jni.nativeapi.JNIJavaVM;
 import com.oracle.svm.jni.nativeapi.JNINativeInterface;
@@ -51,7 +54,6 @@ public final class JNIFunctionTables {
     }
 
     void initialize(JNIStructFunctionsInitializer<JNIInvokeInterface> invokes, JNIStructFunctionsInitializer<JNINativeInterface> functionTable) {
-
         assert this.invokesInitializer == null && this.functionTableInitializer == null;
         this.invokesInitializer = invokes;
         this.functionTableInitializer = functionTable;
@@ -66,9 +68,14 @@ public final class JNIFunctionTables {
         if (globalJavaVM.isNull()) {
             JNIInvokeInterface invokes = UnmanagedMemory.calloc(SizeOf.get(JNIInvokeInterface.class));
             invokesInitializer.initialize(invokes);
-            invokes.setIsolate(CEntryPointContext.getCurrentIsolate());
+            invokes.setIsolate(CurrentIsolate.getIsolate());
             globalJavaVM = UnmanagedMemory.calloc(SizeOf.get(JNIJavaVM.class));
             globalJavaVM.setFunctions(invokes);
+            RuntimeSupport.getRuntimeSupport().addTearDownHook(() -> {
+                UnmanagedMemory.free(globalJavaVM.getFunctions());
+                UnmanagedMemory.free(globalJavaVM);
+                globalJavaVM = WordFactory.nullPointer();
+            });
         }
         return globalJavaVM;
     }
@@ -76,15 +83,21 @@ public final class JNIFunctionTables {
     @UnknownObjectField(types = JNIStructFunctionsInitializer.class) //
     private JNIStructFunctionsInitializer<JNINativeInterface> functionTableInitializer;
 
-    private JNINativeInterface globalFunctionTable;
+    private final AtomicPointer<JNINativeInterface> globalFunctionTable = new AtomicPointer<>();
 
     public JNINativeInterface getGlobalFunctionTable() {
-        if (globalFunctionTable.isNull()) {
-            JNINativeInterface functionTable = UnmanagedMemory.malloc(SizeOf.get(JNINativeInterface.class));
+        JNINativeInterface functionTable = globalFunctionTable.get();
+        if (functionTable.isNull()) {
+            functionTable = UnmanagedMemory.malloc(SizeOf.get(JNINativeInterface.class));
             functionTableInitializer.initialize(functionTable);
-            globalFunctionTable = functionTable;
+            if (globalFunctionTable.compareAndSet(WordFactory.nullPointer(), functionTable)) {
+                RuntimeSupport.getRuntimeSupport().addTearDownHook(() -> UnmanagedMemory.free(globalFunctionTable.get()));
+            } else { // lost the race
+                UnmanagedMemory.free(functionTable);
+                functionTable = globalFunctionTable.get();
+            }
         }
-        return globalFunctionTable;
+        return functionTable;
     }
 
 }

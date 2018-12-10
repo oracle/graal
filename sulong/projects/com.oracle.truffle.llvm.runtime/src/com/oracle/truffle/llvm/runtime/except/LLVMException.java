@@ -41,6 +41,11 @@ public abstract class LLVMException extends RuntimeException implements TruffleE
 
     private final Node location;
 
+    protected LLVMException(Node location, String message, Throwable cause) {
+        super(message, cause);
+        this.location = location;
+    }
+
     protected LLVMException(Node location, String message) {
         super(message);
         this.location = location;

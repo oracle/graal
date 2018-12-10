@@ -30,14 +30,15 @@
 package com.oracle.truffle.llvm.nodes.asm;
 
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64UpdateFlagsNode.LLVMAMD64UpdateCPZSOFlagsNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-@NodeChildren({@NodeChild("left"), @NodeChild("right"), @NodeChild("cf")})
+@NodeChild("left")
+@NodeChild("right")
+@NodeChild("cf")
 public abstract class LLVMAMD64AdcNode extends LLVMExpressionNode {
     @Child protected LLVMAMD64UpdateCPZSOFlagsNode flags;
 

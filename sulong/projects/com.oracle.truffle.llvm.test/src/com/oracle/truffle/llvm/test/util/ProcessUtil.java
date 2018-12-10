@@ -129,13 +129,13 @@ public class ProcessUtil {
         }
     }
 
-    public static ProcessResult executeSulongTestMain(File bitcodeFile, String[] args, Map<String, String> options, Function<Context.Builder, CaptureOutput> captureOutput) throws Exception {
+    public static ProcessResult executeSulongTestMain(File bitcodeFile, String[] args, Map<String, String> options, Function<Context.Builder, CaptureOutput> captureOutput) throws IOException {
         if (TestOptions.TEST_AOT_IMAGE == null) {
-            org.graalvm.polyglot.Source source = org.graalvm.polyglot.Source.newBuilder(LLVMLanguage.NAME, bitcodeFile).build();
+            org.graalvm.polyglot.Source source = org.graalvm.polyglot.Source.newBuilder(LLVMLanguage.ID, bitcodeFile).build();
             Builder builder = Context.newBuilder();
             try (CaptureOutput out = captureOutput.apply(builder)) {
                 int result;
-                try (Context context = builder.arguments(LLVMLanguage.NAME, args).options(options).allowAllAccess(true).build()) {
+                try (Context context = builder.arguments(LLVMLanguage.ID, args).options(options).allowAllAccess(true).build()) {
                     Value main = context.eval(source);
                     if (!main.canExecute()) {
                         throw new LLVMLinkerException("No main function found.");

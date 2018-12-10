@@ -201,7 +201,12 @@ final class ProviderUtil {
                  * those algorithms are actually used an java.lang.UnsatisfiedLinkError will be
                  * thrown. Just warn the user that the library could not be loaded.
                  */
-                Log.log().string("WARNING: The sunec native library could not be loaded.").newline();
+                Log.log().string("WARNING: The sunec native library, required by the SunEC provider, could not be loaded. " +
+                                "This library is usually shipped as part of the JDK and can be found under <JAVA_HOME>/jre/lib/<platform>/libsunec.so. " +
+                                "It is loaded at run time via System.loadLibrary(\"sunec\"), the first time services from SunEC are accessed. " +
+                                "To use this provider's services the java.library.path system property needs to be set accordingly " +
+                                "to point to a location that contains libsunec.so. " +
+                                "Note that if java.library.path is not set it defaults to the current working directory.").newline();
             }
             initialized = true;
         }
@@ -268,7 +273,11 @@ final class JceSecurityUtil {
     }
 }
 
-@TargetClass(className = "javax.crypto.JarVerifier")
+/**
+ * JDK-8 (and earlier) has the class `javax.crypto.JarVerifier`, but in JDK-9 (and later) that class
+ * is only available in Oracle builds, and not in OpenJDK builds.
+ */
+@TargetClass(className = "javax.crypto.JarVerifier", onlyWith = PlatformHasClass.class)
 @SuppressWarnings({"static-method", "unused"})
 final class Target_javax_crypto_JarVerifier {
 
@@ -282,6 +291,22 @@ final class Target_javax_crypto_JarVerifier {
     @TargetElement(onlyWith = ContainsVerifyJars.class)
     private void verifyJars(URL var1, List<String> var2) {
         throw VMError.unimplemented();
+    }
+}
+
+/** A predicate to tell whether this platform includes the argument class. */
+final class PlatformHasClass implements Predicate<String> {
+    @Override
+    public boolean test(String className) {
+        try {
+            @SuppressWarnings({"unused"})
+            /* { Allow use of `Class.forName`. Checkstyle: stop. */
+            final Class<?> classForName = Class.forName(className);
+            /* } Allow use of `Class.forName`. Checkstyle: resume. */
+            return true;
+        } catch (ClassNotFoundException cnfe) {
+            return false;
+        }
     }
 }
 

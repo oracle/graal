@@ -69,7 +69,7 @@ public final class NativeConfiguration implements Configuration {
     public List<ContextExtension> createContextExtensions(LLVMContext context) {
         List<ContextExtension> result = new ArrayList<>();
         result.add(new BasicIntrinsicsProvider(context));
-        result.add(new BasicSystemContextExtension());
+        result.add(new BasicSystemContextExtension(context.getEnv()));
         if (context.getEnv().getOptions().get(SulongEngineOption.ENABLE_NFI)) {
             result.add(new NFIContextExtension(context.getEnv()));
         }

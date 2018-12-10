@@ -103,6 +103,32 @@ final class PolyglotLogHandler extends Handler {
     }
 
     /**
+     * Returns a {@link Handler} for given {@link Handler} or {@link OutputStream}. If the
+     * {@code logHandlerOrStream} is instance of {@link Handler} the {@code logHandlerOrStream} is
+     * returned. If the {@code logHandlerOrStream} is instance of {@link OutputStream} a new
+     * {@link StreamHandler} is created for given stream. If the {@code logHandlerOrStream} is
+     * {@code null} the {@code null} is returned. Otherwise a {@link IllegalArgumentException} is
+     * thrown.
+     *
+     * @param logHandlerOrStream the {@link Handler} or {@link OutputStream}
+     * @return {@link Handler} or {@code null}
+     * @throws IllegalArgumentException if {@code logHandlerOrStream} is not {@code null} nor
+     *             {@link Handler} nor {@link OutputStream}
+     */
+    static Handler asHandler(Object logHandlerOrStream) {
+        if (logHandlerOrStream == null) {
+            return null;
+        }
+        if (logHandlerOrStream instanceof Handler) {
+            return (Handler) logHandlerOrStream;
+        }
+        if (logHandlerOrStream instanceof OutputStream) {
+            return createStreamHandler((OutputStream) logHandlerOrStream, true, true);
+        }
+        throw new IllegalArgumentException("Unexpected logHandlerOrStream parameter: " + logHandlerOrStream);
+    }
+
+    /**
      * Creates a {@link Handler} printing log messages into given {@link OutputStream}.
      *
      * @param out the {@link OutputStream} to print log messages into

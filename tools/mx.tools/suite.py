@@ -1,10 +1,10 @@
 suite = {
-    "mxversion": "5.176.0",
+    "mxversion": "5.195.1",
     "name": "tools",
     "defaultLicense" : "GPLv2-CPE",
 
     "groupId" : "org.graalvm.tools",
-    "version": "1.0.0-rc8",
+    "version": "1.0.0-rc10",
     "release" : False,
     "url" : "http://openjdk.java.net/projects/graal",
     "developer" : {
@@ -12,6 +12,11 @@ suite = {
       "email" : "graal-dev@openjdk.java.net",
       "organization" : "Graal",
       "organizationUrl" : "http://openjdk.java.net/projects/graal",
+    },
+    "scm" : {
+        "url" : "https://github.com/oracle/graal",
+        "read" : "https://github.com/oracle/graal.git",
+        "write" : "git@github.com:oracle/graal.git",
     },
 
     "imports": {
@@ -36,10 +41,11 @@ suite = {
                 "NanoHTTPD",
                 "NanoHTTPD-WebSocket",
                 "TruffleJSON",
+                "Java-WebSocket",
             ],
             "exports" : [
               "<package-info>", # exports all packages containing package-info.java
-              "com.oracle.truffle.tools.chromeinspector.instrument to com.oracle.truffle.truffle_api"
+              "com.oracle.truffle.tools.chromeinspector.instrument to org.graalvm.truffle"
             ],
             "javaCompliance" : "8+",
             "checkstyleVersion" : "8.8",
@@ -58,7 +64,6 @@ suite = {
             ],
             "javaCompliance" : "8+",
             "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
-            "checkstyleVersion" : "8.8",
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "workingSets" : "Tools",
         },
@@ -71,10 +76,9 @@ suite = {
                 ],
             "exports" : [
               "<package-info>", # exports all packages containing package-info.java
-              "com.oracle.truffle.tools.profiler.impl to com.oracle.truffle.truffle_api",
+              "com.oracle.truffle.tools.profiler.impl to org.graalvm.truffle",
             ],
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
-            "checkstyleVersion" : "8.8",
             "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
             "javaCompliance" : "8+",
             "workingSets" : "Tools",
@@ -88,7 +92,6 @@ suite = {
                 "mx:JUNIT"
             ],
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
-            "checkstyleVersion" : "8.8",
             "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
             "javaCompliance" : "8+",
             "workingSets" : "Tools",
@@ -126,22 +129,34 @@ suite = {
           ],
           "sha1" : "8819cea8bfe22c9c63f55465e296b3855ea41786",
         },
+        "Java-WebSocket" : {
+            "path" : "lib/Java-WebSocket-1.3.9.jar",
+            "urls" : [
+                "https://search.maven.org/remotecontent?filepath=org/java-websocket/Java-WebSocket/1.3.9/Java-WebSocket-1.3.9.jar",
+            ],
+            "sha1" : "e6e60889b7211a80b21052a249bd7e0f88f79fee",
+            "maven" : {
+                "groupId" : "org.java-websocket",
+                "artifactId" : "Java-WebSocket",
+                "version" : "1.3.9",
+            }
+        },
         "VISUALVM_COMMON" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-606.tar.gz"],
-            "sha1" : "4cb0f27e677582e760fdce1d71900048cb30c3e8",
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-632.tar.gz"],
+            "sha1" : "dab8a050f338b6df627a8d6a864c8d6490b3a0a6",
         },
         "VISUALVM_PLATFORM_SPECIFIC" : {
             "os_arch" : {
                 "linux" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-606-linux-amd64.tar.gz"],
-                        "sha1" : "cbd7d1b4378f024a9fc5a71ac79ed90ad5f8a173",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-632-linux-amd64.tar.gz"],
+                        "sha1" : "cc822c762985b49343138b9c68496845ee179dd1",
                     }
                 },
                 "darwin" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-606-macosx-x86_64.tar.gz"],
-                        "sha1" : "6e5a902272f1d10db9b16407fe1f6faf40ddd90b",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-632-macosx-x86_64.tar.gz"],
+                        "sha1" : "b32286a5ca9b59047f2d19a7f4646ab271a27980",
                     }
                 },
             }

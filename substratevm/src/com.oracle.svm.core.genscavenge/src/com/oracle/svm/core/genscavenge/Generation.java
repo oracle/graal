@@ -73,5 +73,8 @@ public abstract class Generation {
      */
     protected abstract Object promoteObject(Object original);
 
+    /** Returns true if the space is a valid Space in this generation, else false. */
+    protected abstract boolean isValidSpace(Space space);
+
     protected abstract boolean verify(HeapVerifier.Occasion occasion);
 }

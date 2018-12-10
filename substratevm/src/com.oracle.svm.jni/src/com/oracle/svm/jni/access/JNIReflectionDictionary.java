@@ -24,8 +24,9 @@
  */
 package com.oracle.svm.jni.access;
 
-// Checkstyle: allow reflection
+import static com.oracle.svm.core.SubstrateOptions.JNIVerboseLookupErrors;
 
+import java.io.PrintStream;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -40,12 +41,15 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.jni.nativeapi.JNIFieldId;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.Signature;
+
+// Checkstyle: allow reflection
 
 /**
  * Provides JNI access to predetermined classes, methods and fields at runtime.
@@ -65,6 +69,35 @@ public final class JNIReflectionDictionary {
     private final Map<JNINativeLinkage, JNINativeLinkage> nativeLinkages = new HashMap<>();
 
     private JNIReflectionDictionary() {
+    }
+
+    private void dump(boolean condition, String label) {
+        if (JNIVerboseLookupErrors.getValue() && condition) {
+            PrintStream ps = Log.logStream();
+            ps.println(label);
+            ps.println(" classesByName:");
+            for (Map.Entry<String, JNIAccessibleClass> e : classesByName.entrySet()) {
+                ps.print("  ");
+                ps.println(e.getKey());
+                JNIAccessibleClass clazz = e.getValue();
+                ps.println("   methods:");
+                for (Map.Entry<JNIAccessibleMethodDescriptor, JNIAccessibleMethod> m : clazz.getMethodsByDescriptor().entrySet()) {
+                    ps.print("      ");
+                    ps.println(m.getKey().getNameAndSignature());
+                }
+                ps.println("   fields:");
+                for (Map.Entry<String, JNIAccessibleField> f : clazz.getFieldsByName().entrySet()) {
+                    ps.print("      ");
+                    ps.println(f.getKey());
+                }
+            }
+
+            ps.println(" classesByClassObject:");
+            for (Map.Entry<Class<?>, JNIAccessibleClass> e : classesByClassObject.entrySet()) {
+                ps.print("  ");
+                ps.println(e.getKey());
+            }
+        }
     }
 
     @Platforms(HOSTED_ONLY.class)
@@ -88,6 +121,7 @@ public final class JNIReflectionDictionary {
 
     public Class<?> getClassObjectByName(String name) {
         JNIAccessibleClass clazz = classesByName.get(name);
+        dump(clazz == null, "getClassObjectByName");
         return (clazz != null) ? clazz.getClassObject() : null;
     }
 
@@ -106,13 +140,18 @@ public final class JNIReflectionDictionary {
         return nativeLinkages.get(key);
     }
 
-    public Iterable<JNINativeLinkage> getLinkages(String declaringClass) {
-        return () -> nativeLinkages.keySet().stream().filter(l -> declaringClass.equals(l.getDeclaringClassName())).iterator();
+    public void unsetEntryPoints(String declaringClass) {
+        for (JNINativeLinkage linkage : nativeLinkages.keySet()) {
+            if (declaringClass.equals(linkage.getDeclaringClassName())) {
+                linkage.unsetEntryPoint();
+            }
+        }
     }
 
     public JNIMethodId getMethodID(Class<?> classObject, JNIAccessibleMethodDescriptor descriptor, boolean isStatic) {
         JNIMethodId methodID = WordFactory.nullPointer();
         JNIAccessibleClass clazz = classesByClassObject.get(classObject);
+        dump(clazz == null, "getMethodID");
         if (clazz != null) {
             JNIAccessibleMethod method = clazz.getMethod(descriptor);
             if (method != null && method.isStatic() == isStatic) {
@@ -132,14 +171,52 @@ public final class JNIReflectionDictionary {
         return KnownIntrinsics.convertUnknownValue(obj, JNIAccessibleMethod.class);
     }
 
-    public JNIAccessibleField getField(Class<?> classObject, String name) {
+    private JNIAccessibleField getDeclaredField(Class<?> classObject, String name, boolean isStatic) {
         JNIAccessibleClass clazz = classesByClassObject.get(classObject);
-        return (clazz != null) ? clazz.getField(name) : null;
+        if (clazz != null) {
+            JNIAccessibleField field = clazz.getField(name);
+            if (field != null && field.isStatic() == isStatic) {
+                return field;
+            }
+        }
+        return null;
     }
 
-    public JNIFieldId getFieldID(Class<?> clazz, String name) {
-        JNIAccessibleField field = getField(clazz, name);
-        return field != null ? field.getId() : WordFactory.zero();
+    public JNIFieldId getDeclaredFieldId(Class<?> classObject, String name, boolean isStatic) {
+        dump(classObject == null, "getDeclaredFieldID");
+        JNIAccessibleField field = findField(classObject, name, isStatic);
+        return (field != null) ? field.getId() : WordFactory.nullPointer();
+    }
+
+    private JNIAccessibleField findField(Class<?> clazz, String name, boolean isStatic) {
+        // Lookup according to JVM spec 5.4.3.2: local fields, superinterfaces, superclasses
+        JNIAccessibleField field = getDeclaredField(clazz, name, isStatic);
+        if (field == null && isStatic) {
+            field = findSuperinterfaceField(clazz, name);
+        }
+        if (field == null) {
+            field = findField(clazz.getSuperclass(), name, isStatic);
+        }
+        return field;
+    }
+
+    private JNIAccessibleField findSuperinterfaceField(Class<?> clazz, String name) {
+        for (Class<?> parent : clazz.getInterfaces()) {
+            JNIAccessibleField field = getDeclaredField(parent, name, true);
+            if (field == null) {
+                field = findSuperinterfaceField(parent, name);
+            }
+            if (field != null) {
+                return field;
+            }
+        }
+        return null;
+    }
+
+    public JNIFieldId getFieldID(Class<?> clazz, String name, boolean isStatic) {
+        dump(clazz == null, "getFieldID");
+        JNIAccessibleField field = findField(clazz, name, isStatic);
+        return (field != null) ? field.getId() : WordFactory.nullPointer();
     }
 
     public String getFieldNameByID(Class<?> classObject, JNIFieldId id) {

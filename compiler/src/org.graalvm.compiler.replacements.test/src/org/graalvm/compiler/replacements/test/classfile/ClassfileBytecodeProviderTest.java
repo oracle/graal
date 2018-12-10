@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -87,8 +87,10 @@ import java.util.Formatter;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import org.graalvm.compiler.test.SubprocessUtil;
 import org.junit.Assert;
 import org.junit.Assume;
+import org.junit.Before;
 import org.junit.Test;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -123,6 +125,12 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * {@link ResolvedJavaMethod} objects.
  */
 public class ClassfileBytecodeProviderTest extends GraalCompilerTest {
+
+    @Before
+    public void checkJavaAgent() {
+        assumeManagementLibraryIsLoadable();
+        Assume.assumeFalse("Java Agent found -> skipping", SubprocessUtil.isJavaAgentAttached());
+    }
 
     private static boolean shouldProcess(String classpathEntry) {
         if (classpathEntry.endsWith(".jar")) {
@@ -160,6 +168,10 @@ public class ClassfileBytecodeProviderTest extends GraalCompilerTest {
                                  */
                                 continue;
                             }
+                            if (isGSON(className)) {
+                                /* uses old class format */
+                                continue;
+                            }
                             try {
                                 checkClass(metaAccess, getSnippetReflection(), className);
                             } catch (ClassNotFoundException e) {
@@ -176,6 +188,10 @@ public class ClassfileBytecodeProviderTest extends GraalCompilerTest {
 
     private static boolean isInNativeImage(String className) {
         return className.startsWith("org.graalvm.nativeimage");
+    }
+
+    private static boolean isGSON(String className) {
+        return className.contains("com.google.gson");
     }
 
     protected void checkClass(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, String className) throws ClassNotFoundException {

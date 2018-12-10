@@ -45,17 +45,18 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 
-import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Function;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -63,18 +64,17 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
+import com.oracle.truffle.api.TruffleLanguage.ParsingRequest;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.GCUtils;
 
 /*
  * Please note that any OOME exceptions when running this test indicate memory leaks in Truffle.
  */
 public class PolyglotCachingTest {
-
-    /*
-     * Also used for other GC tests.
-     */
-    public static final int GC_TEST_ITERATIONS = 15;
 
     @Test
     public void testDisableCaching() throws Exception {
@@ -137,13 +137,13 @@ public class PolyglotCachingTest {
     @Test
     public void testParsedASTIsNotCollectedIfSourceIsAlive() {
         Assume.assumeFalse("This test is too slow in fastdebug.", System.getProperty("java.vm.version").contains("fastdebug"));
-        setupTestLang();
+        setupTestLang(false);
 
         Context context = Context.create();
         Source source = Source.create(ProxyLanguage.ID, "0"); // needs to stay alive
 
         WeakReference<CallTarget> parsedRef = new WeakReference<>(assertParsedEval(context, source));
-        for (int i = 0; i < GC_TEST_ITERATIONS; i++) {
+        for (int i = 0; i < GCUtils.GC_TEST_ITERATIONS; i++) {
             // cache should stay valid and never be collected as long as the source is alive.
             assertCachedEval(context, source);
             System.gc();
@@ -159,10 +159,10 @@ public class PolyglotCachingTest {
     @Test
     public void testSourceFreeContextStrong() {
         Assume.assumeFalse("This test is too slow in fastdebug.", System.getProperty("java.vm.version").contains("fastdebug"));
-        setupTestLang();
+        setupTestLang(false);
 
         Context survivingContext = Context.create();
-        assertObjectsCollectible(GC_TEST_ITERATIONS, (iteration) -> {
+        GCUtils.assertObjectsCollectible((iteration) -> {
             Source source = Source.create(ProxyLanguage.ID, String.valueOf(iteration));
             CallTarget target = assertParsedEval(survivingContext, source);
             assertCachedEval(survivingContext, source);
@@ -178,11 +178,11 @@ public class PolyglotCachingTest {
     @Test
     public void testSourceStrongContextFree() {
         Assume.assumeFalse("This test is too slow in fastdebug.", System.getProperty("java.vm.version").contains("fastdebug"));
-        setupTestLang();
+        setupTestLang(false);
 
         List<Source> survivingSources = new ArrayList<>();
 
-        assertObjectsCollectible(GC_TEST_ITERATIONS, (iteration) -> {
+        GCUtils.assertObjectsCollectible((iteration) -> {
             Context context = Context.create();
             Source source = Source.create(ProxyLanguage.ID, String.valueOf(iteration));
             CallTarget parsedAST = assertParsedEval(context, source);
@@ -193,52 +193,74 @@ public class PolyglotCachingTest {
         });
     }
 
-    private static void assertObjectsCollectible(int iterations, Function<Integer, Object> objectFactory) {
-        ReferenceQueue<Object> queue = new ReferenceQueue<>();
-        List<WeakReference<Object>> collectibleObjects = new ArrayList<>();
-        for (int i = 0; i < iterations; i++) {
-            collectibleObjects.add(new WeakReference<>(objectFactory.apply(i), queue));
-            System.gc();
-        }
-        int refsCleared = 0;
-        while (queue.poll() != null) {
-            refsCleared++;
-        }
-        // we need to have any refs cleared for this test to have any value
-        Assert.assertTrue(refsCleared > 0);
+    /*
+     * Test that the language instance is correctly freed if a context is no longer referenced, but
+     * was not closed.
+     */
+    @Test
+    public void testEngineStrongContextFree() {
+        Assume.assumeFalse("This test is too slow in fastdebug.", System.getProperty("java.vm.version").contains("fastdebug"));
+        setupTestLang(true);
+
+        Engine engine = Engine.create();
+        Set<ProxyLanguage> usedInstances = new HashSet<>();
+        GCUtils.assertObjectsCollectible((iteration) -> {
+            Context context = Context.newBuilder().engine(engine).build();
+            context.eval(ReuseLanguage.ID, String.valueOf(iteration));
+            usedInstances.add(lastLanguage);
+            return context;
+        });
+        // we should at least once reuse a language instance
+        Assert.assertTrue(String.valueOf(usedInstances.size()), usedInstances.size() < GCUtils.GC_TEST_ITERATIONS);
+        engine.close();
     }
 
     long parseCount;
     CallTarget lastParsedTarget;
+    ProxyLanguage lastLanguage;
 
-    private void setupTestLang() {
+    private void setupTestLang(boolean reuse) {
         byte[] bytes = new byte[16 * 1024 * 1024];
         byte byteValue = (byte) 'a';
         Arrays.fill(bytes, byteValue);
         String testString = new String(bytes); // big string
 
-        ProxyLanguage.setDelegate(new ProxyLanguage() {
+        if (reuse) {
+            ProxyLanguage.setDelegate(new ReuseLanguage() {
+                @Override
+                protected CallTarget parse(ParsingRequest request) throws Exception {
+                    return PolyglotCachingTest.this.parse(languageInstance, testString, request);
+                }
+            });
+        } else {
+            ProxyLanguage.setDelegate(new ProxyLanguage() {
+                @Override
+                protected CallTarget parse(ParsingRequest request) throws Exception {
+                    return PolyglotCachingTest.this.parse(languageInstance, testString, request);
+                }
+            });
+        }
+    }
+
+    private CallTarget parse(ProxyLanguage languageInstance, String testString, ParsingRequest request) {
+        int index = Integer.parseInt(request.getSource().getCharacters().toString());
+        parseCount++;
+        lastLanguage = languageInstance;
+        lastParsedTarget = Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+            /*
+             * Typical root nodes have a strong reference to source. We need to ensure that we can
+             * still collect the cache if that happens.
+             */
+            @SuppressWarnings("unused") final com.oracle.truffle.api.source.Source source = request.getSource();
+
+            @SuppressWarnings("unused") final String bigString = testString.substring(index, testString.length());
+
             @Override
-            protected CallTarget parse(ParsingRequest request) throws Exception {
-                int index = Integer.parseInt(request.getSource().getCharacters().toString());
-                parseCount++;
-                lastParsedTarget = Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
-                    /*
-                     * Typical root nodes have a strong reference to source. We need to ensure that
-                     * we can still collect the cache if that happens.
-                     */
-                    @SuppressWarnings("unused") final com.oracle.truffle.api.source.Source source = request.getSource();
-
-                    @SuppressWarnings("unused") final String bigString = testString.substring(index, testString.length());
-
-                    @Override
-                    public Object execute(VirtualFrame frame) {
-                        return "foobar";
-                    }
-                });
-                return lastParsedTarget;
+            public Object execute(VirtualFrame frame) {
+                return "foobar";
             }
         });
+        return lastParsedTarget;
     }
 
     private CallTarget assertParsedEval(Context context, Source source) {
@@ -257,6 +279,12 @@ public class PolyglotCachingTest {
         assertEquals("foobar", context.eval(source).asString());
         assertEquals(0, this.parseCount);
         assertNull(lastParsedTarget);
+    }
+
+    @TruffleLanguage.Registration(id = ReuseLanguage.ID, name = ReuseLanguage.ID, contextPolicy = ContextPolicy.REUSE)
+    public static class ReuseLanguage extends ProxyLanguage {
+        public static final String ID = "ReuseLanguage";
+
     }
 
 }

@@ -83,8 +83,8 @@ import org.graalvm.polyglot.proxy.Proxy;
  * elements of an object. For example, the members of a Java object are all public methods and
  * fields. Members are accessible using {@link #getMember(String)}.
  * <li>{@link #canExecute() Executable}: This value can be {@link #execute(Object...) executed}.
- * This indicates that the value represents that can be executed. Guest language examples for
- * executable elements are functions, methods, closures or promises.
+ * This indicates that the value represents an element that can be executed. Guest language examples
+ * for executable elements are functions, methods, closures or promises.
  * <li>{@link #canInstantiate() Instantiable}: This value can be {@link #newInstance(Object...)
  * instantiated}. For example, Java classes are instantiable.
  * </ul>
@@ -97,7 +97,7 @@ import org.graalvm.polyglot.proxy.Proxy;
  * {@link #toString() string} for debugging, formatted by the original language.
  * <p>
  * Polyglot values may be converted to host objects using {@link #as(Class)}. In addition values may
- * be created form Java values using {@link Context#asValue(Object)}.
+ * be created from Java values using {@link Context#asValue(Object)}.
  *
  * @see Context
  * @see Engine
@@ -143,7 +143,7 @@ public final class Value {
 
     /**
      * Returns the array element of a given index. Polyglot arrays start with index <code>0</code>,
-     * independent of the guest language. The given array index must be greater or equal 0.
+     * independent of the guest language. The given array index must be greater or equal to 0.
      *
      * @throws ArrayIndexOutOfBoundsException if the array index does not exist.
      * @throws UnsupportedOperationException if the value does not have any
@@ -158,7 +158,7 @@ public final class Value {
     }
 
     /**
-     * Sets the value at a given index. Polyglot array start with index <code>0</code>, independent
+     * Sets the value at a given index. Polyglot arrays start with index <code>0</code>, independent
      * of the guest language. The array element value is subject to polyglot value mapping rules as
      * described in {@link Context#asValue(Object)}.
      *
@@ -254,12 +254,12 @@ public final class Value {
 
     /**
      * Returns a set of all member keys. Calling {@link Set#contains(Object)} with a string key is
-     * equivalent of calling {@link #hasMember(String)}. Removing an element from the returned set
+     * equivalent to calling {@link #hasMember(String)}. Removing an element from the returned set
      * is equivalent to calling {@link #removeMember(String)}. Adding an element to the set is
      * equivalent to calling {@linkplain #putMember(String, Object) putMember(key, null)}. If the
      * value does not support {@link #hasMembers() members} then an empty unmodifiable set is
      * returned. If the context gets closed while the returned set is still alive, then the set will
-     * throw an {@link IllegalStateException} if any method except Object methods is invoked.
+     * throw an {@link IllegalStateException} if any methods except Object methods are invoked.
      *
      * @throws IllegalStateException if the context is already {@link Context#close() closed}.
      * @throws PolyglotException if a guest language error occurred during execution.
@@ -389,6 +389,48 @@ public final class Value {
     }
 
     /**
+     * Returns <code>true</code> if the given member exists and can be invoked. Returns
+     * <code>false</code> if the member does not exist ({@link #hasMember(String)} returns
+     * <code>false</code>), or is not invocable.
+     *
+     * @param identifier the member identifier
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred.
+     * @see #getMemberKeys() For a list of members.
+     * @see #invokeMember(String, Object...)
+     * @since 1.0
+     */
+    public boolean canInvokeMember(String identifier) {
+        Objects.requireNonNull(identifier, "identifier");
+        return impl.canInvoke(identifier, receiver);
+    }
+
+    /**
+     * Invokes the given member of this value. Unlike {@link #execute(Object...)}, this is an object
+     * oriented execution of a member of an object. To test whether invocation is supported, call
+     * {@link #canInvokeMember(String)}. When object oriented semantics are not supported, use
+     * <code>{@link #getMember(String)}.{@link #execute(Object...) execute(Object...)}</code>
+     * instead.
+     *
+     * @param identifier the member identifier to invoke
+     * @param arguments the invocation arguments
+     * @throws UnsupportedOperationException if this member cannot be invoked.
+     * @throws PolyglotException if a guest language error occurred during invocation.
+     * @throws NullPointerException if the arguments array is null.
+     * @see #canInvokeMember(String)
+     * @since 1.0
+     */
+    public Value invokeMember(String identifier, Object... arguments) {
+        Objects.requireNonNull(identifier, "identifier");
+        if (arguments.length == 0) {
+            // specialized entry point for zero argument invoke calls
+            return impl.invoke(receiver, identifier);
+        } else {
+            return impl.invoke(receiver, identifier, arguments);
+        }
+    }
+
+    /**
      * Returns <code>true</code> if this value represents a string.
      *
      * @throws PolyglotException if a guest language error occurred during execution.
@@ -426,7 +468,7 @@ public final class Value {
     }
 
     /**
-     * Returns an <code>int</code> representation if this value if it is {@link #isNumber() number}
+     * Returns an <code>int</code> representation of this value if it is {@link #isNumber() number}
      * and the value {@link #fitsInInt() fits}.
      *
      * @throws NullPointerException if this value represents {@link #isNull() null}.
@@ -452,7 +494,7 @@ public final class Value {
     }
 
     /**
-     * Returns an <code>boolean</code> representation if this value if it is {@link #isBoolean()
+     * Returns a <code>boolean</code> representation of this value if it is {@link #isBoolean()
      * boolean}.
      *
      * @throws NullPointerException if this value represents {@link #isNull() null}
@@ -493,7 +535,7 @@ public final class Value {
     }
 
     /**
-     * Returns an <code>long</code> representation if this value if it is {@link #isNumber() number}
+     * Returns a <code>long</code> representation of this value if it is {@link #isNumber() number}
      * and the value {@link #fitsInLong() fits}.
      *
      * @throws NullPointerException if this value represents {@link #isNull() null}.
@@ -520,7 +562,7 @@ public final class Value {
     }
 
     /**
-     * Returns an <code>double</code> representation if this value if it is {@link #isNumber()
+     * Returns a <code>double</code> representation of this value if it is {@link #isNumber()
      * number} and the value {@link #fitsInDouble() fits}.
      *
      * @throws NullPointerException if this value represents {@link #isNull() null}.
@@ -547,8 +589,8 @@ public final class Value {
     }
 
     /**
-     * Returns an <code>float</code> representation if this value if it is {@link #isNumber()
-     * number} and the value {@link #fitsInFloat() fits}.
+     * Returns a <code>float</code> representation of this value if it is {@link #isNumber() number}
+     * and the value {@link #fitsInFloat() fits}.
      *
      * @throws NullPointerException if this value represents {@link #isNull() null}.
      * @throws ClassCastException if this value could not be converted.
@@ -574,7 +616,7 @@ public final class Value {
     }
 
     /**
-     * Returns an <code>byte</code> representation if this value if it is {@link #isNumber() number}
+     * Returns a <code>byte</code> representation of this value if it is {@link #isNumber() number}
      * and the value {@link #fitsInByte() fits}.
      *
      * @throws NullPointerException if this value represents {@link #isNull() null}.
@@ -601,8 +643,8 @@ public final class Value {
     }
 
     /**
-     * Returns an <code>short</code> representation if this value if it is {@link #isNumber()
-     * number} and the value {@link #fitsInShort() fits}.
+     * Returns a <code>short</code> representation of this value if it is {@link #isNumber() number}
+     * and the value {@link #fitsInShort() fits}.
      *
      * @throws NullPointerException if this value represents {@link #isNull() null}.
      * @throws ClassCastException if this value could not be converted.
@@ -675,8 +717,8 @@ public final class Value {
     }
 
     /**
-     * Returns <code>true</code> whether this value represents a {@link Proxy}. The proxy instance
-     * can be unboxed using {@link #asProxyObject()}.
+     * Returns <code>true</code> if this value represents a {@link Proxy}. The proxy instance can be
+     * unboxed using {@link #asProxyObject()}.
      *
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws IllegalStateException if the underlying context was closed.
@@ -751,7 +793,7 @@ public final class Value {
      * be executed and instantiated then the returned implementation of the interface will be
      * {@link #execute(Object...) executed}. The coercion to the parameter types of functional
      * interface method is converted using the semantics of {@link #as(Class)}. If a standard
-     * functional interface like {@link Function} are used, is recommended to use
+     * functional interface like {@link Function} is used, it is recommended to use
      * {@link #as(TypeLiteral) type literals} to specify the expected generic method parameter and
      * return type.
      * <li>Any interface if the value {@link #hasMembers()}. Each method or field name maps to one
@@ -815,8 +857,8 @@ public final class Value {
      * <li>If the value can be {@link #canExecute() executed} or {@link #canInstantiate()
      * instantiated} then the result value implements {@link Function Function}. By default the
      * argument of the function will be used as single argument to the function when executed. If a
-     * value of type {@link Object Object[]} is provided then the function will executed with those
-     * arguments. The returned function may also implement {@link Map} if the value has
+     * value of type {@link Object Object[]} is provided then the function will be executed with
+     * those arguments. The returned function may also implement {@link Map} if the value has
      * {@link #hasArrayElements() array elements} or {@link #hasMembers() members}.
      * <li>If none of the above rules apply then this {@link Value} instance is returned.
      * </ol>
@@ -868,10 +910,11 @@ public final class Value {
      * @throws NullPointerException if the target type is null.
      * @since 1.0
      */
+    @SuppressWarnings("unchecked")
     public <T> T as(Class<T> targetType) throws ClassCastException, IllegalStateException, PolyglotException {
         Objects.requireNonNull(targetType, "targetType");
         if (targetType == Value.class) {
-            return targetType.cast(this);
+            return (T) this;
         }
         return impl.as(receiver, targetType);
     }
@@ -885,10 +928,12 @@ public final class Value {
      * <pre>
      * static final TypeLiteral<List<String>> STRING_LIST = new TypeLiteral<List<String>>() {
      * };
-     *
-     * Context context = Context.create();
-     * List<String> javaList = context.eval("js", "['foo', 'bar', 'bazz']").as(STRING_LIST);
-     * assert javaList.get(0).equals("foo");
+     * 
+     * public static void main(String[] args) {
+     *     Context context = Context.create();
+     *     List<String> javaList = context.eval("js", "['foo', 'bar', 'bazz']").as(STRING_LIST);
+     *     assert javaList.get(0).equals("foo");
+     * }
      * </pre>
      *
      * @throws NullPointerException if the target type is null.
@@ -921,18 +966,19 @@ public final class Value {
     }
 
     /**
-     * Converts a Java host value to a polyglot value representation using
-     * {@link Context#asValue(Object)} with the {@link Context#getCurrent() current} context. This
-     * method is a short-cut for <code>Context.getCurrent().asValue(o)</code>.
+     * Converts a Java host value to a polyglot value. Returns a value for any host or guest value.
+     * If there is a context available use {@link Context#asValue(Object)} for efficiency instead.
      *
      * @param o the object to convert
      * @throws IllegalStateException if no context is currently entered.
      * @see Context#asValue(Object) Conversion rules.
-     * @see Context#getCurrent() Looking up the current context.
      * @since 1.0
      */
     public static Value asValue(Object o) {
-        return Context.getCurrent().asValue(o);
+        if (o instanceof Value) {
+            return (Value) o;
+        }
+        return Engine.getImpl().asValue(o);
     }
 
 }

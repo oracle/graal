@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,8 @@
  * questions.
  */
 package org.graalvm.compiler.hotspot;
+
+import static org.graalvm.compiler.replacements.arraycopy.ArrayCopyForeignCalls.UNSAFE_ARRAYCOPY;
 
 import java.util.EnumSet;
 
@@ -259,16 +261,9 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     @NodeIntrinsic(ForeignCallNode.class)
     private static native void sha5ImplCompressStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word bufAddr, Object state);
 
-    /**
-     * @see org.graalvm.compiler.hotspot.meta.HotSpotUnsafeSubstitutions#copyMemory
-     */
-    public static final ForeignCallDescriptor UNSAFE_ARRAYCOPY = new ForeignCallDescriptor("unsafe_arraycopy", void.class, Word.class, Word.class, Word.class);
-
     public static void unsafeArraycopy(Word srcAddr, Word dstAddr, Word size) {
-        unsafeArraycopyStub(HotSpotBackend.UNSAFE_ARRAYCOPY, srcAddr, dstAddr, size);
+        unsafeArraycopyStub(UNSAFE_ARRAYCOPY, srcAddr, dstAddr, size);
     }
-
-    public static final ForeignCallDescriptor GENERIC_ARRAYCOPY = new ForeignCallDescriptor("generic_arraycopy", int.class, Word.class, int.class, Word.class, int.class, int.class);
 
     @NodeIntrinsic(ForeignCallNode.class)
     private static native void unsafeArraycopyStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word srcAddr, Word dstAddr, Word size);
@@ -279,19 +274,34 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     public static final ForeignCallDescriptor VM_ERROR = new ForeignCallDescriptor("vm_error", void.class, Object.class, Object.class, long.class);
 
     /**
-     * New multi array stub call.
+     * New multi array stub that throws an {@link OutOfMemoryError} on allocation failure.
      */
     public static final ForeignCallDescriptor NEW_MULTI_ARRAY = new ForeignCallDescriptor("new_multi_array", Object.class, KlassPointer.class, int.class, Word.class);
 
     /**
-     * New array stub.
+     * New multi array stub that will return null on allocation failure.
+     */
+    public static final ForeignCallDescriptor NEW_MULTI_ARRAY_OR_NULL = new ForeignCallDescriptor("new_multi_array_or_null", Object.class, KlassPointer.class, int.class, Word.class);
+
+    /**
+     * New array stub that throws an {@link OutOfMemoryError} on allocation failure.
      */
     public static final ForeignCallDescriptor NEW_ARRAY = new ForeignCallDescriptor("new_array", Object.class, KlassPointer.class, int.class);
 
     /**
-     * New instance stub.
+     * New array stub that will return null on allocation failure.
+     */
+    public static final ForeignCallDescriptor NEW_ARRAY_OR_NULL = new ForeignCallDescriptor("new_array_or_null", Object.class, KlassPointer.class, int.class);
+
+    /**
+     * New instance stub that throws an {@link OutOfMemoryError} on allocation failure.
      */
     public static final ForeignCallDescriptor NEW_INSTANCE = new ForeignCallDescriptor("new_instance", Object.class, KlassPointer.class);
+
+    /**
+     * New instance stub that will return null on allocation failure.
+     */
+    public static final ForeignCallDescriptor NEW_INSTANCE_OR_NULL = new ForeignCallDescriptor("new_instance_or_null", Object.class, KlassPointer.class);
 
     /**
      * @see ResolveConstantStubCall
@@ -426,9 +436,14 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     }
 
     @Override
-    public CompiledCode createCompiledCode(ResolvedJavaMethod method, CompilationRequest compilationRequest, CompilationResult compResult) {
+    public CompiledCode createCompiledCode(ResolvedJavaMethod method,
+                    CompilationRequest compilationRequest,
+                    CompilationResult compResult,
+                    boolean isDefault,
+                    OptionValues options) {
+        assert !isDefault || compResult.getName() == null : "a default nmethod should have a null name since it is associated with a Method*";
         HotSpotCompilationRequest compRequest = compilationRequest instanceof HotSpotCompilationRequest ? (HotSpotCompilationRequest) compilationRequest : null;
-        return HotSpotCompiledCodeBuilder.createCompiledCode(getCodeCache(), method, compRequest, compResult);
+        return HotSpotCompiledCodeBuilder.createCompiledCode(getCodeCache(), method, compRequest, compResult, options);
     }
 
     @Override

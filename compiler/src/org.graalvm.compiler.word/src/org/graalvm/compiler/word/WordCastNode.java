@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,7 +28,6 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_1;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
 import org.graalvm.compiler.core.common.LIRKind;
-import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
 import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
@@ -140,8 +139,25 @@ public final class WordCastNode extends FixedWithNextNode implements LIRLowerabl
 
     @Override
     public boolean inferStamp() {
-        if (stamp.equals(StampFactory.object())) {
-            return updateStamp(objectStampFor(input));
+        if (stamp instanceof AbstractPointerStamp) {
+            AbstractPointerStamp objectStamp = (AbstractPointerStamp) stamp;
+            if (!objectStamp.alwaysNull() && !objectStamp.nonNull()) {
+                Stamp newStamp = stamp;
+                Stamp inputStamp = input.stamp(NodeView.DEFAULT);
+                if (inputStamp instanceof AbstractPointerStamp) {
+                    AbstractPointerStamp pointerStamp = (AbstractPointerStamp) inputStamp;
+                    if (pointerStamp.alwaysNull()) {
+                        newStamp = objectStamp.asAlwaysNull();
+                    } else if (pointerStamp.nonNull()) {
+                        newStamp = objectStamp.asNonNull();
+                    }
+                } else if (inputStamp instanceof IntegerStamp && !((IntegerStamp) inputStamp).contains(0)) {
+                    newStamp = objectStamp.asNonNull();
+                } else if (input.isConstant() && isZeroConstant(input)) {
+                    newStamp = objectStamp.asAlwaysNull();
+                }
+                return updateStamp(newStamp);
+            }
         }
         return false;
     }
@@ -153,13 +169,13 @@ public final class WordCastNode extends FixedWithNextNode implements LIRLowerabl
             return input;
         }
 
-        assert !stamp(NodeView.DEFAULT).isCompatible(input.stamp(NodeView.DEFAULT));
+        assert !stamp.isCompatible(input.stamp(NodeView.DEFAULT));
         if (input.isConstant()) {
             /* Null pointers are uncritical for GC, so they can be constant folded. */
             if (input.asJavaConstant().isNull()) {
-                return ConstantNode.forIntegerStamp(stamp(NodeView.DEFAULT), 0);
+                return ConstantNode.forIntegerStamp(stamp, 0);
             } else if (isZeroConstant(input)) {
-                return ConstantNode.forConstant(stamp(NodeView.DEFAULT), JavaConstant.NULL_POINTER, tool.getMetaAccess());
+                return ConstantNode.forConstant(stamp, ((AbstractPointerStamp) stamp).nullConstant(), tool.getMetaAccess());
             }
         }
 
@@ -183,7 +199,7 @@ public final class WordCastNode extends FixedWithNextNode implements LIRLowerabl
             AllocatableValue result = generator.getLIRGeneratorTool().newVariable(kind);
             if (stamp.equals(StampFactory.object())) {
                 generator.getLIRGeneratorTool().emitConvertZeroToNull(result, value);
-            } else if (!trackedPointer && !((AbstractObjectStamp) input.stamp(NodeView.DEFAULT)).nonNull()) {
+            } else if (!trackedPointer && !((AbstractPointerStamp) input.stamp(NodeView.DEFAULT)).nonNull()) {
                 generator.getLIRGeneratorTool().emitConvertNullToZero(result, value);
             } else {
                 generator.getLIRGeneratorTool().emitMove(result, value);

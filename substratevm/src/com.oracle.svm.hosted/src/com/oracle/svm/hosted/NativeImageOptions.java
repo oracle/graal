@@ -65,7 +65,7 @@ public class NativeImageOptions {
                     "CX8, CMOV, FXSR, HT, MMX, AMD_3DNOW_PREFETCH, SSE3, SSSE3, SSE4A, SSE4_1, " +
                     "SSE4_2, POPCNT, LZCNT, TSC, TSCINV, AVX, AVX2, AES, ERMS, CLMUL, BMI1, " +
                     "BMI2, RTM, ADX, AVX512F, AVX512DQ, AVX512PF, AVX512ER, AVX512CD, AVX512BW", type = User)//
-    public static final HostedOptionKey<String> CPUFeatures = new HostedOptionKey<>("");
+    public static final HostedOptionKey<String[]> CPUFeatures = new HostedOptionKey<>(null);
 
     @Option(help = "Overrides CPUFeatures and uses the native architecture, i.e., the architecture of a machine that builds an image. NativeArchitecture takes precedence over CPUFeatures", type = User)//
     public static final HostedOptionKey<Boolean> NativeArchitecture = new HostedOptionKey<>(false);
@@ -91,9 +91,6 @@ public class NativeImageOptions {
     @Option(help = "Print the sizes of the native image heap as the image is built")//
     public static final HostedOptionKey<Boolean> PrintImageHeapPartitionSizes = new HostedOptionKey<>(false);
 
-    @Option(help = "Compiles all methods as deoptimization targets for testing")//
-    public static final HostedOptionKey<Boolean> DeoptimizeAll = new HostedOptionKey<>(false);
-
     @Option(help = "Print features-specific information")//
     public static final HostedOptionKey<Boolean> PrintFeatures = new HostedOptionKey<>(false);
 
@@ -109,14 +106,29 @@ public class NativeImageOptions {
     @Option(help = "Suppress console normal output for unittests")//
     public static final HostedOptionKey<Boolean> SuppressStdout = new HostedOptionKey<>(false);
 
+    @Option(help = "Allow MethodTypeFlow to see @Fold methods")//
+    public static final HostedOptionKey<Boolean> AllowFoldMethods = new HostedOptionKey<>(false);
+
     @APIOption(name = "report-unsupported-elements-at-runtime")//
     @Option(help = "Report usage of unsupported methods and fields at run time when they are accessed the first time, instead of as an error during image building", type = User)//
-    public static final HostedOptionKey<Boolean> ReportUnsupportedElementsAtRuntime = new HostedOptionKey<Boolean>(false) {
+    public static final HostedOptionKey<Boolean> ReportUnsupportedElementsAtRuntime = new HostedOptionKey<>(false);
+
+    @APIOption(name = "allow-incomplete-classpath")//
+    @Option(help = "Allow image building with an incomplete class path: report type resolution errors at run time when they are accessed the first time, instead of during image building", type = User)//
+    public static final HostedOptionKey<Boolean> AllowIncompleteClasspath = new HostedOptionKey<Boolean>(false) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
             PointstoOptions.UnresolvedIsError.update(values, !newValue);
         }
     };
+
+    @SuppressWarnings("all")
+    private static boolean areAssertionsEnabled() {
+        boolean assertsEnabled = false;
+        // Next assignment will be executed when asserts are enabled.
+        assert assertsEnabled = true;
+        return assertsEnabled;
+    }
 
     @Option(help = "Report the original exception cause for unsupported features.")//
     public static final HostedOptionKey<Boolean> ReportUnsupportedFeaturesCause = new HostedOptionKey<>(false);
@@ -175,6 +187,9 @@ public class NativeImageOptions {
 
     @Option(help = "Print unsafe operation offset warnings.)")//
     public static final HostedOptionKey<Boolean> UnsafeOffsetWarningsAreFatal = new HostedOptionKey<>(false);
+
+    @Option(help = "Show exception stack traces for exceptions during image building.)")//
+    public static final HostedOptionKey<Boolean> ReportExceptionStackTraces = new HostedOptionKey<>(areAssertionsEnabled());
 
     @Option(help = "Maximum number of types allowed in the image. Used for tests where small number of types in necessary.", type = Debug)//
     public static final HostedOptionKey<Integer> MaxReachableTypes = new HostedOptionKey<>(-1);

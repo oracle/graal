@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -199,7 +199,7 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
                     // execution
                     // on specific platforms.
                     return LogicNegationNode.create(
-                                    IntegerEqualsNode.create(constantReflection, metaAccess, options, smallestCompareWidth, nonConstant, ConstantNode.forIntegerKind(nonConstant.getStackKind(), 0),
+                                    IntegerEqualsNode.create(constantReflection, metaAccess, options, smallestCompareWidth, nonConstant, ConstantNode.forIntegerStamp(nonConstantStamp, 0),
                                                     view));
                 } else if (primitiveConstant.asLong() == 0) {
                     if (nonConstant instanceof AndNode) {

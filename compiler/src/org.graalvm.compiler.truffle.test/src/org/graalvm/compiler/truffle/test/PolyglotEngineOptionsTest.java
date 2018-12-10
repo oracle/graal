@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,9 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
+import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -56,7 +57,7 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
         // doWhile must run isolated and should not affect other compilation thresholds
         Runnable doWhile = () -> testCompilationThreshold(50, "50", null);
         testCompilationThreshold(42, "42", doWhile); // test default value
-        testCompilationThreshold(TruffleCompilerOptions.TruffleCompilationThreshold.getValue(TruffleCompilerOptions.getOptions()), null, doWhile);
+        testCompilationThreshold(TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompilationThreshold), null, doWhile);
         testCompilationThreshold(2, "2", doWhile); // test default value
     }
 

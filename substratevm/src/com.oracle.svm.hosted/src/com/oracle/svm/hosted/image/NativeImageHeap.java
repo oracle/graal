@@ -53,10 +53,9 @@ import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.svm.core.HostedIdentityHashCodeProvider;
+import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.amd64.FrameAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.Heap;
@@ -78,6 +77,7 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.hosted.meta.MaterializedConstantFields;
 import com.oracle.svm.hosted.meta.MethodPointer;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -88,7 +88,7 @@ public final class NativeImageHeap {
 
     @Fold
     static boolean useHeapBase() {
-        return SubstrateOptions.UseHeapBaseRegister.getValue() && ImageSingletons.lookup(CompressEncoding.class).hasBase();
+        return SubstrateOptions.SpawnIsolates.getValue() && ImageSingletons.lookup(CompressEncoding.class).hasBase();
     }
 
     @Fold
@@ -142,12 +142,20 @@ public final class NativeImageHeap {
         assert addObjectWorklist.isEmpty();
     }
 
+    /**
+     * This code assumes that the read-only primitive partition is the first thing in the read-only
+     * section of the image heap, and that the read-only relocatable partition is the last thing in
+     * the read-only section.
+     *
+     * Compare to {@link NativeImageHeap#setReadOnlySection(String, long)} that sets the ordering or
+     * partitions within the read-only section.
+     */
     void alignRelocatablePartition(long alignment) {
         long relocatablePartitionOffset = readOnlyPrimitive.getSize() + readOnlyReference.getSize();
         long beforeRelocPadding = NumUtil.roundUp(relocatablePartitionOffset, alignment) - relocatablePartitionOffset;
-        readOnlyPrimitive.incrementSize(beforeRelocPadding);
+        readOnlyPrimitive.addPrePad(beforeRelocPadding);
         long afterRelocPadding = NumUtil.roundUp(readOnlyRelocatable.getSize(), alignment) - readOnlyRelocatable.getSize();
-        readOnlyRelocatable.incrementSize(afterRelocPadding);
+        readOnlyRelocatable.addPostPad(afterRelocPadding);
     }
 
     private static Object readObjectField(HostedField field, JavaConstant receiver) {
@@ -163,7 +171,8 @@ public final class NativeImageHeap {
          * fields manually.
          */
         for (HostedField field : getUniverse().getFields()) {
-            if (Modifier.isStatic(field.getModifiers()) && field.isWritten() && field.isAccessed() && field.getType().getStorageKind() == JavaKind.Object) {
+            if (Modifier.isStatic(field.getModifiers()) && field.hasLocation() && field.getType().getStorageKind() == JavaKind.Object) {
+                assert field.isWritten() || MaterializedConstantFields.singleton().contains(field.wrapped);
                 addObject(readObjectField(field, null), false, field);
             }
         }
@@ -237,16 +246,26 @@ public final class NativeImageHeap {
              * not seen - so this check actually protects against much more than just missing class
              * initialization information.
              */
-            throw VMError.shouldNotReachHere("DynamicHub written to the image that has not been seen as reachable during static analysis: " + original);
+            throw VMError.shouldNotReachHere(String.format(
+                            "Image heap writing found a class not seen as instantiated during static analysis. Did a static field or an object referenced " +
+                                            "from a static field change during native image generation? For example, a lazily initialized cache could have been " +
+                                            "initialized during image generation, in which case you need to force eager initialization of the cache before static analysis " +
+                                            "or reset the cache using a field value recomputation.%n  class: %s%n  reachable through:%n%s",
+                            original, fillReasonStack(new StringBuilder(), reason)));
         }
 
-        int identityHashCode = 0;
-        if (original instanceof HostedIdentityHashCodeProvider) {
-            identityHashCode = ((HostedIdentityHashCodeProvider) original).hostedIdentityHashCode();
-        }
-        if (identityHashCode == 0) {
+        int identityHashCode;
+        if (original instanceof DynamicHub) {
+            /*
+             * We need to use the identity hash code of the original java.lang.Class object and not
+             * of the DynamicHub, so that hash maps that are filled during image generation and use
+             * Class keys still work at run time.
+             */
+            identityHashCode = System.identityHashCode(universe.hostVM().lookupType((DynamicHub) original).getJavaClass());
+        } else {
             identityHashCode = System.identityHashCode(original);
         }
+        VMError.guarantee(identityHashCode != 0, "0 is used as a marker value for 'hash code not yet computed'");
 
         if (original instanceof String) {
             handleImageString((String) original);
@@ -324,13 +343,13 @@ public final class NativeImageHeap {
 
         final Optional<HostedType> optionalType = getMetaAccess().optionalLookupJavaType(object.getClass());
         if (!optionalType.isPresent() || !optionalType.get().isInstantiated()) {
-            throw UserError.abort("Image heap writing found an object whose class was not seen as instantiated during static analysis. " +
-                            "Did a static field or an object referenced from a static field changed during native image generation? " +
-                            "For example, a lazily initialized cache could have been initialized during image generation, " +
-                            "in which case you need to force eager initialization of the cache before static analysis or reset the cache using a field value recomputation.\n" +
-                            "  object: " + object + "  of class: " + object.getClass().getTypeName() + "\n" +
-                            "  reachable through:\n" +
-                            fillReasonStack(new StringBuilder(), reason));
+            throw UserError.abort(
+                            String.format("Image heap writing found an object whose class was not seen as instantiated during static analysis. " +
+                                            "Did a static field or an object referenced from a static field change during native image generation? " +
+                                            "For example, a lazily initialized cache could have been initialized during image generation, in which case " +
+                                            "you need to force eager initialization of the cache before static analysis or reset the cache using a field " +
+                                            "value recomputation.%n  object: %s of class: %s%n  reachable through:%n%s",
+                                            object, object.getClass().getTypeName(), fillReasonStack(new StringBuilder(), reason)));
         }
         final HostedType type = optionalType.get();
         final DynamicHub hub = type.getHub();
@@ -520,7 +539,8 @@ public final class NativeImageHeap {
         ObjectInfo primitiveFields = objects.get(StaticFieldsSupport.getStaticPrimitiveFields());
         ObjectInfo objectFields = objects.get(StaticFieldsSupport.getStaticObjectFields());
         for (HostedField field : getUniverse().getFields()) {
-            if (Modifier.isStatic(field.getModifiers()) && field.isWritten() && field.isAccessed()) {
+            if (Modifier.isStatic(field.getModifiers()) && field.hasLocation()) {
+                assert field.isWritten() || MaterializedConstantFields.singleton().contains(field.wrapped);
                 ObjectInfo fields = (field.getStorageKind() == JavaKind.Object) ? objectFields : primitiveFields;
                 writeField(buffer, fields, field, null, null);
             }
@@ -537,20 +557,18 @@ public final class NativeImageHeap {
 
     private static void verifyTargetDidNotChange(Object target, Object reason, Object targetInfo) {
         if (targetInfo == null) {
-            throw UserError.abort("Static field or an object referenced from a static field changed during native image generation?\n" +
-                            "  object:" + target + "  of class: " + target.getClass().getTypeName() + "\n" +
-                            "  reachable through:\n" +
-                            fillReasonStack(new StringBuilder(), reason));
+            throw UserError.abort(String.format("Static field or an object referenced from a static field changed during native image generation?%n" +
+                            "  object:%s  of class: %s%n  reachable through:%n%s", target, target.getClass().getTypeName(), fillReasonStack(new StringBuilder(), reason)));
         }
     }
 
     private static StringBuilder fillReasonStack(StringBuilder msg, Object reason) {
         if (reason instanceof ObjectInfo) {
             ObjectInfo info = (ObjectInfo) reason;
-            msg.append("    object: ").append(info.getObject()).append("  of class: ").append(info.getObject().getClass().getTypeName()).append("\n");
+            msg.append("    object: ").append(info.getObject()).append("  of class: ").append(info.getObject().getClass().getTypeName()).append(System.lineSeparator());
             return fillReasonStack(msg, info.reason);
         }
-        return msg.append("    root: ").append(reason).append("\n");
+        return msg.append("    root: ").append(reason).append(System.lineSeparator());
     }
 
     private void writeField(RelocatableBuffer buffer, ObjectInfo fields, HostedField field, JavaConstant receiver, ObjectInfo info) {
@@ -704,9 +722,14 @@ public final class NativeImageHeap {
         // Figure out where the boundaries of the heap partitions are and
         // patch the objects that reference them so they will be correct at runtime.
         final NativeImageInfoPatcher patcher = new NativeImageInfoPatcher(debug, roBuffer, rwBuffer);
+
         patcher.patchReference("firstReadOnlyPrimitiveObject", readOnlyPrimitive.firstAllocatedObject);
         patcher.patchReference("lastReadOnlyPrimitiveObject", readOnlyPrimitive.lastAllocatedObject);
 
+        /*
+         * Set the boundaries of read-only references to include the read-only reference partition
+         * followed by the read-only relocatable partition.
+         */
         Object firstReadOnlyReferenceObject = readOnlyReference.firstAllocatedObject;
         if (firstReadOnlyReferenceObject == null) {
             firstReadOnlyReferenceObject = readOnlyRelocatable.firstAllocatedObject;
@@ -888,9 +911,12 @@ public final class NativeImageHeap {
         if (useHeapBase()) {
             /*
              * Zero designates null, so add some padding at the heap base to make object offsets
-             * strictly positive
+             * strictly positive.
+             *
+             * This code assumes that the read-only primitive partition is the first partition in
+             * the image heap.
              */
-            readOnlyPrimitive.incrementSize(layout.getAlignment());
+            readOnlyPrimitive.addPrePad(layout.getAlignment());
         }
     }
 
@@ -925,12 +951,29 @@ public final class NativeImageHeap {
     /** Objects that are known to be immutable in the native image heap. */
     private final Set<Object> knownImmutableObjects = Collections.newSetFromMap(new IdentityHashMap<>());
 
+    /** A partition holding objects with only read-only primitive values, but no references. */
     private final HeapPartition readOnlyPrimitive;
+    /** A partition holding objects with read-only references and primitive values. */
     private final HeapPartition readOnlyReference;
+    /** A partition holding objects with writable primitive values, but no references. */
+    private final HeapPartition writablePrimitive;
+    /** A partition holding objects with writable references and primitive values. */
+    private final HeapPartition writableReference;
+    /**
+     * A pseudo-partition used during image building to consolidate objects that contain relocatable
+     * references.
+     * <p>
+     * Collecting the relocations together means the dynamic linker has to operate on less of the
+     * image heap during image startup, and it means that less of the image heap has to be
+     * copied-on-write if the image heap is relocated in a new process.
+     * <p>
+     * A relocated reference is read-only once relocated, e.g., at runtime.
+     * {@link NativeImageHeap#patchPartitionBoundaries(DebugContext, RelocatableBuffer, RelocatableBuffer)}
+     * expands the read-only reference partition to include the read-only relocation partition. The
+     * read-only relocation partition does not exist in the generated image.
+     */
     private final HeapPartition readOnlyRelocatable;
     private long firstRelocatablePointerOffsetInSection = -1;
-    private final HeapPartition writablePrimitive;
-    private final HeapPartition writableReference;
 
     static class AddObjectData {
 
@@ -1067,12 +1110,33 @@ public final class NativeImageHeap {
             return size;
         }
 
+        long getPrePad() {
+            return prePadding;
+        }
+
+        long getPostPad() {
+            return postPadding;
+        }
+
         long getCount() {
             return count;
         }
 
         void incrementSize(final long increment) {
             size += increment;
+        }
+
+        void addPrePad(long padSize) {
+            prePadding += padSize;
+            incrementSize(padSize);
+        }
+
+        void addPostPad(long padSize) {
+            postPadding += padSize;
+            incrementSize(padSize);
+        }
+
+        void incrementCount() {
             count += 1L;
         }
 
@@ -1085,6 +1149,7 @@ public final class NativeImageHeap {
 
             long position = size;
             incrementSize(info.getSize());
+            incrementCount();
             return position;
         }
 
@@ -1136,8 +1201,10 @@ public final class NativeImageHeap {
                     }
                 }
             }
-            assert (getCount() == uniqueCount) : String.format("Incorrect counting: getCount(): %d  uniqueCount: %d", getCount(), uniqueCount);
-            assert (getSize() == uniqueSize) : String.format("Incorrect sizing: getSize(): %d  uniqueSize: %d", getCount(), uniqueCount);
+            assert (getCount() == uniqueCount) : String.format("Incorrect counting:  partition: %s  getCount(): %d  uniqueCount: %d", name, getCount(), uniqueCount);
+            final long paddedSize = uniqueSize + getPrePad() + getPostPad();
+            assert (getSize() == paddedSize) : String.format("Incorrect sizing: partition: %s getSize(): %d uniqueSize: %d prePad: %d postPad: %d",
+                            name, getSize(), uniqueSize, getPrePad(), getPostPad());
             final long nonuniqueCount = uniqueCount + canonicalizedCount;
             final long nonuniqueSize = uniqueSize + canonicalizedSize;
             final double countPercent = 100.0D * ((double) uniqueCount / (double) nonuniqueCount);
@@ -1150,7 +1217,7 @@ public final class NativeImageHeap {
         }
 
         void printSize() {
-            System.out.printf("PrintImageHeapPartitionSizes:  partition: %s  size: %d\n", name, getSize());
+            System.out.printf("PrintImageHeapPartitionSizes:  partition: %s  size: %d%n", name, getSize());
         }
 
         private HeapPartition(String name, NativeImageHeap heap, boolean writable) {
@@ -1158,6 +1225,8 @@ public final class NativeImageHeap {
             this.heap = heap;
             this.writable = writable;
             this.size = 0L;
+            this.prePadding = 0L;
+            this.postPadding = 0L;
             this.count = 0L;
             this.firstAllocatedObject = null;
             this.lastAllocatedObject = null;
@@ -1173,6 +1242,10 @@ public final class NativeImageHeap {
         private final boolean writable;
         /** The total size of the objects in this partition. */
         private long size;
+        /** The size of any padding at the beginning of the partition. */
+        private long prePadding;
+        /** The size of any padding at the end of the partition. */
+        private long postPadding;
         /** The number of objects in this partition. */
         private long count;
 

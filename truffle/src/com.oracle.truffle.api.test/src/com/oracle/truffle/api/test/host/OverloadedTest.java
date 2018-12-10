@@ -381,8 +381,8 @@ public class OverloadedTest extends ProxyLanguageEnvTest {
 
         // ambiguous (we do not take the object's members into consideration)
         TruffleObject keysObject = asTruffleObject(new HostInteropTest.HasKeysObject(true));
-        HostInteropTest.assertThrowsExceptionWithCause(() -> ForeignAccess.sendInvoke(n, receiver, "overloaded1", keysObject), UnsupportedTypeException.class);
-        HostInteropTest.assertThrowsExceptionWithCause(() -> ForeignAccess.sendInvoke(n, receiver, "overloaded2", keysObject), UnsupportedTypeException.class);
+        assertThrowsExceptionWithCause(() -> ForeignAccess.sendInvoke(n, receiver, "overloaded1", keysObject), UnsupportedTypeException.class);
+        assertThrowsExceptionWithCause(() -> ForeignAccess.sendInvoke(n, receiver, "overloaded2", keysObject), UnsupportedTypeException.class);
     }
 
     public interface TwoMethods {

@@ -35,7 +35,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.spi.LocaleServiceProvider;
 
-import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -53,7 +52,6 @@ import com.oracle.svm.core.util.VMError;
 
 import sun.util.locale.provider.JRELocaleProviderAdapter;
 import sun.util.locale.provider.LocaleProviderAdapter;
-import sun.util.locale.provider.LocaleProviderAdapter.Type;
 import sun.util.locale.provider.LocaleResources;
 import sun.util.locale.provider.LocaleServiceProviderPool;
 import sun.util.locale.provider.LocaleServiceProviderPool.LocalizedObjectGetter;
@@ -172,62 +170,10 @@ final class Target_sun_util_locale_provider_LocaleServiceProviderPool {
                     Boolean isObjectProvider,
                     String key,
                     Object... params);
-}
 
-@TargetClass(sun.util.locale.provider.LocaleProviderAdapter.class)
-final class Target_sun_util_locale_provider_LocaleProviderAdapter {
-
-    @Substitute
-    @SuppressWarnings({"unused"})
-    public static LocaleProviderAdapter getAdapter(Class<? extends LocaleServiceProvider> providerClass, Locale locale) {
-        LocaleProviderAdapter result = Util_sun_util_locale_provider_LocaleProviderAdapter.cachedAdapters.get(providerClass);
-        if (result == null) {
-            throw VMError.unsupportedFeature("LocaleServiceProviderAdapter.getAdapter " + providerClass.getName());
-        }
-        return result;
-    }
-
-    @Alias //
-    @TargetElement(onlyWith = JDK8OrEarlier.class) //
-    private static LocaleProviderAdapter jreLocaleProviderAdapter;
-
-    @Substitute
-    public static LocaleProviderAdapter forType(Type type) {
-        if (GraalServices.Java8OrEarlier) {
-            if (type == Type.JRE) {
-                return jreLocaleProviderAdapter;
-            } else {
-                throw VMError.unsupportedFeature("LocaleProviderAdapter.forType: " + type);
-            }
-        } else {
-            /*
-             * TODO: If I only wanted the JRE adapter, I could cache the result of calling
-             * `LocaleProviderAdapter.forJRE()` during image building.
-             */
-            throw VMError.unsupportedFeature("JDK9OrLater: LocaleProviderAdapter.forType: " + type);
-        }
-    }
-}
-
-final class Util_sun_util_locale_provider_LocaleProviderAdapter {
-
-    static final Map<Class<? extends LocaleServiceProvider>, LocaleProviderAdapter> cachedAdapters;
-
-    static {
-        cachedAdapters = new HashMap<>();
-
-        try {
-            Class<LocaleServiceProvider>[] spiClasses = Target_sun_util_locale_provider_LocaleServiceProviderPool.spiClasses();
-            for (Class<LocaleServiceProvider> providerClass : spiClasses) {
-                LocaleProviderAdapter adapter = LocaleProviderAdapter.getAdapter(providerClass, Locale.getDefault());
-                cachedAdapters.put(providerClass, adapter);
-            }
-
-        } catch (Throwable ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
-
-    }
+    @KeepOriginal //
+    @TargetElement(onlyWith = JDK9OrLater.class) //
+    static native void config(Class<? extends Object> caller, String message);
 }
 
 @Delete

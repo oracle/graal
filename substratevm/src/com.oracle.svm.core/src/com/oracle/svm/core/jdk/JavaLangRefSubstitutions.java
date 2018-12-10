@@ -30,6 +30,7 @@ import java.lang.ref.PhantomReference;
 import java.lang.ref.Reference;
 import java.lang.reflect.Field;
 
+import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -140,9 +141,35 @@ final class Target_java_lang_ref_Reference {
     }
 
     @Substitute
+    public boolean enqueue() {
+        if (feeble != null) {
+            final FeebleReferenceList<?> frList = feeble.getList();
+            if (frList != null) {
+                return frList.push(feeble);
+            }
+        }
+        return false;
+    }
+
+    @Substitute
+    public boolean isEnqueued() {
+        if (feeble != null) {
+            return feeble.isEnlisted();
+        }
+        return false;
+    }
+
+    @Substitute
     @TargetElement(onlyWith = JDK8OrEarlier.class)
     @SuppressWarnings("unused")
     private static boolean tryHandlePending(boolean waitForNotify) {
+        throw VMError.unimplemented();
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK9OrLater.class)
+    @SuppressWarnings("unused")
+    private static boolean waitForReferenceProcessing() {
         throw VMError.unimplemented();
     }
 
@@ -156,7 +183,7 @@ final class Target_java_lang_ref_Reference {
     // @ForceInline
     @SuppressWarnings("unused")
     public static void reachabilityFence(Object ref) {
-        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ref_Reference.reachabilityFence(Object ref)");
+        GraalDirectives.blackhole(ref);
     }
 }
 

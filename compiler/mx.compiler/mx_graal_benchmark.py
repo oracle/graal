@@ -164,8 +164,6 @@ def build_jvmci_vm_variants(raw_name, raw_config_name, extra_args, variants, inc
                 JvmciJdkVm(raw_name, extended_raw_config_name + '-' + var_name, extended_extra_args + var_args), suite, var_priority)
 
 _graal_variants = [
-    ('tracera', ['-Dgraal.TraceRA=true'], 11),
-    ('tracera-bu', ['-Dgraal.TraceRA=true', '-Dgraal.TraceRAPolicy=BottomUpOnly'], 10),
     ('g1gc', ['-XX:+UseG1GC'], 12),
     ('no-comp-oops', ['-XX:-UseCompressedOops'], 0),
     ('no-splitting', ['-Dgraal.TruffleSplitting=false'], 0),
@@ -495,44 +493,6 @@ class DaCapoMoveProfilingBenchmarkMixin(MoveProfilingBenchmarkMixin):
         return self.currentBenchname
 
 
-class AveragingBenchmarkMixin(object):
-    """Provides utilities for computing the average time of the latest warmup runs.
-
-    Note that this mixin expects that the main benchmark class produces a sequence of
-    datapoints that have the metric.name dimension set to "warmup".
-    To add the average, this mixin appends a new datapoint whose metric.name dimension
-    is set to "time".
-
-    Benchmarks that mix in this class must manually invoke methods for computing extra
-    iteration counts and averaging, usually in their run method.
-    """
-
-    def getExtraIterationCount(self, iterations):
-        # Uses the number of warmup iterations to calculate the number of extra
-        # iterations needed by the benchmark to compute a more stable average result.
-        return min(20, iterations, max(6, int(iterations * 0.4)))
-
-    def addAverageAcrossLatestResults(self, results):
-        # Postprocess results to compute the resulting time by taking the average of last N runs,
-        # where N is 20% of the maximum number of iterations, at least 5 and at most 10.
-        warmupResults = [result for result in results if result["metric.name"] == "warmup"]
-        if warmupResults:
-            lastIteration = max((result["metric.iteration"] for result in warmupResults))
-            resultIterations = self.getExtraIterationCount(lastIteration + 1)
-            totalTimeForAverage = 0.0
-            for i in range(lastIteration - resultIterations + 1, lastIteration + 1):
-                result = next((result for result in warmupResults if result["metric.iteration"] == i), None)
-                if result:
-                    totalTimeForAverage += result["metric.value"]
-                else:
-                    resultIterations -= 1
-            averageResult = next(result for result in warmupResults if result["metric.iteration"] == 0).copy()
-            averageResult["metric.value"] = totalTimeForAverage / resultIterations
-            averageResult["metric.name"] = "time"
-            averageResult["metric.average-over"] = resultIterations
-            results.append(averageResult)
-
-
 class TemporaryWorkdirMixin(mx_benchmark.VmBenchmarkSuite):
     def before(self, bmSuiteArgs):
         parser = mx_benchmark.parsers["temporary_workdir_parser"].parser
@@ -571,7 +531,7 @@ class TemporaryWorkdirMixin(mx_benchmark.VmBenchmarkSuite):
         return super(TemporaryWorkdirMixin, self).parserNames() + ["temporary_workdir_parser"]
 
 
-class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBenchmarkMixin, TemporaryWorkdirMixin):
+class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin, TemporaryWorkdirMixin):
     """Base benchmark suite for DaCapo-based benchmarks.
 
     This suite can only run a single benchmark in one VM invocation.
@@ -1234,6 +1194,10 @@ class SpecJbb2005BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
     This suite has only a single benchmark, and does not allow setting a specific
     benchmark in the command line.
     """
+    def __init__(self, *args, **kwargs):
+        super(SpecJbb2005BenchmarkSuite, self).__init__(*args, **kwargs)
+        self.prop_tmp_file = None
+
     def name(self):
         return "specjbb2005"
 
@@ -1269,16 +1233,59 @@ class SpecJbb2005BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
     def workingDirectory(self, benchmarks, bmSuiteArgs):
         return mx.get_env("SPECJBB2005")
 
+    def extractSuiteArgs(self, bmSuiteArgs):
+        """Extracts accepted suite args and removes it from bmSuiteArgs"""
+        allowedSuiteArgs = [
+            "input.measurement_seconds",
+            "input.starting_number_warehouses",
+            "input.increment_number_warehouses",
+            "input.expected_peak_warehouse",
+            "input.ending_number_warehouses"
+        ]
+        jbbprops = {}
+        for suiteArg in bmSuiteArgs:
+            for allowedArg in allowedSuiteArgs:
+                if suiteArg.startswith("{}=".format(allowedArg)):
+                    bmSuiteArgs.remove(suiteArg)
+                    key, value = suiteArg.split("=", 1)
+                    jbbprops[key] = value
+        return jbbprops
+
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         if benchmarks is not None:
             mx.abort("No benchmark should be specified for the selected suite.")
+
+        if self.prop_tmp_file is None:
+            jbbprops = self.getDefaultProperties(benchmarks, bmSuiteArgs)
+            jbbprops.update(self.extractSuiteArgs(bmSuiteArgs))
+            fd, self.prop_tmp_file = mkstemp(prefix="specjbb2005", suffix=".props")
+            with os.fdopen(fd, "w") as f:
+                f.write("\n".join(["{}={}".format(key, value) for key, value in jbbprops.iteritems()]))
+
+        propArgs = ["-propfile", self.prop_tmp_file]
         vmArgs = self.vmArgs(bmSuiteArgs)
         runArgs = self.runArgs(bmSuiteArgs)
         mainClass = "spec.jbb.JBBmain"
-        propArgs = ["-propfile", "SPECjbb.props"]
         return (
             vmArgs + ["-cp"] + [self.specJbbClassPath()] + [mainClass] + propArgs +
             runArgs)
+
+    def after(self, bmSuiteArgs):
+        if self.prop_tmp_file != None and os.path.exists(self.prop_tmp_file):
+            os.unlink(self.prop_tmp_file)
+
+    def getDefaultProperties(self, benchmarks, bmSuiteArgs):
+        from ConfigParser import ConfigParser
+        import StringIO
+        configfile = join(self.workingDirectory(benchmarks, bmSuiteArgs), "SPECjbb.props")
+        config = StringIO.StringIO()
+        config.write("[root]\n")
+        with open(configfile, "r") as f:
+            config.write(f.read())
+        config.seek(0, os.SEEK_SET)
+        configp = ConfigParser()
+        configp.readfp(config)
+        return dict(configp.items("root"))
 
     def benchmarkList(self, bmSuiteArgs):
         return ["default"]
@@ -1618,7 +1625,7 @@ class JMHDistWhiteboxBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite):
 mx_benchmark.add_bm_suite(JMHDistWhiteboxBenchmarkSuite())
 
 
-class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBenchmarkMixin, TemporaryWorkdirMixin):
+class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin, TemporaryWorkdirMixin):
     """Renaissance benchmark suite implementation.
     """
     def name(self):
@@ -1664,7 +1671,8 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBenchm
     def benchmarkList(self, bmSuiteArgs):
         self.validateEnvironment()
         out = mx.OutputCapture()
-        mx.run_java(self.classpathAndMainClass() + ["listraw"], out=out)
+        args = ["listraw", "--list-raw-hidden"] if "--list-hidden" in bmSuiteArgs else ["listraw"]
+        mx.run_java(self.classpathAndMainClass() + args, out=out)
         return str.splitlines(out.data)
 
     def successPatterns(self):
@@ -1716,7 +1724,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBenchm
 mx_benchmark.add_bm_suite(RenaissanceBenchmarkSuite())
 
 
-class SparkSqlPerfBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, AveragingBenchmarkMixin, TemporaryWorkdirMixin):
+class SparkSqlPerfBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin, TemporaryWorkdirMixin):
     """Benchmark suite for the spark-sql-perf benchmarks.
     """
     def name(self):

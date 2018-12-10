@@ -38,7 +38,7 @@ public class PointerToInfo extends SizableInfo {
     }
 
     @Override
-    public Object getAnnotatedElement() {
+    public ResolvedJavaType getAnnotatedElement() {
         return annotatedType;
     }
 

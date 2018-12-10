@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.truffle.common;
 
-import org.graalvm.compiler.graph.SourceLanguagePosition;
-
 import jdk.vm.ci.meta.JavaConstant;
 
 /**
@@ -47,7 +45,7 @@ public interface TruffleInliningPlan {
      * If {@code node} represents an AST Node then return the nearest source information for it.
      * Otherwise simply return null.
      */
-    SourceLanguagePosition getPosition(JavaConstant node);
+    TruffleSourceLanguagePosition getPosition(JavaConstant node);
 
     /**
      * Decision of whether a called Truffle AST should be inlined. If {@link #shouldInline()}

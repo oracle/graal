@@ -118,7 +118,7 @@ public final class TRegexDFAExecutorNode extends Node {
      * records position of the END of the match found, or -1 if no match exists.
      */
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
-    protected void execute(final VirtualFrame frame) {
+    protected void execute(final VirtualFrame frame, final boolean compactString) {
         CompilerDirectives.ensureVirtualized(frame);
         CompilerAsserts.compilationConstant(states);
         CompilerAsserts.compilationConstant(states.length);
@@ -160,12 +160,15 @@ public final class TRegexDFAExecutorNode extends Node {
             CompilerAsserts.partialEvaluationConstant(successors);
             CompilerAsserts.partialEvaluationConstant(successors.length);
             int prevIndex = getIndex(frame);
-            curState.executeFindSuccessor(frame, this);
+            curState.executeFindSuccessor(frame, this, compactString);
             if (recordExecution() && ip != 0) {
                 debugRecordTransition(frame, (DFAStateNode) curState, prevIndex);
             }
             for (int i = 0; i < successors.length; i++) {
                 if (i == getSuccessorIndex(frame)) {
+                    if (successors[i] != -1 && states[successors[i]] instanceof DFAStateNode) {
+                        ((DFAStateNode) states[successors[i]]).getStateReachedProfile().enter();
+                    }
                     ip = successors[i];
                     continue outer;
                 }
@@ -197,16 +200,6 @@ public final class TRegexDFAExecutorNode extends Node {
         if (hasSuccessor) {
             debugRecorder.recordTransition(getIndex(frame) + (isForward() ? -1 : 1), ip, getSuccessorIndex(frame));
         }
-    }
-
-    public void setInputIsCompactString(VirtualFrame frame, boolean inputIsCompactString) {
-        frame.setBoolean(props.getInputIsCompactStringFS(), inputIsCompactString);
-    }
-
-    public boolean inputIsCompactString(VirtualFrame frame) {
-        boolean ret = FrameUtil.getBooleanSafe(frame, props.getInputIsCompactStringFS());
-        CompilerAsserts.partialEvaluationConstant(ret);
-        return ret;
     }
 
     /**

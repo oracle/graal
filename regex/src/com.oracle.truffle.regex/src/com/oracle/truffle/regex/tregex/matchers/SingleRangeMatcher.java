@@ -24,12 +24,14 @@
  */
 package com.oracle.truffle.regex.tregex.matchers;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
+import com.oracle.truffle.api.dsl.Specialization;
 
 /**
  * Matcher for a single character range.
  */
-public final class SingleRangeMatcher extends ProfiledCharMatcher {
+public abstract class SingleRangeMatcher extends InvertibleCharMatcher {
 
     private final char lo;
     private final char hi;
@@ -37,14 +39,18 @@ public final class SingleRangeMatcher extends ProfiledCharMatcher {
     /**
      * Constructs a new {@link SingleRangeMatcher}.
      * 
-     * @param invert see {@link ProfiledCharMatcher}.
+     * @param invert see {@link InvertibleCharMatcher}.
      * @param lo inclusive lower bound of range to match.
      * @param hi inclusive upper bound of range to match.
      */
-    public SingleRangeMatcher(boolean invert, char lo, char hi) {
+    SingleRangeMatcher(boolean invert, char lo, char hi) {
         super(invert);
         this.lo = lo;
         this.hi = hi;
+    }
+
+    public static SingleRangeMatcher create(boolean invert, char lo, char hi) {
+        return SingleRangeMatcherNodeGen.create(invert, lo, hi);
     }
 
     /**
@@ -61,9 +67,9 @@ public final class SingleRangeMatcher extends ProfiledCharMatcher {
         return hi;
     }
 
-    @Override
-    public boolean matchChar(char c) {
-        return lo <= c && hi >= c;
+    @Specialization
+    boolean match(char c, boolean compactString) {
+        return result((!compactString || lo < 256) && lo <= c && hi >= c);
     }
 
     @Override
@@ -72,7 +78,7 @@ public final class SingleRangeMatcher extends ProfiledCharMatcher {
     }
 
     @Override
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public String toString() {
         return modifiersToString() + MatcherBuilder.rangeToString(lo, hi);
     }

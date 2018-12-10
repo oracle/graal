@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -197,6 +197,7 @@ public class DebugContextTest {
 
     @Test
     public void testEnabledSandbox() {
+        TimerKeyTest.assumeManagementLibraryIsLoadable();
         EconomicMap<OptionKey<?>, Object> map = EconomicMap.create();
         // Configure with an option that enables scopes
         map.put(DebugOptions.DumpOnError, true);
@@ -226,6 +227,7 @@ public class DebugContextTest {
 
     @Test
     public void testDisabledSandbox() {
+        TimerKeyTest.assumeManagementLibraryIsLoadable();
         EconomicMap<OptionKey<?>, Object> map = EconomicMap.create();
         // Configure with an option that enables scopes
         map.put(DebugOptions.DumpOnError, true);
@@ -283,6 +285,7 @@ public class DebugContextTest {
 
     @Test
     public void testDisableIntercept() {
+        TimerKeyTest.assumeManagementLibraryIsLoadable();
         EconomicMap<OptionKey<?>, Object> map = EconomicMap.create();
         // Configure with an option that enables scopes
         map.put(DebugOptions.DumpOnError, true);

@@ -297,6 +297,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
         private final PolyglotLanguage language;
         private final Assumption singleContext = Truffle.getRuntime().createAssumption("Language single context.");
         @CompilationFinal private volatile Object cachedSingleContext = UNSET_CONTEXT;
+        @CompilationFinal private volatile Object cachedSingleLanguageContext = UNSET_CONTEXT;
 
         ContextProfile(PolyglotLanguage language) {
             this.language = language;
@@ -305,13 +306,34 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
             }
         }
 
+        public Assumption getSingleContext() {
+            return singleContext;
+        }
+
+        PolyglotLanguageContext profile(Object context) {
+            if (singleContext.isValid()) {
+                Object cachedSingle = cachedSingleLanguageContext;
+                if (singleContext.isValid()) {
+                    assert cachedSingle == context : assertionError(cachedSingle, context);
+                    return (PolyglotLanguageContext) cachedSingle;
+                }
+            }
+            return (PolyglotLanguageContext) context;
+        }
+
+        static String assertionError(Object cachedContext, Object currentContext) {
+            return (cachedContext + " != " + currentContext);
+        }
+
         Object get() {
             assert assertCorrectEngine();
             if (singleContext.isValid()) {
                 Object cachedSingle = cachedSingleContext;
-                if (cachedSingle != UNSET_CONTEXT) {
-                    assert assertGet(cachedSingle);
-                    return cachedSingle;
+                if (singleContext.isValid()) {
+                    if (cachedSingle != UNSET_CONTEXT) {
+                        assert assertGet(cachedSingle);
+                        return cachedSingle;
+                    }
                 }
             }
             return lookupLanguageContext(PolyglotContextImpl.requireContext());
@@ -352,17 +374,19 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
             return LANGUAGE.getContext(env);
         }
 
-        void notifyContextCreate(Env env) {
+        void notifyContextCreate(PolyglotLanguageContext context, Env env) {
             if (singleContext.isValid()) {
                 Object cachedSingle = this.cachedSingleContext;
                 assert cachedSingle != LANGUAGE.getContext(env) || cachedSingle == null : "Non-null context objects should be distinct";
                 if (cachedSingle == UNSET_CONTEXT) {
                     if (singleContext.isValid()) {
-                        cachedSingleContext = LANGUAGE.getContext(env);
+                        this.cachedSingleContext = LANGUAGE.getContext(env);
+                        this.cachedSingleLanguageContext = context;
                     }
                 } else {
                     singleContext.invalidate();
                     cachedSingleContext = UNSET_CONTEXT;
+                    cachedSingleLanguageContext = UNSET_CONTEXT;
                 }
             }
         }
@@ -371,6 +395,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
             if (singleContext.isValid()) {
                 // do not invalidate assumptions if engine is disposed anyway
                 cachedSingleContext = UNSET_CONTEXT;
+                cachedSingleLanguageContext = UNSET_CONTEXT;
             }
         }
     }

@@ -67,6 +67,7 @@ import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -158,7 +159,8 @@ public class ContextAPITest {
     public void testInstrumentOptionAsContext() {
         // Instrument options are refused by context builders with an existing engine:
         Context.Builder contextBuilder = Context.newBuilder();
-        contextBuilder.engine(Engine.create());
+        Engine engine = Engine.create();
+        contextBuilder.engine(engine);
         contextBuilder.option("optiontestinstr1.StringOption1", "Hello");
         try {
             contextBuilder.build();
@@ -168,13 +170,15 @@ public class ContextAPITest {
             assertEquals("Option optiontestinstr1.StringOption1 is an engine option. Engine level options can only be configured for contexts without a shared engine set. " +
                             "To resolve this, configure the option when creating the Engine or create a context without a shared engine.", ex.getMessage());
         }
+        engine.close();
     }
 
     @Test
     public void testInvalidEngineOptionAsContext() {
         // Instrument options are refused by context builders with an existing engine:
         Context.Builder contextBuilder = Context.newBuilder();
-        contextBuilder.engine(Engine.create());
+        Engine engine = Engine.create();
+        contextBuilder.engine(engine);
         contextBuilder.option("optiontestinstr1.StringOption1+Typo", "100");
         try {
             contextBuilder.build();
@@ -183,6 +187,7 @@ public class ContextAPITest {
             // O.K.
             assertTrue(ex.getMessage().startsWith("Could not find option with name optiontestinstr1.StringOption1+Typo."));
         }
+        engine.close();
     }
 
     public void testEnterLeave() {
@@ -329,7 +334,7 @@ public class ContextAPITest {
         Value bindings = context.getPolyglotBindings();
         testWritableBindings(bindings);
 
-        ValueAssert.assertValue(context, bindings, Trait.MEMBERS);
+        ValueAssert.assertValue(bindings, Trait.MEMBERS);
     }
 
     public static class MyClass {
@@ -387,7 +392,7 @@ public class ContextAPITest {
 
         testWritableBindings(bindings);
 
-        ValueAssert.assertValue(context, bindings, Trait.MEMBERS);
+        ValueAssert.assertValue(bindings, Trait.MEMBERS);
     }
 
     @Test
@@ -498,11 +503,16 @@ public class ContextAPITest {
                     @Override
                     public Object execute(VirtualFrame frame) {
                         try {
-                            TruffleObject o = (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), (TruffleObject) ProxyLanguage.getCurrentContext().env.getPolyglotBindings(), "test");
-                            return ForeignAccess.sendExecute(Message.EXECUTE.createNode(), o);
+                            return boundary();
                         } catch (Exception e) {
                             throw new RuntimeException(e);
                         }
+                    }
+
+                    @TruffleBoundary
+                    private Object boundary() throws UnknownIdentifierException, UnsupportedMessageException, UnsupportedTypeException, ArityException {
+                        TruffleObject o = (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), (TruffleObject) ProxyLanguage.getCurrentContext().env.getPolyglotBindings(), "test");
+                        return ForeignAccess.sendExecute(Message.EXECUTE.createNode(), o);
                     }
                 });
             }

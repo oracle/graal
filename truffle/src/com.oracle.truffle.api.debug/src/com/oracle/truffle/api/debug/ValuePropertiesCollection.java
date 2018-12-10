@@ -53,16 +53,16 @@ import java.util.Set;
  */
 final class ValuePropertiesCollection extends AbstractCollection<DebugValue> {
 
-    private final Debugger debugger;
+    private final DebuggerSession session;
     private final LanguageInfo language;
     private final TruffleObject object;
     private final Map<Object, Object> map;
     private final Set<Map.Entry<Object, Object>> entrySet;
     private final DebugScope scope;
 
-    ValuePropertiesCollection(Debugger debugger, LanguageInfo language, TruffleObject object,
+    ValuePropertiesCollection(DebuggerSession session, LanguageInfo language, TruffleObject object,
                     Map<Object, Object> map, Set<Map.Entry<Object, Object>> entrySet, DebugScope scope) {
-        this.debugger = debugger;
+        this.session = session;
         this.language = language;
         this.object = object;
         this.map = map;
@@ -81,11 +81,14 @@ final class ValuePropertiesCollection extends AbstractCollection<DebugValue> {
     }
 
     DebugValue get(String name) {
+        if (!map.containsKey(name)) {
+            return null;
+        }
         Object value = map.get(name);
         if (value == null) {
             return null;
         }
-        return new DebugValue.PropertyNamedValue(debugger, language, object, map, name, scope);
+        return new DebugValue.PropertyNamedValue(session, language, object, map, name, scope);
     }
 
     private final class PropertiesIterator implements Iterator<DebugValue> {
@@ -106,11 +109,11 @@ final class ValuePropertiesCollection extends AbstractCollection<DebugValue> {
         @Override
         public DebugValue next() {
             try {
-                return new DebugValue.PropertyValue(debugger, language, object, entries.next(), scope);
+                return new DebugValue.PropertyValue(session, language, object, entries.next(), scope);
             } catch (ThreadDeath td) {
                 throw td;
             } catch (Throwable ex) {
-                throw new DebugException(debugger, ex, language, null, true, null);
+                throw new DebugException(session, ex, language, null, true, null);
             }
         }
 

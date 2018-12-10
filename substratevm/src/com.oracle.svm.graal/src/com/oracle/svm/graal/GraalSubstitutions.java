@@ -36,7 +36,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import jdk.vm.ci.meta.MetaAccessProvider;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
@@ -53,10 +52,8 @@ import org.graalvm.compiler.lir.CompositeValue;
 import org.graalvm.compiler.lir.CompositeValueClass;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstructionClass;
-import org.graalvm.compiler.lir.alloc.trace.TraceAllocationPhase;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.lir.phases.LIRPhase;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -79,6 +76,7 @@ import com.oracle.svm.graal.hosted.FieldsOffsetsFeature;
 import com.oracle.svm.graal.hosted.GraalFeature;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -239,21 +237,6 @@ final class Target_org_graalvm_compiler_virtual_phases_ea_EffectList {
     }
 }
 
-@TargetClass(value = org.graalvm.compiler.phases.common.inlining.InliningUtil.class, onlyWith = GraalFeature.IsEnabled.class)
-final class Target_org_graalvm_compiler_phases_common_inlining_InliningUtil {
-
-    /**
-     * Creates a macro node.
-     *
-     * @param macroNodeClass The class of the macro node to create
-     * @param invoke The parameter to the constructor
-     */
-    @Substitute
-    private static FixedWithNextNode createMacroNodeInstance(Class<? extends FixedWithNextNode> macroNodeClass, Invoke invoke) {
-        throw VMError.shouldNotReachHere("unknown macro node class: " + macroNodeClass.getName());
-    }
-}
-
 @TargetClass(value = org.graalvm.compiler.debug.KeyRegistry.class, onlyWith = GraalFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_debug_KeyRegistry {
 
@@ -331,19 +314,6 @@ final class Target_org_graalvm_compiler_lir_phases_LIRPhase {
     @Substitute
     static LIRPhase.LIRPhaseStatistics getLIRPhaseStatistics(Class<?> clazz) {
         LIRPhase.LIRPhaseStatistics result = GraalSupport.get().lirPhaseStatistics.get(clazz);
-        if (result == null) {
-            throw VMError.shouldNotReachHere("Missing statistics for phase class: " + clazz.getName() + "\n");
-        }
-        return result;
-    }
-}
-
-@TargetClass(value = org.graalvm.compiler.lir.alloc.trace.TraceAllocationPhase.class, onlyWith = GraalFeature.IsEnabled.class)
-final class Target_org_graalvm_compiler_lir_alloc_trace_TraceAllocationPhase {
-
-    @Substitute
-    static TraceAllocationPhase.AllocationStatistics getAllocationStatistics(Class<?> clazz) {
-        TraceAllocationPhase.AllocationStatistics result = GraalSupport.get().traceAllocationPhaseStatistics.get(clazz);
         if (result == null) {
             throw VMError.shouldNotReachHere("Missing statistics for phase class: " + clazz.getName() + "\n");
         }

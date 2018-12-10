@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import static com.oracle.truffle.api.test.polyglot.ValueAssert.assertFails;
+import static com.oracle.truffle.api.test.polyglot.ValueAssert.assertValue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -81,6 +83,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Scope;
@@ -868,6 +871,21 @@ public class LanguageSPITest {
     }
 
     @Test
+    public void testInitializeCalledWithEngineOptions() {
+        Engine engine = Engine.newBuilder().option(MultiContextLanguage.ID + ".DummyOption", "42").build();
+        Context context = Context.newBuilder().engine(engine).build();
+        context.initialize(MultiContextLanguage.ID);
+        MultiContextLanguage lang = MultiContextLanguage.getInstance(context);
+        assertEquals(1, lang.initializeMultiContextCalled.size());
+        assertEquals(1, lang.initializeMultipleContextsCalled.size());
+        assertEquals(1, (int) lang.initializeMultipleContextsCalled.get(0));
+        assertEquals(2, (int) lang.initializeMultiContextCalled.get(0));
+        assertEquals(1, lang.createContextCalled.size());
+        context.close();
+        engine.close();
+    }
+
+    @Test
     public void testMultiContextExplicitEngineNoCaching() {
         org.graalvm.polyglot.Source source1 = org.graalvm.polyglot.Source.create(MultiContextLanguage.ID, "foo");
         org.graalvm.polyglot.Source source2 = org.graalvm.polyglot.Source.create(MultiContextLanguage.ID, "bar");
@@ -1477,7 +1495,7 @@ public class LanguageSPITest {
         assertNull(bindings.getMember(""));
         ValueAssert.assertFails(() -> bindings.putMember("", ""), UnsupportedOperationException.class);
         assertFalse(bindings.removeMember(""));
-        ValueAssert.assertValue(c, bindings);
+        assertValue(bindings);
 
         c.close();
     }
@@ -1503,25 +1521,25 @@ public class LanguageSPITest {
         ValueAssert.assertFails(() -> bindings.putMember("", ""), UnsupportedOperationException.class);
         assertFalse(bindings.removeMember(""));
         ValueAssert.assertFails(() -> bindings.removeMember("foobar"), UnsupportedOperationException.class);
-        ValueAssert.assertValue(c, bindings, ValueAssert.Trait.MEMBERS);
+        assertValue(bindings, ValueAssert.Trait.MEMBERS);
 
         scope.insertable = true;
         bindings.putMember("baz", "42");
         assertEquals("42", scope.values.get("baz"));
         assertEquals("42", bindings.getMember("baz").asString());
-        ValueAssert.assertFails(() -> bindings.putMember("foobar", "42"), UnsupportedOperationException.class);
-        ValueAssert.assertValue(c, bindings, ValueAssert.Trait.MEMBERS);
+        assertFails(() -> bindings.putMember("foobar", "42"), UnsupportedOperationException.class);
+        assertValue(bindings, ValueAssert.Trait.MEMBERS);
 
         scope.modifiable = true;
         bindings.putMember("foobar", "42");
         assertEquals("42", scope.values.get("foobar"));
         assertEquals("42", bindings.getMember("foobar").asString());
-        ValueAssert.assertValue(c, bindings, ValueAssert.Trait.MEMBERS);
+        assertValue(bindings, ValueAssert.Trait.MEMBERS);
 
         scope.removable = true;
         assertFalse(bindings.removeMember(""));
         assertTrue(bindings.removeMember("foobar"));
-        ValueAssert.assertValue(c, bindings, ValueAssert.Trait.MEMBERS);
+        assertValue(bindings, ValueAssert.Trait.MEMBERS);
 
         assertEquals(1, findScopeInvokes);
 
@@ -1557,7 +1575,7 @@ public class LanguageSPITest {
         assertEquals("bar", scopes[1].values.get("foo"));
         assertNull(scopes[0].values.get("foo"));
         assertNull(scopes[2].values.get("foo"));
-        ValueAssert.assertValue(c, bindings, ValueAssert.Trait.MEMBERS);
+        ValueAssert.assertValue(bindings, ValueAssert.Trait.MEMBERS);
 
         // test check for existing keys for remove
         scopes[2].removable = true;
@@ -1571,7 +1589,7 @@ public class LanguageSPITest {
         assertNotNull(scopes[2].values.get("foo"));
         assertNull(scopes[2].values.get("bar"));
         assertEquals("42", bindings.getMember("bar").asString());
-        ValueAssert.assertValue(c, bindings, ValueAssert.Trait.MEMBERS);
+        assertValue(bindings, ValueAssert.Trait.MEMBERS);
 
         c.close();
     }
@@ -1602,8 +1620,8 @@ public class LanguageSPITest {
         assertEquals("42", polyglotBindings.getMember("baz").asString());
         assertEquals("42", languageBindings.getMember("baz").asString());
 
-        ValueAssert.assertValue(c, polyglotBindings);
-        ValueAssert.assertValue(c, languageBindings);
+        assertValue(polyglotBindings);
+        assertValue(languageBindings);
 
         c.close();
     }
@@ -1672,11 +1690,16 @@ public class LanguageSPITest {
                     public Object execute(VirtualFrame frame) {
                         Object bindings = getCurrentContext(ProxyLanguage.class).env.getPolyglotBindings();
                         try {
-                            ForeignAccess.sendWrite(Message.WRITE.createNode(), (TruffleObject) bindings, "exportedValue", "convertOnToString");
+                            boundary((TruffleObject) bindings);
                         } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
                             throw new AssertionError(e);
                         }
                         return bindings;
+                    }
+
+                    @CompilerDirectives.TruffleBoundary
+                    private void boundary(TruffleObject bindings) throws UnknownIdentifierException, UnsupportedTypeException, UnsupportedMessageException {
+                        ForeignAccess.sendWrite(Message.WRITE.createNode(), bindings, "exportedValue", "convertOnToString");
                     }
                 });
             }

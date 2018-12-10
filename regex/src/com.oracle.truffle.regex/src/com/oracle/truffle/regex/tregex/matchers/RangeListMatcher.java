@@ -24,55 +24,68 @@
  */
 package com.oracle.truffle.regex.tregex.matchers;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
-
 import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 
 /**
  * Character range matcher using a sorted list of ranges.
  */
-public final class RangeListMatcher extends ProfiledCharMatcher {
+public abstract class RangeListMatcher extends InvertibleCharMatcher {
 
     @CompilationFinal(dimensions = 1) private final char[] ranges;
 
     /**
      * Constructs a new {@link RangeListMatcher}.
      * 
-     * @param invert see {@link ProfiledCharMatcher}.
+     * @param invert see {@link InvertibleCharMatcher}.
      * @param ranges a sorted array of character ranges in the form [lower inclusive bound of range
      *            0, higher inclusive bound of range 0, lower inclusive bound of range 1, higher
      *            inclusive bound of range 1, ...]. The array contents are not modified by this
      *            method.
      */
-    public RangeListMatcher(boolean invert, char[] ranges) {
+    RangeListMatcher(boolean invert, char[] ranges) {
         super(invert);
         this.ranges = ranges;
     }
 
-    @Override
+    public static RangeListMatcher create(boolean invert, char[] ranges) {
+        return RangeListMatcherNodeGen.create(invert, ranges);
+    }
+
+    @Specialization
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    public boolean matchChar(char c) {
+    public boolean match(char c, boolean compactString) {
         for (int i = 0; i < ranges.length; i += 2) {
             final char lo = ranges[i];
             final char hi = ranges[i + 1];
+            if (compactString && lo > 255) {
+                return result(false);
+            }
             if (isSingleChar(lo, hi)) {
                 // do simple equality checks on ranges that contain a single character
                 if (lo == c) {
-                    return true;
+                    return result(true);
+                }
+            } else if (isTwoChars(lo, hi)) {
+                // do simple equality checks on ranges that contain two characters
+                if (c == lo || c == hi) {
+                    return result(true);
                 }
             } else {
                 if (lo <= c) {
                     if (hi >= c) {
-                        return true;
+                        return result(true);
                     }
                 } else {
-                    return false;
+                    return result(false);
                 }
             }
         }
-        return false;
+        return result(false);
     }
 
     private static boolean isSingleChar(char lo, char hi) {
@@ -81,9 +94,15 @@ public final class RangeListMatcher extends ProfiledCharMatcher {
         return lo == hi;
     }
 
+    private static boolean isTwoChars(char lo, char hi) {
+        CompilerAsserts.partialEvaluationConstant(lo);
+        CompilerAsserts.partialEvaluationConstant(hi);
+        return lo + 1 == hi;
+    }
+
     @Override
     public int estimatedCost() {
-        return ranges.length / 2;
+        return ranges.length;
     }
 
     @Override

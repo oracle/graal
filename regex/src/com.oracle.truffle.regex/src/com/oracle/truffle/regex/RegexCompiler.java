@@ -99,7 +99,7 @@ public abstract class RegexCompiler implements RegexLanguageObject {
                     }
                     flags = (String) args[1];
                 }
-                RegexSource regexSource = new RegexSource(pattern, RegexFlags.parseFlags(flags));
+                RegexSource regexSource = new RegexSource(pattern, flags);
                 return receiver.compile(regexSource);
             }
         }

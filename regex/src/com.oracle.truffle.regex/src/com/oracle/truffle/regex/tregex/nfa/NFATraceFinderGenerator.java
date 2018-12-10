@@ -259,7 +259,13 @@ public final class NFATraceFinderGenerator {
                 }
             }
         }
-        return new NFA(originalNFA.getAst(), dummyInitialState, null, null, newAnchoredEntry, newUnAnchoredEntry, states, stateID, transitionID, resultList.toArray(new PreCalculatedResultFactory[0]));
+        PreCalculatedResultFactory[] preCalculatedResults;
+        if (resultDeDuplicationMap.size() == 1) {
+            preCalculatedResults = new PreCalculatedResultFactory[]{resultList.get(0)};
+        } else {
+            preCalculatedResults = resultList.toArray(new PreCalculatedResultFactory[0]);
+        }
+        return new NFA(originalNFA.getAst(), dummyInitialState, null, null, newAnchoredEntry, newUnAnchoredEntry, states, stateID, transitionID, preCalculatedResults);
     }
 
     private void createTransition(NFAState source, NFAState target, NFAStateTransition originalTransition,

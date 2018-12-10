@@ -1,6 +1,8 @@
 suite = {
-    "mxversion": "5.138.0",
+    "mxversion": "5.194.4",
     "name": "substratevm",
+    "version" : "1.0.0-rc11",
+    "release" : False,
     "url" : "https://github.com/oracle/graal/tree/master/substratevm",
 
     "developer" : {
@@ -8,6 +10,11 @@ suite = {
         "email" : "graal-dev@openjdk.java.net",
         "organization" : "Graal",
         "organizationUrl" : "http://openjdk.java.net/projects/graal",
+    },
+    "scm" : {
+        "url" : "https://github.com/oracle/graal",
+        "read" : "https://github.com/oracle/graal.git",
+        "write" : "git@github.com:oracle/graal.git",
     },
 
     "defaultLicense" : "GPLv2-CPE",
@@ -59,7 +66,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": ["com.oracle.svm.core"],
             "javaCompliance": "8",
-            "checkstyleVersion" : "8.8",
+            "checkstyle": "com.oracle.svm.core",
             "workingSets": "SVM",
         },
 
@@ -73,7 +80,7 @@ suite = {
             ],
             "javaCompliance": "9+",
             "multiReleaseJarVersion": "9",
-            "checkstyleVersion" : "8.8",
+            "checkstyle": "com.oracle.svm.core",
             "workingSets": "SVM",
         },
 
@@ -177,7 +184,75 @@ suite = {
             "workingSets": "SVM",
         },
 
-        "com.oracle.svm.native": {
+        "com.oracle.svm.native.jni": {
+            "subDir": "src",
+            "native": True,
+            "vpath": True,
+            "buildEnv": {
+                "ARCH": "<arch>",
+                "OS": "<os>"
+            },
+            "results": [
+                "<os>-<arch>/include/jni.h",
+                "<os>-<arch>/include/jni_md.h",
+            ],
+            "os_arch": {
+                "solaris": {
+                    "<others>": {
+                        "ignore": "solaris is not supported",
+                    },
+                },
+                "windows": {
+                    "<others>": {
+                        "ignore": "windows is not supported",
+                    },
+                },
+                "<others>": {
+                    "sparcv9": {
+                        "ignore": "sparcv9 is not supported",
+                    },
+                    "<others>": {
+                        "ignore": False,
+                    },
+                },
+            },
+        },
+
+        "com.oracle.svm.native.libchelper": {
+            "subDir": "src",
+            "native": True,
+            "vpath": True,
+            "buildEnv": {
+                "ARCH": "<arch>",
+                "OS": "<os>"
+            },
+            "results": [
+                "<os>-<arch>/liblibchelper.a",
+                "<os>-<arch>/include/cpufeatures.h",
+            ],
+            "os_arch": {
+                "solaris": {
+                    "<others>": {
+                        "ignore": "solaris is not supported",
+                    },
+                },
+                "windows": {
+                    "<others>": {
+                        "ignore": "windows is not supported",
+                    },
+                },
+                "<others>": {
+                    "sparcv9": {
+                        "ignore": "sparcv9 is not supported",
+                    },
+                    "<others>": {
+                        "ignore": False,
+                    },
+                },
+            },
+        },
+
+        "com.oracle.svm.native.strictmath": {
             "subDir": "src",
             "native": True,
             "vpath": True,
@@ -187,11 +262,27 @@ suite = {
             },
             "results": [
                 "<os>-<arch>/libstrictmath.a",
-                "<os>-<arch>/liblibchelper.a",
-                "<os>-<arch>/include/cpufeatures.h",
-                "<os>-<arch>/include/jni.h",
-                "<os>-<arch>/include/jni_md.h",
             ],
+            "os_arch": {
+                "solaris": {
+                    "<others>": {
+                        "ignore": "solaris is not supported",
+                    },
+                },
+                "windows": {
+                    "<others>": {
+                        "ignore": "windows is not supported",
+                    },
+                },
+                "<others>": {
+                    "sparcv9": {
+                        "ignore": "sparcv9 is not supported",
+                    },
+                    "<others>": {
+                        "ignore": False,
+                    },
+                },
+            },
         },
 
         "com.oracle.svm.jni": {
@@ -220,7 +311,6 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.graal",
                 "com.oracle.svm.reflect",
-                "com.oracle.svm.core.posix", # Posix dependency is temporary, see GR-11750
             ],
             "checkstyle": "com.oracle.svm.driver",
             "checkstyleVersion" : "8.8",
@@ -459,26 +549,30 @@ suite = {
             "subDir" : "src",
             "native" : True,
             "vpath": True,
-            "os_arch" : {
-                "linux": {
-                    "amd64" : {
-                        "results" : ["<os>-<arch>/polyglot-nativeapi.o"],
-                    },
-                },
-                "darwin": {
-                    "amd64" : {
-                        "results" : ["<os>-<arch>/polyglot-nativeapi.o"],
-                    },
-                },
-                "windows": {
-                    "amd64" : {
-                        "results" : ["<os>-<arch>/polyglot-nativeapi.obj"],
-                    },
-                },
-            },
+            "results" : ["<os>-<arch>/polyglot-nativeapi.o"],
             "buildEnv": {
                 "ARCH": "<arch>",
                 "OS": "<os>"
+            },
+            "os_arch": {
+                "solaris": {
+                    "<others>": {
+                        "ignore": "solaris is not supported",
+                    },
+                },
+                "windows": {
+                    "<others>": {
+                        "ignore": "windows is not supported",  # necessary until GR-12705 is resolved
+                    },
+                },
+                "<others>": {
+                    "sparcv9": {
+                        "ignore": "sparcv9 is not supported",
+                    },
+                    "<others>": {
+                        "ignore": False,
+                    },
+                },
             },
         },
     },
@@ -491,6 +585,8 @@ suite = {
             "subDir": "src",
             "description" : "SubstrateVM image builder components",
             "dependencies": [
+                "com.oracle.svm.graal",  # necessary until Truffle is fully supported on Windows (GR-7941)
+                "com.oracle.svm.truffle",  # necessary until Truffle is fully supported on Windows (GR-7941)
                 "com.oracle.svm.hosted",
                 "com.oracle.svm.truffle.nfi",
                 "com.oracle.svm.core",
@@ -511,7 +607,7 @@ suite = {
                 "mx:JUNIT_TOOL",
                 "truffle:TRUFFLE_NFI",
                 "compiler:GRAAL",
-            ]
+            ],
         },
 
         "SVM_CORE": {
@@ -526,7 +622,8 @@ suite = {
                 "compiler:GRAAL",
             ],
             "exclude": [
-            ]
+            ],
+            "maven": False
         },
 
         "SVM_HOSTED": {
@@ -544,7 +641,8 @@ suite = {
                 "SVM_CORE",
             ],
             "exclude": [
-            ]
+            ],
+            "maven": False
         },
 
         "LIBRARY_SUPPORT": {
@@ -565,7 +663,7 @@ suite = {
             ],
             "exclude": [
                 "truffle:JLINE",
-            ]
+            ],
         },
 
         "OBJECTFILE": {
@@ -573,7 +671,7 @@ suite = {
             "description" : "SubstrateVM object file writing library",
             "dependencies": [
                 "com.oracle.objectfile"
-            ]
+            ],
         },
 
         #
@@ -581,7 +679,9 @@ suite = {
         #
         "SVM_HOSTED_NATIVE": {
             "dependencies": [
-                "com.oracle.svm.native",
+                "com.oracle.svm.native.jni",
+                "com.oracle.svm.native.libchelper",
+                "com.oracle.svm.native.strictmath",
                 "com.oracle.svm.libffi"
             ],
             "native": True,
@@ -593,6 +693,7 @@ suite = {
             "description" : "SubstrateVM image builder native components",
             "relpath": True,
             "output": "clibraries",
+            "maven": True
         },
 
         #
@@ -620,7 +721,7 @@ suite = {
                 "compiler:GRAAL",
             ],
             "exclude": [
-            ]
+            ],
         },
 
         "SVM_TESTS" : {
@@ -643,6 +744,7 @@ suite = {
                 "sdk:GRAAL_SDK",
                 "SVM",
             ],
+            "maven": False
         },
 
         "POLYGLOT_NATIVE_API_HEADERS" : {
@@ -651,7 +753,7 @@ suite = {
             "description" : "polyglot.nativeapi header files for the GraalVM build process",
             "layout" : {
                 "./" : [
-                    "file:<path:org.graalvm.polyglot.nativeapi>/resources/*.h",
+                    "extracted-dependency:POLYGLOT_NATIVE_API/*.h",
                 ],
             },
         },

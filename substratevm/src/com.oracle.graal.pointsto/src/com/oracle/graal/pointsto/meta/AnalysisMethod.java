@@ -136,16 +136,10 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider {
             assert Modifier.isStatic(getModifiers());
             assert getSignature().getParameterCount(false) == 0;
             try {
-                /*
-                 * Backdoor into the HotSpot metadata implementation, since there is no official way
-                 * to invoke a Graal method.
-                 */
-                Method toJavaMethod = wrapped.getClass().getDeclaredMethod("toJava");
-                toJavaMethod.setAccessible(true);
-                Method switchTableMethod = (Method) toJavaMethod.invoke(wrapped);
+                Method switchTableMethod = getDeclaringClass().getJavaClass().getDeclaredMethod(getName());
                 switchTableMethod.setAccessible(true);
                 switchTableMethod.invoke(null);
-            } catch (Throwable ex) {
+            } catch (ReflectiveOperationException ex) {
                 throw GraalError.shouldNotReachHere(ex);
             }
         }
@@ -206,6 +200,12 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider {
         if (implementationInvokedBy != null && invoke != null) {
             implementationInvokedBy.put(invoke, Boolean.TRUE);
         }
+
+        /*
+         * The class constant of the declaring class is used for exception metadata, so marking a
+         * method as invoked also makes the declaring class reachable.
+         */
+        getDeclaringClass().registerAsInTypeCheck();
     }
 
     public List<AnalysisMethod> getJavaInvocations() {
@@ -230,6 +230,12 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider {
 
     public void registerAsRootMethod() {
         isRootMethod = true;
+
+        /*
+         * The class constant of the declaring class is used for exception metadata, so marking a
+         * method as invoked also makes the declaring class reachable.
+         */
+        getDeclaringClass().registerAsInTypeCheck();
     }
 
     public boolean isRootMethod() {

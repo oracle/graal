@@ -1,3 +1,40 @@
+# Version 1.0.0 RC11
+
+Changes:
+
+* Stack traces report line numbers even if the original source file can not
+  be found.
+
+Deprecations:
+
+* Deprecate `--llvm.sourcePath` option in favour of the more general
+  `--inspect.SourcePath` option.
+
+# Version 1.0.0 RC10
+
+New features:
+
+* New option `--llvm.sourcePath` to specify search path for source files when
+  debugging.
+* Make debugging of internal functions possible. This is disabled by default,
+  enable with the `--inspect.Internal` option.
+
+Changes:
+
+* Uncaught exceptions are now output on stderr (previously stdout).
+* Hide internal functions (e.g. `_start` or `__cxa_throw`) in stack traces.
+
+# Version 1.0.0 RC9
+
+No changes.
+
+# Version 1.0.0 RC8
+
+New features:
+
+* Expert-level option `--llvm.loadC++Libraries=false` to disable automatic
+  loading of C++ standard libraries.
+
 # Version 1.0.0 RC7
 
 New features:

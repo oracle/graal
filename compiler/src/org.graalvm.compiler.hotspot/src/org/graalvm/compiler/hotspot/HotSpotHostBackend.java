@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,6 +42,7 @@ import org.graalvm.compiler.lir.framemap.ReferenceMapBuilder;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
+import org.graalvm.compiler.word.Word;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.common.InitTimer;
@@ -50,7 +51,6 @@ import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.runtime.JVMCICompiler;
-import org.graalvm.compiler.word.Word;
 
 /**
  * Common functionality of HotSpot host backends.

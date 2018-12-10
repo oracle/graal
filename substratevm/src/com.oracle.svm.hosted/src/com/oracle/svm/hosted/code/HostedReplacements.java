@@ -51,7 +51,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * Snippets are parsed before the static analysis using {@link SubstrateReplacements}. This ensures
  * that snippets do not use analysis-specific nodes - they are parsed using the same
  * {@link BytecodeParser} subclass also used for parsing the snippets we use for runtime
- * compilation. The parsing using the {@link AnalysisUniverse}.
+ * compilation. The parsing uses the {@link AnalysisUniverse}.
  *
  * We cannot parse snippets again before compilation with the {@link HostedUniverse}: the static
  * analysis does not see the individual methods that are inlined into snippets, only the final graph

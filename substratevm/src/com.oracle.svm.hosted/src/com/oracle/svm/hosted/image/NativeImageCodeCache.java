@@ -103,6 +103,13 @@ public class NativeImageCodeCache {
         int numDuringCallEntryPoints;
 
         @Override
+        protected Class<?> getDeclaringJavaClass(ResolvedJavaMethod method) {
+            HostedType type = (HostedType) method.getDeclaringClass();
+            assert type.getWrapped().isInTypeCheck() : "Declaring class not marked as used, therefore the DynamicHub is not initialized properly: " + method.format("%H.%n(%p)");
+            return type.getJavaClass();
+        }
+
+        @Override
         protected boolean shouldStoreMethod() {
             return false;
         }
@@ -456,7 +463,7 @@ public class NativeImageCodeCache {
                     long addend = (patchData.nextInstructionPosition - patchData.operandPosition);
                     relocs.addPCRelativeRelocationWithAddend((int) siteOffset, patchData.operandSize, addend, ref);
                 } else if (ref instanceof ConstantReference) {
-                    assert SubstrateOptions.UseHeapBaseRegister.getValue() : "Inlined object references must be base-relative";
+                    assert SubstrateOptions.SpawnIsolates.getValue() : "Inlined object references must be base-relative";
                     relocs.addDirectRelocationWithoutAddend((int) siteOffset, patchData.operandSize, ref);
                 } else {
                     throw VMError.shouldNotReachHere("Unknown type of reference in code");

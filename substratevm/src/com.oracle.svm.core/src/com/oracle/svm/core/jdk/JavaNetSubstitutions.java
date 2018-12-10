@@ -46,6 +46,7 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 
@@ -75,13 +76,7 @@ class JavaNetFeature implements Feature {
             VMError.guarantee(registered, "The URL protocol " + protocol + " is not available.");
         });
 
-        String optionValue = SubstrateOptions.EnableURLProtocols.getValue();
-        if (optionValue.isEmpty()) {
-            return;
-        }
-
-        String[] protocols = optionValue.split(",");
-        for (String protocol : protocols) {
+        for (String protocol : OptionUtils.flatten(",", SubstrateOptions.EnableURLProtocols.getValue())) {
             if (JavaNetSubstitutions.defaultProtocols.contains(protocol)) {
                 printWarning("The URL protocol " + protocol + " is enabled by default. " +
                                 "The option " + JavaNetSubstitutions.enableProtocolsOption + protocol + " is not needed.");

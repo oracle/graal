@@ -42,8 +42,6 @@ package com.oracle.truffle.polyglot;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -173,13 +171,10 @@ class HostLanguage extends TruffleLanguage<HostContext> {
             if (!internalContext.context.config.hostClassLoadingAllowed) {
                 throw new HostLanguageException(String.format("Host class loading is not allowed."));
             }
-            URL url;
-            try {
-                url = classpathEntry.toUri().toURL();
-            } catch (MalformedURLException e) {
-                throw new HostLanguageException("Invalid host classpath entry " + classpathEntry.getPath() + ".");
+            if (FileSystems.isNoIOFileSystem(internalContext.context.config.fileSystem)) {
+                throw new HostLanguageException("Host class loading is disabled without IO permissions.");
             }
-            getClassloader().addURL(url);
+            getClassloader().addClasspathRoot(classpathEntry);
         }
     }
 

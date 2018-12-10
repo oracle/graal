@@ -63,9 +63,6 @@ public final class JNIGeneratedMethodSupport {
     }
 
     static JNIEnvironment environment() {
-        if (!JNIThreadLocalEnvironment.isInitialized()) {
-            JNIThreadLocalEnvironment.initialize();
-        }
         return JNIThreadLocalEnvironment.getAddress();
     }
 

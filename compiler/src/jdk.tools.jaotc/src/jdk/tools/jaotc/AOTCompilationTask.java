@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,8 +32,8 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.GraalCompilerOptions;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.debug.DebugContext.Activation;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.serviceprovider.GraalServices;
@@ -143,7 +143,7 @@ final class AOTCompilationTask implements Runnable, Comparable<Object> {
             aotBackend.printCompiledMethod((HotSpotResolvedJavaMethod) method, compResult);
         }
 
-        result = new CompiledMethodInfo(compResult, new AOTHotSpotResolvedJavaMethod((HotSpotResolvedJavaMethod) method, aotBackend.getBackend()));
+        result = new CompiledMethodInfo(compResult, new AOTHotSpotResolvedJavaMethod((HotSpotResolvedJavaMethod) method, aotBackend.getBackend(), graalOptions));
     }
 
     private String getMethodDescription() {

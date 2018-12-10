@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,13 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleInvalidationReprofileCount;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleOSR;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleOSRCompilationThreshold;
-
 import java.util.Objects;
-
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -279,7 +273,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
     public static LoopNode create(RepeatingNode repeat) {
         // using static methods with LoopNode return type ensures
         // that only one loop node implementation gets loaded.
-        if (TruffleCompilerOptions.getValue(TruffleOSR)) {
+        if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleOSR)) {
             return createDefault(repeat);
         } else {
             return OptimizedLoopNode.create(repeat);
@@ -339,12 +333,12 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
 
         @Override
         protected int getInvalidationBackoff() {
-            return TruffleCompilerOptions.getValue(TruffleInvalidationReprofileCount);
+            return TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleInvalidationReprofileCount);
         }
 
         @Override
         protected int getThreshold() {
-            return TruffleCompilerOptions.getValue(TruffleOSRCompilationThreshold);
+            return TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleOSRCompilationThreshold);
         }
 
     }

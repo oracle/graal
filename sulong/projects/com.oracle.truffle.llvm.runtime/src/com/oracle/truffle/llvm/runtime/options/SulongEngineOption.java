@@ -53,10 +53,18 @@ public final class SulongEngineOption {
     public static final String LIBRARY_PATH_NAME = "llvm.libraryPath";
     public static final String LIBRARY_PATH_INFO = "A list of paths where Sulong will search for relative libraries. Paths are delimited by " + OPTION_ARRAY_SEPARATOR + " .";
 
+    public static final OptionKey<String> SOURCE_PATH = new OptionKey<>("");
+    public static final String SOURCE_PATH_NAME = "llvm.sourcePath";
+    public static final String SOURCE_PATH_INFO = "This option is deprecated. Use --inspect.SourcePath instead.";
+
     public static final OptionKey<String> LIBRARIES = new OptionKey<>("");
     public static final String LIBRARIES_NAME = "llvm.libraries";
     public static final String LIBRARIES_INFO = "List of libraries (precompiled libraires *.dylib/*.so as well as bitcode libraries *.bc). Files with a relative path will be looked up relative to llvm.libraryPath. Libraries are delimited by " +
                     OPTION_ARRAY_SEPARATOR + " .";
+
+    public static final OptionKey<Boolean> LOAD_CXX_LIBRARIES = new OptionKey<>(true);
+    public static final String LOAD_CXX_LIBRARIES_NAME = "llvm.loadC++Libraries";
+    public static final String LOAD_CXX_LIBRARIES_INFO = "Specifies whether the standard C++ libraries (libc++ and libc++abi) should be loaded. Enabled by default.";
 
     public static final OptionKey<Boolean> ENABLE_NFI = new OptionKey<>(true);
     public static final String ENABLE_NFI_NAME = "llvm.enableExternalNativeAccess";
@@ -103,6 +111,8 @@ public final class SulongEngineOption {
         options.add(OptionDescriptor.newBuilder(STACK_SIZE_KB, STACK_SIZE_KB_NAME).help(STACK_SIZE_KB_INFO).category(OptionCategory.USER).build());
         options.add(OptionDescriptor.newBuilder(LIBRARIES, LIBRARIES_NAME).help(LIBRARIES_INFO).category(OptionCategory.USER).build());
         options.add(OptionDescriptor.newBuilder(LIBRARY_PATH, LIBRARY_PATH_NAME).help(LIBRARY_PATH_INFO).category(OptionCategory.USER).build());
+        options.add(OptionDescriptor.newBuilder(SOURCE_PATH, SOURCE_PATH_NAME).help(SOURCE_PATH_INFO).category(OptionCategory.USER).deprecated(true).build());
+        options.add(OptionDescriptor.newBuilder(LOAD_CXX_LIBRARIES, LOAD_CXX_LIBRARIES_NAME).help(LOAD_CXX_LIBRARIES_INFO).category(OptionCategory.EXPERT).build());
         options.add(OptionDescriptor.newBuilder(ENABLE_NFI, ENABLE_NFI_NAME).help(ENABLE_NFI_INFO).category(OptionCategory.USER).build());
         options.add(OptionDescriptor.newBuilder(DEBUG_SYSCALLS, DEBUG_SYSCALLS_NAME).help(DEBUG_SYSCALLS_INFO).category(OptionCategory.USER).build());
         options.add(OptionDescriptor.newBuilder(NATIVE_CALL_STATS, NATIVE_CALL_STATS_NAME).help(NATIVE_CALL_STATS_INFO).category(OptionCategory.USER).build());

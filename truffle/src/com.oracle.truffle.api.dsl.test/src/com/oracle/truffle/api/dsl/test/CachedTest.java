@@ -52,7 +52,9 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
@@ -86,8 +88,10 @@ import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestMultipleCachesFacto
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.UnboundCacheFactory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.dsl.test.examples.ExampleTypes;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInterface;
+import com.oracle.truffle.api.nodes.RootNode;
 
 @SuppressWarnings("unused")
 public class CachedTest {
@@ -243,8 +247,14 @@ public class CachedTest {
         private int increment = 1;
 
         public int execute(int value) {
-            replace(new NodeSubClass()).increment = increment + 1;
+            final NodeSubClass replaced = doReplace();
+            replaced.increment = increment + 1;
             return value + increment;
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        private NodeSubClass doReplace() {
+            return replace(new NodeSubClass());
         }
 
     }
@@ -283,7 +293,7 @@ public class CachedTest {
         assertEquals(42, root.call(42));
         assertEquals(42, root.call(43));
         assertEquals(42, root.call(44));
-        if (assertionsEnabled()) {
+        if (assertionsEnabled() && !isCompileImmediately()) {
             Assert.assertTrue(TestGuardWithJustCachedParameter.invocations >= 3);
         } else {
             assertEquals(1, TestGuardWithJustCachedParameter.invocations);
@@ -307,6 +317,16 @@ public class CachedTest {
 
     }
 
+    private static boolean isCompileImmediately() {
+        CallTarget target = Truffle.getRuntime().createCallTarget(new RootNode(null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return CompilerDirectives.inCompiledCode();
+            }
+        });
+        return (boolean) target.call();
+    }
+
     @Test
     public void testGuardWithCachedAndDynamicParameter() {
         TestGuardWithCachedAndDynamicParameter.cachedMethodInvocations = 0;
@@ -316,7 +336,7 @@ public class CachedTest {
         assertEquals(42, root.call(43));
         assertEquals(42, root.call(44));
         // guards with just cached parameters are just invoked on the slow path
-        if (assertionsEnabled()) {
+        if (assertionsEnabled() && !isCompileImmediately()) {
             Assert.assertTrue(TestGuardWithCachedAndDynamicParameter.cachedMethodInvocations >= 3);
         } else {
             assertEquals(1, TestGuardWithCachedAndDynamicParameter.cachedMethodInvocations);

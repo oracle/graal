@@ -100,6 +100,7 @@ public interface CommittedMemoryProvider {
      * @param executable Whether the block was requested to be executable.
      * @return true on success, or false otherwise.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     boolean free(PointerBase start, UnsignedWord nbytes, UnsignedWord alignment, boolean executable);
 
     /**

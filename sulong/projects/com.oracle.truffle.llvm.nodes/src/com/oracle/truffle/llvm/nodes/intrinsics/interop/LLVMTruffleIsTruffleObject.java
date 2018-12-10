@@ -40,7 +40,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
 @SuppressWarnings("unused")
-@NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
+@NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMTruffleIsTruffleObject extends LLVMIntrinsic {
 
     @Specialization

@@ -36,7 +36,6 @@ import static org.graalvm.compiler.hotspot.HotSpotBackend.DECRYPT_WITH_ORIGINAL_
 import static org.graalvm.compiler.hotspot.HotSpotBackend.ENCRYPT;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.ENCRYPT_BLOCK;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.EXCEPTION_HANDLER;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.GENERIC_ARRAYCOPY;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.IC_MISS_HANDLER;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.INITIALIZE_KLASS_BY_SYMBOL;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.INVOCATION_EVENT;
@@ -45,8 +44,11 @@ import static org.graalvm.compiler.hotspot.HotSpotBackend.MONTGOMERY_SQUARE;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.MULTIPLY_TO_LEN;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.MUL_ADD;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.NEW_ARRAY;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.NEW_ARRAY_OR_NULL;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.NEW_INSTANCE;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.NEW_INSTANCE_OR_NULL;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.NEW_MULTI_ARRAY;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.NEW_MULTI_ARRAY_OR_NULL;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.RESOLVE_DYNAMIC_INVOKE;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.RESOLVE_KLASS_BY_SYMBOL;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.RESOLVE_METHOD_BY_SYMBOL_AND_LOAD_COUNTERS;
@@ -55,13 +57,12 @@ import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA2_IMPL_COMPRESS;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA5_IMPL_COMPRESS;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA_IMPL_COMPRESS;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SQUARE_TO_LEN;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.UNSAFE_ARRAYCOPY;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.UNWIND_EXCEPTION_TO_CALLER;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.VM_ERROR;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.WRONG_METHOD_HANDLER;
+import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.Reexecutability.NOT_REEXECUTABLE;
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.Reexecutability.REEXECUTABLE;
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.Reexecutability.REEXECUTABLE_ONLY_AFTER_EXCEPTION;
-import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.Reexecutability.NOT_REEXECUTABLE;
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_REGISTERS;
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.PRESERVES_REGISTERS;
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.Transition.LEAF;
@@ -78,8 +79,8 @@ import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.TLAB_TOP_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.MonitorSnippets.MONITORENTER;
 import static org.graalvm.compiler.hotspot.replacements.MonitorSnippets.MONITOREXIT;
-import static org.graalvm.compiler.hotspot.replacements.NewObjectSnippets.DYNAMIC_NEW_ARRAY;
 import static org.graalvm.compiler.hotspot.replacements.NewObjectSnippets.DYNAMIC_NEW_INSTANCE;
+import static org.graalvm.compiler.hotspot.replacements.NewObjectSnippets.DYNAMIC_NEW_INSTANCE_OR_NULL;
 import static org.graalvm.compiler.hotspot.replacements.ThreadSubstitutions.THREAD_IS_INTERRUPTED;
 import static org.graalvm.compiler.hotspot.replacements.WriteBarrierSnippets.G1WBPOSTCALL;
 import static org.graalvm.compiler.hotspot.replacements.WriteBarrierSnippets.G1WBPRECALL;
@@ -125,6 +126,7 @@ import org.graalvm.compiler.hotspot.stubs.VerifyOopStub;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.replacements.arraycopy.ArrayCopyForeignCalls;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.word.LocationIdentity;
@@ -137,7 +139,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 /**
  * HotSpot implementation of {@link ForeignCallsProvider}.
  */
-public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCallsProviderImpl {
+public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCallsProviderImpl implements ArrayCopyForeignCalls {
 
     public static final ForeignCallDescriptor JAVA_TIME_MILLIS = new ForeignCallDescriptor("javaTimeMillis", long.class);
     public static final ForeignCallDescriptor JAVA_TIME_NANOS = new ForeignCallDescriptor("javaTimeNanos", long.class);
@@ -154,11 +156,13 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         stub.getLinkage().setCompiledStub(stub);
     }
 
-    public static ForeignCallDescriptor lookupCheckcastArraycopyDescriptor(boolean uninit) {
+    @Override
+    public ForeignCallDescriptor lookupCheckcastArraycopyDescriptor(boolean uninit) {
         return checkcastArraycopyDescriptors[uninit ? 1 : 0];
     }
 
-    public static ForeignCallDescriptor lookupArraycopyDescriptor(JavaKind kind, boolean aligned, boolean disjoint, boolean uninit, boolean killAny) {
+    @Override
+    public ForeignCallDescriptor lookupArraycopyDescriptor(JavaKind kind, boolean aligned, boolean disjoint, boolean uninit, boolean killAny) {
         if (uninit) {
             assert kind == JavaKind.Object;
             assert !killAny : "unsupported";
@@ -210,7 +214,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
     }
 
     private void registerCheckcastArraycopyDescriptor(boolean uninit, long routine) {
-        String name = "Object" + (uninit ? "Uninit" : "") + "Checkcast";
+        String name = "Object" + (uninit ? "Uninit" : "") + "CheckcastArraycopy";
         // Input:
         // c_rarg0 - source array address
         // c_rarg1 - destination array address
@@ -224,11 +228,20 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         checkcastArraycopyDescriptors[uninit ? 1 : 0] = desc;
     }
 
-    private void registerArrayCopy(JavaKind kind, long routine, long alignedRoutine, long disjointRoutine, long alignedDisjointRoutine) {
+    private void registerArrayCopy(JavaKind kind,
+                    long routine,
+                    long alignedRoutine,
+                    long disjointRoutine,
+                    long alignedDisjointRoutine) {
         registerArrayCopy(kind, routine, alignedRoutine, disjointRoutine, alignedDisjointRoutine, false);
     }
 
-    private void registerArrayCopy(JavaKind kind, long routine, long alignedRoutine, long disjointRoutine, long alignedDisjointRoutine, boolean uninit) {
+    private void registerArrayCopy(JavaKind kind,
+                    long routine,
+                    long alignedRoutine,
+                    long disjointRoutine,
+                    long alignedDisjointRoutine,
+                    boolean uninit) {
         /*
          * Sometimes the same function is used for multiple cases so share them when that's the case
          * but only within the same Kind. For instance short and char are the same copy routines but
@@ -288,6 +301,16 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
 
         linkForeignCall(options, providers, NEW_INSTANCE, c.newInstanceAddress, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, TLAB_TOP_LOCATION, TLAB_END_LOCATION);
         linkForeignCall(options, providers, NEW_ARRAY, c.newArrayAddress, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, TLAB_TOP_LOCATION, TLAB_END_LOCATION);
+        linkForeignCall(options, providers, NEW_MULTI_ARRAY, c.newMultiArrayAddress, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, TLAB_TOP_LOCATION, TLAB_END_LOCATION);
+        linkForeignCall(options, providers, DYNAMIC_NEW_INSTANCE, c.dynamicNewInstanceAddress, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE);
+
+        if (c.areNullAllocationStubsAvailable()) {
+            linkForeignCall(options, providers, NEW_INSTANCE_OR_NULL, c.newInstanceOrNullAddress, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, TLAB_TOP_LOCATION, TLAB_END_LOCATION);
+            linkForeignCall(options, providers, NEW_ARRAY_OR_NULL, c.newArrayOrNullAddress, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, TLAB_TOP_LOCATION, TLAB_END_LOCATION);
+            linkForeignCall(options, providers, NEW_MULTI_ARRAY_OR_NULL, c.newMultiArrayOrNullAddress, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, TLAB_TOP_LOCATION, TLAB_END_LOCATION);
+            linkForeignCall(options, providers, DYNAMIC_NEW_INSTANCE_OR_NULL, c.dynamicNewInstanceOrNullAddress, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE);
+        }
+
         link(new ExceptionHandlerStub(options, providers, foreignCalls.get(EXCEPTION_HANDLER)));
         link(new UnwindExceptionToCallerStub(options, providers, registerStubCall(UNWIND_EXCEPTION_TO_CALLER, SAFEPOINT, REEXECUTABLE_ONLY_AFTER_EXCEPTION, any())));
         link(new VerifyOopStub(options, providers, registerStubCall(VERIFY_OOP, LEAF_NOFP, REEXECUTABLE, NO_LOCATIONS)));
@@ -305,11 +328,8 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         linkForeignCall(options, providers, REGISTER_FINALIZER, c.registerFinalizerAddress, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE_ONLY_AFTER_EXCEPTION, any());
         linkForeignCall(options, providers, MONITORENTER, c.monitorenterAddress, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE_ONLY_AFTER_EXCEPTION, any());
         linkForeignCall(options, providers, MONITOREXIT, c.monitorexitAddress, PREPEND_THREAD, STACK_INSPECTABLE_LEAF, REEXECUTABLE_ONLY_AFTER_EXCEPTION, any());
-        linkForeignCall(options, providers, NEW_MULTI_ARRAY, c.newMultiArrayAddress, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE, TLAB_TOP_LOCATION, TLAB_END_LOCATION);
         linkForeignCall(options, providers, NOTIFY, c.notifyAddress, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE_ONLY_AFTER_EXCEPTION, any());
         linkForeignCall(options, providers, NOTIFY_ALL, c.notifyAllAddress, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE_ONLY_AFTER_EXCEPTION, any());
-        linkForeignCall(options, providers, DYNAMIC_NEW_ARRAY, c.dynamicNewArrayAddress, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE);
-        linkForeignCall(options, providers, DYNAMIC_NEW_INSTANCE, c.dynamicNewInstanceAddress, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE);
         linkForeignCall(options, providers, LOG_PRINTF, c.logPrintfAddress, PREPEND_THREAD, LEAF, REEXECUTABLE, NO_LOCATIONS);
         linkForeignCall(options, providers, LOG_OBJECT, c.logObjectAddress, PREPEND_THREAD, LEAF, REEXECUTABLE, NO_LOCATIONS);
         linkForeignCall(options, providers, LOG_PRIMITIVE, c.logPrimitiveAddress, PREPEND_THREAD, LEAF, REEXECUTABLE, NO_LOCATIONS);

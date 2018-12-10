@@ -75,8 +75,10 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 if (cpArgs == null) {
                     NativeImage.showError(headArg + " requires class path specification");
                 }
-                for (String cp : cpArgs.split(File.pathSeparator)) {
-                    nativeImage.addCustomImageClasspath(Paths.get(cp));
+                for (String cp : cpArgs.split(File.pathSeparator, Integer.MAX_VALUE)) {
+                    /* Conform to `java` command empty cp entry handling. */
+                    String cpEntry = cp.isEmpty() ? "." : cp;
+                    nativeImage.addCustomImageClasspath(Paths.get(cpEntry));
                 }
                 return true;
             case "--configurations-path":
@@ -142,6 +144,17 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             nativeImage.addCustomJavaArgs(headArg);
             return true;
         }
+        String optionKeyPrefix = "-V";
+        if (headArg.startsWith(optionKeyPrefix)) {
+            args.poll();
+            String keyValueStr = headArg.substring(optionKeyPrefix.length());
+            String[] keyValue = keyValueStr.split("=");
+            if (keyValue.length != 2) {
+                throw NativeImage.showError("Use " + optionKeyPrefix + "<key>=<value>");
+            }
+            nativeImage.addOptionKeyValue(keyValue[0], keyValue[1]);
+            return true;
+        }
         if (headArg.startsWith("-J")) {
             args.poll();
             if (headArg.equals("-J")) {
@@ -157,7 +170,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             if (headArg.equals(optimizeOption)) {
                 NativeImage.showError("The " + optimizeOption + " option should not be followed by a space");
             } else {
-                nativeImage.addImageBuilderArg(NativeImage.oHOptimize + headArg.substring(2));
+                nativeImage.addPlainImageBuilderArg(nativeImage.oHOptimize + headArg.substring(2));
             }
             return true;
         }
@@ -172,8 +185,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             if (mainClass == null) {
                 NativeImage.showError("No main manifest attribute, in " + filePath);
             }
-            nativeImage.addImageClasspath(filePath);
-            nativeImage.addImageBuilderArg(NativeImage.oHClass + mainClass);
+            nativeImage.addPlainImageBuilderArg(nativeImage.oHClass + mainClass);
             String jarFileName = filePath.getFileName().toString();
             String jarSuffix = ".jar";
             String jarFileNameBase;
@@ -183,7 +195,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 jarFileNameBase = jarFileName;
             }
             if (!jarFileNameBase.isEmpty()) {
-                nativeImage.addImageBuilderArg(NativeImage.oHName + jarFileNameBase);
+                nativeImage.addPlainImageBuilderArg(nativeImage.oHName + jarFileNameBase);
             }
             String classPath = mainAttributes.getValue("Class-Path");
             /* Missing Class-Path Attribute is tolerable */
@@ -197,6 +209,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                     nativeImage.addImageProvidedClasspath(manifestClassPath);
                 }
             }
+            nativeImage.addCustomImageClasspath(filePath);
         } catch (NativeImage.NativeImageError ex) {
             throw ex;
         } catch (Throwable ex) {

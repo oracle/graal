@@ -31,33 +31,39 @@ import java.nio.ByteBuffer;
 import org.graalvm.polyglot.io.MessageEndpoint;
 import org.graalvm.polyglot.io.MessageTransport;
 
+import com.oracle.truffle.tools.chromeinspector.instrument.InspectorWSConnection;
+
 /**
  * Inspector server that delegates to {@link MessageTransport}.
  */
-public final class WSInterceptorServer implements InspectorServer, MessageEndpoint {
+public final class WSInterceptorServer implements InspectorWSConnection, MessageEndpoint {
 
     private final URI uri;
+    private final ConnectionWatcher connectionWatcher;
+    private final InspectServerSession iss;
     private MessageEndpoint inspectEndpoint;
-    private ConnectionWatcher connectionWatcher;
 
-    public WSInterceptorServer(URI uri, InspectServerSession iss) {
+    public WSInterceptorServer(URI uri, InspectServerSession iss, ConnectionWatcher connectionWatcher) {
         this.uri = uri;
+        this.connectionWatcher = connectionWatcher;
+        this.iss = iss;
         iss.setMessageListener(this);
     }
 
-    public void opened(MessageEndpoint endpoint, ConnectionWatcher cw) {
+    public void opened(MessageEndpoint endpoint) {
         this.inspectEndpoint = endpoint;
-        this.connectionWatcher = cw;
-        cw.notifyOpen();
+        iss.setMessageListener(this);
+        this.connectionWatcher.notifyOpen();
     }
 
     @Override
-    public int getListeningPort() {
+    public int getPort() {
         return uri.getPort();
     }
 
     @Override
     public void close(String path) throws IOException {
+        iss.setMessageListener(null);
         if (inspectEndpoint != null) {
             if (path.equals(uri.getPath())) {
                 inspectEndpoint.sendClose();

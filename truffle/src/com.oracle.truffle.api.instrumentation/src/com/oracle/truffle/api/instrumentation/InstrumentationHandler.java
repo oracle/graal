@@ -1772,6 +1772,21 @@ final class InstrumentationHandler {
         }
 
         @Override
+        @SuppressWarnings("deprecation")
+        public final ExecutionEventNode lookupExecutionEventNode(Node node, EventBinding<?> binding) {
+            if (!InstrumentationHandler.isInstrumentableNode(node, node.getSourceSection())) {
+                return null;
+            }
+            Node p = node.getParent();
+            if (p instanceof InstrumentableFactory.WrapperNode) {
+                InstrumentableFactory.WrapperNode w = (InstrumentableFactory.WrapperNode) p;
+                return w.getProbeNode().lookupExecutionEventNode(binding);
+            } else {
+                return null;
+            }
+        }
+
+        @Override
         public <T extends ExecutionEventNodeFactory> EventBinding<T> attachExecutionEventFactory(SourceSectionFilter filter, SourceSectionFilter inputFilter, T factory) {
             verifyFilter(filter);
             return InstrumentationHandler.this.attachFactory(this, filter, inputFilter, factory);

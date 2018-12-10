@@ -65,7 +65,9 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileTime;
+import java.nio.file.attribute.GroupPrincipal;
 import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.UserPrincipal;
 import java.util.AbstractMap;
 import java.util.Arrays;
 import java.util.Collection;
@@ -86,7 +88,7 @@ final class MemoryFileSystem implements FileSystem {
     private final Map<Long, FileInfo> inodes;
     private final Map<Long, byte[]> blocks;
     private final Path root;
-    private Path userDir;
+    private volatile Path userDir;
     private long nextInode = 0;
 
     MemoryFileSystem() throws IOException {
@@ -95,10 +97,6 @@ final class MemoryFileSystem implements FileSystem {
         root = Paths.get("/");
         userDir = root;
         createDirectoryImpl();
-    }
-
-    void setUserDir(final Path newUserDir) {
-        userDir = newUserDir;
     }
 
     @Override
@@ -338,6 +336,12 @@ final class MemoryFileSystem implements FileSystem {
             return path;
         }
         return userDir.resolve(path);
+    }
+
+    @Override
+    public void setCurrentWorkingDirectory(Path currentWorkingDirectory) {
+        Objects.requireNonNull(currentWorkingDirectory, "Current working directory must be non null.");
+        this.userDir = currentWorkingDirectory;
     }
 
     @Override
@@ -612,6 +616,8 @@ final class MemoryFileSystem implements FileSystem {
 
     private static final class PermissionsAttributes extends BasicFileAttributes {
         private static final String ATTR_PERMISSIONS = "permissions";
+        private static final String ATTR_OWNER = "owner";
+        private static final String ATTR_GROUP = "group";
 
         PermissionsAttributes(long inode, FileInfo fileInfo, int size) {
             super(inode, fileInfo, size);
@@ -621,6 +627,8 @@ final class MemoryFileSystem implements FileSystem {
         Set<String> getSupportedKeys() {
             final Set<String> base = super.getSupportedKeys();
             base.add(ATTR_PERMISSIONS);
+            base.add(ATTR_OWNER);
+            base.add(ATTR_GROUP);
             return base;
         }
 
@@ -638,6 +646,30 @@ final class MemoryFileSystem implements FileSystem {
                     result.add(PosixFilePermission.OWNER_EXECUTE);
                 }
                 return result;
+            } else if (ATTR_OWNER.equals(key)) {
+                return new UserPrincipal() {
+                    @Override
+                    public String getName() {
+                        return "";
+                    }
+
+                    @Override
+                    public int hashCode() {
+                        return 0;
+                    }
+                };
+            } else if (ATTR_GROUP.equals(key)) {
+                return new GroupPrincipal() {
+                    @Override
+                    public String getName() {
+                        return "";
+                    }
+
+                    @Override
+                    public int hashCode() {
+                        return 0;
+                    }
+                };
             }
             return super.getValue(key);
         }

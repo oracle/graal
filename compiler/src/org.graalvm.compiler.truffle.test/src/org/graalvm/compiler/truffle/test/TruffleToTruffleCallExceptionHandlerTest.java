@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,9 +33,10 @@ import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleOptionsOverrideScope;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleOptionsOverrideScope;
 import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
@@ -144,7 +145,7 @@ public class TruffleToTruffleCallExceptionHandlerTest {
         /*
          * We disable truffle AST inlining to not inline the callee
          */
-        try (TruffleOptionsOverrideScope o = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleFunctionInlining, false)) {
+        try (TruffleOptionsOverrideScope o = TruffleCompilerOptions.overrideOptions(SharedTruffleCompilerOptions.TruffleFunctionInlining, false)) {
             StructuredGraph graph = partialEval(callerNoException, new Object[0], AllowAssumptions.YES);
             Assert.assertEquals(0, graph.getNodes().filter(UnwindNode.class).count());
         }
@@ -168,7 +169,7 @@ public class TruffleToTruffleCallExceptionHandlerTest {
         /*
          * We disable truffle AST inlining to not inline the callee
          */
-        try (TruffleOptionsOverrideScope o = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleFunctionInlining, false)) {
+        try (TruffleOptionsOverrideScope o = TruffleCompilerOptions.overrideOptions(SharedTruffleCompilerOptions.TruffleFunctionInlining, false)) {
             StructuredGraph graph = partialEval(callerWithException, new Object[0], AllowAssumptions.YES);
             Assert.assertEquals(1, graph.getNodes().filter(UnwindNode.class).count());
         }

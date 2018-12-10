@@ -81,6 +81,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.Source.SourceBuilder;
 import com.oracle.truffle.api.source.SourceSection;
+import java.nio.file.Path;
 
 /**
  * Communication between TruffleLanguage API/SPI, and other services.
@@ -187,10 +188,6 @@ public abstract class Accessor {
 
         public abstract boolean isEvalRoot(RootNode target);
 
-        public abstract <T> T lookupJavaInteropCodeCache(Object languageContext, Object key, Class<T> expectedType);
-
-        public abstract <T> T installJavaInteropCodeCache(Object languageContext, Object key, T value, Class<T> expectedType);
-
         @SuppressWarnings("static-method")
         public final void attachOutputConsumer(DispatchOutputStream dos, OutputStream out) {
             dos.attach(out);
@@ -247,6 +244,8 @@ public abstract class Accessor {
 
         public abstract boolean isNativeAccessAllowed(Object vmObject, Env env);
 
+        public abstract boolean inContextPreInitialization(Object vmObject);
+
         public abstract Object createInternalContext(Object vmObject, Map<String, Object> config, TruffleContext spiContext);
 
         public abstract void initializeInternalContext(Object vmObject, Object contextImpl);
@@ -265,7 +264,15 @@ public abstract class Accessor {
 
         public abstract boolean isCreateThreadAllowed(Object vmObject);
 
-        public abstract Thread createThread(Object vmObject, Runnable runnable, Object context);
+        public Thread createThread(Object vmObject, Runnable runnable, Object innerContextImpl, ThreadGroup group) {
+            return createThread(vmObject, runnable, innerContextImpl, group, 0);
+        }
+
+        public Thread createThread(Object vmObject, Runnable runnable, Object innerContextImpl) {
+            return createThread(vmObject, runnable, innerContextImpl, null, 0);
+        }
+
+        public abstract Thread createThread(Object vmObject, Runnable runnable, Object innerContextImpl, ThreadGroup group, long stackSize);
 
         public abstract Iterable<Scope> createDefaultLexicalScope(Node node, Frame frame);
 
@@ -409,15 +416,11 @@ public abstract class Accessor {
 
         public abstract void materializeHostFrames(Throwable original);
 
-        public abstract boolean checkTruffleFile(File file);
-
-        public abstract byte[] truffleFileContent(File file) throws IOException;
-
         public abstract void configureLoggers(Object polyglotContext, Map<String, Level> logLevels);
 
         public abstract TruffleLanguage<?> getLanguage(Env env);
 
-        public abstract File asFile(TruffleFile file);
+        public abstract Path getPath(TruffleFile file);
 
     }
 
@@ -627,6 +630,8 @@ public abstract class Accessor {
         } else if (simpleName.endsWith("TruffleTCKAccessor")) {
             // O.K.
         } else if (simpleName.endsWith("TestAccessor")) {
+            // O.K.
+        } else if (simpleName.endsWith("TestAPIAccessor")) {
             // O.K.
         } else {
             assert simpleName.endsWith("VMAccessor");

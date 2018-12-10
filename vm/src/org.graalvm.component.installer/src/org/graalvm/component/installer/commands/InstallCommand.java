@@ -70,6 +70,7 @@ public class InstallCommand implements InstallerCommand {
         OPTIONS.put(Commands.OPTION_VALIDATE, "");
         OPTIONS.put(Commands.OPTION_VALIDATE_DOWNLOAD, "");
         OPTIONS.put(Commands.OPTION_IGNORE_FAILURES, "");
+        OPTIONS.put(Commands.OPTION_FAIL_EXISTING, "");
 
         OPTIONS.put(Commands.LONG_OPTION_DRY_RUN, Commands.OPTION_DRY_RUN);
         OPTIONS.put(Commands.LONG_OPTION_FORCE, Commands.OPTION_FORCE);
@@ -78,6 +79,7 @@ public class InstallCommand implements InstallerCommand {
         OPTIONS.put(Commands.LONG_OPTION_VALIDATE, Commands.OPTION_VALIDATE);
         OPTIONS.put(Commands.LONG_OPTION_VALIDATE_DOWNLOAD, Commands.OPTION_VALIDATE_DOWNLOAD);
         OPTIONS.put(Commands.LONG_OPTION_IGNORE_FAILURES, Commands.OPTION_IGNORE_FAILURES);
+        OPTIONS.put(Commands.LONG_OPTION_FAIL_EXISTING, Commands.OPTION_FAIL_EXISTING);
     }
 
     @Override
@@ -135,6 +137,12 @@ public class InstallCommand implements InstallerCommand {
             current = p.getSpecification();
             Installer inst = createInstaller(p,
                             validateDownload ? p.createFileLoader() : p.createMetaLoader());
+            boolean keep = force || inst.validateRequirements().shouldInstall();
+            if (!keep) {
+                // component will be skipped, do not bother with validation
+                feedback.output("INSTALL_ComponentAlreadyInstalled", inst.getComponentInfo().getName(), inst.getComponentInfo().getId());
+                continue;
+            }
             installers.add(inst);
             if (p.isComplete()) {
                 realInstallers.put(p, inst);
@@ -144,14 +152,10 @@ public class InstallCommand implements InstallerCommand {
             current = null;
         }
 
-        for (Installer i : installers) {
+        for (Installer i : new ArrayList<>(installers)) {
             if (validateBeforeInstall) {
                 current = i.getComponentInfo().getName();
                 i.validateAll();
-            } else {
-                if (!force) {
-                    i.validateRequirements();
-                }
             }
         }
     }
@@ -333,6 +337,7 @@ public class InstallCommand implements InstallerCommand {
         inst.setDryRun(input.optValue(Commands.OPTION_DRY_RUN) != null);
         force = input.optValue(Commands.OPTION_FORCE) != null;
 
+        inst.setFailOnExisting(input.optValue(Commands.OPTION_FAIL_EXISTING) != null);
         inst.setReplaceComponents(force || input.optValue(Commands.OPTION_REPLACE_COMPONENTS) != null);
         inst.setIgnoreRequirements(force);
         inst.setReplaceDiferentFiles(force || input.optValue(Commands.OPTION_REPLACE_DIFFERENT_FILES) != null);

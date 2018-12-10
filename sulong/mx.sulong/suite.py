@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.182.0",
+  "mxversion" : "5.195.1",
   "name" : "sulong",
   "versionConflictResolution" : "latest",
 
@@ -50,21 +50,6 @@ suite = {
       ],
       "sha1" : "2ab1825dc1f8bd5258204bab19e8fafad93fef26",
     },
-    "ANTLR4": {
-      "sha1" : "30b13b7efc55b7feea667691509cf59902375001",
-      "maven" : {
-        "groupId" : "org.antlr",
-        "artifactId" : "antlr4-runtime",
-        "version" : "4.7",
-      }
-    },
-    "ANTLR4_COMPLETE": {
-      "urls": [
-        "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/antlr-4.7-complete.jar",
-        "http://www.antlr.org/download/antlr-4.7-complete.jar"
-      ],
-      "sha1": "5b3a8824334069979a0862ce67ede796c3a4d1b1",
-    },
   },
 
   "projects" : {
@@ -81,6 +66,9 @@ suite = {
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "javaCompliance" : "1.8",
+      "javaProperties" : {
+        "test.sulongtest.lib" : "<path:SULONG_TEST_NATIVE>/<lib:sulongtest>",
+      },
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
     },
@@ -123,6 +111,7 @@ suite = {
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
+      "jacoco" : "include",
     },
 
     "com.oracle.truffle.llvm.runtime" : {
@@ -139,6 +128,7 @@ suite = {
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
+      "jacoco" : "include",
     },
 
     "com.oracle.truffle.llvm.instruments" : {
@@ -148,11 +138,11 @@ suite = {
         "truffle:TRUFFLE_API"
       ],
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
-      "checkstyleVersion" : "8.8",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
+      "jacoco" : "include",
     },
 
     "com.oracle.truffle.llvm.nodes" : {
@@ -166,6 +156,7 @@ suite = {
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
+      "jacoco" : "include",
     },
 
     "com.oracle.truffle.llvm.parser" : {
@@ -179,6 +170,7 @@ suite = {
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
+      "jacoco" : "include",
     },
 
     "com.oracle.truffle.llvm" : {
@@ -192,6 +184,7 @@ suite = {
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
+      "jacoco" : "include",
     },
 
     "com.oracle.truffle.llvm.launcher" : {
@@ -204,6 +197,7 @@ suite = {
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
+      "jacoco" : "include",
     },
 
     "com.oracle.truffle.llvm.asm.amd64" : {
@@ -211,13 +205,14 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.llvm.nodes",
-        "ANTLR4",
+        "truffle:ANTLR4",
       ],
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "javaCompliance" : "1.8",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
+      "jacoco" : "include",
     },
 
     "com.oracle.truffle.llvm.parser.factories" : {
@@ -232,6 +227,7 @@ suite = {
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
+      "jacoco" : "include",
     },
 
     "com.oracle.truffle.llvm.pipe" : {
@@ -274,6 +270,7 @@ suite = {
       "vpath" : True,
       "results" : [
         "bin/libsulong.bc",
+        "bin/libsulong++.bc",
         "bin/libsulong-src.tar.gz",
       ],
       "headers" : [
@@ -612,6 +609,7 @@ suite = {
       "distDependencies" : [
         "truffle:TRUFFLE_API",
         "truffle:TRUFFLE_NFI",
+        "truffle:ANTLR4",
         "SULONG_LIBS",
       ],
       "javaProperties" : {
@@ -637,6 +635,7 @@ suite = {
       "layout" : {
         "./" : [
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong.bc",
+          "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong++.bc",
           "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/include/*"
           ]

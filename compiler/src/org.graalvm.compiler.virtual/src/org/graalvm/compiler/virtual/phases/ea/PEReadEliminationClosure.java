@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -189,16 +189,18 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
                 JavaKind componentKind = type.getComponentType().getJavaKind();
                 long offset = load.offset().asJavaConstant().asLong();
                 int index = VirtualArrayNode.entryIndexForOffset(tool.getMetaAccess(), offset, accessKind, type.getComponentType(), Integer.MAX_VALUE);
-                ValueNode object = GraphUtil.unproxify(load.object());
-                LocationIdentity location = NamedLocationIdentity.getArrayLocation(componentKind);
-                ValueNode cachedValue = state.getReadCache(object, location, index, accessKind, this);
-                assert cachedValue == null || load.stamp(NodeView.DEFAULT).isCompatible(cachedValue.stamp(NodeView.DEFAULT)) : "The RawLoadNode's stamp is not compatible with the cached value.";
-                if (cachedValue != null) {
-                    effects.replaceAtUsages(load, cachedValue, load);
-                    addScalarAlias(load, cachedValue);
-                    return true;
-                } else {
-                    state.addReadCache(object, location, index, accessKind, isOverflowAccess(accessKind, componentKind), load, this);
+                if (index >= 0) {
+                    ValueNode object = GraphUtil.unproxify(load.object());
+                    LocationIdentity location = NamedLocationIdentity.getArrayLocation(componentKind);
+                    ValueNode cachedValue = state.getReadCache(object, location, index, accessKind, this);
+                    assert cachedValue == null || load.stamp(NodeView.DEFAULT).isCompatible(cachedValue.stamp(NodeView.DEFAULT)) : "The RawLoadNode's stamp is not compatible with the cached value.";
+                    if (cachedValue != null) {
+                        effects.replaceAtUsages(load, cachedValue, load);
+                        addScalarAlias(load, cachedValue);
+                        return true;
+                    } else {
+                        state.addReadCache(object, location, index, accessKind, isOverflowAccess(accessKind, componentKind), load, this);
+                    }
                 }
             }
         }

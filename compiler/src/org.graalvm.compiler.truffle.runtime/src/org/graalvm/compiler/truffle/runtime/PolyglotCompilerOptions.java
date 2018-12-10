@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,6 @@ package org.graalvm.compiler.truffle.runtime;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
@@ -100,18 +99,13 @@ public final class PolyglotCompilerOptions {
 
     // @formatter:on
 
-    private static final EconomicMap<OptionKey<?>, org.graalvm.compiler.options.OptionKey<?>> TRUFFLE_TO_GRAAL = EconomicMap.create(Equivalence.IDENTITY);
+    private static final EconomicMap<OptionKey<?>, OptionKey<?>> POLYGLOT_TO_TRUFFLE = EconomicMap.create(Equivalence.IDENTITY);
     static {
         initializePolyglotToGraalMapping();
     }
 
     private static void initializePolyglotToGraalMapping() {
-        TRUFFLE_TO_GRAAL.put(CompilationThreshold, TruffleCompilerOptions.TruffleCompilationThreshold);
-    }
-
-    @SuppressWarnings("unchecked")
-    static <T> org.graalvm.compiler.options.OptionKey<T> getGraalOption(OptionKey<T> polyglotKey) {
-        return (org.graalvm.compiler.options.OptionKey<T>) TRUFFLE_TO_GRAAL.get(polyglotKey);
+        POLYGLOT_TO_TRUFFLE.put(CompilationThreshold, SharedTruffleRuntimeOptions.TruffleCompilationThreshold);
     }
 
     static OptionValues getPolyglotValues(RootNode root) {
@@ -123,9 +117,9 @@ public final class PolyglotCompilerOptions {
         if (polyglotValues != null && polyglotValues.hasBeenSet(key)) {
             return polyglotValues.get(key);
         } else {
-            org.graalvm.compiler.options.OptionKey<?> graalOption = PolyglotCompilerOptions.getGraalOption(key);
-            if (graalOption != null) {
-                return (T) graalOption.getValue(TruffleCompilerOptions.getOptions());
+            OptionKey<?> truffleKey = POLYGLOT_TO_TRUFFLE.get(key);
+            if (truffleKey != null) {
+                return (T) TruffleRuntimeOptions.getValue(truffleKey);
             }
         }
         return key.getDefaultValue();

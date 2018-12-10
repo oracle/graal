@@ -548,7 +548,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
         }
     }
 
-    private static void assertHostError(Message message, TruffleObject proxyInner, Object... args) {
+    private void assertHostError(Message message, TruffleObject proxyInner, Object... args) {
         try {
             ForeignAccess.send(message.createNode(), proxyInner, args);
             Assert.fail();
@@ -561,7 +561,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
             TruffleException te = (TruffleException) e;
             Assert.assertFalse(te.isInternalError());
             Assert.assertEquals("Host Error", ((Exception) e).getMessage());
-            Assert.assertTrue(e.getCause() instanceof TestError);
+            Assert.assertTrue(languageEnv.asHostException(e) instanceof TestError);
         }
     }
 

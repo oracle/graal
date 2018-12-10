@@ -39,8 +39,8 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.sl.SLLanguage;
+import com.oracle.truffle.tools.chromeinspector.InspectorDebugger;
 import com.oracle.truffle.tools.chromeinspector.ScriptsHandler;
-import com.oracle.truffle.tools.chromeinspector.TruffleDebugger;
 
 public class SLInspectDebugTest {
 
@@ -167,8 +167,8 @@ public class SLInspectDebugTest {
         assertEquals("{\"result\":{},\"id\":2}", tester.getMessages(true).trim());
         tester.sendMessage("{\"id\":3,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
         assertTrue(tester.compareReceivedMessages(
-                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n" +
-                        "{\"result\":{},\"id\":3}\n"));
+                        "{\"result\":{},\"id\":3}\n" +
+                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
         tester.eval(source);
         long id = tester.getContextId();
         // Suspend at the beginning of the script:
@@ -206,8 +206,8 @@ public class SLInspectDebugTest {
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":1}\n" +
                         "{\"result\":{},\"id\":2}\n" +
-                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n" +
-                        "{\"result\":{},\"id\":3}\n"));
+                        "{\"result\":{},\"id\":3}\n" +
+                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
         tester.eval(source);
         long id = tester.getContextId();
         // Suspend at the beginning of the script:
@@ -259,11 +259,11 @@ public class SLInspectDebugTest {
                         "{\"result\":{},\"id\":5}\n" +
                         "{\"method\":\"Debugger.resumed\"}\n" +
                         "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"other\",\"hitBreakpoints\":[]," +
-                                "\"callFrames\":[{\"callFrameId\":\"0\",\"returnValue\":{\"description\":\"120\",\"type\":\"number\",\"value\":120},\"functionName\":\"main\"," +
+                                "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"9\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"10\"}}]," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
-                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":6,\"lineNumber\":2}}]}}\n"
+                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":19,\"lineNumber\":2}}]}}\n"
         ));
         tester.sendMessage("{\"id\":100,\"method\":\"Debugger.stepOut\"}");
         assertTrue(tester.compareReceivedMessages(
@@ -284,8 +284,8 @@ public class SLInspectDebugTest {
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":1}\n" +
                         "{\"result\":{},\"id\":2}\n" +
-                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n" +
-                        "{\"result\":{},\"id\":3}\n"));
+                        "{\"result\":{},\"id\":3}\n" +
+                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
 
         tester.sendMessage("{\"id\":3,\"method\":\"Debugger.setBreakpointByUrl\",\"params\":{\"lineNumber\":11,\"url\":\"" + slTestURI + "\",\"columnNumber\":0,\"condition\":\"\"}}");
 
@@ -309,9 +309,9 @@ public class SLInspectDebugTest {
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":6,\"lineNumber\":2}}]}}\n"));
         // Continue to a location:
-        tester.sendMessage("{\"id\":33,\"method\":\"Debugger.continueToLocation\",\"params\":{\"location\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":5}}}");
+        tester.sendMessage("{\"id\":20,\"method\":\"Debugger.continueToLocation\",\"params\":{\"location\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":5}}}");
         assertTrue(tester.compareReceivedMessages(
-                        "{\"result\":{},\"id\":33}\n" +
+                        "{\"result\":{},\"id\":20}\n" +
                         "{\"method\":\"Debugger.resumed\"}\n" +
                         "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"other\",\"hitBreakpoints\":[]," +
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"main\"," +
@@ -320,6 +320,19 @@ public class SLInspectDebugTest {
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"7\"}}]," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":4,\"lineNumber\":5}}]}}\n"));
+        // Breakpoint on script ID:
+        tester.sendMessage("{\"id\":25,\"method\":\"Debugger.setBreakpoint\",\"params\":{\"location\":{\"scriptId\":\"1\",\"columnNumber\":0,\"lineNumber\":7}}}");
+        tester.sendMessage("{\"id\":26,\"method\":\"Debugger.resume\"}");
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"result\":{\"breakpointId\":\"2\",\"actualLocation\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":7}},\"id\":25}\n" +
+                        "{\"result\":{},\"id\":26}\n" +
+                        "{\"method\":\"Debugger.resumed\"}\n" +
+                        "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"other\",\"hitBreakpoints\":[\"2\"]," +
+                                "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"main\"," +
+                                                 "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"8\"}}," +
+                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"9\"}}]," +
+                                                 "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
+                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":7}}]}}\n"));
         // Resume to finish:
         tester.sendMessage("{\"id\":35,\"method\":\"Debugger.resume\"}");
         assertTrue(tester.compareReceivedMessages(
@@ -340,8 +353,8 @@ public class SLInspectDebugTest {
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":1}\n" +
                         "{\"result\":{},\"id\":2}\n" +
-                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n" +
-                        "{\"result\":{},\"id\":3}\n"));
+                        "{\"result\":{},\"id\":3}\n" +
+                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
         tester.sendMessage("{\"id\":3,\"method\":\"Debugger.setBreakpointByUrl\",\"params\":{\"lineNumber\":9,\"url\":\"" + srcURL + "\",\"columnNumber\":0,\"condition\":\"\"}}");
         assertEquals("{\"result\":{\"breakpointId\":\"1\",\"locations\":[]},\"id\":3}", tester.getMessages(true).trim());
         tester.sendMessage("{\"id\":4,\"method\":\"Debugger.setBreakpointByUrl\",\"params\":{\"lineNumber\":10,\"url\":\"" + srcURL + "\",\"columnNumber\":0,\"condition\":\"\"}}");
@@ -447,11 +460,11 @@ public class SLInspectDebugTest {
                         "{\"result\":{},\"id\":33}\n" +
                         "{\"method\":\"Debugger.resumed\"}\n" +
                         "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"other\",\"hitBreakpoints\":[]," +
-                                "\"callFrames\":[{\"callFrameId\":\"0\",\"returnValue\":{\"description\":\"1\",\"type\":\"number\",\"value\":1},\"functionName\":\"main\"," +
+                                "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"23\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"24\"}}]," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
-                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":4,\"lineNumber\":4}}]}}\n"
+                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":15,\"lineNumber\":4}}]}}\n"
         ));
         // Deactivate the breakpoints again:
         tester.sendMessage("{\"id\":40,\"method\":\"Debugger.setBreakpointsActive\",\"params\":{\"active\":false}}");
@@ -474,8 +487,8 @@ public class SLInspectDebugTest {
         tester.sendMessage("{\"id\":3,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
         assertTrue(tester.compareReceivedMessages("{\"result\":{},\"id\":1}\n" +
                         "{\"result\":{},\"id\":2}\n" +
-                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n" +
-                        "{\"result\":{},\"id\":3}\n"));
+                        "{\"result\":{},\"id\":3}\n" +
+                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
         tester.eval(source);
         long id = tester.getContextId();
 
@@ -545,8 +558,8 @@ public class SLInspectDebugTest {
         tester.sendMessage("{\"id\":3,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
         assertTrue(tester.compareReceivedMessages("{\"result\":{},\"id\":1}\n" +
                         "{\"result\":{},\"id\":2}\n" +
-                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n" +
-                        "{\"result\":{},\"id\":3}\n"));
+                        "{\"result\":{},\"id\":3}\n" +
+                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
         tester.eval(source);
         long id = tester.getContextId();
 
@@ -604,8 +617,8 @@ public class SLInspectDebugTest {
         tester.sendMessage("{\"id\":3,\"method\":\"Runtime.runIfWaitingForDebugger\"}");
         assertTrue(tester.compareReceivedMessages("{\"result\":{},\"id\":1}\n" +
                         "{\"result\":{},\"id\":2}\n" +
-                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n" +
-                        "{\"result\":{},\"id\":3}\n"));
+                        "{\"result\":{},\"id\":3}\n" +
+                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
         long id = tester.getContextId();
         tester.eval(internSource);
         assertTrue(tester.compareReceivedMessages(
@@ -635,14 +648,25 @@ public class SLInspectDebugTest {
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":4,\"lineNumber\":2}}]}}\n"));
         tester.sendMessage("{\"id\":5,\"method\":\"Debugger.stepOver\"}");
-        // at public:1 again (main -> public)
+        // at return from public:10
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":5}\n" +
                         "{\"method\":\"Debugger.resumed\"}\n" +
                         "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"other\",\"hitBreakpoints\":[]," +
-                                "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"public\"," +
+                                "\"callFrames\":[{\"callFrameId\":\"0\",\"returnValue\":{\"description\":\"2\",\"type\":\"number\",\"value\":2},\"functionName\":\"public\"," +
                                                  "\"scopeChain\":[{\"name\":\"public\",\"type\":\"local\",\"object\":{\"description\":\"public\",\"type\":\"object\",\"objectId\":\"5\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"6\"}}]," +
+                                                 "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
+                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":0,\"lineNumber\":10}}]}}\n"));
+        tester.sendMessage("{\"id\":51,\"method\":\"Debugger.stepOver\"}");
+        // at public:1 again (main -> public)
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"result\":{},\"id\":51}\n" +
+                        "{\"method\":\"Debugger.resumed\"}\n" +
+                        "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"other\",\"hitBreakpoints\":[]," +
+                                "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"public\"," +
+                                                 "\"scopeChain\":[{\"name\":\"public\",\"type\":\"local\",\"object\":{\"description\":\"public\",\"type\":\"object\",\"objectId\":\"7\"}}," +
+                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"8\"}}]," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":6,\"lineNumber\":1}}]}}\n"));
         tester.sendMessage("{\"id\":6,\"method\":\"Debugger.stepOver\"}");
@@ -652,8 +676,8 @@ public class SLInspectDebugTest {
                         "{\"method\":\"Debugger.resumed\"}\n" +
                         "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"other\",\"hitBreakpoints\":[]," +
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"public\"," +
-                                                 "\"scopeChain\":[{\"name\":\"public\",\"type\":\"local\",\"object\":{\"description\":\"public\",\"type\":\"object\",\"objectId\":\"7\"}}," +
-                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"8\"}}]," +
+                                                 "\"scopeChain\":[{\"name\":\"public\",\"type\":\"local\",\"object\":{\"description\":\"public\",\"type\":\"object\",\"objectId\":\"9\"}}," +
+                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"10\"}}]," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":8,\"lineNumber\":4}}]}}\n"));
         tester.sendMessage("{\"id\":7,\"method\":\"Debugger.stepOver\"}");
@@ -663,8 +687,8 @@ public class SLInspectDebugTest {
                         "{\"method\":\"Debugger.resumed\"}\n" +
                         "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"other\",\"hitBreakpoints\":[]," +
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"public\"," +
-                                                 "\"scopeChain\":[{\"name\":\"public\",\"type\":\"local\",\"object\":{\"description\":\"public\",\"type\":\"object\",\"objectId\":\"9\"}}," +
-                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"10\"}}]," +
+                                                 "\"scopeChain\":[{\"name\":\"public\",\"type\":\"local\",\"object\":{\"description\":\"public\",\"type\":\"object\",\"objectId\":\"11\"}}," +
+                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"12\"}}]," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":6,\"lineNumber\":7}}]}}\n"));
         tester.sendMessage("{\"id\":8,\"method\":\"Debugger.stepInto\"}");
@@ -674,13 +698,13 @@ public class SLInspectDebugTest {
                         "{\"method\":\"Debugger.resumed\"}\n" +
                         "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"other\",\"hitBreakpoints\":[]," +
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"public\"," +
-                                                 "\"scopeChain\":[{\"name\":\"public\",\"type\":\"local\",\"object\":{\"description\":\"public\",\"type\":\"object\",\"objectId\":\"11\"}}," +
-                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"12\"}}]," +
+                                                 "\"scopeChain\":[{\"name\":\"public\",\"type\":\"local\",\"object\":{\"description\":\"public\",\"type\":\"object\",\"objectId\":\"13\"}}," +
+                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"14\"}}]," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":6,\"lineNumber\":1}}," +
                                                 "{\"callFrameId\":\"1\",\"functionName\":\"public\"," +
-                                                 "\"scopeChain\":[{\"name\":\"public\",\"type\":\"local\",\"object\":{\"description\":\"public\",\"type\":\"object\",\"objectId\":\"13\"}}," +
-                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"14\"}}]," +
+                                                 "\"scopeChain\":[{\"name\":\"public\",\"type\":\"local\",\"object\":{\"description\":\"public\",\"type\":\"object\",\"objectId\":\"15\"}}," +
+                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"16\"}}]," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":13,\"lineNumber\":7}}]}}\n"));
         tester.sendMessage("{\"id\":9,\"method\":\"Debugger.stepOver\"}");
@@ -690,30 +714,62 @@ public class SLInspectDebugTest {
                         "{\"method\":\"Debugger.resumed\"}\n" +
                         "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"other\",\"hitBreakpoints\":[]," +
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"public\"," +
-                                                 "\"scopeChain\":[{\"name\":\"public\",\"type\":\"local\",\"object\":{\"description\":\"public\",\"type\":\"object\",\"objectId\":\"15\"}}," +
-                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"16\"}}]," +
-                                                 "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
-                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":4,\"lineNumber\":2}}," +
-                                                "{\"callFrameId\":\"1\",\"functionName\":\"public\"," +
                                                  "\"scopeChain\":[{\"name\":\"public\",\"type\":\"local\",\"object\":{\"description\":\"public\",\"type\":\"object\",\"objectId\":\"17\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"18\"}}]," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
+                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":4,\"lineNumber\":2}}," +
+                                                "{\"callFrameId\":\"1\",\"functionName\":\"public\"," +
+                                                 "\"scopeChain\":[{\"name\":\"public\",\"type\":\"local\",\"object\":{\"description\":\"public\",\"type\":\"object\",\"objectId\":\"19\"}}," +
+                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"20\"}}]," +
+                                                 "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":13,\"lineNumber\":7}}]}}\n"));
         tester.sendMessage("{\"id\":10,\"method\":\"Debugger.stepOver\"}");
-        // back at public:7
+        // at return from public:10
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":10}\n" +
                         "{\"method\":\"Debugger.resumed\"}\n" +
                         "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"other\",\"hitBreakpoints\":[]," +
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"returnValue\":{\"description\":\"20\",\"type\":\"number\",\"value\":20},\"functionName\":\"public\"," +
-                                                 "\"scopeChain\":[{\"name\":\"public\",\"type\":\"local\",\"object\":{\"description\":\"public\",\"type\":\"object\",\"objectId\":\"19\"}}," +
-                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"20\"}}]," +
+                                                 "\"scopeChain\":[{\"name\":\"public\",\"type\":\"local\",\"object\":{\"description\":\"public\",\"type\":\"object\",\"objectId\":\"21\"}}," +
+                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"22\"}}]," +
+                                                 "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
+                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":0,\"lineNumber\":10}}," +
+                                                "{\"callFrameId\":\"1\",\"functionName\":\"public\"," +
+                                                 "\"scopeChain\":[{\"name\":\"public\",\"type\":\"local\",\"object\":{\"description\":\"public\",\"type\":\"object\",\"objectId\":\"23\"}}," +
+                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"24\"}}]," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":13,\"lineNumber\":7}}]}}\n"));
-        tester.sendMessage("{\"id\":11,\"method\":\"Debugger.stepInto\"}");
-        // No more suspension (we're in internal sources)
+        tester.sendMessage("{\"id\":11,\"method\":\"Debugger.stepOver\"}");
+        // back at public:7 after call to intern()
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":11}\n" +
+                        "{\"method\":\"Debugger.resumed\"}\n" +
+                        "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"other\",\"hitBreakpoints\":[]," +
+                                "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"public\"," +
+                                                 "\"scopeChain\":[{\"name\":\"public\",\"type\":\"local\",\"object\":{\"description\":\"public\",\"type\":\"object\",\"objectId\":\"25\"}}," +
+                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"26\"}}]," +
+                                                 "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
+                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":26,\"lineNumber\":7}}," +
+                                                "{\"callFrameId\":\"1\",\"functionName\":\"public\"," +
+                                                 "\"scopeChain\":[{\"name\":\"public\",\"type\":\"local\",\"object\":{\"description\":\"public\",\"type\":\"object\",\"objectId\":\"27\"}}," +
+                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"28\"}}]," +
+                                                 "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
+                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":13,\"lineNumber\":7}}]}}\n"));
+        tester.sendMessage("{\"id\":12,\"method\":\"Debugger.stepInto\"}");
+        // at return from public:10
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"result\":{},\"id\":12}\n" +
+                        "{\"method\":\"Debugger.resumed\"}\n" +
+                        "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"other\",\"hitBreakpoints\":[]," +
+                                "\"callFrames\":[{\"callFrameId\":\"0\",\"returnValue\":{\"description\":\"20\",\"type\":\"number\",\"value\":20},\"functionName\":\"public\"," +
+                                                 "\"scopeChain\":[{\"name\":\"public\",\"type\":\"local\",\"object\":{\"description\":\"public\",\"type\":\"object\",\"objectId\":\"29\"}}," +
+                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"30\"}}]," +
+                                                 "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
+                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":0,\"lineNumber\":10}}]}}\n"));
+        tester.sendMessage("{\"id\":13,\"method\":\"Debugger.stepInto\"}");
+        // No more suspension (we're in internal sources)
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"result\":{},\"id\":13}\n" +
                         "{\"method\":\"Debugger.resumed\"}\n"));
         assertEquals("", tester.getMessages(false));
 
@@ -722,24 +778,24 @@ public class SLInspectDebugTest {
                         "{\"method\":\"Debugger.scriptParsed\",\"params\":{\"endLine\":4,\"scriptId\":\"2\",\"endColumn\":1,\"startColumn\":0,\"startLine\":0,\"length\":75,\"executionContextId\":" + id + ",\"url\":\"" + publicMainURI + "\",\"hash\":\"f9120a07f176a91df047f02ffe94b4d3ff485978\"}}\n" +
                         "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"other\",\"hitBreakpoints\":[]," +
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"main\"," +
-                                                 "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"21\"}}," +
-                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"22\"}}]," +
+                                                 "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"31\"}}," +
+                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"32\"}}]," +
                                                  "\"functionLocation\":{\"scriptId\":\"2\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"2\",\"columnNumber\":2,\"lineNumber\":1}}]}}\n"));
-        tester.sendMessage("{\"id\":12,\"method\":\"Debugger.stepInto\"}");
+        tester.sendMessage("{\"id\":14,\"method\":\"Debugger.stepInto\"}");
         // at public:1 (main -> internal -> public)
         assertTrue(tester.compareReceivedMessages(
-                        "{\"result\":{},\"id\":12}\n" +
+                        "{\"result\":{},\"id\":14}\n" +
                         "{\"method\":\"Debugger.resumed\"}\n" +
                         "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"other\",\"hitBreakpoints\":[]," +
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"public\"," +
-                                                 "\"scopeChain\":[{\"name\":\"public\",\"type\":\"local\",\"object\":{\"description\":\"public\",\"type\":\"object\",\"objectId\":\"23\"}}," +
-                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"24\"}}]," +
+                                                 "\"scopeChain\":[{\"name\":\"public\",\"type\":\"local\",\"object\":{\"description\":\"public\",\"type\":\"object\",\"objectId\":\"33\"}}," +
+                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"34\"}}]," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":6,\"lineNumber\":1}}," +
                                                 "{\"callFrameId\":\"1\",\"functionName\":\"main\"," +
-                                                 "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"25\"}}," +
-                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"26\"}}]," +
+                                                 "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"35\"}}," +
+                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"36\"}}]," +
                                                  "\"functionLocation\":{\"scriptId\":\"2\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"2\",\"columnNumber\":6,\"lineNumber\":1}}]}}\n"));
 
@@ -794,8 +850,8 @@ public class SLInspectDebugTest {
         assertTrue(tester.compareReceivedMessages("{\"result\":{},\"id\":1}\n" +
                         "{\"result\":{},\"id\":2}\n" +
                         "{\"result\":{},\"id\":3}\n" +
-                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n" +
-                        "{\"result\":{},\"id\":4}\n"));
+                        "{\"result\":{},\"id\":4}\n" +
+                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
         long id = tester.getContextId();
         tester.eval(blackboxedSource);
         assertTrue(tester.compareReceivedMessages(
@@ -862,23 +918,23 @@ public class SLInspectDebugTest {
         com.oracle.truffle.api.source.Source source = com.oracle.truffle.api.source.Source.newBuilder("sl", truffleFile).build();
 
         // Test name of a file
-        assertTrue(TruffleDebugger.sourceMatchesBlackboxPatterns(source, new Pattern[] {Pattern.compile("BlackboxTest.sl")}));
-        assertFalse(TruffleDebugger.sourceMatchesBlackboxPatterns(source, new Pattern[] {Pattern.compile("Test.sl")}));
+        assertTrue(InspectorDebugger.sourceMatchesBlackboxPatterns(source, new Pattern[] {Pattern.compile("BlackboxTest.sl")}));
+        assertFalse(InspectorDebugger.sourceMatchesBlackboxPatterns(source, new Pattern[] {Pattern.compile("Test.sl")}));
 
         // Test regular expression that contain a specific name
-        assertTrue(TruffleDebugger.sourceMatchesBlackboxPatterns(source, new Pattern[] {Pattern.compile("Test\\.sl$")}));
-        assertFalse(TruffleDebugger.sourceMatchesBlackboxPatterns(source, new Pattern[] {Pattern.compile("Fest\\.sl$")}));
+        assertTrue(InspectorDebugger.sourceMatchesBlackboxPatterns(source, new Pattern[] {Pattern.compile("Test\\.sl$")}));
+        assertFalse(InspectorDebugger.sourceMatchesBlackboxPatterns(source, new Pattern[] {Pattern.compile("Fest\\.sl$")}));
 
         // Test regular expression that contain certain types of files
-        assertTrue(TruffleDebugger.sourceMatchesBlackboxPatterns(source, new Pattern[] {Pattern.compile("\\.sl$")}));
-        assertFalse(TruffleDebugger.sourceMatchesBlackboxPatterns(source, new Pattern[] {Pattern.compile("\\.ssl$")}));
+        assertTrue(InspectorDebugger.sourceMatchesBlackboxPatterns(source, new Pattern[] {Pattern.compile("\\.sl$")}));
+        assertFalse(InspectorDebugger.sourceMatchesBlackboxPatterns(source, new Pattern[] {Pattern.compile("\\.ssl$")}));
 
         // Test entire folder that contains scripts you to blackbox
-        assertTrue(TruffleDebugger.sourceMatchesBlackboxPatterns(source, new Pattern[] {Pattern.compile("blackbox")}));
-        assertFalse(TruffleDebugger.sourceMatchesBlackboxPatterns(source, new Pattern[] {Pattern.compile("tmp")}));
+        assertTrue(InspectorDebugger.sourceMatchesBlackboxPatterns(source, new Pattern[] {Pattern.compile("blackbox")}));
+        assertFalse(InspectorDebugger.sourceMatchesBlackboxPatterns(source, new Pattern[] {Pattern.compile("tmp")}));
 
         // Test regular expression produced by Chrome Inspector's 'Blackbox Script' action.
-        assertTrue(TruffleDebugger.sourceMatchesBlackboxPatterns(source, new Pattern[] {Pattern.compile("^file://.*/BlackboxTest\\.sl$")}));
+        assertTrue(InspectorDebugger.sourceMatchesBlackboxPatterns(source, new Pattern[] {Pattern.compile("^file://.*/BlackboxTest\\.sl$")}));
 
         context.leave();
         context.close();
@@ -896,8 +952,8 @@ public class SLInspectDebugTest {
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":1}\n" +
                         "{\"result\":{},\"id\":2}\n" +
-                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n" +
-                        "{\"result\":{},\"id\":3}\n"));
+                        "{\"result\":{},\"id\":3}\n" +
+                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
         tester.sendMessage("{\"id\":3,\"method\":\"Debugger.setBreakpointByUrl\",\"params\":{\"lineNumber\":6,\"url\":\"" + srcURL + "\",\"columnNumber\":0,\"condition\":\"\"}}");
         assertEquals("{\"result\":{\"breakpointId\":\"1\",\"locations\":[]},\"id\":3}", tester.getMessages(true).trim());
 
@@ -936,7 +992,7 @@ public class SLInspectDebugTest {
                                                  "\"scopeChain\":[{\"name\":\"factorial\",\"type\":\"local\",\"object\":{\"description\":\"factorial\",\"type\":\"object\",\"objectId\":\"9\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"10\"}}]," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":4}," +
-                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":12,\"lineNumber\":8}}," +
+                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":27,\"lineNumber\":8}}," +
                                                 "{\"callFrameId\":\"1\",\"functionName\":\"factorial\"," +
                                                  "\"scopeChain\":[{\"name\":\"factorial\",\"type\":\"local\",\"object\":{\"description\":\"factorial\",\"type\":\"object\",\"objectId\":\"11\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"12\"}}]," +
@@ -955,7 +1011,7 @@ public class SLInspectDebugTest {
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"15\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"16\"}}]," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
-                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":2}}]}," +
+                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":13,\"lineNumber\":2}}]}," +
                         "\"id\":5}\n"));
         tester.sendMessage("{\"id\":6,\"method\":\"Debugger.resume\"}");
         assertTrue(tester.compareReceivedMessages(
@@ -1003,8 +1059,8 @@ public class SLInspectDebugTest {
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":1}\n" +
                         "{\"result\":{},\"id\":2}\n" +
-                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n" +
-                        "{\"result\":{},\"id\":3}\n"));
+                        "{\"result\":{},\"id\":3}\n" +
+                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
         tester.eval(source);
         long id = tester.getContextId();
         assertTrue(tester.compareReceivedMessages(
@@ -1053,80 +1109,101 @@ public class SLInspectDebugTest {
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"12\"}}]," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":6,\"lineNumber\":1}}]}}\n"));
-        // at fn:10, step into steps out from fn and a return value is accessible
+        // at fn:10, step into steps to the end of fn and a return value is accessible
         tester.sendMessage("{\"id\":6,\"method\":\"Debugger.stepInto\"}");
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":6}\n" +
                         "{\"method\":\"Debugger.resumed\"}\n" +
                         "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"other\",\"hitBreakpoints\":[]," +
-                                "\"callFrames\":[{\"callFrameId\":\"0\",\"returnValue\":{\"description\":\"1\",\"type\":\"number\",\"value\":1},\"functionName\":\"addThem\"," +
-                                                 "\"scopeChain\":[{\"name\":\"addThem\",\"type\":\"local\",\"object\":{\"description\":\"addThem\",\"type\":\"object\",\"objectId\":\"13\"}}," +
+                                "\"callFrames\":[{\"callFrameId\":\"0\",\"returnValue\":{\"description\":\"1\",\"type\":\"number\",\"value\":1},\"functionName\":\"fn\"," +
+                                                 "\"scopeChain\":[{\"name\":\"fn\",\"type\":\"local\",\"object\":{\"description\":\"fn\",\"type\":\"object\",\"objectId\":\"13\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"14\"}}]," +
+                                                 "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":10}," +
+                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":0,\"lineNumber\":12}}," +
+                                                "{\"callFrameId\":\"1\",\"functionName\":\"addThem\"," +
+                                                 "\"scopeChain\":[{\"name\":\"addThem\",\"type\":\"local\",\"object\":{\"description\":\"addThem\",\"type\":\"object\",\"objectId\":\"15\"}}," +
+                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"16\"}}]," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":4}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":6,\"lineNumber\":5}}," +
-                                                "{\"callFrameId\":\"1\",\"functionName\":\"main\"," +
-                                                 "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"15\"}}," +
-                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"16\"}}]," +
+                                                "{\"callFrameId\":\"2\",\"functionName\":\"main\"," +
+                                                 "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"17\"}}," +
+                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"18\"}}]," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":6,\"lineNumber\":1}}]}}\n"));
-        // at addThem:4, change return value from 1 to 10_000_000_000 (it must be long because of SL)
-        tester.sendMessage("{\"id\":7,\"method\":\"Debugger.setReturnValue\",\"params\":{\"newValue\":{\"type\":\"number\",\"value\":10000000000,\"description\":\"10\"}}}");
+        // at fn:10, step into steps out from fn
+        tester.sendMessage("{\"id\":7,\"method\":\"Debugger.stepInto\"}");
         assertTrue(tester.compareReceivedMessages(
-                        "{\"result\":{},\"id\":7}\n"));
-        tester.sendMessage("{\"id\":8,\"method\":\"Debugger.stepInto\"}");
-        assertTrue(tester.compareReceivedMessages(
-                        "{\"result\":{},\"id\":8}\n" +
+                        "{\"result\":{},\"id\":7}\n" +
                         "{\"method\":\"Debugger.resumed\"}\n" +
                         "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"other\",\"hitBreakpoints\":[]," +
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"addThem\"," +
-                                                 "\"scopeChain\":[{\"name\":\"addThem\",\"type\":\"local\",\"object\":{\"description\":\"addThem\",\"type\":\"object\",\"objectId\":\"17\"}}," +
-                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"18\"}}]," +
+                                                 "\"scopeChain\":[{\"name\":\"addThem\",\"type\":\"local\",\"object\":{\"description\":\"addThem\",\"type\":\"object\",\"objectId\":\"19\"}}," +
+                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"20\"}}]," +
+                                                 "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":4}," +
+                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":10,\"lineNumber\":5}}," +
+                                                "{\"callFrameId\":\"1\",\"functionName\":\"main\"," +
+                                                 "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"21\"}}," +
+                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"22\"}}]," +
+                                                 "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
+                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":6,\"lineNumber\":1}}]}}\n"));
+        // at addThem:4, change return value from 1 to 10_000_000_000 (it must be long because of SL)
+        tester.sendMessage("{\"id\":8,\"method\":\"Debugger.setReturnValue\",\"params\":{\"newValue\":{\"type\":\"number\",\"value\":10000000000,\"description\":\"10\"}}}");
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"result\":{},\"id\":8}\n"));
+        tester.sendMessage("{\"id\":9,\"method\":\"Debugger.stepInto\"}");
+        assertTrue(tester.compareReceivedMessages(
+                        "{\"result\":{},\"id\":9}\n" +
+                        "{\"method\":\"Debugger.resumed\"}\n" +
+                        "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"other\",\"hitBreakpoints\":[]," +
+                                "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"addThem\"," +
+                                                 "\"scopeChain\":[{\"name\":\"addThem\",\"type\":\"local\",\"object\":{\"description\":\"addThem\",\"type\":\"object\",\"objectId\":\"23\"}}," +
+                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"24\"}}]," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":4}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":6}}," +
                                                 "{\"callFrameId\":\"1\",\"functionName\":\"main\"," +
-                                                 "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"19\"}}," +
-                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"20\"}}]," +
+                                                 "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"25\"}}," +
+                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"26\"}}]," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":6,\"lineNumber\":1}}]}}\n"));
         // at addThem:5, check that `a` is 10_000_000_000
-        tester.sendMessage("{\"id\":9,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"17\"}}");
+        tester.sendMessage("{\"id\":10,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"23\"}}");
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{\"result\":[{\"isOwn\":true,\"enumerable\":true,\"name\":\"a\",\"value\":{\"description\":\"10000000000\",\"type\":\"number\",\"value\":10000000000},\"configurable\":true,\"writable\":true}," +
-                                                 "{\"isOwn\":true,\"enumerable\":true,\"name\":\"b\",\"value\":{\"description\":\"2\",\"type\":\"number\",\"value\":2},\"configurable\":true,\"writable\":true}],\"internalProperties\":[]},\"id\":9}\n"));
+                                                 "{\"isOwn\":true,\"enumerable\":true,\"name\":\"b\",\"value\":{\"description\":\"2\",\"type\":\"number\",\"value\":2},\"configurable\":true,\"writable\":true}],\"internalProperties\":[]},\"id\":10}\n"));
         tester.sendMessage("{\"id\":10,\"method\":\"Debugger.stepInto\"}");
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":10}\n" +
                         "{\"method\":\"Debugger.resumed\"}\n" +
                         "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"other\",\"hitBreakpoints\":[]," +
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"fn\"," +
-                                                 "\"scopeChain\":[{\"name\":\"fn\",\"type\":\"local\",\"object\":{\"description\":\"fn\",\"type\":\"object\",\"objectId\":\"21\"}}," +
-                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"22\"}}]," +
+                                                 "\"scopeChain\":[{\"name\":\"fn\",\"type\":\"local\",\"object\":{\"description\":\"fn\",\"type\":\"object\",\"objectId\":\"27\"}}," +
+                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"28\"}}]," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":10}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":11}}," +
                                                 "{\"callFrameId\":\"1\",\"functionName\":\"addThem\"," +
-                                                 "\"scopeChain\":[{\"name\":\"addThem\",\"type\":\"local\",\"object\":{\"description\":\"addThem\",\"type\":\"object\",\"objectId\":\"23\"}}," +
-                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"24\"}}]," +
+                                                 "\"scopeChain\":[{\"name\":\"addThem\",\"type\":\"local\",\"object\":{\"description\":\"addThem\",\"type\":\"object\",\"objectId\":\"29\"}}," +
+                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"30\"}}]," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":4}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":6,\"lineNumber\":6}}," +
                                                 "{\"callFrameId\":\"2\",\"functionName\":\"main\"," +
-                                                 "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"25\"}}," +
-                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"26\"}}]," +
+                                                 "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"31\"}}," +
+                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"32\"}}]," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":6,\"lineNumber\":1}}]}}\n"));
-        // at fn:10, step out from fn and a return value is accessible
+        // at fn:10, step out from fn
         tester.sendMessage("{\"id\":11,\"method\":\"Debugger.stepOut\"}");
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":11}\n" +
                         "{\"method\":\"Debugger.resumed\"}\n" +
                         "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"other\",\"hitBreakpoints\":[]," +
-                                "\"callFrames\":[{\"callFrameId\":\"0\",\"returnValue\":{\"description\":\"2\",\"type\":\"number\",\"value\":2},\"functionName\":\"addThem\"," +
-                                                 "\"scopeChain\":[{\"name\":\"addThem\",\"type\":\"local\",\"object\":{\"description\":\"addThem\",\"type\":\"object\",\"objectId\":\"27\"}}," +
-                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"28\"}}]," +
+                                "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"addThem\"," +
+                                                 "\"scopeChain\":[{\"name\":\"addThem\",\"type\":\"local\",\"object\":{\"description\":\"addThem\",\"type\":\"object\",\"objectId\":\"33\"}}," +
+                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"34\"}}]," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":4}," +
-                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":6,\"lineNumber\":6}}," +
+                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":10,\"lineNumber\":6}}," +
                                                 "{\"callFrameId\":\"1\",\"functionName\":\"main\"," +
-                                                 "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"29\"}}," +
-                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"30\"}}]," +
+                                                 "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"35\"}}," +
+                                                                 "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"36\"}}]," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":6,\"lineNumber\":1}}]}}\n"));
         // at addThem:5, change return value from 2 to 20_000_000_000 (it must be long because of SL)
@@ -1156,8 +1233,8 @@ public class SLInspectDebugTest {
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":1}\n" +
                         "{\"result\":{},\"id\":2}\n" +
-                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n" +
-                        "{\"result\":{},\"id\":3}\n"));
+                        "{\"result\":{},\"id\":3}\n" +
+                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
 
         tester.eval(source);
         long id = tester.getContextId();
@@ -1231,8 +1308,8 @@ public class SLInspectDebugTest {
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":1}\n" +
                         "{\"result\":{},\"id\":2}\n" +
-                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n" +
-                        "{\"result\":{},\"id\":3}\n"));
+                        "{\"result\":{},\"id\":3}\n" +
+                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
 
         tester.eval(source);
         long id = tester.getContextId();
@@ -1278,8 +1355,8 @@ public class SLInspectDebugTest {
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":1}\n" +
                         "{\"result\":{},\"id\":2}\n" +
-                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n" +
-                        "{\"result\":{},\"id\":3}\n"));
+                        "{\"result\":{},\"id\":3}\n" +
+                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
         tester.sendMessage("{\"id\":3,\"method\":\"Debugger.setPauseOnExceptions\",\"params\":{\"state\":\"uncaught\"}}");
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":3}\n"));
@@ -1295,7 +1372,7 @@ public class SLInspectDebugTest {
                                                  "\"scopeChain\":[{\"name\":\"invert\",\"type\":\"local\",\"object\":{\"description\":\"invert\",\"type\":\"object\",\"objectId\":\"1\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"2\"}}]," +
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":4}," +
-                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":5}}," +
+                                                 "\"location\":{\"scriptId\":\"1\",\"columnNumber\":11,\"lineNumber\":5}}," +
                                                 "{\"callFrameId\":\"1\",\"functionName\":\"main\"," +
                                                  "\"scopeChain\":[{\"name\":\"main\",\"type\":\"local\",\"object\":{\"description\":\"main\",\"type\":\"object\",\"objectId\":\"3\"}}," +
                                                                  "{\"name\":\"global\",\"type\":\"global\",\"object\":{\"description\":\"global\",\"type\":\"object\",\"objectId\":\"4\"}}]," +
@@ -1322,8 +1399,8 @@ public class SLInspectDebugTest {
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":1}\n" +
                         "{\"result\":{},\"id\":2}\n" +
-                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n" +
-                        "{\"result\":{},\"id\":3}\n"));
+                        "{\"result\":{},\"id\":3}\n" +
+                        "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
         int suspendLine = 15;
         tester.sendMessage("{\"id\":4,\"method\":\"Debugger.setBreakpointByUrl\",\"params\":{\"lineNumber\":" + suspendLine + ",\"url\":\"" + srcURL + "\",\"columnNumber\":0,\"condition\":\"\"}}");
         assertEquals("{\"result\":{\"breakpointId\":\"1\",\"locations\":[]},\"id\":4}", tester.getMessages(true).trim());

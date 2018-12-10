@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.core.posix;
 
+import static com.oracle.svm.core.posix.headers.Signal.SignalEnum.SIGKILL;
+import static com.oracle.svm.core.posix.headers.Signal.SignalEnum.SIGTERM;
+
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -35,6 +38,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.posix.headers.Dlfcn;
 import com.oracle.svm.core.posix.headers.LibC;
+import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Stdlib;
 
 public abstract class PosixProcessPropertiesSupport implements ProcessPropertiesSupport {
@@ -42,6 +46,26 @@ public abstract class PosixProcessPropertiesSupport implements ProcessProperties
     @Override
     public long getProcessID() {
         return PosixUtils.getpid();
+    }
+
+    @Override
+    public long getProcessID(Process process) {
+        return PosixUtils.getpid(process);
+    }
+
+    @Override
+    public void destroy(long processID) {
+        Signal.kill(Math.toIntExact(processID), SIGTERM.getCValue());
+    }
+
+    @Override
+    public void destroyForcibly(long processID) {
+        Signal.kill(Math.toIntExact(processID), SIGKILL.getCValue());
+    }
+
+    @Override
+    public boolean isAlive(long processID) {
+        return Signal.kill(Math.toIntExact(processID), 0) == 0;
     }
 
     @Override

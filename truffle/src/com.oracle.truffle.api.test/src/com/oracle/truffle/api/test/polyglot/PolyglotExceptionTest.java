@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.fail;
+
 import java.util.function.Consumer;
 
 import org.graalvm.polyglot.Context;
@@ -238,4 +241,25 @@ public class PolyglotExceptionTest {
         }
 
     }
+
+    @Test
+    public void testRecursiveHostException() {
+        Context context = Context.create();
+        RuntimeException e1 = new RuntimeException();
+        RuntimeException e2 = new RuntimeException();
+        e1.initCause(e2);
+        e2.initCause(e1);
+        Value throwError = context.asValue(new ProxyExecutable() {
+            public Object execute(Value... arguments) {
+                throw e1;
+            }
+        });
+        try {
+            throwError.execute();
+            fail();
+        } catch (PolyglotException e) {
+            assertSame(e1, e.asHostException());
+        }
+    }
+
 }

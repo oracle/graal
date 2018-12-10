@@ -24,17 +24,20 @@
  */
 package com.oracle.truffle.regex.tregex.matchers;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.regex.util.CompilationFinalBitSet;
+import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 import java.util.Arrays;
+
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 /**
  * Character matcher that uses an array of 256 bit sets to fully cover the 16 bit character space.
  * This matcher can take up to 8 kilobytes of space, so it should be used only when the set of
  * characters to match is very large and sparse.
  */
-public final class MultiBitSetMatcher extends ProfiledCharMatcher {
+public abstract class MultiBitSetMatcher extends InvertibleCharMatcher {
 
     private static final int BYTE_RANGE = 256;
     private static final int BYTE_MAX_VALUE = 255;
@@ -50,7 +53,7 @@ public final class MultiBitSetMatcher extends ProfiledCharMatcher {
     /**
      * Constructs a new {@link MultiBitSetMatcher}.
      * 
-     * @param inverse see {@link ProfiledCharMatcher}.
+     * @param inverse see {@link InvertibleCharMatcher}.
      * @param ranges a sorted array of character ranges in the form [lower inclusive bound of range
      *            0, higher inclusive bound of range 0, lower inclusive bound of range 1, higher
      *            inclusive bound of range 1, ...]. The array contents are not modified by this
@@ -84,19 +87,19 @@ public final class MultiBitSetMatcher extends ProfiledCharMatcher {
             }
         }
         bitSets[curByte] = cur;
-        return new MultiBitSetMatcher(inverse, bitSets);
+        return MultiBitSetMatcherNodeGen.create(inverse, bitSets);
     }
 
-    @CompilerDirectives.CompilationFinal(dimensions = 1) private final CompilationFinalBitSet[] bitSets;
+    @CompilationFinal(dimensions = 1) private final CompilationFinalBitSet[] bitSets;
 
-    private MultiBitSetMatcher(boolean invert, CompilationFinalBitSet[] bitSets) {
+    MultiBitSetMatcher(boolean invert, CompilationFinalBitSet[] bitSets) {
         super(invert);
         this.bitSets = bitSets;
     }
 
-    @Override
-    protected boolean matchChar(char c) {
-        return bitSets[highByte(c)].get(lowByte(c));
+    @Specialization
+    protected boolean match(char c, boolean compactString) {
+        return result(bitSets[compactString ? 0 : highByte(c)].get(lowByte(c)));
     }
 
     @Override
@@ -107,7 +110,7 @@ public final class MultiBitSetMatcher extends ProfiledCharMatcher {
     }
 
     @Override
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public String toString() {
         StringBuilder sb = new StringBuilder(modifiersToString()).append("[\n");
         for (int i = 0; i < bitSets.length; i++) {

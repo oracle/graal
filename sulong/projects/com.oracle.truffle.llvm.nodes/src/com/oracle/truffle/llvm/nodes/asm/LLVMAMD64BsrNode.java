@@ -30,14 +30,14 @@
 package com.oracle.truffle.llvm.nodes.asm;
 
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteBooleanNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-@NodeChildren({@NodeChild("src"), @NodeChild("dst")})
+@NodeChild("src")
+@NodeChild("dst")
 public abstract class LLVMAMD64BsrNode extends LLVMExpressionNode {
     @Child protected LLVMAMD64WriteBooleanNode writeZFNode;
     protected final ConditionProfile profile;

@@ -54,7 +54,7 @@ import static org.junit.Assert.assertEquals;
 
 public abstract class LLVMDebugTestBase {
 
-    private static final String LANG_NAME = LLVMLanguage.NAME;
+    private static final String LANG_ID = LLVMLanguage.ID;
 
     private static final String[] SOURCE_FILE_EXTENSIONS = new String[]{".c", ".cpp", ".ll"};
     private static final String TRACE_EXT = ".txt";
@@ -84,7 +84,7 @@ public abstract class LLVMDebugTestBase {
 
     @Before
     public void before() {
-        final Context.Builder contextBuilder = Context.newBuilder(LANG_NAME);
+        final Context.Builder contextBuilder = Context.newBuilder(LANG_ID);
         contextBuilder.allowAllAccess(true);
         contextBuilder.option(OPTION_LAZY_PARSING, String.valueOf(false));
         setContextOptions(contextBuilder);
@@ -100,7 +100,7 @@ public abstract class LLVMDebugTestBase {
         Source source;
         try {
             final File canonicalFile = file.getCanonicalFile();
-            source = Source.newBuilder(LANG_NAME, canonicalFile).build();
+            source = Source.newBuilder(LANG_ID, canonicalFile).build();
         } catch (IOException ex) {
             throw new AssertionError("Could not load source: " + file.getPath(), ex);
         }

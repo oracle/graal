@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,21 +24,7 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
-import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
-import org.graalvm.compiler.truffle.runtime.TruffleInlining;
-import org.graalvm.compiler.truffle.runtime.TruffleInliningDecision;
-import org.graalvm.compiler.truffle.runtime.TruffleInliningPolicy;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
+import static org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.overrideOptions;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -46,7 +32,23 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.overrideOptions;
+import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
+import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
+import org.graalvm.compiler.truffle.runtime.TruffleInlining;
+import org.graalvm.compiler.truffle.runtime.TruffleInliningDecision;
+import org.graalvm.compiler.truffle.runtime.TruffleInliningPolicy;
+import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
+import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 
 public abstract class TruffleInliningTest {
 
@@ -81,8 +83,8 @@ public abstract class TruffleInliningTest {
             }
         }
 
-        @Override
         @ExplodeLoop
+        @Override
         public Object execute(VirtualFrame frame) {
 
             int maxRecursionDepth = (int) frame.getArguments()[0];
@@ -266,11 +268,11 @@ public abstract class TruffleInliningTest {
         return count[0];
     }
 
-    private TruffleCompilerOptions.TruffleOptionsOverrideScope scope = null;
+    private TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope scope = null;
 
     @Before
     public void before() {
-        scope = overrideOptions(TruffleCompilerOptions.TruffleCompilation, false);
+        scope = overrideOptions(SharedTruffleRuntimeOptions.TruffleCompilation, false);
     }
 
     @After

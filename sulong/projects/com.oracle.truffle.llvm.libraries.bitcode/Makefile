@@ -30,7 +30,7 @@
 QUIETLY$(MX_VERBOSE) = @
 
 .PHONY: default
-default: bin/libsulong.bc bin/libsulong-src.tar.gz
+default: bin/libsulong.bc bin/libsulong++.bc bin/libsulong-src.tar.gz
 
 CLANG?=clang
 CLANGXX?=clang++
@@ -38,18 +38,24 @@ OPT?=opt
 LLVM_LINK?=llvm-link
 
 C_SOURCE_FILES=$(wildcard ${VPATH}/src/*.c)
+C_BC_FILES=${C_SOURCE_FILES:${VPATH}/src/%.c=bin/%.bc}
+
 CXX_SOURCE_FILES=$(wildcard ${VPATH}/libcxxabi/*.cpp)
-BC_FILES=${C_SOURCE_FILES:${VPATH}/src/%.c=bin/%.bc} ${CXX_SOURCE_FILES:${VPATH}/libcxxabi/%.cpp=bin/%.bc}
+CXX_BC_FILES=${CXX_SOURCE_FILES:${VPATH}/libcxxabi/%.cpp=bin/%.bc}
 
 OPT_FLAGS=-mem2reg -globalopt -simplifycfg -constprop -instcombine -dse -loop-simplify -reassociate -licm -gvn
 
-CXXFLAGS=-std=c++11 -stdlib=libc++ -DLIBCXXABI_SILENT_TERMINATE
+CFLAGS+=-g -fdebug-prefix-map=${VPATH}=com.oracle.truffle.llvm.libraries.bitcode
+CXXFLAGS+=-std=c++11 -stdlib=libc++ -DLIBCXXABI_SILENT_TERMINATE
 
 DEPFLAGS = -MT $@ -MMD -MP -MF deps/$*.Td
 POSTCOMPILE = @mv -f deps/$*.Td deps/$*.d && touch $@
 $(shell mkdir -p deps bin >/dev/null)
 
-bin/libsulong.bc: ${BC_FILES}
+bin/libsulong.bc: ${C_BC_FILES}
+	$(QUIETLY) $(LLVM_LINK) -o $@ $+
+
+bin/libsulong++.bc: ${CXX_BC_FILES}
 	$(QUIETLY) $(LLVM_LINK) -o $@ $+
 
 bin/%.bc: bin/%.noopt.bc
