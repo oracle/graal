@@ -72,6 +72,7 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.nodes.LanguageInfo;
+import org.graalvm.polyglot.io.FileSystem;
 
 /**
  * Representation of a source code unit and its contents that can be evaluated in a language. Each
@@ -1598,6 +1599,9 @@ public abstract class Source {
          * an {@link IOException} if an error loading the source occured.
          *
          * @return the source object
+         * @throws IOException if an error reading the content occurred
+         * @throws SecurityException if this {@link SourceBuilder} was created for a
+         *             {@link TruffleFile} and the used {@link FileSystem} denied its reading
          * @since 1.0
          */
         public Source build() throws IOException {
