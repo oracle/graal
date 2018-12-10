@@ -213,38 +213,16 @@ suite = {
 
         "com.oracle.svm.native.strictmath": {
             "subDir": "src",
-            "native": True,
-            "vpath": True,
-            "buildEnv": {
-                "ARCH": "<arch>",
-                "OS": "<os>"
-            },
-            "os_arch" : {
-                "linux": {
-                    "amd64" : {
-                        "results": [
-                            "<os>-<arch>/libstrictmath.a",
-                        ],
-                    },
-                },
-                "darwin": {
-                    "amd64" : {
-                        "results": [
-                            "<os>-<arch>/libstrictmath.a",
-                        ],
-                    },
-                },
-                "windows": {
-                    "amd64" : {
-                        "ignore": "windows is not supported",
-                        "results": [
-                            "<os>-<arch>/strictmath.lib",
-                        ],
-                    },
-                },
+            "native": "static_lib",
+            "os_arch": {
                 "solaris": {
                     "<others>": {
                         "ignore": "solaris is not supported",
+                    },
+                },
+                "windows": {
+                    "<others>": {
+                        "cflags": ["-O1", "-D_LITTLE_ENDIAN"],
                     },
                 },
                 "<others>": {
@@ -252,7 +230,7 @@ suite = {
                         "ignore": "sparcv9 is not supported",
                     },
                     "<others>": {
-                        "ignore": False,
+                        "cflags": ["-fPIC", "-O1", "-D_LITTLE_ENDIAN"],
                     },
                 },
             },
@@ -678,7 +656,7 @@ suite = {
         "SVM_HOSTED_NATIVE": {
             "dependencies": [
                 "com.oracle.svm.native.libchelper",
-                # "com.oracle.svm.native.strictmath",
+                "com.oracle.svm.native.strictmath",
                 # "com.oracle.svm.native.jvmfuncs",
                 # "com.oracle.svm.libffi"
             ],
