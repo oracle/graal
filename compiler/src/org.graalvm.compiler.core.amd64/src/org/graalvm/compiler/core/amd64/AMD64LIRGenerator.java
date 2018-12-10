@@ -545,7 +545,14 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public Variable emitArrayEquals(JavaKind kind, Value array1, Value array2, Value length, int constantLength, boolean directPointers) {
         Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
-        append(new AMD64ArrayEqualsOp(this, kind, result, array1, array2, asAllocatable(length), constantLength, directPointers, getMaxVectorSize()));
+        append(new AMD64ArrayEqualsOp(this, kind, kind, result, array1, array2, asAllocatable(length), constantLength, directPointers, getMaxVectorSize()));
+        return result;
+    }
+
+    @Override
+    public Variable emitArrayEquals(JavaKind kind1, JavaKind kind2, Value array1, Value array2, Value length, int constantLength, boolean directPointers) {
+        Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
+        append(new AMD64ArrayEqualsOp(this, kind1, kind2, result, array1, array2, asAllocatable(length), constantLength, directPointers, getMaxVectorSize()));
         return result;
     }
 

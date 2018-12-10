@@ -208,7 +208,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             } else if (n instanceof StoreIndexedNode) {
                 lowerStoreIndexedNode((StoreIndexedNode) n, tool);
             } else if (n instanceof IndexAddressNode) {
-                lowerIndexAddressNode((IndexAddressNode) n, tool);
+                lowerIndexAddressNode((IndexAddressNode) n);
             } else if (n instanceof ArrayLengthNode) {
                 lowerArrayLengthNode((ArrayLengthNode) n, tool);
             } else if (n instanceof LoadHubNode) {

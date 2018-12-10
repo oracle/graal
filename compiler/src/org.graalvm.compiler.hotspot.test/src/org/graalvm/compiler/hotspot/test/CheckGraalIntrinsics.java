@@ -345,20 +345,28 @@ public class CheckGraalIntrinsics extends GraalTest {
             add(toBeInvestigated,
                             "java/lang/StringCoding.hasNegatives([BII)Z",
                             "java/lang/StringCoding.implEncodeISOArray([BI[BII)I",
-                            "java/lang/StringLatin1.indexOf([B[B)I",
-                            "java/lang/StringUTF16.getChar([BI)C",
                             "java/lang/StringUTF16.getChars([BII[CI)V",
+                            "java/lang/StringUTF16.toBytes([CII)[B");
+            add(ignore,
+                            // handled through an intrinsic for String.equals itself
+                            "java/lang/StringLatin1.equals([B[B)Z",
+
+                            // handled by an intrinsic for StringLatin1.indexOf([BI[BII)I
+                            "java/lang/StringLatin1.indexOf([B[B)I",
+
+                            // handled through an intrinsic for String.equals itself
+                            "java/lang/StringUTF16.equals([B[B)Z",
+
+                            // handled by an intrinsic for StringUTF16.indexOfUnsafe
                             "java/lang/StringUTF16.indexOf([BI[BII)I",
                             "java/lang/StringUTF16.indexOf([B[B)I",
+
+                            // handled by an intrinsic for StringUTF16.indexOfCharUnsafe
                             "java/lang/StringUTF16.indexOfChar([BIII)I",
+
+                            // handled by an intrinsic for StringUTF16.indexOfLatin1Unsafe
                             "java/lang/StringUTF16.indexOfLatin1([BI[BII)I",
-                            "java/lang/StringUTF16.indexOfLatin1([B[B)I",
-                            "java/lang/StringUTF16.putChar([BII)V",
-                            "java/lang/StringUTF16.toBytes([CII)[B");
-            // These are handled through an intrinsic for String.equals itself
-            add(ignore,
-                            "java/lang/StringLatin1.equals([B[B)Z",
-                            "java/lang/StringUTF16.equals([B[B)Z");
+                            "java/lang/StringUTF16.indexOfLatin1([B[B)I");
         }
 
         if (isJDK10OrHigher()) {
@@ -393,10 +401,16 @@ public class CheckGraalIntrinsics extends GraalTest {
             // Can we implement these on non-AMD64 platforms? C2 seems to.
             add(toBeInvestigated,
                             "java/lang/String.compareTo(Ljava/lang/String;)I",
+                            "java/lang/StringLatin1.indexOf([B[B)I",
                             "java/lang/StringLatin1.inflate([BI[BII)V",
                             "java/lang/StringLatin1.inflate([BI[CII)V",
                             "java/lang/StringUTF16.compress([BI[BII)I",
                             "java/lang/StringUTF16.compress([CI[BII)I",
+                            "java/lang/StringUTF16.indexOf([BI[BII)I",
+                            "java/lang/StringUTF16.indexOf([B[B)I",
+                            "java/lang/StringUTF16.indexOfChar([BIII)I",
+                            "java/lang/StringUTF16.indexOfLatin1([BI[BII)I",
+                            "java/lang/StringUTF16.indexOfLatin1([B[B)I",
                             "jdk/internal/misc/Unsafe.compareAndExchangeByte(Ljava/lang/Object;JBB)B",
                             "jdk/internal/misc/Unsafe.compareAndExchangeShort(Ljava/lang/Object;JSS)S",
                             "jdk/internal/misc/Unsafe.compareAndSetByte(Ljava/lang/Object;JBB)Z",

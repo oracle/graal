@@ -44,6 +44,21 @@ public abstract class StringIndexOfTestBase extends GraalCompilerTest {
         String[] utf16targets = new String[]{"grga " + ((char) 0x10D) + "varak", "grga", ((char) 0x10D) + "varak"};
         addTargets(tests, targets);
         addTargets(tests, utf16targets);
+
+        // Check long targets
+        // Checkstyle: stop
+        String lipsum = "Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata ";
+        // Checkstyle: resume
+        String lipsumUTF16 = lipsum + ((char) 0x10D);
+        int[] subStringLengths = {7, 8, 15, 16, 31, 32, 63, 64};
+        for (int len : subStringLengths) {
+            String target = lipsum.substring(50, 50 + len);
+            tests.add(new Object[]{lipsum, target});
+            tests.add(new Object[]{lipsum, target + "X"});
+            tests.add(new Object[]{lipsumUTF16, target});
+            tests.add(new Object[]{lipsumUTF16, target + "X"});
+            tests.add(new Object[]{lipsumUTF16, target + ((char) 0x10D)});
+        }
         return tests;
     }
 
