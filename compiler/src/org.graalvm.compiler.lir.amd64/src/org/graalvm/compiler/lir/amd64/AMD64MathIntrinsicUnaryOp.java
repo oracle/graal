@@ -25,6 +25,7 @@
 package org.graalvm.compiler.lir.amd64;
 
 import static jdk.vm.ci.amd64.AMD64.xmm0;
+import static org.graalvm.compiler.lir.amd64.AMD64HotSpotHelper.registersToValues;
 
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.lir.LIRInstructionClass;
@@ -42,7 +43,7 @@ import jdk.vm.ci.meta.Value;
  * {{@link #emitLIRWrapper(LIRGeneratorTool, Value)}} is provided for emitting necessary mov LIRs
  * before and after this LIR instruction.
  */
-public abstract class AMD64MathIntrinsicUnaryOp extends AMD64MathIntrinsicOp {
+public abstract class AMD64MathIntrinsicUnaryOp extends AMD64LIRInstruction {
 
     @Def protected Value output;
     @Use protected Value input;
@@ -57,10 +58,10 @@ public abstract class AMD64MathIntrinsicUnaryOp extends AMD64MathIntrinsicOp {
         temps = registersToValues(registers);
     }
 
-    public final Variable emitLIRWrapper(LIRGeneratorTool gen, Value input) {
-        LIRKind kind = LIRKind.combine(input);
+    public final Variable emitLIRWrapper(LIRGeneratorTool gen, Value value) {
+        LIRKind kind = LIRKind.combine(value);
         RegisterValue xmm0Value = xmm0.asValue(kind);
-        gen.emitMove(xmm0Value, input);
+        gen.emitMove(xmm0Value, value);
         gen.append(this);
         Variable result = gen.newVariable(kind);
         gen.emitMove(result, xmm0Value);

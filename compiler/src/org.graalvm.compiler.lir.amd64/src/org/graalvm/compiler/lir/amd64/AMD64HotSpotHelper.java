@@ -27,7 +27,6 @@ package org.graalvm.compiler.lir.amd64;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.asm.ArrayDataPointerConstant;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
@@ -36,10 +35,9 @@ import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
 
-public abstract class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
+public final class AMD64HotSpotHelper {
 
-    public AMD64MathIntrinsicOp(LIRInstructionClass<? extends AMD64MathIntrinsicOp> type) {
-        super(type);
+    private AMD64HotSpotHelper() {
     }
 
     protected static Value[] registersToValues(Register[] registers) {
