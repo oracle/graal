@@ -30,5 +30,6 @@ This page is intended to keep track of the growing number of Truffle language im
 * [PorcE](https://github.com/orc-lang/orc/tree/master/PorcE), an Orc language implementation.
 * [shen-truffle](https://github.com/ragnard/shen-truffle), a port of the Shen programming language.
 * [bf](https://github.com/chumer/bf/), an experimental Brainfuck programming language implementation.
+* [brainfuck-jvm](https://github.com/mthmulders/brainfuck-jvm), another Brainfuck language implementation.
 
 Feel free to submit a [pull request](https://help.github.com/articles/using-pull-requests/) to add/remove from this list.
