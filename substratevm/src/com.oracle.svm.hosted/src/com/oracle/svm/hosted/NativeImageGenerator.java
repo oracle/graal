@@ -447,6 +447,7 @@ public class NativeImageGenerator {
 
     private ForkJoinPool createForkJoinPool(int maxConcurrentThreads) {
         ImageSingletonsSupportImpl.HostedManagement vmConfig = new ImageSingletonsSupportImpl.HostedManagement();
+        ImageSingletonsSupportImpl.HostedManagement.installInThread(vmConfig);
         return new ForkJoinPool(
                         maxConcurrentThreads,
                         pool -> new ForkJoinWorkerThread(pool) {
