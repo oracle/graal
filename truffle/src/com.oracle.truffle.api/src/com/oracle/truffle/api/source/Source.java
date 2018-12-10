@@ -70,7 +70,6 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.io.ByteSequence;
-import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleFile;
@@ -1630,7 +1629,8 @@ public abstract class Source {
          * @return the source object
          * @throws IOException if an error reading the content occurred
          * @throws SecurityException if this {@link SourceBuilder} was created for a
-         *             {@link TruffleFile} and the used {@link FileSystem} denied its reading
+         *             {@link TruffleFile} and the used {@link org.graalvm.polyglot.io.FileSystem
+         *             filesystem} denied its reading
          * @since 1.0
          */
         public Source build() throws IOException {
