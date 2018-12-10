@@ -55,11 +55,6 @@ public class SubstrateSnippetReflectionProvider implements SnippetReflectionProv
     }
 
     @Override
-    public Object asObject(ResolvedJavaType type, JavaConstant constant) {
-        return KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(type, constant), Object.class);
-    }
-
-    @Override
     public JavaConstant forBoxed(JavaKind kind, Object value) {
         return SubstrateObjectConstant.forBoxedValue(kind, value);
     }

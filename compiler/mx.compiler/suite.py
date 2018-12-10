@@ -550,7 +550,10 @@ suite = {
         "org.graalvm.compiler.replacements.test",
         "org.graalvm.compiler.hotspot",
       ],
-      "annotationProcessors" : ["GRAAL_NODEINFO_PROCESSOR"],
+      "annotationProcessors" : [
+        "GRAAL_NODEINFO_PROCESSOR",
+        "GRAAL_REPLACEMENTS_PROCESSOR"
+      ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "workingSets" : "Graal,HotSpot,Test",
