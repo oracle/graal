@@ -98,7 +98,7 @@ public abstract class Message {
         return libraryClass;
     }
 
-    public final ResolvedLibrary<?> getResolvedLibrary() {
+    final ResolvedLibrary<?> getResolvedLibrary() {
         return library;
     }
 

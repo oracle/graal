@@ -101,7 +101,7 @@ final class DynamicDispatchLibraryGen extends ResolvedLibrary<DynamicDispatchLib
     private static final class Default extends ResolvedExports<DynamicDispatchLibrary> {
 
         private Default() {
-            super(DynamicDispatchLibrary.class, Object.class, true);
+            super(DynamicDispatchLibrary.class, Object.class, false);
         }
 
         @Override
@@ -117,10 +117,15 @@ final class DynamicDispatchLibraryGen extends ResolvedLibrary<DynamicDispatchLib
         @GeneratedBy(DynamicDispatchLibrary.class)
         private static final class Cached extends DynamicDispatchLibrary {
 
-            private final Class<?> receiverClass_;
+            private final Class<? extends Object> receiverClass_;
 
             Cached(Object receiver) {
                 this.receiverClass_ = receiver.getClass();
+            }
+
+            @Override
+            public Object cast(Object receiver) {
+                return CompilerDirectives.castExact(receiver, receiverClass_);
             }
 
             @Override
@@ -144,7 +149,7 @@ final class DynamicDispatchLibraryGen extends ResolvedLibrary<DynamicDispatchLib
         @GeneratedBy(DynamicDispatchLibrary.class)
         private static final class Uncached extends DynamicDispatchLibrary {
 
-            private final Class<?> receiverClass_;
+            private final Class<? extends Object> receiverClass_;
 
             Uncached(Object receiver) {
                 this.receiverClass_ = receiver.getClass();
@@ -153,6 +158,11 @@ final class DynamicDispatchLibraryGen extends ResolvedLibrary<DynamicDispatchLib
             @Override
             public boolean accepts(Object receiver) {
                 return receiver.getClass() == this.receiverClass_;
+            }
+
+            @Override
+            public Object cast(Object receiver) {
+                return receiver;
             }
 
             @Override
@@ -198,6 +208,11 @@ final class DynamicDispatchLibraryGen extends ResolvedLibrary<DynamicDispatchLib
             this.lib = lib;
         }
 
+        @Override
+        public Object cast(Object receiver) {
+            return receiver;
+        }
+
         @SuppressWarnings("unchecked")
         @Override
         public Class<?> dispatch(Object receiver_) {
@@ -207,7 +222,7 @@ final class DynamicDispatchLibraryGen extends ResolvedLibrary<DynamicDispatchLib
                 throw e_;
             } catch (Exception e_) {
                 CompilerDirectives.transferToInterpreter();
-                throw new AssertionError();
+                throw new AssertionError(e_);
             }
         }
 
@@ -242,6 +257,11 @@ final class DynamicDispatchLibraryGen extends ResolvedLibrary<DynamicDispatchLib
             return true;
         }
 
+        @Override
+        public Object cast(Object receiver) {
+            return receiver;
+        }
+
     }
 
     @GeneratedBy(DynamicDispatchLibrary.class)
@@ -260,6 +280,11 @@ final class DynamicDispatchLibraryGen extends ResolvedLibrary<DynamicDispatchLib
         @Override
         public boolean accepts(Object receiver_) {
             return true;
+        }
+
+        @Override
+        public Object cast(Object receiver) {
+            return receiver;
         }
 
         @Override
@@ -353,6 +378,11 @@ final class DynamicDispatchLibraryGen extends ResolvedLibrary<DynamicDispatchLib
         @Override
         public boolean accepts(Object receiver_) {
             return true;
+        }
+
+        @Override
+        public Object cast(Object receiver) {
+            return receiver;
         }
 
         private void specialize(Object receiver_) {

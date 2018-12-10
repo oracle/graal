@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.api.library;
 
+import com.oracle.truffle.api.library.GenerateLibrary.Ignore;
+
 /**
  * Base library if the receiver export needs to be dispatched.
  */
@@ -58,6 +60,17 @@ public abstract class DynamicDispatchLibrary extends Library {
     public static ResolvedLibrary<DynamicDispatchLibrary> resolve() {
         return Lazy.RESOLVED_LIBRARY;
     }
+
+    /**
+     * Cast the object receiver type to the dispatched type. This is not supposed to be implemented
+     * by dynamic dispatch implementer but is automatically implemented when implementing dynamic
+     * dispatch.
+     *
+     * @param receiver
+     * @return
+     */
+    @Ignore
+    public abstract Object cast(Object receiver);
 
     /*
      * This indirection is needed to avoid cyclic class initialization. The enclosing class needs to

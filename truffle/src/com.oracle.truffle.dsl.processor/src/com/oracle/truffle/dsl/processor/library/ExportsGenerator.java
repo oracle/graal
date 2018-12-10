@@ -106,7 +106,6 @@ import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.model.NodeExecutionData;
 import com.oracle.truffle.dsl.processor.model.Parameter;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
-import com.sun.rowset.internal.CachedRowSetReader;
 
 public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
 
@@ -270,6 +269,8 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             builder.startReturn().tree(defaultAccepts).string(" && accepts_(receiver)").end();
         }
         builder.end();
+
+        cacheClass.addOptional(createCastMethod(libraryExports, exportReceiverType, true));
         cacheClass.add(accepts);
 
         if (!libraryExports.needsRewrites()) {
@@ -373,6 +374,24 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         return cacheClass;
     }
 
+    private CodeExecutableElement createCastMethod(ExportsLibrary libraryExports, TypeMirror exportReceiverType, boolean cached) {
+        if (!libraryExports.getLibrary().isDynamicDispatch()) {
+            return null;
+        }
+
+        CodeTreeBuilder builder;
+        CodeExecutableElement castMethod = CodeExecutableElement.cloneNoAnnotations(ElementUtils.findMethod(DynamicDispatchLibrary.class, "cast"));
+        castMethod.getModifiers().remove(Modifier.ABSTRACT);
+        castMethod.renameArguments("receiver");
+        builder = castMethod.createBuilder();
+        if (cached) {
+            builder.startReturn().tree(createReceiverCast(libraryExports, castMethod.getParameters().get(0).asType(), exportReceiverType, CodeTreeBuilder.singleString("receiver"), cached)).end();
+        } else {
+            builder.startReturn().string("receiver").end();
+        }
+        return castMethod;
+    }
+
     private CodeTree createDefaultAccepts(CodeTypeElement libraryGen, ExportsLibrary libraryExports, TypeMirror exportReceiverType, boolean cached) {
         CodeTreeBuilder builder;
         CodeTreeBuilder acceptsBuilder = CodeTreeBuilder.createBuilder();
@@ -409,7 +428,11 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                                 Arrays.asList(new CodeTypeMirror.WildcardTypeMirror(libraryExports.getReceiverClass(), null)));
                 libraryGen.add(new CodeVariableElement(modifiers(PRIVATE, FINAL), receiverClassType, "receiverClass_"));
 
-                constructor.createBuilder().startStatement().string("this.receiverClass_ = (").cast(libraryExports.getReceiverClass()).string("receiver).getClass()").end();
+                if (ElementUtils.isObject(libraryExports.getReceiverClass())) {
+                    constructor.createBuilder().startStatement().string("this.receiverClass_ = receiver.getClass()").end();
+                } else {
+                    constructor.createBuilder().startStatement().string("this.receiverClass_ = (").cast(libraryExports.getReceiverClass()).string("receiver).getClass()").end();
+                }
 
                 acceptsBuilder.string("receiver.getClass() == this.receiverClass_");
             }
@@ -472,6 +495,8 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         }
         builder.end();
         uncachedClass.add(acceptUncached);
+
+        uncachedClass.addOptional(createCastMethod(libraryExports, exportReceiverType, false));
 
         CodeExecutableElement isAdoptable = uncachedClass.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(context.getDeclaredType(Node.class), "isAdoptable")));
         isAdoptable.createBuilder().returnFalse();
@@ -643,21 +668,34 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         CodeVariableElement receiverParam = ((CodeVariableElement) executable.getParameters().get(0));
         receiverParam.setType(modelReceiverType);
         String originalReceiverParamName = receiverParam.getName();
-        receiverParam.setName(originalReceiverParamName + "_");
+        String newReceiverParamName = originalReceiverParamName + "_";
+        receiverParam.setName(newReceiverParamName);
         CodeTree tree = executable.getBodyTree();
         CodeTreeBuilder executeBody = executable.createBuilder();
         if (!isAccepts) {
             addAcceptsAssertion(executeBody);
         }
-        CodeTree cast;
-        if (!cached || library.isFinalReceiver()) {
-            cast = CodeTreeBuilder.createBuilder().cast(receiverType).string(originalReceiverParamName, "_").build();
-        } else {
-            cast = CodeTreeBuilder.createBuilder().startStaticCall(context.getType(CompilerDirectives.class), "castExact").string(originalReceiverParamName,
-                            "_").string("receiverClass_").end().build();
-        }
+        CodeTree cast = createReceiverCast(library, modelReceiverType, receiverType, CodeTreeBuilder.singleString(newReceiverParamName), cached);
         executeBody.declaration(receiverType, originalReceiverParamName, cast);
         executeBody.tree(tree);
+    }
+
+    private CodeTree createReceiverCast(ExportsLibrary library, TypeMirror sourceType, TypeMirror targetType, CodeTree receiver, boolean cached) {
+        CodeTree cast;
+        if (!cached || library.isFinalReceiver()) {
+            if (ElementUtils.needsCastTo(sourceType, targetType)) {
+                cast = CodeTreeBuilder.createBuilder().cast(targetType).tree(receiver).build();
+            } else {
+                cast = receiver;
+            }
+        } else {
+            if (library.needsDynamicDispatch()) {
+                cast = CodeTreeBuilder.createBuilder().cast(targetType).startCall("dynamicDispatch_.cast").tree(receiver).end().build();
+            } else {
+                cast = CodeTreeBuilder.createBuilder().startStaticCall(context.getType(CompilerDirectives.class), "castExact").tree(receiver).string("receiverClass_").end().build();
+            }
+        }
+        return cast;
     }
 
     private static void addAcceptsAssertion(CodeTreeBuilder executeBody) {

@@ -56,8 +56,8 @@ import com.oracle.truffle.api.nodes.NodeUtil;
  * Resolving a library class into a constant is useful if performance is a critical requirement,
  * otherwise it is recommended to use the static methods in {@link Library} instead.
  * <p>
- * This class also serves as base class for generated library classes. It is only open to allow
- * generated code to implement it. Do not implement this class manually.
+ * This class also serves as base class for generated library classes. It is only sub classable to
+ * allow generated code to implement it. Do not implement this class manually.
  *
  * @see Library#createCached(Class)
  * @see Library#createCachedDispatch(Class, int)
@@ -222,8 +222,7 @@ public abstract class ResolvedLibrary<T extends Library> {
     protected abstract T createProxy(ReflectionLibrary lib);
 
     /**
-     * Creates an assertion version of this library. An implementation for this method is generated,
-     * do not implement manually.
+     * Creates an assertion version of this library. An implementation for this method is generated.
      *
      * @since 1.0
      */

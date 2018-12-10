@@ -68,6 +68,7 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVariable;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.library.DynamicDispatchLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.Message;
 import com.oracle.truffle.api.library.ReflectionLibrary;
@@ -210,6 +211,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         CodeVariableElement libField = proxyClass.add(new CodeVariableElement(modifiers(PRIVATE), context.getType(ReflectionLibrary.class), "lib"));
         libField.addAnnotationMirror(new CodeAnnotationMirror(context.getDeclaredType(Child.class)));
         proxyClass.add(GeneratorUtils.createConstructorUsingFields(modifiers(), proxyClass));
+        proxyClass.addOptional(createGenericCastMethod(model));
 
         for (MessageObjects message : methods) {
             if (message.model.getName().equals(ACCEPTS)) {
@@ -342,6 +344,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
                 ExportsGenerator.injectCachedAssertions(execute);
             }
         }
+        cachedToUncached.addOptional(createGenericCastMethod(model));
 
         genClass.add(cachedToUncached);
 
@@ -365,6 +368,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
                 builder.end().end();
             }
         }
+        uncachedDispatch.addOptional(createGenericCastMethod(model));
 
         CodeExecutableElement isAdoptable = uncachedDispatch.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(context.getDeclaredType(Node.class), "isAdoptable")));
         isAdoptable.createBuilder().returnFalse();
@@ -406,6 +410,8 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
                 builder.end();
             }
         }
+
+        cachedDispatch.addOptional(createGenericCastMethod(model));
 
         // CachedDispatch.Next
         final CodeTypeElement cachedDispatchNext = createClass(model, null, modifiers(PRIVATE, STATIC, FINAL), "CachedDispatchNext", cachedDispatch.asType());
@@ -535,6 +541,19 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         CodeAnnotationMirror suppressWarnings = new CodeAnnotationMirror(context.getDeclaredType(SuppressWarnings.class));
         suppressWarnings.setElementValue(suppressWarnings.findExecutableElement("value"), new CodeAnnotationValue(Arrays.asList(new CodeAnnotationValue("unchecked"))));
         return suppressWarnings;
+    }
+
+    private static CodeExecutableElement createGenericCastMethod(LibraryData library) {
+        if (!library.isDynamicDispatch()) {
+            return null;
+        }
+        CodeTreeBuilder builder;
+        CodeExecutableElement castMethod = CodeExecutableElement.cloneNoAnnotations(ElementUtils.findMethod(DynamicDispatchLibrary.class, "cast"));
+        castMethod.getModifiers().remove(Modifier.ABSTRACT);
+        castMethod.renameArguments("receiver");
+        builder = castMethod.createBuilder();
+        builder.startReturn().string("receiver").end();
+        return castMethod;
     }
 
     private static void injectReceiverType(CodeExecutableElement method, int receiverIndex, TypeMirror type) {
