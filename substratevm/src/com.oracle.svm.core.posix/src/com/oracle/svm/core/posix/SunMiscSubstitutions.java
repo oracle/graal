@@ -103,6 +103,7 @@ final class Target_jdk_internal_misc_Signal {
 }
 
 /** Support for Target_sun_misc_Signal. */
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Util_jdk_internal_misc_Signal {
 
     /** A thread to dispatch signals as they are raised. */
@@ -408,6 +409,7 @@ final class Target_sun_misc_NativeSignalHandler {
     }
 }
 
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 @AutomaticFeature
 class IgnoreSIGPIPEFeature implements Feature {
 

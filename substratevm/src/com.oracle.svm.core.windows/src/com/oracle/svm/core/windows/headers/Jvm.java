@@ -22,33 +22,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.windows;
+package com.oracle.svm.core.windows.headers;
 
-import org.graalvm.nativeimage.Feature;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import com.oracle.svm.core.annotate.AutomaticFeature;
+import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.function.CLibrary;
 
-/* { Do not format quoted code: @formatter:off */
-/* { Allow non-standard names: Checkstyle: stop */
+//Checkstyle: stop
 
+/**
+ * Definitions for Hotspot JVM internal functions
+ *
+ * We only declare an initialize function in order to ensure that the jvm.lib is on the link line.
+ * This allows and core library dependencies on JVM_ functions to be satisfied by our jvm.lib
+ * library.
+ *
+ */
+@CContext(WindowsDirectives.class)
 @Platforms(Platform.WINDOWS.class)
-//@CContext(WindowsDirectives.class)
-public class WindowsJavaNetNetworkInterface {
+@CLibrary("jvm")
+public class Jvm {
 
-    /** Register the implementation. */
-    @AutomaticFeature
-    static class JavaNetNetworkInterfaceFeature implements Feature {
-        @Override
-        public void afterRegistration(AfterRegistrationAccess access) {
-            ImageSingletons.add(PlatformSupportImpl.class, new PlatformSupportImpl());
-        }
-    }
+    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
+    public static native void initialize();
 
-    static class PlatformSupportImpl {
-    }
 }
-
-/* } Allow non-standard names: Checkstyle: resume */
-/* } Do not format quoted code: @formatter:on */

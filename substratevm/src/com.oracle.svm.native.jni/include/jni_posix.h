@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,27 +22,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.headers.linux;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.function.CLibrary;
-import org.graalvm.nativeimage.c.type.CCharPointer;
-import com.oracle.svm.core.posix.headers.PosixDirectives;
-import com.oracle.svm.core.posix.headers.Pthread.pthread_t;
+#ifndef _JAVASOFT_JNI_POSIX_H_
+#define _JAVASOFT_JNI_POSIX_H_
 
-@CContext(PosixDirectives.class)
-@CLibrary("pthread")
-@Platforms(Platform.LINUX.class)
-public class LinuxPthread {
+#ifndef __has_attribute
+  #define __has_attribute(x) 0
+#endif
+#if (defined(__GNUC__) && ((__GNUC__ > 4) || (__GNUC__ == 4) && (__GNUC_MINOR__ > 2))) || __has_attribute(visibility)
+  #define JNIEXPORT     __attribute__((visibility("default")))
+  #define JNIIMPORT     __attribute__((visibility("default")))
+#else
+  #define JNIEXPORT
+  #define JNIIMPORT
+#endif
 
-    /* { Allow names with underscores: Checkstyle: stop */
+#define JNICALL
 
-    /** Set thread name visible in the kernel and its interfaces. */
-    @CFunction
-    public static native int pthread_setname_np(pthread_t target_thread, CCharPointer name);
+typedef int jint;
+#ifdef _LP64 /* 64-bit Solaris */
+typedef long jlong;
+#else
+typedef long long jlong;
+#endif
 
-    /* } Allow names with underscores: Checkstyle: resume */
-}
+typedef signed char jbyte;
+
+#endif /* !_JAVASOFT_JNI_POSIX_H_ */

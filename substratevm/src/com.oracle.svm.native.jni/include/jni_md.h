@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,26 +26,10 @@
 #ifndef _JAVASOFT_JNI_MD_H_
 #define _JAVASOFT_JNI_MD_H_
 
-#ifndef __has_attribute
-  #define __has_attribute(x) 0
-#endif
-#if (defined(__GNUC__) && ((__GNUC__ > 4) || (__GNUC__ == 4) && (__GNUC_MINOR__ > 2))) || __has_attribute(visibility)
-  #define JNIEXPORT     __attribute__((visibility("default")))
-  #define JNIIMPORT     __attribute__((visibility("default")))
+#ifndef _WIN64
+#include "jni_posix.h"
 #else
-  #define JNIEXPORT
-  #define JNIIMPORT
+#include "jni_windows.h"
 #endif
-
-#define JNICALL
-
-typedef int jint;
-#ifdef _LP64 /* 64-bit Solaris */
-typedef long jlong;
-#else
-typedef long long jlong;
-#endif
-
-typedef signed char jbyte;
 
 #endif /* !_JAVASOFT_JNI_MD_H_ */

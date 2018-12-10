@@ -53,6 +53,11 @@ class PosixNativeLibrarySupport implements PlatformNativeLibrarySupport {
     }
 
     @Override
+    public boolean initializeBuiltinLibraries() {
+        return true;
+    }
+
+    @Override
     public PosixNativeLibrary createLibrary(String canonical, boolean builtIn) {
         return new PosixNativeLibrary(canonical, builtIn);
     }
@@ -62,6 +67,16 @@ class PosixNativeLibrarySupport implements PlatformNativeLibrarySupport {
         try (CCharPointerHolder symbol = CTypeConversion.toCString(name)) {
             return Dlfcn.dlsym(Dlfcn.RTLD_DEFAULT(), symbol.get());
         }
+    }
+
+    @Override
+    public boolean isBuiltinLibrary(String name) {
+        return false;
+    }
+
+    @Override
+    public boolean isBuiltinPkgNative(String name) {
+        return false;
     }
 
     class PosixNativeLibrary implements NativeLibrary {

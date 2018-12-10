@@ -29,9 +29,13 @@ import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.Platform.DARWIN;
+import org.graalvm.nativeimage.Platform.LINUX;
 import org.graalvm.word.PointerBase;
 
 /** Declarations from <semaphore.h>. */
+@Platforms({DARWIN.class, LINUX.class})
 @CContext(PosixDirectives.class)
 @CLibrary("pthread")
 public class Semaphore {

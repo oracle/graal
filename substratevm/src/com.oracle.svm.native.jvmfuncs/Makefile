@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -23,16 +23,17 @@
 # questions.
 #
 
-# A list of all the libchelper source files.
+# A list of all the source files.
 SRC_DIR = src
 LIBC_HELPER_SRCS = $(wildcard $(VPATH)/$(SRC_DIR)/*.c)
 
-LIBRARY_NAME = libchelper
+LIBRARY_NAME = jvm
 
 INCLUDE_DIR = include
 HEADER_FILES = $(wildcard $(VPATH)/$(INCLUDE_DIR)/*.h)
 
 TARGET_DIR = ${OS}-${ARCH}
+TARGET_LIB = $(TARGET_DIR)/lib$(LIBRARY_NAME).a
 TARGET_HEADERS = $(patsubst $(VPATH)/%,$(TARGET_DIR)/%,$(HEADER_FILES))
 
 # The flags and options to be used when compiling C sources.
@@ -40,15 +41,15 @@ ifeq (${OS},windows)
 TARGET_LIB = $(TARGET_DIR)/$(LIBRARY_NAME).lib
 AR = LIB
 # The flags to be used when compiling C sources.
-CFLAGS = /I $(VPATH)/$(INCLUDE_DIR) /Zi /O2 /D _LITTLE_ENDIAN
-# A list of all the libchelper object files.
+CFLAGS = /MD /I $(VPATH)/$(INCLUDE_DIR) /Zi /O2 /D _LITTLE_ENDIAN
+# A list of all the object files.
 LIBC_HELPER_OBJS = $(LIBC_HELPER_SRCS:$(VPATH)/%.c=$(TARGET_DIR)/%.obj)
 CC := CL
 else
 TARGET_LIB = $(TARGET_DIR)/lib$(LIBRARY_NAME).a
 # The flags to be used when compiling C sources.
 CFLAGS = -I$(VPATH)/$(INCLUDE_DIR) -g -fPIC -O2 -D _LITTLE_ENDIAN
-# A list of all the libchelper object files.
+# A list of all the object files.
 LIBC_HELPER_OBJS = $(LIBC_HELPER_SRCS:$(VPATH)/%.c=$(TARGET_DIR)/%.o)
 endif
 

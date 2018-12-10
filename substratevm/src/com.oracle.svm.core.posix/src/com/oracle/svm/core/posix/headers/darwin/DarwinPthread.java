@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.posix.headers.darwin;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CLibrary;
@@ -32,6 +34,7 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import com.oracle.svm.core.posix.headers.PosixDirectives;
 
 @CContext(PosixDirectives.class)
+@Platforms(Platform.DARWIN.class)
 @CLibrary("pthread")
 public class DarwinPthread {
 
