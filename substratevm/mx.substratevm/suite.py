@@ -186,46 +186,6 @@ suite = {
             "workingSets": "SVM",
         },
 
-        "com.oracle.svm.native.jni": {
-            "subDir": "src",
-            "native": True,
-            "vpath": True,
-            "buildEnv": {
-                "ARCH": "<arch>",
-                "OS": "<os>"
-            },
-            "os_arch" : {
-                "linux": {
-                    "amd64" : {
-                        "results": [
-                            "<os>-<arch>/include/jni.h",
-                            "<os>-<arch>/include/jni_md.h",
-                            "<os>-<arch>/include/jni_posix.h",
-                        ],
-                    },
-                },
-                "darwin": {
-                    "amd64" : {
-                        "results": [
-                            "<os>-<arch>/include/jni.h",
-                            "<os>-<arch>/include/jni_md.h",
-                            "<os>-<arch>/include/jni_posix.h",
-                        ],
-                    },
-                },
-                "windows": {
-                    "amd64" : {
-                        "ignore": "windows is not supported",
-                        "results": [
-                            "<os>-<arch>/include/jni.h",
-                            "<os>-<arch>/include/jni_md.h",
-                            "<os>-<arch>/include/jni_windows.h",
-                        ],
-                    },
-                },
-            },
-        },
-
         "com.oracle.svm.native.libchelper": {
             "subDir": "src",
             "native": True,
@@ -742,7 +702,6 @@ suite = {
         #
         "SVM_HOSTED_NATIVE": {
             "dependencies": [
-                "com.oracle.svm.native.jni",
                 "com.oracle.svm.native.libchelper",
                 "com.oracle.svm.native.strictmath",
                 "com.oracle.svm.native.jvmfuncs",
@@ -848,7 +807,6 @@ suite = {
                 },
                 "windows": {
                     "amd64" : {
-                         "ignore": "windows is not supported",
                          "layout" : {
                              "./" : [
                                  "dependency:org.graalvm.polyglot.nativeapi.native/<os>-<arch>/*.obj",
