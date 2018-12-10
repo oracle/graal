@@ -32,10 +32,7 @@ _suite = mx.suite('espresso')
 
 
 class EspressoDefaultTags:
-    default = 'default'
-    all = 'all'
-    native = 'native'
-
+    unittest = 'unittest'
 
 def _run_espresso(args):
     vm_args, args = mx.extract_VM_args(args, useDoubleDash=True, defaultAllVMArgs=False)
@@ -60,7 +57,7 @@ def _run_espresso_playground(args):
 
 
 def _espresso_gate_runner(args, tasks):
-    with Task('UnitTests', tasks, tags=[EspressoDefaultTags.default, EspressoDefaultTags.all]) as t:
+    with Task('UnitTests', tasks, tags=[EspressoDefaultTags.unittest]) as t:
         if t:
             unittest(['--enable-timing', '--very-verbose', 'com.oracle.truffle.espresso.test'])
 
