@@ -185,8 +185,7 @@ public class CodeInfoEncoder {
 
     public void install(CodeInfoDecoder installTarget) {
         installTarget.setData(codeInfoIndex, codeInfoEncodings, referenceMapEncoding, frameInfoEncoder.frameInfoEncodings, frameInfoEncoder.frameInfoObjectConstants,
-                        frameInfoEncoder.frameInfoSourceClassNames, frameInfoEncoder.frameInfoSourceMethodNames, frameInfoEncoder.frameInfoSourceFileNames,
-                        frameInfoEncoder.frameInfoNames);
+                        frameInfoEncoder.frameInfoSourceClasses, frameInfoEncoder.frameInfoSourceMethodNames, frameInfoEncoder.frameInfoNames);
 
         ImageSingletons.lookup(Counters.class).frameInfoSize.add(
                         ConfigurationValues.getObjectLayout().getArrayElementOffset(JavaKind.Byte, frameInfoEncoder.frameInfoEncodings.length) +

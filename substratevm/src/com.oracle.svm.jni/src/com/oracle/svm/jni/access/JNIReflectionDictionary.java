@@ -171,15 +171,52 @@ public final class JNIReflectionDictionary {
         return KnownIntrinsics.convertUnknownValue(obj, JNIAccessibleMethod.class);
     }
 
-    public JNIAccessibleField getField(Class<?> classObject, String name) {
+    private JNIAccessibleField getDeclaredField(Class<?> classObject, String name, boolean isStatic) {
         JNIAccessibleClass clazz = classesByClassObject.get(classObject);
-        dump(clazz == null, "getFieldID");
-        return (clazz != null) ? clazz.getField(name) : null;
+        if (clazz != null) {
+            JNIAccessibleField field = clazz.getField(name);
+            if (field != null && field.isStatic() == isStatic) {
+                return field;
+            }
+        }
+        return null;
     }
 
-    public JNIFieldId getFieldID(Class<?> clazz, String name) {
-        JNIAccessibleField field = getField(clazz, name);
-        return field != null ? field.getId() : WordFactory.zero();
+    public JNIFieldId getDeclaredFieldId(Class<?> classObject, String name, boolean isStatic) {
+        dump(classObject == null, "getDeclaredFieldID");
+        JNIAccessibleField field = findField(classObject, name, isStatic);
+        return (field != null) ? field.getId() : WordFactory.nullPointer();
+    }
+
+    private JNIAccessibleField findField(Class<?> clazz, String name, boolean isStatic) {
+        // Lookup according to JVM spec 5.4.3.2: local fields, superinterfaces, superclasses
+        JNIAccessibleField field = getDeclaredField(clazz, name, isStatic);
+        if (field == null && isStatic) {
+            field = findSuperinterfaceField(clazz, name);
+        }
+        if (field == null) {
+            field = findField(clazz.getSuperclass(), name, isStatic);
+        }
+        return field;
+    }
+
+    private JNIAccessibleField findSuperinterfaceField(Class<?> clazz, String name) {
+        for (Class<?> parent : clazz.getInterfaces()) {
+            JNIAccessibleField field = getDeclaredField(parent, name, true);
+            if (field == null) {
+                field = findSuperinterfaceField(parent, name);
+            }
+            if (field != null) {
+                return field;
+            }
+        }
+        return null;
+    }
+
+    public JNIFieldId getFieldID(Class<?> clazz, String name, boolean isStatic) {
+        dump(clazz == null, "getFieldID");
+        JNIAccessibleField field = findField(clazz, name, isStatic);
+        return (field != null) ? field.getId() : WordFactory.nullPointer();
     }
 
     public String getFieldNameByID(Class<?> classObject, JNIFieldId id) {

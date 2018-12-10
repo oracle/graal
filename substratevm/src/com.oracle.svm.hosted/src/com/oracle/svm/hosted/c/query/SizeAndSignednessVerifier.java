@@ -74,8 +74,8 @@ public final class SizeAndSignednessVerifier extends InfoTreeVisitor {
     @Override
     protected void visitConstantInfo(ConstantInfo constantInfo) {
         if (constantInfo.getKind() != ElementKind.STRING && constantInfo.getKind() != ElementKind.BYTEARRAY) {
-            ResolvedJavaMethod method = (ResolvedJavaMethod) constantInfo.getAnnotatedElement();
-            ResolvedJavaType returnType = (ResolvedJavaType) method.getSignature().getReturnType(method.getDeclaringClass());
+            ResolvedJavaMethod method = constantInfo.getAnnotatedElement();
+            ResolvedJavaType returnType = AccessorInfo.getReturnType(method);
             checkSizeAndSignedness(constantInfo, returnType, method, true);
         }
     }
@@ -115,8 +115,8 @@ public final class SizeAndSignednessVerifier extends InfoTreeVisitor {
 
     @Override
     protected void visitAccessorInfo(AccessorInfo accessorInfo) {
-        ResolvedJavaMethod method = (ResolvedJavaMethod) accessorInfo.getAnnotatedElement();
-        ResolvedJavaType returnType = (ResolvedJavaType) method.getSignature().getReturnType(method.getDeclaringClass());
+        ResolvedJavaMethod method = accessorInfo.getAnnotatedElement();
+        ResolvedJavaType returnType = accessorInfo.getReturnType();
 
         if (accessorInfo.getParent() instanceof StructBitfieldInfo) {
             StructBitfieldInfo bitfieldInfo = (StructBitfieldInfo) accessorInfo.getParent();
@@ -142,7 +142,7 @@ public final class SizeAndSignednessVerifier extends InfoTreeVisitor {
                     break;
                 case SETTER:
                     assert returnType.getJavaKind() == JavaKind.Void;
-                    ResolvedJavaType valueType = (ResolvedJavaType) method.getSignature().getParameterType(accessorInfo.valueParameterNumber(false), method.getDeclaringClass());
+                    ResolvedJavaType valueType = accessorInfo.getValueParameterType();
                     checkSizeAndSignedness(sizableInfo, valueType, method, false);
                     break;
             }
@@ -226,8 +226,8 @@ public final class SizeAndSignednessVerifier extends InfoTreeVisitor {
 
     @Override
     protected void visitEnumValueInfo(EnumValueInfo valueInfo) {
-        ResolvedJavaMethod method = (ResolvedJavaMethod) valueInfo.getAnnotatedElement();
-        ResolvedJavaType returnType = (ResolvedJavaType) method.getSignature().getReturnType(method.getDeclaringClass());
+        ResolvedJavaMethod method = valueInfo.getAnnotatedElement();
+        ResolvedJavaType returnType = AccessorInfo.getReturnType(method);
 
         EnumInfo enumInfo = (EnumInfo) valueInfo.getParent();
         for (ElementInfo info : enumInfo.getChildren()) {

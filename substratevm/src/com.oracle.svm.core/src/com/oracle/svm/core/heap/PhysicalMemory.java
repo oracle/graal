@@ -34,6 +34,11 @@ public class PhysicalMemory {
 
     /** Implemented by operating-system specific code. */
     protected interface PhysicalMemorySupport {
+
+        /** Has the physical memory size been set? */
+        boolean hasSize();
+
+        /** Get the size of physical memory. */
         UnsignedWord size();
     }
 
@@ -46,5 +51,10 @@ public class PhysicalMemory {
      */
     public static UnsignedWord size() {
         return support().size();
+    }
+
+    /** Has the physical memory size been set? */
+    public static boolean hasSize() {
+        return support().hasSize();
     }
 }
