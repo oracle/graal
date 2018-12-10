@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.oracle.svm.hosted.c.NativeLibraries;
+import com.oracle.svm.hosted.c.info.AccessorInfo;
 import com.oracle.svm.hosted.c.info.ConstantInfo;
 import com.oracle.svm.hosted.c.info.ElementInfo;
 import com.oracle.svm.hosted.c.info.EnumConstantInfo;
@@ -54,8 +55,6 @@ import com.oracle.svm.hosted.c.util.FileUtils;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Parses query result described in {@link QueryResultFormat}.
@@ -98,9 +97,7 @@ public final class QueryResultParser extends InfoTreeVisitor {
                  * byte to avoid casts. Check the actual value of the constant, and if it fits the
                  * declared type of the constant, then change the actual size to the declared size.
                  */
-                ResolvedJavaMethod method = (ResolvedJavaMethod) constantInfo.getAnnotatedElement();
-                ResolvedJavaType returnType = (ResolvedJavaType) method.getSignature().getReturnType(method.getDeclaringClass());
-                JavaKind returnKind = returnType.getJavaKind();
+                JavaKind returnKind = AccessorInfo.getReturnType(constantInfo.getAnnotatedElement()).getJavaKind();
                 if (returnKind == JavaKind.Object) {
                     returnKind = target.wordJavaKind;
                 }

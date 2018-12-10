@@ -722,9 +722,14 @@ public final class NativeImageHeap {
         // Figure out where the boundaries of the heap partitions are and
         // patch the objects that reference them so they will be correct at runtime.
         final NativeImageInfoPatcher patcher = new NativeImageInfoPatcher(debug, roBuffer, rwBuffer);
+
         patcher.patchReference("firstReadOnlyPrimitiveObject", readOnlyPrimitive.firstAllocatedObject);
         patcher.patchReference("lastReadOnlyPrimitiveObject", readOnlyPrimitive.lastAllocatedObject);
 
+        /*
+         * Set the boundaries of read-only references to include the read-only reference partition
+         * followed by the read-only relocatable partition.
+         */
         Object firstReadOnlyReferenceObject = readOnlyReference.firstAllocatedObject;
         if (firstReadOnlyReferenceObject == null) {
             firstReadOnlyReferenceObject = readOnlyRelocatable.firstAllocatedObject;
@@ -946,12 +951,29 @@ public final class NativeImageHeap {
     /** Objects that are known to be immutable in the native image heap. */
     private final Set<Object> knownImmutableObjects = Collections.newSetFromMap(new IdentityHashMap<>());
 
+    /** A partition holding objects with only read-only primitive values, but no references. */
     private final HeapPartition readOnlyPrimitive;
+    /** A partition holding objects with read-only references and primitive values. */
     private final HeapPartition readOnlyReference;
+    /** A partition holding objects with writable primitive values, but no references. */
+    private final HeapPartition writablePrimitive;
+    /** A partition holding objects with writable references and primitive values. */
+    private final HeapPartition writableReference;
+    /**
+     * A pseudo-partition used during image building to consolidate objects that contain relocatable
+     * references.
+     * <p>
+     * Collecting the relocations together means the dynamic linker has to operate on less of the
+     * image heap during image startup, and it means that less of the image heap has to be
+     * copied-on-write if the image heap is relocated in a new process.
+     * <p>
+     * A relocated reference is read-only once relocated, e.g., at runtime.
+     * {@link NativeImageHeap#patchPartitionBoundaries(DebugContext, RelocatableBuffer, RelocatableBuffer)}
+     * expands the read-only reference partition to include the read-only relocation partition. The
+     * read-only relocation partition does not exist in the generated image.
+     */
     private final HeapPartition readOnlyRelocatable;
     private long firstRelocatablePointerOffsetInSection = -1;
-    private final HeapPartition writablePrimitive;
-    private final HeapPartition writableReference;
 
     static class AddObjectData {
 

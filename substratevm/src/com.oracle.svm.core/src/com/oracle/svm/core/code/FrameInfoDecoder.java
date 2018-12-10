@@ -132,7 +132,7 @@ public class FrameInfoDecoder {
     static final HeapBasedValueInfoAllocator HeapBasedValueInfoAllocator = new HeapBasedValueInfoAllocator();
 
     protected static FrameInfoQueryResult decodeFrameInfo(boolean isDeoptEntry, TypeReader readBuffer, Object[] frameInfoObjectConstants,
-                    String[] frameInfoSourceClassNames, String[] frameInfoSourceMethodNames, String[] frameInfoSourceFileNames, String[] frameInfoNames,
+                    Class<?>[] frameInfoSourceClasses, String[] frameInfoSourceMethodNames, String[] frameInfoNames,
                     FrameInfoQueryResultAllocator resultAllocator, ValueInfoAllocator valueInfoAllocator, boolean fetchFirstFrame) {
         FrameInfoQueryResult result = null;
         FrameInfoQueryResult prev = null;
@@ -209,18 +209,15 @@ public class FrameInfoDecoder {
 
             final boolean debugNames = needLocalValues && encodeDebugNames();
             if (debugNames || encodeSourceReferences()) {
-                final int sourceClassNameIndex = readBuffer.getSVInt();
+                final int sourceClassIndex = readBuffer.getSVInt();
                 final int sourceMethodNameIndex = readBuffer.getSVInt();
-                final int sourceFileNameIndex = readBuffer.getSVInt();
                 final int sourceLineNumber = readBuffer.getSVInt();
 
-                cur.sourceClassNameIndex = sourceClassNameIndex;
+                cur.sourceClassIndex = sourceClassIndex;
                 cur.sourceMethodNameIndex = sourceMethodNameIndex;
-                cur.sourceFileNameIndex = sourceFileNameIndex;
 
-                cur.sourceClassName = frameInfoSourceClassNames[sourceClassNameIndex];
+                cur.sourceClass = frameInfoSourceClasses[sourceClassIndex];
                 cur.sourceMethodName = frameInfoSourceMethodNames[sourceMethodNameIndex];
-                cur.sourceFileName = frameInfoSourceFileNames[sourceFileNameIndex];
                 cur.sourceLineNumber = sourceLineNumber;
             }
 

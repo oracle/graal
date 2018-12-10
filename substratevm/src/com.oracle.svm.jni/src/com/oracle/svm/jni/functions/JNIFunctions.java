@@ -394,13 +394,13 @@ final class JNIFunctions {
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class)
     @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static JNIFieldId GetFieldID(JNIEnvironment env, JNIObjectHandle hclazz, CCharPointer cname, CCharPointer csig) {
-        return Support.getFieldID(hclazz, cname, csig);
+        return Support.getFieldID(hclazz, cname, csig, false);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class)
     @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static JNIFieldId GetStaticFieldID(JNIEnvironment env, JNIObjectHandle hclazz, CCharPointer cname, CCharPointer csig) {
-        return Support.getFieldID(hclazz, cname, csig);
+        return Support.getFieldID(hclazz, cname, csig, true);
     }
 
     /*
@@ -823,7 +823,7 @@ final class JNIFunctions {
             Field obj = JNIObjectHandles.getObject(fieldHandle);
             if (obj != null) {
                 boolean isStatic = Modifier.isStatic(obj.getModifiers());
-                fieldId = JNIReflectionDictionary.singleton().getFieldID(obj.getDeclaringClass(), obj.getName());
+                fieldId = JNIReflectionDictionary.singleton().getDeclaredFieldId(obj.getDeclaringClass(), obj.getName(), isStatic);
             }
         }
         return fieldId;
@@ -1018,25 +1018,15 @@ final class JNIFunctions {
             return methodID;
         }
 
-        static JNIFieldId getFieldID(JNIObjectHandle hclazz, CCharPointer cname, CCharPointer csig) {
+        static JNIFieldId getFieldID(JNIObjectHandle hclazz, CCharPointer cname, CCharPointer csig, boolean isStatic) {
             // TODO: check signature
             Class<?> clazz = JNIObjectHandles.getObject(hclazz);
             String name = CTypeConversion.toJavaString(cname);
-            JNIFieldId retFieldId = WordFactory.zero();
-            while (clazz != null) {
-                retFieldId = JNIReflectionDictionary.singleton().getFieldID(clazz, name);
-                if (retFieldId.isNonNull()) {
-                    break;
-                }
-                clazz = clazz.getSuperclass();
-                if (clazz == null) {
-                    break;
-                }
-            }
-            if (retFieldId.isNull()) {
+            JNIFieldId fieldID = JNIReflectionDictionary.singleton().getFieldID(clazz, name, isStatic);
+            if (fieldID.isNull()) {
                 throw new NoSuchFieldError(clazz.getName() + '.' + name);
             }
-            return retFieldId;
+            return fieldID;
         }
 
         static CShortPointer pinStringAndGetChars(JNIObjectHandle hstr, CCharPointer isCopy) {

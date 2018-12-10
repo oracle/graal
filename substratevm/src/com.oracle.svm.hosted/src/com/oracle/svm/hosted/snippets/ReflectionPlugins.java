@@ -24,7 +24,9 @@
  */
 package com.oracle.svm.hosted.snippets;
 
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.concurrent.ConcurrentHashMap;
@@ -281,8 +283,14 @@ public class ReflectionPlugins {
         }
         if (analysis) {
             if (NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
-                if (element instanceof Field && metaAccess.lookupJavaField((Field) element).isAnnotationPresent(Delete.class)) {
-                    return true; /* Fail during the reflective field lookup at runtime. */
+                AnnotatedElement annotated = null;
+                if (element instanceof Executable) {
+                    annotated = metaAccess.lookupJavaMethod((Executable) element);
+                } else if (element instanceof Field) {
+                    annotated = metaAccess.lookupJavaField((Field) element);
+                }
+                if (annotated != null && annotated.isAnnotationPresent(Delete.class)) {
+                    return true; /* Fail during the reflective lookup at runtime. */
                 }
             }
             /* We are during analysis, we should intrinsify and mark the objects as intrinsified. */

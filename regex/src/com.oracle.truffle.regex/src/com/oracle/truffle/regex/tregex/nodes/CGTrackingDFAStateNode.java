@@ -41,11 +41,11 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
     @Child private DFACaptureGroupPartialTransitionDispatchNode transitionDispatchNode;
 
     public CGTrackingDFAStateNode(short id, byte flags, LoopOptimizationNode loopOptimizationNode, short[] successors, CharMatcher[] matchers,
-                    short[] captureGroupTransitions,
+                    AllTransitionsInOneTreeMatcher allTransitionsInOneTreeMatcher, short[] captureGroupTransitions,
                     short[] precedingCaptureGroupTransitions,
                     DFACaptureGroupPartialTransitionNode anchoredFinalStateTransition,
                     DFACaptureGroupPartialTransitionNode unAnchoredFinalStateTransition) {
-        super(id, flags, loopOptimizationNode, successors, matchers);
+        super(id, flags, loopOptimizationNode, successors, matchers, allTransitionsInOneTreeMatcher);
         this.captureGroupTransitions = captureGroupTransitions;
         this.precedingCaptureGroupTransitions = precedingCaptureGroupTransitions;
         transitionDispatchNode = precedingCaptureGroupTransitions.length > 1 ? DFACaptureGroupPartialTransitionDispatchNode.create(precedingCaptureGroupTransitions) : null;

@@ -86,14 +86,6 @@ public final class CEntryPointData {
             nameTransformation = options.nameTransformation();
             prologue = options.prologue();
             epilogue = options.epilogue();
-
-            /*
-             * Look at the deprecated specification for exceptionHandler too, until that code gets
-             * removed.
-             */
-            if (options.exceptionHandler() != CEntryPointData.DEFAULT_EXCEPTION_HANDLER) {
-                exceptionHandler = options.exceptionHandler();
-            }
             publishAs = options.publishAs();
         }
         return create(annotatedName, alternativeNameSupplier, nameTransformation, documentation, builtin, prologue, epilogue, exceptionHandler, publishAs);

@@ -24,6 +24,14 @@
  */
 package com.oracle.truffle.regex.tregex;
 
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_AUTOMATON_SIZES;
+import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_BAILOUT_MESSAGES;
+import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_PHASES;
+import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_TREGEX_COMPILATIONS;
+
+import java.util.logging.Level;
+
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -58,14 +66,6 @@ import com.oracle.truffle.regex.tregex.util.DFAExport;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.NFAExport;
 import com.oracle.truffle.regex.tregex.util.json.Json;
-
-import java.util.logging.Level;
-
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_AUTOMATON_SIZES;
-import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_BAILOUT_MESSAGES;
-import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_PHASES;
-import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_TREGEX_COMPILATIONS;
 
 /**
  * This class is responsible for compiling a single regex pattern. The compilation process is
@@ -245,7 +245,6 @@ final class TRegexCompilationRequest {
         FrameSlot captureGroupResultFS = frameDescriptor.addFrameSlot("captureGroupResult", FrameSlotKind.Object);
         FrameSlot lastTransitionFS = frameDescriptor.addFrameSlot("lastTransition", FrameSlotKind.Int);
         FrameSlot cgDataFS = frameDescriptor.addFrameSlot("cgData", FrameSlotKind.Object);
-        FrameSlot inputIsCompactStringFS = frameDescriptor.addFrameSlot("inputIsCompactString", FrameSlotKind.Boolean);
         return new TRegexDFAExecutorProperties(
                         frameDescriptor,
                         inputFS,
@@ -258,7 +257,6 @@ final class TRegexCompilationRequest {
                         captureGroupResultFS,
                         lastTransitionFS,
                         cgDataFS,
-                        inputIsCompactStringFS,
                         forward,
                         searching,
                         trackCaptureGroups,

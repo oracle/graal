@@ -36,7 +36,7 @@ public class EnumValueInfo extends ElementInfo {
     }
 
     @Override
-    public Object getAnnotatedElement() {
+    public ResolvedJavaMethod getAnnotatedElement() {
         return annotatedMethod;
     }
 
