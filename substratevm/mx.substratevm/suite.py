@@ -1,5 +1,5 @@
 suite = {
-    "mxversion": "5.194.4",
+    "mxversion": "5.196.3",
     "name": "substratevm",
     "version" : "1.0.0-rc11",
     "release" : False,
@@ -188,41 +188,16 @@ suite = {
 
         "com.oracle.svm.native.libchelper": {
             "subDir": "src",
-            "native": True,
-            "vpath": True,
-            "buildEnv": {
-                "ARCH": "<arch>",
-                "OS": "<os>"
-            },
-            "os_arch" : {
-                "linux": {
-                    "amd64" : {
-                        "results": [
-                            "<os>-<arch>/liblibchelper.a",
-                            "<os>-<arch>/include/cpufeatures.h",
-                        ],
-                    },
-                },
-                "darwin": {
-                    "amd64" : {
-                        "results": [
-                            "<os>-<arch>/liblibchelper.a",
-                            "<os>-<arch>/include/cpufeatures.h",
-                        ],
-                    },
-                },
-                "windows": {
-                    "amd64" : {
-                        "ignore": "windows is not supported",
-                        "results": [
-                            "<os>-<arch>/libchelper.lib",
-                            "<os>-<arch>/include/cpufeatures.h",
-                        ],
-                    },
-                },
+            "native": "static_lib",
+            "os_arch": {
                 "solaris": {
                     "<others>": {
                         "ignore": "solaris is not supported",
+                    },
+                },
+                "windows": {
+                    "<others>": {
+                        "cflags": ["-Zi", "-O2", "-D_LITTLE_ENDIAN"],
                     },
                 },
                 "<others>": {
@@ -230,7 +205,7 @@ suite = {
                         "ignore": "sparcv9 is not supported",
                     },
                     "<others>": {
-                        "ignore": False,
+                        "cflags": ["-g", "-fPIC", "-O2", "-D_LITTLE_ENDIAN"],
                     },
                 },
             },
@@ -703,9 +678,9 @@ suite = {
         "SVM_HOSTED_NATIVE": {
             "dependencies": [
                 "com.oracle.svm.native.libchelper",
-                "com.oracle.svm.native.strictmath",
-                "com.oracle.svm.native.jvmfuncs",
-                "com.oracle.svm.libffi"
+                # "com.oracle.svm.native.strictmath",
+                # "com.oracle.svm.native.jvmfuncs",
+                # "com.oracle.svm.libffi"
             ],
             "native": True,
             "platformDependent" : True,
@@ -716,6 +691,7 @@ suite = {
             ],
             "description" : "SubstrateVM image builder native components",
             "relpath": True,
+            "auto_prefix": True,
             "output": "clibraries",
             "maven": True
         },
