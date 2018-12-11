@@ -121,6 +121,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     private final List<WeakReference<OptimizedDirectCallNode>> knownCallNodes;
     private boolean needsSplit;
+    private static final Boolean TRACE_POLYMORPHIC_EVENTS = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplittingTraceEvents);
+    private static final String SPLIT_LOG_FORMAT = "[truffle] [poly-event] %-70s %s";
     private static final Integer MAX_PROPAGATION_DEPTH = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplittingMaxPropagationDepth);
     private static final Boolean EXPERIMENTAL_SPLITTING = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplitting);
     private static final Boolean DUMP_SPLITTING_DECISIONS = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplittingDumpDecisions);
@@ -732,6 +734,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             toDump = new ArrayList<>();
             pullOutParentChain(source, toDump);
         }
+        logPolymorphicEvent(0, "Polymorphic event! Source:", source);
         this.maybeSetNeedsSplit(0, toDump);
     }
 
@@ -743,6 +746,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             onlyCaller = numberOfKnownCallNodes == 1 ? knownCallNodes.get(0).get() : null;
         }
         if (depth > MAX_PROPAGATION_DEPTH || needsSplit || numberOfKnownCallNodes == 0 || compilationProfile.getCallCount() == 1) {
+            logEarlyReturn(depth, numberOfKnownCallNodes);
             return needsSplit;
         }
         if (numberOfKnownCallNodes == 1) {
@@ -753,16 +757,38 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                     if (DUMP_SPLITTING_DECISIONS) {
                         pullOutParentChain(onlyCaller, toDump);
                     }
+                    logPolymorphicEvent(depth, "One caller! Analysing parent.");
                     if (callerTarget.maybeSetNeedsSplit(depth + 1, toDump)) {
+                        logPolymorphicEvent(depth, "Set needs split to true via parent");
                         needsSplit = true;
                     }
                 }
             }
         } else {
+            logPolymorphicEvent(depth, "Set needs split to true");
             needsSplit = true;
             maybeDump(toDump);
         }
+        logPolymorphicEvent(depth, "Return:", needsSplit);
         return needsSplit;
+    }
+
+    private void logEarlyReturn(int depth, int numberOfKnownCallNodes) {
+        if (TRACE_POLYMORPHIC_EVENTS) {
+            logPolymorphicEvent(depth, "Early return: " + needsSplit + " callCount: " + compilationProfile.getCallCount() + ", numberOfKnownCallNodes: " + numberOfKnownCallNodes);
+        }
+    }
+
+    private void logPolymorphicEvent(int depth, String message) {
+        logPolymorphicEvent(depth, message, null);
+    }
+
+    private void logPolymorphicEvent(int depth, String message, Object arg) {
+        if (TRACE_POLYMORPHIC_EVENTS) {
+            final String indent = new String(new char[depth]).replace("\0", "  ");
+            final String argString = (arg == null) ? "" : " " + arg;
+            log(String.format(SPLIT_LOG_FORMAT, indent + message + argString, this.toString()));
+        }
     }
 
     private void maybeDump(List<Node> toDump) {
