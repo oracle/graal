@@ -1,13 +1,15 @@
 # :coffee: Espresso
 A Java bytecode interpreter on top of [Truffle](https://github.com/oracle/graal/tree/master/truffle).
 
-**Note:** Work in progress, early PoC.
+**Note:** Espresso is a work in progress.
 
 ### Features
   - Bytecode interpreter passing _100%_ of the JTT bytecode tests
-  - OotB partial evaluation yields _20X_ speedup for a simple prime sieve
+  - Working* PE
   - Uses guest class loaders
   - `.class` file parser
+  - JNI support
+  - Standalone native-image via SVM
 
 ### Not supported/implemented (yet)
   - Threads
@@ -15,44 +17,61 @@ A Java bytecode interpreter on top of [Truffle](https://github.com/oracle/graal/
   - Modules
   - Interop
   - Class/bytecode verification/access-checks/error-reporting
-  - Full Java spec compliance (e.g. class loading and initialization, access checks)  
+  - Full Java spec compliance (e.g. class loading and initialization, access checks)
+  
+Despite these limiations, Espresso can already run `javac` and compile itself.
+It can run a toy web server, Tetris, a ray-tracer written in Scala and much more.
 
-### Run _Espresso_ as a pure interpreter _~60s_
+### _Espresso_ setup
+Espresso needs some tweaks to run; checkout the `mokapot` branch on the graal repo:
 ```bash
-mx espresso -cp mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.TestMain
+cd ../graal
+git checkout mokapot
+```
+Always use the `master` branch on Espresso, `mokapot` on graal (for Espresso ad-hoc patches). 
+
+### Run _Espresso_
+Use `mx espresso` which mimics the `java` (8) command.
+```bash
+mx espresso -help
+mx espresso -cp mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.HelloWorld
+# or just
+mx espresso-playground HelloWorld
 ```
 
-### Java equivalent _~1s_
+### Run _Espresso_ + Truffle PE
 ```bash
-java -cp mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.TestMain
-```
-
-### Run _Espresso_ + Truffle PE _~3s_
-```bash
-mx --dy /compiler --jdk jvmci espresso -cp mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.TestMain
+# Runs a simple prime-sieve
+mx --dy /compiler --jdk jvmci espresso-playground TestMain
 ```
 
 ### Terminal tetris
+`mx espresso-playground` is a handy shortcut to run test programs bundled with Espresso.
 ```bash
 mx espresso-playground Tetris
 ```
 
-### Fast(er) factorial
+### Fast(er?) factorial
+```bash
 mx espresso-playground Fastorial 100
+```
 
-## Dumping IGV graphs
+### Dumping IGV graphs
 ```bash
 mx -v --dy /compiler --jdk jvmci -J"-Dgraal.Dump=:4 -Dgraal.TraceTruffleCompilation=true -Dgraal.TruffleBackgroundCompilation=false" espresso -cp  mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.TestMain
 ```
 
-### Run _Espresso_ tests _~100s_
-Spawn a fresh Context per test class
+### Run _Espresso_ unit tests
+Most unit tests are executed in the same context.
 ```bash
 mx unittest --suite espresso
 ```
 
-### Run _Espresso_ tests _~10s_
-Run all tests within a single context (faster) 
+## _Espresso_ + SVM
 ```bash
-mx unittest --suite espresso -Despresso.test.SingletonContext=true
+# Build Espresso native image
+mx --env espresso.svm build
+export ESPRESSO_NATIVE=`mx --env espresso.svm graalvm-home`/bin/espresso
+time $ESPRESSO_NATIVE -cp mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.HelloWorld
 ```
+The Espresso native image assumes it's part of the GraalVM to derive the boot classpath and other essential parameters needed to boot the VM.
