@@ -169,8 +169,8 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
                 if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplitting)) {
                     currentTarget.removeKnownCallSite(this);
                 }
+                splitTarget.incrementKnownCallSites();
             }
-            splitTarget.incrementKnownCallSites();
             if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplitting)) {
                 splitTarget.addKnownCallNode(this);
             }
