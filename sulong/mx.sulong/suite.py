@@ -421,7 +421,7 @@ suite = {
         "SUITE_CPPFLAGS" : "-I<sulong_include>",
       },
       "dependencies" : [
-        "SULONG_TEST",
+        "SULONG_TEST_SUITES",
       ],
       "testProject" : True,
       "defaultBuild" : False,
