@@ -76,11 +76,15 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
                     }
                     break;
                 case "-version":
-                case "--version":
                     versionAction = VersionAction.PrintAndExit;
                     break;
-                case "--show-version":
+                case "-showversion":
                     versionAction = VersionAction.PrintAndContinue;
+                    break;
+
+                case "-?":
+                case "-help":
+                    unrecognized.add("--help");
                     break;
                 default:
                     if (arg.startsWith("-Xbootclasspath:")) {
@@ -123,9 +127,6 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
                 break;
             }
         }
-        if (mainClassName == null) {
-            throw abort(usage());
-        }
 
         // classpath provenance order:
         // (1) the -cp/-classpath command line option
@@ -159,6 +160,10 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
                "    -classpath <class search path of directories and zip/jar files>" + nl +
                "                  A " + File.pathSeparator + " separated list of directories, JAR archives," + nl +
                "                  and ZIP archives to search for class files." + nl +
+               "    -D<name>=<value>" + nl +
+               "                  set a system property" + nl +
+               "    -version      print product version and exit" + nl +
+               "    -showversion  print product version and contin\n" + nl +
                "    -? -help      print this help message";
         // @formatter:on
     }
@@ -211,7 +216,12 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
 
         int rc = 1;
         try (Context context = contextBuilder.build()) {
+
             runVersionAction(versionAction, context.getEngine());
+
+            if (mainClassName == null) {
+                throw abort(usage());
+            }
 
             try {
                 eval(context);
@@ -253,7 +263,9 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
         // launcher
         options.add("-cp");
         options.add("-classpath");
-        options.add("--version");
-        options.add("--show-version");
+        options.add("-version");
+        options.add("-showversion");
+        options.add("-?");
+        options.add("-help");
     }
 }
