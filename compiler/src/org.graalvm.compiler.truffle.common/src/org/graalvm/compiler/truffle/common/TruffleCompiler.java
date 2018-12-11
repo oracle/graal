@@ -32,6 +32,8 @@ import java.util.Map;
 public interface TruffleCompiler {
     String FIRST_TIER_COMPILATION_SUFFIX = "#1";
     String SECOND_TIER_COMPILATION_SUFFIX = "#2";
+    int FIRST_TIER_INDEX = 1;
+    int LAST_TIER_INDEX = 2;
 
     /**
      * Creates a new, unique compilation identifier for {@code compilable}. Each call results in a

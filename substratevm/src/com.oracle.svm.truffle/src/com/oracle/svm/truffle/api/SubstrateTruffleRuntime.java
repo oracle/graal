@@ -128,9 +128,14 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         assert truffleCompiler == null : "Cannot re-initialize Substrate TruffleCompiler";
         GraalFeature graalFeature = ImageSingletons.lookup(GraalFeature.class);
         SnippetReflectionProvider snippetReflection = graalFeature.getHostedProviders().getSnippetReflection();
-        SubstrateTruffleCompiler compiler = new SubstrateTruffleCompiler(this, graalFeature.getHostedProviders().getGraphBuilderPlugins(), GraalSupport.getSuites(),
+        SubstrateTruffleCompiler compiler = new SubstrateTruffleCompiler(this, graalFeature.getHostedProviders().getGraphBuilderPlugins(),
+                        GraalSupport.getSuites(),
                         GraalSupport.getLIRSuites(),
-                        GraalSupport.getRuntimeConfig().getBackendForNormalMethod(), snippetReflection);
+                        GraalSupport.getRuntimeConfig().getBackendForNormalMethod(),
+                        GraalSupport.getFirstTierSuites(),
+                        GraalSupport.getFirstTierLirSuites(),
+                        GraalSupport.getFirstTierProviders(),
+                        snippetReflection);
         truffleCompiler = compiler;
 
         return compiler;
@@ -154,9 +159,14 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     public SubstrateTruffleCompiler newTruffleCompiler() {
         GraalFeature graalFeature = ImageSingletons.lookup(GraalFeature.class);
         SnippetReflectionProvider snippetReflectionProvider = graalFeature.getHostedProviders().getSnippetReflection();
-        return new SubstrateTruffleCompiler(this, graalFeature.getHostedProviders().getGraphBuilderPlugins(), GraalSupport.getSuites(),
+        return new SubstrateTruffleCompiler(this, graalFeature.getHostedProviders().getGraphBuilderPlugins(),
+                        GraalSupport.getSuites(),
                         GraalSupport.getLIRSuites(),
-                        GraalSupport.getRuntimeConfig().getBackendForNormalMethod(), snippetReflectionProvider);
+                        GraalSupport.getRuntimeConfig().getBackendForNormalMethod(),
+                        GraalSupport.getFirstTierSuites(),
+                        GraalSupport.getFirstTierLirSuites(),
+                        GraalSupport.getFirstTierProviders(),
+                        snippetReflectionProvider);
     }
 
     private void tearDown() {

@@ -37,6 +37,7 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -96,6 +97,7 @@ public class InstalledCodeBuilder {
 
     private final SharedRuntimeMethod method;
     private final SubstrateInstalledCode installedCode;
+    private final int tier;
     private final Map<SharedMethod, InstalledCodeBuilder> allInstalledCode;
     protected Pointer code;
     private final int codeSize;
@@ -169,6 +171,7 @@ public class InstalledCodeBuilder {
                     boolean testTrampolineJumps) {
         this.method = method;
         this.compilation = (SubstrateCompilationResult) compilation;
+        this.tier = compilation.getName().endsWith(TruffleCompiler.FIRST_TIER_COMPILATION_SUFFIX) ? TruffleCompiler.FIRST_TIER_INDEX : TruffleCompiler.LAST_TIER_INDEX;
         this.installedCode = installedCode;
         this.allInstalledCode = allInstalledCode;
         this.testTrampolineJumps = testTrampolineJumps;
@@ -326,7 +329,7 @@ public class InstalledCodeBuilder {
 
             InstalledCodeObserver.InstalledCodeObserverHandle[] observerHandles = InstalledCodeObserverSupport.installObservers(codeObservers, metaInfoAllocator);
 
-            runtimeMethodInfo.setData((CodePointer) code, WordFactory.unsigned(codeSize), installedCode, constantsWalker, metaInfoAllocator, observerHandles);
+            runtimeMethodInfo.setData((CodePointer) code, WordFactory.unsigned(codeSize), installedCode, tier, constantsWalker, metaInfoAllocator, observerHandles);
         } finally {
             metaInfoAllocator.close();
         }
@@ -335,7 +338,6 @@ public class InstalledCodeBuilder {
         VMOperation.enqueueBlockingSafepoint("Install code", () -> {
             try {
                 CodeInfoTable.getRuntimeCodeCache().addMethod(runtimeMethodInfo);
-
                 /*
                  * This call makes the new code visible, i.e., other threads can start executing it
                  * immediately. So all metadata must be registered at this point.
@@ -376,7 +378,7 @@ public class InstalledCodeBuilder {
         assert codeInfoEncoder.verifyMethod(compilation, 0);
 
         DeoptimizationSourcePositionEncoder sourcePositionEncoder = new DeoptimizationSourcePositionEncoder(metaInfoAllocator);
-        sourcePositionEncoder.encode(compilation.getDeoptimzationSourcePositions());
+        sourcePositionEncoder.encode(compilation.getDeoptimizationSourcePositions());
         sourcePositionEncoder.install(runtimeMethodInfo);
     }
 

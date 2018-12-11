@@ -84,6 +84,9 @@ public class GraalSupport {
     private RuntimeConfiguration runtimeConfig;
     private Suites suites;
     private LIRSuites lirSuites;
+    private Suites firstTierSuites;
+    private LIRSuites firstTierLirSuites;
+    private Providers firstTierProviders;
 
     private SubstrateMethod[] methodsToCompile;
     private byte[] graphEncoding;
@@ -135,10 +138,13 @@ public class GraalSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void setRuntimeConfig(RuntimeConfiguration runtimeConfig, Suites suites, LIRSuites lirSuites) {
+    public static void setRuntimeConfig(RuntimeConfiguration runtimeConfig, Suites suites, LIRSuites lirSuites, Suites firstTierSuites, LIRSuites firstTierLirSuites) {
         get().runtimeConfig = runtimeConfig;
         get().suites = suites;
         get().lirSuites = lirSuites;
+        get().firstTierSuites = firstTierSuites;
+        get().firstTierLirSuites = firstTierLirSuites;
+        get().firstTierProviders = runtimeConfig.getBackendForNormalMethod().getProviders();
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -219,6 +225,18 @@ public class GraalSupport {
 
     public static LIRSuites getLIRSuites() {
         return get().lirSuites;
+    }
+
+    public static Suites getFirstTierSuites() {
+        return get().firstTierSuites;
+    }
+
+    public static LIRSuites getFirstTierLirSuites() {
+        return get().firstTierLirSuites;
+    }
+
+    public static Providers getFirstTierProviders() {
+        return get().firstTierProviders;
     }
 
     public static SubstrateMethod[] getMethodsToCompile() {

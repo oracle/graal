@@ -40,6 +40,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
+import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
@@ -61,8 +62,9 @@ public class SubstrateTruffleCompiler extends TruffleCompilerImpl {
     private final String compilerConfigurationName;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public SubstrateTruffleCompiler(TruffleCompilerRuntime runtime, Plugins plugins, Suites suites, LIRSuites lirSuites, Backend backend, SnippetReflectionProvider snippetReflection) {
-        super(runtime, plugins, suites, lirSuites, backend, null, null, null, snippetReflection);
+    public SubstrateTruffleCompiler(TruffleCompilerRuntime runtime, Plugins plugins, Suites suites, LIRSuites lirSuites, Backend backend,
+                    Suites firstTierSuites, LIRSuites firstTierLIRSuites, Providers firstTierProviders, SnippetReflectionProvider snippetReflection) {
+        super(runtime, plugins, suites, lirSuites, backend, firstTierSuites, firstTierLIRSuites, firstTierProviders, snippetReflection);
         compilerConfigurationName = GraalConfiguration.instance().getCompilerConfigurationName();
     }
 
