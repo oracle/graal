@@ -159,9 +159,11 @@ final class GraalTVMCI extends TVMCI {
         return getOrCreateRuntimeData(rootNode, engineDataConstructor);
     }
 
+    final Boolean EXPERIMENTAL_SPLITTING = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplitting);
+
     @Override
     protected void reportPolymorphicSpecialize(Node source) {
-        if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplitting)) {
+        if (EXPERIMENTAL_SPLITTING) {
             TruffleSplittingStrategy.newPolymorphicSpecialize(source);
             final RootNode rootNode = source.getRootNode();
             final OptimizedCallTarget callTarget = rootNode == null ? null : (OptimizedCallTarget) rootNode.getCallTarget();
