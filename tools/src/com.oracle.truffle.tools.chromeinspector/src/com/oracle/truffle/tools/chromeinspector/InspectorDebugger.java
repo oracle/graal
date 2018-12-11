@@ -213,20 +213,27 @@ public final class InspectorDebugger extends DebuggerDomain {
             throw new CommandProcessException("Unknown scriptId: " + scriptId);
         }
         Source source = script.getSource();
-        int o1 = source.getLineStartOffset(start.getLine());
-        if (start.getColumn() > 0) {
-            o1 += start.getColumn() - 1;
+        int l1 = start.getLine();
+        int c1 = start.getColumn();
+        if (c1 <= 0) {
+            c1 = -1;
         }
-        int o2;
-        if (end.getLine() > source.getLineCount()) {
-            o2 = source.getLength();
-        } else {
-            o2 = source.getLineStartOffset(end.getLine());
-            if (end.getColumn() > 0) {
-                o2 += end.getColumn() - 1;
+        int l2;
+        if (source.hasCharacters()) {
+            int lc = source.getLineCount();
+            if (end.getLine() > lc) {
+                l2 = lc;
+            } else {
+                l2 = end.getLine();
             }
+        } else {
+            l2 = end.getLine();
         }
-        SourceSection range = source.createSection(o1, o2 - o1);
+        int c2 = end.getColumn();
+        if (c2 <= 0) {
+            c2 = -1;
+        }
+        SourceSection range = source.createSection(l1, c1, l2, c2);
         Iterable<SourceSection> locations = SuspendableLocationFinder.findSuspendableLocations(range, restrictToFunction, ds, context.getEnv());
         JSONObject json = new JSONObject();
         JSONArray arr = new JSONArray();
@@ -252,7 +259,7 @@ public final class InspectorDebugger extends DebuggerDomain {
             throw new CommandProcessException(nfe.getMessage());
         }
         JSONObject json = new JSONObject();
-        json.put("scriptSource", script.getSource().getCharacters());
+        json.put("scriptSource", script.getCharacters().toString());
         return new Params(json);
     }
 
@@ -721,32 +728,42 @@ public final class InspectorDebugger extends DebuggerDomain {
             jsonParams.put("startLine", 0);
             jsonParams.put("startColumn", 0);
             Source source = script.getSource();
-            int lastLine = source.getLineCount() - 1;
+            int lastLine;
             int lastColumn;
-            if (lastLine < 0) {
-                lastLine = 0;
-                lastColumn = 0;
-            } else {
-                lastColumn = source.getLineLength(lastLine + 1);
-                int srcMapLine = lastLine + 1;
-                CharSequence line;
-                do {
-                    line = source.getCharacters(srcMapLine);
-                    srcMapLine--;
-                    // Node.js wraps source into a function, skip empty lines and end of a function.
-                } while (srcMapLine > 0 && (line.length() == 0 || "});".equals(line)));
-                CharSequence sourceMapURL = (srcMapLine > 0) ? getSourceMapURL(source, srcMapLine) : null;
-                if (sourceMapURL != null) {
-                    jsonParams.put("sourceMapURL", sourceMapURL);
-                    lastLine = srcMapLine - 1;
+            int length;
+            if (source.hasCharacters()) {
+                lastLine = source.getLineCount() - 1;
+                if (lastLine < 0) {
+                    lastLine = 0;
+                    lastColumn = 0;
+                } else {
                     lastColumn = source.getLineLength(lastLine + 1);
+                    int srcMapLine = lastLine + 1;
+                    CharSequence line;
+                    do {
+                        line = source.getCharacters(srcMapLine);
+                        srcMapLine--;
+                        // Node.js wraps source into a function,
+                        // skip empty lines and end of a function.
+                    } while (srcMapLine > 0 && (line.length() == 0 || "});".equals(line)));
+                    CharSequence sourceMapURL = (srcMapLine > 0) ? getSourceMapURL(source, srcMapLine) : null;
+                    if (sourceMapURL != null) {
+                        jsonParams.put("sourceMapURL", sourceMapURL);
+                        lastLine = srcMapLine - 1;
+                        lastColumn = source.getLineLength(lastLine + 1);
+                    }
                 }
+                length = source.getLength();
+            } else {
+                lastLine = 3;
+                lastColumn = 0;
+                length = script.getCharacters().length();
             }
             jsonParams.put("endLine", lastLine);
             jsonParams.put("endColumn", lastColumn);
             jsonParams.put("executionContextId", context.getId());
             jsonParams.put("hash", script.getHash());
-            jsonParams.put("length", source.getLength());
+            jsonParams.put("length", length);
             Params params = new Params(jsonParams);
             Event scriptParsed = new Event("Debugger.scriptParsed", params);
             eventHandler.event(scriptParsed);

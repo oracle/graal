@@ -96,13 +96,11 @@ public final class ScriptsHandler implements LoadSourceListener {
 
     public int assureLoaded(Source sourceLoaded) {
         DebuggerSession ds = debuggerSession;
-        Source source = sourceLoaded;
+        Source sourceResolved = sourceLoaded;
         if (ds != null) {
-            source = ds.resolveSource(sourceLoaded);
+            sourceResolved = ds.resolveSource(sourceLoaded);
         }
-        if (source == null) {
-            return -1;
-        }
+        Source source = (sourceResolved != null) ? sourceResolved : sourceLoaded;
         Script scr;
         URI uri = source.getURI();
         int id;
