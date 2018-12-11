@@ -121,11 +121,11 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     private final List<WeakReference<OptimizedDirectCallNode>> knownCallNodes;
     private boolean needsSplit;
-    private static final Boolean TRACE_POLYMORPHIC_EVENTS = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplittingTraceEvents);
     private static final String SPLIT_LOG_FORMAT = "[truffle] [poly-event] %-70s %s";
-    private static final Integer MAX_PROPAGATION_DEPTH = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplittingMaxPropagationDepth);
-    private static final Boolean EXPERIMENTAL_SPLITTING = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplitting);
-    private static final Boolean DUMP_SPLITTING_DECISIONS = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplittingDumpDecisions);
+    private final Boolean TRACE_POLYMORPHIC_EVENTS = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplittingTraceEvents);
+    private final Integer MAX_PROPAGATION_DEPTH = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplittingMaxPropagationDepth);
+    private final Boolean EXPERIMENTAL_SPLITTING = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplitting);
+    private final Boolean DUMP_SPLITTING_DECISIONS = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplittingDumpDecisions);
 
     public OptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
         assert sourceCallTarget == null || sourceCallTarget.sourceCallTarget == null : "Cannot create a clone of a cloned CallTarget";
