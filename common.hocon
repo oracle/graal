@@ -61,9 +61,6 @@ solaris : ${common} {
 }
 
 darwin : ${common} {
-  environment : {
-    PATH : "/usr/local/bin:$PATH"
-  }
 }
 
 windows : ${common} {
