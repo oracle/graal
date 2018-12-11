@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,33 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.truffle;
+package org.graalvm.compiler.truffle.compiler;
 
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.truffle.common.TruffleCompilation;
 
-import com.oracle.svm.core.graal.code.SubstrateCompilationIdentifier;
-
-public class SubstrateTruffleCompilationIdentifier extends SubstrateCompilationIdentifier implements TruffleCompilationIdentifier {
-
-    private final OptimizedCallTarget optimizedCallTarget;
-
-    public SubstrateTruffleCompilationIdentifier(OptimizedCallTarget optimizedCallTarget) {
-        this.optimizedCallTarget = optimizedCallTarget;
-    }
-
-    @Override
-    protected StringBuilder buildName(StringBuilder sb) {
-        return sb.append(optimizedCallTarget.toString());
-    }
-
-    @Override
-    public CompilableTruffleAST getCompilable() {
-        return optimizedCallTarget;
-    }
-
-    @Override
-    public void close() {
-    }
+public interface TruffleCompilationIdentifier extends CompilationIdentifier, TruffleCompilation {
 }
