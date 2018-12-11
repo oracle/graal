@@ -4505,12 +4505,7 @@ public class BytecodeParser implements GraphBuilderContext {
          */
         if (resolvedField.isSynthetic() && resolvedField.getName().startsWith("$assertionsDisabled")) {
             if (parsingIntrinsic()) {
-                if (parent != null && parent.parsingIntrinsic()) {
-                    frameState.push(field.getJavaKind(), ConstantNode.forBoolean(true, graph));
-                    return;
-                } else {
-                    throw new BytecodeParserError("assertion is not allowed in intrinsic: %s", method.format("%H.%n(%p)"));
-                }
+                throw new BytecodeParserError("Assert statement at %s is silently disabled in the intrinsic context. Consider using ReplacementsUtil.runtimeAssert(..)", method.format("%H.%n(%p)"));
             } else if (graphBuilderConfig.omitAssertions()) {
                 frameState.push(field.getJavaKind(), ConstantNode.forBoolean(true, graph));
                 return;
