@@ -78,7 +78,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 for (String cp : cpArgs.split(File.pathSeparator, Integer.MAX_VALUE)) {
                     /* Conform to `java` command empty cp entry handling. */
                     String cpEntry = cp.isEmpty() ? "." : cp;
-                    nativeImage.addCustomImageClasspath(Paths.get(cpEntry));
+                    nativeImage.addCustomImageClasspath(cpEntry);
                 }
                 return true;
             case "--configurations-path":
@@ -201,7 +201,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             /* Missing Class-Path Attribute is tolerable */
             if (classPath != null) {
                 for (String cp : classPath.split(" +")) {
-                    Path manifestClassPath = Paths.get(cp);
+                    Path manifestClassPath = NativeImage.stringToClasspath(cp);
                     if (!manifestClassPath.isAbsolute()) {
                         /* Resolve relative manifestClassPath against directory containing jar */
                         manifestClassPath = filePath.getParent().resolve(manifestClassPath);
