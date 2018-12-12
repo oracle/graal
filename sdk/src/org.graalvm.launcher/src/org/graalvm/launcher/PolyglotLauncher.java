@@ -187,6 +187,9 @@ public final class PolyglotLauncher extends Launcher {
             } else if (parsePolyglotOption(null, options, arg)) {
                 // nothing to do
             } else if (invalidArgument == null) {
+                // delay the error because in case some language is missing from polyglot and
+                // `--use-launcher` is passed, we would rather fail in `switchToLauncher` than on an
+                // argument for this (unknown) language.
                 invalidArgument = arg;
             }
         }
