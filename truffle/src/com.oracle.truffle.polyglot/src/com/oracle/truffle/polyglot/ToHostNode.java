@@ -72,7 +72,7 @@ abstract class ToHostNode extends Node {
     static final int FUNCTION_PROXY = 2;
     /** Wrap object with members into arbitrary interface proxy. */
     static final int OBJECT_PROXY = 3;
-    /** Lossy conversion to String. */
+    /** Lossy conversion from primitive to String, or String to primitive. */
     static final int COERCE = 4;
     /** Host object to interface proxy conversion. */
     static final int HOST_PROXY = 5;
@@ -83,6 +83,13 @@ abstract class ToHostNode extends Node {
     @Child private Node isNull = Message.IS_NULL.createNode();
     @Child private Node hasKeysNode = Message.HAS_KEYS.createNode();
     @Child private ToHostPrimitiveNode primitive = ToHostPrimitiveNode.create();
+
+    ToHostNode() {
+    }
+
+    public static ToHostNode create() {
+        return ToHostNodeGen.create();
+    }
 
     public abstract Object execute(Object value, Class<?> targetType, Type genericType, PolyglotLanguageContext languageContext);
 
@@ -120,6 +127,9 @@ abstract class ToHostNode extends Node {
             }
         } else if (targetType == String.class && PolyglotImpl.isGuestPrimitive(unboxedValue)) {
             return convertToString(unboxedValue);
+        } else if (isPrimitiveOrBoxedType(targetType) && unboxedValue instanceof String) {
+            assert targetType != char.class && targetType != Character.class;
+            return convertToPrimitiveFromString(targetType, (String) unboxedValue);
         }
         return null;
     }
@@ -168,8 +178,13 @@ abstract class ToHostNode extends Node {
                     return true;
                 }
             }
-        } else if (priority >= COERCE && targetType == String.class && PolyglotImpl.isGuestPrimitive(unboxed)) {
-            return true;
+        } else if (priority >= COERCE) {
+            if (targetType == String.class && PolyglotImpl.isGuestPrimitive(unboxed)) {
+                return true;
+            } else if (isPrimitiveOrBoxedType(targetType) && unboxed instanceof String) {
+                assert targetType != char.class && targetType != Character.class;
+                return convertToPrimitiveFromString(targetType, (String) unboxed) != null;
+            }
         }
         return false;
     }
@@ -246,6 +261,17 @@ abstract class ToHostNode extends Node {
                         clazz == char.class || clazz == Character.class ||
                         clazz == Number.class ||
                         CharSequence.class.isAssignableFrom(clazz);
+    }
+
+    private static boolean isPrimitiveOrBoxedType(Class<?> clazz) {
+        return clazz == int.class || clazz == Integer.class ||
+                        clazz == boolean.class || clazz == Boolean.class ||
+                        clazz == byte.class || clazz == Byte.class ||
+                        clazz == short.class || clazz == Short.class ||
+                        clazz == long.class || clazz == Long.class ||
+                        clazz == float.class || clazz == Float.class ||
+                        clazz == double.class || clazz == Double.class ||
+                        clazz == char.class || clazz == Character.class;
     }
 
     private boolean isExecutable(TruffleObject object) {
@@ -400,8 +426,123 @@ abstract class ToHostNode extends Node {
         return value.toString();
     }
 
-    public static ToHostNode create() {
-        return ToHostNodeGen.create();
+    private static Object convertToPrimitiveFromString(Class<?> targetType, String s) {
+        if (targetType == boolean.class || targetType == Boolean.class) {
+            return parseBooleanOrNull(s);
+        } else if (targetType == int.class || targetType == Integer.class) {
+            return parseIntOrNull(s);
+        } else if (targetType == long.class || targetType == Long.class) {
+            return parseLongOrNull(s);
+        } else if (targetType == double.class || targetType == Double.class) {
+            return parseDoubleOrNull(s);
+        } else if (targetType == float.class || targetType == Float.class) {
+            return parseFloatOrNull(s);
+        } else if (targetType == byte.class || targetType == Byte.class) {
+            return parseByteOrNull(s);
+        } else if (targetType == short.class || targetType == Short.class) {
+            return parseShortOrNull(s);
+        } else {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new IllegalArgumentException(targetType.getName());
+        }
+    }
+
+    @TruffleBoundary
+    private static Boolean parseBooleanOrNull(String s) {
+        if ("true".equals(s)) {
+            return Boolean.TRUE;
+        } else if ("false".equals(s)) {
+            return Boolean.FALSE;
+        } else {
+            return null;
+        }
+    }
+
+    @TruffleBoundary
+    private static Byte parseByteOrNull(String s) {
+        try {
+            return Byte.parseByte(s);
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    @TruffleBoundary
+    private static Short parseShortOrNull(String s) {
+        try {
+            return Short.parseShort(s);
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    @TruffleBoundary
+    private static Integer parseIntOrNull(String s) {
+        try {
+            return Integer.parseInt(s);
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    @TruffleBoundary
+    private static Long parseLongOrNull(String s) {
+        try {
+            return Long.parseLong(s);
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    @TruffleBoundary
+    private static Double parseDoubleOrNull(String s) {
+        try {
+            if (isValidFloatString(s)) {
+                return Double.parseDouble(s);
+            }
+        } catch (NumberFormatException ex) {
+        }
+        return null;
+    }
+
+    @TruffleBoundary
+    private static Float parseFloatOrNull(String s) {
+        try {
+            if (isValidFloatString(s)) {
+                double doubleValue = Double.parseDouble(s);
+                float floatValue = (float) doubleValue;
+                // The value does not fit into float if:
+                // * the float value is zero but the double value is non-zero (too small)
+                // * the float value is infinite but the double value is finite (too large)
+                if ((floatValue != 0.0 || doubleValue == 0.0) && (Float.isFinite(floatValue) || !Double.isFinite(doubleValue))) {
+                    return floatValue;
+                }
+            }
+        } catch (NumberFormatException ex) {
+        }
+        return null;
+    }
+
+    private static boolean isValidFloatString(String s) {
+        if (s.isEmpty()) {
+            return false;
+        }
+        char first = s.charAt(0);
+        char last = s.charAt(s.length() - 1);
+        // Disallow leading or trailing whitespace.
+        if (first <= ' ' || last <= ' ') {
+            return false;
+        }
+        // Disallow float type suffix.
+        switch (last) {
+            case 'D':
+            case 'F':
+            case 'd':
+            case 'f':
+                return false;
+            default:
+                return true;
+        }
     }
 
     static final class TypeAndClass<T> {
