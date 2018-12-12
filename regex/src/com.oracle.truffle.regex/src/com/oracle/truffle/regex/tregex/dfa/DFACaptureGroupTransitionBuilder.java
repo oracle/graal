@@ -88,7 +88,7 @@ public class DFACaptureGroupTransitionBuilder extends DFAStateTransitionBuilder 
     private DFACaptureGroupPartialTransitionNode createPartialTransition(NFAStateSet targetStates, CompilationBuffer compilationBuffer) {
         int numberOfNFAStates = Math.max(getRequiredStates().size(), targetStates.size());
         PartialTransitionDebugInfo partialTransitionDebugInfo = null;
-        if (dfaGen.getLanguageOptions().isDumpAutomata()) {
+        if (dfaGen.getEngineOptions().isDumpAutomata()) {
             partialTransitionDebugInfo = new PartialTransitionDebugInfo(numberOfNFAStates);
         }
         dfaGen.updateMaxNumberOfNFAStatesInOneTransition(numberOfNFAStates);
@@ -103,7 +103,7 @@ public class DFACaptureGroupTransitionBuilder extends DFAStateTransitionBuilder 
             if (targetStates.contains(nfaTransition.getTarget())) {
                 int sourceIndex = getRequiredStates().getStateIndex(nfaTransition.getSource());
                 int targetIndex = targetStates.getStateIndex(nfaTransition.getTarget());
-                if (dfaGen.getLanguageOptions().isDumpAutomata()) {
+                if (dfaGen.getEngineOptions().isDumpAutomata()) {
                     partialTransitionDebugInfo.mapResultToNFATransition(targetIndex, nfaTransition);
                 }
                 assert !(nfaTransition.getTarget().isForwardFinalState()) || targetIndex == DFACaptureGroupPartialTransitionNode.FINAL_STATE_RESULT_INDEX;
@@ -144,7 +144,7 @@ public class DFACaptureGroupTransitionBuilder extends DFAStateTransitionBuilder 
                         indexUpdates.toArray(DFACaptureGroupPartialTransitionNode.EMPTY_INDEX_UPDATES),
                         indexClears.toArray(DFACaptureGroupPartialTransitionNode.EMPTY_INDEX_CLEARS),
                         preReorderFinalStateResultIndex);
-        if (dfaGen.getLanguageOptions().isDumpAutomata()) {
+        if (dfaGen.getEngineOptions().isDumpAutomata()) {
             partialTransitionDebugInfo.node = dfaCaptureGroupPartialTransitionNode;
             dfaGen.registerCGPartialTransitionDebugInfo(partialTransitionDebugInfo);
         }

@@ -33,7 +33,15 @@ import java.util.Arrays;
 public final class RegexOptions {
 
     private static final int U180E_WHITESPACE = 1;
+    public static final String U180E_WHITESPACE_NAME = "U180EWhitespace";
     private static final int REGRESSION_TEST_MODE = 1 << 1;
+    public static final String REGRESSION_TEST_MODE_NAME = "RegressionTestMode";
+    private static final int DUMP_AUTOMATA = 1 << 2;
+    public static final String DUMP_AUTOMATA_NAME = "DumpAutomata";
+    private static final int STEP_EXECUTION = 1 << 3;
+    public static final String STEP_EXECUTION_NAME = "StepExecution";
+    private static final int ALWAYS_EAGER = 1 << 4;
+    public static final String ALWAYS_EAGER_NAME = "AlwaysEager";
 
     public static final RegexOptions DEFAULT = new RegexOptions(0, null);
 
@@ -64,11 +72,20 @@ public final class RegexOptions {
             String key = propValue.substring(0, eqlPos);
             String value = propValue.substring(eqlPos + 1);
             switch (key) {
-                case "U180EWhitespace":
+                case U180E_WHITESPACE_NAME:
                     options = parseBooleanOption(optionsString, options, key, value, U180E_WHITESPACE);
                     break;
-                case "RegressionTestMode":
+                case REGRESSION_TEST_MODE_NAME:
                     options = parseBooleanOption(optionsString, options, key, value, REGRESSION_TEST_MODE);
+                    break;
+                case DUMP_AUTOMATA_NAME:
+                    options = parseBooleanOption(optionsString, options, key, value, DUMP_AUTOMATA);
+                    break;
+                case STEP_EXECUTION_NAME:
+                    options = parseBooleanOption(optionsString, options, key, value, STEP_EXECUTION);
+                    break;
+                case ALWAYS_EAGER_NAME:
+                    options = parseBooleanOption(optionsString, options, key, value, ALWAYS_EAGER);
                     break;
                 case "Flavor":
                     flavor = parseFlavor(optionsString, value);
@@ -122,31 +139,71 @@ public final class RegexOptions {
         return isBitSet(REGRESSION_TEST_MODE);
     }
 
+    /**
+     * Produce ASTs and automata in JSON, DOT (GraphViz) and LaTeX formats.
+     */
+    public boolean isDumpAutomata() {
+        return isBitSet(DUMP_AUTOMATA);
+    }
+
+    /**
+     * Trace the execution of automata in JSON files.
+     */
+    public boolean isStepExecution() {
+        return isBitSet(STEP_EXECUTION);
+    }
+
+    /**
+     * Always match capture groups eagerly.
+     */
+    public boolean isAlwaysEager() {
+        return isBitSet(ALWAYS_EAGER);
+    }
+
     public RegexFlavor getFlavor() {
         return flavor;
     }
 
     @Override
     public int hashCode() {
-        return options;
+        int flavorHash = flavor == null ? 0 : flavor.hashCode();
+        return options + 13 * flavorHash;
     }
 
     @Override
     public boolean equals(Object obj) {
-        return obj == this || obj instanceof RegexOptions && options == ((RegexOptions) obj).options;
+        if (obj == this) {
+            return true;
+        }
+        if (!(obj instanceof RegexOptions)) {
+            return false;
+        }
+        RegexOptions other = (RegexOptions) obj;
+        return this.options == other.options && this.flavor == other.flavor;
     }
 
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
         if (isU180EWhitespace()) {
-            sb.append("U180EWhitespace");
+            sb.append(U180E_WHITESPACE_NAME + "=true,");
         }
         if (isRegressionTestMode()) {
-            if (isU180EWhitespace()) {
-                sb.append(",");
-            }
-            sb.append("RegressionTestMode");
+            sb.append(REGRESSION_TEST_MODE_NAME + "=true,");
+        }
+        if (isDumpAutomata()) {
+            sb.append(DUMP_AUTOMATA_NAME + "=true,");
+        }
+        if (isStepExecution()) {
+            sb.append(STEP_EXECUTION_NAME + "=true,");
+        }
+        if (isAlwaysEager()) {
+            sb.append(ALWAYS_EAGER_NAME + "=true,");
+        }
+        if (flavor == PythonFlavor.STR_INSTANCE) {
+            sb.append("Flavor=PythonStr,");
+        } else if (flavor == PythonFlavor.BYTES_INSTANCE) {
+            sb.append("Flavor=PythonBytes,");
         }
         return sb.toString();
     }
@@ -168,6 +225,21 @@ public final class RegexOptions {
 
         public Builder regressionTestMode(boolean enabled) {
             updateOption(enabled, REGRESSION_TEST_MODE);
+            return this;
+        }
+
+        public Builder dumpAutomata(boolean enabled) {
+            updateOption(enabled, DUMP_AUTOMATA);
+            return this;
+        }
+
+        public Builder stepExecution(boolean enabled) {
+            updateOption(enabled, STEP_EXECUTION);
+            return this;
+        }
+
+        public Builder alwaysEager(boolean enabled) {
+            updateOption(enabled, ALWAYS_EAGER);
             return this;
         }
 

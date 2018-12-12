@@ -58,6 +58,10 @@ import com.oracle.truffle.regex.tregex.TRegexCompiler;
  * treated as whitespace (Unicode versions before 6.3.0)</li>
  * <li>{@code RegressionTestMode}: all compilation is done eagerly, so as to detect errors early
  * during testing</li>
+ * <li>{@code DumpAutomata}: ASTs and automata are dumped in JSON, DOT (GraphViz) and LaTeX formats
+ * </li>
+ * <li>{@code StepExecution}: the execution of automata is traced and logged in JSON files</li>
+ * <li>{@code AlwaysEager}: capture groups are always eagerly matched</li>
  * </ul>
  * <li>{@link RegexCompiler} {@code fallbackCompiler} (optional): an optional {@link RegexCompiler}
  * to be used when compilation by {@link TRegexCompiler}, the native compiler of
