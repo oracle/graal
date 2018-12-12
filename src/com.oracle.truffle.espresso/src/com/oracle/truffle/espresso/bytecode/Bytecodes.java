@@ -31,6 +31,7 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.Flags.FIELD_READ;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.Flags.FIELD_WRITE;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.Flags.INVOKE;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.Flags.LOAD;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.Flags.QUICKENED;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.Flags.STOP;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.Flags.STORE;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.Flags.TRAP;
@@ -252,6 +253,15 @@ public class Bytecodes {
     public static final int JSR_W                = 201; // 0xC9
     public static final int BREAKPOINT           = 202; // 0xCA
 
+    // Espresso quickened bytecodes.
+    public static final int QUICK_INVOKEVIRTUAL   = 203; // 0xCB
+    public static final int QUICK_INVOKESPECIAL   = 204; // 0xCC
+    public static final int QUICK_INVOKESTATIC    = 205; // 0xCD
+    public static final int QUICK_INVOKEINTERFACE = 206; // 0xCE
+    public static final int QUICK_INVOKEDYNAMIC   = 207; // 0xCF
+    public static final int QUICK_CHECKCAST       = 208; // 0xD0
+    public static final int QUICK_INSTANCEOF      = 209; // 0xD1
+
     public static final int ILLEGAL = 255;
     public static final int END = 256;
     // @formatter:on
@@ -325,6 +335,11 @@ public class Bytecodes {
          * Denotes the 4 INVOKE* instructions.
          */
         static final int INVOKE = 0x00001000;
+
+        /**
+         * Denotes Espresso quickened bytecodes.
+         */
+        static final int QUICKENED = 0x00002000;
     }
 
     // Performs a sanity check that none of the flags overlap.
@@ -576,6 +591,15 @@ public class Bytecodes {
         def(GOTO_W              , "goto_w"          , "boooo",  0, STOP | BRANCH);
         def(JSR_W               , "jsr_w"           , "boooo",  0, STOP | BRANCH);
         def(BREAKPOINT          , "breakpoint"      , "b"    ,  0, TRAP);
+
+        // Espresso quickened bytecodes.
+        def(QUICK_INVOKEVIRTUAL   , "qck_invokesvirtual" , "bjj"  ,-1,QUICKENED | TRAP | INVOKE);
+        def(QUICK_INVOKESPECIAL   , "qck_invokespecial"  , "bjj"  ,-1,QUICKENED | TRAP | INVOKE);
+        def(QUICK_INVOKESTATIC    , "qck_invokestatic"   , "bjj"  , 0,QUICKENED | TRAP | INVOKE);
+        def(QUICK_INVOKEINTERFACE , "qck_invokeinterface", "bjja_",-1,QUICKENED | TRAP | INVOKE);
+        def(QUICK_INVOKEDYNAMIC   , "qck_invokedynamic"  , "bjjjj", 0,QUICKENED | TRAP | INVOKE);
+        def(QUICK_CHECKCAST       , "qck_checkcast"      , "bii"  , 0,QUICKENED | TRAP);
+        def(QUICK_INSTANCEOF      , "qck_instanceof"     , "bii"  , 0,QUICKENED | TRAP);
     }
     // @formatter:on
     // Checkstyle: resume
