@@ -125,7 +125,7 @@ public interface OperandStack {
     /**
      * Push a value to the stack. This method follows the JVM spec, where sub-word types (< int) are
      * always treated as int.
-     * 
+     *
      * @param value value to push
      * @param kind kind to push
      */
