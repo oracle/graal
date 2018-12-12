@@ -37,6 +37,7 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotEvalNodeGen.GetSourceFileNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotEvalNodeGen.GetSourceStringNodeGen;
@@ -119,6 +120,13 @@ public abstract class LLVMPolyglotEval extends LLVMIntrinsic {
         CallTarget uncached(String id, String code,
                         @Cached("getContextReference()") ContextReference<LLVMContext> ctxRef) {
             Source sourceObject;
+            Env env = ctxRef.get().getEnv();
+            LanguageInfo lang = env.getLanguages().get(id);
+            if (lang == null) {
+                throw new LLVMPolyglotException(this, "Language '%s' not found.", id);
+            } else if (lang.isInternal()) {
+                throw new LLVMPolyglotException(this, "Access to internal language '%s' is not allowed.", id);
+            }
             if (legacyMimeTypeEval) {
                 String language = Source.findLanguage(id);
                 sourceObject = Source.newBuilder(language, code, "<eval>").mimeType(id).build();

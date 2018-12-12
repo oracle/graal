@@ -48,3 +48,11 @@ bool test_has_member(void *object) {
 void *test_host_interop() {
     return polyglot_java_type("java.math.BigInteger");
 }
+
+void test_eval_no_lang(){
+	polyglot_eval("not_impl_lang", "asdf");
+}
+
+void test_eval_internal_lang(){
+	polyglot_eval("nfi", "asdf");
+}

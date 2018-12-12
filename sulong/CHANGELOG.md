@@ -4,6 +4,7 @@ Changes:
 
 * Stack traces report line numbers even if the original source file can not
   be found.
+* Don't allow `polyglot_eval` for internal languages.
 
 Deprecations:
 
