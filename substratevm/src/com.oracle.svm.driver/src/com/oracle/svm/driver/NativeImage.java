@@ -678,7 +678,11 @@ public class NativeImage {
     private static final String cpWildcardSubstitute = "$JavaCla$$pathWildcard$ubstitute$";
 
     static Path stringToClasspath(String cp) {
-        String[] components = cp.split(Pattern.quote(File.separator), Integer.MAX_VALUE);
+        String separators = Pattern.quote(File.separator);
+        if (System.getProperty("os.name").startsWith("Windows ")) {
+            separators += "/"; /* on Windows also / is accepted as valid separator */
+        }
+        String[] components = cp.split("[" + separators + "]", Integer.MAX_VALUE);
         for (int i = 0; i < components.length; i++) {
             if (components[i].equals("*")) {
                 components[i] = cpWildcardSubstitute;
