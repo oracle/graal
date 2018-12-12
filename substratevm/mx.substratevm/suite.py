@@ -236,26 +236,18 @@ suite = {
             },
         },
 
-        "com.oracle.svm.native.jvmfuncs": {
+        "com.oracle.svm.native.jvm": {
             "subDir": "src",
-            "native": True,
-            "vpath": True,
-            "buildEnv": {
-                "ARCH": "<arch>",
-                "OS": "<os>"
-            },
+            "native": "static_lib",
             "os_arch" : {
                 "windows": {
                     "amd64" : {
-                        "ignore": "windows is not supported",
-                        "results": [
-                            "<os>-<arch>/jvm.lib",
-                        ],
+                        "cflags": ["-MD", "-Zi", "-O2"],
                     },
                 },
                 "<others>": {
                     "<others>": {
-                        "ignore": False,
+                        "ignore": "only windows is supported",
                     },
                 },
             },
@@ -657,7 +649,7 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.native.libchelper",
                 "com.oracle.svm.native.strictmath",
-                # "com.oracle.svm.native.jvmfuncs",
+                "com.oracle.svm.native.jvm",
                 # "com.oracle.svm.libffi"
             ],
             "native": True,
