@@ -50,9 +50,9 @@ void *test_host_interop() {
 }
 
 void test_eval_no_lang(){
-	polyglot_eval("not_impl_lang", "asdf");
+	polyglot_eval("not_impl_lang", "dont_care()");
 }
 
 void test_eval_internal_lang(){
-	polyglot_eval("nfi", "asdf");
+	polyglot_eval("nfi", "dont_care()");
 }
