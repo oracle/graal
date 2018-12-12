@@ -55,6 +55,11 @@ public abstract class SizableInfo extends ElementInfo {
          */
         BYTEARRAY,
         /**
+         * Java object, can be stored in {@link com.oracle.svm.core.c.struct.PinnedObjectField} of
+         * {@link org.graalvm.nativeimage.c.struct.RawStructure} only.
+         */
+        OBJECT,
+        /**
          * Placeholder when type is not known or does not matter.
          */
         UNKNOWN,
@@ -83,20 +88,24 @@ public abstract class SizableInfo extends ElementInfo {
         }
     }
 
-    public ElementKind getKind() {
+    public final ElementKind getKind() {
         return kind;
     }
 
-    public PropertyInfo<Integer> getSizeInfo() {
+    public final PropertyInfo<Integer> getSizeInfo() {
         return sizeInfo;
     }
 
-    public PropertyInfo<SignednessValue> getSignednessInfo() {
+    public final PropertyInfo<SignednessValue> getSignednessInfo() {
         assert signednessInfo != null;
         return signednessInfo;
     }
 
-    public boolean isUnsigned() {
+    public final boolean isUnsigned() {
         return getKind() == ElementKind.POINTER || (getKind() == ElementKind.INTEGER && getSignednessInfo().getProperty() == SignednessValue.UNSIGNED);
+    }
+
+    public final boolean isObject() {
+        return getKind() == ElementKind.OBJECT;
     }
 }
