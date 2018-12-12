@@ -217,6 +217,9 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.POP;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.POP2;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.PUTFIELD;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.PUTSTATIC;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.QUICK_INVOKESPECIAL;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.QUICK_INVOKESTATIC;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.QUICK_INVOKEVIRTUAL;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.RET;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.RETURN;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.SALOAD;
@@ -228,6 +231,7 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.WIDE;
 import static com.oracle.truffle.espresso.meta.Meta.meta;
 
 import java.lang.reflect.Modifier;
+import java.util.Arrays;
 import java.util.function.Supplier;
 
 import com.oracle.truffle.api.CallTarget;
@@ -274,6 +278,8 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.object.DebugCounter;
 
 public class EspressoRootNode extends RootNode implements LinkedNode {
+
+    @Children private InvokeNode[] nodes = new InvokeNode[0];
 
     private final MethodInfo method;
     private final InterpreterToVM vm;
@@ -1007,13 +1013,13 @@ public class EspressoRootNode extends RootNode implements LinkedNode {
                         putField(stack, resolveField(bs.currentBC(curBCI), bs.readCPI(curBCI)), false);
                         break;
                     case INVOKEVIRTUAL:
-                        invokeVirtual(stack, resolveMethod(bs.currentBC(curBCI), bs.readCPI(curBCI)));
+                        quickenAndCallInvokeVirtual(stack, curBCI, resolveMethod(bs.currentBC(curBCI), bs.readCPI(curBCI)));
                         break;
                     case INVOKESPECIAL:
-                        invokeSpecial(stack, resolveMethod(bs.currentBC(curBCI), bs.readCPI(curBCI)));
+                        quickenAndCallInvokeSpecial(stack, curBCI, resolveMethod(bs.currentBC(curBCI), bs.readCPI(curBCI)));
                         break;
                     case INVOKESTATIC:
-                        invokeStatic(stack, resolveMethod(bs.currentBC(curBCI), bs.readCPI(curBCI)));
+                        quickenAndCallInvokeStatic(stack, curBCI, resolveMethod(bs.currentBC(curBCI), bs.readCPI(curBCI)));
                         break;
                     case INVOKEINTERFACE:
                         invokeInterface(stack, resolveInterfaceMethod(bs.currentBC(curBCI), bs.readCPI(curBCI)));
@@ -1079,6 +1085,12 @@ public class EspressoRootNode extends RootNode implements LinkedNode {
                     case INVOKEDYNAMIC:
                         CompilerDirectives.transferToInterpreter();
                         throw new UnsupportedOperationException("invokedynamic not supported.");
+
+                    case QUICK_INVOKESPECIAL:
+                    case QUICK_INVOKESTATIC:
+                    case QUICK_INVOKEVIRTUAL:
+                        nodes[bs.readCPI(curBCI)].invoke(stack);
+                        break;
                 }
             } catch (EspressoException e) {
                 CompilerDirectives.transferToInterpreter();
@@ -1108,6 +1120,46 @@ public class EspressoRootNode extends RootNode implements LinkedNode {
             }
             curBCI = bs.next(curBCI);
         }
+    }
+
+    private char addInvokeNode(InvokeNode node) {
+        nodes = Arrays.copyOf(nodes, nodes.length + 1);
+        int nodeIndex = nodes.length - 1; // latest empty slot
+        nodes[nodeIndex] = insert(node);
+        return (char) nodeIndex;
+    }
+
+    void patchBci(int bci, byte opcode, char cpi) {
+        byte[] code = getMethod().getCode();
+        code[bci] = opcode;
+        code[bci + 1] = (byte) ((cpi >> 8) & 0xFF);
+        code[bci + 2] = (byte) ((cpi) & 0xFF);
+    }
+
+    private void quickenAndCallInvokeStatic(OperandStack stack, int curBCI, MethodInfo resolvedMethod) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        int nodeIndex = addInvokeNode(new InvokeStaticNode(resolvedMethod));
+        patchBci(curBCI, (byte) QUICK_INVOKESTATIC, (char) nodeIndex);
+        nodes[nodeIndex].invoke(stack);
+    }
+
+    private void quickenAndCallInvokeSpecial(OperandStack stack, int curBCI, MethodInfo resolvedMethod) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        int nodeIndex = addInvokeNode(new InvokeSpecialNode(resolvedMethod));
+        patchBci(curBCI, (byte) QUICK_INVOKESPECIAL, (char) nodeIndex);
+        nodes[nodeIndex].invoke(stack);
+    }
+
+    // TODO(peterssen): Remove duplicated methods.
+    private void quickenAndCallInvokeVirtual(OperandStack stack, int curBCI, MethodInfo resolutionSeed) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        if (resolutionSeed.isFinal() || resolutionSeed.getDeclaringClass().isFinalFlagSet()) {
+            quickenAndCallInvokeSpecial(stack, curBCI, resolutionSeed);
+            return;
+        }
+        int nodeIndex = addInvokeNode(InvokeVirtualNodeGen.create(resolutionSeed));
+        patchBci(curBCI, (byte) QUICK_INVOKEVIRTUAL, (char) nodeIndex);
+        nodes[nodeIndex].invoke(stack);
     }
 
     @ExplodeLoop
