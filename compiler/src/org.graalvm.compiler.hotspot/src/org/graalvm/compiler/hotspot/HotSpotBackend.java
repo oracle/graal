@@ -46,6 +46,7 @@ import org.graalvm.compiler.hotspot.nodes.aot.ResolveConstantStubCall;
 import org.graalvm.compiler.hotspot.replacements.AESCryptSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.BigIntegerSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.CipherBlockChainingSubstitutions;
+import org.graalvm.compiler.hotspot.replacements.GHASHSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.SHA2Substitutions;
 import org.graalvm.compiler.hotspot.replacements.SHA5Substitutions;
 import org.graalvm.compiler.hotspot.replacements.SHASubstitutions;
@@ -264,6 +265,18 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     public static void unsafeArraycopy(Word srcAddr, Word dstAddr, Word size) {
         unsafeArraycopyStub(UNSAFE_ARRAYCOPY, srcAddr, dstAddr, size);
     }
+
+    /**
+     * @see GHASHSubstitutions#processBlocks
+     */
+    public static final ForeignCallDescriptor GHASH_PROCESS_BLOCKS = new ForeignCallDescriptor("ghashProcessBlocks", void.class, Word.class, Word.class, Word.class, int.class);
+
+    public static void ghashProcessBlocks(Word stAddr, Word subHAddr, Word dataAddr, int blocks) {
+        ghashProcessBlocks(HotSpotBackend.GHASH_PROCESS_BLOCKS, stAddr, subHAddr, dataAddr, blocks);
+    }
+
+    @NodeIntrinsic(ForeignCallNode.class)
+    private static native void ghashProcessBlocks(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word stAddr, Word subHAddr, Word dataAddr, int blocks);
 
     @NodeIntrinsic(ForeignCallNode.class)
     private static native void unsafeArraycopyStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word srcAddr, Word dstAddr, Word size);

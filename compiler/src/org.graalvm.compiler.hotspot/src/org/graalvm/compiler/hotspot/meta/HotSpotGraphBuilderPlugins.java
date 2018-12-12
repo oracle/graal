@@ -55,6 +55,7 @@ import org.graalvm.compiler.hotspot.replacements.CRC32Substitutions;
 import org.graalvm.compiler.hotspot.replacements.CallSiteTargetNode;
 import org.graalvm.compiler.hotspot.replacements.CipherBlockChainingSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.ClassGetHubNode;
+import org.graalvm.compiler.hotspot.replacements.GHASHSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.HotSpotArraySubstitutions;
 import org.graalvm.compiler.hotspot.replacements.HotSpotClassSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.IdentityHashCodeNode;
@@ -166,6 +167,7 @@ public class HotSpotGraphBuilderPlugins {
                 registerCRC32CPlugins(invocationPlugins, config, replacementBytecodeProvider);
                 registerBigIntegerPlugins(invocationPlugins, config, replacementBytecodeProvider);
                 registerSHAPlugins(invocationPlugins, config, replacementBytecodeProvider);
+                registerGHASHPlugins(invocationPlugins, config, replacementBytecodeProvider);
                 registerUnsafePlugins(invocationPlugins, replacementBytecodeProvider);
                 StandardGraphBuilderPlugins.registerInvocationPlugins(metaAccess, snippetReflection, invocationPlugins, replacementBytecodeProvider, true, false);
                 registerArrayPlugins(invocationPlugins, replacementBytecodeProvider);
@@ -504,6 +506,14 @@ public class HotSpotGraphBuilderPlugins {
             assert config.sha512ImplCompress != 0L;
             Registration r = new Registration(plugins, "sun.security.provider.SHA5", bytecodeProvider);
             r.registerMethodSubstitution(SHA5Substitutions.class, SHA5Substitutions.implCompressName, "implCompress0", Receiver.class, byte[].class, int.class);
+        }
+    }
+
+    private static void registerGHASHPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, BytecodeProvider bytecodeProvider) {
+        if (config.useGHASHIntrinsics()) {
+            assert config.ghashProcessBlocks != 0L;
+            Registration r = new Registration(plugins, "com.sun.crypto.provider.GHASH", bytecodeProvider);
+            r.registerMethodSubstitution(GHASHSubstitutions.class, GHASHSubstitutions.processBlocksName, "processBlocks", byte[].class, int.class, int.class, long[].class, long[].class);
         }
     }
 
