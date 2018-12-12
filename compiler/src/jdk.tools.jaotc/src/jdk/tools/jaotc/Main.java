@@ -90,9 +90,8 @@ public final class Main {
     }
 
     /**
-     * Exapnds '@file' in command line arguments by replacing '@file' with
-     * the content of 'file' parsed by StringTokenizer. '@' character can be
-     * quoted as '@@'.
+     * Expands '@file' in command line arguments by replacing '@file' with the content of 'file'
+     * parsed by StringTokenizer. '@' character can be quoted as '@@'.
      */
     private static String[] parse(String[] args) throws IOException {
         List<String> result = new ArrayList<>();
@@ -103,10 +102,7 @@ public final class Main {
                     result.add(v);
                 } else {
                     try (Stream<String> file = Files.lines(Paths.get(v))) {
-                        file.map(StringTokenizer::new).
-                             map(Collections::list).
-                             flatMap(l -> l.stream().map(o -> (String) o)).
-                             forEachOrdered(result::add);
+                        file.map(StringTokenizer::new).map(Collections::list).flatMap(l -> l.stream().map(o -> (String) o)).forEachOrdered(result::add);
                     }
                 }
             } else {
@@ -115,7 +111,6 @@ public final class Main {
         }
         return result.toArray(String[]::new);
     }
-
 
     private int run(String[] args) {
         log = new PrintWriter(System.out);
