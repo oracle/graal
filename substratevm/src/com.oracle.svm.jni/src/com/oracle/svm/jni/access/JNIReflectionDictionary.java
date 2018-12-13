@@ -194,7 +194,7 @@ public final class JNIReflectionDictionary {
         if (field == null && isStatic) {
             field = findSuperinterfaceField(clazz, name);
         }
-        if (field == null) {
+        if (field == null && clazz.getSuperclass() != null) {
             field = findField(clazz.getSuperclass(), name, isStatic);
         }
         return field;
