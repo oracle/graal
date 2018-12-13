@@ -270,6 +270,7 @@ import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.BytecodeDisassembler;
@@ -2529,10 +2530,20 @@ public class BytecodeParser implements GraphBuilderContext {
 
     protected void genReturn(ValueNode returnVal, JavaKind returnKind) {
         if (parsingIntrinsic() && returnVal != null) {
+
             if (returnVal instanceof StateSplit) {
                 StateSplit stateSplit = (StateSplit) returnVal;
                 FrameState stateAfter = stateSplit.stateAfter();
-                if (stateSplit.hasSideEffect()) {
+                boolean hasSideEffect = stateSplit.hasSideEffect();
+                if (hasSideEffect && stateSplit instanceof Invoke) {
+                    Invoke invoke = (Invoke) stateSplit;
+                    ResolvedJavaMethod targetMethod = invoke.getTargetMethod();
+                    if (targetMethod != null && (targetMethod.getAnnotation(Fold.class) != null || targetMethod.getAnnotation(Node.NodeIntrinsic.class) != null)) {
+                        hasSideEffect = false;
+                        stateAfter = null;
+                    }
+                }
+                if (hasSideEffect) {
                     assert stateSplit != null;
                     if (stateAfter.bci == BytecodeFrame.AFTER_BCI) {
                         assert stateAfter.usages().count() == 1;
