@@ -51,46 +51,6 @@ public final class StaticObjectArray extends StaticObject {
         return this.<T[]> unwrap()[index];
     }
 
-    public boolean getBoolean(int index) {
-        // CompilerAsserts.neverPartOfCompilation();
-        return this.<boolean[]> unwrap()[index];
-    }
-
-    public byte getByte(int index) {
-        // CompilerAsserts.neverPartOfCompilation();
-        return this.<byte[]> unwrap()[index];
-    }
-
-    public char getChar(int index) {
-        // CompilerAsserts.neverPartOfCompilation();
-        return this.<char[]> unwrap()[index];
-    }
-
-    public short getShort(int index) {
-        // CompilerAsserts.neverPartOfCompilation();
-        return this.<short[]> unwrap()[index];
-    }
-
-    public int getInt(int index) {
-        // CompilerAsserts.neverPartOfCompilation();
-        return this.<int[]> unwrap()[index];
-    }
-
-    public long getLong(int index) {
-        // CompilerAsserts.neverPartOfCompilation();
-        return this.<long[]> unwrap()[index];
-    }
-
-    public float getFloat(int index) {
-        // CompilerAsserts.neverPartOfCompilation();
-        return this.<float[]> unwrap()[index];
-    }
-
-    public double getDouble(int index) {
-        // CompilerAsserts.neverPartOfCompilation();
-        return this.<double[]> unwrap()[index];
-    }
-
     public int length() {
         return Array.getLength(array);
     }
@@ -103,7 +63,6 @@ public final class StaticObjectArray extends StaticObject {
     // region wrappers
 
     public static StaticObjectArray wrap(StaticObject[] array) {
-        assert array != null;
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
         return new StaticObjectArray(meta.OBJECT.array().rawKlass(), array);
     }
