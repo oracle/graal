@@ -264,6 +264,11 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
     Variable emitArrayEquals(JavaKind kind, Value array1, Value array2, Value length, int constantLength, boolean directPointers);
 
     @SuppressWarnings("unused")
+    default Variable emitArrayEquals(JavaKind kind1, JavaKind kind2, Value array1, Value array2, Value length, int constantLength, boolean directPointers) {
+        throw GraalError.unimplemented("Array.equals with different types substitution is not implemented on this architecture");
+    }
+
+    @SuppressWarnings("unused")
     default Variable emitArrayIndexOf(JavaKind kind, boolean findTwoConsecutive, Value sourcePointer, Value sourceCount, Value... searchValues) {
         throw GraalError.unimplemented("String.indexOf substitution is not implemented on this architecture");
     }
