@@ -36,20 +36,19 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 
-public class StaticObjectImpl implements StaticObject {
+public class StaticObjectImpl extends StaticObject {
     private Map<String, Object> hiddenFields;
-    private final Klass klass;
 
     private final Object[] fields;
 
     public StaticObjectImpl(Klass klass, Map<String, Object> hiddenFields, Object[] fields) {
-        this.klass = klass;
+        super(klass);
         this.hiddenFields = hiddenFields;
         this.fields = fields;
     }
 
     public boolean isStatic() {
-        return this == klass.getStatics();
+        return this == getKlass().getStatics();
     }
 
     // Shallow copy.
@@ -63,8 +62,8 @@ public class StaticObjectImpl implements StaticObject {
     }
 
     public StaticObjectImpl(ObjectKlass klass, boolean isStatic) {
+        super(klass);
         assert !isStatic || klass.isInitialized();
-        this.klass = klass;
         this.hiddenFields = null;
         this.fields = isStatic ? new Object[klass.getStaticFieldSlots()] : new Object[klass.getInstanceFieldSlots()];
         FieldInfo[] allFields = isStatic ? klass.getStaticFields() : klass.getInstanceFields(true);
@@ -73,7 +72,7 @@ public class StaticObjectImpl implements StaticObject {
         }
     }
 
-    public Object getField(FieldInfo field) {
+    public final Object getField(FieldInfo field) {
         // TODO(peterssen): Klass check
         Object result = fields[field.getSlot()];
         assert result != null;
@@ -85,12 +84,12 @@ public class StaticObjectImpl implements StaticObject {
     public String toString() {
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
         if (getKlass() == meta.STRING.rawKlass()) {
-            return Meta.toHost((StaticObject) meta(this).method("toString", String.class).invokeDirect());
+            return Meta.toHostString((StaticObject) meta(this).method("toString", String.class).invokeDirect());
         }
         return getKlass().getName();
     }
 
-    public void setField(FieldInfo field, Object value) {
+    public final void setField(FieldInfo field, Object value) {
         // TODO(peterssen): Klass check
         fields[field.getSlot()] = value;
     }
@@ -109,11 +108,6 @@ public class StaticObjectImpl implements StaticObject {
             return null;
         }
         return hiddenFields.get(name);
-    }
-
-    @Override
-    public Klass getKlass() {
-        return klass;
     }
 
     @Override
