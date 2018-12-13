@@ -27,7 +27,6 @@ import static com.oracle.truffle.espresso.meta.Meta.meta;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
-import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -300,68 +299,69 @@ public class InterpreterToVM {
 
     // region Get (array) operations
 
-    public int getArrayInt(int index, Object arr) {
+    public int getArrayInt(int index, StaticObject arr) {
         try {
-            return ((int[]) arr)[index];
+            return (((StaticObjectArray) arr).<int[]>unwrap())[index];
         } catch (ArrayIndexOutOfBoundsException e) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayIndexOutOfBoundsException.class, e.getMessage());
         }
     }
 
-    public Object getArrayObject(int index, Object arr) {
+    public StaticObject getArrayObject(int index, StaticObject arr) {
         try {
-            return ((StaticObjectArray) arr).getWrapped()[index];
+            return (((StaticObjectArray) arr).<StaticObject[]>unwrap())[index];
         } catch (ArrayIndexOutOfBoundsException e) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayIndexOutOfBoundsException.class, e.getMessage());
         }
     }
 
-    public long getArrayLong(int index, Object arr) {
+    public long getArrayLong(int index, StaticObject arr) {
         try {
-            return ((long[]) arr)[index];
+            return (((StaticObjectArray) arr).<long[]>unwrap())[index];
         } catch (ArrayIndexOutOfBoundsException e) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayIndexOutOfBoundsException.class, e.getMessage());
         }
     }
 
-    public float getArrayFloat(int index, Object arr) {
+    public float getArrayFloat(int index, StaticObject arr) {
         try {
-            return ((float[]) arr)[index];
+            return (((StaticObjectArray) arr).<float[]>unwrap())[index];
         } catch (ArrayIndexOutOfBoundsException e) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayIndexOutOfBoundsException.class, e.getMessage());
         }
     }
 
-    public double getArrayDouble(int index, Object arr) {
+    public double getArrayDouble(int index, StaticObject arr) {
         try {
-            return ((double[]) arr)[index];
+            return (((StaticObjectArray) arr).<double[]>unwrap())[index];
         } catch (ArrayIndexOutOfBoundsException e) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayIndexOutOfBoundsException.class, e.getMessage());
         }
     }
 
-    public byte getArrayByte(int index, Object arr) {
+    public byte getArrayByte(int index, StaticObject arr) {
+        Object raw = ((StaticObjectArray) arr).unwrap();
         try {
-            if (arr instanceof boolean[]) {
-                return (byte) (((boolean[]) arr)[index] ? 1 : 0);
+            if (raw instanceof boolean[]) {
+                return (byte) (((boolean[]) raw)[index] ? 1 : 0);
             }
-            return ((byte[]) arr)[index];
+            return ((byte[]) raw)[index];
         } catch (ArrayIndexOutOfBoundsException e) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayIndexOutOfBoundsException.class, e.getMessage());
         }
     }
 
-    public char getArrayChar(int index, Object arr) {
+    public char getArrayChar(int index, StaticObject arr) {
         try {
-            return ((char[]) arr)[index];
+            return (((StaticObjectArray) arr).<char[]>unwrap())[index];
         } catch (ArrayIndexOutOfBoundsException e) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayIndexOutOfBoundsException.class, e.getMessage());
         }
     }
 
-    public short getArrayShort(int index, Object arr) {
+    public short getArrayShort(int index, StaticObject arr) {
         try {
-            return ((short[]) arr)[index];
+            return (((StaticObjectArray) arr).<short[]>unwrap())[index];
         } catch (ArrayIndexOutOfBoundsException e) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayIndexOutOfBoundsException.class, e.getMessage());
         }
@@ -369,69 +369,70 @@ public class InterpreterToVM {
     // endregion
 
     // region Set (array) operations
-    public void setArrayInt(int value, int index, Object arr) {
+    public void setArrayInt(int value, int index, StaticObject arr) {
         try {
-            ((int[]) arr)[index] = value;
+            (((StaticObjectArray) arr).<int[]>unwrap())[index] = value;
         } catch (ArrayIndexOutOfBoundsException e) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayIndexOutOfBoundsException.class, e.getMessage());
         }
     }
 
-    public void setArrayLong(long value, int index, Object arr) {
+    public void setArrayLong(long value, int index, StaticObject arr) {
         try {
-            ((long[]) arr)[index] = value;
+            (((StaticObjectArray) arr).<long[]>unwrap())[index] = value;
         } catch (ArrayIndexOutOfBoundsException e) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayIndexOutOfBoundsException.class, e.getMessage());
         }
     }
 
-    public void setArrayFloat(float value, int index, Object arr) {
+    public void setArrayFloat(float value, int index, StaticObject arr) {
         try {
-            ((float[]) arr)[index] = value;
+            (((StaticObjectArray) arr).<float[]>unwrap())[index] = value;
         } catch (ArrayIndexOutOfBoundsException e) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayIndexOutOfBoundsException.class, e.getMessage());
         }
     }
 
-    public void setArrayDouble(double value, int index, Object arr) {
+    public void setArrayDouble(double value, int index, StaticObject arr) {
         try {
-            ((double[]) arr)[index] = value;
+            (((StaticObjectArray) arr).<double[]>unwrap())[index] = value;
         } catch (ArrayIndexOutOfBoundsException e) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayIndexOutOfBoundsException.class, e.getMessage());
         }
     }
 
-    public void setArrayByte(byte value, int index, Object arr) {
+    public void setArrayByte(byte value, int index, StaticObject arr) {
+        Object raw = ((StaticObjectArray) arr).unwrap();
         try {
-            if (arr instanceof boolean[]) {
+            if (raw instanceof boolean[]) {
                 assert value == 0 || value == 1;
-                ((boolean[]) arr)[index] = (value != 0);
+                ((boolean[]) raw)[index] = (value != 0);
             } else {
-                ((byte[]) arr)[index] = value;
+                ((byte[]) raw)[index] = value;
             }
         } catch (ArrayIndexOutOfBoundsException e) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayIndexOutOfBoundsException.class, e.getMessage());
         }
     }
 
-    public void setArrayChar(char value, int index, Object arr) {
+    public void setArrayChar(char value, int index, StaticObject arr) {
         try {
-            ((char[]) arr)[index] = value;
+            (((StaticObjectArray) arr).<char[]>unwrap())[index] = value;
         } catch (ArrayIndexOutOfBoundsException e) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayIndexOutOfBoundsException.class, e.getMessage());
         }
     }
 
-    public void setArrayShort(short value, int index, Object arr) {
+    public void setArrayShort(short value, int index, StaticObject arr) {
         try {
-            ((short[]) arr)[index] = value;
+            (((StaticObjectArray) arr).<short[]>unwrap())[index] = value;
         } catch (ArrayIndexOutOfBoundsException e) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ArrayIndexOutOfBoundsException.class, e.getMessage());
         }
     }
 
-    public void setArrayObject(Object value, int index, StaticObjectArray wrapper) {
-        Object[] array = wrapper.getWrapped();
+    public void setArrayObject(StaticObject value, int index, StaticObjectArray wrapper) {
+        Object[] array = wrapper.unwrap();
         if (index >= 0 && index < array.length) {
             array[index] = arrayStoreExCheck(value, wrapper.getKlass().getComponentType());
         } else {
@@ -439,7 +440,7 @@ public class InterpreterToVM {
         }
     }
 
-    private Object arrayStoreExCheck(Object value, Klass componentType) {
+    private Object arrayStoreExCheck(StaticObject value, Klass componentType) {
         if (StaticObject.isNull(value) || instanceOf(value, componentType)) {
             return value;
         } else {
@@ -502,9 +503,9 @@ public class InterpreterToVM {
         return (double) ((StaticObjectImpl) obj).getField(field);
     }
 
-    public Object getFieldObject(StaticObject obj, FieldInfo field) {
+    public StaticObject getFieldObject(StaticObject obj, FieldInfo field) {
         assert field.getKind() == JavaKind.Object;
-        return ((StaticObjectImpl) obj).getField(field);
+        return (StaticObject) ((StaticObjectImpl) obj).getField(field);
     }
 
     public char getFieldChar(StaticObject obj, FieldInfo field) {
@@ -552,20 +553,20 @@ public class InterpreterToVM {
         ((StaticObjectImpl) obj).setField(field, value);
     }
 
-    public void setFieldObject(Object value, StaticObject obj, FieldInfo field) {
+    public void setFieldObject(StaticObject value, StaticObject obj, FieldInfo field) {
         assert field.getKind() == JavaKind.Object;
         ((StaticObjectImpl) obj).setField(field, value);
     }
 
-    public StaticObject newArray(Klass componentType, int length) {
+    public StaticObjectArray newArray(Klass componentType, int length) {
         if (length < 0) {
             throw componentType.getContext().getMeta().throwEx(NegativeArraySizeException.class);
         }
         assert !componentType.isPrimitive() : "use allocateNativeArray for primitives";
         assert length >= 0;
-        Object[] arr = new Object[length];
+        StaticObject[] arr = new StaticObject[length];
         Arrays.fill(arr, StaticObject.NULL);
-        return new StaticObjectArray(componentType, arr);
+        return new StaticObjectArray(componentType.getArrayClass(), arr);
     }
 
     public StaticObject newMultiArray(Klass klass, int[] dimensions) {
@@ -581,7 +582,7 @@ public class InterpreterToVM {
             assert dimensions[0] >= 0;
             if (componentType.getComponentType().isPrimitive()) {
                 return (StaticObject) meta(componentType).allocateArray(dimensions[0],
-                                i -> allocateNativeArray((byte) componentType.getComponentType().getJavaKind().getBasicType(), dimensions[1]));
+                                i -> allocatePrimitiveArray((byte) componentType.getComponentType().getJavaKind().getBasicType(), dimensions[1]));
             }
             return (StaticObject) meta(componentType).allocateArray(dimensions[0], i -> newArray(componentType.getComponentType(), dimensions[1]));
         } else {
@@ -590,29 +591,30 @@ public class InterpreterToVM {
         }
     }
 
-    public static Object allocateNativeArray(byte jvmPrimitiveType, int length) {
+    public static StaticObjectArray allocatePrimitiveArray(byte jvmPrimitiveType, int length) {
         // the constants for the cpi are loosely defined and no real cpi indices.
         if (length < 0) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(NegativeArraySizeException.class);
         }
         switch (jvmPrimitiveType) {
             case 4:
-                return new boolean[length];
+                return StaticObjectArray.wrap(new boolean[length]);
             case 5:
-                return new char[length];
+                return StaticObjectArray.wrap(new char[length]);
             case 6:
-                return new float[length];
+                return StaticObjectArray.wrap(new float[length]);
             case 7:
-                return new double[length];
+                return StaticObjectArray.wrap(new double[length]);
             case 8:
-                return new byte[length];
+                return StaticObjectArray.wrap(new byte[length]);
             case 9:
-                return new short[length];
+                return StaticObjectArray.wrap(new short[length]);
             case 10:
-                return new int[length];
+                return StaticObjectArray.wrap(new int[length]);
             case 11:
-                return new long[length];
+                return StaticObjectArray.wrap(new long[length]);
             default:
+                CompilerDirectives.transferToInterpreter();
                 throw EspressoError.shouldNotReachHere();
         }
     }
@@ -626,16 +628,15 @@ public class InterpreterToVM {
      * Cloneable >1 Object[] - java.io.Serializable >1 Object[] - If P is a primitive type, then:
      * Object >1 P[] Cloneable >1 P[] java.io.Serializable >1 P[]
      */
-    public boolean instanceOf(Object instance, Klass typeToCheck) {
-        assert instance != null : "use StaticObject.NULL";
+    @CompilerDirectives.TruffleBoundary
+    public boolean instanceOf(StaticObject instance, Klass typeToCheck) {
         if (StaticObject.isNull(instance)) {
             return false;
         }
-        Meta meta = meta(typeToCheck).getMeta();
-        return meta(typeToCheck).isAssignableFrom(meta.meta(instance));
+        return meta(typeToCheck).isAssignableFrom(meta(instance.getKlass()));
     }
 
-    public Object checkCast(Object instance, Klass klass) {
+    public StaticObject checkCast(StaticObject instance, Klass klass) {
         if (StaticObject.isNull(instance) || instanceOf(instance, klass)) {
             return instance;
         }
@@ -644,18 +645,12 @@ public class InterpreterToVM {
     }
 
     public StaticObject newObject(Klass klass) {
-        assert klass != null && !klass.isArray();
+        assert klass != null && !klass.isArray() && !klass.isPrimitive() && !klass.isAbstract();
         klass.initialize();
         return new StaticObjectImpl((ObjectKlass) klass);
     }
 
-    public int arrayLength(Object arr) {
-        if (arr instanceof StaticObjectArray) {
-            return ((StaticObjectArray) arr).getWrapped().length;
-        } else {
-            assert arr.getClass().isArray();
-            // Primitive arrays are shared in the guest/host.
-            return Array.getLength(arr);
-        }
+    public int arrayLength(StaticObject arr) {
+        return ((StaticObjectArray) arr).length();
     }
 }
