@@ -1,7 +1,7 @@
 package com.oracle.truffle.espresso.meta;
 
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObjectWrapper;
+import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 
 /**
  * Miscellaneous collection of utility methods used by {@code jdk.vm.ci.meta} and its clients.
@@ -144,12 +144,12 @@ public class MetaUtil {
         return obj.getClass().getName() + "@" + System.identityHashCode(obj);
     }
 
-    public static Object unwrap(Object object) {
+    public static Object unwrap(StaticObject object) {
         if (StaticObject.isNull(object)) {
             return null;
         }
-        if (object instanceof StaticObjectWrapper) {
-            return ((StaticObjectWrapper) object).getWrapped();
+        if (object instanceof StaticObjectArray) {
+            return ((StaticObjectArray) object).unwrap();
         }
         return object;
     }
