@@ -26,18 +26,23 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.impl.MethodInfo;
+import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.types.SignatureDescriptor;
 
 public interface OperandStack {
 
     List<FrameSlotKind> KIND_VALUES = Collections.unmodifiableList(Arrays.asList(FrameSlotKind.values()));
 
-    int stackIndex();
-
     void popVoid(int slots);
 
-    void pushObject(Object value);
+    void pushObject(StaticObject value);
 
     void pushReturnAddress(int bci);
 
@@ -49,7 +54,7 @@ public interface OperandStack {
 
     void pushDouble(double value);
 
-    Object popObject();
+    StaticObject popObject();
 
     int popInt();
 
@@ -75,5 +80,74 @@ public interface OperandStack {
 
     void clear();
 
-    Object peekReceiver(MethodInfo method);
+    StaticObject peekReceiver(MethodInfo method);
+
+    @ExplodeLoop
+    default Object[] popArguments(boolean hasReceiver, SignatureDescriptor signature) {
+        // TODO(peterssen): Check parameter count.
+        int argCount = signature.getParameterCount(false);
+
+        int extraParam = hasReceiver ? 1 : 0;
+        Object[] arguments = new Object[argCount + extraParam];
+
+        CompilerAsserts.partialEvaluationConstant(argCount);
+        CompilerAsserts.partialEvaluationConstant(signature);
+        CompilerAsserts.partialEvaluationConstant(hasReceiver);
+
+        for (int i = argCount - 1; i >= 0; --i) {
+            JavaKind expectedKind = signature.getParameterKind(i);
+            // @formatter:off
+            // Checkstyle: stop
+            switch (expectedKind) {
+                case Boolean : arguments[i + extraParam] = (popInt() != 0);  break;
+                case Byte    : arguments[i + extraParam] = (byte) popInt();  break;
+                case Short   : arguments[i + extraParam] = (short) popInt(); break;
+                case Char    : arguments[i + extraParam] = (char) popInt();  break;
+                case Int     : arguments[i + extraParam] = popInt();         break;
+                case Float   : arguments[i + extraParam] = popFloat();       break;
+                case Long    : arguments[i + extraParam] = popLong();        break;
+                case Double  : arguments[i + extraParam] = popDouble();      break;
+                case Object  : arguments[i + extraParam] = popObject();      break;
+                case Void    : // fall through
+                case Illegal :
+                    CompilerDirectives.transferToInterpreter();
+                    throw EspressoError.shouldNotReachHere();
+            }
+            // @formatter:on
+            // Checkstyle: resume
+        }
+        if (hasReceiver) {
+            arguments[0] = popObject();
+        }
+        return arguments;
+    }
+
+    /**
+     * Push a value to the stack. This method follows the JVM spec, where sub-word types (< int) are
+     * always treated as int.
+     * 
+     * @param value value to push
+     * @param kind kind to push
+     */
+    default void pushKind(Object value, JavaKind kind) {
+        // @formatter:off
+        // Checkstyle: stop
+        switch (kind) {
+            case Boolean : pushInt(((boolean) value) ? 1 : 0); break;
+            case Byte    : pushInt((byte) value);              break;
+            case Short   : pushInt((short) value);             break;
+            case Char    : pushInt((char) value);              break;
+            case Int     : pushInt((int) value);               break;
+            case Float   : pushFloat((float) value);           break;
+            case Long    : pushLong((long) value);             break;
+            case Double  : pushDouble((double) value);         break;
+            case Object  : pushObject((StaticObject) value);   break;
+            case Void    : /* ignore */                        break;
+            default :
+                CompilerDirectives.transferToInterpreter();
+                throw EspressoError.shouldNotReachHere();
+        }
+        // @formatter:on
+        // Checkstyle: resume
+    }
 }

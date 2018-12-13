@@ -51,21 +51,14 @@ public final class DualStack implements OperandStack {
 
     // region Operand stack operations
 
-    @Override
-    public int stackIndex() {
-        return stackSize;
-    }
-
     public void popVoid(int slots) {
         assert slots == 1 || slots == 2;
         stackSize -= slots;
         assert stackSize >= 0;
     }
 
-    public void pushObject(Object value) {
+    public void pushObject(StaticObject value) {
         assert value != null;
-        assert isEspressoReference(value);
-        assert !(value instanceof ReturnAddress) : "use pushReturnAddress";
         stackTag[stackSize] = (byte) FrameSlotKind.Object.ordinal();
         stack[stackSize++] = value;
     }
@@ -116,12 +109,12 @@ public final class DualStack implements OperandStack {
         return KIND_VALUES.get(stackTag[stackSize - 1]);
     }
 
-    public Object popObject() {
+    public StaticObject popObject() {
         assert peekTag() == FrameSlotKind.Object;
         Object top = stack[--stackSize];
         assert top != null : "Use StaticObject.NULL";
         assert isEspressoReference(top);
-        return top;
+        return (StaticObject) top;
     }
 
     public int popInt() {
@@ -358,12 +351,12 @@ public final class DualStack implements OperandStack {
     }
 
     @Override
-    public Object peekReceiver(MethodInfo method) {
+    public StaticObject peekReceiver(MethodInfo method) {
         assert !Modifier.isStatic(method.getModifiers());
         int slots = method.getSignature().getNumberOfSlotsForParameters();
         Object receiver = stack[stackSize - slots - 1];
         assert isEspressoReference(receiver);
-        return receiver;
+        return (StaticObject) receiver;
     }
 
     public void clear() {
