@@ -75,6 +75,7 @@ import com.oracle.svm.driver.MacroOption.EnabledOption;
 import com.oracle.svm.driver.MacroOption.MacroOptionKind;
 import com.oracle.svm.driver.MacroOption.Registry;
 import com.oracle.svm.graal.hosted.GraalFeature;
+import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.image.AbstractBootImage.NativeImageKind;
 import com.oracle.svm.hosted.substitute.DeclarativeSubstitutionProcessor;
@@ -675,32 +676,6 @@ public class NativeImage {
         }
     }
 
-    private static final String cpWildcardSubstitute = "$JavaCla$$pathWildcard$ubstitute$";
-
-    static Path stringToClasspath(String cp) {
-        String separators = Pattern.quote(File.separator);
-        if (System.getProperty("os.name").startsWith("Windows ")) {
-            separators += "/"; /* on Windows also / is accepted as valid separator */
-        }
-        String[] components = cp.split("[" + separators + "]", Integer.MAX_VALUE);
-        for (int i = 0; i < components.length; i++) {
-            if (components[i].equals("*")) {
-                components[i] = cpWildcardSubstitute;
-            }
-        }
-        return Paths.get(String.join(File.separator, components));
-    }
-
-    static String classpathToString(Path cp) {
-        String[] components = cp.toString().split(Pattern.quote(File.separator), Integer.MAX_VALUE);
-        for (int i = 0; i < components.length; i++) {
-            if (components[i].equals(cpWildcardSubstitute)) {
-                components[i] = "*";
-            }
-        }
-        return String.join(File.separator, components);
-    }
-
     private void processClasspathNativeImageProperties(Path classpathEntry) {
         try {
             if (Files.isDirectory(classpathEntry)) {
@@ -708,7 +683,7 @@ public class NativeImage {
                 processNativeImageProperties(nativeImageMetaInfBase);
             } else {
                 List<Path> jarFileMatches;
-                if (classpathEntry.endsWith(cpWildcardSubstitute)) {
+                if (classpathEntry.endsWith(ImageClassLoader.cpWildcardSubstitute)) {
                     jarFileMatches = Files.list(classpathEntry.getParent())
                                     .filter(p -> p.getFileName().toString().toLowerCase().endsWith(".jar"))
                                     .collect(Collectors.toList());
@@ -725,7 +700,7 @@ public class NativeImage {
                 }
             }
         } catch (IOException e) {
-            throw showError("Invalid classpath entry " + classpathToString(classpathEntry), e);
+            throw showError("Invalid classpath entry " + ImageClassLoader.classpathToString(classpathEntry), e);
         }
     }
 
@@ -923,7 +898,7 @@ public class NativeImage {
             command.addAll(Arrays.asList("-watchpid", "" + ProcessProperties.getProcessID()));
         }
         command.addAll(imageArgs);
-        command.addAll(Arrays.asList("-imagecp", imagecp.stream().map(NativeImage::classpathToString).collect(Collectors.joining(File.pathSeparator))));
+        command.addAll(Arrays.asList("-imagecp", imagecp.stream().map(ImageClassLoader::classpathToString).collect(Collectors.joining(File.pathSeparator))));
 
         showVerboseMessage(isVerbose() || dryRun, "Executing [");
         showVerboseMessage(isVerbose() || dryRun, command.stream().collect(Collectors.joining(" \\\n")));
@@ -972,24 +947,24 @@ public class NativeImage {
 
     Path canonicalize(Path path) {
         Path absolutePath = path.isAbsolute() ? path : config.getWorkingDirectory().resolve(path);
-        boolean hasWildcard = absolutePath.endsWith(cpWildcardSubstitute);
+        boolean hasWildcard = absolutePath.endsWith(ImageClassLoader.cpWildcardSubstitute);
         if (hasWildcard) {
             absolutePath = absolutePath.getParent();
         }
         try {
             Path realPath = absolutePath.toRealPath(LinkOption.NOFOLLOW_LINKS);
             if (!Files.isReadable(realPath)) {
-                showError("Path entry " + classpathToString(path) + " is not readable");
+                showError("Path entry " + ImageClassLoader.classpathToString(path) + " is not readable");
             }
             if (hasWildcard) {
                 if (!Files.isDirectory(realPath)) {
-                    showError("Path entry with wildcard " + classpathToString(path) + " is not a directory");
+                    showError("Path entry with wildcard " + ImageClassLoader.classpathToString(path) + " is not a directory");
                 }
-                realPath = realPath.resolve(cpWildcardSubstitute);
+                realPath = realPath.resolve(ImageClassLoader.cpWildcardSubstitute);
             }
             return realPath;
         } catch (IOException e) {
-            throw showError("Invalid Path entry " + classpathToString(path), e);
+            throw showError("Invalid Path entry " + ImageClassLoader.classpathToString(path), e);
         }
     }
 
@@ -1052,7 +1027,7 @@ public class NativeImage {
     }
 
     void addCustomImageClasspath(String classpath) {
-        addCustomImageClasspath(stringToClasspath(classpath));
+        addCustomImageClasspath(ImageClassLoader.stringToClasspath(classpath));
     }
 
     void addCustomImageClasspath(Path classpath) {

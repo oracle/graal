@@ -54,6 +54,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -71,6 +72,7 @@ public final class ImageClassLoader {
     private static final String CLASS_EXTENSION = ".class";
     private static final int CLASS_EXTENSION_LENGTH = CLASS_EXTENSION.length();
     private static final int CLASS_LOADING_TIMEOUT_IN_MINUTES = 10;
+    public static final String cpWildcardSubstitute = "$JavaCla$$pathWildcard$ubstitute$";
 
     static {
         /*
@@ -120,6 +122,30 @@ public final class ImageClassLoader {
         }
     }
 
+    public static Path stringToClasspath(String cp) {
+        String separators = Pattern.quote(File.separator);
+        if (System.getProperty("os.name").startsWith("Windows ")) {
+            separators += "/"; /* on Windows also / is accepted as valid separator */
+        }
+        String[] components = cp.split("[" + separators + "]", Integer.MAX_VALUE);
+        for (int i = 0; i < components.length; i++) {
+            if (components[i].equals("*")) {
+                components[i] = cpWildcardSubstitute;
+            }
+        }
+        return Paths.get(String.join(File.separator, components));
+    }
+
+    public static String classpathToString(Path cp) {
+        String[] components = cp.toString().split(Pattern.quote(File.separator), Integer.MAX_VALUE);
+        for (int i = 0; i < components.length; i++) {
+            if (components[i].equals(cpWildcardSubstitute)) {
+                components[i] = "*";
+            }
+        }
+        return String.join(File.separator, components);
+    }
+
     private void initAllClasses() {
         final ForkJoinPool executor = new ForkJoinPool(Runtime.getRuntime().availableProcessors());
 
@@ -134,9 +160,13 @@ public final class ImageClassLoader {
     }
 
     static Stream<Path> toClassPathEntries(String classPathEntry) {
-        Path entry = Paths.get(classPathEntry);
-        if (entry.getFileName() != null && entry.getFileName().toString().endsWith("*")) {
-            return Arrays.stream(entry.getParent().toFile().listFiles()).filter(File::isFile).map(File::toPath);
+        Path entry = stringToClasspath(classPathEntry);
+        if (entry.endsWith(cpWildcardSubstitute)) {
+            try {
+                return Files.list(entry.getParent()).filter(Files::isRegularFile);
+            } catch (IOException e) {
+                return Stream.empty();
+            }
         }
         if (Files.isReadable(entry)) {
             return Stream.of(entry);
