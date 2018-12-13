@@ -47,6 +47,7 @@ class GraalVm(mx_benchmark.OutputCapturingJavaVm):
         self._config_name = config_name
         self.extra_java_args = extra_java_args or []
         self.extra_launcher_args = extra_launcher_args or []
+        self.debug_args = mx.java_debug_args() if config_name == "jvm" else []
 
     def name(self):
         return self._name
@@ -55,10 +56,12 @@ class GraalVm(mx_benchmark.OutputCapturingJavaVm):
         return self._config_name
 
     def post_process_command_line_args(self, args):
-        return self.extra_java_args + args
+        return self.extra_java_args + self.debug_args + args
 
     def post_process_launcher_command_line_args(self, args):
-        return self.extra_launcher_args + args
+        return self.extra_launcher_args + \
+               ['--jvm.' + x[1:] if x.startswith('-X') else x for x in self.debug_args] + \
+               args
 
     def dimensions(self, cwd, args, code, out):
         return {}
