@@ -23,8 +23,6 @@
 
 package com.oracle.truffle.espresso.intrinsics;
 
-import static com.oracle.truffle.espresso.meta.Meta.meta;
-
 import java.io.IOException;
 import java.util.Arrays;
 
@@ -36,12 +34,10 @@ import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 public class Target_java_lang_Runtime {
     // TODO(peterssen): This a hack to be able to spawn processes without going down to UNIXProcess.
     @Intrinsic(hasReceiver = true)
-    public static @Type(Process.class) Object exec(StaticObject self, @Type(String[].class) StaticObject cmdarray) {
-        Meta meta = meta(self).getMeta();
-        Object[] wrapped = ((StaticObjectArray) cmdarray).getWrapped();
+    public static @Type(Process.class) Object exec(@SuppressWarnings("unused") StaticObject self, @Type(String[].class) StaticObject cmdarray) {
+        StaticObject[] wrapped = ((StaticObjectArray) cmdarray).unwrap();
         String[] hostArgs = new String[wrapped.length];
-        Arrays.setAll(hostArgs, i -> meta.toHost(wrapped[i]));
-
+        Arrays.setAll(hostArgs, i -> Meta.toHostString(wrapped[i]));
         try {
             Runtime.getRuntime().exec(hostArgs);
         } catch (IOException e) {

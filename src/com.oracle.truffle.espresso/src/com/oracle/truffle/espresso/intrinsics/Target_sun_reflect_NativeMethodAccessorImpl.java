@@ -13,7 +13,7 @@ import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 @EspressoIntrinsics
 public class Target_sun_reflect_NativeMethodAccessorImpl {
     @Intrinsic
-    public static Object invoke0(@Type(Method.class) StaticObject method, Object receiver, @Type(Object[].class) StaticObject args) {
+    public static Object invoke0(@Type(Method.class) StaticObject method, @Type(Object.class) StaticObject receiver, @Type(Object[].class) StaticObject args) {
         StaticObject curMethod = method;
         MethodInfo target = null;
         while (target == null) {
@@ -27,6 +27,6 @@ public class Target_sun_reflect_NativeMethodAccessorImpl {
         return m.invokeDirect(receiver,
                         StaticObject.isNull(args)
                                         ? new Object[0]
-                                        : ((StaticObjectArray) args).getWrapped());
+                                        : ((StaticObjectArray) args).unwrap());
     }
 }
