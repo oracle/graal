@@ -405,7 +405,7 @@ public class Target_java_lang_Class {
                             .knownKlass(sun.reflect.ConstantPool.class) //
                             .metaNew().fields(Meta.Field.set("constantPoolOop", self)) //
                             .getInstance();
-            
+
         }
         return StaticObject.NULL;
     }

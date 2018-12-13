@@ -876,7 +876,8 @@ public class JniEnv extends NativeEnv {
     }
 
     @JniImpl
-    public @Type(Object.class) StaticObject CallNonvirtualtualObjectMethodVarargs(@Type(Object.class) StaticObject receiver, @Type(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
+    public @Type(Object.class) StaticObject CallNonvirtualtualObjectMethodVarargs(@Type(Object.class) StaticObject receiver, @Type(Class.class) StaticObject clazz, long methodHandle,
+                    long varargsPtr) {
         Meta.Method method = meta(methodIds.getObject(methodHandle));
         assert (((StaticObjectClass) clazz).getMirror()) == method.getDeclaringClass().rawKlass();
         return (StaticObject) method.invoke(receiver, popVarArgs(varargsPtr, method.getParameterTypes()));
@@ -972,7 +973,7 @@ public class JniEnv extends NativeEnv {
     @JniImpl
     public void GetCharArrayRegion(@Type(char[].class) StaticObject array, int start, int len, long bufPtr) {
         CharBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Char).asCharBuffer();
-        buf.put(((StaticObjectArray) array).<char[]>unwrap(), start, len);
+        buf.put(((StaticObjectArray) array).<char[]> unwrap(), start, len);
     }
 
     @JniImpl
@@ -1027,7 +1028,7 @@ public class JniEnv extends NativeEnv {
     @JniImpl
     public void SetCharArrayRegion(@Type(char[].class) StaticObject array, int start, int len, long bufPtr) {
         CharBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Char).asCharBuffer();
-        buf.get(((StaticObjectArray) array).<char[]>unwrap(), start, len);
+        buf.get(((StaticObjectArray) array).<char[]> unwrap(), start, len);
     }
 
     @JniImpl
@@ -1489,7 +1490,7 @@ public class JniEnv extends NativeEnv {
     public void GetStringRegion(@Type(String.class) StaticObject str, int start, int len, long bufPtr) {
         StaticObjectArray chars = (StaticObjectArray) meta(str).declaredField("value").get();
         CharBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Char).asCharBuffer();
-        buf.put(chars.<char[]>unwrap(), start, len);
+        buf.put(chars.<char[]> unwrap(), start, len);
     }
 
     private static String nfiSignature(String signature, boolean isJni) {

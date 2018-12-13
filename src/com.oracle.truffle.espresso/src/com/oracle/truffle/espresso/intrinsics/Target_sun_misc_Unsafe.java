@@ -262,7 +262,8 @@ public class Target_sun_misc_Unsafe {
     }
 
     @Intrinsic(hasReceiver = true)
-    public static void copyMemory(@SuppressWarnings("unused") Object self, @Type(Object.class) StaticObject srcBase, long srcOffset, @Type(Object.class) StaticObject destBase, long destOffset, long bytes) {
+    public static void copyMemory(@SuppressWarnings("unused") Object self, @Type(Object.class) StaticObject srcBase, long srcOffset, @Type(Object.class) StaticObject destBase, long destOffset,
+                    long bytes) {
         if (bytes == 0) {
             return;
         }

@@ -508,7 +508,7 @@ public class VM extends NativeEnv {
         if (StaticObject.isNull(backtrace)) {
             return 0;
         }
-        return ((FrameInstance[])((StaticObjectImpl) backtrace).getHiddenField("$$frames")).length;
+        return ((FrameInstance[]) ((StaticObjectImpl) backtrace).getHiddenField("$$frames")).length;
     }
 
     @VmImpl
@@ -517,7 +517,7 @@ public class VM extends NativeEnv {
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
         StaticObject ste = meta.knownKlass(StackTraceElement.class).allocateInstance();
         StaticObject backtrace = (StaticObject) meta.THROWABLE.declaredField("backtrace").get(self);
-        FrameInstance[] frames = ((FrameInstance[])((StaticObjectImpl) backtrace).getHiddenField("$$frames"));
+        FrameInstance[] frames = ((FrameInstance[]) ((StaticObjectImpl) backtrace).getHiddenField("$$frames"));
 
         FrameInstance frame = frames[index];
 
