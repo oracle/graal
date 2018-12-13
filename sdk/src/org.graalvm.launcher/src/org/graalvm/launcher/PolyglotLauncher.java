@@ -130,6 +130,7 @@ public final class PolyglotLauncher extends Launcher {
         boolean shell = false;
         boolean eval = false;
         boolean file = false;
+        String invalidArgument = null;
         while (i < arguments.size()) {
             String arg = arguments.get(i++);
             if (eval) {
@@ -185,9 +186,15 @@ public final class PolyglotLauncher extends Launcher {
                 mainLanguage = arguments.get(i++);
             } else if (parsePolyglotOption(null, options, arg)) {
                 // nothing to do
-            } else {
-                throw abortInvalidArgument(arg, "Unrecognized argument: " + arg + ". Use --help for usage instructions.");
+            } else if (invalidArgument == null) {
+                // delay the error because in case some language is missing from polyglot and
+                // `--use-launcher` is passed, we would rather fail in `switchToLauncher` than on an
+                // argument for this (unknown) language.
+                invalidArgument = arg;
             }
+        }
+        if (invalidArgument != null) {
+            throw abortInvalidArgument(invalidArgument, "Unrecognized argument: " + invalidArgument + ". Use --help for usage instructions.");
         }
         String[] programArgs = arguments.subList(i, arguments.size()).toArray(new String[arguments.size() - i]);
         if (runPolyglotAction()) {
@@ -246,7 +253,7 @@ public final class PolyglotLauncher extends Launcher {
         if (isAOT()) {
             launcherClass = AOT_LAUNCHER_CLASSES.get(launcherName);
             if (launcherClass == null) {
-                throw abort("Could not find class '" + launcherName + "'.\nYou might need to rebuild the polyglot launcher.");
+                throw abort("Could not find class '" + launcherName + "'.\nYou might need to rebuild the polyglot launcher with 'gu rebuild-images polyglot'.");
             }
         } else {
             launcherClass = getLauncherClass(launcherName);
@@ -256,7 +263,7 @@ public final class PolyglotLauncher extends Launcher {
             launcher.setPolyglot(true);
             launcher.launch(args, options, false);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to instanciate launcher class " + launcherName, e);
+            throw new RuntimeException("Failed to instantiate launcher class " + launcherName, e);
         }
     }
 
@@ -296,7 +303,7 @@ public final class PolyglotLauncher extends Launcher {
 
     AbortException abort(PolyglotException e) {
         if (e.isInternalError()) {
-            System.err.println("Internal error occured: " + e.toString());
+            System.err.println("Internal error occurred: " + e.toString());
             if (verbose) {
                 e.printStackTrace(System.err);
             } else {
