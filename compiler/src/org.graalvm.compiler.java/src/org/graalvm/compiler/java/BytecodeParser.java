@@ -2544,7 +2544,7 @@ public class BytecodeParser implements GraphBuilderContext {
                             // This should only occur when Fold and NodeIntrinsic plugins are
                             // deferred. Their return value might not be a Java type and in that
                             // case this can't be the final AFTER_BCI so just create a FrameState
-                            // without a return value on the top of stakc.
+                            // without a return value on the top of stack.
                             assert stateSplit instanceof Invoke;
                             ResolvedJavaMethod targetMethod = ((Invoke) stateSplit).getTargetMethod();
                             assert targetMethod != null && (targetMethod.getAnnotation(Fold.class) != null || targetMethod.getAnnotation(Node.NodeIntrinsic.class) != null);
