@@ -128,12 +128,12 @@ public class SymbolicSnippetEncoder extends DelegatingReplacements {
 
     /**
      * A mapping from the method substitution method to the original method name. The string key and
-     * values are produced using {@link #methodString(ResolvedJavaMethod)}.
+     * values are produced using {@link #methodKey(ResolvedJavaMethod)}.
      */
     private final Map<String, String> originalMethods = new ConcurrentHashMap<>();
 
     /**
-     * The current count of graph encoded. Used to detect when new graphs have been enqueued for
+     * The current count of graphs encoded. Used to detect when new graphs have been enqueued for
      * encoding.
      */
     int encodedGraphs = 0;
@@ -229,7 +229,7 @@ public class SymbolicSnippetEncoder extends DelegatingReplacements {
      * Generate a String name for a method including all type information. Used as a symbolic key
      * for lookup.
      */
-    private static String methodString(ResolvedJavaMethod method) {
+    private static String methodKey(ResolvedJavaMethod method) {
         return method.format("%f %H.%n(%P)");
     }
 
@@ -298,7 +298,7 @@ public class SymbolicSnippetEncoder extends DelegatingReplacements {
             }
 
             EncodedGraph encodedGraph = new SymbolicEncodedGraph(snippetEncoding, startOffset, snippetObjects, snippetNodeClasses, method.getDeclaringClass(),
-                            originalMethods.get(methodString(method)));
+                            originalMethods.get(methodKey(method)));
             try (DebugContext debug = replacements.openDebugContext("SVMSnippet_", method)) {
                 StructuredGraph result = new StructuredGraph.Builder(options, debug).method(method).setIsSubstitution(true).build();
                 PEGraphDecoder graphDecoder = new PEGraphDecoder(
@@ -340,7 +340,7 @@ public class SymbolicSnippetEncoder extends DelegatingReplacements {
         StructuredGraph getEncodedSnippet(ResolvedJavaMethod method, ReplacementsImpl replacements, Object[] args) {
             Integer startOffset = null;
             if (snippetStartOffsets != null) {
-                startOffset = snippetStartOffsets.get(methodString(method));
+                startOffset = snippetStartOffsets.get(methodKey(method));
             }
             if (startOffset == null) {
                 if (IS_IN_NATIVE_IMAGE) {
@@ -351,7 +351,7 @@ public class SymbolicSnippetEncoder extends DelegatingReplacements {
             }
 
             SymbolicEncodedGraph encodedGraph = new SymbolicEncodedGraph(snippetEncoding, startOffset, snippetObjects, snippetNodeClasses, method.getDeclaringClass(),
-                            originalMethods.get(methodString(method)));
+                            originalMethods.get(methodKey(method)));
             return decodeSnippetGraph(encodedGraph, method, replacements, args, HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getTarget().arch);
         }
 
@@ -511,12 +511,12 @@ public class SymbolicSnippetEncoder extends DelegatingReplacements {
     public void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition) {
         if (IS_BUILDING_NATIVE_IMAGE || UseEncodedSnippets.getValue(getOptions())) {
             assert method.getAnnotation(Snippet.class) != null : "Snippet must be annotated with @" + Snippet.class.getSimpleName();
-            String key = methodString(method);
+            String key = methodKey(method);
             if (!preparedSnippetGraphs.containsKey(key)) {
                 StructuredGraph snippet = buildGraph(method, original, receiver, true, trackNodeSourcePosition);
                 snippetMethods.add(method);
                 if (original != null) {
-                    originalMethods.put(key, methodString(original));
+                    originalMethods.put(key, methodKey(original));
                 }
                 preparedSnippetGraphs.put(key, snippet);
             }
@@ -599,7 +599,7 @@ public class SymbolicSnippetEncoder extends DelegatingReplacements {
 
         @Override
         public boolean isCallToOriginal(ResolvedJavaMethod callTarget) {
-            if (originalMethod != null && originalMethod.equals(methodString(callTarget))) {
+            if (originalMethod != null && originalMethod.equals(methodKey(callTarget))) {
                 return true;
             }
             return super.isCallToOriginal(callTarget);
@@ -607,7 +607,7 @@ public class SymbolicSnippetEncoder extends DelegatingReplacements {
     }
 
     /**
-     * Symbolic reference to an object which can retrieved from
+     * Symbolic reference to an object which can be retrieved from
      * {@link GraalRuntime#getCapability(Class)}.
      */
     static class GraalCapability {
@@ -655,7 +655,7 @@ public class SymbolicSnippetEncoder extends DelegatingReplacements {
                     return method;
                 }
             }
-            throw new InternalError();
+            throw new InternalError("Could not resolve " + this + " in context of " + accessingClass.toJavaName());
         }
     }
 
@@ -684,7 +684,7 @@ public class SymbolicSnippetEncoder extends DelegatingReplacements {
                     }
                 }
             }
-            throw new InternalError(toString());
+            throw new InternalError("Could not resolve " + this + " in context of " + accessingClass.toJavaName());
         }
 
         @Override

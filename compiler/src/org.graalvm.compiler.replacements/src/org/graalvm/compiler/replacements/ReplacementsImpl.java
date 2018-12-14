@@ -83,6 +83,7 @@ import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
@@ -103,7 +104,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
 
     public static class Options {
         // @formatter:off
-        @Option(help = "")
+        @Option(help = "This is a testing option to exercise the SymbolicSnippetEncoder", type = OptionType.Expert)
         public static final OptionKey<Boolean> UseEncodedSnippets = new OptionKey<>(false);
         // @formatter:on
     }

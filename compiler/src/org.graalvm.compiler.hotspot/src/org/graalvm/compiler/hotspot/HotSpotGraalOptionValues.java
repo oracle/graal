@@ -39,11 +39,11 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionsParser;
 
-import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.common.InitTimer;
+import jdk.vm.ci.common.NativeImageReinitialize;
 
 /**
- * The {@link #defaultOptions()} methods returns the options values initialized in a HotSpot VM. The
+ * The {@link #defaultOptions()} method returns the options values initialized in a HotSpot VM. The
  * values are set via system properties with the {@value #GRAAL_OPTION_PROPERTY_PREFIX} prefix.
  */
 public class HotSpotGraalOptionValues {
