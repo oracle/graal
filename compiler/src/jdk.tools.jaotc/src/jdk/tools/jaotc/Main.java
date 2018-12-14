@@ -96,7 +96,7 @@ public final class Main {
     private static String[] parse(String[] args) throws IOException {
         List<String> result = new ArrayList<>();
         for (String arg : args) {
-            if (arg.length() > 2 && arg.charAt(0) == '@') {
+            if (arg.length() > 1 && arg.charAt(0) == '@') {
                 String v = arg.substring(1);
                 if (v.charAt(0) == '@') {
                     result.add(v);
