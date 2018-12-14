@@ -69,7 +69,7 @@ public abstract class SLReadPropertyNode extends SLExpressionNode {
     static final int LIBRARY_LIMIT = 3;
 
     @Specialization(guards = "arrays.isArray(receiver)", limit = "LIBRARY_LIMIT")
-    protected Object write(Object receiver, Object index,
+    protected Object writeArray(Object receiver, Object index,
                     @CachedLibrary("receiver") InteropLibrary arrays,
                     @CachedLibrary("index") InteropLibrary numbers) {
         try {
@@ -81,7 +81,7 @@ public abstract class SLReadPropertyNode extends SLExpressionNode {
     }
 
     @Specialization(guards = "objects.isObject(receiver)", limit = "LIBRARY_LIMIT")
-    protected Object write(Object receiver, Object name,
+    protected Object writeObject(Object receiver, Object name,
                     @CachedLibrary("receiver") InteropLibrary objects,
                     @Cached SLToMemberNode asMember) {
         try {

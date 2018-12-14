@@ -43,13 +43,13 @@ package com.oracle.truffle.dsl.processor.model;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
-import javax.lang.model.element.Element;
-import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
@@ -57,10 +57,6 @@ import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
-import com.oracle.truffle.dsl.processor.java.model.CodeElement;
-import com.oracle.truffle.dsl.processor.java.model.GeneratedElement;
-import com.oracle.truffle.dsl.processor.library.ExportMessageElement;
-import com.oracle.truffle.dsl.processor.model.MessageContainer.Message;
 import com.oracle.truffle.dsl.processor.model.NodeChildData.Cardinality;
 
 public class NodeData extends Template implements Comparable<NodeData> {
@@ -91,6 +87,7 @@ public class NodeData extends Template implements Comparable<NodeData> {
     private boolean isNodeBound;
     private boolean generateUncached;
     private Set<String> allowedCheckedExceptions;
+    private Map<CacheExpression, String> sharedCaches = Collections.emptyMap();
 
     public NodeData(ProcessorContext context, TypeElement type, TypeSystemData typeSystem, boolean generateFactory) {
         super(context, type, null);
@@ -102,6 +99,14 @@ public class NodeData extends Template implements Comparable<NodeData> {
         this.thisExecution = new NodeExecutionData(new NodeChildData(null, null, "this", getNodeType(), getNodeType(), null, Cardinality.ONE, null), -1, -1);
         this.thisExecution.getChild().setNode(this);
         this.generateFactory = generateFactory;
+    }
+
+    public Map<CacheExpression, String> getSharedCaches() {
+        return sharedCaches;
+    }
+
+    public void setSharedCaches(Map<CacheExpression, String> sharedCaches) {
+        this.sharedCaches = sharedCaches;
     }
 
     public NodeData(ProcessorContext context, TypeElement type) {

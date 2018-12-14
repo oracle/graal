@@ -42,6 +42,7 @@ package com.oracle.truffle.api.library.test.examples;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -50,7 +51,6 @@ import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.test.examples.ArrayDemoFactory.SumVectorNodeGen;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.BranchProfile;
 
 /**
  * Shows:
@@ -77,7 +77,7 @@ public class ArrayDemo {
     @ExportLibrary(VectorLibrary.class)
     public static final class IntSequence {
 
-        private final int start;
+        final int start;
         private final int stride;
         private final int length;
 
@@ -88,7 +88,7 @@ public class ArrayDemo {
         }
 
         @ExportMessage
-        int readVector(int index) {
+        int readVector(int index, @Shared("myGroup") @Cached("this.start") int cachedStart) {
             if (index < 0 && index >= length) {
                 CompilerDirectives.transferToInterpreter();
                 throw new ArrayIndexOutOfBoundsException();
@@ -97,10 +97,9 @@ public class ArrayDemo {
         }
 
         @ExportMessage
-        int getVectorLength() {
+        int getVectorLength(@Shared("myGroup") @Cached("this.start") int cachedStart) {
             return length;
         }
-
     }
 
     @ExportLibrary(VectorLibrary.class)

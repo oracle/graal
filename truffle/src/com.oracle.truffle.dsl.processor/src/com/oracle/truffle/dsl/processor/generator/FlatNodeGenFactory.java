@@ -200,7 +200,7 @@ public class FlatNodeGenFactory {
     private final boolean needsLocking;
 
     public FlatNodeGenFactory(ProcessorContext context, NodeData node, Map<String, CodeVariableElement> libraryConstants) {
-        this(context, node, Arrays.asList(node), Collections.emptyMap(), libraryConstants);
+        this(context, node, Arrays.asList(node), node.getSharedCaches(), libraryConstants);
     }
 
     public FlatNodeGenFactory(ProcessorContext context, NodeData node,
@@ -218,6 +218,7 @@ public class FlatNodeGenFactory {
         this.reachableSpecializationsArray = reachableSpecializations.toArray(new SpecializationData[0]);
         this.primaryNode = stateSharingNodes.iterator().next() == node;
         this.sharedCaches = sharedCaches;
+
         List<Object> stateObjects = new ArrayList<>();
         List<SpecializationData> excludeObjects = new ArrayList<>();
         for (NodeData stateNode : stateSharingNodes) {

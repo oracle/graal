@@ -45,7 +45,6 @@ import org.junit.Test;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess.StandardFactory;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -89,7 +88,7 @@ public final class FaultyMRTest {
         }
     }
 
-    private static final class FaultyMRTestObject2Factory implements StandardFactory {
+    private static final class FaultyMRTestObject2Factory implements com.oracle.truffle.api.interop.ForeignAccess.StandardFactory {
 
         // this provides a faulty class to the ForeignAccess
         private static final com.oracle.truffle.api.interop.ForeignAccess INSTANCE = com.oracle.truffle.api.interop.ForeignAccess.create(FaultyMRTestObject.class, new FaultyMRTestObject2Factory());

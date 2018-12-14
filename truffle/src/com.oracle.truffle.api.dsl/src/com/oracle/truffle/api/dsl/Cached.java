@@ -40,14 +40,14 @@
  */
 package com.oracle.truffle.api.dsl;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.nodes.Node;
-
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.nodes.Node;
 
 // Workaround for Eclipse formatter behaving different when running on JDK 9.
 // @formatter:off
@@ -287,5 +287,22 @@ public @interface Cached {
      * Specifies the bindings used for the $parameters variable in cached or uncached initializers.
      */
     String[] parameters() default {};
+
+    @Retention(RetentionPolicy.CLASS)
+    @Target({ElementType.PARAMETER})
+    public @interface Shared {
+
+        /**
+         * Sharing group.
+         */
+        String value();
+
+    }
+
+    @Retention(RetentionPolicy.CLASS)
+    @Target({ElementType.PARAMETER, ElementType.METHOD, ElementType.TYPE})
+    public @interface Exclusive {
+
+    }
 
 }

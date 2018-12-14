@@ -392,7 +392,9 @@ public class CachedTest {
     static class TestMultipleCaches extends ValueNode {
 
         @Specialization
-        static int do1(int value, @Cached("value") int cachedValue1, @Cached("value") int cachedValue2) {
+        static int do1(int value,
+                        @Cached("value") int cachedValue1,
+                        @Cached("value") int cachedValue2) {
             return cachedValue1 + cachedValue2;
         }
 

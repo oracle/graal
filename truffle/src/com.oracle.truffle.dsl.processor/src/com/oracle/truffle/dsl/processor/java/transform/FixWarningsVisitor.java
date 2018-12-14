@@ -52,6 +52,7 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
@@ -64,22 +65,23 @@ public class FixWarningsVisitor extends CodeElementScanner<Void, Void> {
 
     private final Set<String> symbolsUsed = new HashSet<>();
 
-    private final DeclaredType suppressWarnings;
     private final DeclaredType overrideType;
 
-    private Set<String> ignoredWarnings = new HashSet<>();
+    private final Element generatedBy;
+    private Set<String> suppressedWarnings = new HashSet<>();
     private boolean computeSymbols = false;
+    private boolean seenDeprecatedType = false;
 
-    public FixWarningsVisitor(DeclaredType suppressWarnings, DeclaredType overrideType) {
-        this.suppressWarnings = suppressWarnings;
+    public FixWarningsVisitor(Element generatedBy, DeclaredType overrideType) {
         this.overrideType = overrideType;
+        this.generatedBy = generatedBy;
     }
 
     @Override
     public Void visitType(CodeTypeElement e, Void p) {
         boolean rootType = e.getEnclosingClass() == null;
         if (rootType) {
-            ignoredWarnings.clear();
+            suppressedWarnings.clear();
         }
 
         List<TypeElement> superTypes = ElementUtils.getSuperTypes(e);
@@ -87,26 +89,36 @@ public class FixWarningsVisitor extends CodeElementScanner<Void, Void> {
             String qualifiedName = ElementUtils.getQualifiedName(type);
             if (qualifiedName.equals(Serializable.class.getCanonicalName())) {
                 if (!e.containsField("serialVersionUID")) {
-                    ignoredWarnings.add("serial");
+                    suppressedWarnings.add("serial");
                 }
                 break;
             }
         }
 
-        if (ElementUtils.isDeprecated(e)) {
-            ignoredWarnings.add("deprecation");
+        if (ElementUtils.isPackageDeprecated(e)) {
+            suppressedWarnings.add("deprecation");
         }
         super.visitType(e, p);
 
-        if (rootType && !ignoredWarnings.isEmpty()) {
-            GeneratorUtils.mergeSupressWarnings(e, ignoredWarnings.toArray(new String[0]));
+        if (seenDeprecatedType && rootType) {
+            AnnotationMirror suppressWarnings = ElementUtils.findAnnotationMirror(generatedBy, SuppressWarnings.class);
+            if (suppressWarnings != null) {
+                List<String> currentValues = ElementUtils.getAnnotationValueList(String.class, suppressWarnings, "value");
+                if (currentValues.contains("deprecation")) {
+                    suppressedWarnings.add("deprecation");
+                }
+            }
+        }
+
+        if (rootType && !suppressedWarnings.isEmpty()) {
+            GeneratorUtils.mergeSupressWarnings(e, suppressedWarnings.toArray(new String[0]));
         }
         return null;
     }
 
     @Override
     public Void visitExecutable(CodeExecutableElement e, Void p) {
-        boolean checkIgnored = !ignoredWarnings.contains("unused");
+        boolean checkIgnored = !suppressedWarnings.contains("unused");
         if (e.getParameters().isEmpty()) {
             checkIgnored = false;
         } else if (e.getModifiers().contains(Modifier.ABSTRACT)) {
@@ -120,15 +132,26 @@ public class FixWarningsVisitor extends CodeElementScanner<Void, Void> {
 
         super.visitExecutable(e, p);
 
+        checkDeprecated(e.getReturnType());
+        for (VariableElement parameter : e.getParameters()) {
+            checkDeprecated(parameter.asType());
+        }
+
         if (checkIgnored) {
             for (VariableElement parameter : e.getParameters()) {
                 if (!symbolsUsed.contains(parameter.getSimpleName().toString())) {
-                    ignoredWarnings.add("unused");
+                    suppressedWarnings.add("unused");
                     break;
                 }
             }
         }
         return null;
+    }
+
+    private void checkDeprecated(TypeMirror mirror) {
+        if (ElementUtils.isDeprecated(mirror)) {
+            seenDeprecatedType = true;
+        }
     }
 
     private boolean containsOverride(CodeExecutableElement e) {
@@ -144,6 +167,9 @@ public class FixWarningsVisitor extends CodeElementScanner<Void, Void> {
     public void visitTree(CodeTree e, Void p, Element enclosingElement) {
         if (computeSymbols && e.getString() != null) {
             computeSymbols(e.getString());
+        }
+        if (e.getType() != null) {
+            checkDeprecated(e.getType());
         }
         super.visitTree(e, p, enclosingElement);
     }

@@ -40,10 +40,14 @@
  */
 package com.oracle.truffle.dsl.processor.model;
 
+import static com.oracle.truffle.dsl.processor.java.ElementUtils.getAnnotationValue;
+
 import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression;
@@ -59,6 +63,8 @@ public final class CacheExpression extends MessageContainer {
     private boolean initializedInFastPath = false;
     private Message uncachedExpressionError;
     private boolean requiresBoundary;
+    private Cached.Scope scope;
+    private String sharedGroup;
 
     public CacheExpression(Parameter sourceParameter, AnnotationMirror sourceAnnotationMirror) {
         this.sourceParameter = sourceParameter;
@@ -71,7 +77,32 @@ public final class CacheExpression extends MessageContainer {
         copy.defaultExpression = this.defaultExpression;
         copy.uncachedExpression = this.uncachedExpression;
         copy.initializedInFastPath = this.initializedInFastPath;
+        copy.sharedGroup = this.sharedGroup;
         return copy;
+    }
+
+    public void setSharedGroup(String sharedGroup) {
+        this.sharedGroup = sharedGroup;
+    }
+
+    public AnnotationMirror getSharedGroupMirror() {
+        return ElementUtils.findAnnotationMirror(sourceParameter.getVariableElement(), Shared.class);
+    }
+
+    public AnnotationValue getSharedGroupValue() {
+        AnnotationMirror sharedAnnotation = getSharedGroupMirror();
+        if (sharedAnnotation != null) {
+            return getAnnotationValue(sharedAnnotation, "value");
+        }
+        return null;
+    }
+
+    public String getSharedGroup() {
+        AnnotationMirror sharedAnnotation = getSharedGroupMirror();
+        if (sharedAnnotation != null) {
+            return getAnnotationValue(String.class, sharedAnnotation, "value");
+        }
+        return null;
     }
 
     public void setDefaultExpression(DSLExpression expression) {
@@ -92,6 +123,14 @@ public final class CacheExpression extends MessageContainer {
 
     public DSLExpression getUncachedExpression() {
         return uncachedExpression;
+    }
+
+    public Cached.Scope getScope() {
+        return scope;
+    }
+
+    void setScope(Cached.Scope scope) {
+        this.scope = scope;
     }
 
     public void setInitializedInFastPath(boolean fastPathCache) {

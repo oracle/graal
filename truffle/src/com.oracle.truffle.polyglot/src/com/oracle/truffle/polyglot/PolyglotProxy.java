@@ -53,6 +53,7 @@ import org.graalvm.polyglot.proxy.ProxyObject;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -366,7 +367,8 @@ final class PolyglotProxy implements TruffleObject {
 
     @ExportMessage
     @TruffleBoundary
-    Object invokeMember(String member, Object[] arguments, @CachedLibrary("this") InteropLibrary library, @CachedLibrary(limit = "LIMIT") InteropLibrary executables)
+    Object invokeMember(String member, Object[] arguments, @CachedLibrary("this") InteropLibrary library,
+                    @Shared("executables") @CachedLibrary(limit = "LIMIT") InteropLibrary executables)
                     throws UnsupportedMessageException, UnsupportedTypeException, ArityException, UnknownIdentifierException {
         if (proxy instanceof ProxyObject) {
             if (!isMemberExisting(member, library)) {
@@ -391,7 +393,8 @@ final class PolyglotProxy implements TruffleObject {
 
     @ExportMessage
     @TruffleBoundary
-    boolean isMemberInvokable(String member, @CachedLibrary("this") InteropLibrary library, @CachedLibrary(limit = "LIMIT") InteropLibrary executables) {
+    boolean isMemberInvokable(String member, @CachedLibrary("this") InteropLibrary library,
+                    @Shared("executables") @CachedLibrary(limit = "LIMIT") InteropLibrary executables) {
         if (proxy instanceof ProxyObject) {
             if (isMemberExisting(member, library)) {
                 try {

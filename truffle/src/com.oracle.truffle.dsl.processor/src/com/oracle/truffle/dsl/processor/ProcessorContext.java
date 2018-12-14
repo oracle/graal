@@ -76,7 +76,8 @@ public class ProcessorContext {
     public ProcessorContext(ProcessingEnvironment env, ProcessCallback callback) {
         this.environment = env;
         this.callback = callback;
-        this.log = new Log(environment);
+        boolean emitWarnings = !Boolean.parseBoolean(System.getProperty("truffle.dsl.ignoreCompilerWarnings", "false"));
+        this.log = new Log(environment, emitWarnings);
         this.truffleTypes = new TruffleTypes(this);
     }
 

@@ -49,7 +49,6 @@ import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.api.library.DynamicDispatchLibrary;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 import com.oracle.truffle.dsl.processor.model.Template;
 

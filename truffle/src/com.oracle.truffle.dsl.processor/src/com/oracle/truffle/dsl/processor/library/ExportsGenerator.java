@@ -46,18 +46,11 @@ import static javax.lang.model.element.Modifier.FINAL;
 import static javax.lang.model.element.Modifier.PRIVATE;
 import static javax.lang.model.element.Modifier.STATIC;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Objects;
 import java.util.Set;
 
 import javax.lang.model.element.Element;
@@ -80,15 +73,6 @@ import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.expression.DSLExpression;
-import com.oracle.truffle.dsl.processor.expression.DSLExpression.Binary;
-import com.oracle.truffle.dsl.processor.expression.DSLExpression.BooleanLiteral;
-import com.oracle.truffle.dsl.processor.expression.DSLExpression.Call;
-import com.oracle.truffle.dsl.processor.expression.DSLExpression.ClassLiteral;
-import com.oracle.truffle.dsl.processor.expression.DSLExpression.DSLExpressionVisitor;
-import com.oracle.truffle.dsl.processor.expression.DSLExpression.IntLiteral;
-import com.oracle.truffle.dsl.processor.expression.DSLExpression.Negate;
-import com.oracle.truffle.dsl.processor.expression.DSLExpression.Variable;
 import com.oracle.truffle.dsl.processor.generator.CodeTypeElementFactory;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
@@ -101,11 +85,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
-import com.oracle.truffle.dsl.processor.model.CacheExpression;
 import com.oracle.truffle.dsl.processor.model.NodeData;
-import com.oracle.truffle.dsl.processor.model.NodeExecutionData;
-import com.oracle.truffle.dsl.processor.model.Parameter;
-import com.oracle.truffle.dsl.processor.model.SpecializationData;
 
 public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
 
@@ -296,7 +276,6 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             }
         }
         Map<NodeData, CodeTypeElement> sharedNodes = new HashMap<>();
-        Map<CacheExpression, String> sharedCaches = computeSharedCaches(cachedSharedNodes);
 
         for (ExportMessageData export : libraryExports.getExportedMessages().values()) {
             LibraryMessage message = export.getResolvedMessage();
@@ -328,7 +307,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 CodeTypeElement dummyClass = sharedNodes.get(cachedSpecializedNode);
                 boolean shared = true;
                 if (dummyClass == null) {
-                    FlatNodeGenFactory factory = new FlatNodeGenFactory(context, cachedSpecializedNode, cachedSharedNodes, sharedCaches, libraryConstants);
+                    FlatNodeGenFactory factory = new FlatNodeGenFactory(context, cachedSpecializedNode, cachedSharedNodes, libraryExports.getSharedExpressions(), libraryConstants);
                     dummyClass = createClass(libraryExports, null, modifiers(), "Dummy", context.getType(Node.class));
                     factory.create(dummyClass);
                     sharedNodes.put(cachedSpecializedNode, dummyClass);
@@ -562,65 +541,6 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         builder.tree(body);
     }
 
-    private static Map<CacheExpression, String> computeSharedCaches(Collection<NodeData> inlinedNodes) {
-        Map<SharableCache, List<CacheExpression>> sharableCaches = new LinkedHashMap<>();
-        for (NodeData node : inlinedNodes) {
-            for (SpecializationData specialization : node.getSpecializations()) {
-                if (specialization == null) {
-                    continue;
-                } else if (specialization.hasMultipleInstances()) {
-                    // cannot support specializations with multiple instances
-                    continue;
-                }
-                for (CacheExpression cache : specialization.getCaches()) {
-                    Set<Variable> boundVariables = cache.getDefaultExpression().findBoundVariables();
-                    boolean bindsDynamicParameter = false;
-                    // resolve bindings for local context
-                    outer: for (Variable variable : boundVariables) {
-                        boolean first = true;
-                        for (Parameter parameter : specialization.getSignatureParameters()) {
-                            if (first) {
-                                // skip first receiver argument for this check.
-                                // the receiver can be bound for cache sharing.
-                                first = false;
-                                continue;
-                            }
-                            if (ElementUtils.variableEquals(variable.getResolvedVariable(), parameter.getVariableElement())) {
-                                bindsDynamicParameter = true;
-                                break outer;
-                            }
-                        }
-                    }
-                    if (!bindsDynamicParameter) {
-                        SharableCache sharable = new SharableCache(specialization, cache);
-                        sharableCaches.computeIfAbsent(sharable, (c) -> new ArrayList<>()).add(cache);
-                    }
-                }
-            }
-        }
-        Set<String> usedNames = new HashSet<>();
-        Map<CacheExpression, String> sharedCaches = new LinkedHashMap<>();
-        for (Entry<SharableCache, List<CacheExpression>> entry : sharableCaches.entrySet()) {
-            if (entry.getValue().size() > 1) {
-                String name = null;
-                for (CacheExpression cacheExpression : entry.getValue()) {
-                    if (name == null) {
-                        name = cacheExpression.getParameter().getLocalName() + "_";
-                        String originalName = name;
-                        int conflict = 0;
-                        while (usedNames.contains(name)) {
-                            name = originalName + conflict;
-                            conflict++;
-                        }
-                        usedNames.add(name);
-                    }
-                    sharedCaches.put(cacheExpression, name);
-                }
-            }
-        }
-        return sharedCaches;
-    }
-
     private CodeExecutableElement createDirectCall(CodeTree receiverAccess, LibraryMessage message, ExecutableElement targetMethod) {
         CodeTreeBuilder builder;
         CodeExecutableElement cachedExecute = CodeExecutableElement.cloneNoAnnotations(message.getExecutable());
@@ -701,117 +621,6 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
     private static void addAcceptsAssertion(CodeTreeBuilder executeBody) {
         String name = executeBody.findMethod().getParameters().get(0).getSimpleName().toString();
         executeBody.startAssert().string("this.accepts(", name, ")").string(" : ").doubleQuote("Invalid library usage. Library does not accept given receiver.").end();
-    }
-
-    private static final class SharableCache {
-
-        private final SpecializationData specialization;
-        private final CacheExpression expression;
-        private int hash = 1;
-
-        SharableCache(SpecializationData specialization, CacheExpression expression) {
-            this.specialization = specialization;
-            this.expression = expression;
-            expression.getDefaultExpression().accept(new DSLExpressionVisitor() {
-                public void visitVariable(Variable binary) {
-                    hash *= 31;
-                }
-
-                public void visitNegate(Negate negate) {
-                    hash *= 31;
-                }
-
-                public void visitIntLiteral(IntLiteral binary) {
-                    hash *= 31 + binary.getResolvedValueInt();
-                }
-
-                public void visitClassLiteral(ClassLiteral classLiteral) {
-                    hash *= 31 + Objects.hash(classLiteral.getResolvedType());
-                }
-
-                public void visitCall(Call binary) {
-                    hash *= 31 + Objects.hash(binary.getName());
-                }
-
-                public void visitBooleanLiteral(BooleanLiteral binary) {
-                    hash *= 31 + Objects.hash(binary.getLiteral());
-                }
-
-                public void visitBinary(Binary binary) {
-                    hash *= 31 + Objects.hash(binary.getOperator());
-                }
-            });
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (!(obj instanceof SharableCache)) {
-                return false;
-            }
-            SharableCache other = (SharableCache) obj;
-
-            TypeMirror thisParametertype = expression.getParameter().getType();
-            TypeMirror otherParametertype = other.expression.getParameter().getType();
-            if (!ElementUtils.typeEquals(thisParametertype, otherParametertype)) {
-                return false;
-            }
-            List<DSLExpression> otherExpressions = other.expression.getDefaultExpression().flatten();
-            List<DSLExpression> expressions = expression.getDefaultExpression().flatten();
-            if (otherExpressions.size() != expressions.size()) {
-                return false;
-            }
-            Iterator<DSLExpression> otherExpression = otherExpressions.iterator();
-            Iterator<DSLExpression> thisExpression = expressions.iterator();
-            while (otherExpression.hasNext()) {
-                DSLExpression e1 = thisExpression.next();
-                DSLExpression e2 = otherExpression.next();
-                if (e1.getClass() != e2.getClass()) {
-                    return false;
-                } else if (e1 instanceof Variable) {
-                    VariableElement var1 = ((Variable) e1).getResolvedVariable();
-                    VariableElement var2 = ((Variable) e2).getResolvedVariable();
-
-                    if (var1.getKind() == ElementKind.PARAMETER && var2.getKind() == ElementKind.PARAMETER) {
-                        Parameter p1 = specialization.findByVariable(var1);
-                        Parameter p2 = other.specialization.findByVariable(var2);
-                        if (p1 != null && p2 != null) {
-                            NodeExecutionData execution1 = p1.getSpecification().getExecution();
-                            NodeExecutionData execution2 = p2.getSpecification().getExecution();
-                            if (execution1 != null && execution2 != null && execution1.getIndex() == execution2.getIndex()) {
-                                continue;
-                            }
-                        }
-                    }
-                    if (!ElementUtils.variableEquals(var1, var2)) {
-                        return false;
-                    }
-                } else if (e1 instanceof Call) {
-                    ExecutableElement var1 = ((Call) e1).getResolvedMethod();
-                    ExecutableElement var2 = ((Call) e2).getResolvedMethod();
-                    if (!ElementUtils.executableEquals(var1, var2)) {
-                        return false;
-                    }
-                } else if (e1 instanceof Binary) {
-                    String var1 = ((Binary) e1).getOperator();
-                    String var2 = ((Binary) e2).getOperator();
-                    if (!Objects.equals(var1, var2)) {
-                        return false;
-                    }
-                } else if (e1 instanceof Negate) {
-                    assert e2 instanceof Negate;
-                    // nothing to do
-                } else if (!e1.equals(e2)) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(expression.getParameter().getType(), hash);
-        }
-
     }
 
 }

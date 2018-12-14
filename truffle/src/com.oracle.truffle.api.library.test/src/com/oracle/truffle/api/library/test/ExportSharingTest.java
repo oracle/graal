@@ -53,6 +53,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
@@ -181,12 +182,12 @@ public class ExportSharingTest extends AbstractLibraryTest {
     static class TestSharedCached {
 
         @ExportMessage
-        String m0(@Cached TestCached1Node node) {
+        String m0(@Exclusive @Cached TestCached1Node node) {
             return node.execute();
         }
 
         @ExportMessage
-        String m1(@Cached TestCached1Node node) {
+        String m1(@Exclusive @Cached TestCached1Node node) {
             return node.execute();
         }
 
@@ -196,12 +197,12 @@ public class ExportSharingTest extends AbstractLibraryTest {
     static class TestSharedCachedWithArgs {
 
         @ExportMessage
-        String m0(@Cached TestCached1Node node) {
+        String m0(@Exclusive @Cached TestCached1Node node) {
             return node.execute();
         }
 
         @ExportMessage
-        String m1(@SuppressWarnings("unused") @Cached TestCached1Node node) {
+        String m1(@SuppressWarnings("unused") @Exclusive @Cached TestCached1Node node) {
             return "m1";
         }
 

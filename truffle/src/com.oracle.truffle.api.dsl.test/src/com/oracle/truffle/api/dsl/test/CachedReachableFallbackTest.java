@@ -48,6 +48,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.CachedReachableFallbackTestFactory.CacheDuplicatesNodeGen;
@@ -239,10 +240,10 @@ public class CachedReachableFallbackTest {
 
         @Specialization(guards = {"guardNode1.execute(obj)", "guardNode2.execute(obj)", "guardNode3.execute(obj)"}, limit = "1")
         protected Object s1(int obj,
-                        @Cached("createGuard()") GuardNode guardNode1,
-                        @Cached("createGuard()") GuardNode guardNode2,
-                        @Cached("createGuard()") GuardNode guardNode3,
-                        @Cached("createGuard()") GuardNode unboundGuard) {
+                        @Exclusive @Cached("createGuard()") GuardNode guardNode1,
+                        @Exclusive @Cached("createGuard()") GuardNode guardNode2,
+                        @Exclusive @Cached("createGuard()") GuardNode guardNode3,
+                        @Exclusive @Cached("createGuard()") GuardNode unboundGuard) {
             assertAdopted(guardNode1);
             assertAdopted(guardNode2);
             assertAdopted(guardNode3);
@@ -252,17 +253,17 @@ public class CachedReachableFallbackTest {
 
         @Specialization
         protected Object s2(double obj,
-                        @Cached("createGuard()") GuardNode unboundGuard) {
+                        @Exclusive @Cached("createGuard()") GuardNode unboundGuard) {
             assertAdopted(unboundGuard);
             return "s2";
         }
 
         @Specialization
         protected Object s3(float obj,
-                        @Cached("createGuard()") GuardNode unboundGuard1,
-                        @Cached("createGuard()") GuardNode unboundGuard2,
-                        @Cached("createGuard()") GuardNode unboundGuard3,
-                        @Cached("createGuard()") GuardNode unboundGuard4) {
+                        @Exclusive @Cached("createGuard()") GuardNode unboundGuard1,
+                        @Exclusive @Cached("createGuard()") GuardNode unboundGuard2,
+                        @Exclusive @Cached("createGuard()") GuardNode unboundGuard3,
+                        @Exclusive @Cached("createGuard()") GuardNode unboundGuard4) {
             assertAdopted(unboundGuard1);
             assertAdopted(unboundGuard2);
             assertAdopted(unboundGuard3);

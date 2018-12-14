@@ -153,7 +153,9 @@ public final class OrganizedImports {
 
     private String createDeclaredTypeName(Element enclosedElement, DeclaredType type, boolean raw) {
         String name = ElementUtils.fixECJBinaryNameIssue(type.asElement().getSimpleName().toString());
-        if (classImportUsage.containsKey(name)) {
+        if (ElementUtils.isDeprecated((TypeElement) type.asElement())) {
+            name = ElementUtils.getQualifiedName(type);
+        } else if (classImportUsage.containsKey(name)) {
             String qualifiedImport = classImportUsage.get(name);
             String qualifiedName = ElementUtils.getEnclosedQualifiedName(type);
 
@@ -208,6 +210,8 @@ public final class OrganizedImports {
         } else if (importPackagName.equals(getPackageName(topLevelClass)) && ElementUtils.isTopLevelClass(importType)) {
             return false; // same package name -> no import
         } else if (importType instanceof GeneratedTypeMirror && ElementUtils.getPackageName(importType).isEmpty()) {
+            return false;
+        } else if (ElementUtils.isDeprecated(importType)) {
             return false;
         }
 

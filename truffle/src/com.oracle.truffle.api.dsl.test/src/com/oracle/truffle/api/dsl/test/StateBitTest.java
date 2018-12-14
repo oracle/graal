@@ -46,6 +46,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.test.StateBitTestFactory.Test16BitsNodeGen;
 import com.oracle.truffle.api.dsl.test.StateBitTestFactory.Test32BitsNodeGen;
 import com.oracle.truffle.api.dsl.test.StateBitTestFactory.Test64BitsNodeGen;
@@ -57,97 +58,97 @@ public class StateBitTest {
         abstract Object execute(Object arg);
 
         @Specialization(guards = "arg == 0")
-        int s0(int arg, @Cached("arg") int cachedArg) {
+        int s0(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 1")
-        int s1(int arg, @Cached("arg") int cachedArg) {
+        int s1(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 2")
-        int s2(int arg, @Cached("arg") int cachedArg) {
+        int s2(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 3")
-        int s3(int arg, @Cached("arg") int cachedArg) {
+        int s3(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 4")
-        int s4(int arg, @Cached("arg") int cachedArg) {
+        int s4(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 5")
-        int s5(int arg, @Cached("arg") int cachedArg) {
+        int s5(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 6")
-        int s6(int arg, @Cached("arg") int cachedArg) {
+        int s6(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 7")
-        int s7(int arg, @Cached("arg") int cachedArg) {
+        int s7(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 8")
-        int s8(int arg, @Cached("arg") int cachedArg) {
+        int s8(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 9")
-        int s9(int arg, @Cached("arg") int cachedArg) {
+        int s9(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 10")
-        int s10(int arg, @Cached("arg") int cachedArg) {
+        int s10(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 11")
-        int s11(int arg, @Cached("arg") int cachedArg) {
+        int s11(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 12")
-        int s12(int arg, @Cached("arg") int cachedArg) {
+        int s12(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 13")
-        int s13(int arg, @Cached("arg") int cachedArg) {
+        int s13(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 14")
-        int s14(int arg, @Cached("arg") int cachedArg) {
+        int s14(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 15")
-        int s15(int arg, @Cached("arg") int cachedArg) {
+        int s15(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
@@ -156,97 +157,97 @@ public class StateBitTest {
     abstract static class Test32Bits extends Test16Bits {
 
         @Specialization(guards = "arg == 16")
-        int s16(int arg, @Cached("arg") int cachedArg) {
+        int s16(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 17")
-        int s17(int arg, @Cached("arg") int cachedArg) {
+        int s17(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 18")
-        int s18(int arg, @Cached("arg") int cachedArg) {
+        int s18(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 19")
-        int s19(int arg, @Cached("arg") int cachedArg) {
+        int s19(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 20")
-        int s20(int arg, @Cached("arg") int cachedArg) {
+        int s20(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 21")
-        int s21(int arg, @Cached("arg") int cachedArg) {
+        int s21(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 22")
-        int s22(int arg, @Cached("arg") int cachedArg) {
+        int s22(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 23")
-        int s23(int arg, @Cached("arg") int cachedArg) {
+        int s23(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 24")
-        int s24(int arg, @Cached("arg") int cachedArg) {
+        int s24(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 25")
-        int s25(int arg, @Cached("arg") int cachedArg) {
+        int s25(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 26")
-        int s26(int arg, @Cached("arg") int cachedArg) {
+        int s26(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 27")
-        int s27(int arg, @Cached("arg") int cachedArg) {
+        int s27(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 28")
-        int s28(int arg, @Cached("arg") int cachedArg) {
+        int s28(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 29")
-        int s29(int arg, @Cached("arg") int cachedArg) {
+        int s29(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 30")
-        int s30(int arg, @Cached("arg") int cachedArg) {
+        int s30(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 31")
-        int s31(int arg, @Cached("arg") int cachedArg) {
+        int s31(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
@@ -256,193 +257,193 @@ public class StateBitTest {
     abstract static class Test64Bits extends Test32Bits {
 
         @Specialization(guards = "arg == 32")
-        int s32(int arg, @Cached("arg") int cachedArg) {
+        int s32(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 33")
-        int s33(int arg, @Cached("arg") int cachedArg) {
+        int s33(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 34")
-        int s34(int arg, @Cached("arg") int cachedArg) {
+        int s34(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 35")
-        int s35(int arg, @Cached("arg") int cachedArg) {
+        int s35(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 36")
-        int s36(int arg, @Cached("arg") int cachedArg) {
+        int s36(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 37")
-        int s37(int arg, @Cached("arg") int cachedArg) {
+        int s37(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 38")
-        int s38(int arg, @Cached("arg") int cachedArg) {
+        int s38(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 39")
-        int s39(int arg, @Cached("arg") int cachedArg) {
+        int s39(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 40")
-        int s40(int arg, @Cached("arg") int cachedArg) {
+        int s40(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 41")
-        int s41(int arg, @Cached("arg") int cachedArg) {
+        int s41(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 42")
-        int s42(int arg, @Cached("arg") int cachedArg) {
+        int s42(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 43")
-        int s43(int arg, @Cached("arg") int cachedArg) {
+        int s43(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 44")
-        int s44(int arg, @Cached("arg") int cachedArg) {
+        int s44(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 45")
-        int s45(int arg, @Cached("arg") int cachedArg) {
+        int s45(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 46")
-        int s46(int arg, @Cached("arg") int cachedArg) {
+        int s46(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 47")
-        int s47(int arg, @Cached("arg") int cachedArg) {
+        int s47(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 48")
-        int s48(int arg, @Cached("arg") int cachedArg) {
+        int s48(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 49")
-        int s49(int arg, @Cached("arg") int cachedArg) {
+        int s49(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 50")
-        int s50(int arg, @Cached("arg") int cachedArg) {
+        int s50(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 51")
-        int s51(int arg, @Cached("arg") int cachedArg) {
+        int s51(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 52")
-        int s52(int arg, @Cached("arg") int cachedArg) {
+        int s52(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 53")
-        int s53(int arg, @Cached("arg") int cachedArg) {
+        int s53(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 54")
-        int s54(int arg, @Cached("arg") int cachedArg) {
+        int s54(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 55")
-        int s55(int arg, @Cached("arg") int cachedArg) {
+        int s55(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 56")
-        int s56(int arg, @Cached("arg") int cachedArg) {
+        int s56(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 57")
-        int s57(int arg, @Cached("arg") int cachedArg) {
+        int s57(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 58")
-        int s58(int arg, @Cached("arg") int cachedArg) {
+        int s58(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 59")
-        int s59(int arg, @Cached("arg") int cachedArg) {
+        int s59(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 60")
-        int s60(int arg, @Cached("arg") int cachedArg) {
+        int s60(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 61")
-        int s61(int arg, @Cached("arg") int cachedArg) {
+        int s61(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 62")
-        int s62(int arg, @Cached("arg") int cachedArg) {
+        int s62(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }
 
         @Specialization(guards = "arg == 63")
-        int s63(int arg, @Cached("arg") int cachedArg) {
+        int s63(int arg, @Exclusive @Cached("arg") int cachedArg) {
             assertEquals(arg, cachedArg);
             return arg;
         }

@@ -50,6 +50,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -124,8 +125,8 @@ final class PolyglotLanguageBindings implements TruffleObject {
 
     @ExportMessage
     boolean isMemberReadable(String member,
-                    @CachedLibrary(limit = "5") InteropLibrary interop,
-                    @Cached("createIdentityProfile()") IntValueProfile lengthProfile) {
+                    @Shared("interop") @CachedLibrary(limit = "5") InteropLibrary interop,
+                    @Shared("lenghtProfile") @Cached("createIdentityProfile()") IntValueProfile lengthProfile) {
         int length = lengthProfile.profile(scopes.length);
         for (int i = 0; i < length; i++) {
             Object scope = this.scopes[i];
@@ -138,8 +139,8 @@ final class PolyglotLanguageBindings implements TruffleObject {
 
     @ExportMessage
     Object readMember(String member,
-                    @CachedLibrary(limit = "5") InteropLibrary interop,
-                    @Cached("createIdentityProfile()") IntValueProfile lengthProfile) throws UnknownIdentifierException {
+                    @Shared("interop") @CachedLibrary(limit = "5") InteropLibrary interop,
+                    @Shared("lenghtProfile") @Cached("createIdentityProfile()") IntValueProfile lengthProfile) throws UnknownIdentifierException {
         int length = lengthProfile.profile(scopes.length);
         for (int i = 0; i < length; i++) {
             Object scope = this.scopes[i];
@@ -156,8 +157,8 @@ final class PolyglotLanguageBindings implements TruffleObject {
 
     @ExportMessage
     boolean isMemberModifiable(String member,
-                    @CachedLibrary(limit = "5") InteropLibrary interop,
-                    @Cached("createIdentityProfile()") IntValueProfile lengthProfile) {
+                    @Shared("interop") @CachedLibrary(limit = "5") InteropLibrary interop,
+                    @Shared("lenghtProfile") @Cached("createIdentityProfile()") IntValueProfile lengthProfile) {
         int length = lengthProfile.profile(scopes.length);
         for (int i = 0; i < length; i++) {
             Object scope = this.scopes[i];
@@ -170,8 +171,8 @@ final class PolyglotLanguageBindings implements TruffleObject {
 
     @ExportMessage
     boolean isMemberInsertable(String member,
-                    @CachedLibrary(limit = "5") InteropLibrary interop,
-                    @Cached("createIdentityProfile()") IntValueProfile lengthProfile) {
+                    @Shared("interop") @CachedLibrary(limit = "5") InteropLibrary interop,
+                    @Shared("lenghtProfile") @Cached("createIdentityProfile()") IntValueProfile lengthProfile) {
         int length = lengthProfile.profile(scopes.length);
         for (int i = 0; i < length; i++) {
             Object scope = this.scopes[i];
@@ -184,8 +185,9 @@ final class PolyglotLanguageBindings implements TruffleObject {
 
     @ExportMessage
     void writeMember(String member, Object value,
-                    @CachedLibrary(limit = "5") InteropLibrary interop,
-                    @Cached("createIdentityProfile()") IntValueProfile lengthProfile) throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException {
+                    @Shared("interop") @CachedLibrary(limit = "5") InteropLibrary interop,
+                    @Shared("lenghtProfile") @Cached("createIdentityProfile()") IntValueProfile lengthProfile)
+                    throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException {
         int length = lengthProfile.profile(scopes.length);
         for (int i = 0; i < length; i++) {
             Object scope = this.scopes[i];
@@ -200,8 +202,8 @@ final class PolyglotLanguageBindings implements TruffleObject {
 
     @ExportMessage
     void removeMember(String member,
-                    @CachedLibrary(limit = "5") InteropLibrary interop,
-                    @Cached("createIdentityProfile()") IntValueProfile lengthProfile) throws UnsupportedMessageException, UnknownIdentifierException {
+                    @Shared("interop") @CachedLibrary(limit = "5") InteropLibrary interop,
+                    @Shared("lenghtProfile") @Cached("createIdentityProfile()") IntValueProfile lengthProfile) throws UnsupportedMessageException, UnknownIdentifierException {
         int length = lengthProfile.profile(scopes.length);
         for (int i = 0; i < length; i++) {
             Object scope = this.scopes[i];
@@ -217,8 +219,8 @@ final class PolyglotLanguageBindings implements TruffleObject {
 
     @ExportMessage
     boolean isMemberRemovable(String member,
-                    @CachedLibrary(limit = "5") InteropLibrary interop,
-                    @Cached("createIdentityProfile()") IntValueProfile lengthProfile) {
+                    @Shared("interop") @CachedLibrary(limit = "5") InteropLibrary interop,
+                    @Shared("lenghtProfile") @Cached("createIdentityProfile()") IntValueProfile lengthProfile) {
         int length = lengthProfile.profile(scopes.length);
         for (int i = 0; i < length; i++) {
             Object scope = this.scopes[i];

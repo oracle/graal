@@ -304,6 +304,34 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             }
         }
 
+        for (ExportsLibrary libraryExports : model.getExportedLibraries().values()) {
+            List<NodeData> cachedSharedNodes = new ArrayList<>();
+            List<ExportMessageElement> exportedMessages = new ArrayList<>();
+            for (ExportMessageData export : libraryExports.getExportedMessages().values()) {
+                ExportMessageElement nodeExport = export.getExportedClass();
+                ExportMessageElement methodExport = export.getExportedMethod();
+                if (nodeExport != null && nodeExport.getSpecializedNode() != null) {
+                    cachedSharedNodes.add(nodeExport.getSpecializedNode());
+                    exportedMessages.add(nodeExport);
+                } else if (methodExport != null && methodExport.getSpecializedNode() != null) {
+                    cachedSharedNodes.add(methodExport.getSpecializedNode());
+                    exportedMessages.add(methodExport);
+                }
+            }
+            libraryExports.setSharedExpressions(NodeParser.computeSharing(cachedSharedNodes));
+
+            // redirect errors on generated elements to the outer element
+            // JDT will otherwise just ignore those messages and not display anything.
+            for (int i = 0; i < cachedSharedNodes.size(); i++) {
+                NodeData nodeData = cachedSharedNodes.get(i);
+                ExportMessageElement exportedMessage = exportedMessages.get(i);
+                if (nodeData.hasErrorsOrWarnings()) {
+                    nodeData.redirectMessagesOnGeneratedElements(exportedMessage);
+                }
+                nodeData.setGenerateUncached(false);
+            }
+        }
+
         if (model.hasErrors()) {
             return model;
         }
@@ -697,6 +725,8 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             }
             type.getAnnotationMirrors().add(exportedElement.getMessageAnnotation());
             CodeExecutableElement element = CodeExecutableElement.clone(exportedMethod);
+            element.getParameters().clear();
+            element.getParameters().addAll(exportedMethod.getParameters());
 
             DeclaredType specializationType = context.getDeclaredType(Specialization.class);
             CodeAnnotationMirror specialization = new CodeAnnotationMirror(specializationType);
@@ -792,15 +822,6 @@ public class ExportsParser extends AbstractParser<ExportsData> {
         if (syntheticExecute != null) {
             // reset name to library
             syntheticExecute.setEnclosingElement(message.getExecutable().getEnclosingElement());
-        }
-
-        // redirect errors on generated elements to the outer element
-        // JDT will otherwise just ignore those messages and not display anything.
-        if (parsedNodeData != null) {
-            if (parsedNodeData.hasErrorsOrWarnings()) {
-                parsedNodeData.redirectMessagesOnGeneratedElements(exportedMessage);
-            }
-            parsedNodeData.setGenerateUncached(false);
         }
 
         parsedNodeCache.put(nodeTypeId, parsedNodeData);
@@ -931,7 +952,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
     /**
      * Returns the set of options that fuzzy match a given option name.
      */
-    static List<String> fuzzyMatch(Collection<String> descriptors, String optionKey, float minScore) {
+    public static List<String> fuzzyMatch(Collection<String> descriptors, String optionKey, float minScore) {
         List<String> matches = new ArrayList<>();
         for (String string : descriptors) {
             float score = stringSimiliarity(string, optionKey);

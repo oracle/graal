@@ -95,8 +95,6 @@ public abstract class AbstractParser<M extends MessageContainer> {
                 return null;
             }
 
-            redirectMessages(new HashSet<MessageContainer>(), model, model);
-
             if (emitErrors) {
                 model.emitMessages(context, log);
             }

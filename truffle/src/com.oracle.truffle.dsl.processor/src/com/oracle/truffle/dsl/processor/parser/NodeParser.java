@@ -74,6 +74,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.ListIterator;
@@ -99,6 +100,8 @@ import javax.tools.Diagnostic.Kind;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.CreateCast;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Fallback;
@@ -128,6 +131,14 @@ import com.oracle.truffle.dsl.processor.CompileErrorException;
 import com.oracle.truffle.dsl.processor.Log;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression.Binary;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression.BooleanLiteral;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression.Call;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression.ClassLiteral;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression.DSLExpressionVisitor;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression.IntLiteral;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression.Negate;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression.Variable;
 import com.oracle.truffle.dsl.processor.expression.DSLExpressionResolver;
 import com.oracle.truffle.dsl.processor.expression.InvalidExpressionException;
 import com.oracle.truffle.dsl.processor.generator.NodeCodeGenerator;
@@ -138,6 +149,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
+import com.oracle.truffle.dsl.processor.library.ExportsParser;
 import com.oracle.truffle.dsl.processor.library.LibraryData;
 import com.oracle.truffle.dsl.processor.library.LibraryParser;
 import com.oracle.truffle.dsl.processor.model.AssumptionExpression;
@@ -334,6 +346,12 @@ public final class NodeParser extends AbstractParser<NodeData> {
         initializeReceiverBound(node);
         initializeUncachable(node, members);
 
+        if (mode == ParseMode.DEFAULT) {
+            node.setSharedCaches(computeSharing(Arrays.asList(node)));
+        } else {
+            // sharing is computed by the ExportsParser
+        }
+
         verifySpecializationSameLength(node);
         verifyVisibilities(node);
         verifyMissingAbstractMethods(node, members);
@@ -341,6 +359,134 @@ public final class NodeParser extends AbstractParser<NodeData> {
         verifySpecializationThrows(node);
         verifyFrame(node);
         return node;
+    }
+
+    public static Map<CacheExpression, String> computeSharing(Collection<NodeData> nodes) {
+        Map<SharableCache, List<CacheExpression>> groups = computeSharableCaches(nodes);
+        // compute unnecessary sharing.
+
+        Map<String, List<SharableCache>> declaredGroups = new HashMap<>();
+        for (NodeData node : nodes) {
+            for (SpecializationData specialization : node.getSpecializations()) {
+                for (CacheExpression cache : specialization.getCaches()) {
+                    if (cache.isInitializedInFastPath()) {
+                        continue;
+                    }
+                    String group = cache.getSharedGroup();
+                    if (group != null) {
+                        declaredGroups.computeIfAbsent(group, (v) -> new ArrayList<>()).add(new SharableCache(specialization, cache));
+                    }
+                }
+            }
+        }
+
+        Map<CacheExpression, String> sharedExpressions = new LinkedHashMap<>();
+        for (NodeData node : nodes) {
+            for (SpecializationData specialization : node.getSpecializations()) {
+                for (CacheExpression cache : specialization.getCaches()) {
+                    if (cache.isInitializedInFastPath()) {
+                        continue;
+                    }
+                    String group = cache.getSharedGroup();
+                    SharableCache sharable = new SharableCache(specialization, cache);
+                    List<CacheExpression> expressions = groups.get(sharable);
+                    List<SharableCache> declaredSharing = declaredGroups.get(group);
+                    if (group != null) {
+                        if (declaredSharing.size() <= 1 && (expressions == null || expressions.size() <= 1)) {
+                            cache.addError(cache.getSharedGroupMirror(), cache.getSharedGroupValue(),
+                                            "Could not find any other cached parameter that this parameter could be shared. " +
+                                                            "Cached parameters are only sharable if they declare the same type and initializer expressions and if the specialization only has a single instance. " +
+                                                            "Remove the @%s annotation or make the parameter sharable to resolve this.",
+                                            Shared.class.getSimpleName());
+                        } else {
+                            if (declaredSharing.size() <= 1) {
+                                String error = String.format("No other cached parameters are specified as shared with the group '%s'.", group);
+                                Set<String> similarGroups = new LinkedHashSet<>(declaredGroups.keySet());
+                                similarGroups.remove(group);
+                                List<String> fuzzyMatches = ExportsParser.fuzzyMatch(similarGroups, group, 0.7f);
+                                if (!fuzzyMatches.isEmpty()) {
+                                    StringBuilder appendix = new StringBuilder(" Did you mean ");
+                                    String sep = "";
+                                    for (String string : fuzzyMatches) {
+                                        appendix.append(sep);
+                                        appendix.append('\'').append(string).append('\'');
+                                        sep = ", ";
+                                    }
+                                    error += appendix.toString() + "?";
+                                }
+                                cache.addError(cache.getSharedGroupMirror(), cache.getSharedGroupValue(), error);
+                            } else {
+                                StringBuilder b = new StringBuilder();
+                                for (SharableCache otherCache : declaredSharing) {
+                                    if (cache == otherCache.expression) {
+                                        continue;
+                                    }
+                                    String reason = sharable.equalsWithReason(otherCache);
+                                    if (reason == null) {
+                                        continue;
+                                    }
+                                    String signature = formatCacheExpression(otherCache.expression);
+                                    b.append(String.format("  - %s : %s%n", signature, reason));
+                                }
+                                if (b.length() != 0) {
+                                    cache.addError(cache.getSharedGroupMirror(), cache.getSharedGroupValue(),
+                                                    "Could not share some of the cached parameters in group '%s': %n%sRemove the @%s annotation or resolve the described issues to allow sharing.",
+                                                    group,
+                                                    b.toString(),
+                                                    Shared.class.getSimpleName());
+                                } else {
+                                    sharedExpressions.put(sharable.expression, group);
+                                }
+                            }
+                        }
+                    } else if (expressions != null && expressions.size() > 1) {
+                        if (findAnnotationMirror(cache.getParameter().getVariableElement(), Exclusive.class) == null) {
+                            StringBuilder sharedCaches = new StringBuilder();
+                            Set<String> recommendedGroups = new LinkedHashSet<>();
+                            for (CacheExpression cacheExpression : expressions) {
+                                if (cacheExpression != cache) {
+                                    String signature = formatCacheExpression(cacheExpression);
+                                    sharedCaches.append(String.format("  - %s%n", signature));
+
+                                    String otherGroup = cacheExpression.getSharedGroup();
+                                    if (otherGroup != null) {
+                                        recommendedGroups.add(otherGroup);
+                                    }
+                                }
+                            }
+                            String recommendedGroup = recommendedGroups.size() == 1 ? recommendedGroups.iterator().next() : "group";
+                            cache.addWarning("The cached parameter may be shared with: %n%s Annotate the parameter with @%s(\"%s\") or @%s to allow or deny sharing of the parameter.",
+                                            sharedCaches, Shared.class.getSimpleName(),
+                                            recommendedGroup,
+                                            Exclusive.class.getSimpleName());
+                        }
+                    }
+                }
+            }
+        }
+        return sharedExpressions;
+    }
+
+    private static String formatCacheExpression(CacheExpression cacheExpression) {
+        VariableElement cacheParameter = cacheExpression.getParameter().getVariableElement();
+        ExecutableElement method = (ExecutableElement) cacheParameter.getEnclosingElement();
+        StringBuilder builder = new StringBuilder();
+        builder.append(method.getSimpleName().toString());
+        builder.append("(");
+        int index = method.getParameters().indexOf(cacheParameter);
+        if (index != 0) {
+            builder.append("..., ");
+        }
+        String annotationName = cacheExpression.getMessageAnnotation().getAnnotationType().asElement().getSimpleName().toString();
+        builder.append(String.format("@%s(...) ", annotationName));
+        builder.append(getSimpleName(cacheParameter.asType()));
+        builder.append(" ");
+        builder.append(cacheParameter.getSimpleName().toString());
+        if (index != method.getParameters().size() - 1) {
+            builder.append(",...");
+        }
+        builder.append(")");
+        return builder.toString();
     }
 
     private void initializeReceiverBound(NodeData node) {
@@ -2504,4 +2650,214 @@ public final class NodeParser extends AbstractParser<NodeData> {
         return collection;
     }
 
+    private static Map<SharableCache, List<CacheExpression>> computeSharableCaches(Collection<NodeData> nodes) {
+        Map<SharableCache, List<CacheExpression>> sharableCaches = new LinkedHashMap<>();
+        for (NodeData node : nodes) {
+            for (SpecializationData specialization : node.getSpecializations()) {
+                if (specialization == null) {
+                    continue;
+                }
+                for (CacheExpression cache : specialization.getCaches()) {
+                    if (cache.isInitializedInFastPath()) {
+                        continue;
+                    }
+                    SharableCache sharable = new SharableCache(specialization, cache);
+                    sharableCaches.computeIfAbsent(sharable, (c) -> new ArrayList<>()).add(cache);
+                }
+            }
+        }
+        return sharableCaches;
+    }
+
+    private static final class SharableCache {
+
+        private final SpecializationData specialization;
+        private final CacheExpression expression;
+        private final int hashCode;
+
+        SharableCache(SpecializationData specialization, CacheExpression expression) {
+            this.specialization = specialization;
+            this.expression = expression;
+            this.hashCode = Objects.hash(expression.getParameter().getType(),
+                            DSLExpressionHash.compute(expression.getDefaultExpression()),
+                            DSLExpressionHash.compute(expression.getUncachedExpression()));
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (!(obj instanceof SharableCache)) {
+                return false;
+            }
+            SharableCache other = (SharableCache) obj;
+            if (this == obj) {
+                return true;
+            } else if (ElementUtils.executableEquals(specialization.getMethod(), other.specialization.getMethod()) &&
+                            ElementUtils.variableEquals(expression.getParameter().getVariableElement(), other.expression.getParameter().getVariableElement())) {
+                return true;
+            }
+            String reason = equalsWithReasonImpl(other, false);
+            if (reason == null) {
+                if (hashCode != other.hashCode) {
+                    throw new AssertionError();
+                }
+                return true;
+            }
+            return false;
+        }
+
+        private String equalsWithReasonImpl(SharableCache other, boolean generateMessage) {
+            TypeMirror thisParametertype = expression.getParameter().getType();
+            TypeMirror otherParametertype = other.expression.getParameter().getType();
+            if (specialization == other.specialization) {
+                if (!generateMessage) {
+                    return "";
+                }
+                return "Cannot share caches within the same specialization.";
+            }
+
+            if (!ElementUtils.typeEquals(thisParametertype, otherParametertype)) {
+                if (!generateMessage) {
+                    return "";
+                }
+                return String.format("The cache parameter type does not match. Expected '%s' but was '%s'.",
+                                ElementUtils.getSimpleName(thisParametertype),
+                                ElementUtils.getSimpleName(otherParametertype));
+            }
+            if (!equalsExpression(expression.getDefaultExpression(), other.specialization, other.expression.getDefaultExpression())) {
+                if (!generateMessage) {
+                    return "";
+                }
+                return String.format("The cache initializer does not match.");
+            }
+            if (!equalsExpression(expression.getUncachedExpression(), other.specialization, other.expression.getUncachedExpression())) {
+                if (!generateMessage) {
+                    return "";
+                }
+                return String.format("The uncached initializer does not match.");
+            }
+            if (specialization.hasMultipleInstances()) {
+                if (!generateMessage) {
+                    return "";
+                }
+                return String.format("The specialization '%s' has multiple instances.", ElementUtils.getReadableSignature(specialization.getMethod()));
+            }
+            if (other.specialization.hasMultipleInstances()) {
+                if (!generateMessage) {
+                    return "";
+                }
+                return String.format("The specialization '%s' has multiple instances.", ElementUtils.getReadableSignature(other.specialization.getMethod()));
+            }
+            return null;
+        }
+
+        String equalsWithReason(SharableCache other) {
+            return equalsWithReasonImpl(other, true);
+        }
+
+        private boolean equalsExpression(DSLExpression thisExpression, SpecializationData otherSpecialization, DSLExpression otherExpression) {
+            if (thisExpression == null && otherExpression == null) {
+                return true;
+            } else if (thisExpression == null || otherExpression == null) {
+                return false;
+            }
+
+            List<DSLExpression> otherExpressions = thisExpression.flatten();
+            List<DSLExpression> expressions = otherExpression.flatten();
+            if (otherExpressions.size() != expressions.size()) {
+                return false;
+            }
+            Iterator<DSLExpression> otherExpressionIterator = expressions.iterator();
+            Iterator<DSLExpression> thisExpressionIterator = otherExpressions.iterator();
+            while (otherExpressionIterator.hasNext()) {
+                DSLExpression e1 = thisExpressionIterator.next();
+                DSLExpression e2 = otherExpressionIterator.next();
+                if (e1.getClass() != e2.getClass()) {
+                    return false;
+                } else if (e1 instanceof Variable) {
+                    VariableElement var1 = ((Variable) e1).getResolvedVariable();
+                    VariableElement var2 = ((Variable) e2).getResolvedVariable();
+
+                    if (var1.getKind() == ElementKind.PARAMETER && var2.getKind() == ElementKind.PARAMETER) {
+                        Parameter p1 = specialization.findByVariable(var1);
+                        Parameter p2 = otherSpecialization.findByVariable(var2);
+                        if (p1 != null && p2 != null) {
+                            NodeExecutionData execution1 = p1.getSpecification().getExecution();
+                            NodeExecutionData execution2 = p2.getSpecification().getExecution();
+                            if (execution1 != null && execution2 != null && execution1.getIndex() == execution2.getIndex()) {
+                                continue;
+                            }
+                        }
+                    }
+                    if (!ElementUtils.variableEquals(var1, var2)) {
+                        return false;
+                    }
+                } else if (e1 instanceof Call) {
+                    ExecutableElement var1 = ((Call) e1).getResolvedMethod();
+                    ExecutableElement var2 = ((Call) e2).getResolvedMethod();
+                    if (!ElementUtils.executableEquals(var1, var2)) {
+                        return false;
+                    }
+                } else if (e1 instanceof Binary) {
+                    String var1 = ((Binary) e1).getOperator();
+                    String var2 = ((Binary) e2).getOperator();
+                    if (!Objects.equals(var1, var2)) {
+                        return false;
+                    }
+                } else if (e1 instanceof Negate) {
+                    assert e2 instanceof Negate;
+                    // nothing to do
+                } else if (!e1.equals(e2)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        @Override
+        public int hashCode() {
+            return hashCode;
+        }
+
+        private static class DSLExpressionHash implements DSLExpressionVisitor {
+            private int hash = 1;
+
+            public void visitVariable(Variable binary) {
+                hash *= 31;
+            }
+
+            public void visitNegate(Negate negate) {
+                hash *= 31;
+            }
+
+            public void visitIntLiteral(IntLiteral binary) {
+                hash *= 31 + binary.getResolvedValueInt();
+            }
+
+            public void visitClassLiteral(ClassLiteral classLiteral) {
+                hash *= 31 + Objects.hash(classLiteral.getResolvedType());
+            }
+
+            public void visitCall(Call binary) {
+                hash *= 31 + Objects.hash(binary.getName());
+            }
+
+            public void visitBooleanLiteral(BooleanLiteral binary) {
+                hash *= 31 + Objects.hash(binary.getLiteral());
+            }
+
+            public void visitBinary(Binary binary) {
+                hash *= 31 + Objects.hash(binary.getOperator());
+            }
+
+            static int compute(DSLExpression e) {
+                if (e == null) {
+                    return 1;
+                }
+                DSLExpressionHash hash = new DSLExpressionHash();
+                e.accept(hash);
+                return hash.hash;
+            }
+        }
+
+    }
 }

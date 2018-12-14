@@ -48,6 +48,8 @@ import java.util.List;
 import org.junit.Test;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -318,7 +320,7 @@ public class ExportNodeTest extends AbstractLibraryTest {
         @ExportMessage(name = "m0")
         @ExportMessage(name = "m1")
         @ExportMessage(name = "m2")
-        final String is0(String arg, @Cached("arg") String cachedArg) {
+        final String is0(String arg, @Exclusive @Cached("arg") String cachedArg) {
             return cachedArg;
         }
 
@@ -349,7 +351,7 @@ public class ExportNodeTest extends AbstractLibraryTest {
         @ExportMessage(name = "m2")
         static class M extends Node {
             @Specialization
-            static String m(MultiExportMethod4 receiver, String arg, @Cached("arg") String cachedArg) {
+            static String m(MultiExportMethod4 receiver, String arg, @Shared("group") @Cached("arg") String cachedArg) {
                 return cachedArg;
             }
         }
@@ -366,8 +368,8 @@ public class ExportNodeTest extends AbstractLibraryTest {
         @ExportMessage(name = "m2")
         static class M extends Node {
             @Specialization(guards = "receiver == cachedReceiver")
-            static String m(MultiExportMethod5 receiver, String arg, @Cached("arg") String cachedArg,
-                            @Cached("receiver") MultiExportMethod5 cachedReceiver) {
+            static String m(MultiExportMethod5 receiver, String arg, @Exclusive @Cached("arg") String cachedArg,
+                            @Exclusive @Cached("receiver") MultiExportMethod5 cachedReceiver) {
                 return cachedArg;
             }
         }

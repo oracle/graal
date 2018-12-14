@@ -114,9 +114,8 @@ class AnnotationProcessor<M extends Template> {
                     unit.setGeneratorElement(model.getTemplateType());
 
                     DeclaredType overrideType = (DeclaredType) context.getType(Override.class);
-                    DeclaredType unusedType = (DeclaredType) context.getType(SuppressWarnings.class);
                     unit.accept(new GenerateOverrideVisitor(overrideType), null);
-                    unit.accept(new FixWarningsVisitor(unusedType, overrideType), null);
+                    unit.accept(new FixWarningsVisitor(model.getTemplateType(), overrideType), null);
 
                     if (!callback) {
                         unit.accept(new CodeWriter(context.getEnvironment(), element), null);

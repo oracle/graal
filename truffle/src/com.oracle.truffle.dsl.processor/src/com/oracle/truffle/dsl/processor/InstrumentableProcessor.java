@@ -186,9 +186,8 @@ public final class InstrumentableProcessor extends AbstractProcessor {
                         continue;
                     }
                     DeclaredType overrideType = (DeclaredType) context.getType(Override.class);
-                    DeclaredType unusedType = (DeclaredType) context.getType(SuppressWarnings.class);
                     unit.accept(new GenerateOverrideVisitor(overrideType), null);
-                    unit.accept(new FixWarningsVisitor(unusedType, overrideType), null);
+                    unit.accept(new FixWarningsVisitor(element, overrideType), null);
                     unit.accept(new CodeWriter(context.getEnvironment(), element), null);
                 } catch (Throwable e) {
                     // never throw annotation processor exceptions to the compiler
@@ -259,9 +258,8 @@ public final class InstrumentableProcessor extends AbstractProcessor {
                     continue;
                 }
                 DeclaredType overrideType = (DeclaredType) context.getType(Override.class);
-                DeclaredType unusedType = (DeclaredType) context.getType(SuppressWarnings.class);
                 unit.accept(new GenerateOverrideVisitor(overrideType), null);
-                unit.accept(new FixWarningsVisitor(unusedType, overrideType), null);
+                unit.accept(new FixWarningsVisitor(element, overrideType), null);
                 unit.accept(new CodeWriter(context.getEnvironment(), element), null);
             } catch (Throwable e) {
                 // never throw annotation processor exceptions to the compiler

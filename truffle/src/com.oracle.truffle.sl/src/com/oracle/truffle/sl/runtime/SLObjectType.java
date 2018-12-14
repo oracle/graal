@@ -70,6 +70,11 @@ public final class SLObjectType extends ObjectType {
     private SLObjectType() {
     }
 
+    @Override
+    public Class<?> dispatch() {
+        return SLObjectType.class;
+    }
+
     @ExportMessage
     @SuppressWarnings("unused")
     static boolean isObject(DynamicObject receiver) {
@@ -131,11 +136,6 @@ public final class SLObjectType extends ObjectType {
 
     static boolean shapeCheck(Shape shape, DynamicObject receiver) {
         return shape != null && shape.check(receiver);
-    }
-
-    @Override
-    public Class<?> dispatch() {
-        return SLObjectType.class;
     }
 
     @ExportLibrary(InteropLibrary.class)

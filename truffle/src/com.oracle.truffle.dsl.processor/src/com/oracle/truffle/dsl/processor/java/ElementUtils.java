@@ -739,7 +739,19 @@ public class ElementUtils {
         return null;
     }
 
+    public static boolean isDeprecated(TypeMirror baseType) {
+        if (baseType instanceof DeclaredType) {
+            return isDeprecated((TypeElement) ((DeclaredType) baseType).asElement());
+        }
+        return false;
+    }
+
     public static boolean isDeprecated(TypeElement baseType) {
+        DeclaredType deprecated = ProcessorContext.getInstance().getDeclaredType(Deprecated.class);
+        return ElementUtils.findAnnotationMirror(baseType.getAnnotationMirrors(), deprecated) != null;
+    }
+
+    public static boolean isPackageDeprecated(TypeElement baseType) {
         DeclaredType deprecated = ProcessorContext.getInstance().getDeclaredType(Deprecated.class);
         List<TypeElement> superTypes = getSuperTypes(baseType);
         superTypes.add(baseType);

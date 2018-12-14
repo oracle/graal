@@ -59,6 +59,7 @@ import com.oracle.truffle.api.library.DynamicDispatchLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.model.CacheExpression;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 import com.oracle.truffle.dsl.processor.model.Template;
 
@@ -70,6 +71,7 @@ public final class ExportsLibrary extends Template {
     private final LibraryData library;
     private final TypeMirror receiverClass;
     private final boolean explicitReceiver;
+    private Map<CacheExpression, String> sharedExpressions;
 
     public ExportsLibrary(ProcessorContext context, TypeElement templateType, AnnotationMirror annotation, ExportsData exports, LibraryData library, TypeMirror receiverClass,
                     boolean explicitReceiver) {
@@ -78,6 +80,14 @@ public final class ExportsLibrary extends Template {
         this.receiverClass = receiverClass;
         this.library = library;
         this.explicitReceiver = explicitReceiver;
+    }
+
+    public void setSharedExpressions(Map<CacheExpression, String> sharedExpressions) {
+        this.sharedExpressions = sharedExpressions;
+    }
+
+    public Map<CacheExpression, String> getSharedExpressions() {
+        return sharedExpressions;
     }
 
     public boolean isFinalReceiver() {

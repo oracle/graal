@@ -101,7 +101,7 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
         return findChildContainers().iterator();
     }
 
-    public final void redirectMessagesOnGeneratedElements(ExportMessageElement to) {
+    public final void redirectMessagesOnGeneratedElements(MessageContainer to) {
         if (!getMessages().isEmpty()) {
             Element messageElement = getMessageElement();
             if (messageElement == null || messageElement instanceof GeneratedElement || messageElement.getEnclosingElement() instanceof GeneratedElement) {

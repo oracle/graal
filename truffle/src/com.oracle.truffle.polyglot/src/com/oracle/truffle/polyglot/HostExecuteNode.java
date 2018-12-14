@@ -60,6 +60,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
@@ -163,9 +164,9 @@ abstract class HostExecuteNode extends Node {
 
     @Specialization(replaces = {"doFixed", "doVarArgs"})
     static Object doSingleUncached(SingleMethod method, Object obj, Object[] args, PolyglotLanguageContext languageContext,
-                    @Cached ToHostNode toJavaNode,
-                    @Cached ToGuestValueNode toGuest,
-                    @Cached("createBinaryProfile()") ConditionProfile isVarArgsProfile) throws ArityException {
+                    @Shared("toHost") @Cached ToHostNode toJavaNode,
+                    @Shared("toGuest") @Cached ToGuestValueNode toGuest,
+                    @Shared("varArgsProfile") @Cached("createBinaryProfile()") ConditionProfile isVarArgsProfile) throws ArityException {
         int parameterCount = method.getParameterCount();
         int minArity = method.isVarArgs() ? parameterCount - 1 : parameterCount;
         if (args.length < minArity) {
@@ -211,9 +212,9 @@ abstract class HostExecuteNode extends Node {
 
     @Specialization(replaces = "doOverloadedCached")
     static Object doOverloadedUncached(OverloadedMethod method, Object obj, Object[] args, PolyglotLanguageContext languageContext,
-                    @Cached ToHostNode toJavaNode,
-                    @Cached ToGuestValueNode toGuest,
-                    @Cached("createBinaryProfile()") ConditionProfile isVarArgsProfile) throws ArityException, UnsupportedTypeException {
+                    @Shared("toHost") @Cached ToHostNode toJavaNode,
+                    @Shared("toGuest") @Cached ToGuestValueNode toGuest,
+                    @Shared("varArgsProfile") @Cached("createBinaryProfile()") ConditionProfile isVarArgsProfile) throws ArityException, UnsupportedTypeException {
         SingleMethod overload = selectOverload(method, args, languageContext);
         Object[] convertedArguments = prepareArgumentsUncached(overload, args, languageContext, toJavaNode, isVarArgsProfile);
         return doInvoke(overload, obj, convertedArguments, languageContext, toGuest);
