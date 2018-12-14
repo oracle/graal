@@ -55,7 +55,6 @@ import com.oracle.truffle.object.LocationImpl.InternalLongLocation;
 import com.oracle.truffle.object.Locations.ConstantLocation;
 import com.oracle.truffle.object.Locations.DeclaredLocation;
 import com.oracle.truffle.object.Locations.ValueLocation;
-import com.oracle.truffle.object.ObjectStorageOptions;
 import com.oracle.truffle.object.ShapeImpl;
 import com.oracle.truffle.object.basic.BasicLocations.BooleanLocationDecorator;
 import com.oracle.truffle.object.basic.BasicLocations.DoubleLocationDecorator;
@@ -66,6 +65,7 @@ import com.oracle.truffle.object.basic.BasicLocations.LongLocationDecorator;
 import com.oracle.truffle.object.basic.BasicLocations.ObjectArrayLocation;
 import com.oracle.truffle.object.basic.BasicLocations.PrimitiveLocationDecorator;
 
+@SuppressWarnings("deprecation")
 class BasicAllocator extends ShapeImpl.BaseAllocator {
 
     BasicAllocator(LayoutImpl layout) {
@@ -101,7 +101,7 @@ class BasicAllocator extends ShapeImpl.BaseAllocator {
 
     @Override
     public Location newObjectLocation(boolean useFinal, boolean nonNull) {
-        if (ObjectStorageOptions.InObjectFields) {
+        if (com.oracle.truffle.object.ObjectStorageOptions.InObjectFields) {
             int insertPos = objectFieldSize;
             if (insertPos + OBJECT_SIZE <= getLayout().getObjectFieldCount()) {
                 return advance((Location) getLayout().getObjectFieldLocation(insertPos));
@@ -122,8 +122,8 @@ class BasicAllocator extends ShapeImpl.BaseAllocator {
 
     @Override
     public Location newIntLocation(boolean useFinal) {
-        if (ObjectStorageOptions.PrimitiveLocations && ObjectStorageOptions.IntegerLocations) {
-            if (ObjectStorageOptions.InObjectFields && primitiveFieldSize + LONG_SIZE <= getLayout().getPrimitiveFieldCount()) {
+        if (com.oracle.truffle.object.ObjectStorageOptions.PrimitiveLocations && com.oracle.truffle.object.ObjectStorageOptions.IntegerLocations) {
+            if (com.oracle.truffle.object.ObjectStorageOptions.InObjectFields && primitiveFieldSize + LONG_SIZE <= getLayout().getPrimitiveFieldCount()) {
                 return advance(new IntLocationDecorator(getLayout().getPrimitiveFieldLocation(primitiveFieldSize)));
             } else if (getLayout().hasPrimitiveExtensionArray() && isPrimitiveExtensionArrayAvailable()) {
                 return advance(new IntLocationDecorator(new LongArrayLocation(primitiveArraySize, getLayout().getPrimitiveArrayLocation())));
@@ -134,8 +134,8 @@ class BasicAllocator extends ShapeImpl.BaseAllocator {
 
     @Override
     public Location newDoubleLocation(boolean useFinal) {
-        if (ObjectStorageOptions.PrimitiveLocations && ObjectStorageOptions.DoubleLocations) {
-            if (ObjectStorageOptions.InObjectFields && primitiveFieldSize + LONG_SIZE <= getLayout().getPrimitiveFieldCount()) {
+        if (com.oracle.truffle.object.ObjectStorageOptions.PrimitiveLocations && com.oracle.truffle.object.ObjectStorageOptions.DoubleLocations) {
+            if (com.oracle.truffle.object.ObjectStorageOptions.InObjectFields && primitiveFieldSize + LONG_SIZE <= getLayout().getPrimitiveFieldCount()) {
                 return advance(new DoubleLocationDecorator(getLayout().getPrimitiveFieldLocation(primitiveFieldSize), getLayout().isAllowedIntToDouble()));
             } else if (getLayout().hasPrimitiveExtensionArray() && isPrimitiveExtensionArrayAvailable()) {
                 return advance(new DoubleLocationDecorator(new LongArrayLocation(primitiveArraySize, getLayout().getPrimitiveArrayLocation()), getLayout().isAllowedIntToDouble()));
@@ -146,8 +146,8 @@ class BasicAllocator extends ShapeImpl.BaseAllocator {
 
     @Override
     public Location newLongLocation(boolean useFinal) {
-        if (ObjectStorageOptions.PrimitiveLocations && ObjectStorageOptions.LongLocations) {
-            if (ObjectStorageOptions.InObjectFields && primitiveFieldSize + LONG_SIZE <= getLayout().getPrimitiveFieldCount()) {
+        if (com.oracle.truffle.object.ObjectStorageOptions.PrimitiveLocations && com.oracle.truffle.object.ObjectStorageOptions.LongLocations) {
+            if (com.oracle.truffle.object.ObjectStorageOptions.InObjectFields && primitiveFieldSize + LONG_SIZE <= getLayout().getPrimitiveFieldCount()) {
                 return advance((Location) LongFieldLocation.create(getLayout().getPrimitiveFieldLocation(primitiveFieldSize), getLayout().isAllowedIntToLong()));
             } else if (getLayout().hasPrimitiveExtensionArray() && isPrimitiveExtensionArrayAvailable()) {
                 return advance(new LongArrayLocation(primitiveArraySize, getLayout().getPrimitiveArrayLocation(), getLayout().isAllowedIntToLong()));
@@ -158,7 +158,7 @@ class BasicAllocator extends ShapeImpl.BaseAllocator {
 
     @Override
     public Location newBooleanLocation(boolean useFinal) {
-        if (ObjectStorageOptions.PrimitiveLocations && ObjectStorageOptions.BooleanLocations) {
+        if (com.oracle.truffle.object.ObjectStorageOptions.PrimitiveLocations && com.oracle.truffle.object.ObjectStorageOptions.BooleanLocations) {
             if (primitiveFieldSize + LONG_SIZE <= getLayout().getPrimitiveFieldCount()) {
                 return advance(new BooleanLocationDecorator(getLayout().getPrimitiveFieldLocation(primitiveFieldSize)));
             }
