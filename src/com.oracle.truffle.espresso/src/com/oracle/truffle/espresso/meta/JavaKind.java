@@ -62,6 +62,9 @@ public enum JavaKind {
     /** The void kind. */
     Void('V', 14, "void", 0, false, java.lang.Void.TYPE, java.lang.Void.class),
 
+    /** The return address type. */
+    ReturnAddress('r', 98, "return address", 0, false, null, null),
+
     /** The non-type. */
     Illegal('-', 99, "illegal", 0, false, null, null);
 

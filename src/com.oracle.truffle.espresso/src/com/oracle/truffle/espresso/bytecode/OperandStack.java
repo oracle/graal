@@ -28,7 +28,6 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.impl.MethodInfo;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -38,7 +37,7 @@ import com.oracle.truffle.espresso.types.SignatureDescriptor;
 
 public interface OperandStack {
 
-    List<FrameSlotKind> KIND_VALUES = Collections.unmodifiableList(Arrays.asList(FrameSlotKind.values()));
+    List<JavaKind> KIND_VALUES = Collections.unmodifiableList(Arrays.asList(JavaKind.values()));
 
     void popVoid(int slots);
 
@@ -55,6 +54,8 @@ public interface OperandStack {
     void pushDouble(double value);
 
     StaticObject popObject();
+
+    Object popReturnAddressOrObject();
 
     int popInt();
 
@@ -84,7 +85,6 @@ public interface OperandStack {
 
     @ExplodeLoop
     default Object[] popArguments(boolean hasReceiver, SignatureDescriptor signature) {
-        // TODO(peterssen): Check parameter count.
         int argCount = signature.getParameterCount(false);
 
         int extraParam = hasReceiver ? 1 : 0;
