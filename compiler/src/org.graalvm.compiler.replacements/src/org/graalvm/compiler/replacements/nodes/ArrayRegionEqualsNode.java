@@ -102,7 +102,7 @@ public final class ArrayRegionEqualsNode extends FixedWithNextNode implements LI
 
     @Override
     public LocationIdentity getLocationIdentity() {
-        return NamedLocationIdentity.getArrayLocation(kind1);
+        return kind1 != kind2 ? LocationIdentity.ANY_LOCATION : NamedLocationIdentity.getArrayLocation(kind1);
     }
 
     @Override
