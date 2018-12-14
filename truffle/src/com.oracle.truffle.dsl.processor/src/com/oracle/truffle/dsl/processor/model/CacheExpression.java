@@ -63,7 +63,6 @@ public final class CacheExpression extends MessageContainer {
     private boolean initializedInFastPath = false;
     private Message uncachedExpressionError;
     private boolean requiresBoundary;
-    private Cached.Scope scope;
     private String sharedGroup;
 
     public CacheExpression(Parameter sourceParameter, AnnotationMirror sourceAnnotationMirror) {
@@ -123,14 +122,6 @@ public final class CacheExpression extends MessageContainer {
 
     public DSLExpression getUncachedExpression() {
         return uncachedExpression;
-    }
-
-    public Cached.Scope getScope() {
-        return scope;
-    }
-
-    void setScope(Cached.Scope scope) {
-        this.scope = scope;
     }
 
     public void setInitializedInFastPath(boolean fastPathCache) {
