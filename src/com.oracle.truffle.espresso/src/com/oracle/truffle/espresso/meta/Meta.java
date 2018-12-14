@@ -279,7 +279,7 @@ public final class Meta {
         throw EspressoError.shouldNotReachHere(hostObject + " cannot be converted to guest world");
     }
 
-    public Object toHostBoxed(Object object, JavaKind kind) {
+    public Object toHostBoxed(Object object) {
         assert object != null;
         if (object instanceof StaticObject) {
             StaticObject guestObject = (StaticObject) object;
@@ -297,23 +297,6 @@ public final class Meta {
             }
         }
         return object;
-    }
-
-    public Object toHost(StaticObject guestObject) {
-        if (StaticObject.isNull(guestObject)) {
-            return null;
-        }
-        if (guestObject == StaticObject.VOID) {
-            return null;
-        }
-        // primitive array
-        if (guestObject.getClass().isArray() && guestObject.getClass().getComponentType().isPrimitive()) {
-            return guestObject;
-        }
-        if (guestObject.getKlass() == STRING.klass) {
-            return toHost(guestObject);
-        }
-        throw EspressoError.shouldNotReachHere(guestObject + " cannot be converted to host world");
     }
 
     public static class Klass implements ModifiersProvider {
@@ -660,7 +643,7 @@ public final class Meta {
                     filteredArgs[i] = meta.toGuestBoxed(args[i - 1]);
                 }
             }
-            return meta.toHostBoxed(method.getCallTarget().call(filteredArgs), method.getSignature().resultKind());
+            return meta.toHostBoxed(method.getCallTarget().call(filteredArgs));
         }
 
         /**

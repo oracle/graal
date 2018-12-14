@@ -27,6 +27,7 @@ import java.lang.reflect.Array;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 
 public final class StaticObjectArray extends StaticObject {
@@ -40,6 +41,36 @@ public final class StaticObjectArray extends StaticObject {
         assert !(array instanceof StaticObject);
         assert array.getClass().isArray();
         this.array = array;
+    }
+
+    public static StaticObjectArray wrapPrimitiveArray(Object array) {
+        assert array != null;
+        assert array.getClass().isArray() && array.getClass().getComponentType().isPrimitive();
+        if (array instanceof boolean[]) {
+            return wrap((boolean[]) array);
+        }
+        if (array instanceof byte[]) {
+            return wrap((byte[]) array);
+        }
+        if (array instanceof char[]) {
+            return wrap((char[]) array);
+        }
+        if (array instanceof short[]) {
+            return wrap((short[]) array);
+        }
+        if (array instanceof int[]) {
+            return wrap((int[]) array);
+        }
+        if (array instanceof float[]) {
+            return wrap((float[]) array);
+        }
+        if (array instanceof double[]) {
+            return wrap((double[]) array);
+        }
+        if (array instanceof long[]) {
+            return wrap((long[]) array);
+        }
+        throw EspressoError.shouldNotReachHere("Not a primitive array " + array);
     }
 
     @SuppressWarnings("unchecked")

@@ -520,7 +520,7 @@ public class EspressoRootNode extends RootNode implements LinkedNode {
                         stack.pushDouble(vm.getArrayDouble(stack.popInt(), nullCheck(stack.popObject())));
                         break;
                     case AALOAD:
-                        stack.pushObject(vm.getArrayObject(stack.popInt(), (StaticObjectArray) nullCheck(stack.popObject())));
+                        stack.pushObject(vm.getArrayObject(stack.popInt(), nullCheck(stack.popObject())));
                         break;
                     case BALOAD:
                         stack.pushInt(vm.getArrayByte(stack.popInt(), nullCheck(stack.popObject())));

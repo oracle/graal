@@ -47,6 +47,15 @@ public final class DualStack implements OperandStack {
 
     // region Operand stack operations
 
+    private static int numberOfSlots(JavaKind kind) {
+        assert kind != null;
+        if (kind == JavaKind.Long || kind == JavaKind.Double) {
+            return 2;
+        }
+        // Illegal takes 1 slot.
+        return 1;
+    }
+
     @Override
     public void popVoid(int slots) {
         assert slots == 1 || slots == 2;
@@ -107,7 +116,7 @@ public final class DualStack implements OperandStack {
         stackSize++;
     }
 
-    public JavaKind peekTag() {
+    private JavaKind peekTag() {
         return KIND_VALUES.get(stackTag[stackSize - 1]);
     }
 
@@ -156,19 +165,10 @@ public final class DualStack implements OperandStack {
         return ret;
     }
 
-    public void popIllegal() {
+    private void popIllegal() {
         assert peekTag() == JavaKind.Illegal;
         assert stackSize > 0;
         --stackSize;
-    }
-
-    static int numberOfSlots(JavaKind kind) {
-        assert kind != null;
-        if (kind == JavaKind.Long || kind == JavaKind.Double) {
-            return 2;
-        }
-        // Illegal takes 1 slot.
-        return 1;
     }
 
     @Override

@@ -94,7 +94,7 @@ public final class BoxedStack implements OperandStack {
         stack[stackSize++] = value;
     }
 
-    public JavaKind peekTag() {
+    private JavaKind peekTag() {
         // TODO(peterssen): Avoid recreating values() array.
         return KIND_VALUES.get(stackTag[stackSize - 1]);
     }

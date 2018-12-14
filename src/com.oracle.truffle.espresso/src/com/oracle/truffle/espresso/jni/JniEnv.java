@@ -1623,6 +1623,6 @@ public class JniEnv extends NativeEnv {
      */
     @JniImpl
     public @Type(Object.class) StaticObject GetObjectArrayElement(StaticObject array, int index) {
-        return EspressoLanguage.getCurrentContext().getInterpreterToVM().getArrayObject(index, (StaticObjectArray) array);
+        return EspressoLanguage.getCurrentContext().getInterpreterToVM().getArrayObject(index, array);
     }
 }
