@@ -29,6 +29,7 @@ import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
 
 public class PointstoOptions {
 
@@ -100,6 +101,9 @@ public class PointstoOptions {
 
     @Option(help = "Path to the contents of the Inspect web server.")//
     public static final OptionKey<String> InspectServerContentPath = new OptionKey<>("inspect");
+
+    @Option(help = "Report error if <typename>[:<UsageKind>{|<UsageKind>}] is discovered during analysis.", type = OptionType.Debug)//
+    public static final OptionKey<String[]> ReportAnalysisForbiddenType = new OptionKey<>(new String[0]);
 
     /**
      * Controls the static analysis context sensitivity. Available values:

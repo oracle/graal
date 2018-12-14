@@ -31,6 +31,7 @@ import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -145,6 +146,14 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
 
     /* isArray is an expensive operation so we eagerly compute it */
     private boolean isArray;
+
+    public enum UsageKind {
+        InHeap,
+        Allocated,
+        InTypeCheck;
+    }
+
+    private static Map<ResolvedJavaType, EnumSet<UsageKind>> forbiddenTypes = null;
 
     AnalysisType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType) {
         this.universe = universe;
@@ -488,6 +497,9 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     public void registerAsInHeap() {
         assert isArray() || (isInstanceClass() && !Modifier.isAbstract(getModifiers()));
         isInHeap = true;
+        if (forbiddenTypes != null) {
+            checkForbidden(UsageKind.InHeap);
+        }
     }
 
     /**
@@ -498,10 +510,27 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         if (!isAllocated) {
             isAllocated = true;
         }
+        if (forbiddenTypes != null) {
+            checkForbidden(UsageKind.Allocated);
+        }
     }
 
     public void registerAsInTypeCheck() {
         isInTypeCheck = true;
+        if (forbiddenTypes != null) {
+            checkForbidden(UsageKind.InTypeCheck);
+        }
+    }
+
+    private void checkForbidden(UsageKind kind) {
+        EnumSet<UsageKind> forbiddenType = forbiddenTypes.get(wrapped);
+        if (forbiddenType != null && forbiddenType.contains(kind)) {
+            throw new UnsupportedFeatureException("Forbidden type " + wrapped.toJavaName() + " UsageKind: " + kind);
+        }
+    }
+
+    public static void setForbiddenTypes(Map<ResolvedJavaType, EnumSet<UsageKind>> map) {
+        forbiddenTypes = map;
     }
 
     public boolean getReachabilityListenerNotified() {
