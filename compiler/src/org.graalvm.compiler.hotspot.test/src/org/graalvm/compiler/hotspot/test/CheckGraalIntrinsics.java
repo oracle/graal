@@ -273,8 +273,6 @@ public class CheckGraalIntrinsics extends GraalTest {
             add(toBeInvestigated,
                             // Some logic and a stub call
                             "com/sun/crypto/provider/CounterMode.implCrypt([BII[BI)I",
-                            // Stub and very little logic
-                            "com/sun/crypto/provider/GHASH.processBlocks([BII[J[J)V",
                             // HotSpot MacroAssembler-based intrinsic
                             "java/lang/Math.fma(DDD)D",
                             // HotSpot MacroAssembler-based intrinsic

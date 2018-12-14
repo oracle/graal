@@ -265,6 +265,11 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
         unsafeArraycopyStub(UNSAFE_ARRAYCOPY, srcAddr, dstAddr, size);
     }
 
+    /**
+     * Descriptor for {@code StubRoutines::_ghash_processBlocks}.
+     */
+    public static final ForeignCallDescriptor GHASH_PROCESS_BLOCKS = new ForeignCallDescriptor("ghashProcessBlocks", void.class, Word.class, Word.class, Word.class, int.class);
+
     @NodeIntrinsic(ForeignCallNode.class)
     private static native void unsafeArraycopyStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word srcAddr, Word dstAddr, Word size);
 
