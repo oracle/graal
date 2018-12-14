@@ -37,12 +37,16 @@ import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.DynamicDispatchLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMPointerMessageResolutionForeign;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
 
 @ValueType
-class LLVMPointerImpl implements LLVMManagedPointer, LLVMNativePointer, LLVMObjectNativeLibrary.Provider {
+@ExportLibrary(DynamicDispatchLibrary.class)
+final class LLVMPointerImpl implements LLVMManagedPointer, LLVMNativePointer, LLVMObjectNativeLibrary.Provider {
 
     private final TruffleObject object;
     private final long offset;
@@ -135,6 +139,16 @@ class LLVMPointerImpl implements LLVMManagedPointer, LLVMNativePointer, LLVMObje
             return String.format("0x%x", asNative());
         } else {
             return String.format("%s+0x%x", getObject().getClass().getSimpleName(), getOffset());
+        }
+    }
+
+    @ExportMessage
+    Class<?> dispatch() {
+        if (isNative()) {
+            return NativePointerLibraries.class;
+        } else {
+            assert isManaged();
+            return ManagedPointerLibraries.class;
         }
     }
 
