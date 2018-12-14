@@ -334,4 +334,15 @@ public interface FileSystem {
     default void setCurrentWorkingDirectory(Path currentWorkingDirectory) {
         throw new UnsupportedOperationException("Setting current working directory is not supported.");
     }
+
+    /**
+     * Returns the name separator used to separate names in a path string. The separator is used
+     * when creating path strings by invoking the {@link Path#toString() toString()} method.
+     *
+     * @return the name separator
+     * @since 1.0
+     */
+    default String getSeparator() {
+        return parsePath("").getFileSystem().getSeparator();
+    }
 }
