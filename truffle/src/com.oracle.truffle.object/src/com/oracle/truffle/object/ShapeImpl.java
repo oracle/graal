@@ -93,6 +93,7 @@ import com.oracle.truffle.object.Transition.ShareShapeTransition;
  * @see Locations
  * @since 0.17 or earlier
  */
+@SuppressWarnings("deprecation")
 public abstract class ShapeImpl extends Shape {
     private final int id;
 
@@ -796,7 +797,6 @@ public abstract class ShapeImpl extends Shape {
     /**
      * Find difference between two shapes.
      *
-     * @see ObjectStorageOptions#TraceReshape
      * @since 0.17 or earlier
      */
     public static List<Property> diff(Shape oldShape, Shape newShape) {

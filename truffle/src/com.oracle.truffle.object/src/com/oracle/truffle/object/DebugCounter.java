@@ -45,6 +45,7 @@ import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicLong;
 
 /** @since 0.17 or earlier */
+@SuppressWarnings("deprecation")
 public abstract class DebugCounter {
     private DebugCounter() {
     }
