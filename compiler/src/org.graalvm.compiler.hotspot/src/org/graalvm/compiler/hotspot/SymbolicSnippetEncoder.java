@@ -48,6 +48,7 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.runtime.GraalJVMCICompiler;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
+import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampPair;
@@ -60,6 +61,8 @@ import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
+import org.graalvm.compiler.java.BytecodeParser;
+import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.EncodedGraph;
@@ -71,9 +74,11 @@ import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
@@ -82,8 +87,10 @@ import org.graalvm.compiler.nodes.graphbuilderconf.ParameterPlugin;
 import org.graalvm.compiler.nodes.java.AccessFieldNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.spi.DelegatingReplacements;
+import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.ConstantBindingParameterPlugin;
@@ -95,6 +102,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaField;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
@@ -104,6 +112,7 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MemoryAccessProvider;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.MethodHandleAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -119,7 +128,11 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
  */
 public class SymbolicSnippetEncoder extends DelegatingReplacements {
 
-    private final HotSpotReplacementsImpl replacements;
+    /**
+     * This is a customized HotSpotReplacementsImpl intended only for parsing snippets and method
+     * substitutions for graph encoding.
+     */
+    private final HotSpotSnippetReplacementsImpl replacements;
 
     /**
      * The set of all snippet methods that have been encoded.
@@ -244,7 +257,7 @@ public class SymbolicSnippetEncoder extends DelegatingReplacements {
         copy.appendInlineInvokePlugin(new SnippetInlineInvokePlugin());
         copy.appendNodePlugin(new SnippetCounterPlugin());
         HotSpotProviders providers = (HotSpotProviders) replacements.getProviders().copyWith(new HotSpotSubstrateConstantReflectionProvider(replacements.getProviders().getConstantReflection()));
-        this.replacements = new HotSpotReplacementsImpl(replacements, providers.copyWith(copy));
+        this.replacements = new HotSpotSnippetReplacementsImpl(replacements, providers.copyWith(copy));
         this.replacements.setGraphBuilderPlugins(copy);
     }
 
@@ -453,7 +466,7 @@ public class SymbolicSnippetEncoder extends DelegatingReplacements {
             HotSpotProviders newProviders = new HotSpotProviders(originalProvider.getMetaAccess(), originalProvider.getCodeCache(), constantReflection,
                             originalProvider.getConstantFieldProvider(), originalProvider.getForeignCalls(), originalProvider.getLowerer(), null, originalProvider.getSuites(),
                             originalProvider.getRegisters(), snippetReflection, originalProvider.getWordTypes(), originalProvider.getGraphBuilderPlugins());
-            HotSpotReplacementsImpl filteringReplacements = new HotSpotReplacementsImpl(getOptions(), newProviders, snippetReflection,
+            HotSpotSnippetReplacementsImpl filteringReplacements = new HotSpotSnippetReplacementsImpl(getOptions(), newProviders, snippetReflection,
                             originalProvider.getReplacements().getDefaultReplacementBytecodeProvider(),
                             originalProvider.getCodeCache().getTarget());
             filteringReplacements.setGraphBuilderPlugins(originalProvider.getReplacements().getGraphBuilderPlugins());
@@ -957,5 +970,61 @@ public class SymbolicSnippetEncoder extends DelegatingReplacements {
 
     private static int filteredUsageCount(Node node) {
         return node.usages().filter(n -> !(n instanceof FrameState)).count();
+    }
+
+    /**
+     * This horror show of classes exists solely get {@link HotSpotSnippetBytecodeParser} to be used
+     * as the parser for these snippets.
+     */
+    static class HotSpotSnippetReplacementsImpl extends HotSpotReplacementsImpl {
+        HotSpotSnippetReplacementsImpl(HotSpotReplacementsImpl replacements, Providers providers) {
+            super(replacements, providers);
+        }
+
+        HotSpotSnippetReplacementsImpl(OptionValues options, Providers providers, SnippetReflectionProvider snippetReflection, BytecodeProvider bytecodeProvider, TargetDescription target) {
+            super(options, providers, snippetReflection, bytecodeProvider, target);
+        }
+
+        @Override
+        protected GraphMaker createGraphMaker(ResolvedJavaMethod substitute, ResolvedJavaMethod original) {
+            return new SnippetGraphMaker(this, substitute, original);
+        }
+    }
+
+    static class SnippetGraphMaker extends ReplacementsImpl.GraphMaker {
+        SnippetGraphMaker(ReplacementsImpl replacements, ResolvedJavaMethod substitute, ResolvedJavaMethod substitutedMethod) {
+            super(replacements, substitute, substitutedMethod);
+        }
+
+        @Override
+        protected GraphBuilderPhase.Instance createGraphBuilder(MetaAccessProvider metaAccess, StampProvider stampProvider, ConstantReflectionProvider constantReflection,
+                        ConstantFieldProvider constantFieldProvider, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
+            return new HotSpotSnippetGraphBuilderPhase(metaAccess, stampProvider, constantReflection, constantFieldProvider, graphBuilderConfig, optimisticOpts,
+                            initialIntrinsicContext);
+        }
+    }
+
+    static class HotSpotSnippetGraphBuilderPhase extends GraphBuilderPhase.Instance {
+        HotSpotSnippetGraphBuilderPhase(MetaAccessProvider metaAccess, StampProvider stampProvider, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider,
+                        GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
+            super(metaAccess, stampProvider, constantReflection, constantFieldProvider, graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
+        }
+
+        @Override
+        protected BytecodeParser createBytecodeParser(StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI, IntrinsicContext intrinsicContext) {
+            return new HotSpotSnippetBytecodeParser(this, graph, parent, method, entryBCI, intrinsicContext);
+        }
+    }
+
+    static class HotSpotSnippetBytecodeParser extends BytecodeParser {
+        HotSpotSnippetBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
+                        IntrinsicContext intrinsicContext) {
+            super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext);
+        }
+
+        @Override
+        public boolean canDeferPlugin(GeneratedInvocationPlugin plugin) {
+            return plugin.getSource().equals(Fold.class) || plugin.getSource().equals(Node.NodeIntrinsic.class);
+        }
     }
 }
