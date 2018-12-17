@@ -732,6 +732,16 @@ public class Bytecodes {
     }
 
     /**
+     * Determines if a given opcode denotes a quickened instruction.
+     *
+     * @param opcode an opcode to test
+     * @return {@code true} iff {@code opcode} is a quickened bytecode, {@code false} otherwise
+     */
+    public static boolean isQuickened(int opcode) {
+        return (flagsArray[opcode & 0xff] & QUICKENED) != 0;
+    }
+
+    /**
      * Determines if a given opcode denotes an instruction that stores a value to a local variable
      * after popping it from the operand stack.
      *
