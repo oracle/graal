@@ -46,8 +46,6 @@ import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 import java.util.regex.Pattern;
 
-import com.oracle.graal.pointsto.api.PointstoOptions;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import org.graalvm.compiler.core.common.SuppressSVMWarnings;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.options.OptionValues;
@@ -56,6 +54,7 @@ import org.graalvm.word.WordBase;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.api.HostVM;
+import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
@@ -82,6 +81,7 @@ import com.oracle.svm.hosted.analysis.flow.SVMMethodTypeFlowBuilder;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import sun.reflect.generics.reflectiveObjects.ParameterizedTypeImpl;
 
@@ -113,28 +113,23 @@ public class Inflation extends BigBang {
 
     private void setupForbiddenTypes() {
         String[] forbiddenTypesOptionValues = PointstoOptions.ReportAnalysisForbiddenType.getValue(universe.getHostVM().options());
-        Map<ResolvedJavaType, EnumSet<AnalysisType.UsageKind>> forbiddenTypes = new HashMap<>();
+        Map<String, EnumSet<AnalysisType.UsageKind>> forbiddenTypes = new HashMap<>();
         MetaAccessProvider wrappedMetaAccess = metaAccess.getWrapped();
         for (String forbiddenTypesOptionValue : forbiddenTypesOptionValues) {
             String[] splitted = forbiddenTypesOptionValue.split(":", 2);
             ResolvedJavaType forbiddenType = null;
-            try {
-                forbiddenType = wrappedMetaAccess.lookupJavaType(Class.forName(splitted[0]));
-            } catch (ClassNotFoundException e) {
-                JVMCIError.shouldNotReachHere("Unknown type specified in option ReportAnalysisForbiddenType");
-            }
             EnumSet<AnalysisType.UsageKind> usageKinds;
             if (splitted.length == 1) {
                 usageKinds = EnumSet.allOf(AnalysisType.UsageKind.class);
             } else {
-                usageKinds = EnumSet.noneOf( AnalysisType.UsageKind.class);
-                String[] usageKindValues = splitted[1].split("\\|");
+                usageKinds = EnumSet.noneOf(AnalysisType.UsageKind.class);
+                String[] usageKindValues = splitted[1].split(",");
                 for (String usageKindValue : usageKindValues) {
                     usageKinds.add(AnalysisType.UsageKind.valueOf(usageKindValue));
                 }
 
             }
-            forbiddenTypes.put(forbiddenType, usageKinds);
+            forbiddenTypes.put(splitted[0], usageKinds);
         }
         if (!forbiddenTypes.isEmpty()) {
             AnalysisType.setForbiddenTypes(forbiddenTypes);

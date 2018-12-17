@@ -153,7 +153,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         InTypeCheck;
     }
 
-    private static Map<ResolvedJavaType, EnumSet<UsageKind>> forbiddenTypes = null;
+    private static Map<String, EnumSet<UsageKind>> forbiddenTypes = null;
 
     AnalysisType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType) {
         this.universe = universe;
@@ -523,13 +523,13 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     }
 
     private void checkForbidden(UsageKind kind) {
-        EnumSet<UsageKind> forbiddenType = forbiddenTypes.get(wrapped);
+        EnumSet<UsageKind> forbiddenType = forbiddenTypes.get(wrapped.toJavaName());
         if (forbiddenType != null && forbiddenType.contains(kind)) {
             throw new UnsupportedFeatureException("Forbidden type " + wrapped.toJavaName() + " UsageKind: " + kind);
         }
     }
 
-    public static void setForbiddenTypes(Map<ResolvedJavaType, EnumSet<UsageKind>> map) {
+    public static void setForbiddenTypes(Map<String, EnumSet<UsageKind>> map) {
         forbiddenTypes = map;
     }
 
