@@ -22,9 +22,9 @@
  */
 package com.oracle.truffle.espresso.meta;
 
-import java.lang.reflect.Array;
-
 import com.oracle.truffle.espresso.impl.Klass;
+
+import java.lang.reflect.Array;
 
 /**
  * Denotes the basic kinds of types in CRI, including the all the Java primitive types, for example,

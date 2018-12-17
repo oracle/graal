@@ -199,7 +199,7 @@ public final class BytecodeStream {
     public int opcode(int curBCI) {
         if (curBCI < code.length) {
             int opcode = Bytes.beU1(code, curBCI);
-            assert opcode < Bytecodes.BREAKPOINT : "illegal bytecode";
+            assert opcode <= Bytecodes.QUICK_INSTANCEOF : "illegal bytecode";
             return opcode;
         } else {
             return Bytecodes.END;

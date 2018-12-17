@@ -22,14 +22,13 @@
  */
 package com.oracle.truffle.espresso;
 
-import java.util.Map;
-
+import com.oracle.truffle.api.Option;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionKey;
 
-import com.oracle.truffle.api.Option;
+import java.util.Map;
 
 @Option.Group(EspressoLanguage.ID)
 public final class EspressoOptions {

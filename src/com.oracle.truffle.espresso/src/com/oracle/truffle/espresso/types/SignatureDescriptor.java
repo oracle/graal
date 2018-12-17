@@ -22,11 +22,11 @@
  */
 package com.oracle.truffle.espresso.types;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.meta.JavaKind;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Represents a method signature provided by the runtime.

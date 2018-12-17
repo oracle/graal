@@ -22,9 +22,9 @@
  */
 package com.oracle.truffle.espresso.types;
 
-import java.util.concurrent.ConcurrentHashMap;
-
 import com.oracle.truffle.api.CompilerAsserts;
+
+import java.util.concurrent.ConcurrentHashMap;
 
 public abstract class DescriptorCache<T extends Descriptor> {
 

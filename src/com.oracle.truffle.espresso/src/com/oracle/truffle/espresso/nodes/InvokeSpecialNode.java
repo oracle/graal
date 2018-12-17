@@ -20,18 +20,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.intrinsics;
+package com.oracle.truffle.espresso.nodes;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.espresso.bytecode.OperandStack;
+import com.oracle.truffle.espresso.impl.MethodInfo;
 
-import static java.lang.annotation.ElementType.METHOD;
+public final class InvokeSpecialNode extends InvokeNode {
+    protected final MethodInfo method;
+    @Child private DirectCallNode directCallNode;
 
-@Retention(RetentionPolicy.RUNTIME)
-@Target(value = {METHOD})
-public @interface Intrinsic {
-    String methodName() default "";
+    public InvokeSpecialNode(MethodInfo method) {
+        this.method = method;
+        this.directCallNode = DirectCallNode.create(method.getCallTarget());
+    }
 
-    boolean hasReceiver() default false;
+    @Override
+    public void invoke(OperandStack stack) {
+        // TODO(peterssen): Constant fold this check.
+        nullCheck(stack.peekReceiver(method));
+        Object[] arguments = stack.popArguments(true, method.getSignature());
+        Object result = directCallNode.call(arguments);
+        stack.pushKind(result, method.getSignature().getReturnTypeDescriptor().toKind());
+    }
 }

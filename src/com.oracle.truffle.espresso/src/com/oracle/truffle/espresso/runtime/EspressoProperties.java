@@ -1,12 +1,11 @@
 package com.oracle.truffle.espresso.runtime;
 
-import java.io.File;
-
+import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.EspressoOptions;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Engine;
 
-import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.EspressoOptions;
+import java.io.File;
 
 public interface EspressoProperties {
     String getJavaHome();

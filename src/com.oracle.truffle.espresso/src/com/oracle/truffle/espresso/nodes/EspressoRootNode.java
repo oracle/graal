@@ -22,6 +22,50 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.frame.FrameUtil;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.bytecode.BytecodeLookupSwitch;
+import com.oracle.truffle.espresso.bytecode.BytecodeStream;
+import com.oracle.truffle.espresso.bytecode.BytecodeTableSwitch;
+import com.oracle.truffle.espresso.bytecode.Bytecodes;
+import com.oracle.truffle.espresso.bytecode.DualStack;
+import com.oracle.truffle.espresso.bytecode.OperandStack;
+import com.oracle.truffle.espresso.classfile.ClassConstant;
+import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.DoubleConstant;
+import com.oracle.truffle.espresso.classfile.FloatConstant;
+import com.oracle.truffle.espresso.classfile.IntegerConstant;
+import com.oracle.truffle.espresso.classfile.LongConstant;
+import com.oracle.truffle.espresso.classfile.PoolConstant;
+import com.oracle.truffle.espresso.classfile.StringConstant;
+import com.oracle.truffle.espresso.impl.FieldInfo;
+import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.MethodInfo;
+import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.ExceptionHandler;
+import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.runtime.ReturnAddress;
+import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.StaticObjectArray;
+import com.oracle.truffle.espresso.vm.InterpreterToVM;
+import com.oracle.truffle.object.DebugCounter;
+
+import java.lang.reflect.Modifier;
+import java.util.Arrays;
+import java.util.function.Supplier;
+
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.AALOAD;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.AASTORE;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.ACONST_NULL;
@@ -217,6 +261,10 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.POP;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.POP2;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.PUTFIELD;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.PUTSTATIC;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.QUICK_INVOKEINTERFACE;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.QUICK_INVOKESPECIAL;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.QUICK_INVOKESTATIC;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.QUICK_INVOKEVIRTUAL;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.RET;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.RETURN;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.SALOAD;
@@ -227,59 +275,14 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.TABLESWITCH;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.WIDE;
 import static com.oracle.truffle.espresso.meta.Meta.meta;
 
-import java.lang.reflect.Modifier;
-import java.util.function.Supplier;
-
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.frame.FrameUtil;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.bytecode.BytecodeLookupSwitch;
-import com.oracle.truffle.espresso.bytecode.BytecodeStream;
-import com.oracle.truffle.espresso.bytecode.BytecodeTableSwitch;
-import com.oracle.truffle.espresso.bytecode.Bytecodes;
-import com.oracle.truffle.espresso.bytecode.DualStack;
-import com.oracle.truffle.espresso.bytecode.OperandStack;
-import com.oracle.truffle.espresso.classfile.ClassConstant;
-import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.classfile.DoubleConstant;
-import com.oracle.truffle.espresso.classfile.FloatConstant;
-import com.oracle.truffle.espresso.classfile.IntegerConstant;
-import com.oracle.truffle.espresso.classfile.LongConstant;
-import com.oracle.truffle.espresso.classfile.PoolConstant;
-import com.oracle.truffle.espresso.classfile.StringConstant;
-import com.oracle.truffle.espresso.impl.FieldInfo;
-import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.impl.MethodInfo;
-import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.ExceptionHandler;
-import com.oracle.truffle.espresso.meta.JavaKind;
-import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.EspressoException;
-import com.oracle.truffle.espresso.runtime.ReturnAddress;
-import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObjectArray;
-import com.oracle.truffle.espresso.runtime.StaticObjectClass;
-import com.oracle.truffle.espresso.types.SignatureDescriptor;
-import com.oracle.truffle.espresso.vm.InterpreterToVM;
-import com.oracle.truffle.object.DebugCounter;
-
 public class EspressoRootNode extends RootNode implements LinkedNode {
+
+    @Children private InvokeNode[] nodes = new InvokeNode[0];
 
     private final MethodInfo method;
     private final InterpreterToVM vm;
 
     private static final DebugCounter bytecodesExecuted = DebugCounter.create("Bytecodes executed");
-    private static final DebugCounter methodInvokes = DebugCounter.create("Method invokes");
     private static final DebugCounter newInstances = DebugCounter.create("New instances");
     private static final DebugCounter fieldWrites = DebugCounter.create("Field writes");
     private static final DebugCounter fieldReads = DebugCounter.create("Field reads");
@@ -595,16 +598,16 @@ public class EspressoRootNode extends RootNode implements LinkedNode {
                         setDoubleLocal(frame, 3, stack.popDouble());
                         break;
                     case ASTORE_0:
-                        setObjectLocal(frame, 0, stack.popObject());
+                        setObjectLocal(frame, 0, stack.popReturnAddressOrObject());
                         break;
                     case ASTORE_1:
-                        setObjectLocal(frame, 1, stack.popObject());
+                        setObjectLocal(frame, 1, stack.popReturnAddressOrObject());
                         break;
                     case ASTORE_2:
-                        setObjectLocal(frame, 2, stack.popObject());
+                        setObjectLocal(frame, 2, stack.popReturnAddressOrObject());
                         break;
                     case ASTORE_3:
-                        setObjectLocal(frame, 3, stack.popObject());
+                        setObjectLocal(frame, 3, stack.popReturnAddressOrObject());
                         break;
                     case IASTORE:
                         vm.setArrayInt(stack.popInt(), stack.popInt(), nullCheck(stack.popObject()));
@@ -1007,16 +1010,16 @@ public class EspressoRootNode extends RootNode implements LinkedNode {
                         putField(stack, resolveField(bs.currentBC(curBCI), bs.readCPI(curBCI)), false);
                         break;
                     case INVOKEVIRTUAL:
-                        invokeVirtual(stack, resolveMethod(bs.currentBC(curBCI), bs.readCPI(curBCI)));
+                        quickenAndCallInvokeVirtual(stack, curBCI, resolveMethod(bs.currentBC(curBCI), bs.readCPI(curBCI)));
                         break;
                     case INVOKESPECIAL:
-                        invokeSpecial(stack, resolveMethod(bs.currentBC(curBCI), bs.readCPI(curBCI)));
+                        quickenAndCallInvokeSpecial(stack, curBCI, resolveMethod(bs.currentBC(curBCI), bs.readCPI(curBCI)));
                         break;
                     case INVOKESTATIC:
-                        invokeStatic(stack, resolveMethod(bs.currentBC(curBCI), bs.readCPI(curBCI)));
+                        quickenAndCallInvokeStatic(stack, curBCI, resolveMethod(bs.currentBC(curBCI), bs.readCPI(curBCI)));
                         break;
                     case INVOKEINTERFACE:
-                        invokeInterface(stack, resolveInterfaceMethod(bs.currentBC(curBCI), bs.readCPI(curBCI)));
+                        quickenAndCallInvokeInterface(stack, curBCI, resolveMethod(bs.currentBC(curBCI), bs.readCPI(curBCI)));
                         break;
                     case NEW:
                         newInstances.inc();
@@ -1079,6 +1082,13 @@ public class EspressoRootNode extends RootNode implements LinkedNode {
                     case INVOKEDYNAMIC:
                         CompilerDirectives.transferToInterpreter();
                         throw new UnsupportedOperationException("invokedynamic not supported.");
+
+                    case QUICK_INVOKESPECIAL:
+                    case QUICK_INVOKESTATIC:
+                    case QUICK_INVOKEVIRTUAL:
+                    case QUICK_INVOKEINTERFACE:
+                        nodes[bs.readCPI(curBCI)].invoke(stack);
+                        break;
                 }
             } catch (EspressoException e) {
                 CompilerDirectives.transferToInterpreter();
@@ -1108,6 +1118,55 @@ public class EspressoRootNode extends RootNode implements LinkedNode {
             }
             curBCI = bs.next(curBCI);
         }
+    }
+
+    private char addInvokeNode(InvokeNode node) {
+        CompilerAsserts.neverPartOfCompilation();
+        nodes = Arrays.copyOf(nodes, nodes.length + 1);
+        int nodeIndex = nodes.length - 1; // latest empty slot
+        nodes[nodeIndex] = insert(node);
+        return (char) nodeIndex;
+    }
+
+    void patchBci(int bci, byte opcode, char nodeIndex) {
+        assert Bytecodes.isQuickened(opcode);
+        byte[] code = getMethod().getCode();
+        code[bci] = opcode;
+        code[bci + 1] = (byte) ((nodeIndex >> 8) & 0xFF);
+        code[bci + 2] = (byte) ((nodeIndex) & 0xFF);
+    }
+
+    private void quickenAndCallInvokeStatic(OperandStack stack, int curBCI, MethodInfo resolvedMethod) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        int nodeIndex = addInvokeNode(new InvokeStaticNode(resolvedMethod));
+        patchBci(curBCI, (byte) QUICK_INVOKESTATIC, (char) nodeIndex);
+        nodes[nodeIndex].invoke(stack);
+    }
+
+    private void quickenAndCallInvokeSpecial(OperandStack stack, int curBCI, MethodInfo resolvedMethod) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        int nodeIndex = addInvokeNode(new InvokeSpecialNode(resolvedMethod));
+        patchBci(curBCI, (byte) QUICK_INVOKESPECIAL, (char) nodeIndex);
+        nodes[nodeIndex].invoke(stack);
+    }
+
+    private void quickenAndCallInvokeInterface(OperandStack stack, int curBCI, MethodInfo resolutionSeed) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        int nodeIndex = addInvokeNode(InvokeInterfaceNodeGen.create(resolutionSeed));
+        patchBci(curBCI, (byte) QUICK_INVOKEINTERFACE, (char) nodeIndex);
+        nodes[nodeIndex].invoke(stack);
+    }
+
+    // TODO(peterssen): Remove duplicated methods.
+    private void quickenAndCallInvokeVirtual(OperandStack stack, int curBCI, MethodInfo resolutionSeed) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        if (resolutionSeed.isFinal() || resolutionSeed.getDeclaringClass().isFinalFlagSet()) {
+            quickenAndCallInvokeSpecial(stack, curBCI, resolutionSeed);
+            return;
+        }
+        int nodeIndex = addInvokeNode(InvokeVirtualNodeGen.create(resolutionSeed));
+        patchBci(curBCI, (byte) QUICK_INVOKEVIRTUAL, (char) nodeIndex);
+        nodes[nodeIndex].invoke(stack);
     }
 
     @ExplodeLoop
@@ -1268,80 +1327,12 @@ public class EspressoRootNode extends RootNode implements LinkedNode {
         }
     }
 
-    private void invokeInterface(OperandStack stack, MethodInfo target) {
-        CompilerAsserts.partialEvaluationConstant(target);
-        resolveAndInvoke(stack, target);
-    }
-
-    private void invokeSpecial(OperandStack stack, MethodInfo target) {
-        assert !target.isStatic();
-        // TODO(peterssen): Intercept/hook methods on primitive arrays e.g. int[].clone().
-        StaticObject receiver = nullCheck(stack.peekReceiver(target));
-        invoke(stack, target, receiver, !target.isStatic(), target.getSignature());
-    }
-
-    private static void invokeStatic(OperandStack stack, MethodInfo target) {
-        meta(target.getDeclaringClass()).safeInitialize();
-        invoke(stack, target, null, !target.isStatic(), target.getSignature());
-    }
-
-    private void invokeVirtual(OperandStack stack, MethodInfo resolutionSeed) {
-        if (resolutionSeed.isFinal()) {
-            // TODO(peterssen): Intercept/hook methods on primitive arrays e.g. int[].clone().
-            // Receiver can be a primitive array (not a StaticObject).
-            StaticObject receiver = nullCheck(stack.peekReceiver(resolutionSeed));
-            invoke(stack, resolutionSeed, receiver, !resolutionSeed.isStatic(), resolutionSeed.getSignature());
-        } else {
-            resolveAndInvoke(stack, resolutionSeed);
-        }
-    }
-
     private MethodInfo resolveMethod(int opcode, char cpi) {
         CompilerAsserts.partialEvaluationConstant(cpi);
         CompilerAsserts.partialEvaluationConstant(opcode);
         ConstantPool pool = getConstantPool();
         MethodInfo methodInfo = pool.methodAt(cpi).resolve(pool, cpi);
         return methodInfo;
-    }
-
-    private MethodInfo resolveInterfaceMethod(int opcode, char cpi) {
-        CompilerAsserts.partialEvaluationConstant(cpi);
-        CompilerAsserts.partialEvaluationConstant(opcode);
-        ConstantPool pool = getConstantPool();
-        MethodInfo methodInfo = pool.interfaceMethodAt(cpi).resolve(pool, cpi);
-        CompilerAsserts.partialEvaluationConstant(methodInfo);
-        return methodInfo;
-    }
-
-    private static void invoke(OperandStack stack, MethodInfo targetMethod, StaticObject receiver, boolean hasReceiver, SignatureDescriptor signature) {
-        methodInvokes.inc();
-        CallTarget callTarget = targetMethod.getCallTarget();
-        // In bytecode boolean, byte, char and short are just plain ints.
-        // When a method is intrinsified it will obey Java types, so we need to convert the
-        // (boolean, byte, char, short) result back to int.
-        // (pop)Arguments have proper Java types.
-        Object[] arguments = stack.popArguments(hasReceiver, signature);
-        assert receiver == null || arguments[0] == receiver;
-        JavaKind resultKind = signature.getReturnTypeDescriptor().toKind();
-        Object result = callTarget.call(arguments);
-        stack.pushKind(result, resultKind);
-    }
-
-    private void resolveAndInvoke(OperandStack stack, MethodInfo originalMethod) {
-        CompilerAsserts.partialEvaluationConstant(originalMethod);
-        // TODO(peterssen): Ignore return type on method signature.
-        // TODO(peterssen): Intercept/hook methods on primitive arrays e.g. int[].clone().
-        // We could call a virtual method on a primitive array. e.g. ((Object)new byte[1]).clone();
-        StaticObject receiver = nullCheck(stack.peekReceiver(originalMethod));
-        // Resolve
-        MethodInfo targetMethod = methodLookup(originalMethod, receiver);
-        invoke(stack, targetMethod, receiver, !originalMethod.isStatic(), originalMethod.getSignature());
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    private static MethodInfo methodLookup(MethodInfo originalMethod, StaticObject receiver) {
-        StaticObjectClass clazz = (StaticObjectClass) EspressoLanguage.getCurrentContext().getJNI().GetObjectClass(receiver);
-        return clazz.getMirror().findConcreteMethod(originalMethod.getName(), originalMethod.getSignature());
     }
 
     @CompilerDirectives.TruffleBoundary

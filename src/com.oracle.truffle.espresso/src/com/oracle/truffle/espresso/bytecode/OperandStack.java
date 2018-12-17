@@ -22,10 +22,6 @@
  */
 package com.oracle.truffle.espresso.bytecode;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -34,6 +30,10 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.types.SignatureDescriptor;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 public interface OperandStack {
 
@@ -125,7 +125,7 @@ public interface OperandStack {
     /**
      * Push a value to the stack. This method follows the JVM spec, where sub-word types (< int) are
      * always treated as int.
-     * 
+     *
      * @param value value to push
      * @param kind kind to push
      */

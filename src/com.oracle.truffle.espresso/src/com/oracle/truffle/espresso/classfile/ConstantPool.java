@@ -22,6 +22,16 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.types.TypeDescriptor;
+
+import java.util.Arrays;
+import java.util.Formatter;
+import java.util.List;
+
 import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.CLASS;
 import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.DOUBLE;
 import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.FIELD_REF;
@@ -34,16 +44,6 @@ import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.METHOD_REF;
 import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.NAME_AND_TYPE;
 import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.STRING;
 import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.UTF8;
-
-import java.util.Arrays;
-import java.util.Formatter;
-import java.util.List;
-
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.types.TypeDescriptor;
 
 public final class ConstantPool {
 

@@ -23,13 +23,13 @@
 
 package com.oracle.truffle.espresso.impl;
 
-import java.util.concurrent.ConcurrentHashMap;
-
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.types.TypeDescriptor;
+
+import java.util.concurrent.ConcurrentHashMap;
 
 import static com.oracle.truffle.espresso.meta.Meta.meta;
 

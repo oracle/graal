@@ -23,15 +23,14 @@
 
 package com.oracle.truffle.espresso.intrinsics;
 
-import java.nio.ByteBuffer;
-
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.MethodInfo;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import sun.misc.Perf;
+
+import java.nio.ByteBuffer;
 
 @EspressoIntrinsics
 public class Target_sun_misc_Perf {

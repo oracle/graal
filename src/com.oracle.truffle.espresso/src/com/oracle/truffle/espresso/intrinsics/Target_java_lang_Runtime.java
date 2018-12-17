@@ -23,12 +23,12 @@
 
 package com.oracle.truffle.espresso.intrinsics;
 
-import java.io.IOException;
-import java.util.Arrays;
-
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
+
+import java.io.IOException;
+import java.util.Arrays;
 
 @EspressoIntrinsics
 public class Target_java_lang_Runtime {

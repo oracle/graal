@@ -22,9 +22,9 @@
  */
 package com.oracle.truffle.espresso.meta;
 
-import java.util.Objects;
-
 import com.oracle.truffle.espresso.types.TypeDescriptor;
+
+import java.util.Objects;
 
 /**
  * Represents an exception handler within the bytecodes.

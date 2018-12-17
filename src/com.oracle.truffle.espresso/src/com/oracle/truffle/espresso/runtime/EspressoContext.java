@@ -22,10 +22,6 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.lang.reflect.Method;
-
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -44,6 +40,10 @@ import com.oracle.truffle.espresso.types.SignatureDescriptors;
 import com.oracle.truffle.espresso.types.TypeDescriptors;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
+
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.lang.reflect.Method;
 
 public class EspressoContext {
 

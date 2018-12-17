@@ -22,12 +22,6 @@
  */
 package com.oracle.truffle.espresso;
 
-import java.net.URL;
-import java.net.URLClassLoader;
-
-import org.graalvm.options.OptionDescriptors;
-import org.graalvm.options.OptionValues;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.Truffle;
@@ -43,6 +37,11 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.types.SignatureDescriptors;
 import com.oracle.truffle.espresso.types.TypeDescriptors;
+import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionValues;
+
+import java.net.URL;
+import java.net.URLClassLoader;
 
 @TruffleLanguage.Registration(id = EspressoLanguage.ID, name = EspressoLanguage.NAME, version = EspressoLanguage.VERSION, mimeType = EspressoLanguage.MIME_TYPE)
 public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {

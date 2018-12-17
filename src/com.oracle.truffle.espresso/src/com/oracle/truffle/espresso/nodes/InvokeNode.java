@@ -20,18 +20,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.intrinsics;
+package com.oracle.truffle.espresso.nodes;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.bytecode.OperandStack;
+import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
-import static java.lang.annotation.ElementType.METHOD;
+public abstract class InvokeNode extends Node {
+    public abstract void invoke(OperandStack stack);
 
-@Retention(RetentionPolicy.RUNTIME)
-@Target(value = {METHOD})
-public @interface Intrinsic {
-    String methodName() default "";
-
-    boolean hasReceiver() default false;
+    // TODO(peterssen): Make this a node?
+    protected static final StaticObject nullCheck(StaticObject value) {
+        if (StaticObject.isNull(value)) {
+            CompilerDirectives.transferToInterpreter();
+            // TODO(peterssen): Profile whether null was hit or not.
+            Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+            throw meta.throwEx(NullPointerException.class);
+        }
+        return value;
+    }
 }

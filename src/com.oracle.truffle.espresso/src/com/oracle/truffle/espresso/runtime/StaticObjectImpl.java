@@ -22,11 +22,6 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
-import static com.oracle.truffle.espresso.meta.Meta.meta;
-
-import java.util.HashMap;
-import java.util.Map;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -35,6 +30,11 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import static com.oracle.truffle.espresso.meta.Meta.meta;
 
 public class StaticObjectImpl extends StaticObject {
     private Map<String, Object> hiddenFields;

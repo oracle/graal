@@ -22,9 +22,9 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
-import java.io.File;
-
 import com.oracle.truffle.espresso.runtime.Classpath.Entry;
+
+import java.io.File;
 
 /**
  * Encapulates the contents of a file loaded from an {@linkplain Entry entry} on a
