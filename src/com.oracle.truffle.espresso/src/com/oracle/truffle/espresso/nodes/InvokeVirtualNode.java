@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -31,7 +30,6 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.espresso.bytecode.OperandStack;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.MethodInfo;
-import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
@@ -42,11 +40,11 @@ public abstract class InvokeVirtualNode extends InvokeNode {
 
     static final int INLINE_CACHE_SIZE_LIMIT = 5;
 
-    protected abstract Object executeVirtual(OperandStack stack, Object receiver, Object[] arguments);
+    protected abstract Object executeVirtual(StaticObject receiver, Object[] arguments);
 
     @SuppressWarnings("unused")
     @Specialization(limit = "INLINE_CACHE_SIZE_LIMIT", guards = "receiver.getKlass() == cachedKlass")
-    Object callVirtualDirect(OperandStack stack, StaticObjectImpl receiver, Object[] arguments,
+    Object callVirtualDirect(StaticObjectImpl receiver, Object[] arguments,
                     @Cached("receiver.getKlass()") Klass cachedKlass,
                     @Cached("methodLookup(resolutionSeed, receiver)") MethodInfo resolvedMethod,
                     @Cached("create(resolvedMethod.getCallTarget())") DirectCallNode directCallNode) {
@@ -54,7 +52,7 @@ public abstract class InvokeVirtualNode extends InvokeNode {
     }
 
     @Specialization(replaces = "callVirtualDirect")
-    Object callVirtualIndirect(OperandStack stack, StaticObject receiver, Object[] arguments,
+    Object callVirtualIndirect(StaticObject receiver, Object[] arguments,
                     @Cached("create()") IndirectCallNode indirectCallNode) {
         // Brute virtual method resolution, walk the whole klass hierarchy.
         MethodInfo targetMethod = methodLookup(resolutionSeed, receiver);
@@ -75,9 +73,9 @@ public abstract class InvokeVirtualNode extends InvokeNode {
     @Override
     public final void invoke(OperandStack stack) {
         // Method signature does not change.
-        Object receiver = nullCheck(stack.peekReceiver(resolutionSeed));
+        StaticObject receiver = nullCheck(stack.peekReceiver(resolutionSeed));
         Object[] arguments = stack.popArguments(true, resolutionSeed.getSignature());
-        Object result = executeVirtual(stack, receiver, arguments);
+        Object result = executeVirtual(receiver, arguments);
         stack.pushKind(result, resolutionSeed.getSignature().getReturnTypeDescriptor().toKind());
     }
 }
