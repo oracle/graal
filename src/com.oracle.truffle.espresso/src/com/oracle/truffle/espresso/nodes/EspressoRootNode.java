@@ -598,16 +598,16 @@ public class EspressoRootNode extends RootNode implements LinkedNode {
                         setDoubleLocal(frame, 3, stack.popDouble());
                         break;
                     case ASTORE_0:
-                        setObjectLocal(frame, 0, stack.popObject());
+                        setObjectLocal(frame, 0, stack.popReturnAddressOrObject());
                         break;
                     case ASTORE_1:
-                        setObjectLocal(frame, 1, stack.popObject());
+                        setObjectLocal(frame, 1, stack.popReturnAddressOrObject());
                         break;
                     case ASTORE_2:
-                        setObjectLocal(frame, 2, stack.popObject());
+                        setObjectLocal(frame, 2, stack.popReturnAddressOrObject());
                         break;
                     case ASTORE_3:
-                        setObjectLocal(frame, 3, stack.popObject());
+                        setObjectLocal(frame, 3, stack.popReturnAddressOrObject());
                         break;
                     case IASTORE:
                         vm.setArrayInt(stack.popInt(), stack.popInt(), nullCheck(stack.popObject()));
