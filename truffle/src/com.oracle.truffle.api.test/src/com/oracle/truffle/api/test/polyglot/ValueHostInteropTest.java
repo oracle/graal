@@ -80,6 +80,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.MessageResolution;
@@ -971,6 +972,8 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
         @Resolve(message = "EXECUTE")
         @SuppressWarnings("unused")
         abstract static class Execute extends Node {
+
+            @TruffleBoundary
             protected Object access(FunctionObject obj, Object[] args) {
                 return Arrays.stream(args).mapToInt(o -> (int) o).sum();
             }
