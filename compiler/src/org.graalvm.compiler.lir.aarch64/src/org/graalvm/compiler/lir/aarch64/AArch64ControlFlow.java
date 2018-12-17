@@ -142,7 +142,6 @@ public class AArch64ControlFlow {
 
         @Use protected Value src;
         private final int index;
-        private boolean isFarBranch;
 
         public BitTestAndBranchOp(LabelRef trueDestination, LabelRef falseDestination, Value src, double trueDestinationProbability, int index) {
             super(TYPE, ConditionFlag.EQ, trueDestination, falseDestination, trueDestinationProbability);
@@ -155,6 +154,7 @@ public class AArch64ControlFlow {
             assert cond == ConditionFlag.EQ || cond == ConditionFlag.NE;
             ConditionFlag finalCondition = cond;
             Label finalLabel = label;
+            boolean isFarBranch;
 
             if (label.isBound()) {
                 isFarBranch = NumUtil.isSignedNbit(18, masm.position() - label.position());
@@ -181,13 +181,6 @@ public class AArch64ControlFlow {
                 masm.jmp(label);
                 masm.bind(finalLabel);
             }
-        }
-
-        /**
-         * For testing purposes
-         */
-        public boolean isFarBranch() {
-            return isFarBranch;
         }
     }
 

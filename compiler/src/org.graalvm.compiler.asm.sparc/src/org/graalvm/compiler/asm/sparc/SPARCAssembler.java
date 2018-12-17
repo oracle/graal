@@ -136,6 +136,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.graalvm.compiler.asm.Assembler;
+import org.graalvm.compiler.asm.BranchTargetOutOfBoundsException;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.GraalError;
@@ -1280,7 +1281,7 @@ public abstract class SPARCAssembler extends Assembler {
         public int setDisp(int inst, int d) {
             assert this.match(inst);
             if (!isValidDisp(d)) {
-                throw new PermanentBailoutException("Too large displacement 0x%x in field %s in instruction %s", d, this.disp, this);
+                throw new BranchTargetOutOfBoundsException(true, "Too large displacement 0x%x in field %s in instruction %s", d, this.disp, this);
             }
             return this.disp.setBits(inst, d);
         }

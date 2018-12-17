@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.core.aarch64.test;
 
+import static org.junit.Assume.assumeTrue;
+
 import java.util.function.Predicate;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
@@ -43,16 +45,23 @@ import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
 import org.graalvm.compiler.options.OptionValues;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.Value;
 
 public class AArch64TestBitAndBranchTest extends LIRTest {
-    private static final Predicate<LIRInstruction> predicate = op -> (op instanceof AArch64ControlFlow.BitTestAndBranchOp);
+    private static final Predicate<LIRInstruction> checkForBitTestAndBranchOp = op -> (op instanceof AArch64ControlFlow.BitTestAndBranchOp);
     private LIR lir;
 
-    public static int testBit42Snippet(int a, int b, int c) {
+    @Before
+    public void checkAArch64() {
+        assumeTrue("skipping AArch64 specific test", getTarget().arch instanceof AArch64);
+    }
+
+    public static long testBit42Snippet(long a, long b, long c) {
         if ((a & (1 << 42)) == 0) {
             return b;
         } else {
@@ -62,9 +71,9 @@ public class AArch64TestBitAndBranchTest extends LIRTest {
 
     @Test
     public void testBit42() {
-        test("testBit42Snippet", 1 << 42, Integer.MAX_VALUE, Integer.MIN_VALUE);
-        test("testBit42Snippet", 0, Integer.MAX_VALUE, Integer.MIN_VALUE);
-        checkLIR("testBit42Snippet", predicate, 1);
+        test("testBit42Snippet", 1 << 42, Long.MAX_VALUE, Long.MIN_VALUE);
+        test("testBit42Snippet", ~(1 << 42), Long.MAX_VALUE, Long.MIN_VALUE);
+        checkLIR("testBit42Snippet", checkForBitTestAndBranchOp, 1);
     }
 
     private static final LargeOpSpec largeOpSingleNop = new LargeOpSpec((1 << 14 - 2), 2);
@@ -87,7 +96,7 @@ public class AArch64TestBitAndBranchTest extends LIRTest {
     @Test
     public void testBitTestAndBranchSingle() {
         runTest("testBitTestAndBranchSingleSnippet", 1);
-        checkLIR("testBitTestAndBranchSingleSnippet", predicate, 1);
+        checkLIR("testBitTestAndBranchSingleSnippet", checkForBitTestAndBranchOp, 1);
     }
 
     private static final LargeOpSpec largeOpFourNop = new LargeOpSpec((1 << 14 - 2), 8);
@@ -110,7 +119,7 @@ public class AArch64TestBitAndBranchTest extends LIRTest {
     @Test
     public void testBitTestAndBranchFour() {
         runTest("testBitTestAndBranchFourSnippet", 1);
-        checkLIR("testBitTestAndBranchFourSnippet", predicate, 1);
+        checkLIR("testBitTestAndBranchFourSnippet", checkForBitTestAndBranchOp, 1);
     }
 
     private static class LargeOpSpec extends LIRTestSpecification {

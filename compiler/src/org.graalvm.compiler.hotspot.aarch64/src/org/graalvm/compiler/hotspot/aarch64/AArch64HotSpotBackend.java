@@ -48,7 +48,6 @@ import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotDataBuilder;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
@@ -125,9 +124,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend {
         AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
         try (ScratchRegister sc = masm.getScratchRegister()) {
             Register scratch = sc.getRegister();
-            AArch64Address address = masm.makeAddress(sp, -bangOffset, scratch, 8, /*
-                                                                                    * allowOverwrite
-                                                                                    */false);
+            AArch64Address address = masm.makeAddress(sp, -bangOffset, scratch, 8, /* allowOverwrite */false);
             masm.str(64, zr, address);
         }
     }
