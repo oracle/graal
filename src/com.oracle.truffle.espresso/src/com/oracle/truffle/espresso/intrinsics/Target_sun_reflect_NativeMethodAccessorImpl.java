@@ -1,14 +1,14 @@
 package com.oracle.truffle.espresso.intrinsics;
 
-import static com.oracle.truffle.espresso.meta.Meta.meta;
-
-import java.lang.reflect.Method;
-
 import com.oracle.truffle.espresso.impl.MethodInfo;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
+
+import java.lang.reflect.Method;
+
+import static com.oracle.truffle.espresso.meta.Meta.meta;
 
 @EspressoIntrinsics
 public class Target_sun_reflect_NativeMethodAccessorImpl {

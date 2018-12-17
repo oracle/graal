@@ -22,12 +22,12 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
+import com.oracle.truffle.espresso.runtime.ClasspathFile;
+
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.EOFException;
 import java.io.IOException;
-
-import com.oracle.truffle.espresso.runtime.ClasspathFile;
 
 /**
  * Operations for sequentially scanning data items in a class file. Any IO exceptions that occur

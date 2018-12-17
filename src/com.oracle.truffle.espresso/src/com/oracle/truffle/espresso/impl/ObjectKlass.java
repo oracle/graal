@@ -23,11 +23,6 @@
 
 package com.oracle.truffle.espresso.impl;
 
-import static com.oracle.truffle.espresso.meta.Meta.meta;
-
-import java.util.Arrays;
-import java.util.stream.Stream;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
@@ -39,6 +34,11 @@ import com.oracle.truffle.espresso.runtime.AttributeInfo;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
+
+import java.util.Arrays;
+import java.util.stream.Stream;
+
+import static com.oracle.truffle.espresso.meta.Meta.meta;
 
 /**
  * Represents resolved non-primitive, non-array types in Espresso.

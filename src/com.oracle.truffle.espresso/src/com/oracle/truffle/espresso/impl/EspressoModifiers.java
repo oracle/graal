@@ -23,6 +23,10 @@
 
 package com.oracle.truffle.espresso.impl;
 
+import com.oracle.truffle.espresso.classfile.Constants;
+
+import java.lang.reflect.Modifier;
+
 import static java.lang.reflect.Modifier.ABSTRACT;
 import static java.lang.reflect.Modifier.FINAL;
 import static java.lang.reflect.Modifier.INTERFACE;
@@ -35,10 +39,6 @@ import static java.lang.reflect.Modifier.STRICT;
 import static java.lang.reflect.Modifier.SYNCHRONIZED;
 import static java.lang.reflect.Modifier.TRANSIENT;
 import static java.lang.reflect.Modifier.VOLATILE;
-
-import java.lang.reflect.Modifier;
-
-import com.oracle.truffle.espresso.classfile.Constants;
 
 /**
  * The non-public modifiers in {@link Modifier} that need to be retrieved from {@link Constants}.

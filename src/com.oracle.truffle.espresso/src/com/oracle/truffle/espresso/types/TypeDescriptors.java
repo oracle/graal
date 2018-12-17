@@ -22,11 +22,11 @@
  */
 package com.oracle.truffle.espresso.types;
 
-import java.util.EnumMap;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.MetaUtil;
+
+import java.util.EnumMap;
 
 /**
  * Manages creation and parsing of type descriptors ("field descriptors" in the JVMS).

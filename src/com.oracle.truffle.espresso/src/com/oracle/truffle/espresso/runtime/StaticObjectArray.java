@@ -22,13 +22,13 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
-import java.lang.reflect.Array;
-
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
+
+import java.lang.reflect.Array;
 
 public final class StaticObjectArray extends StaticObject {
 

@@ -23,13 +23,6 @@
 
 package com.oracle.truffle.espresso.intrinsics;
 
-import static com.oracle.truffle.espresso.meta.Meta.meta;
-
-import java.lang.reflect.Array;
-import java.lang.reflect.Field;
-import java.security.ProtectionDomain;
-import java.util.Arrays;
-
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.FieldInfo;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -39,8 +32,14 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
-
 import sun.misc.Unsafe;
+
+import java.lang.reflect.Array;
+import java.lang.reflect.Field;
+import java.security.ProtectionDomain;
+import java.util.Arrays;
+
+import static com.oracle.truffle.espresso.meta.Meta.meta;
 
 @EspressoIntrinsics
 public class Target_sun_misc_Unsafe {

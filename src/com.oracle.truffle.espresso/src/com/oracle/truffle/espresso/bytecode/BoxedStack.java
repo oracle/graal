@@ -23,8 +23,8 @@
 
 package com.oracle.truffle.espresso.bytecode;
 
-import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.impl.MethodInfo;
+import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.ReturnAddress;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 

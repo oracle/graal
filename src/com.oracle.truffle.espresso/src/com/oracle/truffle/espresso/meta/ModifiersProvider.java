@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.meta;
 
+import java.lang.reflect.Modifier;
+
 import static java.lang.reflect.Modifier.FINAL;
 import static java.lang.reflect.Modifier.PRIVATE;
 import static java.lang.reflect.Modifier.PROTECTED;
@@ -29,8 +31,6 @@ import static java.lang.reflect.Modifier.PUBLIC;
 import static java.lang.reflect.Modifier.STATIC;
 import static java.lang.reflect.Modifier.TRANSIENT;
 import static java.lang.reflect.Modifier.VOLATILE;
-
-import java.lang.reflect.Modifier;
 
 /**
  * A Java element (i.e., a class, interface, field or method) that is described by a set of Java

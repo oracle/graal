@@ -23,6 +23,11 @@
 
 package com.oracle.truffle.espresso.bytecode;
 
+import com.oracle.truffle.api.CompilerDirectives;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.Flags.ASSOCIATIVE;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.Flags.BRANCH;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.Flags.COMMUTATIVE;
@@ -35,11 +40,6 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.Flags.QUICKENED;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.Flags.STOP;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.Flags.STORE;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.Flags.TRAP;
-
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-
-import com.oracle.truffle.api.CompilerDirectives;
 
 /**
  * Definitions of the standard Java bytecodes defined by

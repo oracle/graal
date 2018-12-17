@@ -23,8 +23,6 @@
 
 package com.oracle.truffle.espresso.impl;
 
-import java.util.Arrays;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -35,6 +33,8 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.types.SignatureDescriptor;
 import com.oracle.truffle.espresso.types.TypeDescriptor;
+
+import java.util.Arrays;
 
 public abstract class Klass implements ModifiersProvider {
 

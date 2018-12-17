@@ -22,9 +22,9 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
-import java.util.Objects;
-
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
+
+import java.util.Objects;
 
 public final class Utf8Constant implements PoolConstant {
 
