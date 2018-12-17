@@ -59,7 +59,7 @@ public class EspressoContext {
     private Classpath bootClasspath;
     private String[] mainArguments;
     private Source mainSourceFile;
-    private Object appClassLoader;
+    private StaticObject appClassLoader;
     private Meta meta;
     private StaticObject mainThread;
 
@@ -200,7 +200,7 @@ public class EspressoContext {
         }
 
         // Load system class loader.
-        appClassLoader = meta.knownKlass(ClassLoader.class).staticMethod("getSystemClassLoader", ClassLoader.class).invokeDirect();
+        appClassLoader = (StaticObject) meta.knownKlass(ClassLoader.class).staticMethod("getSystemClassLoader", ClassLoader.class).invokeDirect();
     }
 
     private EspressoProperties vmProperties;
@@ -250,7 +250,7 @@ public class EspressoContext {
         return getLanguage().getSignatureDescriptors();
     }
 
-    public Object getAppClassLoader() {
+    public StaticObject getAppClassLoader() {
         return appClassLoader;
     }
 

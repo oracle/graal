@@ -30,6 +30,7 @@ import com.oracle.truffle.espresso.impl.MethodInfo;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
+import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import sun.misc.Perf;
 
 @EspressoIntrinsics
@@ -67,7 +68,7 @@ public class Target_sun_misc_Perf {
     public static @Type(ByteBuffer.class) StaticObject createLong(Object self, @Type(String.class) StaticObject var1, int var2, int var3, long var4) {
         EspressoContext context = EspressoLanguage.getCurrentContext();
         MethodInfo wrap = context.getRegistries().resolveWithBootClassLoader(context.getTypeDescriptors().make("Ljava/nio/ByteBuffer;")).findDeclaredMethod("wrap", ByteBuffer.class, byte[].class);
-        return (StaticObject) wrap.getCallTarget().call(ByteUtils.longToBytes(var4));
+        return (StaticObject) wrap.getCallTarget().call(StaticObjectArray.wrap(ByteUtils.longToBytes(var4)));
     }
 
     @Intrinsic

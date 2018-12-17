@@ -105,7 +105,7 @@ public class Target_sun_misc_Unsafe {
     @Intrinsic(hasReceiver = true)
     public static final boolean compareAndSwapObject(@SuppressWarnings("unused") Object self, @Type(Object.class) StaticObject holder, long offset, Object before, Object after) {
         if (holder instanceof StaticObjectArray) {
-            return U.compareAndSwapObject(((StaticObjectArray) holder).getWrapped(), offset, before, after);
+            return U.compareAndSwapObject(((StaticObjectArray) holder).unwrap(), offset, before, after);
         }
         // TODO(peterssen): Current workaround assumes it's a field access, offset <-> field index.
         Meta.Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
@@ -145,11 +145,12 @@ public class Target_sun_misc_Unsafe {
 
     @Intrinsic(hasReceiver = true)
     public static @Type(Class.class) StaticObject defineClass(@SuppressWarnings("unused") Object self, @Type(String.class) StaticObject name,
-                    byte[] buf, int offset, int len, @Type(ClassLoader.class) StaticObject loader,
+                    @Type(byte[].class) StaticObject guestBuf, int offset, int len, @Type(ClassLoader.class) StaticObject loader,
                     @SuppressWarnings("unused") @Type(ProtectionDomain.class) StaticObject pd) {
         // TODO(peterssen): Protection domain is ignored.
+        byte[] buf = ((StaticObjectArray) guestBuf).unwrap();
         byte[] bytes = Arrays.copyOfRange(buf, offset, len);
-        return EspressoLanguage.getCurrentContext().getRegistries().defineKlass(Meta.toHost(name), bytes, loader).mirror();
+        return EspressoLanguage.getCurrentContext().getRegistries().defineKlass(Meta.toHostString(name), bytes, loader).mirror();
 
     }
 
@@ -195,10 +196,10 @@ public class Target_sun_misc_Unsafe {
     }
 
     @Intrinsic(hasReceiver = true)
-    public static void putLong(@SuppressWarnings("unused") Object self, Object holder, long offset, long x) {
+    public static void putLong(@SuppressWarnings("unused") Object self, @Type(Object.class) StaticObject holder, long offset, long x) {
         // TODO(peterssen): Use holder.getKlass().findInstanceFieldWithOffset
-        Meta.Field f = getInstanceFieldFromIndex((StaticObject) holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        f.set((StaticObject) holder, x);
+        Meta.Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        f.set(holder, x);
     }
 
     @Intrinsic(hasReceiver = true)
@@ -207,17 +208,17 @@ public class Target_sun_misc_Unsafe {
     }
 
     @Intrinsic(hasReceiver = true)
-    public static byte getByte(@SuppressWarnings("unused") Object self, Object holder, long offset) {
+    public static byte getByte(@SuppressWarnings("unused") Object self, @Type(Object.class) StaticObject holder, long offset) {
         // TODO(peterssen): Use holder.getKlass().findInstanceFieldWithOffset
-        Meta.Field f = getInstanceFieldFromIndex((StaticObject) holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        return (byte) f.get((StaticObject) holder);
+        Meta.Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        return (byte) f.get(holder);
     }
 
     @Intrinsic(hasReceiver = true)
-    public static int getInt(@SuppressWarnings("unused") Object self, Object holder, long offset) {
+    public static int getInt(@SuppressWarnings("unused") Object self, @Type(Object.class) StaticObject holder, long offset) {
         // TODO(peterssen): Use holder.getKlass().findInstanceFieldWithOffset
-        Meta.Field f = getInstanceFieldFromIndex((StaticObject) holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        return (int) f.get((StaticObject) holder);
+        Meta.Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        return (int) f.get(holder);
     }
 
     @Intrinsic(hasReceiver = true)
@@ -231,28 +232,28 @@ public class Target_sun_misc_Unsafe {
     }
 
     @Intrinsic(hasReceiver = true)
-    public static Object getObjectVolatile(@SuppressWarnings("unused") Object self, Object holder, long offset) {
+    public static Object getObjectVolatile(@SuppressWarnings("unused") Object self, @Type(Object.class) StaticObject holder, long offset) {
         if (holder instanceof StaticObjectArray) {
-            return U.getObjectVolatile(((StaticObjectArray) holder).getWrapped(), offset);
+            return U.getObjectVolatile(((StaticObjectArray) holder).unwrap(), offset);
         }
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
         // TODO(peterssen): Use holder.getKlass().findInstanceFieldWithOffset
-        Meta.Field f = getInstanceFieldFromIndex((StaticObject) holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        return f.get((StaticObject) holder);
+        Meta.Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        return f.get(holder);
     }
 
     @Intrinsic(hasReceiver = true)
-    public static void putObjectVolatile(@SuppressWarnings("unused") Object self, Object holder, long offset, Object value) {
+    public static void putObjectVolatile(@SuppressWarnings("unused") Object self, @Type(Object.class) StaticObject holder, long offset, Object value) {
         if (holder instanceof StaticObjectArray) {
-            U.putObjectVolatile(((StaticObjectArray) holder).getWrapped(), offset, value);
+            U.putObjectVolatile(((StaticObjectArray) holder).unwrap(), offset, value);
             return;
         }
         // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
         // field index.
         // TODO(peterssen): Use holder.getKlass().findInstanceFieldWithOffset
-        Meta.Field f = getInstanceFieldFromIndex((StaticObject) holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        f.set((StaticObject) holder, value);
+        Meta.Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        f.set(holder, value);
     }
 
     @Intrinsic(hasReceiver = true)
@@ -261,7 +262,8 @@ public class Target_sun_misc_Unsafe {
     }
 
     @Intrinsic(hasReceiver = true)
-    public static void copyMemory(@SuppressWarnings("unused") Object self, Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes) {
+    public static void copyMemory(@SuppressWarnings("unused") Object self, @Type(Object.class) StaticObject srcBase, long srcOffset, @Type(Object.class) StaticObject destBase, long destOffset,
+                    long bytes) {
         if (bytes == 0) {
             return;
         }
@@ -274,7 +276,7 @@ public class Target_sun_misc_Unsafe {
     }
 
     @Intrinsic(hasReceiver = true)
-    public static void putByte(@SuppressWarnings("unused") Object self, Object object, long offset, byte value) {
+    public static void putByte(@SuppressWarnings("unused") Object self, @Type(Object.class) StaticObject object, long offset, byte value) {
         U.putByte(MetaUtil.unwrap(object), offset, value);
     }
 
@@ -291,7 +293,7 @@ public class Target_sun_misc_Unsafe {
     }
 
     @Intrinsic(hasReceiver = true)
-    public static void setMemory(@SuppressWarnings("unused") Object self, Object o, long offset, long bytes, byte value) {
+    public static void setMemory(@SuppressWarnings("unused") Object self, @Type(Object.class) StaticObject o, long offset, long bytes, byte value) {
         U.setMemory(StaticObject.isNull(o) ? null : o, offset, bytes, value);
     }
 

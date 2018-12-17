@@ -64,7 +64,7 @@ public class Target_java_lang_Class {
     public static @Type(Class.class) StaticObject getPrimitiveClass(
                     @Type(String.class) StaticObject name) {
 
-        String hostName = MetaUtil.toInternalName(Meta.toHost(name));
+        String hostName = MetaUtil.toInternalName(Meta.toHostString(name));
         return EspressoLanguage.getCurrentContext().getRegistries().resolveWithBootClassLoader(TypeDescriptors.forPrimitive(JavaKind.fromTypeString(hostName))).mirror();
     }
 
@@ -83,7 +83,7 @@ public class Target_java_lang_Class {
         assert loader != null;
         EspressoContext context = EspressoLanguage.getCurrentContext();
 
-        String typeDesc = Meta.toHost(name);
+        String typeDesc = Meta.toHostString(name);
         if (typeDesc.contains(".")) {
             // Normalize
             // Ljava/lang/InterruptedException;
@@ -370,7 +370,7 @@ public class Target_java_lang_Class {
      * @since JDK1.1
      */
     @Intrinsic(hasReceiver = true)
-    public static boolean isInstance(StaticObjectClass self, Object obj) {
+    public static boolean isInstance(StaticObjectClass self, StaticObject obj) {
         return EspressoLanguage.getCurrentContext().getInterpreterToVM().instanceOf(obj, self.getMirror());
     }
 
@@ -380,17 +380,17 @@ public class Target_java_lang_Class {
     }
 
     @Intrinsic(hasReceiver = true)
-    public static @Type(ProtectionDomain.class) StaticObject getProtectionDomain0(@SuppressWarnings("unused") Object self) {
+    public static @Type(ProtectionDomain.class) StaticObject getProtectionDomain0(@SuppressWarnings("unused") StaticObject self) {
         return StaticObject.NULL;
     }
 
     @Intrinsic(hasReceiver = true)
-    public static @Type(byte[].class) Object getRawAnnotations(StaticObjectClass self) {
+    public static @Type(byte[].class) StaticObject getRawAnnotations(StaticObjectClass self) {
         Klass klass = self.getMirror();
         if (klass instanceof ObjectKlass) {
             AttributeInfo annotations = ((ObjectKlass) klass).getRuntimeVisibleAnnotations();
             if (annotations != null) {
-                return annotations.getRawInfo();
+                return StaticObjectArray.wrap(annotations.getRawInfo());
             }
         }
         return StaticObject.NULL;

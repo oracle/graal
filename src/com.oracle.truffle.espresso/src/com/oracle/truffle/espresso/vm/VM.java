@@ -87,7 +87,6 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
-import com.oracle.truffle.espresso.runtime.StaticObjectWrapper;
 import com.oracle.truffle.espresso.types.TypeDescriptor;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
 
@@ -253,16 +252,16 @@ public class VM extends NativeEnv {
      */
     @VmImpl
     @JniImpl
-    public int JVM_IHashCode(Object object) {
+    public int JVM_IHashCode(@Type(Object.class) StaticObject object) {
         return System.identityHashCode(MetaUtil.unwrap(object));
     }
 
     @VmImpl
     @JniImpl
-    public void JVM_ArrayCopy(@SuppressWarnings("unused") Object ignored, Object src, int srcPos, Object dest, int destPos, int length) {
+    public void JVM_ArrayCopy(@SuppressWarnings("unused") Object ignored, @Type(Object.class) StaticObject src, int srcPos, @Type(Object.class) StaticObject dest, int destPos, int length) {
         try {
             if (src instanceof StaticObjectArray && dest instanceof StaticObjectArray) {
-                System.arraycopy(((StaticObjectArray) src).getWrapped(), srcPos, ((StaticObjectArray) dest).getWrapped(), destPos, length);
+                System.arraycopy(((StaticObjectArray) src).unwrap(), srcPos, ((StaticObjectArray) dest).unwrap(), destPos, length);
             } else {
                 assert src.getClass().isArray();
                 assert dest.getClass().isArray();
@@ -275,32 +274,13 @@ public class VM extends NativeEnv {
 
     @VmImpl
     @JniImpl
-    public Object JVM_Clone(Object self) {
+    public @Type(Object.class) StaticObject JVM_Clone(@Type(Object.class) StaticObject self) {
         if (self instanceof StaticObjectArray) {
             // For arrays.
             return ((StaticObjectArray) self).copy();
         }
-
-        if (self instanceof int[]) {
-            return ((int[]) self).clone();
-        } else if (self instanceof byte[]) {
-            return ((byte[]) self).clone();
-        } else if (self instanceof boolean[]) {
-            return ((boolean[]) self).clone();
-        } else if (self instanceof long[]) {
-            return ((long[]) self).clone();
-        } else if (self instanceof float[]) {
-            return ((float[]) self).clone();
-        } else if (self instanceof double[]) {
-            return ((double[]) self).clone();
-        } else if (self instanceof char[]) {
-            return ((char[]) self).clone();
-        } else if (self instanceof short[]) {
-            return ((short[]) self).clone();
-        }
-
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-        if (!meta.knownKlass(Cloneable.class).isAssignableFrom(meta(((StaticObject) self).getKlass()))) {
+        if (!meta.knownKlass(Cloneable.class).isAssignableFrom(meta(self.getKlass()))) {
             throw meta.throwEx(java.lang.CloneNotSupportedException.class);
         }
 
@@ -386,7 +366,7 @@ public class VM extends NativeEnv {
     @VmImpl
     @JniImpl
     @SuppressFBWarnings(value = {"IMSE"}, justification = "Not dubious, .notifyAll is just forwarded from the guest.")
-    public void JVM_MonitorNotifyAll(Object self) {
+    public void JVM_MonitorNotifyAll(@Type(Object.class) StaticObject self) {
         if (EspressoOptions.RUNNING_ON_SVM) {
             return;
         }
@@ -400,7 +380,7 @@ public class VM extends NativeEnv {
     @VmImpl
     @JniImpl
     @SuppressFBWarnings(value = {"IMSE"}, justification = "Not dubious, .notify is just forwarded from the guest.")
-    public void JVM_MonitorNotify(Object self) {
+    public void JVM_MonitorNotify(@Type(Object.class) StaticObject self) {
         if (EspressoOptions.RUNNING_ON_SVM) {
             return;
         }
@@ -414,7 +394,7 @@ public class VM extends NativeEnv {
     @VmImpl
     @JniImpl
     @SuppressFBWarnings(value = {"IMSE"}, justification = "Not dubious, .wait is just forwarded from the guest.")
-    public void JVM_MonitorWait(Object self, long timeout) {
+    public void JVM_MonitorWait(@Type(Object.class) StaticObject self, long timeout) {
         if (EspressoOptions.RUNNING_ON_SVM) {
             return;
         }
@@ -508,14 +488,15 @@ public class VM extends NativeEnv {
     @VmImpl
     @JniImpl
     public @Type(Throwable.class) StaticObject JVM_FillInStackTrace(@Type(Throwable.class) StaticObject self, @SuppressWarnings("unused") int dummy) {
-        final ArrayList<FrameInstance> frames = new ArrayList<>(16);
+        final ArrayList<FrameInstance> frames = new ArrayList<>(32);
         Truffle.getRuntime().iterateFrames(frameInstance -> {
             frames.add(frameInstance);
             return null;
         });
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-        meta.THROWABLE.declaredField("backtrace").set(self,
-                        new StaticObjectWrapper(meta.OBJECT.rawKlass(), frames.toArray(new FrameInstance[0])));
+        StaticObject backtrace = meta.OBJECT.allocateInstance();
+        ((StaticObjectImpl) backtrace).setHiddenField("$$frames", frames.toArray(new FrameInstance[0]));
+        meta.THROWABLE.declaredField("backtrace").set(self, backtrace);
         return self;
     }
 
@@ -523,11 +504,11 @@ public class VM extends NativeEnv {
     @JniImpl
     public int JVM_GetStackTraceDepth(@Type(Throwable.class) StaticObject self) {
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-        Object backtrace = meta.THROWABLE.declaredField("backtrace").get(self);
+        StaticObject backtrace = (StaticObject) meta.THROWABLE.declaredField("backtrace").get(self);
         if (StaticObject.isNull(backtrace)) {
             return 0;
         }
-        return ((FrameInstance[]) ((StaticObjectWrapper) backtrace).getWrapped()).length;
+        return ((FrameInstance[]) ((StaticObjectImpl) backtrace).getHiddenField("$$frames")).length;
     }
 
     @VmImpl
@@ -535,8 +516,8 @@ public class VM extends NativeEnv {
     public @Type(StackTraceElement.class) StaticObject JVM_GetStackTraceElement(@Type(Throwable.class) StaticObject self, int index) {
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
         StaticObject ste = meta.knownKlass(StackTraceElement.class).allocateInstance();
-        Object backtrace = meta.THROWABLE.declaredField("backtrace").get(self);
-        FrameInstance[] frames = (FrameInstance[]) ((StaticObjectWrapper) backtrace).getWrapped();
+        StaticObject backtrace = (StaticObject) meta.THROWABLE.declaredField("backtrace").get(self);
+        FrameInstance[] frames = ((FrameInstance[]) ((StaticObjectImpl) backtrace).getHiddenField("$$frames"));
 
         FrameInstance frame = frames[index];
 
@@ -611,7 +592,7 @@ public class VM extends NativeEnv {
             }
         }
 
-        meta(target).invokeDirect(instance, ((StaticObjectArray) args).getWrapped());
+        meta(target).invokeDirect(instance, ((StaticObjectArray) args).unwrap());
         return instance;
     }
 
@@ -619,7 +600,7 @@ public class VM extends NativeEnv {
     @JniImpl
     public @Type(Class.class) StaticObject JVM_FindLoadedClass(@Type(ClassLoader.class) StaticObject loader, @Type(String.class) StaticObject name) {
         EspressoContext context = EspressoLanguage.getCurrentContext();
-        TypeDescriptor type = context.getTypeDescriptors().make(MetaUtil.toInternalName(Meta.toHost(name)));
+        TypeDescriptor type = context.getTypeDescriptors().make(MetaUtil.toInternalName(Meta.toHostString(name)));
         Klass klass = EspressoLanguage.getCurrentContext().getRegistries().findLoadedClass(type, loader);
         if (klass == null) {
             return StaticObject.NULL;
@@ -742,7 +723,7 @@ public class VM extends NativeEnv {
 
     @VmImpl
     @JniImpl
-    public int JVM_GetArrayLength(Object array) {
+    public int JVM_GetArrayLength(@Type(Object.class) StaticObject array) {
         try {
             return Array.getLength(MetaUtil.unwrap(array));
         } catch (IllegalArgumentException | NullPointerException e) {
@@ -839,7 +820,7 @@ public class VM extends NativeEnv {
      */
     @VmImpl
     @JniImpl
-    public Object JVM_GetArrayElement(Object array, int index) {
+    public @Type(Object.class) StaticObject JVM_GetArrayElement(@Type(Object.class) StaticObject array, int index) {
         if (StaticObject.isNull(array)) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(NullPointerException.class);
         }
@@ -858,7 +839,6 @@ public class VM extends NativeEnv {
     }
 
     private static StaticObject guestBox(Object elem) {
-        assert StaticObject.notNull(elem);
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
         if (elem instanceof Boolean) {
             return (StaticObject) meta.BOXED_BOOLEAN.staticMethod("valueOf", Boolean.class, boolean.class).invokeDirect((boolean) elem);

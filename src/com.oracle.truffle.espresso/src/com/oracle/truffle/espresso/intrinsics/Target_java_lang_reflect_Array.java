@@ -26,7 +26,6 @@ package com.oracle.truffle.espresso.intrinsics;
 import java.lang.reflect.Array;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
@@ -39,7 +38,7 @@ public class Target_java_lang_reflect_Array {
     public static Object newArray(@Type(Class.class) StaticObjectClass componentType, int length) {
         if (componentType.getMirror().isPrimitive()) {
             byte jvmPrimitiveType = (byte) componentType.getMirror().getJavaKind().getBasicType();
-            return InterpreterToVM.allocateNativeArray(jvmPrimitiveType, length);
+            return InterpreterToVM.allocatePrimitiveArray(jvmPrimitiveType, length);
         }
         InterpreterToVM vm = EspressoLanguage.getCurrentContext().getInterpreterToVM();
         return vm.newArray(componentType.getMirror(), length);
@@ -47,156 +46,181 @@ public class Target_java_lang_reflect_Array {
 
     @Intrinsic
     public static Object multiNewArray(@Type(Class.class) StaticObject componentType,
-                    int[] dimensions) {
+                    @Type(int[].class) StaticObject guestDimensions) {
+        int[] dimensions = ((StaticObjectArray) guestDimensions).unwrap();
         return EspressoLanguage.getCurrentContext().getInterpreterToVM().newMultiArray(((StaticObjectClass) componentType).getMirror(), dimensions);
     }
 
     @Intrinsic
-    public static boolean getBoolean(Object array, int index) {
+    public static boolean getBoolean(@Type(Object.class) StaticObject array, int index) {
+        if (!(array instanceof StaticObjectArray)) {
+            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(IllegalArgumentException.class);
+        }
         try {
-            return Array.getBoolean(MetaUtil.unwrap(array), index);
+            return Array.getBoolean(((StaticObjectArray) array).unwrap(), index);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
         }
     }
 
     @Intrinsic
-    public static byte getByte(Object array, int index) {
+    public static byte getByte(@Type(Object.class) StaticObject array, int index) {
+        if (!(array instanceof StaticObjectArray)) {
+            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(IllegalArgumentException.class);
+        }
         try {
-            return Array.getByte(MetaUtil.unwrap(array), index);
+            return Array.getByte(((StaticObjectArray) array).unwrap(), index);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
         }
     }
 
     @Intrinsic
-    public static char getChar(Object array, int index) {
+    public static char getChar(@Type(Object.class) StaticObject array, int index) {
+        if (!(array instanceof StaticObjectArray)) {
+            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(IllegalArgumentException.class);
+        }
         try {
-            return Array.getChar(MetaUtil.unwrap(array), index);
+            return Array.getChar(((StaticObjectArray) array).unwrap(), index);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
         }
     }
 
     @Intrinsic
-    public static short getShort(Object array, int index) {
+    public static short getShort(@Type(Object.class) StaticObject array, int index) {
+        if (!(array instanceof StaticObjectArray)) {
+            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(IllegalArgumentException.class);
+        }
         try {
-            return Array.getShort(MetaUtil.unwrap(array), index);
+            return Array.getShort(((StaticObjectArray) array).unwrap(), index);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
         }
     }
 
     @Intrinsic
-    public static int getInt(Object array, int index) {
+    public static int getInt(@Type(Object.class) StaticObject array, int index) {
+        if (!(array instanceof StaticObjectArray)) {
+            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(IllegalArgumentException.class);
+        }
         try {
-            return Array.getInt(MetaUtil.unwrap(array), index);
+            return Array.getInt(((StaticObjectArray) array).unwrap(), index);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
         }
     }
 
     @Intrinsic
-    public static float getFloat(Object array, int index) {
+    public static float getFloat(@Type(Object.class) StaticObject array, int index) {
+        if (!(array instanceof StaticObjectArray)) {
+            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(IllegalArgumentException.class);
+        }
         try {
-            return Array.getFloat(MetaUtil.unwrap(array), index);
+            return Array.getFloat(((StaticObjectArray) array).unwrap(), index);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
         }
     }
 
     @Intrinsic
-    public static double getDouble(Object array, int index) {
+    public static double getDouble(@Type(Object.class) StaticObject array, int index) {
+        if (!(array instanceof StaticObjectArray)) {
+            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(IllegalArgumentException.class);
+        }
         try {
-            return Array.getDouble(MetaUtil.unwrap(array), index);
+            return Array.getDouble(((StaticObjectArray) array).unwrap(), index);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
         }
     }
 
     @Intrinsic
-    public static long getLong(Object array, int index) {
+    public static long getLong(@Type(Object.class) StaticObject array, int index) {
+        if (!(array instanceof StaticObjectArray)) {
+            throw EspressoLanguage.getCurrentContext().getMeta().throwEx(IllegalArgumentException.class);
+        }
         try {
-            return Array.getLong(MetaUtil.unwrap(array), index);
+            return Array.getLong(((StaticObjectArray) array).unwrap(), index);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
         }
     }
 
     @Intrinsic
-    public static void setBoolean(Object array, int index, boolean value) {
+    public static void setBoolean(@Type(Object.class) StaticObject array, int index, boolean value) {
         try {
-            Array.setBoolean(MetaUtil.unwrap(array), index, value);
+            Array.setBoolean(((StaticObjectArray) array).unwrap(), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
         }
     }
 
     @Intrinsic
-    public static void setByte(Object array, int index, byte value) {
+    public static void setByte(@Type(Object.class) StaticObject array, int index, byte value) {
         try {
-            Array.setByte(MetaUtil.unwrap(array), index, value);
+            Array.setByte(((StaticObjectArray) array).unwrap(), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
         }
     }
 
     @Intrinsic
-    public static void setChar(Object array, int index, char value) {
+    public static void setChar(@Type(Object.class) StaticObject array, int index, char value) {
         try {
-            Array.setChar(((StaticObjectArray) MetaUtil.unwrap(array)).getWrapped(), index, value);
+            Array.setChar(((StaticObjectArray) array).unwrap(), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
         }
     }
 
     @Intrinsic
-    public static void setShort(Object array, int index, short value) {
+    public static void setShort(@Type(Object.class) StaticObject array, int index, short value) {
         try {
-            Array.setShort(MetaUtil.unwrap(array), index, value);
+            Array.setShort(((StaticObjectArray) array).unwrap(), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
         }
     }
 
     @Intrinsic
-    public static void setInt(Object array, int index, int value) {
+    public static void setInt(@Type(Object.class) StaticObject array, int index, int value) {
         try {
-            Array.setInt(MetaUtil.unwrap(array), index, value);
+            Array.setInt(((StaticObjectArray) array).unwrap(), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
         }
     }
 
     @Intrinsic
-    public static void setFloat(Object array, int index, float value) {
+    public static void setFloat(@Type(Object.class) StaticObject array, int index, float value) {
         try {
-            Array.setFloat(MetaUtil.unwrap(array), index, value);
+            Array.setFloat(((StaticObjectArray) array).unwrap(), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
         }
     }
 
     @Intrinsic
-    public static void setDouble(Object array, int index, double value) {
+    public static void setDouble(@Type(Object.class) StaticObject array, int index, double value) {
         try {
-            Array.setDouble(MetaUtil.unwrap(array), index, value);
+            Array.setDouble(((StaticObjectArray) array).unwrap(), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
         }
     }
 
     @Intrinsic
-    public static void setLong(Object array, int index, long value) {
+    public static void setLong(@Type(Object.class) StaticObject array, int index, long value) {
         try {
-            Array.setLong(MetaUtil.unwrap(array), index, value);
+            Array.setLong(((StaticObjectArray) array).unwrap(), index, value);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(e.getClass(), e.getMessage());
         }
     }
 
     @Intrinsic
-    public static void set(Object array, int index, Object value) {
+    public static void set(@Type(Object.class) StaticObject array, int index, @Type(Object.class) StaticObject value) {
         if (array instanceof StaticObjectArray) {
             EspressoLanguage.getCurrentContext().getInterpreterToVM().setArrayObject(value, index, (StaticObjectArray) array);
         } else {
