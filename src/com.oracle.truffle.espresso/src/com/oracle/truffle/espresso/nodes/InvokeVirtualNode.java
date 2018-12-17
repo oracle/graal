@@ -54,7 +54,7 @@ public abstract class InvokeVirtualNode extends InvokeNode {
     }
 
     @Specialization(replaces = "callVirtualDirect")
-    Object callVirtualIndirect(OperandStack stack, Object receiver, Object[] arguments,
+    Object callVirtualIndirect(OperandStack stack, StaticObject receiver, Object[] arguments,
                     @Cached("create()") IndirectCallNode indirectCallNode) {
         // Brute virtual method resolution, walk the whole klass hierarchy.
         MethodInfo targetMethod = methodLookup(resolutionSeed, receiver);
@@ -66,19 +66,8 @@ public abstract class InvokeVirtualNode extends InvokeNode {
         this.resolutionSeed = resolutionSeed;
     }
 
-    // TODO(peterssen): Make this a node?
-    private final Object nullCheck(Object value) {
-        if (StaticObject.isNull(value)) {
-            CompilerDirectives.transferToInterpreter();
-            // TODO(peterssen): Profile whether null was hit or not.
-            Meta meta = resolutionSeed.getDeclaringClass().getContext().getMeta();
-            throw meta.throwEx(NullPointerException.class);
-        }
-        return value;
-    }
-
     @TruffleBoundary
-    static MethodInfo methodLookup(MethodInfo resolutionSeed, Object receiver) {
+    static MethodInfo methodLookup(MethodInfo resolutionSeed, StaticObject receiver) {
         Klass clazz = ((StaticObjectClass) resolutionSeed.getContext().getJNI().GetObjectClass(receiver)).getMirror();
         return clazz.findConcreteMethod(resolutionSeed.getName(), resolutionSeed.getSignature());
     }

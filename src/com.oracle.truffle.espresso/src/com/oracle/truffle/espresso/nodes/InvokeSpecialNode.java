@@ -38,16 +38,6 @@ public final class InvokeSpecialNode extends InvokeNode {
         this.directCallNode = DirectCallNode.create(method.getCallTarget());
     }
 
-    private Object nullCheck(Object value) {
-        if (StaticObject.isNull(value)) {
-            CompilerDirectives.transferToInterpreter();
-            // TODO(peterssen): Profile whether null was hit or not.
-            Meta meta = method.getDeclaringClass().getContext().getMeta();
-            throw meta.throwEx(NullPointerException.class);
-        }
-        return value;
-    }
-
     @Override
     public void invoke(OperandStack stack) {
         // TODO(peterssen): Constant fold this check.

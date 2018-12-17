@@ -1585,11 +1585,11 @@ public class EspressoRootNode extends RootNode implements LinkedNode {
         return switchHelper.defaultTarget(curBCI);
     }
 
-    private Object checkCast(Object instance, Klass typeToCheck) {
+    private StaticObject checkCast(StaticObject instance, Klass typeToCheck) {
         return vm.checkCast(instance, typeToCheck);
     }
 
-    private Object allocateInstance(Klass klass) {
+    private StaticObject allocateInstance(Klass klass) {
         klass.initialize();
         return vm.newObject(klass);
     }

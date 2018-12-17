@@ -22,9 +22,24 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.bytecode.OperandStack;
+import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public abstract class InvokeNode extends Node {
     public abstract void invoke(OperandStack stack);
+
+    // TODO(peterssen): Make this a node?
+    protected static final StaticObject nullCheck(StaticObject value) {
+        if (StaticObject.isNull(value)) {
+            CompilerDirectives.transferToInterpreter();
+            // TODO(peterssen): Profile whether null was hit or not.
+            Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+            throw meta.throwEx(NullPointerException.class);
+        }
+        return value;
+    }
 }
