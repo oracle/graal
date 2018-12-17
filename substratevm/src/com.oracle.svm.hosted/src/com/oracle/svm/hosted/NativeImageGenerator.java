@@ -765,30 +765,31 @@ public class NativeImageGenerator {
                  * Execute analysis reporting here. This code is executed even if unsupported
                  * features are reported or the analysis fails due to any other reasons.
                  */
+                if ( bigbang != null ) {
+                    if (AnalysisReportsOptions.PrintAnalysisCallTree.getValue(options)) {
+                        String reportName = imageName.substring(imageName.lastIndexOf("/") + 1);
+                        CallTreePrinter.print(bigbang, SubstrateOptions.Path.getValue(), reportName);
+                    }
 
-                if (AnalysisReportsOptions.PrintAnalysisCallTree.getValue(options)) {
-                    String reportName = imageName.substring(imageName.lastIndexOf("/") + 1);
-                    CallTreePrinter.print(bigbang, SubstrateOptions.Path.getValue(), reportName);
-                }
+                    if (AnalysisReportsOptions.PrintImageObjectTree.getValue(options)) {
+                        String reportName = imageName.substring(imageName.lastIndexOf("/") + 1);
+                        ObjectTreePrinter.print(bigbang, SubstrateOptions.Path.getValue(), reportName);
+                    }
 
-                if (AnalysisReportsOptions.PrintImageObjectTree.getValue(options)) {
-                    String reportName = imageName.substring(imageName.lastIndexOf("/") + 1);
-                    ObjectTreePrinter.print(bigbang, SubstrateOptions.Path.getValue(), reportName);
-                }
+                    if (PointstoOptions.ReportAnalysisStatistics.getValue(options)) {
+                        PointsToStats.report(bigbang, imageName.replace("images/", ""));
+                    }
 
-                if (PointstoOptions.ReportAnalysisStatistics.getValue(options)) {
-                    PointsToStats.report(bigbang, imageName.replace("images/", ""));
-                }
-
-                if (PointstoOptions.PrintSynchronizedAnalysis.getValue(options)) {
-                    TypeState allSynchronizedTypeState = bigbang.getAllSynchronizedTypeState();
-                    String typesString = allSynchronizedTypeState.closeToAllInstantiated(bigbang) ? "close to all instantiated" : //
-                                    StreamSupport.stream(allSynchronizedTypeState.types().spliterator(), false).map(AnalysisType::getName).collect(Collectors.joining(", "));
-                    System.out.println();
-                    System.out.println("AllSynchronizedTypes");
-                    System.out.println("Synchronized types #: " + allSynchronizedTypeState.typesCount());
-                    System.out.println("Types: " + typesString);
-                    System.out.println();
+                    if (PointstoOptions.PrintSynchronizedAnalysis.getValue(options)) {
+                        TypeState allSynchronizedTypeState = bigbang.getAllSynchronizedTypeState();
+                        String typesString = allSynchronizedTypeState.closeToAllInstantiated(bigbang) ? "close to all instantiated" : //
+                                StreamSupport.stream(allSynchronizedTypeState.types().spliterator(), false).map(AnalysisType::getName).collect(Collectors.joining(", "));
+                        System.out.println();
+                        System.out.println("AllSynchronizedTypes");
+                        System.out.println("Synchronized types #: " + allSynchronizedTypeState.typesCount());
+                        System.out.println("Types: " + typesString);
+                        System.out.println();
+                    }
                 }
             }
             if (error == null && NativeImageOptions.ReturnAfterAnalysis.getValue()) {
