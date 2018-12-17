@@ -45,6 +45,7 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThat;
@@ -74,11 +75,13 @@ import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyObject;
 import org.hamcrest.CoreMatchers;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.KeyInfo;
@@ -165,6 +168,7 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
 
         data.x = 44;
         assertEquals(44, anotherThis.x());
+        assertNotSame(anotherThis, xyp);
         assertEquals(anotherThis, xyp);
         assertEquals(anotherThis.hashCode(), xyp.hashCode());
     }
@@ -257,6 +261,7 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
 
     @Test
     public void accessAllProperties() {
+        Assume.assumeFalse("SVM does not track class visibility", TruffleOptions.AOT);
         Value pojo = context.asValue(new PrivatePOJO());
         Map<?, ?> map = pojo.as(Map.class);
         int cnt = 0;
@@ -273,6 +278,7 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
 
     @Test
     public void accessAllPropertiesDirectly() {
+        Assume.assumeFalse("SVM does not track class visibility", TruffleOptions.AOT);
         Value pojo = context.asValue(new PrivatePOJO());
         assertEquals("No props, class isn't public", 0, pojo.getMemberKeys().size());
     }
@@ -417,6 +423,7 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
 
     @Test
     public void functionalInterfaceOverridingObjectMethods() throws Exception {
+        Assume.assumeFalse("Cannot get reflection data for a lambda", TruffleOptions.AOT);
         Value object = context.asValue((FunctionalWithObjectMethodOverrides) (args) -> args.length >= 1 ? args[0] : null);
         assertArrayEquals(new Object[]{"call"}, object.getMemberKeys().toArray());
         assertEquals(42, object.execute(42).asInt());
@@ -522,6 +529,7 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
     @Test
     public void testNewClass() {
         Value hashMapClass = context.asValue(HashMap.class);
+        assertTrue(hashMapClass.canInstantiate());
         Value hashMap = hashMapClass.newInstance();
         assertTrue(hashMap.isHostObject());
         assertTrue(hashMap.asHostObject() instanceof HashMap);

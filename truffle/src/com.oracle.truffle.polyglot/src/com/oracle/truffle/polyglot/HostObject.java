@@ -46,7 +46,6 @@ import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
@@ -259,7 +258,7 @@ class HostObjectMR {
         @Child private Node sendExecuteNode;
 
         public Object access(HostObject object, String name, Object[] args) {
-            if (TruffleOptions.AOT || object.isNull()) {
+            if (object.isNull()) {
                 throw UnsupportedMessageException.raise(INVOKE);
             }
 
@@ -338,9 +337,6 @@ class HostObjectMR {
         @Child private LookupConstructorNode lookupConstructor;
 
         public Object access(HostObject receiver) {
-            if (TruffleOptions.AOT) {
-                return false;
-            }
             if (receiver.isClass()) {
                 Class<?> javaClass = receiver.asClass();
                 if (javaClass.isArray()) {
@@ -368,10 +364,6 @@ class HostObjectMR {
         @Child private ToHostNode toJava;
 
         public Object access(HostObject receiver, Object[] args) {
-            if (TruffleOptions.AOT) {
-                throw UnsupportedMessageException.raise(NEW);
-            }
-
             if (receiver.isClass()) {
                 Class<?> javaClass = receiver.asClass();
                 if (javaClass.isArray()) {
@@ -472,7 +464,7 @@ class HostObjectMR {
         }
 
         public Object access(HostObject object, String name) {
-            if (TruffleOptions.AOT || object.isNull()) {
+            if (object.isNull()) {
                 throw UnsupportedMessageException.raise(Message.READ);
             }
             boolean isStatic = object.isStaticClass();
@@ -667,7 +659,7 @@ class HostObjectMR {
         }
 
         public Object access(HostObject receiver, String name, Object value) {
-            if (TruffleOptions.AOT || receiver.isNull()) {
+            if (receiver.isNull()) {
                 throw UnsupportedMessageException.raise(Message.WRITE);
             }
             HostFieldDesc f = lookupField().execute(receiver.getLookupClass(), name, receiver.isStaticClass());
@@ -928,7 +920,7 @@ class HostObjectMR {
             if (receiver.isNull()) {
                 throw UnsupportedMessageException.raise(Message.KEYS);
             }
-            String[] fields = TruffleOptions.AOT ? new String[0] : HostInteropReflect.findUniquePublicMemberNames(receiver.getLookupClass(), receiver.isStaticClass(), includeInternal);
+            String[] fields = HostInteropReflect.findUniquePublicMemberNames(receiver.getLookupClass(), receiver.isStaticClass(), includeInternal);
             return HostObject.forObject(fields, receiver.languageContext);
         }
     }
@@ -1002,9 +994,6 @@ class HostObjectMR {
             if (receiver.isNull()) {
                 throw UnsupportedMessageException.raise(Message.KEY_INFO);
             }
-            if (TruffleOptions.AOT) {
-                return 0;
-            }
             return keyInfoCache().execute(receiver.getLookupClass(), name, receiver.isStaticClass());
         }
 
@@ -1022,9 +1011,6 @@ class HostObjectMR {
         @Child private LookupFunctionalMethodNode lookupMethod;
 
         public Object access(HostObject receiver) {
-            if (TruffleOptions.AOT) {
-                return false;
-            }
             return receiver.obj != null && !receiver.isClass() && lookupFunctionalInterfaceMethod(receiver) != null;
         }
 
@@ -1044,9 +1030,6 @@ class HostObjectMR {
         @Child private HostExecuteNode doExecute;
 
         public Object access(HostObject receiver, Object[] args) {
-            if (TruffleOptions.AOT) {
-                throw UnsupportedMessageException.raise(EXECUTE);
-            }
             if (receiver.obj != null && !receiver.isClass()) {
                 HostMethodDesc method = lookupFunctionalInterfaceMethod(receiver);
                 if (method != null) {

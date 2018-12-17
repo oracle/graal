@@ -63,7 +63,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLogger;
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.source.Source;
@@ -668,8 +667,6 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             return HostObject.forObject(hostValue, this);
         } else if (HostWrapper.isInstance(hostValue)) {
             return migrateHostWrapper(HostWrapper.asInstance(hostValue));
-        } else if (TruffleOptions.AOT) {
-            return HostObject.forObject(hostValue, this);
         } else {
             return HostInteropReflect.asTruffleViaReflection(hostValue, this);
         }
