@@ -36,6 +36,7 @@ import static org.graalvm.compiler.core.common.GraalOptions.ZapStackOnMethodEntr
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.asm.Assembler;
+import org.graalvm.compiler.asm.BranchTargetOutOfBoundsException;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
@@ -47,6 +48,7 @@ import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotDataBuilder;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
@@ -123,7 +125,9 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend {
         AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
         try (ScratchRegister sc = masm.getScratchRegister()) {
             Register scratch = sc.getRegister();
-            AArch64Address address = masm.makeAddress(sp, -bangOffset, scratch, 8, /* allowOverwrite */false);
+            AArch64Address address = masm.makeAddress(sp, -bangOffset, scratch, 8, /*
+                                                                                    * allowOverwrite
+                                                                                    */false);
             masm.str(64, zr, address);
         }
     }
@@ -252,11 +256,25 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, LIR lir, ResolvedJavaMethod installedCodeOwner) {
+        Label verifiedStub = new Label();
+        crb.buildLabelOffsets(lir);
+        try {
+            emitCode(crb, lir, installedCodeOwner, verifiedStub);
+        } catch (BranchTargetOutOfBoundsException e) {
+            // A branch estimation was wrong, now retry with conservative label ranges, this
+            // should always work
+            crb.setConservativeLabelRanges();
+            crb.resetForEmittingCode();
+            lir.resetLabels();
+            verifiedStub.reset();
+            emitCode(crb, lir, installedCodeOwner, verifiedStub);
+        }
+    }
+
+    private void emitCode(CompilationResultBuilder crb, LIR lir, ResolvedJavaMethod installedCodeOwner, Label verifiedStub) {
         AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
         FrameMap frameMap = crb.frameMap;
         RegisterConfig regConfig = frameMap.getRegisterConfig();
-        Label verifiedStub = new Label();
-
         emitCodePrefix(crb, installedCodeOwner, masm, regConfig, verifiedStub);
         emitCodeBody(crb, lir, masm);
         emitCodeSuffix(crb, masm, frameMap);

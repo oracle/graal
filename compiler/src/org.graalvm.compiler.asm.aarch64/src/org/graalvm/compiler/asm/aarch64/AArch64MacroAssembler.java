@@ -33,6 +33,9 @@ import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.REG
 import static org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.AddressGenerationPlan.WorkPlan.ADD_TO_BASE;
 import static org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.AddressGenerationPlan.WorkPlan.ADD_TO_INDEX;
 import static org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.AddressGenerationPlan.WorkPlan.NO_WORK;
+
+import org.graalvm.compiler.asm.BranchTargetOutOfBoundsException;
+
 import static jdk.vm.ci.aarch64.AArch64.CPU;
 import static jdk.vm.ci.aarch64.AArch64.r8;
 import static jdk.vm.ci.aarch64.AArch64.r9;
@@ -1681,6 +1684,9 @@ public class AArch64MacroAssembler extends AArch64Assembler {
                 int sizeEncoding = information & NumUtil.getNbitNumberInt(6);
                 int regEncoding = information >>> 6;
                 Register reg = AArch64.cpuRegisters.get(regEncoding);
+                if (!NumUtil.isSignedNbit(16, branchOffset)) {
+                    throw new BranchTargetOutOfBoundsException(true, "Branch target %d out of bounds", branchOffset);
+                }
                 switch (type) {
                     case BRANCH_BIT_NONZERO:
                         super.tbnz(reg, sizeEncoding, branchOffset, branch);

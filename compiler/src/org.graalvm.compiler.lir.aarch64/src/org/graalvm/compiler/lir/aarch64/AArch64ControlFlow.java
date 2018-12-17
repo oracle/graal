@@ -111,7 +111,7 @@ public class AArch64ControlFlow {
             this.trueDestinationProbability = trueDestinationProbability;
         }
 
-        protected void emitConditionalBranch(AArch64MacroAssembler masm, AArch64Assembler.ConditionFlag cond, Label label) {
+        protected void emitConditionalBranch(@SuppressWarnings("unused") CompilationResultBuilder crb, AArch64MacroAssembler masm, AArch64Assembler.ConditionFlag cond, Label label) {
             masm.branchConditionally(cond, label);
         }
 
@@ -124,14 +124,14 @@ public class AArch64ControlFlow {
              * executing two instructions instead of one.
              */
             if (crb.isSuccessorEdge(trueDestination)) {
-                emitConditionalBranch(masm, condition.negate(), falseDestination.label());
+                emitConditionalBranch(crb, masm, condition.negate(), falseDestination.label());
             } else if (crb.isSuccessorEdge(falseDestination)) {
-                emitConditionalBranch(masm, condition, trueDestination.label());
+                emitConditionalBranch(crb, masm, condition, trueDestination.label());
             } else if (trueDestinationProbability < 0.5) {
-                emitConditionalBranch(masm, condition.negate(), falseDestination.label());
+                emitConditionalBranch(crb, masm, condition.negate(), falseDestination.label());
                 masm.jmp(trueDestination.label());
             } else {
-                emitConditionalBranch(masm, condition, trueDestination.label());
+                emitConditionalBranch(crb, masm, condition, trueDestination.label());
                 masm.jmp(falseDestination.label());
             }
         }
@@ -142,6 +142,7 @@ public class AArch64ControlFlow {
 
         @Use protected Value src;
         private final int index;
+        private boolean isFarBranch;
 
         public BitTestAndBranchOp(LabelRef trueDestination, LabelRef falseDestination, Value src, double trueDestinationProbability, int index) {
             super(TYPE, ConditionFlag.EQ, trueDestination, falseDestination, trueDestinationProbability);
@@ -150,13 +151,20 @@ public class AArch64ControlFlow {
         }
 
         @Override
-        protected void emitConditionalBranch(AArch64MacroAssembler masm, AArch64Assembler.ConditionFlag cond, Label label) {
+        protected void emitConditionalBranch(CompilationResultBuilder crb, AArch64MacroAssembler masm, AArch64Assembler.ConditionFlag cond, Label label) {
             assert cond == ConditionFlag.EQ || cond == ConditionFlag.NE;
             ConditionFlag finalCondition = cond;
             Label finalLabel = label;
 
-            boolean isFarBranch = false;
-            // TODO Check whether the branch is short or far, and set value to "isFarBranch".
+            if (label.isBound()) {
+                isFarBranch = NumUtil.isSignedNbit(18, masm.position() - label.position());
+            } else {
+                // Max range of tbz is +-2^13 instructions. We estimate that each LIR instruction
+                // emits 2 AArch64 instructions on average. Thus we test for maximum 2^12 LIR
+                // instruction offset.
+                int maxLIRDistance = (1 << 12);
+                isFarBranch = !crb.labelWithinRange(this, label, maxLIRDistance);
+            }
 
             if (isFarBranch) {
                 finalCondition = cond.negate();
@@ -173,6 +181,13 @@ public class AArch64ControlFlow {
                 masm.jmp(label);
                 masm.bind(finalLabel);
             }
+        }
+
+        /**
+         * For testing purposes
+         */
+        public boolean isFarBranch() {
+            return isFarBranch;
         }
     }
 
