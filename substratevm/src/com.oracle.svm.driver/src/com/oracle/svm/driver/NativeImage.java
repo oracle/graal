@@ -75,6 +75,7 @@ import com.oracle.svm.driver.MacroOption.EnabledOption;
 import com.oracle.svm.driver.MacroOption.MacroOptionKind;
 import com.oracle.svm.driver.MacroOption.Registry;
 import com.oracle.svm.graal.hosted.GraalFeature;
+import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.image.AbstractBootImage.NativeImageKind;
 import com.oracle.svm.hosted.substitute.DeclarativeSubstitutionProcessor;
@@ -682,7 +683,7 @@ public class NativeImage {
                 processNativeImageProperties(nativeImageMetaInfBase);
             } else {
                 List<Path> jarFileMatches;
-                if (classpathEntry.getFileName() != null && classpathEntry.getFileName().toString().equals("*")) {
+                if (classpathEntry.endsWith(ImageClassLoader.cpWildcardSubstitute)) {
                     jarFileMatches = Files.list(classpathEntry.getParent())
                                     .filter(p -> p.getFileName().toString().toLowerCase().endsWith(".jar"))
                                     .collect(Collectors.toList());
@@ -699,7 +700,7 @@ public class NativeImage {
                 }
             }
         } catch (IOException e) {
-            throw showError("Invalid classpath entry " + classpathEntry, e);
+            throw showError("Invalid classpath entry " + ImageClassLoader.classpathToString(classpathEntry), e);
         }
     }
 
@@ -897,7 +898,7 @@ public class NativeImage {
             command.addAll(Arrays.asList("-watchpid", "" + ProcessProperties.getProcessID()));
         }
         command.addAll(imageArgs);
-        command.addAll(Arrays.asList("-imagecp", imagecp.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator))));
+        command.addAll(Arrays.asList("-imagecp", imagecp.stream().map(ImageClassLoader::classpathToString).collect(Collectors.joining(File.pathSeparator))));
 
         showVerboseMessage(isVerbose() || dryRun, "Executing [");
         showVerboseMessage(isVerbose() || dryRun, command.stream().collect(Collectors.joining(" \\\n")));
@@ -946,24 +947,24 @@ public class NativeImage {
 
     Path canonicalize(Path path) {
         Path absolutePath = path.isAbsolute() ? path : config.getWorkingDirectory().resolve(path);
-        boolean hasWildcard = absolutePath.getFileName() != null && absolutePath.getFileName().toString().equals("*");
+        boolean hasWildcard = absolutePath.endsWith(ImageClassLoader.cpWildcardSubstitute);
         if (hasWildcard) {
             absolutePath = absolutePath.getParent();
         }
         try {
             Path realPath = absolutePath.toRealPath(LinkOption.NOFOLLOW_LINKS);
             if (!Files.isReadable(realPath)) {
-                showError("Path entry " + path.toString() + " is not readable");
+                showError("Path entry " + ImageClassLoader.classpathToString(path) + " is not readable");
             }
             if (hasWildcard) {
                 if (!Files.isDirectory(realPath)) {
-                    showError("Path entry with wildcard " + path.toString() + " is not a directory");
+                    showError("Path entry with wildcard " + ImageClassLoader.classpathToString(path) + " is not a directory");
                 }
-                realPath = realPath.resolve("*");
+                realPath = realPath.resolve(ImageClassLoader.cpWildcardSubstitute);
             }
             return realPath;
         } catch (IOException e) {
-            throw showError("Invalid Path entry " + path.toString(), e);
+            throw showError("Invalid Path entry " + ImageClassLoader.classpathToString(path), e);
         }
     }
 
@@ -1023,6 +1024,10 @@ public class NativeImage {
         Path classpathEntry = canonicalize(classpath);
         processClasspathNativeImageProperties(classpathEntry);
         imageProvidedClasspath.add(classpathEntry);
+    }
+
+    void addCustomImageClasspath(String classpath) {
+        addCustomImageClasspath(ImageClassLoader.stringToClasspath(classpath));
     }
 
     void addCustomImageClasspath(Path classpath) {

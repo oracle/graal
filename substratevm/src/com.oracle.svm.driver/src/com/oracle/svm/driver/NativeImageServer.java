@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.driver;
 
-import java.io.File;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
@@ -198,7 +198,7 @@ final class NativeImageServer extends NativeImage {
                         command.add("-task=" + "com.oracle.svm.hosted.NativeImageGeneratorRunner");
                         LinkedHashSet<Path> imagecp = new LinkedHashSet<>(serverClasspath);
                         imagecp.addAll(imageCP);
-                        command.addAll(Arrays.asList("-imagecp", imagecp.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator))));
+                        command.addAll(Arrays.asList("-imagecp", imagecp.stream().map(NativeImageServer::pathToString).collect(Collectors.joining(File.pathSeparator))));
                         command.addAll(imageArgs);
                         showVerboseMessage(isVerbose(), "SendBuildRequest [");
                         showVerboseMessage(isVerbose(), String.join("\n", command));
