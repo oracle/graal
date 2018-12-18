@@ -35,7 +35,6 @@ import java.util.Map;
 import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.regex.RegexLanguageOptions;
 import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
@@ -79,7 +78,7 @@ public final class DFAGenerator implements JsonConvertible {
     private final NFA nfa;
     private final TRegexDFAExecutorProperties executorProps;
     private final CompilationBuffer compilationBuffer;
-    private final RegexLanguageOptions languageOptions;
+    private final RegexOptions engineOptions;
 
     private final boolean forward;
     private final boolean trackCaptureGroups;
@@ -105,7 +104,7 @@ public final class DFAGenerator implements JsonConvertible {
     private List<DFAStateTransitionBuilder[]> expandDFAPruneTraverseCur;
     private List<DFAStateTransitionBuilder[]> expandDFAPruneTraverseNext;
 
-    public DFAGenerator(NFA nfa, TRegexDFAExecutorProperties executorProps, CompilationBuffer compilationBuffer, RegexLanguageOptions languageOptions) {
+    public DFAGenerator(NFA nfa, TRegexDFAExecutorProperties executorProps, CompilationBuffer compilationBuffer, RegexOptions engineOptions) {
         this.nfa = nfa;
         this.executorProps = executorProps;
         this.forward = executorProps.isForward();
@@ -113,8 +112,8 @@ public final class DFAGenerator implements JsonConvertible {
         this.pruneUnambiguousPaths = executorProps.isBackward() && nfa.isTraceFinderNFA() && nfa.hasReverseUnAnchoredEntry();
         this.canonicalizer = new DFATransitionCanonicalizer(trackCaptureGroups);
         this.compilationBuffer = compilationBuffer;
-        this.languageOptions = languageOptions;
-        this.cgPartialTransitions = languageOptions.isDumpAutomata() ? new ArrayList<>() : null;
+        this.engineOptions = engineOptions;
+        this.cgPartialTransitions = engineOptions.isDumpAutomata() ? new ArrayList<>() : null;
         this.expandDFAPruneTraverseCur = pruneUnambiguousPaths ? new ArrayList<>() : null;
         this.expandDFAPruneTraverseNext = pruneUnambiguousPaths ? new ArrayList<>() : null;
         this.initialCGTransition = trackCaptureGroups ? new DFACaptureGroupTransitionBuilder(null, null, null) : null;
@@ -145,8 +144,8 @@ public final class DFAGenerator implements JsonConvertible {
         return nfa.getAst().getOptions();
     }
 
-    public RegexLanguageOptions getLanguageOptions() {
-        return languageOptions;
+    public RegexOptions getEngineOptions() {
+        return engineOptions;
     }
 
     private DFAStateNodeBuilder[] getStateIndexMap() {
@@ -263,7 +262,7 @@ public final class DFAGenerator implements JsonConvertible {
             states = tryMakeReducible(states);
         }
         return new TRegexDFAExecutorNode(executorProps, maxNumberOfNfaStates, states, captureGroupTransitions,
-                        languageOptions.isStepExecution() ? new TRegexDFAExecutorDebugRecorder(this) : null);
+                        engineOptions.isStepExecution() ? new TRegexDFAExecutorDebugRecorder(this) : null);
     }
 
     private void createInitialStatesForward() {
@@ -669,7 +668,7 @@ public final class DFAGenerator implements JsonConvertible {
     }
 
     private boolean debugMode() {
-        return languageOptions.isDumpAutomata() || languageOptions.isStepExecution();
+        return engineOptions.isDumpAutomata() || engineOptions.isStepExecution();
     }
 
     public String getDebugDumpName() {
