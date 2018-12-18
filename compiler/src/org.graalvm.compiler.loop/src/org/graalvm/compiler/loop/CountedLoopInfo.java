@@ -29,7 +29,6 @@ import static org.graalvm.compiler.loop.MathUtil.unsignedDivBefore;
 import static org.graalvm.compiler.nodes.calc.BinaryArithmeticNode.add;
 import static org.graalvm.compiler.nodes.calc.BinaryArithmeticNode.sub;
 
-import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.util.UnsignedLong;
@@ -135,6 +134,9 @@ public class CountedLoopInfo {
             return graph.addOrUniqueWithInputs(div);
         }
         ConstantNode zero = ConstantNode.forIntegerStamp(stamp, 0);
+        // This check is "wide": it looks like min <= max
+        // That's OK even if the loop is strict (`!isLimitIncluded()`)
+        // because in this case, `div` will be zero when min == max
         LogicNode noEntryCheck = getCounterIntegerHelper().createCompareNode(max, min, NodeView.DEFAULT);
         return graph.addOrUniqueWithInputs(ConditionalNode.create(noEntryCheck, zero, div, NodeView.DEFAULT));
     }

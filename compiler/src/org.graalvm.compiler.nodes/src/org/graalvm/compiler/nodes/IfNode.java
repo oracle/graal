@@ -1125,7 +1125,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                     boolean unsigned = cond1.isUnsigned() || cond2.isUnsigned();
                     boolean floatingPoint = x.stamp(NodeView.from(tool)) instanceof FloatStamp;
                     assert !floatingPoint || y.stamp(NodeView.from(tool)) instanceof FloatStamp;
-                    assert unsigned || !floatingPoint;
+                    assert !(floatingPoint && unsigned);
 
                     long expected1 = expectedConstantForNormalize(cond1);
                     long expected2 = expectedConstantForNormalize(cond2);

@@ -223,6 +223,16 @@ public class CountedLoopTest extends GraalCompilerTest {
         testCounted("incrementEqSnippet", -10, Integer.MAX_VALUE - 2, 2);
     }
 
+    @Test
+    public void incrementEq9() {
+        testCounted("incrementEqSnippet", 0, 0, 1);
+    }
+
+    @Test
+    public void incrementEq10() {
+        testCounted("incrementEqSnippet", 0, 0, 3);
+    }
+
     public static Result decrementSnippet(int start, int limit, int step) {
         int i;
         int dec = ((step - 1) & 0xFFFF) + 1; // make sure this value is always strictly positive
@@ -300,6 +310,16 @@ public class CountedLoopTest extends GraalCompilerTest {
     @Test
     public void decrementEq6() {
         testCounted("decrementEqSnippet", Integer.MAX_VALUE, -10, 2);
+    }
+
+    @Test
+    public void decrementEq7() {
+        testCounted("decrementEqSnippet", 10, 10, 1);
+    }
+
+    @Test
+    public void decrementEq8() {
+        testCounted("decrementEqSnippet", 10, 10, 3);
     }
 
     public static Result twoVariablesSnippet() {
