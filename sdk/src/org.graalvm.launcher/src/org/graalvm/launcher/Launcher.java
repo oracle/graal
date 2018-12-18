@@ -405,6 +405,10 @@ public abstract class Launcher {
     protected static void printPolyglotVersions() {
         Engine engine = Engine.create();
         System.out.println("GraalVM Polyglot Engine Version " + engine.getVersion());
+        Path graalVMHome = Engine.findHome();
+        if (graalVMHome != null) {
+            System.out.println("GraalVM Home " + graalVMHome);
+        }
         printLanguages(engine, true);
         printInstruments(engine, true);
     }
