@@ -102,7 +102,7 @@ public class PointstoOptions {
     @Option(help = "Path to the contents of the Inspect web server.")//
     public static final OptionKey<String> InspectServerContentPath = new OptionKey<>("inspect");
 
-    @Option(help = "Report error if <typename>[:<UsageKind>{|<UsageKind>}] is discovered during analysis.", type = OptionType.Debug)//
+    @Option(help = "Report error if <typename>[:<UsageKind>{,<UsageKind>}] is discovered during analysis.", type = OptionType.Debug)//
     public static final OptionKey<String[]> ReportAnalysisForbiddenType = new OptionKey<>(new String[0]);
 
     /**
