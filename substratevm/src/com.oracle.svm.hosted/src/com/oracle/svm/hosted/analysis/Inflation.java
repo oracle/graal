@@ -36,7 +36,6 @@ import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -54,7 +53,6 @@ import org.graalvm.word.WordBase;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.api.HostVM;
-import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
@@ -106,31 +104,6 @@ public class Inflation extends BigBang {
         genericInterfacesMap = new HashMap<>();
         annotatedInterfacesMap = new HashMap<>();
         interfacesEncodings = new HashMap<>();
-
-        setupForbiddenTypes();
-    }
-
-    private void setupForbiddenTypes() {
-        String[] forbiddenTypesOptionValues = PointstoOptions.ReportAnalysisForbiddenType.getValue(universe.getHostVM().options());
-        Map<String, EnumSet<AnalysisType.UsageKind>> forbiddenTypes = new HashMap<>();
-        for (String forbiddenTypesOptionValue : forbiddenTypesOptionValues) {
-            String[] typeNameUsageKind = forbiddenTypesOptionValue.split(":", 2);
-            EnumSet<AnalysisType.UsageKind> usageKinds;
-            if (typeNameUsageKind.length == 1) {
-                usageKinds = EnumSet.allOf(AnalysisType.UsageKind.class);
-            } else {
-                usageKinds = EnumSet.noneOf(AnalysisType.UsageKind.class);
-                String[] usageKindValues = typeNameUsageKind[1].split(",");
-                for (String usageKindValue : usageKindValues) {
-                    usageKinds.add(AnalysisType.UsageKind.valueOf(usageKindValue));
-                }
-
-            }
-            forbiddenTypes.put(typeNameUsageKind[0], usageKinds);
-        }
-        if (!forbiddenTypes.isEmpty()) {
-            AnalysisType.setForbiddenTypes(forbiddenTypes);
-        }
     }
 
     public SVMAnalysisPolicy svmAnalysisPolicy() {

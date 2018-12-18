@@ -31,7 +31,6 @@ import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -152,8 +151,6 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         Allocated,
         InTypeCheck;
     }
-
-    private static Map<String, EnumSet<UsageKind>> forbiddenTypes = null;
 
     AnalysisType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType) {
         this.universe = universe;
@@ -497,9 +494,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     public void registerAsInHeap() {
         assert isArray() || (isInstanceClass() && !Modifier.isAbstract(getModifiers()));
         isInHeap = true;
-        if (forbiddenTypes != null) {
-            checkForbidden(UsageKind.InHeap);
-        }
+        universe.hostVM.checkForbidden(this, UsageKind.InHeap);
     }
 
     /**
@@ -510,27 +505,12 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         if (!isAllocated) {
             isAllocated = true;
         }
-        if (forbiddenTypes != null) {
-            checkForbidden(UsageKind.Allocated);
-        }
+        universe.hostVM.checkForbidden(this, UsageKind.Allocated);
     }
 
     public void registerAsInTypeCheck() {
         isInTypeCheck = true;
-        if (forbiddenTypes != null) {
-            checkForbidden(UsageKind.InTypeCheck);
-        }
-    }
-
-    private void checkForbidden(UsageKind kind) {
-        EnumSet<UsageKind> forbiddenType = forbiddenTypes.get(wrapped.toJavaName());
-        if (forbiddenType != null && forbiddenType.contains(kind)) {
-            throw new UnsupportedFeatureException("Forbidden type " + wrapped.toJavaName() + " UsageKind: " + kind);
-        }
-    }
-
-    public static void setForbiddenTypes(Map<String, EnumSet<UsageKind>> map) {
-        forbiddenTypes = map;
+        universe.hostVM.checkForbidden(this, UsageKind.InTypeCheck);
     }
 
     public boolean getReachabilityListenerNotified() {

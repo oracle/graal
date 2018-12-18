@@ -68,6 +68,8 @@ public interface HostVM {
 
     boolean platformSupported(ResolvedJavaType type);
 
+    void checkForbidden(AnalysisType type, AnalysisType.UsageKind kind);
+
     void registerType(AnalysisType newValue);
 
     boolean isInitialized(AnalysisType type);
