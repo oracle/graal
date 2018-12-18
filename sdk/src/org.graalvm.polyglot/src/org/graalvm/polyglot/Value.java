@@ -753,18 +753,25 @@ public final class Value {
      * <li>If the value represents a {@link #isHostObject() host object} then all classes
      * implemented or extended by the host object can be used as target type.
      * <li><code>{@link String}.class</code> is supported if the value is a {@link #isString()
-     * string}.
+     * string}, a {@link #isNumber() number}, or a {@link #isBoolean() boolean}. Conversions are
+     * done using the {@code toString} method of the respective Java type, and in the case of
+     * floating-point numbers, may result in a slight loss of precision.
      * <li><code>{@link Character}.class</code> is supported if the value is a {@link #isString()
      * string} of length one.
      * <li><code>{@link Number}.class</code> is supported if the value is a {@link #isNumber()
      * number}. {@link Byte}, {@link Short}, {@link Integer}, {@link Long}, {@link Float} and
      * {@link Double} are allowed if they fit without conversion. If a conversion is necessary then
      * a {@link ClassCastException} is thrown. Primitive class literals throw a
-     * {@link NullPointerException} if the value represents {@link #isNull() null}.
+     * {@link NullPointerException} if the value represents {@link #isNull() null}. If the target
+     * type is a (boxed) primitive number class and the value is a {@link #isString() string}, an
+     * attempt will be made to parse the string using the class's {@code parse} method (e.g.
+     * {@link Integer#parseInt(String)}), which may be lossy in the case of floating-point types; no
+     * white space or type suffix is permitted in the string.
      * <li><code>{@link Boolean}.class</code> is supported if the value is a {@link #isBoolean()
      * boolean}. Primitive {@link Boolean boolean.class} literal is also supported. The primitive
      * class literal throws a {@link NullPointerException} if the value represents {@link #isNull()
-     * null}.
+     * null}. If the value is a {@link #isString() string} it will be converted if it equals either
+     * {@code "true"} or {@code "false"}.
      * <li>Any Java type in the type hierarchy of a {@link #isHostObject() host object}.
      * <li><code>{@link Object}.class</code> is always supported. See section Object mapping rules.
      * <li><code>{@link Map}.class</code> is supported if the value has {@link #hasMembers()
@@ -928,7 +935,7 @@ public final class Value {
      * <pre>
      * static final TypeLiteral<List<String>> STRING_LIST = new TypeLiteral<List<String>>() {
      * };
-     * 
+     *
      * public static void main(String[] args) {
      *     Context context = Context.create();
      *     List<String> javaList = context.eval("js", "['foo', 'bar', 'bazz']").as(STRING_LIST);
