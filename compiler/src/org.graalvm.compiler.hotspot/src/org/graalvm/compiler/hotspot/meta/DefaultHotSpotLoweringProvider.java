@@ -162,6 +162,7 @@ import org.graalvm.compiler.replacements.arraycopy.ArrayCopyNode;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopySnippets;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopyWithSlowPathNode;
 import org.graalvm.compiler.replacements.nodes.AssertionNode;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.code.TargetDescription;
@@ -225,7 +226,9 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         stringToBytesSnippets = new StringToBytesSnippets.Templates(options, factories, providers, target);
         hashCodeSnippets = new HashCodeSnippets.Templates(options, factories, providers, target);
         resolveConstantSnippets = new ResolveConstantSnippets.Templates(options, factories, providers, target);
-        profileSnippets = new ProfileSnippets.Templates(options, factories, providers, target);
+        if (!GraalServices.Java8OrEarlier) {
+            profileSnippets = new ProfileSnippets.Templates(options, factories, providers, target);
+        }
         objectCloneSnippets = new ObjectCloneSnippets.Templates(options, factories, providers, target);
         foreignCallSnippets = new ForeignCallSnippets.Templates(options, factories, providers, target);
     }

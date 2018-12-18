@@ -50,7 +50,7 @@ final class HotSpotTruffleRuntime extends AbstractHotSpotTruffleRuntime {
     @Override
     public <T> T getOptions(Class<T> optionValuesType) {
         if (optionValuesType == OptionValues.class) {
-            return optionValuesType.cast(HotSpotGraalOptionValues.HOTSPOT_OPTIONS);
+            return optionValuesType.cast(HotSpotGraalOptionValues.defaultOptions());
         }
         return super.getOptions(optionValuesType);
     }

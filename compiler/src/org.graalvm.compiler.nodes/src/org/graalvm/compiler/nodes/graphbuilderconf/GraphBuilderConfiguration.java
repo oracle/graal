@@ -49,8 +49,8 @@ public class GraphBuilderConfiguration {
          * {@code copyFrom} become the {@linkplain InvocationPlugins#getParent() default}
          * {@linkplain #getInvocationPlugins() invocation plugins} in this object.
          */
-        public Plugins(Plugins copyFrom) {
-            this.invocationPlugins = new InvocationPlugins(copyFrom.invocationPlugins);
+        public Plugins(Plugins copyFrom, InvocationPlugins invocationPlugins) {
+            this.invocationPlugins = invocationPlugins != null ? invocationPlugins : new InvocationPlugins(copyFrom.invocationPlugins);
             this.nodePlugins = copyFrom.nodePlugins;
             this.parameterPlugins = copyFrom.parameterPlugins;
             this.typePlugins = copyFrom.typePlugins;
@@ -59,6 +59,10 @@ public class GraphBuilderConfiguration {
             this.classInitializationPlugin = copyFrom.classInitializationPlugin;
             this.invokeDynamicPlugin = copyFrom.invokeDynamicPlugin;
             this.profilingPlugin = copyFrom.profilingPlugin;
+        }
+
+        public Plugins(Plugins copyFrom) {
+            this(copyFrom, null);
         }
 
         /**

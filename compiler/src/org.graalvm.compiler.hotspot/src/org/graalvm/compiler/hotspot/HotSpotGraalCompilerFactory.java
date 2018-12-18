@@ -71,7 +71,7 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
     public void onSelection() {
         JVMCIVersionCheck.check(false);
         assert options == null : "cannot select " + getClass() + " service more than once";
-        options = HotSpotGraalOptionValues.HOTSPOT_OPTIONS;
+        options = HotSpotGraalOptionValues.defaultOptions();
         initializeGraalCompilePolicyFields(options);
         isGraalPredicate = compileGraalWithC1Only ? new IsGraalPredicate() : null;
         /*

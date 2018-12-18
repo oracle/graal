@@ -270,6 +270,7 @@ import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.BytecodeDisassembler;
@@ -2529,6 +2530,7 @@ public class BytecodeParser implements GraphBuilderContext {
 
     protected void genReturn(ValueNode returnVal, JavaKind returnKind) {
         if (parsingIntrinsic() && returnVal != null) {
+
             if (returnVal instanceof StateSplit) {
                 StateSplit stateSplit = (StateSplit) returnVal;
                 FrameState stateAfter = stateSplit.stateAfter();
@@ -2537,7 +2539,20 @@ public class BytecodeParser implements GraphBuilderContext {
                     if (stateAfter.bci == BytecodeFrame.AFTER_BCI) {
                         assert stateAfter.usages().count() == 1;
                         assert stateAfter.usages().first() == stateSplit;
-                        stateAfter.replaceAtUsages(graph.add(new FrameState(BytecodeFrame.AFTER_BCI, returnVal)));
+                        FrameState state;
+                        if (returnVal.getStackKind() == JavaKind.Illegal) {
+                            // This should only occur when Fold and NodeIntrinsic plugins are
+                            // deferred. Their return value might not be a Java type and in that
+                            // case this can't be the final AFTER_BCI so just create a FrameState
+                            // without a return value on the top of stack.
+                            assert stateSplit instanceof Invoke;
+                            ResolvedJavaMethod targetMethod = ((Invoke) stateSplit).getTargetMethod();
+                            assert targetMethod != null && (targetMethod.getAnnotation(Fold.class) != null || targetMethod.getAnnotation(Node.NodeIntrinsic.class) != null);
+                            state = new FrameState(BytecodeFrame.AFTER_BCI);
+                        } else {
+                            state = new FrameState(BytecodeFrame.AFTER_BCI, returnVal);
+                        }
+                        stateAfter.replaceAtUsages(graph.add(state));
                         GraphUtil.killWithUnusedFloatingInputs(stateAfter);
                     } else {
                         /*
