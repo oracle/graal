@@ -205,6 +205,7 @@ public class ServiceLoaderFeature implements Feature {
             }
 
             if (ImageSingletons.lookup(AnnotationSubstitutionProcessor.class).isDeleted(implementationClass)) {
+                /* Disallow services with implementation classes that are marked as @Deleted */
                 continue;
             }
 
