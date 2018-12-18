@@ -446,8 +446,8 @@ final class Target_jdk_internal_misc_VM {
     /* Implementation from src/hotspot/share/prims/jvm.cpp#L286 translated to Java. */
     @Substitute
     public static long getNanoTimeAdjustment(long offsetInSeconds) {
-        final long MAX_DIFF_SECS = 0x0100000000L;
-        final long MIN_DIFF_SECS = -MAX_DIFF_SECS;
+        final long maxDiffSecs = 0x0100000000L;
+        final long minDiffSecs = -maxDiffSecs;
 
         Time.timeval tv = StackValue.get(Time.timeval.class);
         int status = Time.gettimeofday(tv, WordFactory.nullPointer());
@@ -456,10 +456,10 @@ final class Target_jdk_internal_misc_VM {
         long nanos = tv.tv_usec() * 1000;
 
         long diff = seconds - offsetInSeconds;
-        if (diff >= MAX_DIFF_SECS || diff <= MIN_DIFF_SECS) {
+        if (diff >= maxDiffSecs || diff <= minDiffSecs) {
             return -1;
         }
-        return (diff * (long) 1000000000) + nanos;
+        return diff * 1000000000 + nanos;
     }
 }
 
