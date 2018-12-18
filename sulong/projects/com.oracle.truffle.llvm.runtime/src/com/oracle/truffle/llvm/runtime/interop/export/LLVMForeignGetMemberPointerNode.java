@@ -29,56 +29,43 @@
  */
 package com.oracle.truffle.llvm.runtime.interop.export;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public abstract class LLVMForeignGetElementPointerNode extends LLVMNode {
+@GenerateUncached
+public abstract class LLVMForeignGetMemberPointerNode extends LLVMNode {
 
-    protected abstract LLVMPointer execute(LLVMInteropType type, LLVMPointer pointer, Object ident);
+    public abstract LLVMPointer execute(LLVMInteropType type, LLVMPointer pointer, String ident) throws UnsupportedMessageException, UnknownIdentifierException;
 
-    @Specialization(guards = {"cachedMember != null", "cachedMember.getStruct() == struct", "cachedIdent.equals(ident)"})
-    LLVMPointer doCachedStruct(@SuppressWarnings("unused") LLVMInteropType.Struct struct, LLVMPointer pointer, @SuppressWarnings("unused") String ident,
+    @Specialization(guards = {"cachedMember != null", "cachedMember.getStruct() == struct", "cachedIdent == ident"})
+    LLVMPointer doCached(@SuppressWarnings("unused") LLVMInteropType.Struct struct, LLVMPointer pointer, @SuppressWarnings("unused") String ident,
                     @Cached("ident") @SuppressWarnings("unused") String cachedIdent,
                     @Cached("struct.findMember(cachedIdent)") LLVMInteropType.StructMember cachedMember) {
         return pointer.increment(cachedMember.getStartOffset()).export(cachedMember.getType());
     }
 
-    @Specialization(replaces = "doCachedStruct")
-    LLVMPointer doGenericStruct(LLVMInteropType.Struct struct, LLVMPointer pointer, String ident) {
+    @Specialization(replaces = "doCached")
+    static LLVMPointer doGeneric(LLVMInteropType.Struct struct, LLVMPointer pointer, String ident,
+                    @Cached BranchProfile exception) throws UnknownIdentifierException {
         LLVMInteropType.StructMember member = struct.findMember(ident);
         if (member == null) {
-            CompilerDirectives.transferToInterpreter();
-            throw UnknownIdentifierException.raise(ident);
+            exception.enter();
+            throw UnknownIdentifierException.create(ident);
         }
         return pointer.increment(member.getStartOffset()).export(member.getType());
     }
 
-    @Specialization(guards = "array.getElementType() == elementType")
-    LLVMPointer doCachedArray(LLVMInteropType.Array array, LLVMPointer pointer, long idx,
-                    @Cached("array.getElementSize()") long elementSize,
-                    @Cached("array.getElementType()") LLVMInteropType elementType) {
-        if (Long.compareUnsigned(idx, array.getLength()) >= 0) {
-            CompilerDirectives.transferToInterpreter();
-            throw UnknownIdentifierException.raise(Long.toString(idx));
-        }
-        return pointer.increment(idx * elementSize).export(elementType);
-    }
-
-    @Specialization(replaces = "doCachedArray")
-    LLVMPointer doGenericArray(LLVMInteropType.Array array, LLVMPointer pointer, long idx) {
-        return doCachedArray(array, pointer, idx, array.getElementSize(), array.getElementType());
-    }
-
     @Fallback
     @SuppressWarnings("unused")
-    LLVMPointer doError(LLVMInteropType type, LLVMPointer object, Object ident) {
-        CompilerDirectives.transferToInterpreter();
-        throw UnknownIdentifierException.raise(ident.toString());
+    static LLVMPointer doError(LLVMInteropType type, LLVMPointer object, String ident) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
     }
 }

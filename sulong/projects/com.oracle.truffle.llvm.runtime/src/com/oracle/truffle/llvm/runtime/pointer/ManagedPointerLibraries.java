@@ -30,8 +30,10 @@
 package com.oracle.truffle.llvm.runtime.pointer;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.DynamicDispatchLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -41,6 +43,36 @@ import com.oracle.truffle.llvm.runtime.library.LLVMNativeLibrary;
 @ExportLibrary(value = LLVMNativeLibrary.class, receiverType = LLVMPointerImpl.class)
 @ExportLibrary(value = InteropLibrary.class, receiverType = LLVMPointerImpl.class)
 abstract class ManagedPointerLibraries extends CommonPointerLibraries {
+
+    @ExportMessage(limit = "5")
+    static boolean isNull(LLVMPointerImpl receiver,
+                    @CachedLibrary("receiver.getObject()") InteropLibrary interop) {
+        if (receiver.getOffset() == 0) {
+            return interop.isNull(receiver.getObject());
+        } else {
+            return false;
+        }
+    }
+
+    @ExportMessage(limit = "5")
+    static boolean isExecutable(LLVMPointerImpl receiver,
+                    @CachedLibrary("receiver.getObject()") InteropLibrary interop) {
+        if (receiver.getOffset() == 0) {
+            return interop.isExecutable(receiver.getObject());
+        } else {
+            return false;
+        }
+    }
+
+    @ExportMessage(limit = "5")
+    static Object execute(LLVMPointerImpl receiver, Object[] args,
+                    @CachedLibrary("receiver.getObject()") InteropLibrary interop) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
+        if (receiver.getOffset() == 0) {
+            return interop.execute(receiver.getObject(), args);
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
 
     @ExportMessage(library = LLVMNativeLibrary.class, limit = "1")
     static boolean accepts(LLVMPointerImpl receiver,

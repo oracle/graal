@@ -29,14 +29,71 @@
  */
 package com.oracle.truffle.llvm.runtime.pointer;
 
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.LLVMNativeLibrary;
 
 @ExportLibrary(value = LLVMNativeLibrary.class, receiverType = LLVMPointerImpl.class)
 @ExportLibrary(value = InteropLibrary.class, receiverType = LLVMPointerImpl.class)
 abstract class NativePointerLibraries extends CommonPointerLibraries {
+
+    @ExportMessage
+    static boolean isNull(LLVMPointerImpl receiver) {
+        return receiver.isNull();
+    }
+
+    @ExportMessage
+    @ImportStatic(LLVMLanguage.class)
+    static class IsExecutable {
+
+        @Specialization
+        static boolean doNative(LLVMPointerImpl receiver,
+                        @Cached(value = "getLLVMContextReference()", allowUncached = true) ContextReference<LLVMContext> ctxRef) {
+            return ctxRef.get().getFunctionDescriptor(receiver) != null;
+        }
+    }
+
+    @ExportMessage
+    @ImportStatic(LLVMLanguage.class)
+    static class Execute {
+
+        @Specialization(guards = {"value.asNative() == cachedAddress", "cachedDescriptor != null"})
+        static Object doNativeCached(@SuppressWarnings("unused") LLVMPointerImpl value, Object[] args,
+                        @Cached("value.asNative()") @SuppressWarnings("unused") long cachedAddress,
+                        @Cached(value = "getLLVMContextReference()") ContextReference<LLVMContext> ctxRef,
+                        @Cached("getDescriptor(ctxRef, value)") LLVMFunctionDescriptor cachedDescriptor,
+                        @CachedLibrary("cachedDescriptor") InteropLibrary interop) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
+            return interop.execute(cachedDescriptor, args);
+        }
+
+        @Specialization(replaces = "doNativeCached")
+        static Object doNative(LLVMPointerImpl value, Object[] args,
+                        @Cached(value = "getLLVMContextReference()", allowUncached = true) ContextReference<LLVMContext> ctxRef,
+                        @CachedLibrary(limit = "5") InteropLibrary interop) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
+            LLVMFunctionDescriptor descriptor = getDescriptor(ctxRef, value);
+            if (descriptor != null) {
+                return interop.execute(descriptor, args);
+            } else {
+                throw UnsupportedMessageException.create();
+            }
+        }
+
+        static LLVMFunctionDescriptor getDescriptor(ContextReference<LLVMContext> ctxRef, LLVMNativePointer value) {
+            return ctxRef.get().getFunctionDescriptor(value);
+        }
+    }
 
     @ExportMessage(library = LLVMNativeLibrary.class)
     @ExportMessage(library = InteropLibrary.class, limit = "5")

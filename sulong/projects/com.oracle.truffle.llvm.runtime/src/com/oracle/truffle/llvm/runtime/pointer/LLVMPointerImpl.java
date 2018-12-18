@@ -34,13 +34,11 @@ import java.util.Objects;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.DynamicDispatchLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
-import com.oracle.truffle.llvm.runtime.interop.export.LLVMPointerMessageResolutionForeign;
 
 @ValueType
 @ExportLibrary(DynamicDispatchLibrary.class)
@@ -148,10 +146,5 @@ class LLVMPointerImpl implements LLVMManagedPointer, LLVMNativePointer {
             assert isManaged();
             return ManagedPointerLibraries.class;
         }
-    }
-
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return LLVMPointerMessageResolutionForeign.ACCESS;
     }
 }
