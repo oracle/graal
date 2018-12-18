@@ -344,7 +344,7 @@ public final class TruffleFile {
             return toUri();
         }
         try {
-            String strPath = "/".equals(path.getFileSystem().getSeparator()) ? path.toString() : path.toString().replace(path.getFileSystem().getSeparator(), "/");
+            String strPath = "/".equals(fileSystem.getSeparator()) ? path.toString() : path.toString().replace(path.getFileSystem().getSeparator(), "/");
             return new URI(null, null, strPath, null);
         } catch (Throwable t) {
             throw wrapHostException(t);
