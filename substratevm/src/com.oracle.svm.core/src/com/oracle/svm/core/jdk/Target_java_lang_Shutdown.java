@@ -57,6 +57,11 @@ public final class Target_java_lang_Shutdown {
         throw VMError.unsupportedFeature("java.lang.Shudown.runAllFinalizers()");
     }
 
+    @Substitute
+    @TargetElement(onlyWith = JDK9OrLater.class)
+    static void beforeHalt() {
+    }
+
     /**
      * Invoked by the JNI DestroyJavaVM procedure when the last non-daemon thread has finished.
      * Unlike the exit method, this method does not actually halt the VM.

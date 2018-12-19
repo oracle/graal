@@ -37,6 +37,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
@@ -79,4 +80,9 @@ final class Target_java_nio_file_spi_FileSystemProvider {
     public static List<FileSystemProvider> installedProviders() {
         return new ArrayList<>(ImageSingletons.lookup(FileSystemProviderSupport.class).fileSystemProviders.values());
     }
+}
+
+@TargetClass(className = "jdk.internal.jrtfs.JrtFileSystemProvider", onlyWith = JDK9OrLater.class)
+@Delete
+final class Target_jdk_internal_jrtfs_JrtFileSystemProvider {
 }

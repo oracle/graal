@@ -22,33 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
 
-import java.security.Policy;
-import java.security.Provider;
+package com.oracle.svm.core.jdk;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.util.VMError;
 
-@TargetClass(className = "sun.security.jca.ProviderConfig", innerClass = "ProviderLoader", onlyWith = JDK9OrLater.class)
-@SuppressWarnings({"static-method", "unused"})
-final class Target_sun_security_jca_ProviderConfig_ProviderLoader {
-    @Substitute
-    private Provider legacyLoad(String classname) {
-        /* Provider lookup via legacyLoad not supported */
-        return null;
-    }
+@TargetClass(value = java.util.ServiceLoader.class, onlyWith = JDK9OrLater.class)
+final class Target_java_util_ServiceLoader {
 }
 
-@TargetClass(value = java.security.Policy.class, onlyWith = JDK9OrLater.class)
-@SuppressWarnings({"static-method", "unused"})
-final class Target_java_security_Policy {
+@TargetClass(value = java.util.ServiceLoader.class, innerClass = "ModuleServicesLookupIterator", onlyWith = JDK9OrLater.class)
+final class Target_java_util_ServiceLoader_ModuleServicesLookupIterator {
     @Substitute
-    static Policy getPolicyNoCheck() {
-        throw VMError.unsupportedFeature("JDK9OrLater: java.security.Policy.getPolicyNoCheck()");
+    Target_java_util_ServiceLoader_ModuleServicesLookupIterator(Target_java_util_ServiceLoader outer) {
     }
-}
 
-public final class SecuritySubstitutionsJDK9OrLater {
+    @Substitute
+    boolean hasNext() {
+        return false;
+    }
 }

@@ -146,6 +146,12 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     /* isArray is an expensive operation so we eagerly compute it */
     private boolean isArray;
 
+    public enum UsageKind {
+        InHeap,
+        Allocated,
+        InTypeCheck;
+    }
+
     AnalysisType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType) {
         this.universe = universe;
         this.wrapped = javaType;
@@ -488,6 +494,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     public void registerAsInHeap() {
         assert isArray() || (isInstanceClass() && !Modifier.isAbstract(getModifiers()));
         isInHeap = true;
+        universe.hostVM.checkForbidden(this, UsageKind.InHeap);
     }
 
     /**
@@ -498,10 +505,12 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         if (!isAllocated) {
             isAllocated = true;
         }
+        universe.hostVM.checkForbidden(this, UsageKind.Allocated);
     }
 
     public void registerAsInTypeCheck() {
         isInTypeCheck = true;
+        universe.hostVM.checkForbidden(this, UsageKind.InTypeCheck);
     }
 
     public boolean getReachabilityListenerNotified() {

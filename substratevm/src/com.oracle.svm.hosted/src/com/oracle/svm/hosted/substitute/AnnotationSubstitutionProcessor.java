@@ -149,6 +149,10 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         return deleteAnnotations.get(field) != null;
     }
 
+    public boolean isDeleted(Class<?> clazz) {
+        return deleteAnnotations.containsKey(metaAccess.lookupJavaType(clazz));
+    }
+
     public Optional<ResolvedJavaField> findSubstitution(ResolvedJavaField field) {
         assert !isDeleted(field) : "Field " + field.format("%H.%n") + "is deleted.";
         return Optional.ofNullable(fieldSubstitutions.get(field));
