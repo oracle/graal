@@ -255,4 +255,9 @@ public class HostedUniverse implements Universe {
     public ResolvedJavaMethod resolveSubstitution(ResolvedJavaMethod method) {
         return method;
     }
+
+    @Override
+    public HostedType objectType() {
+        return types.get(bb.getUniverse().objectType());
+    }
 }

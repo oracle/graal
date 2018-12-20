@@ -610,4 +610,9 @@ public class AnalysisUniverse implements Universe {
     public ResolvedJavaMethod resolveSubstitution(ResolvedJavaMethod method) {
         return substitutions.resolve(method);
     }
+
+    @Override
+    public AnalysisType objectType() {
+        return objectClass;
+    }
 }

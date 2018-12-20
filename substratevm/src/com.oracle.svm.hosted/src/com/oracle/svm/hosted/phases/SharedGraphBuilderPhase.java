@@ -47,7 +47,6 @@ import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.NativeImageOptions;
@@ -91,6 +90,23 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
 
         protected WordTypes getWordTypes() {
             return ((SharedGraphBuilderPhase) getGraphBuilderInstance()).wordTypes;
+        }
+
+        @Override
+        protected void maybeEagerlyResolve(int cpi, int bytecode) {
+            try {
+                super.maybeEagerlyResolve(cpi, bytecode);
+            } catch (UnresolvedElementException e) {
+                if (e.getCause() instanceof NoClassDefFoundError) {
+                    /*
+                     * Ignore NoClassDefFoundError if thrown from eager resolution attempt. This is
+                     * usually followed by a call to ConstantPool.lookupType() which should return
+                     * an UnresolvedJavaType which we know how to deal with.
+                     */
+                } else {
+                    throw e;
+                }
+            }
         }
 
         @Override

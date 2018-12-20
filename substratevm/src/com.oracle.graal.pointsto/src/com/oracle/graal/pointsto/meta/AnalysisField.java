@@ -44,6 +44,7 @@ import com.oracle.graal.pointsto.typestate.TypeState;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class AnalysisField implements ResolvedJavaField {
 
@@ -87,21 +88,21 @@ public class AnalysisField implements ResolvedJavaField {
     private final AnalysisType declaringClass;
     private final AnalysisType fieldType;
 
-    public AnalysisField(AnalysisUniverse universe, ResolvedJavaField wrapped) {
-        assert !wrapped.isInternal();
+    public AnalysisField(AnalysisUniverse universe, ResolvedJavaField wrappedField) {
+        assert !wrappedField.isInternal();
 
         this.position = -1;
         this.isUnsafeAccessed = new AtomicBoolean();
         this.unsafeFrozenTypeState = new AtomicBoolean();
 
-        this.wrapped = wrapped;
+        this.wrapped = wrappedField;
         this.id = universe.nextFieldId.getAndIncrement();
 
         readBy = PointstoOptions.TrackAccessChain.getValue(universe.getHostVM().options()) ? new ConcurrentHashMap<>() : null;
         writtenBy = new ConcurrentHashMap<>();
 
-        declaringClass = universe.lookup(wrapped.getDeclaringClass());
-        fieldType = universe.lookup(wrapped.getType().resolve(universe.substitutions.resolve(wrapped.getDeclaringClass())));
+        declaringClass = universe.lookup(wrappedField.getDeclaringClass());
+        fieldType = getDeclaredType(universe, wrappedField);
 
         isUsedInComparison = false;
 
@@ -114,6 +115,21 @@ public class AnalysisField implements ResolvedJavaField {
             this.instanceFieldFlow = new FieldSinkTypeFlow(this, getType());
             this.initialInstanceFieldFlow = new FieldTypeFlow(this, getType());
         }
+    }
+
+    private static AnalysisType getDeclaredType(AnalysisUniverse universe, ResolvedJavaField wrappedField) {
+        ResolvedJavaType resolvedType;
+        try {
+            resolvedType = wrappedField.getType().resolve(universe.substitutions.resolve(wrappedField.getDeclaringClass()));
+        } catch (NoClassDefFoundError e) {
+            /*
+             * Type resolution fails if the declared type is missing. Just erase the type by
+             * returning the Object type.
+             */
+            return universe.objectType();
+        }
+
+        return universe.lookup(resolvedType);
     }
 
     public void copyAccessInfos(AnalysisField other) {
