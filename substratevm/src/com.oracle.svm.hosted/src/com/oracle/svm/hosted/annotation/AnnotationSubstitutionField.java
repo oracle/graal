@@ -34,7 +34,6 @@ import java.util.Map;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.NativeImageClassLoader;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
@@ -120,39 +119,6 @@ public class AnnotationSubstitutionField extends CustomSubstitutionField {
                     annotationFieldValue = new TypeNotPresentExceptionProxy(tnpe.typeName(), new NoClassDefFoundError(tnpe.typeName()));
                 } else {
                     throw VMError.shouldNotReachHere(ex);
-                }
-            }
-
-            if (annotationFieldValue instanceof Class) {
-                Class<?> classValue = (Class<?>) annotationFieldValue;
-                if (NativeImageClassLoader.classIsMissing(classValue)) {
-                    /*
-                     * The annotation field references a missing type. This situation would normally
-                     * produce a NoClassDefFoundError during annotation parsing, which would be
-                     * caught and packed as a TypeNotPresentExceptionProxy, then cached in
-                     * AnnotationInvocationHandler.memberValues. The original
-                     * TypeNotPresentException would then be generated and thrown when the accessor
-                     * method is invoked via AnnotationInvocationHandler.invoke(). However, the
-                     * NativeImageClassLoader.loadClass() replaces missing classes with ghost
-                     * interfaces, a marker for the missing types. We check for the presence of a
-                     * ghost interface here and and create a TypeNotPresentExceptionProxy which we
-                     * then use to generate the TypeNotPresentException at runtime.
-                     */
-                    annotationFieldValue = new TypeNotPresentExceptionProxy(classValue.getName(), new NoClassDefFoundError(classValue.getName()));
-                }
-            } else if (annotationFieldValue instanceof Class[]) {
-                for (Class<?> classValue : (Class[]) annotationFieldValue) {
-                    if (NativeImageClassLoader.classIsMissing(classValue)) {
-                        /*
-                         * If at least one type is missing in a Class[] return a
-                         * TypeNotPresentExceptionProxy. In JDK8 this situation wrongfully results
-                         * in an ArrayStoreException, however it was fixed in JDK11+ (and
-                         * back-ported) to result in a TypeNotPresentException of the first missing
-                         * class. See: https://bugs.openjdk.java.net/browse/JDK-7183985
-                         */
-                        annotationFieldValue = new TypeNotPresentExceptionProxy(classValue.getName(), new NoClassDefFoundError(classValue.getName()));
-                        break;
-                    }
                 }
             }
 
