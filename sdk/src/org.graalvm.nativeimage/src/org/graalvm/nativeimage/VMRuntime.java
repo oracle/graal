@@ -40,44 +40,38 @@
  */
 package org.graalvm.nativeimage;
 
-import org.graalvm.nativeimage.impl.RuntimeOptionsSupport;
-import org.graalvm.options.OptionDescriptors;
+import org.graalvm.nativeimage.impl.VMRuntimeSupport;
 
 /**
- * Used for manipulating options at run time.
+ * Used for doing VM runtime operations.
  *
  * @since 1.0
  */
-public final class RuntimeOptions {
-
-    private RuntimeOptions() {
-    }
+public final class VMRuntime {
 
     /**
-     * Set the value of the option with the provided name to the new value.
+     * Initializes the VM: Runs all startup hooks that were registered during image building.
+     * Startup hooks usually depend on option values, so it is recommended (but not required) that
+     * all option values are set before calling this method.
+     * <p>
+     * Invoking this method more than once has no effect, i.e., startup hooks are only executed at
+     * the first invocation.
      *
      * @since 1.0
      */
-    public static void set(String optionName, Object value) {
-        ImageSingletons.lookup(RuntimeOptionsSupport.class).set(optionName, value);
+    public static void initialize() {
+        ImageSingletons.lookup(VMRuntimeSupport.class).executeStartupHooks();
     }
 
     /**
-     * Get the value of the option with the provided name.
+     * Shuts down the VM: Runs all shutdown hooks and waits for all finalization to complete.
      *
      * @since 1.0
      */
-    public static <T> T get(String optionName) {
-        return ImageSingletons.lookup(RuntimeOptionsSupport.class).get(optionName);
+    public static void shutdown() {
+        ImageSingletons.lookup(VMRuntimeSupport.class).shutdown();
     }
 
-    /**
-     * Returns all available run time options.
-     *
-     * @since 1.0
-     */
-    public static OptionDescriptors getOptions() {
-        return ImageSingletons.lookup(RuntimeOptionsSupport.class).getOptions();
+    private VMRuntime() {
     }
-
 }
