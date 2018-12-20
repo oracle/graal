@@ -111,9 +111,12 @@ public class AnnotationSubstitutionField extends CustomSubstitutionField {
                 Throwable cause = ex.getCause();
                 if (cause instanceof TypeNotPresentException) {
                     /*
-                     * Depending on the class loading order the ghost interface for the missing
-                     * class may not have been created yet when the annotation signature was parsed.
-                     * Thus a TypeNotPresentException was cached. We catch and repackage it here.
+                     * When an annotation has a Class<?> parameter but is referencing a missing
+                     * class a TypeNotPresentException is thrown. The TypeNotPresentException is
+                     * usually created when the annotation is first parsed, i.e., one some other
+                     * parameter is queried, and cached as an TypeNotPresentExceptionProxy. We catch
+                     * and repackage it here, then rely on the runtime mechanism to unpack and
+                     * rethrow it.
                      */
                     TypeNotPresentException tnpe = (TypeNotPresentException) cause;
                     annotationFieldValue = new TypeNotPresentExceptionProxy(tnpe.typeName(), new NoClassDefFoundError(tnpe.typeName()));
