@@ -25,60 +25,11 @@
 
 package com.oracle.svm.core.jdk;
 
-import java.io.IOException;
-
-import org.graalvm.compiler.serviceprovider.GraalServices;
-import org.graalvm.nativeimage.Feature;
-import org.graalvm.nativeimage.RuntimeClassInitialization;
-
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.util.VMError;
 
 public class JavaLangSubstitutionsJDK9OrLater {
-}
-
-@AutomaticFeature
-class JavaLangSubstitutionsJDK9OrLaterFeature implements Feature {
-
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return !GraalServices.Java8OrEarlier;
-    }
-
-    @Override
-    public void duringSetup(DuringSetupAccess access) {
-        Class<?> processHandleImplClass = access.findClassByName("java.lang.ProcessHandleImpl");
-        VMError.guarantee(processHandleImplClass != null);
-        RuntimeClassInitialization.rerunClassInitialization(processHandleImplClass);
-    }
-}
-
-@TargetClass(className = "java.lang.ProcessImpl", onlyWith = JDK9OrLater.class)
-final class Target_java_lang_ProcessImpl {
-
-    @Substitute //
-    @SuppressWarnings({"unused", "static-method"})
-    private /* native */ int forkAndExec(
-                    int mode,
-                    byte[] helperpath,
-                    byte[] prog,
-                    byte[] argBlock,
-                    int argc,
-                    byte[] envBlock,
-                    int envc,
-                    byte[] dir,
-                    int[] fds,
-                    boolean redirectErrorStream)
-                    throws IOException {
-        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ProcessImpl.forkAndExec");
-    }
-
-    @Substitute //
-    private static /* native */ void init() {
-        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ProcessImpl.init");
-    }
 }
 
 /* This will be replaced with full JDK JNI implementations */
