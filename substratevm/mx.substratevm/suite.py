@@ -88,7 +88,6 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "com.oracle.svm.core",
                 "com.oracle.svm.core.jdk9",
                 "com.oracle.svm.core.posix"
                 ],
