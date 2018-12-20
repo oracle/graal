@@ -189,8 +189,8 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             }
         }
 
-        private void handleUnresolvedMethod(JavaMethod method) {
-            JavaType declaringClass = method.getDeclaringClass();
+        private void handleUnresolvedMethod(JavaMethod javaMethod) {
+            JavaType declaringClass = javaMethod.getDeclaringClass();
             if (!typeIsResolved(declaringClass)) {
                 /* The method could not be resolved because its declaring class is missing. */
                 handleUnresolvedType(declaringClass);
@@ -200,9 +200,9 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                  * otherwise report the error during image building.
                  */
                 if (NativeImageOptions.AllowIncompleteClasspath.getValue()) {
-                    ExceptionSynthesizer.throwNoSuchMethodError(this, method.format("%H.%n(%P)"));
+                    ExceptionSynthesizer.throwNoSuchMethodError(this, javaMethod.format("%H.%n(%P)"));
                 } else {
-                    reportUnresolvedElement("method", method.format("%H.%n(%P)"));
+                    reportUnresolvedElement("method", javaMethod.format("%H.%n(%P)"));
                 }
             }
         }
