@@ -32,8 +32,7 @@ import java.lang.reflect.AnnotatedElement;
  * https://bugs.openjdk.java.net/browse/JDK-7183985: when an annotation declares a Class<?> array
  * parameter and one of the referenced classes is not present on the classpath parsing the
  * annotations will result in an ArrayStoreException instead of caching of a
- * TypeNotPresentExceptionProxy. This is problem in JDK8 but was fixed in JDK11+ and it should be
- * soon back-ported to JDK8 too.
+ * TypeNotPresentExceptionProxy. This is a problem in JDK8 but was fixed in JDK11+.
  */
 public final class AnnotationAccess {
 
