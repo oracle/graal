@@ -448,7 +448,7 @@ abstract class ToHostNode extends Node {
     }
 
     @TruffleBoundary
-    private static Boolean parseBooleanOrNull(String s) {
+    private static Object parseBooleanOrNull(String s) {
         if ("true".equals(s)) {
             return Boolean.TRUE;
         } else if ("false".equals(s)) {
