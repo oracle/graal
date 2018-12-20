@@ -99,11 +99,20 @@ public class AArch64ControlFlow {
         private final double trueDestinationProbability;
 
         public BranchOp(AArch64Assembler.ConditionFlag condition, LabelRef trueDestination, LabelRef falseDestination, double trueDestinationProbability) {
-            super(TYPE);
+            this(TYPE, condition, trueDestination, falseDestination, trueDestinationProbability);
+        }
+
+        protected BranchOp(LIRInstructionClass<? extends BranchOp> type, AArch64Assembler.ConditionFlag condition,
+                        LabelRef trueDestination, LabelRef falseDestination, double trueDestinationProbability) {
+            super(type);
             this.condition = condition;
             this.trueDestination = trueDestination;
             this.falseDestination = falseDestination;
             this.trueDestinationProbability = trueDestinationProbability;
+        }
+
+        protected void emitConditionalBranch(@SuppressWarnings("unused") CompilationResultBuilder crb, AArch64MacroAssembler masm, AArch64Assembler.ConditionFlag cond, Label label) {
+            masm.branchConditionally(cond, label);
         }
 
         @Override
@@ -115,18 +124,64 @@ public class AArch64ControlFlow {
              * executing two instructions instead of one.
              */
             if (crb.isSuccessorEdge(trueDestination)) {
-                masm.branchConditionally(condition.negate(), falseDestination.label());
+                emitConditionalBranch(crb, masm, condition.negate(), falseDestination.label());
             } else if (crb.isSuccessorEdge(falseDestination)) {
-                masm.branchConditionally(condition, trueDestination.label());
+                emitConditionalBranch(crb, masm, condition, trueDestination.label());
             } else if (trueDestinationProbability < 0.5) {
-                masm.branchConditionally(condition.negate(), falseDestination.label());
+                emitConditionalBranch(crb, masm, condition.negate(), falseDestination.label());
                 masm.jmp(trueDestination.label());
             } else {
-                masm.branchConditionally(condition, trueDestination.label());
+                emitConditionalBranch(crb, masm, condition, trueDestination.label());
                 masm.jmp(falseDestination.label());
             }
         }
+    }
 
+    public static class BitTestAndBranchOp extends BranchOp {
+        public static final LIRInstructionClass<BitTestAndBranchOp> TYPE = LIRInstructionClass.create(BitTestAndBranchOp.class);
+
+        @Use protected Value src;
+        private final int index;
+
+        public BitTestAndBranchOp(LabelRef trueDestination, LabelRef falseDestination, Value src, double trueDestinationProbability, int index) {
+            super(TYPE, ConditionFlag.EQ, trueDestination, falseDestination, trueDestinationProbability);
+            this.src = src;
+            this.index = index;
+        }
+
+        @Override
+        protected void emitConditionalBranch(CompilationResultBuilder crb, AArch64MacroAssembler masm, AArch64Assembler.ConditionFlag cond, Label label) {
+            assert cond == ConditionFlag.EQ || cond == ConditionFlag.NE;
+            ConditionFlag finalCondition = cond;
+            Label finalLabel = label;
+            boolean isFarBranch;
+
+            if (label.isBound()) {
+                isFarBranch = NumUtil.isSignedNbit(18, masm.position() - label.position());
+            } else {
+                // Max range of tbz is +-2^13 instructions. We estimate that each LIR instruction
+                // emits 2 AArch64 instructions on average. Thus we test for maximum 2^12 LIR
+                // instruction offset.
+                int maxLIRDistance = (1 << 12);
+                isFarBranch = !crb.labelWithinRange(this, label, maxLIRDistance);
+            }
+
+            if (isFarBranch) {
+                finalCondition = cond.negate();
+                finalLabel = new Label();
+            }
+
+            if (finalCondition == ConditionFlag.EQ) {
+                masm.tbz(asRegister(src), index, finalLabel);
+            } else {
+                masm.tbnz(asRegister(src), index, finalLabel);
+            }
+
+            if (isFarBranch) {
+                masm.jmp(label);
+                masm.bind(finalLabel);
+            }
+        }
     }
 
     @Opcode("CMOVE")

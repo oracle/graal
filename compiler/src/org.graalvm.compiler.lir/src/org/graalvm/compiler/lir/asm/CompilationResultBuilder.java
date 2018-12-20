@@ -38,6 +38,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.asm.AbstractAddress;
 import org.graalvm.compiler.asm.Assembler;
+import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
 import org.graalvm.compiler.code.DataSection.Data;
@@ -54,12 +55,14 @@ import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LabelRef;
+import org.graalvm.compiler.lir.StandardOp.LabelHoldingOp;
 import org.graalvm.compiler.lir.framemap.FrameMap;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 
+import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.Register;
@@ -154,6 +157,20 @@ public class CompilationResultBuilder {
 
     private Consumer<LIRInstruction> beforeOp;
     private Consumer<LIRInstruction> afterOp;
+
+    /**
+     * These position maps are used for estimating offsets of forward branches. Used for
+     * architectures where certain branch instructions have limited displacement such as ARM tbz or
+     * SPARC cbcond.
+     */
+    private EconomicMap<Label, Integer> labelBindLirPositions;
+    private EconomicMap<LIRInstruction, Integer> lirPositions;
+    /**
+     * This flag is for setting the
+     * {@link CompilationResultBuilder#labelWithinRange(LIRInstruction, Label, int)} into a
+     * conservative mode and always answering false.
+     */
+    private boolean conservativeLabelOffsets = false;
 
     public final boolean mustReplaceWithNullRegister(JavaConstant nullConstant) {
         return !nullRegister.equals(Register.None) && JavaConstant.NULL_POINTER.equals(nullConstant);
@@ -543,6 +560,8 @@ public class CompilationResultBuilder {
             if (op.getPosition() != null) {
                 crb.recordSourceMapping(start, crb.asm.position(), op.getPosition());
             }
+        } catch (BailoutException e) {
+            throw e;
         } catch (AssertionError t) {
             throw new GraalError(t);
         } catch (RuntimeException t) {
@@ -559,6 +578,8 @@ public class CompilationResultBuilder {
         if (dataCache != null) {
             dataCache.clear();
         }
+        lir = null;
+        currentBlockIndex = 0;
     }
 
     public void setOpCallback(Consumer<LIRInstruction> beforeOp, Consumer<LIRInstruction> afterOp) {
@@ -570,4 +591,57 @@ public class CompilationResultBuilder {
         return options;
     }
 
+    /**
+     * Builds up a map for label and LIR instruction positions where labels are or labels pointing
+     * to.
+     */
+    public void buildLabelOffsets(LIR generatedLIR) {
+        labelBindLirPositions = EconomicMap.create(Equivalence.IDENTITY);
+        lirPositions = EconomicMap.create(Equivalence.IDENTITY);
+        int instructionPosition = 0;
+        for (AbstractBlockBase<?> block : generatedLIR.codeEmittingOrder()) {
+            if (block != null) {
+                for (LIRInstruction op : generatedLIR.getLIRforBlock(block)) {
+                    if (op instanceof LabelHoldingOp) {
+                        Label label = ((LabelHoldingOp) op).getLabel();
+                        if (label != null) {
+                            labelBindLirPositions.put(label, instructionPosition);
+                        }
+                        lirPositions.put(op, instructionPosition);
+                    }
+                    instructionPosition++;
+                }
+            }
+        }
+    }
+
+    /**
+     * Answers the code generator whether the jump from instruction to label is within disp LIR
+     * instructions.
+     *
+     * @param disp Maximum number of LIR instructions between label and instruction
+     */
+    public boolean labelWithinRange(LIRInstruction instruction, Label label, int disp) {
+        if (conservativeLabelOffsets) {
+            return false;
+        }
+        Integer labelPosition = labelBindLirPositions.get(label);
+        Integer instructionPosition = lirPositions.get(instruction);
+        boolean result;
+        if (labelPosition != null && instructionPosition != null) {
+            result = Math.abs(labelPosition - instructionPosition) < disp;
+        } else {
+            result = false;
+        }
+        return result;
+    }
+
+    /**
+     * Sets this CompilationResultBuilder into conservative mode. If set,
+     * {@link CompilationResultBuilder#labelWithinRange(LIRInstruction, Label, int)} always returns
+     * false.
+     */
+    public void setConservativeLabelRanges() {
+        this.conservativeLabelOffsets = true;
+    }
 }
