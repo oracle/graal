@@ -38,46 +38,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.nativeimage;
+package org.graalvm.nativeimage.impl;
 
-import org.graalvm.nativeimage.impl.RuntimeOptionsSupport;
-import org.graalvm.options.OptionDescriptors;
+public interface VMRuntimeSupport {
 
-/**
- * Used for manipulating options at run time.
- *
- * @since 1.0
- */
-public final class RuntimeOptions {
+    void executeStartupHooks();
 
-    private RuntimeOptions() {
-    }
-
-    /**
-     * Set the value of the option with the provided name to the new value.
-     *
-     * @since 1.0
-     */
-    public static void set(String optionName, Object value) {
-        ImageSingletons.lookup(RuntimeOptionsSupport.class).set(optionName, value);
-    }
-
-    /**
-     * Get the value of the option with the provided name.
-     *
-     * @since 1.0
-     */
-    public static <T> T get(String optionName) {
-        return ImageSingletons.lookup(RuntimeOptionsSupport.class).get(optionName);
-    }
-
-    /**
-     * Returns all available run time options.
-     *
-     * @since 1.0
-     */
-    public static OptionDescriptors getOptions() {
-        return ImageSingletons.lookup(RuntimeOptionsSupport.class).getOptions();
-    }
+    void shutdown();
 
 }
