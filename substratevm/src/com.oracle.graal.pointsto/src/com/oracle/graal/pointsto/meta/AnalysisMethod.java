@@ -42,6 +42,7 @@ import org.graalvm.compiler.java.BytecodeParser.BytecodeParserError;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 
+import com.oracle.graal.pointsto.api.AnnotationAccess;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
@@ -393,17 +394,17 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider {
 
     @Override
     public Annotation[] getAnnotations() {
-        return wrapped.getAnnotations();
+        return AnnotationAccess.getAnnotations(wrapped);
     }
 
     @Override
     public Annotation[] getDeclaredAnnotations() {
-        return wrapped.getDeclaredAnnotations();
+        return AnnotationAccess.getDeclaredAnnotations(wrapped);
     }
 
     @Override
     public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return wrapped.getAnnotation(annotationClass);
+        return AnnotationAccess.getAnnotation(wrapped, annotationClass);
     }
 
     @Override

@@ -49,6 +49,7 @@ import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 
 import com.oracle.graal.pointsto.AnalysisPolicy;
+import com.oracle.graal.pointsto.api.AnnotationAccess;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
@@ -196,17 +197,17 @@ public final class SVMHost implements HostVM {
 
     @Override
     public boolean platformSupported(ResolvedJavaField field) {
-        return NativeImageGenerator.includedIn(platform, field.getAnnotation(Platforms.class));
+        return NativeImageGenerator.includedIn(platform, AnnotationAccess.getAnnotation(field, Platforms.class));
     }
 
     @Override
     public boolean platformSupported(ResolvedJavaMethod method) {
-        return NativeImageGenerator.includedIn(platform, method.getAnnotation(Platforms.class));
+        return NativeImageGenerator.includedIn(platform, AnnotationAccess.getAnnotation(method, Platforms.class));
     }
 
     @Override
     public boolean platformSupported(ResolvedJavaType type) {
-        return NativeImageGenerator.includedIn(platform, type.getAnnotation(Platforms.class));
+        return NativeImageGenerator.includedIn(platform, AnnotationAccess.getAnnotation(type, Platforms.class));
     }
 
     @Override

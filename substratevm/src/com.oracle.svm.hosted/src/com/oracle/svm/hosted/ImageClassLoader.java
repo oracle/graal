@@ -370,17 +370,7 @@ public final class ImageClassLoader {
     }
 
     private Class<?> forName(String name) throws ClassNotFoundException {
-        Class<?> clazz = Class.forName(name, false, classLoader);
-        if (NativeImageClassLoader.classIsMissing(clazz)) {
-            /*
-             * This is a ghost interface. Although Class.forName() doesn't trigger the creation of
-             * ghost interfaces it is possible that the class was referenced in the bytecode, loaded
-             * at an earlier stage and replaced with a ghost interface. Throw a
-             * ClassNotFoundException to maintain the contract of findClassByName().
-             */
-            throw new ClassNotFoundException(name);
-        }
-        return clazz;
+        return Class.forName(name, false, classLoader);
     }
 
     public List<String> getClasspath() {
