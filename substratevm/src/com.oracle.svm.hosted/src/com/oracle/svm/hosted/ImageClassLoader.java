@@ -59,6 +59,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import com.oracle.svm.core.OS;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
@@ -124,7 +125,7 @@ public final class ImageClassLoader {
 
     public static Path stringToClasspath(String cp) {
         String separators = Pattern.quote(File.separator);
-        if (System.getProperty("os.name").startsWith("Windows ")) {
+        if (OS.getCurrent().equals(OS.WINDOWS)) {
             separators += "/"; /* on Windows also / is accepted as valid separator */
         }
         String[] components = cp.split("[" + separators + "]", Integer.MAX_VALUE);
