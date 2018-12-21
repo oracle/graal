@@ -405,12 +405,7 @@ def layout_native_image_root(native_image_root):
     native_image_layout_dists(join(svm_subdir, 'builder'), svmDistribution + llvmDistributions + ['substratevm:POINTSTO', 'substratevm:OBJECTFILE'])
     clibraries_dest = join(native_image_root, join(svm_subdir, 'clibraries'))
     for clibrary_path in clibrary_paths():
-        from distutils.errors import DistutilsFileError  # pylint: disable=no-name-in-module
-        try:
-            copy_tree(clibrary_path, clibraries_dest)
-        except DistutilsFileError:
-            # ignore until GR-7932 is resolved
-            pass
+        copy_tree(clibrary_path, clibraries_dest)
     lib_suffix = '.lib' if mx.get_os() == 'windows' else '.a'
     jdk_lib_subdir = ['jre', 'lib'] if svm_java80() else ['lib']
     jdk_lib_dir = join(jdk_config.home, *jdk_lib_subdir)
