@@ -169,15 +169,17 @@ builds += [
     ]
     name: gate-vm-style-linux-amd64
   },
-  ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} {
+  ${scan_malware} ${malware_definition_archived} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} {
     run: [
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, build]
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}] ${maven_deploy_vm}
       ${mx_vm_common} [build]
       ${mx_vm_common} ${maven_deploy_vm}
       ${notify-nexus-deploy}
-    ]
-    timelimit: "45:00"
+      [set-export, GRAALVM_HOME, ${mx_vm_common} [graalvm-home]]
+    ] ${scan_malware.run}
+    logs: ${common_vm.logs} ${scan_malware.logs}
+    timelimit: "1:30:00"
     name: deploy-vm-linux-amd64
   },
   ${full_vm_build_darwin} ${darwin-deploy} ${daily_vm_darwin} {
