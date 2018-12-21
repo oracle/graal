@@ -391,12 +391,39 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             guarantee(annotated.isStatic() == original.isStatic(), "Static modifier mismatch: %s, %s", annotated, original);
             guarantee(annotated.getJavaKind() == original.getJavaKind(), "Type mismatch: %s, %s", annotated, original);
 
+            RecomputeFieldValue recomputeAnnotation = lookupAnnotation(annotatedField, RecomputeFieldValue.class);
+            if (Modifier.isStatic(annotatedField.getModifiers()) && (recomputeAnnotation == null || recomputeAnnotation.kind() != RecomputeFieldValue.Kind.FromAlias)) {
+                guarantee(hasDefaultValue(annotatedField), "The value assigned to a static @Alias field is ignored unless @RecomputeFieldValue with kind=FromAlias is used: %s", annotated);
+            }
+            guarantee(!Modifier.isFinal(annotatedField.getModifiers()), "The `final` modifier for the @Alias field is ignored and therefore misleading: %s", annotated);
+
             if (deleteAnnotation != null) {
                 registerAsDeleted(annotated, original, deleteAnnotation);
             } else {
                 ResolvedJavaField alias = fieldValueRecomputation(originalClass, original, annotated, annotatedField);
                 register(fieldSubstitutions, annotated, original, alias);
             }
+        }
+    }
+
+    private static boolean hasDefaultValue(Field annotatedField) {
+        try {
+            annotatedField.setAccessible(true);
+            /*
+             * We use the automatic widening of primitive types to reduce the number of different
+             * types we have to distinguish here.
+             */
+            if (!annotatedField.getType().isPrimitive()) {
+                return annotatedField.get(null) == null;
+            } else if (annotatedField.getType() == float.class || annotatedField.getType() == double.class) {
+                return annotatedField.getDouble(null) == 0D;
+            } else if (annotatedField.getType() == boolean.class) {
+                return annotatedField.getBoolean(null) == false;
+            } else {
+                return annotatedField.getLong(null) == 0L;
+            }
+        } catch (ReflectiveOperationException ex) {
+            throw VMError.shouldNotReachHere(ex);
         }
     }
 

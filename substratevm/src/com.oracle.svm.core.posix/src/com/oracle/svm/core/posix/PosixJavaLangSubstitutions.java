@@ -207,7 +207,7 @@ final class Target_java_lang_UNIXProcess {
 
     // The reaper thread pool and thread groups (currently) confuse the analysis, so we launch
     // reaper threads individually (with the only difference being that threads are not recycled)
-    @Delete static final Executor processReaperExecutor = null;
+    @Delete static Executor processReaperExecutor;
 
     @Alias int pid;
     @Alias OutputStream stdin;
@@ -682,13 +682,13 @@ final class Target_java_lang_UNIXProcess_ProcessPipeOutputStream {
 @TargetClass(className = "java.lang.ProcessBuilder", innerClass = "NullInputStream")
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_lang_ProcessBuilder_NullInputStream {
-    @Alias static final Target_java_lang_ProcessBuilder_NullInputStream INSTANCE = null;
+    @Alias static Target_java_lang_ProcessBuilder_NullInputStream INSTANCE;
 }
 
 @TargetClass(className = "java.lang.ProcessBuilder", innerClass = "NullOutputStream")
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_lang_ProcessBuilder_NullOutputStream {
-    @Alias static final Target_java_lang_ProcessBuilder_NullOutputStream INSTANCE = null;
+    @Alias static Target_java_lang_ProcessBuilder_NullOutputStream INSTANCE;
 }
 
 @TargetClass(java.lang.System.class)
