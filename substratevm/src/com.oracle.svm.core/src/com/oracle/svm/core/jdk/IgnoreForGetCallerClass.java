@@ -22,36 +22,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.reflect.target;
+package com.oracle.svm.core.jdk;
 
-import java.util.function.Function;
+import java.lang.annotation.Annotation;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-import org.graalvm.compiler.serviceprovider.GraalServices;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+/**
+ * Annotation for types that must be ignored by Reflection.getCallerClass(). All methods in the
+ * annotated type are ignored.
+ */
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.TYPE)
+public @interface IgnoreForGetCallerClass {
 
-import com.oracle.svm.core.annotate.TargetClass;
+    @IgnoreForGetCallerClass
+    class Holder {
 
-@Platforms(Platform.HOSTED_ONLY.class)
-class Package_jdk_internal_reflect implements Function<TargetClass, String> {
-    @Override
-    public String apply(TargetClass annotation) {
-        if (GraalServices.Java8OrEarlier) {
-            return "sun.reflect." + annotation.className();
-        } else {
-            return "jdk.internal.reflect." + annotation.className();
-        }
+        /** Instance of the annotation, useful when the annotation is manually injected. */
+        public static final IgnoreForGetCallerClass INSTANCE = Holder.class.getAnnotation(IgnoreForGetCallerClass.class);
+
+        /**
+         * Array that contains only the instance of the annotation, useful when the annotation is
+         * manually injected.
+         */
+        public static final Annotation[] ARRAY = new Annotation[]{INSTANCE};
     }
-}
-
-@TargetClass(classNameProvider = Package_jdk_internal_reflect.class, className = "ConstructorAccessor")
-final class Target_jdk_internal_reflect_ConstructorAccessor {
-}
-
-@TargetClass(classNameProvider = Package_jdk_internal_reflect.class, className = "FieldAccessor")
-final class Target_jdk_internal_reflect_FieldAccessor {
-}
-
-@TargetClass(classNameProvider = Package_jdk_internal_reflect.class, className = "MethodAccessor")
-final class Target_jdk_internal_reflect_MethodAccessor {
 }

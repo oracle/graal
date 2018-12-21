@@ -659,6 +659,10 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         return universe.substitutions.resolve(wrapped);
     }
 
+    public ResolvedJavaType getWrappedWithoutResolve() {
+        return wrapped;
+    }
+
     @Override
     public Class<?> getJavaClass() {
         return OriginalClassProvider.getJavaClass(universe.getOriginalSnippetReflection(), wrapped);
