@@ -119,6 +119,22 @@ suite = {
             "workingSets": "SVM",
         },
 
+        "com.oracle.svm.core.graal.amd64": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.core.graal",
+            ],
+            "checkstyle": "com.oracle.svm.core",
+            "javaCompliance": "8+",
+            "annotationProcessors": [
+                "compiler:GRAAL_NODEINFO_PROCESSOR",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
+                "compiler:GRAAL_OPTIONS_PROCESSOR",
+            ],
+            "workingSets": "SVM",
+        },
+
         "com.oracle.svm.core.posix": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -173,7 +189,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.objectfile",
-                "com.oracle.svm.core.graal",
+                "com.oracle.svm.core.graal.amd64",
                 "com.oracle.graal.pointsto",
             ],
             "javaCompliance": "8+",
@@ -583,6 +599,7 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.core",
                 "com.oracle.svm.core.graal",
+                "com.oracle.svm.core.graal.amd64",
                 "com.oracle.svm.core.genscavenge",
             ],
             "distDependencies": [

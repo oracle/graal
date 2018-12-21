@@ -119,7 +119,7 @@ public final class StackValueNode extends FixedWithNextNode implements LIRLowera
             if (slot == null) {
                 int wordSize = gen.getLIRGeneratorTool().target().wordSize;
                 int slots = roundUp(size, wordSize) / wordSize;
-                slot = gen.getLIRGeneratorTool().getResult().getFrameMapBuilder().allocateStackSlots(slots, new BitSet(0), null);
+                slot = gen.getLIRGeneratorTool().allocateStackSlots(slots, new BitSet(0), null);
                 stackSlotHolder.slot = slot;
             }
             gen.setResult(this, gen.getLIRGeneratorTool().emitAddress(slot));

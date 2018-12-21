@@ -394,6 +394,13 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     }
 
     /**
+     * Translates a set of registers from the callee's perspective to the caller's perspective. This
+     * is needed for architectures where input/output registers are renamed during a call (e.g.
+     * register windows on SPARC). Registers which are not visible by the caller are removed.
+     */
+    protected abstract EconomicSet<Register> translateToCallerRegisters(EconomicSet<Register> calleeRegisters);
+
+    /**
      * Updates a given stub with respect to the registers it destroys.
      * <p>
      * Any entry in {@code calleeSaveInfo} that {@linkplain SaveRegistersOp#supportsRemove()

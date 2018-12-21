@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.code.amd64;
+package com.oracle.svm.core.graal.code;
 
 import jdk.vm.ci.code.CallingConvention;
 

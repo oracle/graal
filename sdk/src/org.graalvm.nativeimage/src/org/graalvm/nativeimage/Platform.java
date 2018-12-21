@@ -108,7 +108,7 @@ public interface Platform {
      *
      * @since 1.0
      */
-    final class LINUX_AMD64 implements LINUX, AMD64 {
+    class LINUX_AMD64 implements LINUX, AMD64 {
 
         /**
          * Instantiates a marker instance of this platform.
@@ -124,7 +124,7 @@ public interface Platform {
      *
      * @since 1.0
      */
-    final class DARWIN_AMD64 implements DARWIN, AMD64 {
+    class DARWIN_AMD64 implements DARWIN, AMD64 {
 
         /**
          * Instantiates a marker instance of this platform.
@@ -140,7 +140,7 @@ public interface Platform {
      *
      * @since 1.0
      */
-    final class WINDOWS_AMD64 implements WINDOWS, AMD64 {
+    class WINDOWS_AMD64 implements WINDOWS, AMD64 {
 
         /**
          * Instantiates a marker instance of this platform.
@@ -173,6 +173,24 @@ public interface Platform {
      */
     static boolean includedIn(Class<? extends Platform> platformGroup) {
         return platformGroup.isInstance(ImageSingletons.lookup(Platform.class));
+    }
+
+    /**
+     * Returns whether the current platform uses the LIR backend.
+     *
+     * @since 1.0
+     */
+    static boolean usesLIR() {
+        return ImageSingletons.lookup(Platform.class).isLIR();
+    }
+
+    /**
+     * Returns whether this platform uses the LIR backend.
+     *
+     * @since 1.0
+     */
+    default boolean isLIR() {
+        return true;
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,15 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.code;
+package com.oracle.svm.hosted.image;
 
-import org.graalvm.compiler.phases.util.Providers;
+import com.oracle.svm.hosted.code.CompileQueue;
 import org.graalvm.nativeimage.ImageSingletons;
 
-public abstract class SubstrateBackendFactory {
-    public abstract SubstrateBackend newBackend(Providers newProviders);
+public abstract class NativeImageCodeCacheFactory {
+    public abstract NativeImageCodeCache newCodeCache(CompileQueue compileQueue, NativeImageHeap heap);
 
-    public static SubstrateBackendFactory get() {
-        return ImageSingletons.lookup(SubstrateBackendFactory.class);
+    public static NativeImageCodeCacheFactory get() {
+        return ImageSingletons.lookup(NativeImageCodeCacheFactory.class);
     }
 }
