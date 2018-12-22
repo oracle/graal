@@ -28,6 +28,7 @@ package com.oracle.svm.reflect.hosted;
 
 import static com.oracle.svm.reflect.hosted.ReflectionSubstitution.getStableProxyName;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -64,6 +65,7 @@ import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.jdk.IgnoreForGetCallerClass;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionField;
@@ -740,4 +742,21 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
         }
     }
 
+    @Override
+    public Annotation[] getAnnotations() {
+        return IgnoreForGetCallerClass.Holder.ARRAY;
+    }
+
+    @Override
+    public boolean isAnnotationPresent(Class<? extends Annotation> annotationClass) {
+        return annotationClass == IgnoreForGetCallerClass.class;
+    }
+
+    @Override
+    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
+        if (annotationClass == IgnoreForGetCallerClass.class) {
+            return annotationClass.cast(IgnoreForGetCallerClass.Holder.INSTANCE);
+        }
+        return null;
+    }
 }
