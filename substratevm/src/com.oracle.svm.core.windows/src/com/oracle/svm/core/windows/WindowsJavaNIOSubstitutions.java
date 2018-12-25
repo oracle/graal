@@ -24,6 +24,18 @@
  */
 package com.oracle.svm.core.windows;
 
+import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.FromAlias;
+
+import java.net.URI;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
+import java.nio.file.spi.FileSystemProvider;
+
+import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.function.CLibrary;
+
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Delete;
@@ -32,16 +44,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import org.graalvm.nativeimage.Feature;
-import org.graalvm.nativeimage.c.function.CLibrary;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.hosted.jni.JNIRuntimeAccess;
-
-import java.net.URI;
-import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
-import java.nio.file.spi.FileSystemProvider;
 
 @Platforms(Platform.WINDOWS.class)
 @AutomaticFeature
@@ -130,9 +133,13 @@ final class Target_sun_nio_fs_WindowsNativeDispatcher {
 @TargetClass(className = "sun.nio.fs.WindowsConstants")
 @Platforms(Platform.WINDOWS.class)
 final class Target_sun_nio_fs_WindowsConstants {
+    /* Checkstyle: stop StaticVariableName */
+    @Alias @RecomputeFieldValue(kind = FromAlias, isFinal = true)//
+    static int TOKEN_DUPLICATE = 0x0002;
 
-    @Alias static final int TOKEN_DUPLICATE = 0x0002;
-    @Alias static final int TOKEN_QUERY = 0x0008;
+    @Alias @RecomputeFieldValue(kind = FromAlias, isFinal = true)//
+    static int TOKEN_QUERY = 0x0008;
+    /* Checkstyle: resume StaticVariableName */
 }
 
 @TargetClass(className = "sun.nio.fs.WindowsSecurity")
