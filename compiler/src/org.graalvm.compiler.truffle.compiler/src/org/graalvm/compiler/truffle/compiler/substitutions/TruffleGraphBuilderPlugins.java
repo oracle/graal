@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -79,7 +79,7 @@ import org.graalvm.compiler.nodes.virtual.EnsureVirtualizedNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerMulHighNode;
+import org.graalvm.compiler.nodes.calc.IntegerMulHighNode;
 import org.graalvm.compiler.replacements.nodes.arithmetic.UnsignedMulHighNode;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
