@@ -59,7 +59,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -118,15 +117,15 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
 
     @Test
     public void testRecursiveListMarshalling() {
-        List<GregorianCalendar> testList = Arrays.asList(new GregorianCalendar());
+        List<Data> testList = Arrays.asList(new Data());
         Value testListValue = context.asValue(testList);
         assertTrue(testListValue.isHostObject());
 
-        Value calendarValue = testListValue.getArrayElement(0);
-        assertTrue(calendarValue.isHostObject());
+        Value data = testListValue.getArrayElement(0);
+        assertTrue(data.isHostObject());
 
         assertValue(testListValue);
-        assertValue(calendarValue);
+        assertValue(data);
     }
 
     @Test
