@@ -24,31 +24,26 @@
  */
 package com.oracle.svm.core.c;
 
-import org.graalvm.word.PointerBase;
+import org.graalvm.nativeimage.c.function.RelocatedPointer;
 
-public final class MutableBoxedPointer {
+/**
+ * A variant of {@link BoxedPointer} that is immutable, but has a non-final field, intended to work
+ * around limitations on folding {@link RelocatedPointer} into a constant in call stub code.
+ */
+public final class BoxedRelocatedPointer {
 
-    private PointerBase pointer;
+    private RelocatedPointer pointer;
 
-    public MutableBoxedPointer(PointerBase pointer) {
+    public BoxedRelocatedPointer(RelocatedPointer pointer) {
         this.pointer = pointer;
     }
 
-    public PointerBase getPointer() {
+    public RelocatedPointer getPointer() {
         return pointer;
-    }
-
-    public void setPointer(PointerBase pointer) {
-        this.pointer = pointer;
-    }
-
-    public static PointerBase unbox(MutableBoxedPointer boxed) {
-        return boxed.getPointer();
     }
 
     @Override
     public String toString() {
         return String.valueOf(pointer.rawValue());
     }
-
 }
