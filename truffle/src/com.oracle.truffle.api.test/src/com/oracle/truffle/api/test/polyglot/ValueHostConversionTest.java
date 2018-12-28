@@ -1098,26 +1098,18 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
         assertEquals(42, value.getMember("foo").execute((float) 42).asInt());
         assertEquals(42, value.getMember("foo").execute((double) 42).asInt());
 
-        assertHostPolyglotException(() -> value.getMember("foo").execute((Object) null),
+        ValueAssert.assertFails(() -> value.getMember("foo").execute((Object) null),
                         IllegalArgumentException.class);
-        assertHostPolyglotException(() -> value.getMember("foo").execute(""),
+        ValueAssert.assertFails(() -> value.getMember("foo").execute(""),
                         IllegalArgumentException.class);
-        assertHostPolyglotException(() -> value.getMember("foo").execute(42.2d),
+        ValueAssert.assertFails(() -> value.getMember("foo").execute(42.2d),
                         IllegalArgumentException.class);
-        assertHostPolyglotException(() -> value.getMember("foo").execute(42.2f),
+        ValueAssert.assertFails(() -> value.getMember("foo").execute(42.2f),
                         IllegalArgumentException.class);
-        assertHostPolyglotException(() -> value.getMember("foo").execute(Float.NaN),
+        ValueAssert.assertFails(() -> value.getMember("foo").execute(Float.NaN),
                         IllegalArgumentException.class);
-        assertHostPolyglotException(() -> value.getMember("foo").execute(Double.NaN),
+        ValueAssert.assertFails(() -> value.getMember("foo").execute(Double.NaN),
                         IllegalArgumentException.class);
-    }
-
-    private static void assertHostPolyglotException(Runnable r, Class<?> hostExceptionType) {
-        try {
-            r.run();
-        } catch (Exception e) {
-            assertTrue(e.getClass().getName(), hostExceptionType.isInstance(e));
-        }
     }
 
 }
