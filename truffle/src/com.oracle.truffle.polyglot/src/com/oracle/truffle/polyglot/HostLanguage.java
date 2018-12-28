@@ -90,9 +90,6 @@ class HostLanguage extends TruffleLanguage<HostContext> {
         @TruffleBoundary
         Class<?> findClass(String className) {
             checkHostAccessAllowed();
-            if (TruffleOptions.AOT) { // TODO: use Class.forName()
-                throw new HostLanguageException(String.format("The host class %s is not accessible in native mode.", className));
-            }
 
             Class<?> loadedClass = classCache.get(className);
             if (loadedClass == null) {

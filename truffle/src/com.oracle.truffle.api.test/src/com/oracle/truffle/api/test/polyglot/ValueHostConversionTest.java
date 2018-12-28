@@ -70,11 +70,13 @@ import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.Proxy;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.ValueAssert.Trait;
@@ -174,6 +176,11 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
         assertTrue(context.asValue(new String[0]).hasArrayElements());
         assertTrue(context.asValue(new ArrayList<>()).isHostObject());
         assertTrue(context.asValue(new ArrayList<>()).hasArrayElements());
+    }
+
+    @Test
+    public void testBasicExamplesLambda() {
+        Assume.assumeFalse("Cannot get reflection data for a lambda", TruffleOptions.AOT);
         assertTrue(context.asValue((Supplier<Integer>) () -> 42).execute().asInt() == 42);
     }
 

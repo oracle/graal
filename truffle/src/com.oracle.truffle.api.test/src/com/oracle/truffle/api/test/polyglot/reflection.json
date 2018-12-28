@@ -66,5 +66,89 @@
   {
     "name": "java.lang.Object",
     "allDeclaredConstructors": true, "allPublicConstructors": true, "allDeclaredMethods": true, "allPublicMethods": true, "allDeclaredFields": true, "allPublicFields": true
+  },
+  {
+    "name": "java.lang.String",
+    "allDeclaredConstructors": true, "allPublicConstructors": true, "allDeclaredMethods": true, "allPublicMethods": true, "allDeclaredFields": true, "allPublicFields": true
+  },
+  {
+    "name": "com.oracle.truffle.api.test.polyglot.ValueHostConversionTest$3",
+    "allDeclaredConstructors": true, "allPublicConstructors": true, "allDeclaredMethods": true, "allPublicMethods": true, "allDeclaredFields": true, "allPublicFields": true
+  },
+  {
+    "name": "com.oracle.truffle.api.test.polyglot.ValueHostConversionTest$4",
+    "allDeclaredConstructors": true, "allPublicConstructors": true, "allDeclaredMethods": true, "allPublicMethods": true, "allDeclaredFields": true, "allPublicFields": true
+  },
+  {
+    "name": "com.oracle.truffle.api.test.polyglot.ValueHostConversionTest$5",
+    "allDeclaredConstructors": true, "allPublicConstructors": true, "allDeclaredMethods": true, "allPublicMethods": true, "allDeclaredFields": true, "allPublicFields": true
+  },
+  {
+    "name": "java.util.function.Function",
+    "allDeclaredConstructors": true, "allPublicConstructors": true, "allDeclaredMethods": true, "allPublicMethods": true, "allDeclaredFields": true, "allPublicFields": true
+  },
+  {
+    "name": "java.util.function.Supplier",
+    "allDeclaredConstructors": true, "allPublicConstructors": true, "allDeclaredMethods": true, "allPublicMethods": true, "allDeclaredFields": true, "allPublicFields": true
+  },
+  {
+    "name": "com.oracle.truffle.api.test.polyglot.ValueHostConversionTest$TestExceptionFrames2",
+    "allDeclaredConstructors": true, "allPublicConstructors": true, "allDeclaredMethods": true, "allPublicMethods": true, "allDeclaredFields": true, "allPublicFields": true
+  },
+  {
+    "name": "com.oracle.truffle.api.test.polyglot.ValueHostConversionTest$TestExceptionFrames3",
+    "allDeclaredConstructors": true, "allPublicConstructors": true, "allDeclaredMethods": true, "allPublicMethods": true, "allDeclaredFields": true, "allPublicFields": true
+  },
+  {
+    "name": "com.oracle.truffle.api.test.polyglot.ValueHostConversionTest$ByteHierarchy",
+    "allDeclaredConstructors": true, "allPublicConstructors": true, "allDeclaredMethods": true, "allPublicMethods": true, "allDeclaredFields": true, "allPublicFields": true
+  },
+  {
+    "name": "com.oracle.truffle.api.test.polyglot.ValueHostConversionTest$CharHierarchy",
+    "allDeclaredConstructors": true, "allPublicConstructors": true, "allDeclaredMethods": true, "allPublicMethods": true, "allDeclaredFields": true, "allPublicFields": true
+  },
+  {
+    "name": "com.oracle.truffle.api.test.polyglot.ValueHostConversionTest$ShortHierarchy",
+    "allDeclaredConstructors": true, "allPublicConstructors": true, "allDeclaredMethods": true, "allPublicMethods": true, "allDeclaredFields": true, "allPublicFields": true
+  },
+  {
+    "name": "com.oracle.truffle.api.test.polyglot.ValueHostConversionTest$IntHierarchy",
+    "allDeclaredConstructors": true, "allPublicConstructors": true, "allDeclaredMethods": true, "allPublicMethods": true, "allDeclaredFields": true, "allPublicFields": true
+  },
+  {
+    "name": "com.oracle.truffle.api.test.polyglot.ValueHostConversionTest$LongHierarchy",
+    "allDeclaredConstructors": true, "allPublicConstructors": true, "allDeclaredMethods": true, "allPublicMethods": true, "allDeclaredFields": true, "allPublicFields": true
+  },
+  {
+    "name": "com.oracle.truffle.api.test.polyglot.ValueHostConversionTest$FloatHierarchy",
+    "allDeclaredConstructors": true, "allPublicConstructors": true, "allDeclaredMethods": true, "allPublicMethods": true, "allDeclaredFields": true, "allPublicFields": true
+  },
+  {
+    "name": "com.oracle.truffle.api.test.polyglot.ValueHostConversionTest$DoubleHierarchy",
+    "allDeclaredConstructors": true, "allPublicConstructors": true, "allDeclaredMethods": true, "allPublicMethods": true, "allDeclaredFields": true, "allPublicFields": true
+  },
+  {
+    "name": "com.oracle.truffle.api.test.polyglot.ValueHostConversionTest$StringHierarchy",
+    "allDeclaredConstructors": true, "allPublicConstructors": true, "allDeclaredMethods": true, "allPublicMethods": true, "allDeclaredFields": true, "allPublicFields": true
+  },
+  {
+    "name": "com.oracle.truffle.api.test.polyglot.ValueHostConversionTest$JavaRecord",
+    "allDeclaredConstructors": true, "allPublicConstructors": true, "allDeclaredMethods": true, "allPublicMethods": true, "allDeclaredFields": true, "allPublicFields": true
+  },
+  {
+    "name": "java.math.BigInteger",
+    "allDeclaredConstructors": true, "allPublicConstructors": true, "allDeclaredMethods": true, "allPublicMethods": true, "allDeclaredFields": true, "allPublicFields": true
+  },
+  {
+    "name": "com.oracle.truffle.api.test.polyglot.ValueHostConversionTest$TestIllegalArgumentInt",
+    "allDeclaredConstructors": true, "allPublicConstructors": true, "allDeclaredMethods": true, "allPublicMethods": true, "allDeclaredFields": true, "allPublicFields": true
+  },
+  {
+    "name": "java.lang.Class",
+    "methods": [
+      { "name": "getName", "parameterTypes": [] },
+      { "name": "isInterface", "parameterTypes": [] },
+      { "name": "isInstance", "parameterTypes": ["java.lang.Object"] }
+    ]
   }
 ]
