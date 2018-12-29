@@ -1895,6 +1895,12 @@ public class BasicNodeFactory implements NodeFactory {
                 return LLVMFAbsNodeGen.create(args[1], sourceSection);
             case "@llvm.fabs.v2f64":
                 return LLVMFAbsVectorNodeGen.create(args[1], sourceSection, 2);
+            case "@llvm.minnum.f32":
+            case "@llvm.minnum.f64":
+                return LLVMCMathsIntrinsicsFactory.LLVMMinnumNodeGen.create(args[1], args[2], sourceSection);
+            case "@llvm.maxnum.f32":
+            case "@llvm.maxnum.f64":
+                return LLVMCMathsIntrinsicsFactory.LLVMMaxnumNodeGen.create(args[1], args[2], sourceSection);
             case "@llvm.returnaddress":
                 return LLVMReturnAddressNodeGen.create(args[1], sourceSection);
             case "@llvm.lifetime.start.p0i8":

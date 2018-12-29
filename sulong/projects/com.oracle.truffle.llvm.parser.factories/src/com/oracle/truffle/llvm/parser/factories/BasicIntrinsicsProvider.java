@@ -72,6 +72,8 @@ import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LL
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMLog1pNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMLog2NodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMLogNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMMaxnumNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMMinnumNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMModfNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMPowNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMRintNodeGen;
@@ -579,6 +581,8 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
         addFloatingPointMathFunction("@ceil", (args, context) -> LLVMCeilNodeGen.create(args.get(1), null));
         addFloatingPointMathFunction("@floor", (args, context) -> LLVMFloorNodeGen.create(args.get(1), null));
         addFloatingPointMathFunction("@fabs", (args, context) -> LLVMFAbsNodeGen.create(args.get(1), null));
+        addFloatingPointMathFunction("@minnum", (args, context) -> LLVMMinnumNodeGen.create(args.get(1), args.get(2), null));
+        addFloatingPointMathFunction("@maxnum", (args, context) -> LLVMMaxnumNodeGen.create(args.get(1), args.get(2), null));
         addFloatingPointMathFunction("@pow", (args, context) -> LLVMPowNodeGen.create(args.get(1), args.get(2), null));
         addFloatingPointMathFunction("@exp", (args, context) -> LLVMExpNodeGen.create(args.get(1), null));
         addFloatingPointMathFunction("@exp2", (args, context) -> LLVMExp2NodeGen.create(args.get(1), null));
