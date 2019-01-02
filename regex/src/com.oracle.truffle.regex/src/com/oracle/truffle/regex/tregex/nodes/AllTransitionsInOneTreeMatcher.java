@@ -68,12 +68,13 @@ public final class AllTransitionsInOneTreeMatcher {
     }
 
     private int checkMatchTree1(VirtualFrame frame, TRegexDFAExecutorNode executor, DFAStateNode stateNode, int fromIndex, int toIndex, char c) {
+        CompilerAsserts.partialEvaluationConstant(stateNode);
         CompilerAsserts.partialEvaluationConstant(fromIndex);
         CompilerAsserts.partialEvaluationConstant(toIndex);
         if (fromIndex > toIndex) {
             final short successor = rangeTreeSuccessors[fromIndex];
-            if (successor != DFAStateNode.FS_RESULT_NO_SUCCESSOR) {
-                stateNode.successorFound1(frame, executor, successor);
+            if (stateNode instanceof CGTrackingDFAStateNode && successor != DFAStateNode.FS_RESULT_NO_SUCCESSOR) {
+                ((CGTrackingDFAStateNode) stateNode).successorFound1(frame, executor, successor);
             }
             return successor;
         }
@@ -86,13 +87,13 @@ public final class AllTransitionsInOneTreeMatcher {
         }
     }
 
-    public int checkMatchTree2(VirtualFrame frame, TRegexDFAExecutorNode executor, DFAStateNode stateNode, char c) {
+    public int checkMatchTree2(VirtualFrame frame, TRegexDFAExecutorNode executor, CGTrackingDFAStateNode stateNode, char c) {
         CompilerAsserts.partialEvaluationConstant(this);
         CompilerAsserts.partialEvaluationConstant(stateNode);
         return checkMatchTree2(frame, executor, stateNode, 0, sortedRanges.length - 1, c);
     }
 
-    private int checkMatchTree2(VirtualFrame frame, TRegexDFAExecutorNode executor, DFAStateNode stateNode, int fromIndex, int toIndex, char c) {
+    private int checkMatchTree2(VirtualFrame frame, TRegexDFAExecutorNode executor, CGTrackingDFAStateNode stateNode, int fromIndex, int toIndex, char c) {
         CompilerAsserts.partialEvaluationConstant(fromIndex);
         CompilerAsserts.partialEvaluationConstant(toIndex);
         if (fromIndex > toIndex) {
@@ -113,13 +114,13 @@ public final class AllTransitionsInOneTreeMatcher {
         }
     }
 
-    public int checkMatchTree3(VirtualFrame frame, TRegexDFAExecutorNode executor, DFAStateNode stateNode, char c, int preLoopIndex) {
+    public int checkMatchTree3(VirtualFrame frame, TRegexDFAExecutorNode executor, CGTrackingDFAStateNode stateNode, char c, int preLoopIndex) {
         CompilerAsserts.partialEvaluationConstant(this);
         CompilerAsserts.partialEvaluationConstant(stateNode);
         return checkMatchTree3(frame, executor, stateNode, 0, sortedRanges.length - 1, c, preLoopIndex);
     }
 
-    private int checkMatchTree3(VirtualFrame frame, TRegexDFAExecutorNode executor, DFAStateNode stateNode, int fromIndex, int toIndex, char c, int preLoopIndex) {
+    private int checkMatchTree3(VirtualFrame frame, TRegexDFAExecutorNode executor, CGTrackingDFAStateNode stateNode, int fromIndex, int toIndex, char c, int preLoopIndex) {
         CompilerAsserts.partialEvaluationConstant(fromIndex);
         CompilerAsserts.partialEvaluationConstant(toIndex);
         if (fromIndex > toIndex) {

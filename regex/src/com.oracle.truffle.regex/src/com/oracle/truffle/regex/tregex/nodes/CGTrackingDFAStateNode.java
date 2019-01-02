@@ -27,6 +27,7 @@ package com.oracle.truffle.regex.tregex.nodes;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
 
 public class CGTrackingDFAStateNode extends DFAStateNode {
@@ -72,15 +73,196 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
     }
 
     @Override
-    protected void beforeFindSuccessor(VirtualFrame frame, TRegexDFAExecutorNode executor) {
+    public void executeFindSuccessor(VirtualFrame frame, TRegexDFAExecutorNode executor, boolean compactString) {
+        CompilerAsserts.partialEvaluationConstant(this);
+        CompilerAsserts.partialEvaluationConstant(compactString);
+        beforeFindSuccessor(frame, executor);
+        if (!executor.hasNext(frame)) {
+            executor.setSuccessorIndex(frame, atEnd1(frame, executor));
+            return;
+        }
+        if (checkMatch1(frame, executor, compactString)) {
+            if (executor.hasNext(frame)) {
+                if (!checkMatch2(frame, executor, compactString)) {
+                    return;
+                }
+            } else {
+                executor.setSuccessorIndex(frame, atEnd2(frame, executor));
+                return;
+            }
+            final int preLoopIndex = executor.getIndex(frame);
+            if (executor.isForward() && hasLoopToSelf() && loopOptimizationNode.getIndexOfChars() != null) {
+                int indexOfResult = loopOptimizationNode.getIndexOfNode().execute(executor.getInput(frame),
+                                preLoopIndex,
+                                executor.getCurMaxIndex(frame),
+                                loopOptimizationNode.getIndexOfChars());
+                if (indexOfResult < 0) {
+                    executor.setIndex(frame, executor.getCurMaxIndex(frame));
+                    executor.setSuccessorIndex(frame, atEnd3(frame, executor, preLoopIndex));
+                    return;
+                } else {
+                    if (successors.length == 2) {
+                        int successor = (getLoopToSelf() + 1) % 2;
+                        CompilerAsserts.partialEvaluationConstant(successor);
+                        executor.setIndex(frame, indexOfResult + 1);
+                        executor.setSuccessorIndex(frame, successor);
+                        successorFound3(frame, executor, successor, preLoopIndex);
+                        return;
+                    } else {
+                        executor.setIndex(frame, indexOfResult);
+                    }
+                }
+            }
+            while (executor.hasNext(frame)) {
+                if (!checkMatch3(frame, executor, compactString, preLoopIndex)) {
+                    return;
+                }
+            }
+            executor.setSuccessorIndex(frame, atEnd3(frame, executor, preLoopIndex));
+        }
+    }
+
+    /**
+     * Finds the first matching transition. If a transition matches,
+     * {@link #successorFound1(VirtualFrame, TRegexDFAExecutorNode, int)} is called. The index of
+     * the element of {@link #getMatchers()} that matched the current input character (
+     * {@link TRegexDFAExecutorNode#getChar(VirtualFrame)}) or {@link #FS_RESULT_NO_SUCCESSOR} is
+     * stored via {@link TRegexDFAExecutorNode#setSuccessorIndex(VirtualFrame, int)}.
+     *
+     * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
+     * @param executor this node's parent {@link TRegexDFAExecutorNode}.
+     * @param compactString {@code true} if the input string is a compact string, must be partial
+     *            evaluation constant.
+     * @return {@code true} if the matching transition loops back to this state, {@code false}
+     *         otherwise.
+     */
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+    private boolean checkMatch1(VirtualFrame frame, TRegexDFAExecutorNode executor, boolean compactString) {
+        final char c = executor.getChar(frame);
+        executor.advance(frame);
+        if (treeTransitionMatching()) {
+            int successor = getTreeMatcher().checkMatchTree1(frame, executor, this, c);
+            assert sameResultAsRegularMatchers(executor, c, compactString, successor) : this.toString();
+            executor.setSuccessorIndex(frame, successor);
+            return isLoopToSelf(successor);
+        } else {
+            for (int i = 0; i < matchers.length; i++) {
+                if (matchers[i].execute(c, compactString)) {
+                    CompilerAsserts.partialEvaluationConstant(i);
+                    successorFound1(frame, executor, i);
+                    executor.setSuccessorIndex(frame, i);
+                    return isLoopToSelf(i);
+                }
+            }
+            executor.setSuccessorIndex(frame, FS_RESULT_NO_SUCCESSOR);
+            return false;
+        }
+    }
+
+    /**
+     * Finds the first matching transition. This method is called only if the transition found by
+     * {@link #checkMatch1(VirtualFrame, TRegexDFAExecutorNode, boolean)} was a loop back to this
+     * state (indicated by {@link #isLoopToSelf(int)}). If a transition <i>other than</i> the
+     * looping transition matches,
+     * {@link #successorFound2(VirtualFrame, TRegexDFAExecutorNode, int)} is called. The index of
+     * the element of {@link #getMatchers()} that matched the current input character (
+     * {@link TRegexDFAExecutorNode#getChar(VirtualFrame)}) or {@link #FS_RESULT_NO_SUCCESSOR} is
+     * stored via {@link TRegexDFAExecutorNode#setSuccessorIndex(VirtualFrame, int)}. If no
+     * transition matches, {@link #noSuccessor2(VirtualFrame, TRegexDFAExecutorNode)} is called.
+     *
+     * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
+     * @param executor this node's parent {@link TRegexDFAExecutorNode}.
+     * @param compactString {@code true} if the input string is a compact string, must be partial
+     *            evaluation constant.
+     * @return {@code true} if the matching transition loops back to this state, {@code false}
+     *         otherwise.
+     */
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+    private boolean checkMatch2(VirtualFrame frame, TRegexDFAExecutorNode executor, boolean compactString) {
+        final char c = executor.getChar(frame);
+        executor.advance(frame);
+        if (treeTransitionMatching()) {
+            int successor = getTreeMatcher().checkMatchTree2(frame, executor, this, c);
+            assert sameResultAsRegularMatchers(executor, c, compactString, successor) : this.toString();
+            executor.setSuccessorIndex(frame, successor);
+            return isLoopToSelf(successor);
+        } else {
+            for (int i = 0; i < matchers.length; i++) {
+                if (matchers[i].execute(c, compactString)) {
+                    executor.setSuccessorIndex(frame, i);
+                    if (!isLoopToSelf(i)) {
+                        CompilerAsserts.partialEvaluationConstant(i);
+                        successorFound2(frame, executor, i);
+                        return false;
+                    }
+                    return true;
+                }
+            }
+            executor.setSuccessorIndex(frame, FS_RESULT_NO_SUCCESSOR);
+            noSuccessor2(frame, executor);
+            return false;
+        }
+    }
+
+    /**
+     * Finds the first matching transition. This method is called only if the transitions found by
+     * {@link #checkMatch1(VirtualFrame, TRegexDFAExecutorNode, boolean)} AND
+     * {@link #checkMatch2(VirtualFrame, TRegexDFAExecutorNode, boolean)} both were a loop back to
+     * this state (indicated by {@link #isLoopToSelf(int)}), and will be called in a loop until a
+     * transition other than the loop back transition matches. If a transition <i>other than</i> the
+     * looping transition matches,
+     * {@link #successorFound3(VirtualFrame, TRegexDFAExecutorNode, int, int)} is called. The index
+     * of the element of {@link #getMatchers()} that matched the current input character (
+     * {@link TRegexDFAExecutorNode#getChar(VirtualFrame)}) or {@link #FS_RESULT_NO_SUCCESSOR} is
+     * stored via {@link TRegexDFAExecutorNode#setSuccessorIndex(VirtualFrame, int)}. If no
+     * transition matches, {@link #noSuccessor3(VirtualFrame, TRegexDFAExecutorNode, int)} is
+     * called.
+     *
+     * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
+     * @param executor this node's parent {@link TRegexDFAExecutorNode}.
+     * @param compactString {@code true} if the input string is a compact string, must be partial
+     *            evaluation constant.
+     * @param preLoopIndex the index pointed to by
+     *            {@link TRegexDFAExecutorNode#getIndex(VirtualFrame)} <i>before</i> this method is
+     *            called for the first time.
+     * @return {@code true} if the matching transition loops back to this state, {@code false}
+     *         otherwise.
+     */
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+    private boolean checkMatch3(VirtualFrame frame, TRegexDFAExecutorNode executor, boolean compactString, int preLoopIndex) {
+        final char c = executor.getChar(frame);
+        executor.advance(frame);
+        if (treeTransitionMatching()) {
+            int successor = getTreeMatcher().checkMatchTree3(frame, executor, this, c, preLoopIndex);
+            assert sameResultAsRegularMatchers(executor, c, compactString, successor) : this.toString();
+            executor.setSuccessorIndex(frame, successor);
+            return isLoopToSelf(successor);
+        } else {
+            for (int i = 0; i < matchers.length; i++) {
+                if (matchers[i].execute(c, compactString)) {
+                    executor.setSuccessorIndex(frame, i);
+                    if (!isLoopToSelf(i)) {
+                        CompilerAsserts.partialEvaluationConstant(i);
+                        successorFound3(frame, executor, i, preLoopIndex);
+                        return false;
+                    }
+                    return true;
+                }
+            }
+            executor.setSuccessorIndex(frame, FS_RESULT_NO_SUCCESSOR);
+            noSuccessor3(frame, executor, preLoopIndex);
+            return false;
+        }
+    }
+
+    private void beforeFindSuccessor(VirtualFrame frame, TRegexDFAExecutorNode executor) {
         CompilerAsserts.partialEvaluationConstant(this);
         if (executor.isSearching()) {
             checkFinalState(frame, executor);
         }
     }
 
-    @Override
-    protected void successorFound1(VirtualFrame frame, TRegexDFAExecutorNode executor, int i) {
+    void successorFound1(VirtualFrame frame, TRegexDFAExecutorNode executor, int i) {
         CompilerAsserts.partialEvaluationConstant(this);
         CompilerAsserts.partialEvaluationConstant(i);
         if (precedingCaptureGroupTransitions.length == 1) {
@@ -91,8 +273,7 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
         executor.setLastTransition(frame, captureGroupTransitions[i]);
     }
 
-    @Override
-    protected int atEnd1(VirtualFrame frame, TRegexDFAExecutorNode executor) {
+    private int atEnd1(VirtualFrame frame, TRegexDFAExecutorNode executor) {
         CompilerAsserts.partialEvaluationConstant(this);
         if (isAnchoredFinalState() && executor.atEnd(frame)) {
             applyAnchoredFinalStateTransition(frame, executor);
@@ -102,8 +283,7 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
         return FS_RESULT_NO_SUCCESSOR;
     }
 
-    @Override
-    protected void successorFound2(VirtualFrame frame, TRegexDFAExecutorNode executor, int i) {
+    void successorFound2(VirtualFrame frame, TRegexDFAExecutorNode executor, int i) {
         CompilerAsserts.partialEvaluationConstant(this);
         CompilerAsserts.partialEvaluationConstant(i);
         assert executor.getLastTransition(frame) == captureGroupTransitions[getLoopToSelf()];
@@ -114,21 +294,18 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
         executor.setLastTransition(frame, captureGroupTransitions[i]);
     }
 
-    @Override
-    protected void noSuccessor2(VirtualFrame frame, TRegexDFAExecutorNode executor) {
+    void noSuccessor2(VirtualFrame frame, TRegexDFAExecutorNode executor) {
         CompilerAsserts.partialEvaluationConstant(this);
         assert executor.isSearching();
         checkFinalStateLoop(frame, executor);
     }
 
-    @Override
-    protected int atEnd2(VirtualFrame frame, TRegexDFAExecutorNode executor) {
+    private int atEnd2(VirtualFrame frame, TRegexDFAExecutorNode executor) {
         CompilerAsserts.partialEvaluationConstant(this);
         return atEndLoop(frame, executor);
     }
 
-    @Override
-    protected void successorFound3(VirtualFrame frame, TRegexDFAExecutorNode executor, int i, int preLoopIndex) {
+    void successorFound3(VirtualFrame frame, TRegexDFAExecutorNode executor, int i, int preLoopIndex) {
         CompilerAsserts.partialEvaluationConstant(this);
         CompilerAsserts.partialEvaluationConstant(i);
         applyLoopTransitions(frame, executor, preLoopIndex, prevIndex(frame, executor) - 1);
@@ -139,16 +316,14 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
         executor.setLastTransition(frame, captureGroupTransitions[i]);
     }
 
-    @Override
-    protected void noSuccessor3(VirtualFrame frame, TRegexDFAExecutorNode executor, int preLoopIndex) {
+    void noSuccessor3(VirtualFrame frame, TRegexDFAExecutorNode executor, int preLoopIndex) {
         CompilerAsserts.partialEvaluationConstant(this);
         assert executor.isSearching();
         applyLoopTransitions(frame, executor, preLoopIndex, prevIndex(frame, executor) - 1);
         checkFinalStateLoop(frame, executor);
     }
 
-    @Override
-    protected int atEnd3(VirtualFrame frame, TRegexDFAExecutorNode executor, int preLoopIndex) {
+    private int atEnd3(VirtualFrame frame, TRegexDFAExecutorNode executor, int preLoopIndex) {
         CompilerAsserts.partialEvaluationConstant(this);
         applyLoopTransitions(frame, executor, preLoopIndex, prevIndex(frame, executor));
         return atEndLoop(frame, executor);
