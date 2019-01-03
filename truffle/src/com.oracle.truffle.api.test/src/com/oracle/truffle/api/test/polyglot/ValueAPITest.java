@@ -1216,8 +1216,11 @@ public class ValueAPITest {
         assertFails(() -> map.put("finalValue", 42), IllegalArgumentException.class,
                         "Invalid or unmodifiable value for identifier 'finalValue' for Map<Object, Object> 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest).");
 
-        assertFails(() -> map.put("finalValue", "42"), ClassCastException.class,
-                        "Invalid value '42'(language: Java, type: java.lang.String) for Map<Object, Object> 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest) and identifier 'finalValue'.");
+        assertFails(() -> map.put("finalValue", "42"), IllegalArgumentException.class,
+                        "Invalid or unmodifiable value for identifier 'finalValue' for Map<Object, Object> 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest).");
+
+        assertFails(() -> map.put("finalValue", 4.2), ClassCastException.class,
+                        "Invalid value '4.2'(language: Java, type: java.lang.Double) for Map<Object, Object> 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest) and identifier 'finalValue'.");
 
         assertFails(() -> map.put("notAMember", ""), IllegalArgumentException.class,
                         "Invalid or unmodifiable value for identifier 'notAMember' for Map<Object, Object> 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest).");
@@ -1366,11 +1369,12 @@ public class ValueAPITest {
                         "Invalid argument count when executing 'com.oracle.truffle.api.test.polyglot.ValueAPITest.InvocableType'" +
                                         "(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$InvocableType) " +
                                         "with arguments ['2'(language: Java, type: java.lang.Integer)]. Expected 2 argument(s) but got 1.");
-        assertFails(() -> value.invokeMember("f", "2", "3"), IllegalArgumentException.class,
+        assertFails(() -> value.invokeMember("f", "2", "128"), IllegalArgumentException.class,
                         "Invalid argument when executing 'com.oracle.truffle.api.test.polyglot.ValueAPITest.InvocableType'" +
                                         "(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$InvocableType) " +
-                                        "with arguments ['2'(language: Java, type: java.lang.String), '3'(language: Java, type: java.lang.String)].");
+                                        "with arguments ['2'(language: Java, type: java.lang.String), '128'(language: Java, type: java.lang.String)].");
         assertEquals("1", value.invokeMember("f", 2, 3).asString());
+        assertEquals("1", value.invokeMember("f", "2", "3").asString());
 
         Value primitiveValue = context.asValue(42);
         assertFails(() -> primitiveValue.invokeMember(""), UnsupportedOperationException.class,
