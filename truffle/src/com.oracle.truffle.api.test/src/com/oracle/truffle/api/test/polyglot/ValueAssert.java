@@ -175,11 +175,11 @@ public class ValueAssert {
                     assertFalse(hostObject instanceof Proxy);
                     if (hostObject != null && value.hasMembers() && !java.lang.reflect.Proxy.isProxyClass(hostObject.getClass())) {
                         if (hostObject instanceof Class) {
-                            boolean isInstanceClass = value.hasMember("isInterface");
-                            if (isInstanceClass) {
-                                assertClassMembers(value, Class.class, false);
-                            } else {
+                            boolean isStaticClass = value.hasMember("class");
+                            if (isStaticClass) {
                                 assertClassMembers(value, (Class<?>) hostObject, true);
+                            } else {
+                                assertClassMembers(value, Class.class, false);
                             }
                         } else {
                             assertClassMembers(value, hostObject.getClass(), false);
