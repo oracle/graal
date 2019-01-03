@@ -42,6 +42,7 @@ package com.oracle.truffle.api;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -56,10 +57,14 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.AccessMode;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.CopyOption;
+import java.nio.file.DirectoryIteratorException;
 import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileSystemException;
+import java.nio.file.FileVisitOption;
+import java.nio.file.FileVisitResult;
+import java.nio.file.FileVisitor;
 import java.nio.file.InvalidPathException;
 import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
@@ -67,34 +72,29 @@ import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileTime;
+import java.nio.file.attribute.GroupPrincipal;
 import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.UserPrincipal;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.EnumSet;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 
 import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import java.io.Closeable;
-import java.nio.file.DirectoryIteratorException;
-import java.nio.file.FileVisitOption;
-import java.nio.file.FileVisitResult;
-import java.nio.file.FileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.nio.file.attribute.GroupPrincipal;
-import java.nio.file.attribute.UserPrincipal;
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.Iterator;
-import java.util.NoSuchElementException;
 
 /**
  * An abstract representation of a file used by Truffle languages.
@@ -1660,7 +1660,10 @@ public final class TruffleFile {
 
         void pop() {
             if (!currentIterator.stack.isEmpty()) {
-                currentIterator.stack.removeLast();
+                try {
+                    currentIterator.stack.removeLast().close();
+                } catch (IOException ignored) {
+                }
             }
         }
 
