@@ -3031,6 +3031,7 @@ public class FlatNodeGenFactory {
     }
 
     private int boundaryIndex = 0;
+    private final Set<String> usedBoundaryNames = new HashSet<>();
 
     private CodeTreeBuilder extractInBoundaryMethod(CodeTreeBuilder builder, FrameState frameState, SpecializationData specialization) {
         CodeTreeBuilder innerBuilder;
@@ -3040,9 +3041,15 @@ public class FlatNodeGenFactory {
         if (specialization != null) {
             boundaryMethodName = specialization.getId() + "Boundary";
         } else {
-            boundaryMethodName = "specializationBoundary" + (boundaryIndex++);
+            boundaryMethodName = "specializationBoundary";
         }
         boundaryMethodName = firstLetterLowerCase(boundaryMethodName);
+
+        if (usedBoundaryNames.contains(boundaryMethodName)) {
+            boundaryMethodName = boundaryMethodName + (boundaryIndex++);
+        }
+        usedBoundaryNames.add(boundaryMethodName);
+
         CodeExecutableElement boundaryMethod = frameState.createMethod(modifiers(PRIVATE), parentMethod.getReturnType(), boundaryMethodName, STATE_VALUE,
                         createSpecializationLocalName(specialization));
         boundaryMethod.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(TruffleBoundary.class)));

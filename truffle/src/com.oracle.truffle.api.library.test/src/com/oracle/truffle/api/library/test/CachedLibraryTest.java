@@ -618,4 +618,20 @@ public class CachedLibraryTest extends AbstractLibraryTest {
         }
     }
 
+    /*
+     * Test that two abstract execute methods generate non-duplicate methods for @CachedLibrary.
+     */
+    @SuppressWarnings("unused")
+    abstract static class TestDuplicateBoundaryMethod extends Node {
+
+        abstract Object execute(Object value);
+
+        abstract Object executeWith(Object value);
+
+        @Specialization(limit = "5")
+        Object doSomething(Object value, @CachedLibrary("value") SomethingLibrary interop) {
+            return null;
+        }
+    }
+
 }
