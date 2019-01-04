@@ -176,24 +176,6 @@ public interface Platform {
     }
 
     /**
-     * Returns whether the current platform uses the LIR backend.
-     *
-     * @since 1.0
-     */
-    static boolean usesLIR() {
-        return ImageSingletons.lookup(Platform.class).isLIR();
-    }
-
-    /**
-     * Returns whether this platform uses the LIR backend.
-     *
-     * @since 1.0
-     */
-    default boolean isLIR() {
-        return true;
-    }
-
-    /**
      * The system property name that specifies the fully qualified name of the {@link Platform}
      * implementation class that should be used. If the property is not specified, the platform
      * class is inferred from the standard architectures and operating systems specified in this

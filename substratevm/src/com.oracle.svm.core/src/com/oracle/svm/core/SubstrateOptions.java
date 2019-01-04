@@ -245,6 +245,9 @@ public class SubstrateOptions {
     @Option(help = "Report error if <typename>[:<UsageKind>{,<UsageKind>}] is discovered during analysis (valid values for UsageKind: InHeap, Allocated, InTypeCheck).", type = OptionType.Debug)//
     public static final OptionKey<String[]> ReportAnalysisForbiddenType = new OptionKey<>(new String[0]);
 
+    @Option(help = "Backend used by the compiler", type = OptionType.User)//
+    public static final HostedOptionKey<String> CompilerBackend = new HostedOptionKey<>("lir");
+
     public static FoldedPredicate makeFilter(String[] definedFilters) {
         if (definedFilters != null) {
             List<String> wildCardList = OptionUtils.flatten(",", definedFilters);
