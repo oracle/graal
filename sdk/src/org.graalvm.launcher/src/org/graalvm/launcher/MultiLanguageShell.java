@@ -142,11 +142,6 @@ class MultiLanguageShell {
                 throw new ChangeLanguageException(null);
             }
         });
-        console.getKeys().bind(String.valueOf((char) 10), new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                throw new RuntimeIncompleteSourceException();
-            }
-        });
 
         // initializes the language
         context.initialize(currentLanguage.getId());
@@ -182,10 +177,12 @@ class MultiLanguageShell {
                 } else if (prompts.containsKey(trimmedInput)) {
                     switchedLanguage = prompts.get(input);
                     input = "";
+                } else if (bufferSource != null) {
+                    input = bufferSource.getCharacters() + "\n" + input;
                 }
 
                 NonBlockingInputStream nonBlockIn = ((NonBlockingInputStream) console.getInput());
-                while (nonBlockIn.isNonBlockingEnabled() && nonBlockIn.peek(10) != -2 && switchedLanguage == null) {
+                while (nonBlockIn.isNonBlockingEnabled() && nonBlockIn.peek(10) >= 0 && switchedLanguage == null) {
                     String line = console.readLine(createBufferPrompt(prompt));
                     String trimmedLine = line.trim();
                     if (prompts.containsKey(trimmedLine)) {
@@ -233,7 +230,6 @@ class MultiLanguageShell {
                 } else if (e.isCancelled()) {
                     console.println("Execution got cancelled.");
                 } else if (e.isIncompleteSource()) {
-                    console.println();
                     bufferSource = source;
                 } else if (e.isSyntaxError()) {
                     console.println(e.getMessage());
@@ -285,14 +281,6 @@ class MultiLanguageShell {
             console.println("Usage: ");
             console.println("  Use Ctrl+L to switch language and Ctrl+D to exit.");
             console.println("  Enter -usage to get a list of available commands.");
-        }
-    }
-
-    @SuppressWarnings("serial")
-    private static class RuntimeIncompleteSourceException extends RuntimeException {
-        @Override
-        public synchronized Throwable fillInStackTrace() {
-            return this;
         }
     }
 
