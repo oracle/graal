@@ -150,6 +150,14 @@ deploy_daily_vm_darwin: ${vm_darwin} {
   targets: [deploy, daily]
 }
 
+postmerge_vm_linux: ${vm_linux} {
+  targets: [post-merge]
+}
+
+postmerge_vm_darwin: ${vm_darwin} {
+  targets: [post-merge]
+}
+
 daily_vm_linux: ${vm_linux} {
   targets: [daily]
 }
