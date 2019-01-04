@@ -81,6 +81,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.ValueAssert.Trait;
 
+import sun.reflect.CallerSensitive;
+
 /**
  * Tests class for {@link Context#asValue(Object)}.
  */
@@ -1022,7 +1024,7 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
     public static class TestExceptionFrames2 {
 
         public void foo() {
-            throw new RuntimeException("foo");
+            throw new RuntimeException("message");
         }
 
     }
@@ -1036,7 +1038,7 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
         } catch (PolyglotException e) {
             assertTrue(e.isHostException());
             assertTrue(e.asHostException() instanceof RuntimeException);
-            assertEquals("foo", e.getMessage());
+            assertEquals("message", e.getMessage());
             Iterator<StackFrame> frameIterator = e.getPolyglotStackTrace().iterator();
             StackFrame frame;
             frame = frameIterator.next();
@@ -1068,7 +1070,7 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
         } catch (PolyglotException e) {
             assertTrue(e.isHostException());
             assertTrue(e.asHostException() instanceof RuntimeException);
-            assertEquals("foo", e.getMessage());
+            assertEquals("message", e.getMessage());
             Iterator<StackFrame> frameIterator = e.getPolyglotStackTrace().iterator();
             StackFrame frame;
             frame = frameIterator.next();
@@ -1084,6 +1086,40 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
             assertTrue(frame.isHostFrame());
             assertEquals("testExceptionFrames3", frame.toHostFrame().getMethodName());
         }
+    }
+
+    public static class TestExceptionFramesCallerSensitive {
+
+        @CallerSensitive
+        public void foo() {
+            throw new RuntimeException("message");
+        }
+
+    }
+
+    @Test
+    public void testExceptionFramesCallerSensitive() {
+        Value value = context.asValue(new TestExceptionFramesCallerSensitive());
+        try {
+            value.getMember("foo").execute();
+            Assert.fail();
+        } catch (PolyglotException e) {
+            assertTrue(e.isHostException());
+            assertTrue(e.asHostException() instanceof RuntimeException);
+            assertEquals("message", e.getMessage());
+            Iterator<StackFrame> frameIterator = e.getPolyglotStackTrace().iterator();
+            StackFrame frame;
+            frame = frameIterator.next();
+            assertTrue(frame.isHostFrame());
+            assertEquals("foo", frame.toHostFrame().getMethodName());
+            frame = frameIterator.next();
+            assertTrue(frame.isHostFrame());
+            assertEquals("execute", frame.toHostFrame().getMethodName());
+            frame = frameIterator.next();
+            assertTrue(frame.isHostFrame());
+            assertEquals("testExceptionFramesCallerSensitive", frame.toHostFrame().getMethodName());
+        }
+
     }
 
     public static class TestIllegalArgumentInt {

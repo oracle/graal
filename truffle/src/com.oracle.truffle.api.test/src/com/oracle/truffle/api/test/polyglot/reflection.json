@@ -124,6 +124,10 @@
     "allDeclaredConstructors": true, "allPublicConstructors": true, "allDeclaredMethods": true, "allPublicMethods": true, "allDeclaredFields": true, "allPublicFields": true
   },
   {
+    "name": "com.oracle.truffle.api.test.polyglot.ValueHostConversionTest$TestExceptionFramesCallerSensitive",
+    "allDeclaredConstructors": true, "allPublicConstructors": true, "allDeclaredMethods": true, "allPublicMethods": true, "allDeclaredFields": true, "allPublicFields": true
+  },
+  {
     "name": "com.oracle.truffle.api.test.polyglot.ValueHostConversionTest$PrimitiveHierarchy",
     "allDeclaredConstructors": true, "allPublicConstructors": true, "allDeclaredMethods": true, "allPublicMethods": true, "allDeclaredFields": true, "allPublicFields": true
   },
