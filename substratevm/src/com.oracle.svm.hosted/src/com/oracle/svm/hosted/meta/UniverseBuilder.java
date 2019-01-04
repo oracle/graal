@@ -44,6 +44,7 @@ import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
@@ -63,6 +64,7 @@ import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.ExcludeFromReferenceMap;
+import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
@@ -607,10 +609,13 @@ public class UniverseBuilder {
             /* Monitor fields on arrays would increase the array header too much. */
             return false;
         }
-        if (aType.equals(aMetaAccess.lookupJavaType(String.class)) || aType.equals(aMetaAccess.lookupJavaType(DynamicHub.class))) {
+        if (aType.equals(aMetaAccess.lookupJavaType(String.class)) || aType.equals(aMetaAccess.lookupJavaType(DynamicHub.class)) ||
+                        aMetaAccess.optionalLookupJavaType(CEntryPointLiteral.class).filter(aType::equals).isPresent() ||
+                        aMetaAccess.optionalLookupJavaType(BoxedRelocatedPointer.class).filter(aType::equals).isPresent()) {
             /*
-             * We want String and DynamicHub instances to be immutable so that they can be in the
-             * read-only part of the image heap.
+             * We want these types to be immutable so that they can be in the read-only part of the
+             * image heap. Moreover, all of them except for String *must* be read-only because they
+             * contain relocatable pointers.
              */
             return false;
         }

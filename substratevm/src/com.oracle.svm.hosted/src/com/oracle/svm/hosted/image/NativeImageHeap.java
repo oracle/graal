@@ -364,9 +364,9 @@ public final class NativeImageHeap {
             final HostedInstanceClass clazz = (HostedInstanceClass) type;
             // If the type has a monitor field, it has a reference field that is written.
             if (clazz.getMonitorFieldOffset() != 0) {
-                immutable = false;
                 written = true;
                 references = true;
+                // also not immutable: users of registerAsImmutable() must take precautions
             }
 
             final JavaConstant con = SubstrateObjectConstant.forObject(object);
@@ -453,7 +453,7 @@ public final class NativeImageHeap {
             throw shouldNotReachHere();
         }
 
-        final HeapPartition partition = choosePartition(!written || immutable, references, relocatable);
+        final HeapPartition partition = choosePartition(object, !written || immutable, references, relocatable);
         info.assignToHeapPartition(partition, layout);
     }
 
@@ -481,7 +481,7 @@ public final class NativeImageHeap {
         return info;
     }
 
-    private HeapPartition choosePartition(boolean immutable, boolean references, boolean relocatable) {
+    private HeapPartition choosePartition(Object object, boolean immutable, boolean references, boolean relocatable) {
         if (SubstrateOptions.UseOnlyWritableBootImageHeap.getValue()) {
             assert !spawnIsolates();
             // Emergency use only! Alarms will sound!
@@ -494,7 +494,9 @@ public final class NativeImageHeap {
             }
             return references ? readOnlyReference : readOnlyPrimitive;
         } else {
-            VMError.guarantee(!relocatable, "Objects with relocatable pointers must be immutable");
+            if (relocatable) {
+                VMError.shouldNotReachHere("Object with relocatable pointers must be immutable: " + object);
+            }
             return references ? writableReference : writablePrimitive;
         }
     }
