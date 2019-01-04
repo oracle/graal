@@ -24,9 +24,10 @@
  */
 package com.oracle.svm.hosted.code;
 
+import static com.oracle.svm.core.SubstrateOptions.CompilerBackend;
+
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.hosted.image.LIRNativeImageCodeCache;
@@ -38,7 +39,7 @@ import com.oracle.svm.hosted.image.NativeImageHeap;
 class SubstrateLIRBackendFeature implements Feature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return Platform.usesLIR();
+        return CompilerBackend.getValue().equals("lir");
     }
 
     @Override
