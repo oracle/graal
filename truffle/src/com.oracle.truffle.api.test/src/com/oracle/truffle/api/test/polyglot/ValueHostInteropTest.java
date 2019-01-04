@@ -261,7 +261,6 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
 
     @Test
     public void accessAllProperties() {
-        Assume.assumeFalse("SVM does not track class visibility", TruffleOptions.AOT);
         Value pojo = context.asValue(new PrivatePOJO());
         Map<?, ?> map = pojo.as(Map.class);
         int cnt = 0;
@@ -278,7 +277,6 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
 
     @Test
     public void accessAllPropertiesDirectly() {
-        Assume.assumeFalse("SVM does not track class visibility", TruffleOptions.AOT);
         Value pojo = context.asValue(new PrivatePOJO());
         assertEquals("No props, class isn't public", 0, pojo.getMemberKeys().size());
     }
