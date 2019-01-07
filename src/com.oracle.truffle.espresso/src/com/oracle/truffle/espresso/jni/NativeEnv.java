@@ -22,15 +22,6 @@
  */
 package com.oracle.truffle.espresso.jni;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.JavaKind;
-import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.nfi.types.NativeSimpleType;
-
 import java.io.File;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -40,6 +31,15 @@ import java.nio.ByteOrder;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.nfi.types.NativeSimpleType;
 
 public class NativeEnv {
 
@@ -78,17 +78,25 @@ public class NativeEnv {
 
     private final static Constructor<? extends ByteBuffer> constructor;
     private final static Field addressField;
+
+    @SuppressWarnings("unchecked")
+    private static Class<? extends ByteBuffer> getByteBufferClass(String className) {
+        try {
+            return (Class<? extends ByteBuffer>) Class.forName(className);
+        } catch (ClassNotFoundException e) {
+            throw EspressoError.shouldNotReachHere(e);
+        }
+    }
+
     static {
         try {
-            @SuppressWarnings("unchecked")
-            Class<? extends ByteBuffer> clazz = (Class<? extends ByteBuffer>) Class.forName("java.nio.DirectByteBuffer");
-            @SuppressWarnings("unchecked")
-            Class<? extends ByteBuffer> bufferClazz = (Class<? extends ByteBuffer>) Class.forName("java.nio.Buffer");
+            Class<? extends ByteBuffer> clazz = getByteBufferClass("java.nio.DirectByteBuffer");
+            Class<? extends ByteBuffer> bufferClazz = getByteBufferClass("java.nio.Buffer");
             constructor = clazz.getDeclaredConstructor(long.class, int.class);
             addressField = bufferClazz.getDeclaredField("address");
             addressField.setAccessible(true);
             constructor.setAccessible(true);
-        } catch (ClassNotFoundException | NoSuchMethodException | NoSuchFieldException e) {
+        } catch (NoSuchMethodException | NoSuchFieldException e) {
             throw EspressoError.shouldNotReachHere(e);
         }
     }

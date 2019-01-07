@@ -53,6 +53,7 @@
   },
 
   builds: [
+    jdk8 + gate + linux + espresso_gate + {environment+: {GATE_TAGS: 'jackpot'}}         + {name: 'espresso-jackpot-linux-amd64'},
     jdk8 + gate + linux + espresso_gate + {environment+: {GATE_TAGS: 'style,fullbuild'}} + {name: 'espresso-style-fullbuild-linux-amd64'},
     jdk8 + gate + linux + espresso_gate + {environment+: {GATE_TAGS: 'build,unittest'}}  + {name: 'espresso-unittest-linux-amd64'},
     jdk8 + gate + linux + espresso_svm                                                   + {name: 'espresso-svm-linux-amd64'},

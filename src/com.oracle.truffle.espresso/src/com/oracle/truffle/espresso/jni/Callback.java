@@ -64,20 +64,23 @@ public class Callback implements TruffleObject {
 
     private static Callback wrap(Object receiver, Method m) {
         assert m != null;
-        return new Callback(m.getParameterCount(), args -> {
-            try {
-                return m.invoke(receiver, args);
-            } catch (IllegalAccessException e) {
-                throw EspressoError.shouldNotReachHere(e);
-            } catch (InvocationTargetException e) {
-                Throwable targetEx = e.getTargetException();
-                if (targetEx instanceof EspressoException) {
-                    throw (EspressoException) targetEx;
+        return new Callback(m.getParameterCount(), new Function() {
+            @Override
+            public Object call(Object... args) {
+                try {
+                    return m.invoke(receiver, args);
+                } catch (IllegalAccessException e) {
+                    throw EspressoError.shouldNotReachHere(e);
+                } catch (InvocationTargetException e) {
+                    Throwable targetEx = e.getTargetException();
+                    if (targetEx instanceof EspressoException) {
+                        throw (EspressoException) targetEx;
+                    }
+                    if (targetEx instanceof RuntimeException) {
+                        throw (RuntimeException) targetEx;
+                    }
+                    throw EspressoError.shouldNotReachHere(e);
                 }
-                if (targetEx instanceof RuntimeException) {
-                    throw (RuntimeException) targetEx;
-                }
-                throw EspressoError.shouldNotReachHere(e);
             }
         });
     }

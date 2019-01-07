@@ -35,6 +35,7 @@ import com.oracle.truffle.espresso.types.SignatureDescriptor;
 import com.oracle.truffle.espresso.types.TypeDescriptor;
 
 import java.util.Arrays;
+import java.util.function.Predicate;
 
 public abstract class Klass implements ModifiersProvider {
 
@@ -310,7 +311,12 @@ public abstract class Klass implements ModifiersProvider {
      * Returns the {@code <clinit>} method for this class if there is one.
      */
     public MethodInfo getClassInitializer() {
-        return Arrays.stream(getDeclaredMethods()).filter(m -> "<clinit>".equals(m.getName())).findAny().orElse(null);
+        return Arrays.stream(getDeclaredMethods()).filter(new Predicate<MethodInfo>() {
+            @Override
+            public boolean test(MethodInfo m) {
+                return "<clinit>".equals(m.getName());
+            }
+        }).findAny().orElse(null);
     }
 
     public MethodInfo findDeclaredConcreteMethod(String methodName, SignatureDescriptor signature) {

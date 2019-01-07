@@ -29,6 +29,7 @@ import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.function.IntFunction;
 
 @EspressoIntrinsics
 public class Target_java_lang_Runtime {
@@ -37,7 +38,12 @@ public class Target_java_lang_Runtime {
     public static @Type(Process.class) Object exec(@SuppressWarnings("unused") StaticObject self, @Type(String[].class) StaticObject cmdarray) {
         StaticObject[] wrapped = ((StaticObjectArray) cmdarray).unwrap();
         String[] hostArgs = new String[wrapped.length];
-        Arrays.setAll(hostArgs, i -> Meta.toHostString(wrapped[i]));
+        Arrays.setAll(hostArgs, new IntFunction<String>() {
+            @Override
+            public String apply(int i) {
+                return Meta.toHostString(wrapped[i]);
+            }
+        });
         try {
             Runtime.getRuntime().exec(hostArgs);
         } catch (IOException e) {

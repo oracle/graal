@@ -40,6 +40,7 @@ import com.oracle.truffle.object.DebugCounter;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Predicate;
 
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_ABSTRACT;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_INTERFACE;
@@ -225,9 +226,24 @@ public class ClassfileParser {
 
         this.attributes = parseAttributes();
 
-        Optional<AttributeInfo> optEnclosingMethod = Arrays.stream(attributes).filter(a -> a.getName().equals("EnclosingMethod")).findAny();
-        Optional<AttributeInfo> optInnerClasses = Arrays.stream(attributes).filter(a -> a.getName().equals("InnerClasses")).findAny();
-        Optional<AttributeInfo> optVisibleAnnotations = Arrays.stream(attributes).filter(a -> a.getName().equals("RuntimeVisibleAnnotations")).findAny();
+        Optional<AttributeInfo> optEnclosingMethod = Arrays.stream(attributes).filter(new Predicate<AttributeInfo>() {
+            @Override
+            public boolean test(AttributeInfo a) {
+                return a.getName().equals("EnclosingMethod");
+            }
+        }).findAny();
+        Optional<AttributeInfo> optInnerClasses = Arrays.stream(attributes).filter(new Predicate<AttributeInfo>() {
+            @Override
+            public boolean test(AttributeInfo a) {
+                return a.getName().equals("InnerClasses");
+            }
+        }).findAny();
+        Optional<AttributeInfo> optVisibleAnnotations = Arrays.stream(attributes).filter(new Predicate<AttributeInfo>() {
+            @Override
+            public boolean test(AttributeInfo a) {
+                return a.getName().equals("RuntimeVisibleAnnotations");
+            }
+        }).findAny();
 
         parsedClasses.inc();
 
@@ -259,8 +275,18 @@ public class ClassfileParser {
 
         MethodInfo.Builder builder = new MethodInfo.Builder().setName(name).setSignature(context.getSignatureDescriptors().make(value)).setModifiers(flags);
 
-        Optional<AttributeInfo> optCode = Arrays.stream(methodAttributes).filter(a -> a.getName().equals("Code")).findAny();
-        Optional<AttributeInfo> optExceptions = Arrays.stream(methodAttributes).filter(a -> a.getName().equals("Exceptions")).findAny();
+        Optional<AttributeInfo> optCode = Arrays.stream(methodAttributes).filter(new Predicate<AttributeInfo>() {
+            @Override
+            public boolean test(AttributeInfo a) {
+                return a.getName().equals("Code");
+            }
+        }).findAny();
+        Optional<AttributeInfo> optExceptions = Arrays.stream(methodAttributes).filter(new Predicate<AttributeInfo>() {
+            @Override
+            public boolean test(AttributeInfo a) {
+                return a.getName().equals("Exceptions");
+            }
+        }).findAny();
 
         if (optCode.isPresent()) {
             CodeAttribute code = (CodeAttribute) optCode.get();
@@ -393,7 +419,12 @@ public class ClassfileParser {
         String name = pool.utf8At(nameIndex).getValue();
         TypeDescriptor type = context.getTypeDescriptors().make(pool.utf8At(descriptorIndex).getValue());
         AttributeInfo[] fieldAttributes = parseAttributes();
-        Optional<AttributeInfo> optVisibleAnnotations = Arrays.stream(fieldAttributes).filter(a -> a.getName().equals("RuntimeVisibleAnnotations")).findAny();
+        Optional<AttributeInfo> optVisibleAnnotations = Arrays.stream(fieldAttributes).filter(new Predicate<AttributeInfo>() {
+            @Override
+            public boolean test(AttributeInfo a) {
+                return a.getName().equals("RuntimeVisibleAnnotations");
+            }
+        }).findAny();
         return new FieldInfo.Builder().setName(name).setType(type).setModifiers(flags).setRuntimeVisibleAnnotations(optVisibleAnnotations.orElse(null));
     }
 
