@@ -51,6 +51,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.security.ProtectionDomain;
 import java.util.Arrays;
+import java.util.function.IntFunction;
+import java.util.function.Predicate;
 
 import static com.oracle.truffle.espresso.meta.Meta.meta;
 
@@ -120,25 +122,38 @@ public class Target_java_lang_Class {
 
     @Intrinsic(hasReceiver = true)
     public static @Type(Field[].class) StaticObject getDeclaredFields0(@Type(Class.class) StaticObjectClass self, boolean publicOnly) {
-        final FieldInfo[] fields = Arrays.stream(self.getMirror().getDeclaredFields()).filter(f -> (!publicOnly || f.isPublic())).toArray(FieldInfo[]::new);
+        final FieldInfo[] fields = Arrays.stream(self.getMirror().getDeclaredFields()).filter(new Predicate<FieldInfo>() {
+            @Override
+            public boolean test(FieldInfo f) {
+                return (!publicOnly || f.isPublic());
+            }
+        }).toArray(new IntFunction<FieldInfo[]>() {
+            @Override
+            public FieldInfo[] apply(int value) {
+                return new FieldInfo[value];
+            }
+        });
 
         EspressoContext context = EspressoLanguage.getCurrentContext();
         Meta meta = context.getMeta();
 
         Meta.Klass fieldKlass = meta.knownKlass(java.lang.reflect.Field.class);
 
-        StaticObject arr = (StaticObject) fieldKlass.allocateArray(fields.length, i -> {
-            Meta.Field f = meta(fields[i]);
-            StaticObjectImpl instance = (StaticObjectImpl) fieldKlass.metaNew().fields(
-                            Meta.Field.set("modifiers", f.getModifiers()),
-                            Meta.Field.set("type", f.getType().rawKlass().mirror()),
-                            Meta.Field.set("name", context.getStrings().intern(f.getName())),
-                            Meta.Field.set("clazz", f.getDeclaringClass().rawKlass().mirror()),
-                            Meta.Field.set("slot", f.getSlot())).getInstance();
+        StaticObject arr = (StaticObject) fieldKlass.allocateArray(fields.length, new IntFunction<StaticObject>() {
+            @Override
+            public StaticObject apply(int i) {
+                Meta.Field f = meta(fields[i]);
+                StaticObjectImpl instance = (StaticObjectImpl) fieldKlass.metaNew().fields(
+                                Meta.Field.set("modifiers", f.getModifiers()),
+                                Meta.Field.set("type", f.getType().rawKlass().mirror()),
+                                Meta.Field.set("name", context.getStrings().intern(f.getName())),
+                                Meta.Field.set("clazz", f.getDeclaringClass().rawKlass().mirror()),
+                                Meta.Field.set("slot", f.getSlot())).getInstance();
 
-            instance.setHiddenField(HIDDEN_FIELD_KEY, f.rawField());
+                instance.setHiddenField(HIDDEN_FIELD_KEY, f.rawField());
 
-            return instance;
+                return instance;
+            }
         });
 
         return arr;
@@ -146,32 +161,55 @@ public class Target_java_lang_Class {
 
     @Intrinsic(hasReceiver = true)
     public static @Type(Constructor[].class) StaticObject getDeclaredConstructors0(@Type(Class.class) StaticObjectClass self, boolean publicOnly) {
-        final MethodInfo[] constructors = Arrays.stream(self.getMirror().getDeclaredConstructors()).filter(m -> m.getName().equals("<init>") && (!publicOnly || m.isPublic())).toArray(
-                        MethodInfo[]::new);
+        final MethodInfo[] constructors = Arrays.stream(self.getMirror().getDeclaredConstructors()).filter(new Predicate<MethodInfo>() {
+            @Override
+            public boolean test(MethodInfo m) {
+                return m.getName().equals("<init>") && (!publicOnly || m.isPublic());
+            }
+        }).toArray(
+                        new IntFunction<MethodInfo[]>() {
+                            @Override
+                            public MethodInfo[] apply(int value) {
+                                return new MethodInfo[value];
+                            }
+                        });
 
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
         Meta.Klass constructorKlass = meta.knownKlass(Constructor.class);
 
-        StaticObject arr = (StaticObject) constructorKlass.allocateArray(constructors.length, i -> {
-            Meta.Method m = meta(constructors[i]);
+        StaticObject arr = (StaticObject) constructorKlass.allocateArray(constructors.length, new IntFunction<StaticObject>() {
+            @Override
+            public StaticObject apply(int i) {
+                Meta.Method m = meta(constructors[i]);
 
-            StaticObject parameterTypes = (StaticObject) meta.CLASS.allocateArray(
-                            m.getParameterCount(),
-                            j -> m.getParameterTypes()[j].rawKlass().mirror());
+                StaticObject parameterTypes = (StaticObject) meta.CLASS.allocateArray(
+                                m.getParameterCount(),
+                                new IntFunction<StaticObject>() {
+                                    @Override
+                                    public StaticObject apply(int j) {
+                                        return m.getParameterTypes()[j].rawKlass().mirror();
+                                    }
+                                });
 
-            final Klass[] rawCheckedExceptions = m.rawMethod().getCheckedExceptions();
-            StaticObjectArray checkedExceptions = (StaticObjectArray) meta.CLASS.allocateArray(rawCheckedExceptions.length, j -> rawCheckedExceptions[j].mirror());
+                final Klass[] rawCheckedExceptions = m.rawMethod().getCheckedExceptions();
+                StaticObjectArray checkedExceptions = (StaticObjectArray) meta.CLASS.allocateArray(rawCheckedExceptions.length, new IntFunction<StaticObject>() {
+                    @Override
+                    public StaticObject apply(int j) {
+                        return rawCheckedExceptions[j].mirror();
+                    }
+                });
 
-            StaticObjectImpl constructor = (StaticObjectImpl) constructorKlass.metaNew().fields(
-                            Meta.Field.set("modifiers", m.getModifiers()),
-                            Meta.Field.set("clazz", m.getDeclaringClass().rawKlass().mirror()),
-                            Meta.Field.set("slot", i),
-                            Meta.Field.set("exceptionTypes", checkedExceptions),
-                            Meta.Field.set("parameterTypes", parameterTypes)).getInstance();
+                StaticObjectImpl constructor = (StaticObjectImpl) constructorKlass.metaNew().fields(
+                                Meta.Field.set("modifiers", m.getModifiers()),
+                                Meta.Field.set("clazz", m.getDeclaringClass().rawKlass().mirror()),
+                                Meta.Field.set("slot", i),
+                                Meta.Field.set("exceptionTypes", checkedExceptions),
+                                Meta.Field.set("parameterTypes", parameterTypes)).getInstance();
 
-            constructor.setHiddenField(HIDDEN_METHOD_KEY, m.rawMethod());
+                constructor.setHiddenField(HIDDEN_METHOD_KEY, m.rawMethod());
 
-            return constructor;
+                return constructor;
+            }
         });
 
         return arr;
@@ -179,34 +217,57 @@ public class Target_java_lang_Class {
 
     @Intrinsic(hasReceiver = true)
     public static @Type(Method[].class) StaticObject getDeclaredMethods0(StaticObjectClass self, boolean publicOnly) {
-        final MethodInfo[] methods = Arrays.stream(self.getMirror().getDeclaredMethods()).filter(m -> !publicOnly || m.isPublic()).toArray(
-                        MethodInfo[]::new);
+        final MethodInfo[] methods = Arrays.stream(self.getMirror().getDeclaredMethods()).filter(new Predicate<MethodInfo>() {
+            @Override
+            public boolean test(MethodInfo m) {
+                return !publicOnly || m.isPublic();
+            }
+        }).toArray(
+                        new IntFunction<MethodInfo[]>() {
+                            @Override
+                            public MethodInfo[] apply(int value) {
+                                return new MethodInfo[value];
+                            }
+                        });
 
         EspressoContext context = EspressoLanguage.getCurrentContext();
         Meta meta = context.getMeta();
         Meta.Klass methodKlass = meta.knownKlass(Method.class);
 
-        StaticObject arr = (StaticObject) methodKlass.allocateArray(methods.length, i -> {
-            Meta.Method m = meta(methods[i]);
+        StaticObject arr = (StaticObject) methodKlass.allocateArray(methods.length, new IntFunction<StaticObject>() {
+            @Override
+            public StaticObject apply(int i) {
+                Meta.Method m = meta(methods[i]);
 
-            StaticObject parameterTypes = (StaticObject) meta.CLASS.allocateArray(
-                            m.getParameterCount(),
-                            j -> m.getParameterTypes()[j].rawKlass().mirror());
+                StaticObject parameterTypes = (StaticObject) meta.CLASS.allocateArray(
+                                m.getParameterCount(),
+                                new IntFunction<StaticObject>() {
+                                    @Override
+                                    public StaticObject apply(int j) {
+                                        return m.getParameterTypes()[j].rawKlass().mirror();
+                                    }
+                                });
 
-            final Klass[] rawCheckedExceptions = m.rawMethod().getCheckedExceptions();
-            StaticObjectArray checkedExceptions = (StaticObjectArray) meta.CLASS.allocateArray(rawCheckedExceptions.length, j -> rawCheckedExceptions[j].mirror());
+                final Klass[] rawCheckedExceptions = m.rawMethod().getCheckedExceptions();
+                StaticObjectArray checkedExceptions = (StaticObjectArray) meta.CLASS.allocateArray(rawCheckedExceptions.length, new IntFunction<StaticObject>() {
+                    @Override
+                    public StaticObject apply(int j) {
+                        return rawCheckedExceptions[j].mirror();
+                    }
+                });
 
-            StaticObjectImpl method = (StaticObjectImpl) methodKlass.metaNew().fields(
-                            Meta.Field.set("modifiers", m.getModifiers()),
-                            Meta.Field.set("clazz", m.getDeclaringClass().rawKlass().mirror()),
-                            Meta.Field.set("slot", i),
-                            Meta.Field.set("name", context.getInterpreterToVM().intern(meta.toGuest(m.getName()))),
-                            Meta.Field.set("returnType", m.getReturnType().rawKlass().mirror()),
-                            Meta.Field.set("exceptionTypes", checkedExceptions),
-                            Meta.Field.set("parameterTypes", parameterTypes)).getInstance();
+                StaticObjectImpl method = (StaticObjectImpl) methodKlass.metaNew().fields(
+                                Meta.Field.set("modifiers", m.getModifiers()),
+                                Meta.Field.set("clazz", m.getDeclaringClass().rawKlass().mirror()),
+                                Meta.Field.set("slot", i),
+                                Meta.Field.set("name", context.getInterpreterToVM().intern(meta.toGuest(m.getName()))),
+                                Meta.Field.set("returnType", m.getReturnType().rawKlass().mirror()),
+                                Meta.Field.set("exceptionTypes", checkedExceptions),
+                                Meta.Field.set("parameterTypes", parameterTypes)).getInstance();
 
-            method.setHiddenField(HIDDEN_METHOD_KEY, m.rawMethod());
-            return method;
+                method.setHiddenField(HIDDEN_METHOD_KEY, m.rawMethod());
+                return method;
+            }
         });
 
         return arr;
@@ -215,10 +276,20 @@ public class Target_java_lang_Class {
     @Intrinsic(hasReceiver = true)
     public static @Type(Class[].class) StaticObject getInterfaces0(StaticObjectClass self) {
         final Klass[] interfaces = Arrays.stream(self.getMirror().getInterfaces()).toArray(
-                        Klass[]::new);
+                        new IntFunction<Klass[]>() {
+                            @Override
+                            public Klass[] apply(int value) {
+                                return new Klass[value];
+                            }
+                        });
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
         Meta.Klass classKlass = meta.knownKlass(Class.class);
-        StaticObject arr = (StaticObject) classKlass.allocateArray(interfaces.length, i -> interfaces[i].mirror());
+        StaticObject arr = (StaticObject) classKlass.allocateArray(interfaces.length, new IntFunction<StaticObject>() {
+            @Override
+            public StaticObject apply(int i) {
+                return interfaces[i].mirror();
+            }
+        });
         return arr;
     }
 

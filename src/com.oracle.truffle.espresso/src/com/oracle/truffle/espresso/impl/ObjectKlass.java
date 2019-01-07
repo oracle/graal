@@ -23,22 +23,25 @@
 
 package com.oracle.truffle.espresso.impl;
 
+import static com.oracle.truffle.espresso.meta.Meta.meta;
+
+import java.util.Arrays;
+import java.util.function.Consumer;
+import java.util.function.IntFunction;
+import java.util.function.Predicate;
+import java.util.stream.Stream;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
-import com.oracle.truffle.espresso.meta.ModifiersProvider;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.AttributeInfo;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
-
-import java.util.Arrays;
-import java.util.stream.Stream;
-
-import static com.oracle.truffle.espresso.meta.Meta.meta;
 
 /**
  * Represents resolved non-primitive, non-array types in Espresso.
@@ -180,7 +183,12 @@ public final class ObjectKlass extends Klass {
                 getSuperclass().initialize();
             }
             initState = INITIALIZED;
-            meta(this).getClassInitializer().ifPresent(clinit -> clinit.invokeDirect());
+            meta(this).getClassInitializer().ifPresent(new Consumer<Meta.Method.WithInstance>() {
+                @Override
+                public void accept(Meta.Method.WithInstance clinit) {
+                    clinit.invokeDirect();
+                }
+            });
             assert isInitialized();
         }
     }
@@ -245,17 +253,37 @@ public final class ObjectKlass extends Klass {
         if (!includeSuperclasses) {
             if (declaredInstanceFieldsCache == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                declaredInstanceFieldsCache = Arrays.stream(declaredFields).filter(f -> !f.isStatic()).toArray(FieldInfo[]::new);
+                declaredInstanceFieldsCache = Arrays.stream(declaredFields).filter(new Predicate<FieldInfo>() {
+                    @Override
+                    public boolean test(FieldInfo f) {
+                        return !f.isStatic();
+                    }
+                }).toArray(new IntFunction<FieldInfo[]>() {
+                    @Override
+                    public FieldInfo[] apply(int value) {
+                        return new FieldInfo[value];
+                    }
+                });
             }
             return declaredInstanceFieldsCache;
         }
         if (instanceFieldsCache == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            Stream<FieldInfo> fields = Arrays.stream(declaredFields).filter(f -> !f.isStatic());
+            Stream<FieldInfo> fields = Arrays.stream(declaredFields).filter(new Predicate<FieldInfo>() {
+                @Override
+                public boolean test(FieldInfo f) {
+                    return !f.isStatic();
+                }
+            });
             if (includeSuperclasses && getSuperclass() != null) {
                 fields = Stream.concat(Arrays.stream(getSuperclass().getInstanceFields(includeSuperclasses)), fields);
             }
-            instanceFieldsCache = fields.toArray(FieldInfo[]::new);
+            instanceFieldsCache = fields.toArray(new IntFunction<FieldInfo[]>() {
+                @Override
+                public FieldInfo[] apply(int value) {
+                    return new FieldInfo[value];
+                }
+            });
         }
         return instanceFieldsCache;
     }
@@ -265,7 +293,17 @@ public final class ObjectKlass extends Klass {
         // TODO(peterssen): Cache static fields.
         if (staticFieldsCache == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            staticFieldsCache = Arrays.stream(declaredFields).filter(ModifiersProvider::isStatic).toArray(FieldInfo[]::new);
+            staticFieldsCache = Arrays.stream(declaredFields).filter(new Predicate<FieldInfo>() {
+                @Override
+                public boolean test(FieldInfo fieldInfo) {
+                    return fieldInfo.isStatic();
+                }
+            }).toArray(new IntFunction<FieldInfo[]>() {
+                @Override
+                public FieldInfo[] apply(int value) {
+                    return new FieldInfo[value];
+                }
+            });
         }
         return staticFieldsCache;
     }
@@ -292,7 +330,17 @@ public final class ObjectKlass extends Klass {
 
     @Override
     public MethodInfo[] getDeclaredConstructors() {
-        return Arrays.stream(declaredMethods).filter(m -> "<init>".equals(m.getName())).toArray(MethodInfo[]::new);
+        return Arrays.stream(declaredMethods).filter(new Predicate<MethodInfo>() {
+            @Override
+            public boolean test(MethodInfo m) {
+                return "<init>".equals(m.getName());
+            }
+        }).toArray(new IntFunction<MethodInfo[]>() {
+            @Override
+            public MethodInfo[] apply(int value) {
+                return new MethodInfo[value];
+            }
+        });
     }
 
     @Override

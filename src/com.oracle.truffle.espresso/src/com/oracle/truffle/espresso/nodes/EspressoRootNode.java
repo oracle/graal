@@ -1603,9 +1603,14 @@ public class EspressoRootNode extends RootNode implements LinkedNode {
             field.getDeclaringClass().initialize();
         }
 
-        Supplier<StaticObject> receiver = () -> isStatic
-                        ? (field.getDeclaringClass()).getStatics() /* static storage */
-                        : nullCheck(stack.popObject());
+        Supplier<StaticObject> receiver = new Supplier<StaticObject>() {
+            @Override
+            public StaticObject get() {
+                return isStatic
+                                ? (field.getDeclaringClass()).getStatics() /* static storage */
+                                : EspressoRootNode.this.nullCheck(stack.popObject());
+            }
+        };
 
         switch (field.getKind()) {
             case Boolean:

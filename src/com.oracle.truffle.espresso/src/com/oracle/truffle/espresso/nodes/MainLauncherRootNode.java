@@ -30,6 +30,8 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
+import java.util.function.IntFunction;
+
 public class MainLauncherRootNode extends RootNode {
 
     private final MethodInfo main;
@@ -49,6 +51,11 @@ public class MainLauncherRootNode extends RootNode {
 
     private static StaticObject toGuestArguments(EspressoContext context, String... args) {
         Meta meta = context.getMeta();
-        return (StaticObject) meta.STRING.allocateArray(args.length, i -> meta.toGuest(args[i]));
+        return (StaticObject) meta.STRING.allocateArray(args.length, new IntFunction<StaticObject>() {
+            @Override
+            public StaticObject apply(int i) {
+                return meta.toGuest(args[i]);
+            }
+        });
     }
 }

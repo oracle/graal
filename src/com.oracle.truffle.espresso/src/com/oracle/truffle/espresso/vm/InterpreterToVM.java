@@ -69,6 +69,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.IntFunction;
+import java.util.function.IntPredicate;
 
 import static com.oracle.truffle.espresso.meta.Meta.meta;
 
@@ -571,7 +573,12 @@ public class InterpreterToVM {
     public StaticObject newMultiArray(Klass klass, int[] dimensions) {
         assert dimensions.length > 1;
 
-        if (Arrays.stream(dimensions).anyMatch(i -> i < 0)) {
+        if (Arrays.stream(dimensions).anyMatch(new IntPredicate() {
+            @Override
+            public boolean test(int i) {
+                return i < 0;
+            }
+        })) {
             throw meta(klass).getMeta().throwEx(NegativeArraySizeException.class);
         }
 
@@ -581,12 +588,27 @@ public class InterpreterToVM {
             assert dimensions[0] >= 0;
             if (componentType.getComponentType().isPrimitive()) {
                 return (StaticObject) meta(componentType).allocateArray(dimensions[0],
-                                i -> allocatePrimitiveArray((byte) componentType.getComponentType().getJavaKind().getBasicType(), dimensions[1]));
+                                new IntFunction<StaticObject>() {
+                                    @Override
+                                    public StaticObject apply(int i) {
+                                        return allocatePrimitiveArray((byte) componentType.getComponentType().getJavaKind().getBasicType(), dimensions[1]);
+                                    }
+                                });
             }
-            return (StaticObject) meta(componentType).allocateArray(dimensions[0], i -> newArray(componentType.getComponentType(), dimensions[1]));
+            return (StaticObject) meta(componentType).allocateArray(dimensions[0], new IntFunction<StaticObject>() {
+                @Override
+                public StaticObject apply(int i) {
+                    return InterpreterToVM.this.newArray(componentType.getComponentType(), dimensions[1]);
+                }
+            });
         } else {
             int[] newDimensions = Arrays.copyOfRange(dimensions, 1, dimensions.length);
-            return (StaticObject) meta(componentType).allocateArray(dimensions[0], i -> newMultiArray(componentType, newDimensions));
+            return (StaticObject) meta(componentType).allocateArray(dimensions[0], new IntFunction<StaticObject>() {
+                @Override
+                public StaticObject apply(int i) {
+                    return InterpreterToVM.this.newMultiArray(componentType, newDimensions);
+                }
+            });
         }
     }
 

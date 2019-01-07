@@ -26,6 +26,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -215,9 +216,12 @@ public class VM extends NativeEnv {
             if (m == null) {
                 // System.err.println("Fetching unknown/unimplemented VM method: " + methodName);
                 return (TruffleObject) ForeignAccess.sendExecute(Message.EXECUTE.createNode(), jniEnv.dupClosureRefAndCast("(pointer): void"),
-                                new Callback(1, args -> {
-                                    System.err.println("Calling unimplemented VM method: " + methodName);
-                                    throw EspressoError.unimplemented("VM method: " + methodName);
+                                new Callback(1, new Callback.Function() {
+                                    @Override
+                                    public Object call(Object... args) {
+                                        System.err.println("Calling unimplemented VM method: " + methodName);
+                                        throw EspressoError.unimplemented("VM method: " + methodName);
+                                    }
                                 }));
             }
 
@@ -290,74 +294,78 @@ public class VM extends NativeEnv {
     public Callback vmMethodWrapper(Method m) {
         int extraArg = (m.getAnnotation(JniImpl.class) != null) ? 1 : 0;
 
-        return new Callback(m.getParameterCount() + extraArg, rawArgs -> {
+        return new Callback(m.getParameterCount() + extraArg, new Callback.Function() {
+            @Override
+            public Object call(Object... rawArgs) {
 
-            boolean isJni = (m.getAnnotation(JniImpl.class) != null);
+                boolean isJni = (m.getAnnotation(JniImpl.class) != null);
 
-            Object[] args;
-            if (isJni) {
-                assert (long) rawArgs[0] == jniEnv.getNativePointer() : "Calling JVM_ method " + m + " from alien JniEnv";
-                args = Arrays.copyOfRange(rawArgs, 1, rawArgs.length); // Strip JNIEnv* pointer,
-                                                                       // replace
-                // by VM (this) receiver.
-            } else {
-                args = rawArgs;
-            }
-
-            Class<?>[] params = m.getParameterTypes();
-
-            for (int i = 0; i < args.length; ++i) {
-                // FIXME(peterssen): Espresso should accept interop null objects, since it doesn't
-                // we must convert to Espresso null.
-                // FIXME(peterssen): Also, do use proper nodes.
-                if (args[i] instanceof TruffleObject) {
-                    if (ForeignAccess.sendIsNull(Message.IS_NULL.createNode(), (TruffleObject) args[i])) {
-                        args[i] = StaticObject.NULL;
-                    }
-                } else {
-                    // TruffleNFI pass booleans as byte, do the proper conversion.
-                    if (params[i] == boolean.class) {
-                        args[i] = ((byte) args[i]) != 0;
-                    }
-                }
-            }
-            try {
-                // Substitute raw pointer by proper `this` reference.
-                // System.err.print("Call DEFINED method: " + m.getName() +
-                // Arrays.toString(shiftedArgs));
-                Object ret = m.invoke(this, args);
-
-                if (ret instanceof Boolean) {
-                    return (boolean) ret ? (byte) 1 : (byte) 0;
-                }
-
-                if (ret == null && !m.getReturnType().isPrimitive()) {
-                    throw EspressoError.shouldNotReachHere("Cannot return host null, only Espresso NULL");
-                }
-
-                if (ret == null && m.getReturnType() == void.class) {
-                    // Cannot return host null to TruffleNFI.
-                    ret = StaticObject.NULL;
-                }
-
-                // System.err.println(" -> " + ret);
-
-                return ret;
-            } catch (InvocationTargetException e) {
-                Throwable targetEx = e.getTargetException();
+                Object[] args;
                 if (isJni) {
-                    if (targetEx instanceof EspressoException) {
-                        jniEnv.getThreadLocalPendingException().set(((EspressoException) targetEx).getException());
-                        return defaultValue(m.getReturnType());
+                    assert (long) rawArgs[0] == jniEnv.getNativePointer() : "Calling JVM_ method " + m + " from alien JniEnv";
+                    args = Arrays.copyOfRange(rawArgs, 1, rawArgs.length); // Strip JNIEnv* pointer,
+                    // replace
+                    // by VM (this) receiver.
+                } else {
+                    args = rawArgs;
+                }
+
+                Class<?>[] params = m.getParameterTypes();
+
+                for (int i = 0; i < args.length; ++i) {
+                    // FIXME(peterssen): Espresso should accept interop null objects, since it
+                    // doesn't
+                    // we must convert to Espresso null.
+                    // FIXME(peterssen): Also, do use proper nodes.
+                    if (args[i] instanceof TruffleObject) {
+                        if (ForeignAccess.sendIsNull(Message.IS_NULL.createNode(), (TruffleObject) args[i])) {
+                            args[i] = StaticObject.NULL;
+                        }
+                    } else {
+                        // TruffleNFI pass booleans as byte, do the proper conversion.
+                        if (params[i] == boolean.class) {
+                            args[i] = ((byte) args[i]) != 0;
+                        }
                     }
                 }
-                if (targetEx instanceof RuntimeException) {
-                    throw (RuntimeException) targetEx;
+                try {
+                    // Substitute raw pointer by proper `this` reference.
+                    // System.err.print("Call DEFINED method: " + m.getName() +
+                    // Arrays.toString(shiftedArgs));
+                    Object ret = m.invoke(VM.this, args);
+
+                    if (ret instanceof Boolean) {
+                        return (boolean) ret ? (byte) 1 : (byte) 0;
+                    }
+
+                    if (ret == null && !m.getReturnType().isPrimitive()) {
+                        throw EspressoError.shouldNotReachHere("Cannot return host null, only Espresso NULL");
+                    }
+
+                    if (ret == null && m.getReturnType() == void.class) {
+                        // Cannot return host null to TruffleNFI.
+                        ret = StaticObject.NULL;
+                    }
+
+                    // System.err.println(" -> " + ret);
+
+                    return ret;
+                } catch (InvocationTargetException e) {
+                    Throwable targetEx = e.getTargetException();
+                    if (isJni) {
+                        if (targetEx instanceof EspressoException) {
+                            jniEnv.getThreadLocalPendingException().set(((EspressoException) targetEx).getException());
+                            return defaultValue(m.getReturnType());
+                        }
+                    }
+                    if (targetEx instanceof RuntimeException) {
+                        throw (RuntimeException) targetEx;
+                    }
+                    // FIXME(peterssen): Handle VME exceptions back to guest.
+                    throw EspressoError.shouldNotReachHere(targetEx);
+                } catch (IllegalAccessException e) {
+                    throw EspressoError.shouldNotReachHere(e);
                 }
-                // FIXME(peterssen): Handle VME exceptions back to guest.
-                throw EspressoError.shouldNotReachHere(targetEx);
-            } catch (IllegalAccessException e) {
-                throw EspressoError.shouldNotReachHere(e);
             }
         });
     }
@@ -488,9 +496,12 @@ public class VM extends NativeEnv {
     @JniImpl
     public @Type(Throwable.class) StaticObject JVM_FillInStackTrace(@Type(Throwable.class) StaticObject self, @SuppressWarnings("unused") int dummy) {
         final ArrayList<FrameInstance> frames = new ArrayList<>(32);
-        Truffle.getRuntime().iterateFrames(frameInstance -> {
-            frames.add(frameInstance);
-            return null;
+        Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Object>() {
+            @Override
+            public Object visitFrame(FrameInstance frameInstance) {
+                frames.add(frameInstance);
+                return null;
+            }
         });
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
         StaticObject backtrace = meta.OBJECT.allocateInstance();
@@ -756,17 +767,20 @@ public class VM extends NativeEnv {
 
         final int[] depthCounter = new int[]{callerDepth};
         CallTarget caller = Truffle.getRuntime().iterateFrames(
-                        frameInstance -> {
-                            if (frameInstance.getCallTarget() instanceof RootCallTarget) {
-                                RootCallTarget callTarget = (RootCallTarget) frameInstance.getCallTarget();
-                                RootNode rootNode = callTarget.getRootNode();
-                                if (rootNode instanceof LinkedNode) {
-                                    if (--depthCounter[0] < 0) {
-                                        return frameInstance.getCallTarget();
+                        new FrameInstanceVisitor<CallTarget>() {
+                            @Override
+                            public CallTarget visitFrame(FrameInstance frameInstance) {
+                                if (frameInstance.getCallTarget() instanceof RootCallTarget) {
+                                    RootCallTarget callTarget = (RootCallTarget) frameInstance.getCallTarget();
+                                    RootNode rootNode = callTarget.getRootNode();
+                                    if (rootNode instanceof LinkedNode) {
+                                        if (--depthCounter[0] < 0) {
+                                            return frameInstance.getCallTarget();
+                                        }
                                     }
                                 }
+                                return null;
                             }
-                            return null;
                         });
 
         RootCallTarget callTarget = (RootCallTarget) caller;

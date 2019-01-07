@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.types;
 import com.oracle.truffle.api.CompilerAsserts;
 
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
 public abstract class DescriptorCache<T extends Descriptor> {
 
@@ -37,7 +38,12 @@ public abstract class DescriptorCache<T extends Descriptor> {
 
     public T make(String key) {
         CompilerAsserts.neverPartOfCompilation();
-        return cache.computeIfAbsent(key, this::create);
+        return cache.computeIfAbsent(key, new Function<String, T>() {
+            @Override
+            public T apply(String key1) {
+                return DescriptorCache.this.create(key1);
+            }
+        });
     }
 
     protected abstract T create(String key);

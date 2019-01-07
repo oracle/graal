@@ -22,6 +22,22 @@
  */
 package com.oracle.truffle.espresso.meta;
 
+import static java.util.stream.Collectors.collectingAndThen;
+import static java.util.stream.Collectors.toList;
+
+import java.io.Serializable;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.IntFunction;
+import java.util.function.Predicate;
+import java.util.stream.Stream;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.FieldInfo;
@@ -34,20 +50,6 @@ import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 import com.oracle.truffle.espresso.types.SignatureDescriptor;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
-
-import java.io.Serializable;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import java.util.function.Consumer;
-import java.util.function.IntFunction;
-import java.util.stream.Stream;
-
-import static java.util.stream.Collectors.collectingAndThen;
-import static java.util.stream.Collectors.toList;
 
 /**
  * Introspection API to access the guest world from the host. Provides seamless conversions from
@@ -257,7 +259,12 @@ public final class Meta {
             return hostObject;
         }
 
-        if (Arrays.stream(JavaKind.values()).anyMatch(c -> c.toBoxedJavaClass() == hostObject.getClass())) {
+        if (Arrays.stream(JavaKind.values()).anyMatch(new Predicate<JavaKind>() {
+            @Override
+            public boolean test(JavaKind c) {
+                return c.toBoxedJavaClass() == hostObject.getClass();
+            }
+        })) {
             // boxed value
             return hostObject;
         }
@@ -332,11 +339,21 @@ public final class Meta {
         }
 
         public Meta.Method[] methods(boolean includeInherited) {
-            return methodStream(includeInherited).toArray(Meta.Method[]::new);
+            return methodStream(includeInherited).toArray(new IntFunction<Method[]>() {
+                @Override
+                public Method[] apply(int value) {
+                    return new Method[value];
+                }
+            });
         }
 
         private Stream<Meta.Method> methodStream(boolean includeInherited) {
-            Stream<Meta.Method> methods = Arrays.stream(klass.getDeclaredMethods()).map(Meta::meta);
+            Stream<Meta.Method> methods = Arrays.stream(klass.getDeclaredMethods()).map(new Function<MethodInfo, Method>() {
+                @Override
+                public Method apply(MethodInfo method) {
+                    return meta(method);
+                }
+            });
             if (includeInherited && getSuperclass() != null) {
                 methods = Stream.concat(methods, getSuperclass().methodStream(includeInherited));
             }
@@ -375,9 +392,19 @@ public final class Meta {
                 return getComponentType().isAssignableFrom(other.getComponentType());
             }
             if (isInterface()) {
-                return other.getInterfacesStream(true).anyMatch(i -> i.rawKlass() == this.rawKlass());
+                return other.getInterfacesStream(true).anyMatch(new Predicate<Klass>() {
+                    @Override
+                    public boolean test(Klass i) {
+                        return i.rawKlass() == Klass.this.rawKlass();
+                    }
+                });
             }
-            return other.getSupertypesStream(true).anyMatch(k -> k.rawKlass() == this.rawKlass());
+            return other.getSupertypesStream(true).anyMatch(new Predicate<Klass>() {
+                @Override
+                public boolean test(Klass k) {
+                    return k.rawKlass() == Klass.this.rawKlass();
+                }
+            });
         }
 
         @CompilerDirectives.TruffleBoundary
@@ -413,19 +440,34 @@ public final class Meta {
 
         @CompilerDirectives.TruffleBoundary
         private Stream<Meta.Klass> getInterfacesStream(boolean includeInherited) {
-            Stream<Meta.Klass> interfaces = Stream.of(klass.getInterfaces()).map(Meta::meta);
+            Stream<Meta.Klass> interfaces = Stream.of(klass.getInterfaces()).map(new Function<com.oracle.truffle.espresso.impl.Klass, Klass>() {
+                @Override
+                public Klass apply(com.oracle.truffle.espresso.impl.Klass klass1) {
+                    return meta(klass1);
+                }
+            });
             Meta.Klass superclass = getSuperclass();
             if (includeInherited && superclass != null) {
                 interfaces = Stream.concat(interfaces, superclass.getInterfacesStream(includeInherited));
             }
             if (includeInherited) {
-                interfaces = interfaces.flatMap(i -> Stream.concat(Stream.of(i), i.getInterfacesStream(includeInherited)));
+                interfaces = interfaces.flatMap(new Function<Klass, Stream<? extends Klass>>() {
+                    @Override
+                    public Stream<? extends Klass> apply(Klass i) {
+                        return Stream.concat(Stream.of(i), i.getInterfacesStream(includeInherited));
+                    }
+                });
             }
             return interfaces;
         }
 
         public List<Klass> getInterfaces(boolean includeSuperclasses) {
-            return getInterfacesStream(includeSuperclasses).collect(collectingAndThen(toList(), Collections::unmodifiableList));
+            return getInterfacesStream(includeSuperclasses).collect(collectingAndThen(toList(), new Function<List<Klass>, List<Klass>>() {
+                @Override
+                public List<Klass> apply(List<Klass> list) {
+                    return Collections.unmodifiableList(list);
+                }
+            }));
         }
 
         @CompilerDirectives.TruffleBoundary
@@ -467,17 +509,25 @@ public final class Meta {
 
         public Optional<Method.WithInstance> getClassInitializer() {
             MethodInfo clinit = klass.findDeclaredMethod("<clinit>", void.class);
-            return Optional.ofNullable(clinit).map(mi -> {
-                Meta.Method m = meta(mi);
-                assert m.isClassInitializer();
-                return m.forInstance(klass.getStatics());
+            return Optional.ofNullable(clinit).map(new Function<MethodInfo, Method.WithInstance>() {
+                @Override
+                public Method.WithInstance apply(MethodInfo mi) {
+                    Meta.Method m = meta(mi);
+                    assert m.isClassInitializer();
+                    return m.forInstance(klass.getStatics());
+                }
             });
         }
 
         @CompilerDirectives.TruffleBoundary
         public Meta.Method method(String name, Class<?> returnType, Class<?>... parameterTypes) {
             SignatureDescriptor target = klass.getContext().getSignatureDescriptors().create(returnType, parameterTypes);
-            MethodInfo found = Arrays.stream(klass.getDeclaredMethods()).filter(m -> m.getName().equals(name) && m.getSignature().equals(target)).findFirst().orElse(null);
+            MethodInfo found = Arrays.stream(klass.getDeclaredMethods()).filter(new Predicate<MethodInfo>() {
+                @Override
+                public boolean test(MethodInfo m) {
+                    return m.getName().equals(name) && m.getSignature().equals(target);
+                }
+            }).findFirst().orElse(null);
             if (found == null) {
                 if (getSuperclass() != null) {
                     return getSuperclass().method(name, returnType, parameterTypes);
@@ -739,7 +789,12 @@ public final class Meta {
 
         public static class SetField extends FieldAction {
             public SetField(String name, Object value) {
-                super(name, f -> f.set(value));
+                super(name, new Consumer<WithInstance>() {
+                    @Override
+                    public void accept(WithInstance f) {
+                        f.set(value);
+                    }
+                });
                 assert value != null;
             }
         }
