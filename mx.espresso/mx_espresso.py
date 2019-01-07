@@ -26,6 +26,7 @@ from argparse import ArgumentParser
 import mx
 import mx_sdk
 from mx_gate import Task, add_gate_runner
+from mx_jackpot import jackpot
 from mx_unittest import unittest
 
 _suite = mx.suite('espresso')
@@ -33,6 +34,7 @@ _suite = mx.suite('espresso')
 
 class EspressoDefaultTags:
     unittest = 'unittest'
+    jackpot = 'jackpot'
 
 def _run_espresso(args):
     vm_args, args = mx.extract_VM_args(args, useDoubleDash=True, defaultAllVMArgs=False)
@@ -60,6 +62,12 @@ def _espresso_gate_runner(args, tasks):
     with Task('UnitTests', tasks, tags=[EspressoDefaultTags.unittest]) as t:
         if t:
             unittest(['--enable-timing', '--very-verbose', 'com.oracle.truffle.espresso.test'])
+
+    # Jackpot configuration is inherited from Truffle.
+    with Task('Jackpot', tasks, tags=[EspressoDefaultTags.jackpot]) as t:
+        if t:
+            jackpot(['--fail-on-warnings'], suite=None, nonZeroIsFatal=True)
+
 
 
 # REGISTER MX GATE RUNNER
