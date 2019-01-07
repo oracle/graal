@@ -30,16 +30,17 @@ import org.graalvm.tools.lsp.server.utils.CoverageData;
 import org.graalvm.tools.lsp.server.utils.EvaluationResult;
 import org.graalvm.tools.lsp.server.utils.NearestNode;
 import org.graalvm.tools.lsp.server.utils.NearestSectionsFinder;
+import org.graalvm.tools.lsp.server.utils.NearestSectionsFinder.NodeLocationType;
 import org.graalvm.tools.lsp.server.utils.SourceUtils;
+import org.graalvm.tools.lsp.server.utils.SourceUtils.SourceFix;
 import org.graalvm.tools.lsp.server.utils.SourceWrapper;
 import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogate;
 import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogateMap;
-import org.graalvm.tools.lsp.server.utils.NearestSectionsFinder.NodeLocationType;
-import org.graalvm.tools.lsp.server.utils.SourceUtils.SourceFix;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
@@ -183,7 +184,7 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
 
         if (coverages != null && !coverages.isEmpty()) {
             CoverageData coverageData = coverages.get(coverages.size() - 1);
-            VirtualFrame frame = coverageData.getFrame();
+            MaterializedFrame frame = coverageData.getFrame();
             fillCompletionsWithLocals(surrogate, nearestNode, completions, frame);
 
             // Call again, regardless if it was called with a frame argument before,
