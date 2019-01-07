@@ -1,11 +1,11 @@
-package org.graalvm.tools.lsp.instrument;
+package org.graalvm.tools.lsp.test.instrument;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.tools.lsp.api.ContextAwareExecutorRegistry;
 import org.graalvm.tools.lsp.api.VirtualLanguageServerFileProvider;
-import org.graalvm.tools.lsp.instrument.TestInstrumentOptionDescriptors;
+import org.graalvm.tools.lsp.instrument.LSOptions;
 import org.graalvm.tools.lsp.server.TruffleAdapter;
 
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;

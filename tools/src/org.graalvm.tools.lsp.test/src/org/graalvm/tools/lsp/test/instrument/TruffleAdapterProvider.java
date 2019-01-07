@@ -1,4 +1,4 @@
-package org.graalvm.tools.lsp.instrument;
+package org.graalvm.tools.lsp.test.instrument;
 
 import org.graalvm.tools.lsp.server.TruffleAdapter;
 

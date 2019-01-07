@@ -1,4 +1,4 @@
-package org.graalvm.tools.lsp.server;
+package org.graalvm.tools.lsp.test.server;
 
 import java.net.URI;
 import java.nio.file.Paths;
@@ -16,7 +16,8 @@ import org.graalvm.tools.lsp.api.ContextAwareExecutorRegistry;
 import org.graalvm.tools.lsp.api.VirtualLanguageServerFileProvider;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
 import org.graalvm.tools.lsp.filesystem.LSPFileSystem;
-import org.graalvm.tools.lsp.instrument.TruffleAdapterProvider;
+import org.graalvm.tools.lsp.server.TruffleAdapter;
+import org.graalvm.tools.lsp.test.instrument.TruffleAdapterProvider;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
 import org.junit.After;
