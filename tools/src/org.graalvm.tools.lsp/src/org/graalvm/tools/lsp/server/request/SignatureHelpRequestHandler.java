@@ -80,6 +80,7 @@ public class SignatureHelpRequestHandler extends AbstractRequestHandler {
 
                         return new SignatureHelp(Arrays.asList(info), 0, numberOfArguments != null ? numberOfArguments - 1 : 0);
                     } catch (UnsupportedMessageException | UnsupportedTypeException e) {
+                        System.out.println("GET_SIGNATURE message not supported by " + result);
                     } catch (InteropException e) {
                         e.printStackTrace(err);
                     }
