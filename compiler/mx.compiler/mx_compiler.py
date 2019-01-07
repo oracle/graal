@@ -864,7 +864,10 @@ class StdoutUnstripping:
                                     mapFile.flush()
                             retraceOut = mx.OutputCapture()
                             proguard_cp = mx.classpath(['PROGUARD_RETRACE', 'PROGUARD'])
-                            mx.run([jdk.java, '-cp', proguard_cp, 'proguard.retrace.ReTrace', mapFile.name, inputFile.name], out=retraceOut)
+                            # A slightly more general pattern for matching stack traces than the default.
+                            # This version does not require the "at " prefix.
+                            regex = r'(?:.*?\s+%c\.%m\s*\(%s(?::%l)?\)\s*(?:~\[.*\])?)|(?:(?:.*?[:"]\s+)?%c(?::.*)?)'
+                            mx.run([jdk.java, '-cp', proguard_cp, 'proguard.retrace.ReTrace', '-regex', regex, mapFile.name, inputFile.name], out=retraceOut)
                             if self.capture.data != retraceOut.data:
                                 mx.log('>>>> BEGIN UNSTRIPPED OUTPUT')
                                 mx.log(retraceOut.data)
