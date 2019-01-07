@@ -91,15 +91,23 @@ public class SourceUtils {
         Range range = lastChange.getRange();
         TextDocumentContentChangeEvent replacementEvent = new TextDocumentContentChangeEvent(
                         new Range(range.getStart(), new Position(range.getEnd().getLine(), range.getEnd().getCharacter() + lastChange.getText().length())), lastChange.getText().length(), "");
-        String codeBeforeLastChange = applyTextDocumentChanges(Arrays.asList(replacementEvent), surrogate.getEditorText(), surrogate);
+        String codeBeforeLastChange = applyTextDocumentChanges(Arrays.asList(replacementEvent), surrogate.getSource(), surrogate);
         int characterIdx = originalCharacter - (originalCharacter - range.getStart().getCharacter());
 
         return new SourceFix(codeBeforeLastChange, lastChange.getText(), characterIdx);
     }
 
-    public static String applyTextDocumentChanges(List<? extends TextDocumentContentChangeEvent> list, String text, TextDocumentSurrogate surrogate) {
+    public static String applyTextDocumentChanges(List<? extends TextDocumentContentChangeEvent> list, Source source, TextDocumentSurrogate surrogate) {
+        Source currentSource = null;
+        String text = source.getCharacters().toString();
         StringBuilder sb = new StringBuilder(text);
         for (TextDocumentContentChangeEvent event : list) {
+            if (currentSource == null) {
+                currentSource = source;
+            } else {
+                currentSource = Source.newBuilder(currentSource.getLanguage(), sb, currentSource.getName()).cached(false).build();
+            }
+
             Range range = event.getRange();
             if (range == null) {
                 // The whole file has changed
@@ -108,43 +116,29 @@ public class SourceUtils {
                 continue;
             }
 
-            TextMap textMap = TextMap.fromCharSequence(sb);
             Position start = range.getStart();
             Position end = range.getEnd();
             int startLine = start.getLine() + 1;
             int endLine = end.getLine() + 1;
-            int replaceBegin;
-            int replaceEnd;
-            if (textMap.lineCount() < startLine) {
-                assert start.getCharacter() == 0 : start.getCharacter();
-                assert textMap.finalNL || textMap.lineCount() == 0;
-                assert textMap.lineCount() < endLine;
-                assert end.getCharacter() == 0 : end.getCharacter();
+            int replaceBegin = currentSource.getLineStartOffset(startLine) + start.getCharacter();
+            int replaceEnd = currentSource.getLineStartOffset(endLine) + end.getCharacter();
 
-                replaceBegin = textMap.length();
-                replaceEnd = replaceBegin;
-            } else if (textMap.lineCount() < endLine) {
-                replaceBegin = textMap.lineStartOffset(startLine) + start.getCharacter();
-                replaceEnd = text.length();
-            } else {
-                replaceBegin = textMap.lineStartOffset(startLine) + start.getCharacter();
-                replaceEnd = textMap.lineStartOffset(endLine) + end.getCharacter();
-            }
             sb.replace(replaceBegin, replaceEnd, event.getText());
 
             if (surrogate != null && surrogate.hasCoverageData()) {
-                updateCoverageData(surrogate, text, event.getText(), range, replaceBegin, replaceEnd);
+                updateCoverageData(surrogate, currentSource, event.getText(), range, replaceBegin, replaceEnd);
             }
         }
         return sb.toString();
     }
 
-    private static void updateCoverageData(TextDocumentSurrogate surrogate, String text, String newText, Range range, int replaceBegin, int replaceEnd) {
-        TextMap textMapNewText = TextMap.fromCharSequence(newText);
-        int linesNewText = textMapNewText.lineCount() + (textMapNewText.finalNL ? 1 : 0) + (newText.isEmpty() ? 1 : 0);
-        String oldText = text.substring(replaceBegin, replaceEnd);
-        TextMap textMapOldText = TextMap.fromCharSequence(oldText);
-        int liensOldText = textMapOldText.lineCount() + (textMapOldText.finalNL ? 1 : 0) + (oldText.isEmpty() ? 1 : 0);
+    private static void updateCoverageData(TextDocumentSurrogate surrogate, Source source, String newText, Range range, int replaceBegin, int replaceEnd) {
+        Source newSourceSnippet = Source.newBuilder("dummyLanguage", newText, "dummyCoverage").cached(false).build();
+        int linesNewText = newSourceSnippet.getLineCount() + (newText.endsWith("\n") ? 1 : 0) + (newText.isEmpty() ? 1 : 0);
+
+        Source oldSourceSnippet = source.subSource(replaceBegin, replaceEnd - replaceBegin);
+        int liensOldText = oldSourceSnippet.getLineCount() + (oldSourceSnippet.getCharacters().toString().endsWith("\n") ? 1 : 0) + (oldSourceSnippet.getLength() == 0 ? 1 : 0);
+
         int newLineModification = linesNewText - liensOldText;
         System.out.println("newLineModification: " + newLineModification);
 

@@ -10,12 +10,18 @@ import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.graalvm.tools.lsp.server.utils.SourceUtils;
 import org.junit.Test;
 
+import com.oracle.truffle.api.source.Source;
+
 public class TextDocumentContentChangeTest {
 
     private static void assertDocumentChanges(String oldText, String replacement, Range range, String expectedText) {
         TextDocumentContentChangeEvent event = new TextDocumentContentChangeEvent(range, replacement.length(), replacement);
-        String actualText = SourceUtils.applyTextDocumentChanges(Arrays.asList(event), oldText, null);
+        String actualText = SourceUtils.applyTextDocumentChanges(Arrays.asList(event), createSource(oldText), null);
         assertEquals(expectedText, actualText);
+    }
+
+    private static Source createSource(String oldText) {
+        return Source.newBuilder("dummy", oldText, TextDocumentContentChangeTest.class.getSimpleName()).build();
     }
 
     @Test
@@ -64,14 +70,18 @@ public class TextDocumentContentChangeTest {
 
         String replacement1 = "a";
         TextDocumentContentChangeEvent event1 = new TextDocumentContentChangeEvent(new Range(new Position(0, 0), new Position(0, 0)), replacement1.length(), replacement1);
-        String replacement2 = "\nefg\nhij";
+        String replacement2 = "c";
         TextDocumentContentChangeEvent event2 = new TextDocumentContentChangeEvent(new Range(new Position(0, 1), new Position(0, 1)), replacement2.length(), replacement2);
-        String replacement3 = "####";
-        TextDocumentContentChangeEvent event3 = new TextDocumentContentChangeEvent(new Range(new Position(1, 0), new Position(2, 0)), replacement3.length(), replacement3);
-        String replacement4 = "\n";
-        TextDocumentContentChangeEvent event4 = new TextDocumentContentChangeEvent(new Range(new Position(1, 7), new Position(1, 7)), replacement4.length(), replacement4);
+        String replacement3 = "b";
+        TextDocumentContentChangeEvent event3 = new TextDocumentContentChangeEvent(new Range(new Position(0, 1), new Position(0, 1)), replacement3.length(), replacement3);
+        String replacement4 = "\nefg\nhij";
+        TextDocumentContentChangeEvent event4 = new TextDocumentContentChangeEvent(new Range(new Position(0, 3), new Position(0, 3)), replacement4.length(), replacement4);
+        String replacement5 = "####";
+        TextDocumentContentChangeEvent event5 = new TextDocumentContentChangeEvent(new Range(new Position(1, 0), new Position(2, 0)), replacement5.length(), replacement5);
+        String replacement6 = "\n";
+        TextDocumentContentChangeEvent event6 = new TextDocumentContentChangeEvent(new Range(new Position(1, 7), new Position(1, 7)), replacement6.length(), replacement6);
 
-        String actualText = SourceUtils.applyTextDocumentChanges(Arrays.asList(event1, event2, event3, event4), oldText, null);
-        assertEquals("a\n####hij\n", actualText);
+        String actualText = SourceUtils.applyTextDocumentChanges(Arrays.asList(event1, event2, event3, event4, event5, event6), createSource(oldText), null);
+        assertEquals("abc\n####hij\n", actualText);
     }
 }

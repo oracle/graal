@@ -200,7 +200,7 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
 
         surrogate.getChangeEventsSinceLastSuccessfulParsing().addAll(list);
         surrogate.setLastChange(list.get(list.size() - 1));
-        surrogate.setEditorText(SourceUtils.applyTextDocumentChanges(list, surrogate.getEditorText(), surrogate));
+        surrogate.setEditorText(SourceUtils.applyTextDocumentChanges(list, surrogate.getSource(), surrogate));
 
         sourceCodeEvaluator.parse(surrogate);
 
