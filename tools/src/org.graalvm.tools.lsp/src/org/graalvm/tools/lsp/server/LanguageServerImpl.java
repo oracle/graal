@@ -422,7 +422,9 @@ public class LanguageServerImpl implements LanguageServer, LanguageClientAware, 
             e.printStackTrace(err);
         } catch (ExecutionException e) {
             if (e.getCause() instanceof UnknownLanguageException) {
-                client.showMessage(new MessageParams(MessageType.Error, "Unknown language: " + e.getCause().getMessage()));
+                String message = "Unknown language: " + e.getCause().getMessage();
+                System.err.println(message);
+                client.showMessage(new MessageParams(MessageType.Error, message));
             } else if (e.getCause() instanceof DiagnosticsNotification) {
                 for (PublishDiagnosticsParams params : ((DiagnosticsNotification) e.getCause()).getDiagnosticParamsCollection()) {
                     client.publishDiagnostics(params);
