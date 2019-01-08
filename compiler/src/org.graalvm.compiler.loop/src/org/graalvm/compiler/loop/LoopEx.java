@@ -76,8 +76,6 @@ import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 
-import jdk.vm.ci.code.BytecodeFrame;
-
 public class LoopEx {
     private final Loop<Block> loop;
     private LoopFragmentInside inside;
@@ -472,7 +470,7 @@ public class LoopEx {
             }
             if (node instanceof FrameState) {
                 FrameState frameState = (FrameState) node;
-                if (frameState.bci == BytecodeFrame.AFTER_EXCEPTION_BCI || frameState.bci == BytecodeFrame.UNWIND_BCI) {
+                if (frameState.isExceptionHandlingBCI()) {
                     return false;
                 }
             }

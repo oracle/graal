@@ -26,23 +26,18 @@ package org.graalvm.compiler.phases.common;
 
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.LoopExitNode;
-import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.Phase;
-
-import jdk.vm.ci.code.BytecodeFrame;
 
 public class RemoveValueProxyPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
         for (LoopExitNode exit : graph.getNodes(LoopExitNode.TYPE)) {
-            for (ProxyNode vpn : exit.proxies().snapshot()) {
-                vpn.replaceAtUsagesAndDelete(vpn.value());
-            }
+            exit.removeProxies();
             FrameState frameState = exit.stateAfter();
-            if (frameState != null && (frameState.bci == BytecodeFrame.AFTER_EXCEPTION_BCI || frameState.bci == BytecodeFrame.UNWIND_BCI)) {
+            if (frameState != null && frameState.isExceptionHandlingBCI()) {
                 // The parser will create loop exits with such BCIs on the exception handling path.
                 // Loop optimizations must avoid duplicating such exits
                 // We clean them up here otherwise they could survive until code generation
