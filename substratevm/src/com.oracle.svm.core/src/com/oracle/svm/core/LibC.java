@@ -25,7 +25,6 @@
 package com.oracle.svm.core;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.PlatformLibC;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -103,5 +102,3 @@ public class LibC {
         PlatformLibC.singleton().free(ptr);
     }
 }
-
-

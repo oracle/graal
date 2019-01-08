@@ -45,7 +45,8 @@ import org.graalvm.word.WordFactory;
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 public class PosixPlatformLibC implements PlatformLibC {
 
-    protected PosixPlatformLibC() {}
+    protected PosixPlatformLibC() {
+    }
 
     @Override
     @Uninterruptible(reason = "called from Uninterruptible function")

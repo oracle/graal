@@ -36,11 +36,11 @@ public interface PlatformLibC {
         return ImageSingletons.lookup(PlatformLibC.class);
     }
 
-    public <T extends PointerBase> T malloc(UnsignedWord size);
+    <T extends PointerBase> T malloc(UnsignedWord size);
 
-    public <T extends PointerBase> T calloc(UnsignedWord nmemb, UnsignedWord size);
+    <T extends PointerBase> T calloc(UnsignedWord nmemb, UnsignedWord size);
 
-    public <T extends PointerBase> T realloc(PointerBase ptr, UnsignedWord size);
+    <T extends PointerBase> T realloc(PointerBase ptr, UnsignedWord size);
 
-    public void free(PointerBase ptr);
+    void free(PointerBase ptr);
 }

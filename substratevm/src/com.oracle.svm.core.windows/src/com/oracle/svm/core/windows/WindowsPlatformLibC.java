@@ -45,7 +45,8 @@ import org.graalvm.word.WordFactory;
 @Platforms(Platform.WINDOWS.class)
 public class WindowsPlatformLibC implements PlatformLibC {
 
-    protected WindowsPlatformLibC() {}
+    protected WindowsPlatformLibC() {
+    }
 
     @Override
     @Uninterruptible(reason = "called from Uninterruptible function")
