@@ -231,8 +231,6 @@ public abstract class LoopTransformations {
         graph.getDebug().log("LoopTransformations.insertPrePostLoops %s", loop);
         LoopFragmentWhole preLoop = loop.whole();
         CountedLoopInfo preCounted = loop.counted();
-        IfNode preLimit = preCounted.getLimitTest();
-        assert preLimit != null;
         LoopBeginNode preLoopBegin = loop.loopBegin();
         LoopExitNode preLoopExitNode = preLoopBegin.getSingleLoopExit();
         FixedNode continuationNode = preLoopExitNode.next();
