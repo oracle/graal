@@ -264,8 +264,6 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
             if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompilationExceptionsArePrinted)) {
                 Log.log().string(printStackTraceToString(e));
             }
-        } finally {
-            optimizedCallTarget.resetCompilationTask();
         }
 
         return null;
