@@ -421,6 +421,9 @@ public abstract class LoopTransformations {
             condition.getDebug().log(DebugContext.VERBOSE_LEVEL, "isUnrollableLoop %s doubling the stride overflows %d", loopBegin, stride);
             return false;
         }
+        if (!loop.canDuplicateLoop()) {
+            return false;
+        }
         if (loopBegin.isMainLoop() || loopBegin.isSimpleLoop()) {
             // Flow-less loops to partial unroll for now. 3 blocks corresponds to an if that either
             // exits or continues the loop. There might be fixed and floating work within the loop
