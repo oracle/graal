@@ -25,11 +25,16 @@
 package com.oracle.svm.test;
 
 import java.util.ServiceLoader;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 public class ServiceLoaderTest {
+    static {
+        testServicesInHotSpot();
+    }
 
     interface ServiceInterface {
     }
@@ -40,6 +45,11 @@ public class ServiceLoaderTest {
 
     /* Registered as a service. */
     public static class ServiceB implements ServiceInterface {
+    }
+
+    /* Registered as a service. But hosted only. */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static class ServiceHostedOnly implements ServiceInterface {
     }
 
     /* NOT registered as a service. */
@@ -60,6 +70,7 @@ public class ServiceLoaderTest {
         int numFound = 0;
         boolean foundA = false;
         boolean foundB = false;
+        boolean foundHostedOnly = false;
         boolean foundC = false;
         boolean foundD = false;
 
@@ -68,6 +79,7 @@ public class ServiceLoaderTest {
             String name = instance.getClass().getSimpleName();
             foundA |= name.equals("ServiceA");
             foundB |= name.equals("ServiceB");
+            foundHostedOnly |= name.equals("ServiceHostedOnly");
             foundC |= name.equals("ServiceC");
             foundD |= name.equals("ServiceD");
         }
@@ -75,6 +87,35 @@ public class ServiceLoaderTest {
         Assert.assertEquals(2, numFound);
         Assert.assertTrue(foundA);
         Assert.assertTrue(foundB);
+        Assert.assertFalse(foundHostedOnly);
+        Assert.assertFalse(foundC);
+        Assert.assertFalse(foundD);
+    }
+
+    static void testServicesInHotSpot() {
+        ServiceLoader<ServiceInterface> loader = ServiceLoader.load(ServiceInterface.class);
+
+        int numFound = 0;
+        boolean foundA = false;
+        boolean foundB = false;
+        boolean foundHostedOnly = false;
+        boolean foundC = false;
+        boolean foundD = false;
+
+        for (ServiceInterface instance : loader) {
+            numFound++;
+            String name = instance.getClass().getSimpleName();
+            foundA |= name.equals("ServiceA");
+            foundB |= name.equals("ServiceB");
+            foundHostedOnly |= name.equals("ServiceHostedOnly");
+            foundC |= name.equals("ServiceC");
+            foundD |= name.equals("ServiceD");
+        }
+
+        Assert.assertEquals(3, numFound);
+        Assert.assertTrue(foundA);
+        Assert.assertTrue(foundB);
+        Assert.assertTrue(foundHostedOnly);
         Assert.assertFalse(foundC);
         Assert.assertFalse(foundD);
     }

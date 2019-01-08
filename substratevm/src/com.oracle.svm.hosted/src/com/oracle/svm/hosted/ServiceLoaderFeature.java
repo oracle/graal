@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted;
 
+import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -202,6 +203,14 @@ public class ServiceLoaderFeature implements Feature {
             Class<?> implementationClass = access.findClassByName(implementationClassName);
             if (implementationClass == null) {
                 throw UserError.abort("Could not find registered service implementation class `" + implementationClassName + "` for service `" + serviceClassName + "`");
+            }
+            try {
+                access.getMetaAccess().lookupJavaType(implementationClass);
+            } catch (UnsupportedFeatureException ex) {
+                if (trace) {
+                    System.out.println("  cannot resolve: " + ex.getMessage());
+                }
+                continue;
             }
 
             if (ImageSingletons.lookup(AnnotationSubstitutionProcessor.class).isDeleted(implementationClass)) {
