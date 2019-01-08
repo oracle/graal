@@ -267,21 +267,4 @@ public class SubstrateOptions {
         }
         return javaName -> true;
     }
-
-    public static class FoldedPredicate implements Predicate<String> {
-
-        @Platforms(Platform.HOSTED_ONLY.class)//
-        private final Predicate<String> wrapped;
-
-        @Platforms(Platform.HOSTED_ONLY.class)
-        public FoldedPredicate(Predicate<String> wrapped) {
-            this.wrapped = wrapped;
-        }
-
-        @Fold
-        @Override
-        public boolean test(String t) {
-            return wrapped.test(t);
-        }
-    }
 }
