@@ -66,6 +66,7 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.MergeNode;
+import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -93,6 +94,8 @@ import org.graalvm.compiler.nodes.extended.BoxNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
 import org.graalvm.compiler.nodes.extended.GetClassNode;
+import org.graalvm.compiler.nodes.extended.JavaReadNode;
+import org.graalvm.compiler.nodes.extended.JavaWriteNode;
 import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.extended.OpaqueNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
@@ -113,6 +116,8 @@ import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.RegisterFinalizerNode;
 import org.graalvm.compiler.nodes.java.UnsafeCompareAndExchangeNode;
 import org.graalvm.compiler.nodes.java.UnsafeCompareAndSwapNode;
+import org.graalvm.compiler.nodes.memory.HeapAccess;
+import org.graalvm.compiler.nodes.memory.address.IndexAddressNode;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.EnsureVirtualizedNode;
@@ -153,6 +158,7 @@ public class StandardGraphBuilderPlugins {
         registerObjectPlugins(plugins);
         registerClassPlugins(plugins);
         registerMathPlugins(plugins, allowDeoptimization);
+        registerStrictMathPlugins(plugins);
         registerUnsignedMathPlugins(plugins);
         registerStringPlugins(plugins, bytecodeProvider, snippetReflection);
         registerCharacterPlugins(plugins);
@@ -220,12 +226,32 @@ public class StandardGraphBuilderPlugins {
             });
         } else {
             r.registerMethodSubstitution(JDK9StringSubstitutions.class, "equals", Receiver.class, Object.class);
+            Registration utf16sub = new Registration(plugins, StringUTF16Substitutions.class, bytecodeProvider);
+            utf16sub.register2("getCharDirect", byte[].class, int.class, new InvocationPlugin() {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode arg2) {
+                    b.addPush(JavaKind.Char, new JavaReadNode(JavaKind.Char, new IndexAddressNode(arg1, arg2, JavaKind.Byte), NamedLocationIdentity.getArrayLocation(JavaKind.Byte),
+                                    HeapAccess.BarrierType.NONE, false));
+                    return true;
+                }
+            });
+            utf16sub.register3("putCharDirect", byte[].class, int.class, int.class, new InvocationPlugin() {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode arg2, ValueNode arg3) {
+                    b.add(new JavaWriteNode(JavaKind.Char, new IndexAddressNode(arg1, arg2, JavaKind.Byte), NamedLocationIdentity.getArrayLocation(JavaKind.Byte), arg3,
+                                    HeapAccess.BarrierType.NONE, false));
+                    return true;
+                }
+            });
 
             final Registration latin1r = new Registration(plugins, "java.lang.StringLatin1", bytecodeProvider);
             latin1r.register5("indexOf", byte[].class, int.class, byte[].class, int.class, int.class, new StringLatin1IndexOfConstantPlugin());
 
             final Registration utf16r = new Registration(plugins, "java.lang.StringUTF16", bytecodeProvider);
             utf16r.register5("indexOfUnsafe", byte[].class, int.class, byte[].class, int.class, int.class, new StringUTF16IndexOfConstantPlugin());
+            utf16r.setAllowOverwrite(true);
+            utf16r.registerMethodSubstitution(StringUTF16Substitutions.class, "getChar", byte[].class, int.class);
+            utf16r.registerMethodSubstitution(StringUTF16Substitutions.class, "putChar", byte[].class, int.class, int.class);
 
             Registration sr = new Registration(plugins, JDK9StringSubstitutions.class);
             sr.register1("getValue", String.class, new InvocationPlugin() {
@@ -269,6 +295,19 @@ public class StandardGraphBuilderPlugins {
             }
         });
         r.registerMethodSubstitution(ArraySubstitutions.class, "getLength", Object.class);
+    }
+
+    /**
+     * The intrinsic for {@link Math#sqrt(double)} is shared with {@link StrictMath#sqrt(double)}.
+     *
+     * @see "http://hg.openjdk.java.net/jdk/jdk/file/621efe32eb0b/src/hotspot/share/oops/method.cpp#l1504"
+     */
+    static final class MathSqrtPlugin implements InvocationPlugin {
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+            b.push(JavaKind.Double, b.append(SqrtNode.create(value, NodeView.DEFAULT)));
+            return true;
+        }
     }
 
     private abstract static class UnsafeCompareAndUpdatePluginsRegistrar {
@@ -632,13 +671,12 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
-        r.register1("sqrt", Double.TYPE, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                b.push(JavaKind.Double, b.append(SqrtNode.create(value, NodeView.DEFAULT)));
-                return true;
-            }
-        });
+        r.register1("sqrt", Double.TYPE, new MathSqrtPlugin());
+    }
+
+    private static void registerStrictMathPlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, StrictMath.class);
+        r.register1("sqrt", Double.TYPE, new MathSqrtPlugin());
     }
 
     public static final class StringIndexOfConstantPlugin implements InvocationPlugin {

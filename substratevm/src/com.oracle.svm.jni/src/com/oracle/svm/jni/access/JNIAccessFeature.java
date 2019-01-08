@@ -36,7 +36,9 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.option.HostedOptionKey;
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.ReflectionRegistry;
@@ -95,6 +97,10 @@ public class JNIAccessFeature implements Feature {
     private final Map<JNINativeLinkage, JNINativeLinkage> nativeLinkages = new ConcurrentHashMap<>();
 
     private boolean haveJavaRuntimeReflectionSupport;
+
+    public static class Options {
+        @Option(help = "Print JNI methods added to generated image") public static final HostedOptionKey<Boolean> PrintJNIMethods = new HostedOptionKey<>(false);
+    }
 
     private void abortIfSealed() {
         UserError.guarantee(!sealed, "Classes, methods and fields must be registered for JNI access before the analysis has completed.");
@@ -175,7 +181,15 @@ public class JNIAccessFeature implements Feature {
 
     public JNINativeLinkage makeLinkage(String declaringClass, String name, String descriptor) {
         UserError.guarantee(!sealed, "All linkages for JNI calls must be created before the analysis has completed.");
+
         JNINativeLinkage key = new JNINativeLinkage(declaringClass, name, descriptor);
+
+        // Checkstyle: stop
+        if (JNIAccessFeature.Options.PrintJNIMethods.getValue()) {
+            System.out.println("Creating a new JNINativeLinkage: " + key.toString());
+        }
+        // Checkstyle: resume
+
         return nativeLinkages.computeIfAbsent(key, linkage -> {
             newLinkages.put(linkage, linkage);
             return linkage;
@@ -217,7 +231,9 @@ public class JNIAccessFeature implements Feature {
     private static JNIAccessibleClass addClass(Class<?> classObj, DuringAnalysisAccessImpl access) {
         return JNIReflectionDictionary.singleton().addClassIfAbsent(classObj, c -> {
             AnalysisType analysisClass = access.getMetaAccess().lookupJavaType(classObj);
-            if (analysisClass.isArray() || (analysisClass.isInstanceClass() && !analysisClass.isAbstract())) {
+            if (analysisClass.isInterface() || (analysisClass.isInstanceClass() && analysisClass.isAbstract())) {
+                analysisClass.registerAsInTypeCheck();
+            } else {
                 analysisClass.registerAsAllocated(null);
             }
             return new JNIAccessibleClass(classObj);

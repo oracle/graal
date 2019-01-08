@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.190.0",
+  "mxversion" : "5.195.1",
   "name" : "sulong",
   "versionConflictResolution" : "latest",
 
@@ -138,7 +138,6 @@ suite = {
         "truffle:TRUFFLE_API"
       ],
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
-      "checkstyleVersion" : "8.8",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle, LLVM",
@@ -422,7 +421,7 @@ suite = {
         "SUITE_CPPFLAGS" : "-I<sulong_include>",
       },
       "dependencies" : [
-        "SULONG_TEST",
+        "SULONG_TEST_SUITES",
       ],
       "testProject" : True,
       "defaultBuild" : False,

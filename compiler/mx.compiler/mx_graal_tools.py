@@ -139,7 +139,8 @@ def hsdis(args, copyToDir=None):
     if copyToDir is None:
         # Try install hsdis into JAVA_HOME
         overwrite = False
-        base = mx.get_jdk().home
+        jdk = mx.get_jdk()
+        base = jdk.home
         if exists(join(base, 'jre')):
             base = join(base, 'jre')
         if mx.get_os() == 'darwin':
@@ -147,7 +148,10 @@ def hsdis(args, copyToDir=None):
         elif mx.get_os() == 'windows':
             copyToDir = join(base, 'bin')
         else:
-            copyToDir = join(base, 'lib', mx.get_arch())
+            if jdk.javaCompliance >= '11':
+                copyToDir = join(base, 'lib')
+            else:
+                copyToDir = join(base, 'lib', mx.get_arch())
 
     if exists(copyToDir):
         dest = join(copyToDir, mx.add_lib_suffix('hsdis-' + mx.get_arch()))

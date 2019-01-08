@@ -29,10 +29,10 @@ import java.lang.annotation.Annotation;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
-import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.core.c.MutableBoxedPointer;
+import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 
@@ -47,9 +47,9 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class CEntryPointJavaCallStubMethod extends CCallStubMethod {
     private final String name;
     private final ResolvedJavaType declaringClass;
-    private final CodePointer target;
+    private final CFunctionPointer target;
 
-    CEntryPointJavaCallStubMethod(ResolvedJavaMethod original, String name, ResolvedJavaType declaringClass, CodePointer target) {
+    CEntryPointJavaCallStubMethod(ResolvedJavaMethod original, String name, ResolvedJavaType declaringClass, CFunctionPointer target) {
         super(original, true);
         this.name = name;
         this.declaringClass = declaringClass;
@@ -75,13 +75,12 @@ public class CEntryPointJavaCallStubMethod extends CCallStubMethod {
     protected ValueNode createTargetAddressNode(HostedGraphKit kit, HostedProviders providers) {
         try {
             /*
-             * We currently cannot handle {@link MethodPointer} as a constant in the code, so we
-             * force an indirection with a field load from an object of MutableBoxedPointer. Due to
-             * the mutable nature of the class, the field load is not constant-folded.
+             * We currently cannot handle {@link MethodPointer} as a constant in the code, so we use
+             * an indirection with a non-final field load from an object of BoxedRelocatedPointer.
              */
-            MutableBoxedPointer box = new MutableBoxedPointer(target);
+            BoxedRelocatedPointer box = new BoxedRelocatedPointer(target);
             ConstantNode boxNode = kit.createObject(box);
-            ResolvedJavaField field = providers.getMetaAccess().lookupJavaField(MutableBoxedPointer.class.getDeclaredField("pointer"));
+            ResolvedJavaField field = providers.getMetaAccess().lookupJavaField(BoxedRelocatedPointer.class.getDeclaredField("pointer"));
             return kit.createLoadField(boxNode, field);
         } catch (NoSuchFieldException e) {
             throw VMError.shouldNotReachHere(e);

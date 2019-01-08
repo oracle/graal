@@ -97,7 +97,8 @@ graal_compiler_export_packages = [
     'jdk.internal.vm.ci/jdk.vm.ci.amd64',
     'jdk.internal.vm.ci/jdk.vm.ci.meta',
     'jdk.internal.vm.ci/jdk.vm.ci.hotspot',
-    'jdk.internal.vm.ci/jdk.vm.ci.common']
+    'jdk.internal.vm.ci/jdk.vm.ci.common',
+    'jdk.internal.vm.ci/jdk.vm.ci.code.site']
 GRAAL_COMPILER_FLAGS_MAP['11'].extend(add_exports_from_packages(graal_compiler_export_packages))
 
 # Packages to open to allow reflective access at runtime.
@@ -113,6 +114,8 @@ GRAAL_COMPILER_FLAGS_MAP['11'].extend(add_opens_from_packages(jdk_opens_packages
 java_base_opens_packages = [
     # Reflective access to jdk.internal.ref.CleanerImpl$PhantomCleanableRef.
     'java.base/jdk.internal.ref',
+    # Reflective access to jdk.internal.reflect.MethodAccessor.
+    'java.base/jdk.internal.reflect',
     # Reflective access to private fields of java.lang.Class.
     'java.base/java.lang',
     # Reflective access to java.lang.invoke.VarHandle*.
@@ -185,7 +188,8 @@ def svmbuild_dir(suite=None):
 def suite_native_image_root(suite=None):
     if not suite:
         suite = svm_suite()
-    root_dir = join(svmbuild_dir(suite), 'native-image-root-' + str(svm_java_compliance()))
+    llvm = all([mx.distribution(dist).exists() for dist in llvmDistributions])
+    root_dir = join(svmbuild_dir(suite), ('llvm-' if llvm else '') + 'native-image-root-' + str(svm_java_compliance()))
     rev_file_name = join(root_dir, 'rev')
     rev_value = suite.vc.parent(suite.vc_dir)
     def write_rev_file():
@@ -318,7 +322,7 @@ class ToolDescriptor:
 
 tools_map = {
     'truffle' : ToolDescriptor(),
-    'native-image' : ToolDescriptor(image_deps=['substratevm:SVM_DRIVER']),
+    'native-image' : ToolDescriptor(),
     'junit' : ToolDescriptor(builder_deps=['mx:JUNIT_TOOL', 'JUNIT', 'HAMCREST']),
     'regex' : ToolDescriptor(image_deps=['regex:TREGEX']),
 }
@@ -348,13 +352,15 @@ def build_native_image_image():
     native_image_on_jvm(['--tool:native-image', '-H:Path=' + image_dir])
 
 svmDistribution = ['substratevm:SVM']
+llvmDistributions = []
 graalDistribution = ['compiler:GRAAL']
 librarySupportDistribution = ['substratevm:LIBRARY_SUPPORT']
 
 def layout_native_image_root(native_image_root):
 
     def names_to_dists(dist_names):
-        return [mx.dependency(dist_name) for dist_name in dist_names]
+        deps = [mx.dependency(dist_name) for dist_name in dist_names]
+        return [dep for dep in deps if not dep.isDistribution() or dep.exists()]
 
     def native_image_layout_dists(subdir, dist_names):
         native_image_layout(names_to_dists(dist_names), subdir, native_image_root)
@@ -374,15 +380,16 @@ def layout_native_image_root(native_image_root):
 
     # Create native-image layout for compiler & jvmci parts
     native_image_layout_dists(join('lib', 'jvmci'), jvmci_dists)
+    jdk_config = mx.get_jdk()
     if svm_java80():
-        jdk_config = mx.get_jdk()
         jvmci_path = join(jdk_config.home, 'jre', 'lib', 'jvmci')
         if os.path.isdir(jvmci_path):
             for symlink_name in os.listdir(jvmci_path):
                 symlink_or_copy(join(jvmci_path, symlink_name), join(native_image_root, 'lib', 'jvmci', symlink_name))
 
     # Create native-image layout for truffle parts
-    native_image_layout_dists(join('lib', 'truffle'), ['truffle:TRUFFLE_API', 'truffle:TRUFFLE_NFI'])
+    if mx.get_os() != 'windows':  # necessary until Truffle is fully supported (GR-7941)
+        native_image_layout_dists(join('lib', 'truffle'), ['truffle:TRUFFLE_API', 'truffle:TRUFFLE_NFI'])
 
     # Create native-image layout for tools parts
     for tool_name in tools_map:
@@ -395,15 +402,16 @@ def layout_native_image_root(native_image_root):
     # Create native-image layout for svm parts
     svm_subdir = join('lib', 'svm')
     native_image_layout_dists(svm_subdir, librarySupportDistribution)
-    native_image_layout_dists(join(svm_subdir, 'builder'), svmDistribution + ['substratevm:POINTSTO', 'substratevm:OBJECTFILE'])
+    native_image_layout_dists(join(svm_subdir, 'builder'), svmDistribution + llvmDistributions + ['substratevm:POINTSTO', 'substratevm:OBJECTFILE'])
+    clibraries_dest = join(native_image_root, join(svm_subdir, 'clibraries'))
     for clibrary_path in clibrary_paths():
-        from distutils.errors import DistutilsFileError  # pylint: disable=no-name-in-module
-        try:
-            copy_tree(clibrary_path, join(native_image_root, join(svm_subdir, 'clibraries')))
-        except DistutilsFileError:
-            # ignore until GR-7932 is resolved
-            pass
-
+        copy_tree(clibrary_path, clibraries_dest)
+    lib_suffix = '.lib' if mx.get_os() == 'windows' else '.a'
+    jdk_lib_subdir = ['jre', 'lib'] if svm_java80() else ['lib']
+    jdk_lib_dir = join(jdk_config.home, *jdk_lib_subdir)
+    jdk_libs = [join(jdk_lib_dir, lib) for lib in os.listdir(jdk_lib_dir) if lib.endswith(lib_suffix)]
+    for src_lib in jdk_libs:
+        symlink_or_copy(src_lib, join(clibraries_dest, platform_name()))
 
 def truffle_language_ensure(language_flag, version=None, native_image_root=None, early_exit=False, extract=True):
     """

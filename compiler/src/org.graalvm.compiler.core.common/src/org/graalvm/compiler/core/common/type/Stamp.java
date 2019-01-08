@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -184,5 +184,13 @@ public abstract class Stamp {
             return otherConstant != null && constant.equals(otherConstant);
         }
         return false;
+    }
+
+    /**
+     * Convert a Stamp into a representation that can be resolved symbolically into the original
+     * stamp. If this stamp contains no references to JVMCI types then simply return null.
+     */
+    public SymbolicJVMCIReference<? extends Stamp> makeSymbolic() {
+        return null;
     }
 }

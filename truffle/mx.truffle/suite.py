@@ -41,8 +41,8 @@
 suite = {
   "mxversion" : "5.189.0",
   "name" : "truffle",
-  "version": "1.0.0-rc10",
-  "release" : True,
+  "version" : "1.0.0-rc11",
+  "release" : False,
   "groupId" : "org.graalvm.truffle",
   "sourceinprojectwhitelist" : [],
   "url" : "http://openjdk.java.net/projects/graal",
@@ -275,7 +275,6 @@ suite = {
       "checkstyle" : "com.oracle.truffle.dsl.processor",
       "javaCompliance" : "9+",
       "multiReleaseJarVersion" : "9",
-      "checkstyleVersion" : "8.8",
       "imports" : [
         "com.sun.tools.javac.processing",
         "com.sun.tools.javac.model",
@@ -548,6 +547,18 @@ suite = {
       "javaCompliance" : "8+",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR_INTEROP_INTERNAL"],
       "workingSets" : "Truffle",
+      "os_arch" : {
+        "windows" : {
+          "<others>" : {
+            "ignore" : "windows is not supported",  # necessary until Truffle is fully supported (GR-7941)
+          },
+        },
+        "<others>" : {
+          "<others>" : {
+            "ignore" : False,
+          },
+        },
+      },
     },
 
     "com.oracle.truffle.nfi.types" : {
@@ -588,6 +599,7 @@ suite = {
         "mx:JUNIT",
         "TRUFFLE_NFI",
         "TRUFFLE_TCK",
+        "TRUFFLE_TEST_NATIVE",
       ],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "8+",
@@ -636,6 +648,7 @@ suite = {
       "dependencies" : [
         "sdk:GRAAL_SDK",
       ],
+      "checkstyle" : "com.oracle.truffle.sl",
       "javaCompliance" : "8+",
       "workingSets" : "Truffle,SimpleLanguage",
     },

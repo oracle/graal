@@ -290,6 +290,12 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract boolean isAvailable(Object impl);
 
+        public abstract boolean hasLines(Object impl);
+
+        public abstract boolean hasColumns(Object impl);
+
+        public abstract boolean hasCharIndex(Object impl);
+
         public abstract int getStartLine(Object impl);
 
         public abstract int getStartColumn(Object impl);

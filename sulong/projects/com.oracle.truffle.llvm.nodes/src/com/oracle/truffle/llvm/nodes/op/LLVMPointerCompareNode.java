@@ -35,6 +35,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.llvm.nodes.op.LLVMPointerCompareNodeGen.LLVMManagedCompareNodeGen;
 import com.oracle.truffle.llvm.nodes.op.LLVMPointerCompareNodeGen.LLVMNativeCompareNodeGen;
 import com.oracle.truffle.llvm.nodes.op.LLVMPointerCompareNodeGen.LLVMNegateNodeGen;
@@ -228,7 +229,7 @@ public abstract class LLVMPointerCompareNode extends LLVMAbstractCompareNode {
     }
 
     public abstract static class LLVMPointToSameObjectNode extends LLVMNode {
-        abstract boolean execute(Object a, Object b);
+        public abstract boolean execute(Object a, Object b);
 
         @Specialization
         protected boolean pointToSameObjectCached(LLVMManagedPointer a, LLVMManagedPointer b,
@@ -241,10 +242,6 @@ public abstract class LLVMPointerCompareNode extends LLVMAbstractCompareNode {
             return a.getObject() == b.getObject();
         }
 
-        protected static Class<?> getObjectClass(LLVMManagedPointer pointer) {
-            return pointer.getObject().getClass();
-        }
-
         @TruffleBoundary
         public static LLVMPointToSameObjectNode create() {
             return LLVMPointToSameObjectNodeGen.create();
@@ -254,8 +251,8 @@ public abstract class LLVMPointerCompareNode extends LLVMAbstractCompareNode {
     /**
      * Uses an inline cache to devirtualize the virtual call to equals.
      */
-    abstract static class LLVMObjectEqualsNode extends LLVMNode {
-        abstract boolean execute(Object a, Object b);
+    public abstract static class LLVMObjectEqualsNode extends LLVMNode {
+        public abstract boolean execute(Object a, Object b);
 
         @Specialization(guards = "cachedClassA == getObjectClass(a)")
         protected boolean pointToSameForeignObjectCached(LLVMTypedForeignObject a, LLVMTypedForeignObject b,
@@ -278,7 +275,14 @@ public abstract class LLVMPointerCompareNode extends LLVMAbstractCompareNode {
             return false;
         }
 
-        @Specialization(guards = {"!isTypedForeignObject(a)", "!isTypedForeignObject(b)", "cachedClass == a.getClass()"})
+        @Specialization
+        protected boolean pointToSameDynamicObject(DynamicObject a, DynamicObject b) {
+            // workaround for Graal issue GR-12757 - this removes the redundant checks from the
+            // compiler graph
+            return a.equals(b);
+        }
+
+        @Specialization(guards = {"!isTypedForeignObject(a)", "!isTypedForeignObject(b)", "cachedClass == a.getClass()"}, replaces = "pointToSameDynamicObject")
         protected boolean pointToSameObjectCached(Object a, Object b,
                         @Cached("a.getClass()") Class<?> cachedClass) {
             return CompilerDirectives.castExact(a, cachedClass).equals(b);

@@ -166,6 +166,9 @@ public class SubstrateOptions {
     @Option(help = "Resources describing program elements to be made accessible via JNI (see JNIConfigurationFiles).", type = OptionType.User)//
     public static final HostedOptionKey<String[]> JNIConfigurationResources = new HostedOptionKey<>(null);
 
+    @Option(help = "Report information about known JNI elements when lookup fails", type = OptionType.User)//
+    public static final HostedOptionKey<Boolean> JNIVerboseLookupErrors = new HostedOptionKey<>(false);
+
     /*
      * Object and array allocation options.
      */
@@ -238,6 +241,12 @@ public class SubstrateOptions {
 
     @Option(help = "Saves stack base pointer on the stack on method entry.")//
     public static final HostedOptionKey<Boolean> UseStackBasePointer = new HostedOptionKey<>(false);
+
+    @Option(help = "Report error if <typename>[:<UsageKind>{,<UsageKind>}] is discovered during analysis (valid values for UsageKind: InHeap, Allocated, InTypeCheck).", type = OptionType.Debug)//
+    public static final OptionKey<String[]> ReportAnalysisForbiddenType = new OptionKey<>(new String[0]);
+
+    @Option(help = "Backend used by the compiler", type = OptionType.User)//
+    public static final HostedOptionKey<String> CompilerBackend = new HostedOptionKey<>("lir");
 
     public static FoldedPredicate makeFilter(String[] definedFilters) {
         if (definedFilters != null) {

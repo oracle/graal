@@ -67,7 +67,7 @@ public final class DebugException extends RuntimeException {
     private static final long serialVersionUID = 5017970176581546348L;
     private static final String CAUSE_CAPTION = "Caused by: ";
 
-    private final Debugger debugger;
+    private final DebuggerSession session;
     private final Throwable exception; // the exception, or null when only a message is given
     private final LanguageInfo preferredLanguage; // the preferred language, or null
     private final Node throwLocation;         // node which intercepted the exception, or null
@@ -77,31 +77,32 @@ public final class DebugException extends RuntimeException {
     private List<DebugStackTraceElement> debugStackTrace;
     private StackTraceElement[] javaLikeStackTrace;
 
-    DebugException(Debugger debugger, String message, Node throwLocation, boolean isCatchNodeComputed, CatchLocation catchLocation) {
+    DebugException(DebuggerSession session, String message, Node throwLocation, boolean isCatchNodeComputed, CatchLocation catchLocation) {
         super(message);
-        this.debugger = debugger;
+        this.session = session;
         this.exception = null;
         this.preferredLanguage = null;
         this.throwLocation = throwLocation;
         this.isCatchNodeComputed = isCatchNodeComputed;
-        this.catchLocation = catchLocation;
+        this.catchLocation = catchLocation != null ? catchLocation.cloneFor(session) : null;
         // we need to materialize the stack for the case that this exception is printed
         super.setStackTrace(getStackTrace());
     }
 
-    DebugException(Debugger debugger, Throwable exception, LanguageInfo preferredLanguage, Node throwLocation, boolean isCatchNodeComputed, CatchLocation catchLocation) {
+    DebugException(DebuggerSession session, Throwable exception, LanguageInfo preferredLanguage, Node throwLocation, boolean isCatchNodeComputed, CatchLocation catchLocation) {
         super(exception.getLocalizedMessage());
-        this.debugger = debugger;
+        this.session = session;
         this.exception = exception;
         this.preferredLanguage = preferredLanguage;
         this.throwLocation = throwLocation;
         this.isCatchNodeComputed = isCatchNodeComputed;
-        this.catchLocation = catchLocation;
+        this.catchLocation = catchLocation != null ? catchLocation.cloneFor(session) : null;
         // we need to materialize the stack for the case that this exception is printed
         super.setStackTrace(getStackTrace());
     }
 
     void setSuspendedEvent(SuspendedEvent suspendedEvent) {
+        assert session == suspendedEvent.getSession();
         if (catchLocation != null) {
             catchLocation.setSuspendedEvent(suspendedEvent);
         }
@@ -175,7 +176,7 @@ public final class DebugException extends RuntimeException {
                     TruffleStackTraceElement tframe = stackTrace.get(i);
                     RootNode root = tframe.getTarget().getRootNode();
                     if (root.getLanguageInfo() != null) {
-                        debugStack.add(new DebugStackTraceElement(debugger, tframe));
+                        debugStack.add(new DebugStackTraceElement(session, tframe));
                     }
                 }
                 debugStackTrace = Collections.unmodifiableList(debugStack);
@@ -193,7 +194,7 @@ public final class DebugException extends RuntimeException {
      */
     @Override
     public void printStackTrace() {
-        printStackTrace(new PrintStream(debugger.getEnv().err()));
+        printStackTrace(new PrintStream(session.getDebugger().getEnv().err()));
     }
 
     /**
@@ -254,7 +255,7 @@ public final class DebugException extends RuntimeException {
                 language = throwRoot.getLanguageInfo();
             }
         }
-        return new DebugValue.HeapValue(debugger, language, null, obj);
+        return new DebugValue.HeapValue(session, language, null, obj);
     }
 
     /**
@@ -289,9 +290,10 @@ public final class DebugException extends RuntimeException {
             synchronized (this) {
                 if (!isCatchNodeComputed) {
                     if (exception instanceof TruffleException) {
-                        catchLocation = BreakpointExceptionFilter.getCatchNode(debugger, throwLocation, exception);
+                        catchLocation = BreakpointExceptionFilter.getCatchNode(session.getDebugger(), throwLocation, exception);
                         if (catchLocation != null) {
                             catchLocation.setSuspendedEvent(suspendedEvent);
+                            catchLocation = catchLocation.cloneFor(session);
                         }
                     }
                     isCatchNodeComputed = true;
@@ -309,12 +311,18 @@ public final class DebugException extends RuntimeException {
      */
     public static final class CatchLocation {
 
+        private final DebuggerSession session;
         private final SourceSection section;
         private final FrameInstance frameInstance;
         private final int depth;
         private DebugStackFrame frame;
 
         CatchLocation(SourceSection section, FrameInstance frameInstance, int depth) {
+            this(null, section, frameInstance, depth);
+        }
+
+        private CatchLocation(DebuggerSession session, SourceSection section, FrameInstance frameInstance, int depth) {
+            this.session = session;
             this.section = section;
             this.frameInstance = frameInstance;
             this.depth = depth;
@@ -325,7 +333,7 @@ public final class DebugException extends RuntimeException {
          * @since 1.0
          */
         public SourceSection getSourceSection() {
-            return section;
+            return session.resolveSection(section);
         }
 
         /**
@@ -337,7 +345,18 @@ public final class DebugException extends RuntimeException {
         }
 
         void setSuspendedEvent(SuspendedEvent suspendedEvent) {
+            assert session == null || session == suspendedEvent.getSession();
             frame = new DebugStackFrame(suspendedEvent, depth == 0 ? null : frameInstance, depth);
+        }
+
+        private CatchLocation cloneFor(DebuggerSession ds) {
+            assert this.session == null;
+            CatchLocation clon = new CatchLocation(ds, section, frameInstance, depth);
+            if (frame != null) {
+                assert ds == frame.event.getSession();
+                clon.frame = frame;
+            }
+            return clon;
         }
     }
 }

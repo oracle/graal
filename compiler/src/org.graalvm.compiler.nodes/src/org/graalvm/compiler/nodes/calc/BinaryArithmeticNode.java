@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -118,6 +118,10 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
         return AddNode.create(v1, v2, view);
     }
 
+    public static ValueNode add(ValueNode v1, ValueNode v2) {
+        return add(v1, v2, NodeView.DEFAULT);
+    }
+
     public static ValueNode mul(StructuredGraph graph, ValueNode v1, ValueNode v2, NodeView view) {
         return graph.addOrUniqueWithInputs(MulNode.create(v1, v2, view));
     }
@@ -126,12 +130,20 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
         return MulNode.create(v1, v2, view);
     }
 
+    public static ValueNode mul(ValueNode v1, ValueNode v2) {
+        return mul(v1, v2, NodeView.DEFAULT);
+    }
+
     public static ValueNode sub(StructuredGraph graph, ValueNode v1, ValueNode v2, NodeView view) {
         return graph.addOrUniqueWithInputs(SubNode.create(v1, v2, view));
     }
 
     public static ValueNode sub(ValueNode v1, ValueNode v2, NodeView view) {
         return SubNode.create(v1, v2, view);
+    }
+
+    public static ValueNode sub(ValueNode v1, ValueNode v2) {
+        return sub(v1, v2, NodeView.DEFAULT);
     }
 
     public static ValueNode branchlessMin(ValueNode v1, ValueNode v2, NodeView view) {

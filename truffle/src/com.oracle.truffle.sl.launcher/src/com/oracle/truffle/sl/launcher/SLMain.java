@@ -87,10 +87,11 @@ public final class SLMain {
 
     private static int executeSource(Source source, InputStream in, PrintStream out, Map<String, String> options) {
         Context context;
+        PrintStream err = System.err;
         try {
             context = Context.newBuilder(SL).in(in).out(out).options(options).build();
         } catch (IllegalArgumentException e) {
-            System.err.println(e.getMessage());
+            err.println(e.getMessage());
             return 1;
         }
         out.println("== running on " + context.getEngine());
@@ -98,7 +99,7 @@ public final class SLMain {
         try {
             Value result = context.eval(source);
             if (context.getBindings(SL).getMember("main") == null) {
-                System.err.println("No function main() defined in SL source file.");
+                err.println("No function main() defined in SL source file.");
                 return 1;
             }
             if (!result.isNull()) {
@@ -110,7 +111,7 @@ public final class SLMain {
                 // for internal errors we print the full stack trace
                 ex.printStackTrace();
             } else {
-                System.err.println(ex.getMessage());
+                err.println(ex.getMessage());
             }
             return 1;
         } finally {

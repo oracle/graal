@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,7 +39,7 @@ public abstract class SnippetsTest extends ReplacementsTest {
     protected SnippetsTest() {
         ReplacementsImpl d = (ReplacementsImpl) getReplacements();
         bytecodeProvider = getSystemClassLoaderBytecodeProvider();
-        installer = new ReplacementsImpl(getInitialOptions(), null, d.providers, d.snippetReflection, bytecodeProvider, d.target);
+        installer = new ReplacementsImpl(getInitialOptions(), null, d.getProviders(), d.snippetReflection, bytecodeProvider, d.target);
         installer.setGraphBuilderPlugins(d.getGraphBuilderPlugins());
     }
 

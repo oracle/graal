@@ -53,7 +53,6 @@ import com.oracle.truffle.llvm.Runner.SulongLibrary;
 import com.oracle.truffle.llvm.runtime.Configuration;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebuggerScopeFactory;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
@@ -64,7 +63,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-@TruffleLanguage.Registration(id = "llvm", name = "llvm", version = "6.0.0", internal = false, interactive = false, defaultMimeType = Sulong.LLVM_BITCODE_MIME_TYPE, //
+@TruffleLanguage.Registration(id = Sulong.ID, name = Sulong.NAME, version = "6.0.0", internal = false, interactive = false, defaultMimeType = Sulong.LLVM_BITCODE_MIME_TYPE, //
                 byteMimeTypes = {Sulong.LLVM_BITCODE_MIME_TYPE, Sulong.LLVM_ELF_SHARED_MIME_TYPE, Sulong.LLVM_ELF_EXEC_MIME_TYPE}, //
                 characterMimeTypes = {Sulong.LLVM_BITCODE_BASE64_MIME_TYPE, Sulong.LLVM_SULONG_TYPE})
 @ProvidedTags({StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class, DebuggerTags.AlwaysHalt.class})
@@ -111,31 +110,6 @@ public final class Sulong extends LLVMLanguage {
         Source source = request.getSource();
         LLVMContext context = findLLVMContext();
         return new Runner(context).parse(source);
-    }
-
-    @Override
-    @SuppressWarnings("deprecation") // for compatibility, will be removed in a future release
-    protected Object findExportedSymbol(LLVMContext context, String globalName, boolean onlyExplicit) {
-        String atname = globalName.startsWith("@") ? globalName : "@" + globalName; // for interop
-        LLVMSymbol result = null;
-        if (context.getGlobalScope().contains(atname)) {
-            result = context.getGlobalScope().get(atname);
-        } else if (context.getGlobalScope().contains(globalName)) {
-            result = context.getGlobalScope().get(globalName);
-        }
-        return dealias(result);
-    }
-
-    private static Object dealias(LLVMSymbol symbol) {
-        if (symbol == null) {
-            return null;
-        } else if (symbol.isFunction()) {
-            return symbol.asFunction();
-        } else if (symbol.isGlobalVariable()) {
-            return symbol.asGlobalVariable();
-        } else {
-            throw new IllegalStateException("Unknown symbol: " + symbol.getClass());
-        }
     }
 
     @Override

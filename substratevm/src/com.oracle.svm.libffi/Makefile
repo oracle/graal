@@ -34,7 +34,7 @@ ifeq (${OS},solaris)
 CFLAGS+=-m64
 endif
 
-TARGET=${OS}-${ARCH}
+TARGET=${OS}-${ARCH}/..
 
 DEPLOYED_HEADERS=ffi.h ffitarget.h svm_libffi.h trufflenfi.h
 

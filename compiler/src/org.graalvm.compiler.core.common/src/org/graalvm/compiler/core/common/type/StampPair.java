@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,8 @@
  * questions.
  */
 package org.graalvm.compiler.core.common.type;
+
+import java.util.Objects;
 
 /**
  * A pair of stamp with one being the stamp that can be trusted and the other one being a guess that
@@ -62,5 +64,23 @@ public final class StampPair {
         } else {
             return trustedStamp + " (unchecked=" + uncheckedStamp + ")";
         }
+    }
+
+    @Override
+    public int hashCode() {
+        return trustedStamp.hashCode() + 11 + (uncheckedStamp != null ? uncheckedStamp.hashCode() : 0);
+
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == this) {
+            return true;
+        }
+        if (obj instanceof StampPair) {
+            StampPair other = (StampPair) obj;
+            return trustedStamp.equals(other.trustedStamp) && Objects.equals(uncheckedStamp, other.uncheckedStamp);
+        }
+        return false;
     }
 }

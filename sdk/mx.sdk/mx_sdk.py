@@ -44,6 +44,7 @@ from abc import ABCMeta
 import mx
 import mx_gate
 import mx_subst
+import datetime
 
 from mx_gate import Task
 from mx_unittest import unittest
@@ -64,11 +65,22 @@ def _sdk_gate_runner(args, tasks):
 
 mx_gate.add_gate_runner(_suite, _sdk_gate_runner)
 
+def build_oracle_compliant_javadoc_args(suite, product_name, feature_name):
+    """
+    :type product_name: str
+    :type feature_name: str
+    """
+    version = suite.release_version()
+    revision = suite.vc.parent(suite.vc_dir)
+    copyright_year = str(datetime.datetime.fromtimestamp(suite.vc.parent_info(suite.vc_dir)['committer-ts']).year)
+    return ['--arg', '@-header', '--arg', '<b>%s %s Java API Reference<br>%s</b><br>%s' % (product_name, feature_name, version, revision),
+            '--arg', '@-bottom', '--arg', '<center>Copyright &copy; 2012, %s, Oracle and/or its affiliates. All rights reserved.</center>' % (copyright_year),
+            '--arg', '@-windowtitle', '--arg', '%s %s Java API Reference' % (product_name, feature_name)]
 
 def javadoc(args):
     """build the Javadoc for all API packages"""
-    mx.javadoc(['--unified', '--exclude-packages', 'org.graalvm.polyglot.tck'] + args)
-
+    extraArgs = build_oracle_compliant_javadoc_args(_suite, 'GraalVM', 'SDK')
+    mx.javadoc(['--unified', '--exclude-packages', 'org.graalvm.polyglot.tck'] + extraArgs + args)
 
 def add_graalvm_hostvm_config(name, java_args=None, launcher_args=None, priority=0):
     """

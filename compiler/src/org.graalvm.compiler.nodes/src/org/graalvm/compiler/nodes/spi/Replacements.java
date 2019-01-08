@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.options.OptionValues;
 
@@ -52,13 +53,20 @@ public interface Replacements {
     GraphBuilderConfiguration.Plugins getGraphBuilderPlugins();
 
     /**
+     * Gets the plugin type that intrinsifies calls to {@code method}.
+     */
+    Class<? extends GraphBuilderPlugin> getIntrinsifyingPlugin(ResolvedJavaMethod method);
+
+    /**
      * Gets the snippet graph derived from a given method.
      *
      * @param args arguments to the snippet if available, otherwise {@code null}
      * @param trackNodeSourcePosition
      * @return the snippet graph, if any, that is derived from {@code method}
      */
-    StructuredGraph getSnippet(ResolvedJavaMethod method, Object[] args, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition);
+    default StructuredGraph getSnippet(ResolvedJavaMethod method, Object[] args, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition) {
+        return getSnippet(method, null, args, trackNodeSourcePosition, replaceePosition);
+    }
 
     /**
      * Gets the snippet graph derived from a given method.
@@ -75,7 +83,7 @@ public interface Replacements {
     /**
      * Registers a method as snippet.
      */
-    void registerSnippet(ResolvedJavaMethod method, boolean trackNodeSourcePosition);
+    void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition);
 
     /**
      * Gets a graph that is a substitution for a given method.
@@ -138,4 +146,13 @@ public interface Replacements {
      * {@link Replacements#registerSnippetTemplateCache(SnippetTemplateCache)}.
      */
     <T extends SnippetTemplateCache> T getSnippetTemplateCache(Class<T> templatesClass);
+
+    /**
+     * Notifies this method that no further snippets will be registered via {@link #registerSnippet}
+     * or {@link #registerSnippetTemplateCache}.
+     *
+     * This is a hook for an implementation to check for or forbid late registration.
+     */
+    default void closeSnippetRegistration() {
+    }
 }

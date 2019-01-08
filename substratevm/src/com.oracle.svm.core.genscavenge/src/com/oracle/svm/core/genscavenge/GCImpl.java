@@ -28,10 +28,10 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointe
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 
 import java.lang.management.GarbageCollectorMXBean;
+import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
 import org.graalvm.compiler.api.replacements.Fold;
@@ -72,6 +72,10 @@ import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
+
+//Checkstyle: stop
+import sun.management.Util;
+//Checkstyle: resume
 
 public class GCImpl implements GC {
 
@@ -1759,11 +1763,7 @@ final class GarbageCollectorManagementFactory {
 
         @Override
         public ObjectName getObjectName() {
-            try {
-                return new ObjectName("java.lang:type=GarbageCollector,name=young generation scavenger");
-            } catch (MalformedObjectNameException mone) {
-                return null;
-            }
+            return Util.newObjectName(ManagementFactory.GARBAGE_COLLECTOR_MXBEAN_DOMAIN_TYPE, getName());
         }
     }
 
@@ -1804,11 +1804,7 @@ final class GarbageCollectorManagementFactory {
 
         @Override
         public ObjectName getObjectName() {
-            try {
-                return new ObjectName("java.lang:type=GarbageCollector,name=complete scavenger");
-            } catch (MalformedObjectNameException mone) {
-                return null;
-            }
+            return Util.newObjectName(ManagementFactory.GARBAGE_COLLECTOR_MXBEAN_DOMAIN_TYPE, getName());
         }
     }
 }

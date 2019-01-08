@@ -88,6 +88,9 @@ public final class CEntryPointErrors {
     @Description("Some exception is not caught.") //
     public static final int UNCAUGHT_EXCEPTION = 12;
 
+    @Description("Initialization the isolate failed.") //
+    public static final int ISOLATE_INITIALIZATION_FAILED = 13;
+
     static String getDescription(int code) {
         String result = null;
         if (code >= 0 && code < DESCRIPTIONS.length) {

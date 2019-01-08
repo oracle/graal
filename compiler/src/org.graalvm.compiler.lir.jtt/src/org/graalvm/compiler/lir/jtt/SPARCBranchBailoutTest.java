@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,17 +25,15 @@
 package org.graalvm.compiler.lir.jtt;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
-import org.graalvm.compiler.core.common.PermanentBailoutException;
+import org.graalvm.compiler.asm.BranchTargetOutOfBoundsException;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Scope;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
-import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
@@ -82,18 +80,14 @@ public class SPARCBranchBailoutTest extends LIRTest {
     }
 
     @SuppressWarnings("try")
-    @Test
+    @Test(expected = BranchTargetOutOfBoundsException.class)
     public void testBailoutOnBranchOverflow() throws Throwable {
         Assume.assumeTrue(getBackend().getTarget().arch instanceof SPARC);
         ResolvedJavaMethod m = getResolvedJavaMethod("testBranch");
         DebugContext debug = getDebugContext();
-        try {
-            try (Scope s = debug.disable()) {
-                StructuredGraph graph = parseEager(m, AllowAssumptions.YES, debug);
-                compile(m, graph);
-            }
-        } catch (GraalError e) {
-            Assert.assertEquals(PermanentBailoutException.class, e.getCause().getClass());
+        try (Scope s = debug.disable()) {
+            StructuredGraph graph = parseEager(m, AllowAssumptions.YES, debug);
+            compile(m, graph);
         }
     }
 

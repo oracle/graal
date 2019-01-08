@@ -1136,7 +1136,7 @@ final class SleepSupport {
 
 @TargetClass(classNameProvider = Package_jdk_internal_misc.class, className = "Unsafe")
 @SuppressWarnings({"static-method"})
-final class Target_jdk_internal_misc_Unsafe {
+final class Target_Unsafe_JavaThreads {
 
     /**
      * Block current thread, returning when a balancing <tt>unpark</tt> occurs, or a balancing

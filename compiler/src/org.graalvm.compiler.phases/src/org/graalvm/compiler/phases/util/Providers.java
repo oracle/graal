@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -109,34 +109,42 @@ public class Providers implements CodeGenProviders {
     }
 
     public Providers copyWith(MetaAccessProvider substitution) {
+        assert this.getClass() == Providers.class : "must override";
         return new Providers(substitution, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider);
     }
 
     public Providers copyWith(CodeCacheProvider substitution) {
+        assert this.getClass() == Providers.class : "must override";
         return new Providers(metaAccess, substitution, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider);
     }
 
     public Providers copyWith(ConstantReflectionProvider substitution) {
+        assert this.getClass() == Providers.class : "must override";
         return new Providers(metaAccess, codeCache, substitution, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider);
     }
 
     public Providers copyWith(ConstantFieldProvider substitution) {
+        assert this.getClass() == Providers.class : "must override";
         return new Providers(metaAccess, codeCache, constantReflection, substitution, foreignCalls, lowerer, replacements, stampProvider);
     }
 
     public Providers copyWith(ForeignCallsProvider substitution) {
+        assert this.getClass() == Providers.class : "must override";
         return new Providers(metaAccess, codeCache, constantReflection, constantFieldProvider, substitution, lowerer, replacements, stampProvider);
     }
 
     public Providers copyWith(LoweringProvider substitution) {
+        assert this.getClass() == Providers.class : "must override";
         return new Providers(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, substitution, replacements, stampProvider);
     }
 
     public Providers copyWith(Replacements substitution) {
+        assert this.getClass() == Providers.class : "must override in " + getClass();
         return new Providers(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, substitution, stampProvider);
     }
 
     public Providers copyWith(StampProvider substitution) {
+        assert this.getClass() == Providers.class : "must override";
         return new Providers(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, substitution);
     }
 }

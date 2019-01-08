@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,15 +49,18 @@ public abstract class TestWithSynchronousCompiling {
 
     private static TruffleRuntimeOptionsOverrideScope backgroundCompilationScope;
     private static TruffleRuntimeOptionsOverrideScope compilationThresholdScope;
+    private static TruffleRuntimeOptionsOverrideScope immediateCompilationScope;
 
     @BeforeClass
     public static void before() {
         backgroundCompilationScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleBackgroundCompilation, false);
         compilationThresholdScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleCompilationThreshold, 10);
+        immediateCompilationScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleCompileImmediately, false);
     }
 
     @AfterClass
     public static void after() {
+        immediateCompilationScope.close();
         backgroundCompilationScope.close();
         compilationThresholdScope.close();
     }

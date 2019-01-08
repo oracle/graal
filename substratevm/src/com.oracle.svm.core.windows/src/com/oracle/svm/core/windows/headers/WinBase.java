@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -50,6 +51,12 @@ public class WinBase {
      * Windows opaque Handle type
      */
     public interface HANDLE extends WordBase {
+    }
+
+    /**
+     * Windows Module Handle type
+     */
+    public interface HMODULE extends PointerBase {
     }
 
     /**
@@ -283,5 +290,41 @@ public class WinBase {
      */
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native int CloseHandle(HANDLE hFile);
+
+    /**
+     * GetModuleHandle
+     */
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native Pointer GetModuleHandleA(PointerBase lpModuleName);
+
+    /**
+     * GetModuleFileNameA
+     */
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native int GetModuleFileNameA(Pointer hModule, CCharPointer lpFilename, int nSize);
+
+    /**
+     * GetProcAddress
+     */
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native PointerBase GetProcAddress(Pointer hModule, PointerBase lpProcName);
+
+    /**
+     * LoadLibraryA
+     */
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native Pointer LoadLibraryA(PointerBase lpFileName);
+
+    /**
+     * LoadLibraryExA
+     */
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native Pointer LoadLibraryExA(PointerBase lpFileName, int dummy, int flags);
+
+    /**
+     * SetDllDirectoryA
+     */
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native boolean SetDllDirectoryA(PointerBase lpPathName);
 
 }

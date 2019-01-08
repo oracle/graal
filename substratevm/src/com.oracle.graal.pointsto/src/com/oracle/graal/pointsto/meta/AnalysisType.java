@@ -47,6 +47,7 @@ import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.BigBang.ConstantObjectsProfiler;
+import com.oracle.graal.pointsto.api.AnnotationAccess;
 import com.oracle.graal.pointsto.api.DefaultUnsafePartition;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.api.UnsafePartitionKind;
@@ -84,6 +85,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     private boolean isInHeap;
     private boolean isAllocated;
     private boolean isInTypeCheck;
+    private boolean reachabilityListenerNotified;
     private boolean unsafeFieldsRecomputed;
     private boolean unsafeAccessedFieldsRegistered;
 
@@ -144,6 +146,12 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
 
     /* isArray is an expensive operation so we eagerly compute it */
     private boolean isArray;
+
+    public enum UsageKind {
+        InHeap,
+        Allocated,
+        InTypeCheck;
+    }
 
     AnalysisType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType) {
         this.universe = universe;
@@ -487,6 +495,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     public void registerAsInHeap() {
         assert isArray() || (isInstanceClass() && !Modifier.isAbstract(getModifiers()));
         isInHeap = true;
+        universe.hostVM.checkForbidden(this, UsageKind.InHeap);
     }
 
     /**
@@ -497,10 +506,20 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         if (!isAllocated) {
             isAllocated = true;
         }
+        universe.hostVM.checkForbidden(this, UsageKind.Allocated);
     }
 
     public void registerAsInTypeCheck() {
         isInTypeCheck = true;
+        universe.hostVM.checkForbidden(this, UsageKind.InTypeCheck);
+    }
+
+    public boolean getReachabilityListenerNotified() {
+        return reachabilityListenerNotified;
+    }
+
+    public void setReachabilityListenerNotified(boolean reachabilityListenerNotified) {
+        this.reachabilityListenerNotified = reachabilityListenerNotified;
     }
 
     /**
@@ -638,6 +657,10 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     @Override
     public ResolvedJavaType getWrapped() {
         return universe.substitutions.resolve(wrapped);
+    }
+
+    public ResolvedJavaType getWrappedWithoutResolve() {
+        return wrapped;
     }
 
     @Override
@@ -867,17 +890,17 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
 
     @Override
     public Annotation[] getAnnotations() {
-        return wrapped.getAnnotations();
+        return AnnotationAccess.getAnnotations(wrapped);
     }
 
     @Override
     public Annotation[] getDeclaredAnnotations() {
-        return wrapped.getDeclaredAnnotations();
+        return AnnotationAccess.getDeclaredAnnotations(wrapped);
     }
 
     @Override
     public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return wrapped.getAnnotation(annotationClass);
+        return AnnotationAccess.getAnnotation(wrapped, annotationClass);
     }
 
     @Override

@@ -28,6 +28,7 @@ package com.oracle.svm.reflect.hosted;
 
 import static com.oracle.svm.reflect.hosted.ReflectionSubstitution.getStableProxyName;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -40,6 +41,7 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
+import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
@@ -62,11 +64,16 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.jdk.IgnoreForGetCallerClass;
+import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionField;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionType;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
+import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
+import com.oracle.svm.hosted.substitute.DeletedMethod;
 import com.oracle.svm.reflect.helpers.ExceptionHelpers;
 import com.oracle.svm.reflect.hosted.ReflectionSubstitutionType.ReflectionSubstitutionMethod;
 
@@ -163,8 +170,8 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
     private static ReflectionSubstitutionMethod createWriteMethod(ResolvedJavaMethod method, Field field, JavaKind kind) {
         ReflectionDataBuilder reflectionDataBuilder = (ReflectionDataBuilder) ImageSingletons.lookup(RuntimeReflectionSupport.class);
         if (Modifier.isFinal(field.getModifiers()) && !reflectionDataBuilder.inspectFinalFieldWritableForAnalysis(field)) {
-            return new ThrowingMethod(method, IllegalAccessException.class, "Cannot set final field: " + field.getName() + ". " +
-                            "Enable by specifying \"allowWrite\" for this field in the reflection configuration.");
+            return new ThrowingMethod(method, IllegalAccessException.class, "Cannot set final field: " + field.getDeclaringClass().getName() +
+                            "." + field.getName() + ". " + "Enable by specifying \"allowWrite\" for this field in the reflection configuration.");
         }
         return new ReflectiveWriteMethod(method, field, kind);
     }
@@ -330,23 +337,43 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
                         return graphKit.append(new FloatConvertNode(FloatConvert.L2D, value));
                 }
                 break;
-            default:
-                assert from.isNumericInteger() && to.isNumericInteger() && from.getBitCount() < to.getBitCount();
-                ValueNode realValue = value;
-                if (from != from.getStackKind()) {
-                    // undo the implicit conversion of the LoadFieldNode
-                    realValue = graphKit.append(NarrowNode.create(value, from.getStackKind().getBitCount(), from.getBitCount(), NodeView.DEFAULT));
-                }
+            case Short:
+                assert from.isNumericInteger() && from.getBitCount() < to.getBitCount();
+                return graphKit.append(NarrowNode.create(value, to.getBitCount(), NodeView.DEFAULT));
+            case Int:
+                assert from.isNumericInteger() && from.getBitCount() < to.getBitCount();
+                return value;
+            case Long:
+                assert from.isNumericInteger() && from.getBitCount() < to.getBitCount();
                 if (from.isUnsigned()) {
-                    return graphKit.append(ZeroExtendNode.create(realValue, from.getBitCount(), to.getBitCount(), NodeView.DEFAULT));
+                    return graphKit.append(ZeroExtendNode.create(value, to.getBitCount(), NodeView.DEFAULT));
                 } else {
-                    return graphKit.append(SignExtendNode.create(realValue, from.getBitCount(), to.getBitCount(), NodeView.DEFAULT));
+                    return graphKit.append(SignExtendNode.create(value, to.getBitCount(), NodeView.DEFAULT));
                 }
+            default:
+                throw VMError.shouldNotReachHere();
         }
 
         assert from.isNumericInteger() && from.getByteCount() < 4;
         ValueNode intermediate = doImplicitCast(graphKit, from, JavaKind.Int, value);
         return doImplicitCast(graphKit, JavaKind.Int, to, intermediate);
+    }
+
+    private static boolean isDeletedField(ResolvedJavaField field) {
+        return field.isAnnotationPresent(Delete.class);
+    }
+
+    private static void handleDeletedField(HostedGraphKit graphKit, HostedProviders providers, ResolvedJavaField field, JavaKind returnKind) {
+        Delete deleteAnnotation = field.getAnnotation(Delete.class);
+        String msg = AnnotationSubstitutionProcessor.deleteErrorMessage(field, deleteAnnotation.value(), false);
+        ValueNode msgNode = ConstantNode.forConstant(SubstrateObjectConstant.forObject(msg), providers.getMetaAccess(), graphKit.getGraph());
+        ResolvedJavaMethod reportErrorMethod = providers.getMetaAccess().lookupJavaMethod(DeletedMethod.reportErrorMethod);
+        graphKit.createInvokeWithExceptionAndUnwind(reportErrorMethod, InvokeKind.Static, graphKit.getFrameState(), graphKit.bci(), graphKit.bci(), msgNode);
+        ConstantNode returnValue = null;
+        if (returnKind != JavaKind.Void) {
+            returnValue = graphKit.unique(ConstantNode.defaultForKind(returnKind));
+        }
+        graphKit.createReturn(returnValue, returnKind);
     }
 
     private static class ReflectiveReadMethod extends ReflectionSubstitutionMethod {
@@ -365,7 +392,10 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
             HostedGraphKit graphKit = new HostedGraphKit(ctx, providers, method);
             ResolvedJavaField targetField = providers.getMetaAccess().lookupJavaField(field);
 
-            if (canImplicitCast(targetField.getJavaKind(), kind)) {
+            if (isDeletedField(targetField)) {
+                handleDeletedField(graphKit, providers, targetField, kind);
+
+            } else if (canImplicitCast(targetField.getJavaKind(), kind)) {
 
                 ValueNode receiver;
                 if (targetField.isStatic()) {
@@ -406,7 +436,10 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
             ResolvedJavaField targetField = providers.getMetaAccess().lookupJavaField(field);
 
             JavaKind fieldKind = targetField.getJavaKind();
-            if (kind == JavaKind.Object || canImplicitCast(kind, fieldKind)) {
+            if (isDeletedField(targetField)) {
+                handleDeletedField(graphKit, providers, targetField, JavaKind.Void);
+
+            } else if (kind == JavaKind.Object || canImplicitCast(kind, fieldKind)) {
 
                 ValueNode receiver;
                 if (targetField.isStatic()) {
@@ -709,4 +742,21 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
         }
     }
 
+    @Override
+    public Annotation[] getAnnotations() {
+        return IgnoreForGetCallerClass.Holder.ARRAY;
+    }
+
+    @Override
+    public boolean isAnnotationPresent(Class<? extends Annotation> annotationClass) {
+        return annotationClass == IgnoreForGetCallerClass.class;
+    }
+
+    @Override
+    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
+        if (annotationClass == IgnoreForGetCallerClass.class) {
+            return annotationClass.cast(IgnoreForGetCallerClass.Holder.INSTANCE);
+        }
+        return null;
+    }
 }

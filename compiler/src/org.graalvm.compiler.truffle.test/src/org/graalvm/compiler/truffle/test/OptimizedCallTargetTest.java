@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -214,8 +214,10 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
             assertNull("assumption is initially null", getRewriteAssumption(innermostCallTarget));
 
             IntStream.range(0, compilationThreshold / 2).parallel().forEach(k -> {
-                assertEquals(42, outermostCallTarget.call(k));
-                assertNull("assumption stays null in the interpreter", getRewriteAssumption(innermostCallTarget));
+                try (TruffleRuntimeOptionsOverrideScope scope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleCompileImmediately, false)) {
+                    assertEquals(42, outermostCallTarget.call(k));
+                    assertNull("assumption stays null in the interpreter", getRewriteAssumption(innermostCallTarget));
+                }
             });
 
             outermostCallTarget.compile(true);

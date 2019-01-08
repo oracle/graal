@@ -33,7 +33,6 @@ import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.MergeNode;
-import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -73,11 +72,7 @@ public class RemoveUnwindPhase extends Phase {
          * deleted nodes during graph traversal.
          */
         for (InvokeWithExceptionNode node : invocations) {
-            InvokeNode replacement = node.graph().add(new InvokeNode(node.callTarget(), node.bci(), node.stamp(NodeView.DEFAULT)));
-            replacement.setStateAfter(node.stateAfter());
-
-            node.killExceptionEdge();
-            node.graph().replaceSplit(node, replacement, node.next());
+            node.replaceWithInvoke();
         }
     }
 

@@ -49,6 +49,7 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
+import java.net.URI;
 import java.util.List;
 
 import org.junit.Assert;
@@ -62,6 +63,7 @@ import com.oracle.truffle.api.debug.SuspendAnchor;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.tck.DebuggerTester;
 import org.graalvm.polyglot.Source;
 
@@ -1139,5 +1141,35 @@ public class BreakpointTest extends AbstractDebugTest {
             });
             expectDone();
         }
+    }
+
+    @Test
+    public void testRelativeSourceBreak() throws Exception {
+        String sourceContent = "relative source\nVarA";
+        String relativePath = "relative/test.file";
+        TestDebugNoContentLanguage language = new TestDebugNoContentLanguage(relativePath, true, true);
+        ProxyLanguage.setDelegate(language);
+        try (DebuggerSession session = tester.startSession()) {
+            Breakpoint breakpoint = Breakpoint.newBuilder(new URI(null, null, relativePath, null)).lineIs(1).build();
+            session.install(breakpoint);
+            Source source = Source.create(ProxyLanguage.ID, sourceContent);
+            tester.startEval(source);
+            expectSuspended((SuspendedEvent event) -> {
+                assertSame(breakpoint, event.getBreakpoints().get(0));
+                SourceSection sourceSection = event.getSourceSection();
+                Assert.assertTrue(sourceSection.isAvailable());
+                Assert.assertTrue(sourceSection.hasLines());
+                Assert.assertTrue(sourceSection.hasColumns());
+                Assert.assertFalse(sourceSection.hasCharIndex());
+                Assert.assertFalse(sourceSection.getSource().hasCharacters());
+
+                URI uri = sourceSection.getSource().getURI();
+                Assert.assertFalse(uri.toString(), uri.isAbsolute());
+                Assert.assertEquals(relativePath, uri.getPath());
+
+                event.prepareContinue();
+            });
+        }
+        expectDone();
     }
 }

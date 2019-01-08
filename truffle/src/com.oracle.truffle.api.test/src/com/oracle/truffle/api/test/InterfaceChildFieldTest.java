@@ -46,6 +46,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -124,7 +125,12 @@ public class InterfaceChildFieldTest {
         }
 
         public int executeIntf() {
-            return this.replace(new TestLeaf2Node()).executeIntf();
+            return doReplace().executeIntf();
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        private TestLeaf2Node doReplace() {
+            return this.replace(new TestLeaf2Node());
         }
     }
 

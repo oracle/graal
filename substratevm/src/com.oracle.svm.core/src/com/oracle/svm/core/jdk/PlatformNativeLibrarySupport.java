@@ -46,4 +46,10 @@ public interface PlatformNativeLibrarySupport {
     NativeLibrary createLibrary(String canonical, boolean builtIn);
 
     PointerBase findBuiltinSymbol(String name);
+
+    boolean isBuiltinLibrary(String name);
+
+    boolean isBuiltinPkgNative(String name);
+
+    boolean initializeBuiltinLibraries();
 }

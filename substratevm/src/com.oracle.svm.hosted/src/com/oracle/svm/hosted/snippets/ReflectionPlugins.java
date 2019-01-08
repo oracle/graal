@@ -24,7 +24,9 @@
  */
 package com.oracle.svm.hosted.snippets;
 
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.concurrent.ConcurrentHashMap;
@@ -43,14 +45,17 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registratio
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.reflect.ReflectionPluginExceptions;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.hosted.NativeImageOptions;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class ReflectionPlugins {
@@ -171,12 +176,12 @@ public class ReflectionPlugins {
             String className = snippetReflection.asObject(String.class, name.asJavaConstant());
             Class<?> clazz = imageClassLoader.findClassByName(className, false);
             if (clazz == null) {
-                if (shouldNotIntrinsify(analysis, hosted, throwClassNotFoundExceptionMethod)) {
+                if (shouldNotIntrinsify(analysis, hosted, b.getMetaAccess(), throwClassNotFoundExceptionMethod)) {
                     return false;
                 }
                 throwClassNotFoundException(b, targetMethod, className);
             } else {
-                if (shouldNotIntrinsify(analysis, hosted, clazz)) {
+                if (shouldNotIntrinsify(analysis, hosted, b.getMetaAccess(), clazz)) {
                     return false;
                 }
                 JavaConstant hub = b.getConstantReflection().asJavaClass(b.getMetaAccess().lookupJavaType(clazz));
@@ -196,12 +201,12 @@ public class ReflectionPlugins {
             String target = clazz.getTypeName() + "." + fieldName;
             try {
                 Field field = declared ? clazz.getDeclaredField(fieldName) : clazz.getField(fieldName);
-                if (shouldNotIntrinsify(analysis, hosted, field)) {
+                if (shouldNotIntrinsify(analysis, hosted, b.getMetaAccess(), field)) {
                     return false;
                 }
                 pushConstant(b, targetMethod, snippetReflection.forObject(field), target);
             } catch (NoSuchFieldException e) {
-                if (shouldNotIntrinsify(analysis, hosted, throwNoSuchFieldExceptionMethod)) {
+                if (shouldNotIntrinsify(analysis, hosted, b.getMetaAccess(), throwNoSuchFieldExceptionMethod)) {
                     return false;
                 }
                 throwNoSuchFieldException(b, targetMethod, target);
@@ -223,12 +228,12 @@ public class ReflectionPlugins {
                 String target = clazz.getTypeName() + "." + methodName + "(" + Stream.of(paramTypes).map(Class::getTypeName).collect(Collectors.joining(", ")) + ")";
                 try {
                     Method method = declared ? clazz.getDeclaredMethod(methodName, paramTypes) : clazz.getMethod(methodName, paramTypes);
-                    if (shouldNotIntrinsify(analysis, hosted, method)) {
+                    if (shouldNotIntrinsify(analysis, hosted, b.getMetaAccess(), method)) {
                         return false;
                     }
                     pushConstant(b, targetMethod, snippetReflection.forObject(method), target);
                 } catch (NoSuchMethodException e) {
-                    if (shouldNotIntrinsify(analysis, hosted, throwNoSuchMethodExceptionMethod)) {
+                    if (shouldNotIntrinsify(analysis, hosted, b.getMetaAccess(), throwNoSuchMethodExceptionMethod)) {
                         return false;
                     }
                     throwNoSuchMethodException(b, targetMethod, target);
@@ -253,12 +258,12 @@ public class ReflectionPlugins {
                 String target = clazz.getTypeName() + ".<init>(" + Stream.of(paramTypes).map(Class::getTypeName).collect(Collectors.joining(", ")) + ")";
                 try {
                     Constructor<?> constructor = declared ? clazz.getDeclaredConstructor(paramTypes) : clazz.getConstructor(paramTypes);
-                    if (shouldNotIntrinsify(analysis, hosted, constructor)) {
+                    if (shouldNotIntrinsify(analysis, hosted, b.getMetaAccess(), constructor)) {
                         return false;
                     }
                     pushConstant(b, targetMethod, snippetReflection.forObject(constructor), target);
                 } catch (NoSuchMethodException e) {
-                    if (shouldNotIntrinsify(analysis, hosted, throwNoSuchMethodExceptionMethod)) {
+                    if (shouldNotIntrinsify(analysis, hosted, b.getMetaAccess(), throwNoSuchMethodExceptionMethod)) {
                         return false;
                     }
                     throwNoSuchMethodException(b, targetMethod, target);
@@ -271,12 +276,23 @@ public class ReflectionPlugins {
     }
 
     /** Check if the element should be intrinsified. */
-    private static boolean shouldNotIntrinsify(boolean analysis, boolean hosted, Object element) {
+    private static boolean shouldNotIntrinsify(boolean analysis, boolean hosted, MetaAccessProvider metaAccess, Object element) {
         if (!hosted) {
             /* We are analyzing the static initializers and should always intrinsify. */
             return false;
         }
         if (analysis) {
+            if (NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
+                AnnotatedElement annotated = null;
+                if (element instanceof Executable) {
+                    annotated = metaAccess.lookupJavaMethod((Executable) element);
+                } else if (element instanceof Field) {
+                    annotated = metaAccess.lookupJavaField((Field) element);
+                }
+                if (annotated != null && annotated.isAnnotationPresent(Delete.class)) {
+                    return true; /* Fail during the reflective lookup at runtime. */
+                }
+            }
             /* We are during analysis, we should intrinsify and mark the objects as intrinsified. */
             ImageSingletons.lookup(ReflectionPluginRegistry.class).add(element);
             return false;

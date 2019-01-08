@@ -171,7 +171,7 @@ public interface Feature {
 
         /**
          * This method is now @Deprecated. Please use registerAsUnsafeAccessed instead.
-         * 
+         *
          * Registers the provided field as written by {@link sun.misc.Unsafe}, i.e., the static
          * analysis merges together all values of unsafe accessed fields of a specific type.
          * <p>

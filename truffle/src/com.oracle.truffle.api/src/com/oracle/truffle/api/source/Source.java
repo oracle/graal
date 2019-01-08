@@ -53,11 +53,15 @@ import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Files;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystemAlreadyExistsException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.spi.FileSystemProvider;
 import java.nio.file.spi.FileTypeDetector;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.Set;
@@ -142,6 +146,15 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
  */
 @SuppressWarnings("deprecation")
 public abstract class Source {
+
+    /**
+     * Constant to be used as an argument to {@link SourceBuilder#content(CharSequence)} to set no
+     * content to the Source built.
+     *
+     * @since 1.0
+     */
+    public static final CharSequence CONTENT_NONE = null;
+    private static final CharSequence CONTENT_UNSET = new String();
 
     private static final String UNKNOWN_MIME_TYPE = "content/unknown";
     private static final Source EMPTY = new SourceImpl.Key(null, null, null, null, null, null, null, false, false, false, true).toSourceNotInterned();
@@ -415,10 +428,18 @@ public abstract class Source {
     /**
      * Gets the number of characters or bytes of the source.
      *
+     * @throws UnsupportedOperationException if this source does not contain {@link #hasCharacters()
+     *             characters}, nor {@link #hasBytes() bytes}.
      * @since 0.8
      */
     public final int getLength() {
-        return getTextMap().length();
+        if (hasCharacters()) {
+            return getTextMap().length();
+        } else if (hasBytes()) {
+            return getBytes().length();
+        } else {
+            throw new UnsupportedOperationException("Operation is only enabled for sources with character or byte content.");
+        }
     }
 
     /**
@@ -503,25 +524,89 @@ public abstract class Source {
      * Returns an unavailable source section indicating that the source location is not available.
      * Unavailable source sections have the same characteristics as empty source sections with
      * character index <code>0</code>, but returns <code>false</code> for
-     * {@link SourceSection#isAvailable()}. Unavailable source sections may be creatd for character
+     * {@link SourceSection#isAvailable()}. Unavailable source sections may be created for character
      * and byte based sources.
      *
      * @see SourceSection#isAvailable()
      * @since 0.18
      */
     public final SourceSection createUnavailableSection() {
-        return new SourceSection(this, 0, -1);
+        return new SourceSectionUnavailable(this);
+    }
+
+    /**
+     * Create representation of a contiguous region in the source that does not have the character
+     * content available.
+     *
+     * @param startLine 1-based line number of the first character in the section
+     * @param startColumn 1-based column number of the first character in the section, or
+     *            <code>-1</code> when the column is not defined
+     * @param endLine 1-based line number of the last character in the section
+     * @param endColumn 1-based column number of the last character in the section, or
+     *            <code>-1</code> when the column is not defined
+     * @throws UnsupportedOperationException if this source has {@link #hasBytes() bytes}.
+     * @since 1.0
+     */
+    public final SourceSection createSection(int startLine, int startColumn, int endLine, int endColumn) {
+        if (hasBytes()) {
+            throw new UnsupportedOperationException("Operation is only enabled for character based sources.");
+        }
+        if (startLine < 1) {
+            throw new IllegalArgumentException("lineNumber < 1");
+        }
+        if (startLine > endLine) {
+            throw new IllegalArgumentException("startLine " + startLine + " > endLine " + endLine);
+        }
+        if (startLine == endLine && startColumn > endColumn) {
+            throw new IllegalArgumentException("startColumn " + startColumn + " > endColumn " + endColumn);
+        }
+        if (hasCharacters()) {
+            if (startColumn < 1 || endColumn < 1) {
+                throw new IllegalArgumentException("columnNumber < 1");
+            }
+            final int charIndex = getTextMap().lineColumnToOffset(startLine, startColumn);
+            final int endIndex = getTextMap().lineColumnToOffset(endLine, endColumn);
+            assert charIndex <= endIndex : charIndex + " > " + endIndex;
+            int length = endIndex + 1 - charIndex;
+            int sourceLength = getTextMap().length();
+            if (length == 1 && charIndex + length > sourceLength) {
+                // When the start and end position is the same, reduce to zero-length section
+                // when on the very end of the source
+                length = 0;
+            }
+            if (charIndex + length > sourceLength) {
+                throw new IllegalArgumentException("end position out of range");
+            }
+            SourceSection section = new SourceSectionLoaded(this, charIndex, length);
+            assert assertValid(section);
+            return section;
+        } else {
+            if (startColumn == -1) {
+                if (endColumn != -1) {
+                    throw new IllegalArgumentException("endColumn can not be specified when startColumn is not.");
+                }
+                return new SourceSectionUnloaded.Lines(this, startLine, endLine);
+            } else {
+                if (startColumn < 1 || endColumn < 1) {
+                    throw new IllegalArgumentException("columnNumber < 1");
+                }
+                return new SourceSectionUnloaded.LinesAndColumns(this, startLine, startColumn, endLine, endColumn);
+            }
+        }
     }
 
     /**
      * Creates a representation of a line of text in the source identified only by line number, from
      * which the character information will be computed. Please note that calling this method does
-     * cause the {@link Source#getCharacters() code} of this source to be loaded.
+     * cause the {@link Source#getCharacters() code} of this source to be loaded, if there is any.
+     * If no {@link Source#getCharacters() code} is {@link Source#hasCharacters() available}, a
+     * SourceSection without {@link SourceSection#getCharacters() character content} is created with
+     * the {@link SourceSection#getStartLine() start line} and the same
+     * {@link SourceSection#getEndLine() end line} defined only.
      *
      * @param lineNumber 1-based line number of the first character in the section
      * @return newly created object representing the specified line
-     * @throws UnsupportedOperationException if this source cannot contain {@link #hasCharacters()
-     *             characters}.
+     * @throws UnsupportedOperationException if this source contains {@link #hasBytes() bytes}.
      * @throws IllegalArgumentException if the given lineNumber does not exist the source
      * @since 0.17
      */
@@ -532,10 +617,15 @@ public abstract class Source {
         if (lineNumber < 1) {
             throw new IllegalArgumentException("lineNumber < 1");
         }
-        final int charIndex = getTextMap().lineStartOffset(lineNumber);
-        final int length = getTextMap().lineLength(lineNumber);
-        SourceSection section = new SourceSection(this, charIndex, length);
-        assert assertValid(section);
+        SourceSection section;
+        if (hasCharacters()) {
+            final int charIndex = getTextMap().lineStartOffset(lineNumber);
+            final int length = getTextMap().lineLength(lineNumber);
+            section = new SourceSectionLoaded(this, charIndex, length);
+            assert assertValid(section);
+        } else {
+            section = new SourceSectionUnloaded.Lines(this, lineNumber, lineNumber);
+        }
         return section;
     }
 
@@ -564,48 +654,57 @@ public abstract class Source {
         } else if (length < 0) {
             throw new IllegalArgumentException("length < 0");
         }
-        SourceSection section = new SourceSection(this, charIndex, length);
-        assert assertValid(section);
+        SourceSection section;
+        if (hasCharacters()) {
+            section = new SourceSectionLoaded(this, charIndex, length);
+            assert assertValid(section);
+        } else {
+            section = new SourceSectionUnloaded.Indexed(this, charIndex, length);
+        }
         return section;
     }
 
     /**
-     * Creates a representation of a contiguous region of text in the source. Computes the
-     * {@code charIndex} value by building a text map of lines in the source. Please note that
-     * calling this method does cause the {@link Source#getCharacters() code} of this source to be
-     * loaded.
+     * Creates a representation of a contiguous region of text in the source. When character content
+     * is available, computes the {@code charIndex} value by building a text map of lines in the
+     * source. Please note that calling this method does cause the {@link Source#getCharacters()
+     * code} of this source to be loaded, if there is any. If no {@link Source#getCharacters() code}
+     * is {@link Source#hasCharacters() available}, {@link UnsupportedOperationException} is thrown.
+     * Use {@link #createSection(int, int, int, int)} to create a SourceSection without character
+     * content.
      *
      * @param startLine 1-based line number of the first character in the section
      * @param startColumn 1-based column number of the first character in the section
      * @param length the number of characters in the section
      * @return newly created object representing the specified region
-     * @throws UnsupportedOperationException if this source cannot contain {@link #hasCharacters()
+     * @throws UnsupportedOperationException if this source does not contain {@link #hasCharacters()
      *             characters}.
      * @throws IllegalArgumentException if arguments are outside the text of the source bounds
      * @see #createSection(int, int)
+     * @see #createSection(int, int, int, int)
      * @since 0.17
      */
     public final SourceSection createSection(int startLine, int startColumn, int length) {
-        if (hasBytes()) {
+        if (hasBytes() || !hasCharacters()) {
             throw new UnsupportedOperationException("Operation is only enabled for character based sources.");
         }
         if (startLine <= 0) {
             throw new IllegalArgumentException("startLine < 1");
         } else if (startColumn <= 0) {
             throw new IllegalArgumentException("startColumn < 1");
-        } else if (length < 0) {
+        } else if (hasCharacters() && length < 0) {
             throw new IllegalArgumentException("length < 0");
         }
-
         final int lineStartOffset = getTextMap().lineStartOffset(startLine);
-        if (startColumn > getTextMap().lineLength(startLine)) {
+        final int lineLength = getTextMap().lineLength(startLine);
+        if (startColumn > (lineLength + 1)) {
             throw new IllegalArgumentException("column out of range");
         }
         final int charIndex = lineStartOffset + startColumn - 1;
         if (charIndex + length > getCharacters().length()) {
             throw new IllegalArgumentException("charIndex out of range");
         }
-        SourceSection section = new SourceSection(this, charIndex, length);
+        SourceSection section = new SourceSectionLoaded(this, charIndex, length);
         assert assertValid(section);
         return section;
     }
@@ -920,12 +1019,20 @@ public abstract class Source {
         URL useUrl = null;
         if (origin instanceof TruffleFile) {
             TruffleFile file = (TruffleFile) origin;
-            TruffleFile absoluteFile = file.exists() ? file.getCanonicalFile() : file;
+            if (!file.isAbsolute() && useContent == CONTENT_NONE) {
+                if (useUri == null) {
+                    useUri = file.toRelativeUri();
+                }
+            } else {
+                file = file.exists() ? file.getCanonicalFile() : file;
+                if (useUri == null) {
+                    useUri = file.toUri();
+                }
+            }
             useName = useName == null ? file.getName() : useName;
-            usePath = usePath == null ? absoluteFile.getPath() : usePath;
-            useUri = useUri == null ? absoluteFile.toUri() : useUri;
-            useMimeType = useMimeType == null ? findMimeType(SourceAccessor.getPath(absoluteFile), getValidMimeTypes(language)) : useMimeType;
-            if (useContent == null) {
+            usePath = usePath == null ? file.getPath() : usePath;
+            useMimeType = useMimeType == null ? findMimeType(SourceAccessor.getPath(file), getValidMimeTypes(language)) : useMimeType;
+            if (useContent == CONTENT_UNSET) {
                 if (isCharacterBased(language, useMimeType)) {
                     useContent = new String(file.readAllBytes(), StandardCharsets.UTF_8);
                 } else {
@@ -941,9 +1048,9 @@ public abstract class Source {
             useMimeType = useMimeType == null ? findMimeType(absoluteFile.toPath(), getValidMimeTypes(language)) : useMimeType;
             if (legacy) {
                 useMimeType = useMimeType == null ? UNKNOWN_MIME_TYPE : useMimeType;
-                useContent = useContent == null ? read(file) : useContent;
+                useContent = useContent == CONTENT_UNSET ? read(file) : useContent;
             } else {
-                if (useContent == null) {
+                if (useContent == CONTENT_UNSET) {
                     if (isCharacterBased(language, useMimeType)) {
                         useContent = read(file);
                     } else {
@@ -953,7 +1060,7 @@ public abstract class Source {
             }
         } else if (origin instanceof Reader) {
             final Reader r = (Reader) origin;
-            useContent = useContent == null ? read(r) : useContent;
+            useContent = useContent == CONTENT_UNSET ? read(r) : useContent;
         } else if (origin instanceof URL) {
             final URL url = (URL) origin;
             String urlPath = url.getPath();
@@ -969,12 +1076,12 @@ public abstract class Source {
             }
             usePath = usePath == null ? url.toExternalForm() : usePath;
             URLConnection connection = url.openConnection();
-            useMimeType = useMimeType == null ? findMimeType(url, connection, getValidMimeTypes(language)) : useMimeType;
             if (legacy) {
+                useMimeType = useMimeType == null ? findMimeType(url, connection, getValidMimeTypes(language)) : useMimeType;
                 useMimeType = useMimeType == null ? UNKNOWN_MIME_TYPE : useMimeType;
-                useContent = useContent == null ? read(new InputStreamReader(connection.getInputStream())) : useContent;
+                useContent = useContent == CONTENT_UNSET ? read(new InputStreamReader(connection.getInputStream())) : useContent;
             } else {
-                if (useContent == null) {
+                if (useContent == CONTENT_UNSET) {
                     if (isCharacterBased(language, useMimeType)) {
                         useContent = read(new InputStreamReader(connection.getInputStream()));
                     } else {
@@ -983,10 +1090,10 @@ public abstract class Source {
                 }
             }
         } else if (origin instanceof ByteSequence) {
-            useContent = useContent == null ? origin : useContent;
+            useContent = useContent == CONTENT_UNSET ? origin : useContent;
         } else {
             assert origin instanceof CharSequence;
-            useContent = useContent == null ? origin : useContent;
+            useContent = useContent == CONTENT_UNSET ? origin : useContent;
         }
         if (!legacy && useName == null) {
             useName = "Unnamed";
@@ -1193,7 +1300,7 @@ public abstract class Source {
         if (assertions) {
             if (sequence instanceof CharSequence) {
                 return enforceCharSequenceContracts((CharSequence) sequence);
-            } else {
+            } else if (sequence != null) {
                 assert sequence instanceof ByteSequence;
                 return enforceByteSequenceContracts((ByteSequence) sequence);
             }
@@ -1245,10 +1352,35 @@ public abstract class Source {
     static String findMimeType(final URL url, URLConnection connection, Set<String> validMimeTypes) throws IOException {
         Path path;
         try {
-            path = Paths.get(url.toURI());
-            String firstGuess = findMimeType(path, validMimeTypes);
-            if (firstGuess != null) {
-                return firstGuess;
+            URI uri = url.toURI();
+            FileSystemProvider fsProvider = null;
+            String scheme = uri.getScheme();
+            if (scheme != null && !scheme.equals("file")) {
+                for (FileSystemProvider fsp : FileSystemProvider.installedProviders()) {
+                    if (scheme.equals(fsp.getScheme())) {
+                        fsProvider = fsp;
+                        break;
+                    }
+                }
+            }
+            FileSystem fs = null;
+            if (fsProvider != null) {
+                try {
+                    fs = fsProvider.newFileSystem(uri, Collections.emptyMap());
+                } catch (FileSystemAlreadyExistsException | IOException | IllegalArgumentException e) {
+                    // continue with null fs, newFileSystem may not be needed
+                }
+            }
+            try {
+                path = Paths.get(uri);
+                String firstGuess = findMimeType(path, validMimeTypes);
+                if (firstGuess != null) {
+                    return firstGuess;
+                }
+            } finally {
+                if (fs != null) {
+                    fs.close();
+                }
             }
         } catch (URISyntaxException | IllegalArgumentException | FileSystemNotFoundException ex) {
             // swallow and go on
@@ -1333,7 +1465,7 @@ public abstract class Source {
         private URI uri;
         private String name;
         private String mimeType;
-        private Object content;
+        private Object content = CONTENT_UNSET;
         private boolean internal;
         private boolean interactive;
         private boolean cached = true;
@@ -1361,12 +1493,14 @@ public abstract class Source {
         /**
          * Specifies character based content of {@link #build() to-be-built} {@link Source}. Using
          * this method one can ignore the real content of a file or URL and use already read one, or
-         * completely different one. The given characters must not mutate after they were accessed
-         * for the first time. Example:
+         * completely different one. Use {@link #CONTENT_NONE} to set no content,
+         * {@link Source#hasCharacters()} will be <code>false</code> then. The given characters must
+         * not mutate after they were accessed for the first time. Example:
          *
          * {@link SourceSnippets#fromURLWithOwnContent}
          *
-         * @param characters the code to be available via {@link Source#getCharacters()}
+         * @param characters the code to be available via {@link Source#getCharacters()}, or
+         *            {@link #CONTENT_NONE}
          * @return instance of this builder - which's {@link #build()} method no longer throws an
          *         {@link IOException}
          * @since 1.0
@@ -1493,6 +1627,10 @@ public abstract class Source {
          * an {@link IOException} if an error loading the source occured.
          *
          * @return the source object
+         * @throws IOException if an error reading the content occurred
+         * @throws SecurityException if this {@link SourceBuilder} was created for a
+         *             {@link TruffleFile} and the used {@link org.graalvm.polyglot.io.FileSystem
+         *             filesystem} denied its reading
          * @since 1.0
          */
         public Source build() throws IOException {
@@ -1502,8 +1640,7 @@ public abstract class Source {
             // make sure origin is not consumed again if builder is used twice
             if (source.hasBytes()) {
                 this.content = source.getBytes();
-            } else {
-                assert source.hasCharacters();
+            } else if (source.hasCharacters()) {
                 this.content = source.getCharacters();
             }
 
@@ -1617,7 +1754,7 @@ public abstract class Source {
         private String name;
         private String mime;
         private String language;
-        private CharSequence characters;
+        private CharSequence characters = CONTENT_UNSET;
         private boolean internal;
         private boolean interactive;
         private boolean cached = true;

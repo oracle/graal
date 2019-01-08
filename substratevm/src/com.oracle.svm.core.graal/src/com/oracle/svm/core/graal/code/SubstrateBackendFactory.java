@@ -24,12 +24,11 @@
  */
 package com.oracle.svm.core.graal.code;
 
-import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 
 public abstract class SubstrateBackendFactory {
-    public abstract Backend newBackend(Providers newProviders);
+    public abstract SubstrateBackend newBackend(Providers newProviders);
 
     public static SubstrateBackendFactory get() {
         return ImageSingletons.lookup(SubstrateBackendFactory.class);

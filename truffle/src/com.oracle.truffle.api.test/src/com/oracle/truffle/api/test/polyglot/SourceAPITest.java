@@ -66,11 +66,16 @@ import java.util.zip.ZipEntry;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Source.Builder;
+import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.test.ReflectionUtils;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.zip.ZipOutputStream;
 
 public class SourceAPITest {
 
@@ -421,6 +426,32 @@ public class SourceAPITest {
     }
 
     @Test
+    public void unassignedMimeTypeForURL() throws IOException {
+        File file = File.createTempFile("Hello", ".java");
+        file.deleteOnExit();
+        Path path = file.toPath();
+        byte[] content = "// Test".getBytes("UTF-8");
+        Files.write(path, content);
+        URL url = path.toUri().toURL();
+        assertEquals("text/x-java", Source.findMimeType(url));
+        Source.Builder builder = Source.newBuilder("TestJava", url);
+        Source source = builder.build();
+        assertNull("MIME type should be null if not specified", source.getMimeType());
+
+        File archive = File.createTempFile("hello", ".jar");
+        archive.deleteOnExit();
+        try (ZipOutputStream out = new ZipOutputStream(new FileOutputStream(archive))) {
+            out.putNextEntry(new ZipEntry("Hello.java"));
+            out.write(content);
+        }
+        url = new URL("jar:" + archive.toURI().toURL().toExternalForm() + "!/Hello.java");
+        assertEquals("text/x-java", Source.findMimeType(url));
+        builder = Source.newBuilder("TestJava", url);
+        source = builder.build();
+        assertNull("MIME type should be null if not specified", source.getMimeType());
+    }
+
+    @Test
     public void literalSources() throws IOException {
         final String code = "test code";
         final String description = "test description";
@@ -610,6 +641,36 @@ public class SourceAPITest {
         } catch (NullPointerException ex) {
             // OK
         }
+    }
+
+    @Test
+    @SuppressWarnings("rawtypes")
+    public void testNoContentSource() {
+        com.oracle.truffle.api.source.Source truffleSource = com.oracle.truffle.api.source.Source.newBuilder(ProxyLanguage.ID, "x", "name").content(
+                        com.oracle.truffle.api.source.Source.CONTENT_NONE).build();
+        Class<?>[] sourceConstructorTypes = new Class[]{String.class, Object.class};
+        Source source = ReflectionUtils.newInstance(Source.class, sourceConstructorTypes, ProxyLanguage.ID, truffleSource);
+        assertFalse(source.hasCharacters());
+        assertFalse(source.hasBytes());
+        try {
+            source.getCharacters();
+            fail();
+        } catch (UnsupportedOperationException ex) {
+            // O.K.
+        }
+        try {
+            Context.create().eval(source);
+            fail();
+        } catch (IllegalArgumentException ex) {
+            // O.K.
+        }
+        com.oracle.truffle.api.source.SourceSection truffleSection = truffleSource.createSection(1, 2, 3, 4);
+        Class<?>[] sectionConstructorTypes = new Class[]{Source.class, Object.class};
+        SourceSection section = ReflectionUtils.newInstance(SourceSection.class, sectionConstructorTypes, source, truffleSection);
+        assertFalse(section.hasCharIndex());
+        assertTrue(section.hasLines());
+        assertTrue(section.hasColumns());
+        assertEquals("", section.getCharacters());
     }
 
     @Registration(id = "TestJava", name = "", characterMimeTypes = "text/x-java")

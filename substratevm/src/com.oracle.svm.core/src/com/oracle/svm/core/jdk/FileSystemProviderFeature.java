@@ -37,6 +37,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
@@ -51,7 +52,9 @@ public final class FileSystemProviderFeature implements Feature {
          * provider to be initialized (if not already initialized) and loads any other installed
          * providers as described by the {@link FileSystems} class.
          */
-        List<FileSystemProvider> providers = FileSystemProvider.installedProviders();
+        ArrayList<FileSystemProvider> providers = new ArrayList<>(FileSystemProvider.installedProviders());
+        /* Currently we do not support access to Java modules (jimage/jrtfs access) in SVM images */
+        providers.removeIf(p -> p.getScheme().equals("jrt"));
         providers.forEach(p -> addFileSystemProvider(p));
     }
 
@@ -77,4 +80,9 @@ final class Target_java_nio_file_spi_FileSystemProvider {
     public static List<FileSystemProvider> installedProviders() {
         return new ArrayList<>(ImageSingletons.lookup(FileSystemProviderSupport.class).fileSystemProviders.values());
     }
+}
+
+@TargetClass(className = "jdk.internal.jrtfs.JrtFileSystemProvider", onlyWith = JDK9OrLater.class)
+@Delete
+final class Target_jdk_internal_jrtfs_JrtFileSystemProvider {
 }

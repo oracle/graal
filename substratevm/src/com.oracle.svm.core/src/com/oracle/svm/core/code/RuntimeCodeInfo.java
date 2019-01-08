@@ -269,14 +269,11 @@ public class RuntimeCodeInfo {
          * objects in the regular unpinned heap alive.
          */
         Arrays.fill(methodInfo.frameInfoObjectConstants, null);
-        if (methodInfo.frameInfoSourceClassNames != null) {
-            Arrays.fill(methodInfo.frameInfoSourceClassNames, null);
+        if (methodInfo.frameInfoSourceClasses != null) {
+            Arrays.fill(methodInfo.frameInfoSourceClasses, null);
         }
         if (methodInfo.frameInfoSourceMethodNames != null) {
             Arrays.fill(methodInfo.frameInfoSourceMethodNames, null);
-        }
-        if (methodInfo.frameInfoSourceFileNames != null) {
-            Arrays.fill(methodInfo.frameInfoSourceFileNames, null);
         }
         if (methodInfo.frameInfoNames != null) {
             Arrays.fill(methodInfo.frameInfoNames, null);

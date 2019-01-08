@@ -864,7 +864,10 @@ class StdoutUnstripping:
                                     mapFile.flush()
                             retraceOut = mx.OutputCapture()
                             proguard_cp = mx.classpath(['PROGUARD_RETRACE', 'PROGUARD'])
-                            mx.run([jdk.java, '-cp', proguard_cp, 'proguard.retrace.ReTrace', mapFile.name, inputFile.name], out=retraceOut)
+                            # A slightly more general pattern for matching stack traces than the default.
+                            # This version does not require the "at " prefix.
+                            regex = r'(?:.*?\s+%c\.%m\s*\(%s(?::%l)?\)\s*(?:~\[.*\])?)|(?:(?:.*?[:"]\s+)?%c(?::.*)?)'
+                            mx.run([jdk.java, '-cp', proguard_cp, 'proguard.retrace.ReTrace', '-regex', regex, mapFile.name, inputFile.name], out=retraceOut)
                             if self.capture.data != retraceOut.data:
                                 mx.log('>>>> BEGIN UNSTRIPPED OUTPUT')
                                 mx.log(retraceOut.data)
@@ -1150,25 +1153,6 @@ def makegraaljdk(args):
     else:
         mx.abort('Can only make GraalJDK for JDK 8 currently')
 
-_original_build = mx.command_function('build')
-_original_clean = mx.command_function('clean')
-
-
-def _no_native(action):
-    if mx.get_os() == 'windows':
-        # necessary until Truffle is fully supported (GR-7941)
-        mx.log('{} of native projects is disabled on Windows.'.format(action))
-        return ['--no-native']
-    return []
-
-
-def build(cmd_args, parser=None):
-    _original_build(_no_native('Building') + cmd_args, parser)
-
-
-def clean(args, parser=None):
-    _original_clean(_no_native('Cleaning') + args, parser)
-
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmJvmciComponent(
     suite=_suite,
@@ -1203,8 +1187,6 @@ mx.update_commands(_suite, {
     'microbench': [microbench, ''],
     'javadoc': [javadoc, ''],
     'makegraaljdk': [makegraaljdk, '[options]'],
-    'build': [build, ''],
-    'clean': [clean, ''],
 })
 
 def mx_post_parse_cmd_line(opts):
