@@ -22,8 +22,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.code.amd64;
+package com.oracle.svm.core.graal.amd64;
 
+import static com.oracle.svm.core.SubstrateOptions.CompilerBackend;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.core.util.VMError.unimplemented;
 import static jdk.vm.ci.amd64.AMD64.rax;
@@ -36,10 +37,10 @@ import static org.graalvm.compiler.lir.LIRValueUtil.asConstantValue;
 
 import java.util.Collection;
 
-import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
+import org.graalvm.compiler.asm.amd64.AMD64Assembler;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.code.CompilationResult;
@@ -54,11 +55,10 @@ import org.graalvm.compiler.core.amd64.AMD64NodeMatchRules;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.LIRKind;
-import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.spi.LIRKindTool;
 import org.graalvm.compiler.core.gen.DebugInfoBuilder;
-import org.graalvm.compiler.core.target.Backend;
+import org.graalvm.compiler.core.gen.LIRGenerationProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.lir.LIR;
@@ -102,7 +102,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.spi.NodeValueMap;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.tiers.SuitesProvider;
+import org.graalvm.compiler.phases.common.AddressLoweringPhase;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -115,8 +115,10 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
+import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
 import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
+import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.code.SubstrateCompiledCode;
 import com.oracle.svm.core.graal.code.SubstrateDataBuilder;
 import com.oracle.svm.core.graal.code.SubstrateLIRGenerator;
@@ -136,6 +138,7 @@ import com.oracle.svm.core.util.VMError;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.code.CompiledCode;
@@ -154,17 +157,22 @@ import jdk.vm.ci.meta.Value;
 @Platforms(Platform.AMD64.class)
 class SubstrateAMD64BackendFeature implements Feature {
     @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return Platform.includedIn(Platform.AMD64.class) && CompilerBackend.getValue().equals("lir");
+    }
+
+    @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(SubstrateBackendFactory.class, new SubstrateBackendFactory() {
             @Override
-            public Backend newBackend(Providers newProviders) {
+            public SubstrateBackend newBackend(Providers newProviders) {
                 return new SubstrateAMD64Backend(newProviders);
             }
         });
     }
 }
 
-public class SubstrateAMD64Backend extends Backend {
+public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenerationProvider {
 
     public static final String MARK_PROLOGUE_DECD_RSP = "PROLOGUE_DECD_RSP";
     public static final String MARK_PROLOGUE_SAVED_REGS = "PROLOGUE_SAVED_REGS";
@@ -747,23 +755,19 @@ public class SubstrateAMD64Backend extends Backend {
         }
     }
 
-    @Override
-    public FrameMapBuilder newFrameMapBuilder(RegisterConfig registerConfig) {
+    private FrameMapBuilder newFrameMapBuilder(RegisterConfig registerConfig) {
         RegisterConfig registerConfigNonNull = registerConfig == null ? getCodeCache().getRegisterConfig() : registerConfig;
-        return new AMD64FrameMapBuilder(newFrameMap(registerConfigNonNull), getCodeCache(), registerConfigNonNull);
+        FrameMap frameMap = new AMD64FrameMap(getProviders().getCodeCache(), registerConfigNonNull, new SubstrateReferenceMapBuilderFactory(),
+                        ((SubstrateAMD64RegisterConfig) registerConfigNonNull).shouldUseBasePointer());
+        return new AMD64FrameMapBuilder(frameMap, getCodeCache(), registerConfigNonNull);
     }
 
     @Override
-    public FrameMap newFrameMap(RegisterConfig registerConfig) {
-        return new AMD64FrameMap(getProviders().getCodeCache(), registerConfig, new SubstrateReferenceMapBuilderFactory(), ((SubstrateAMD64RegisterConfig) registerConfig).shouldUseBasePointer());
-    }
-
-    @Override
-    public LIRGenerationResult newLIRGenerationResult(CompilationIdentifier compilationId, LIR lir, FrameMapBuilder frameMapBuilder, StructuredGraph graph, Object stub) {
+    public LIRGenerationResult newLIRGenerationResult(CompilationIdentifier compilationId, LIR lir, RegisterConfig registerConfig, StructuredGraph graph, Object stub) {
         SharedMethod method = (SharedMethod) graph.method();
         CallingConvention callingConvention = CodeUtil.getCallingConvention(getCodeCache(), method.isEntryPoint() ? SubstrateCallingConventionType.NativeCallee
                         : SubstrateCallingConventionType.JavaCallee, method, this);
-        return new SubstrateLIRGenerationResult(compilationId, lir, frameMapBuilder, callingConvention, method);
+        return new SubstrateLIRGenerationResult(compilationId, lir, newFrameMapBuilder(registerConfig), callingConvention, method);
     }
 
     protected AMD64ArithmeticLIRGenerator createArithmeticLIRGen(RegisterValue nullRegisterValue) {
@@ -824,7 +828,7 @@ public class SubstrateAMD64Backend extends Backend {
 
     @Override
     public CompilationResultBuilder newCompilationResultBuilder(LIRGenerationResult lirGenResult, FrameMap frameMap, CompilationResult compilationResult, CompilationResultBuilderFactory factory) {
-        Assembler masm = createAssembler(frameMap);
+        Assembler masm = new AMD64MacroAssembler(getTarget());
         SharedMethod method = ((SubstrateLIRGenerationResult) lirGenResult).getMethod();
         Deoptimizer.StubType stubType = method.getDeoptStubType();
         DataBuilder dataBuilder = new SubstrateDataBuilder();
@@ -847,14 +851,10 @@ public class SubstrateAMD64Backend extends Backend {
     }
 
     @Override
-    public RegisterAllocationConfig newRegisterAllocationConfig(RegisterConfig registerConfig, String[] allocationRestrictedTo) {
-        RegisterConfig registerConfigNonNull = registerConfig == null ? getCodeCache().getRegisterConfig() : registerConfig;
-        return new RegisterAllocationConfig(registerConfigNonNull, allocationRestrictedTo);
-    }
-
-    @Override
-    protected Assembler createAssembler(FrameMap frameMap) {
-        return new AMD64MacroAssembler(getTarget());
+    public AddressLoweringPhase.AddressLowering newAddressLowering(CodeCacheProvider codeCache) {
+        CompressEncoding compressEncoding = ImageSingletons.lookup(CompressEncoding.class);
+        SubstrateRegisterConfig registerConfig = (SubstrateRegisterConfig) codeCache.getRegisterConfig();
+        return new SubstrateAMD64AddressLowering(compressEncoding, registerConfig);
     }
 
     @Override
@@ -872,8 +872,16 @@ public class SubstrateAMD64Backend extends Backend {
     }
 
     @Override
-    public SuitesProvider getSuites() {
-        throw unimplemented();
+    public CompilationResult createJNITrampolineMethod(ResolvedJavaMethod method, CompilationIdentifier identifier, RegisterValue methodIdArg, int offset) {
+        CompilationResult result = new CompilationResult(identifier);
+        AMD64Assembler asm = new AMD64Assembler(getTarget());
+        asm.jmp(new AMD64Address(methodIdArg.getRegister(), offset));
+        result.recordMark(asm.position(), SubstrateAMD64Backend.MARK_PROLOGUE_DECD_RSP);
+        result.recordMark(asm.position(), SubstrateAMD64Backend.MARK_PROLOGUE_END);
+        byte[] instructions = asm.close(true);
+        result.setTargetCode(instructions, instructions.length);
+        result.setTotalFrameSize(getTarget().wordSize); // not really, but 0 not allowed
+        return result;
     }
 
     /**
@@ -883,10 +891,5 @@ public class SubstrateAMD64Backend extends Backend {
     public static int getDeoptScratchSpace() {
         // Space for two 64-bit registers: rax and xmm0
         return 2 * 8;
-    }
-
-    @Override
-    public EconomicSet<Register> translateToCallerRegisters(EconomicSet<Register> calleeRegisters) {
-        return calleeRegisters;
     }
 }

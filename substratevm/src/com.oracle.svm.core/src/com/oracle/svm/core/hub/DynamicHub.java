@@ -137,14 +137,9 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private boolean isInstantiated;
 
     /**
-     * Does this represent a static class?
+     * The {@link Modifier modifiers} of this class.
      */
-    private final boolean isStatic;
-
-    /**
-     * Does this represent a synthetic class?
-     */
-    private final boolean isSynthetic;
+    private final int modifiers;
 
     /**
      * The hub for the superclass, or null if an interface or primitive type.
@@ -260,15 +255,14 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private static java.security.ProtectionDomain allPermDomain;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public DynamicHub(String name, boolean isLocalClass, DynamicHub superType, DynamicHub componentHub, String sourceFileName, boolean isStatic, boolean isSynthetic,
+    public DynamicHub(String name, boolean isLocalClass, DynamicHub superType, DynamicHub componentHub, String sourceFileName, int modifiers,
                     Target_java_lang_ClassLoader classLoader) {
         this.name = name;
         this.isLocalClass = isLocalClass;
         this.superHub = superType;
         this.componentHub = componentHub;
         this.sourceFileName = sourceFileName;
-        this.isStatic = isStatic;
-        this.isSynthetic = isSynthetic;
+        this.modifiers = modifiers;
         this.classloader = classLoader;
     }
 
@@ -473,12 +467,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute
     public int getModifiers() {
-        /* We do not have detailed access level information, so we make every class public. */
-        return Modifier.PUBLIC |
-                        (LayoutEncoding.isAbstract(getLayoutEncoding()) ? Modifier.ABSTRACT : 0) |
-                        (isStatic ? Modifier.STATIC : 0) |
-                        (isSynthetic ? SYNTHETIC : 0) |
-                        (isInterface() ? Modifier.INTERFACE : 0);
+        return modifiers;
     }
 
     @Substitute
@@ -1061,10 +1050,8 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @KeepOriginal
     public native String toGenericString();
 
-    @Substitute
-    public boolean isSynthetic() {
-        return isSynthetic;
-    }
+    @KeepOriginal
+    public native boolean isSynthetic();
 
     @Substitute
     public Object[] getSigners() {

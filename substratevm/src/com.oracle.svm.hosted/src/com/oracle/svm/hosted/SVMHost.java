@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted;
 
-import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -49,6 +48,7 @@ import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 
 import com.oracle.graal.pointsto.AnalysisPolicy;
+import com.oracle.graal.pointsto.api.AnnotationAccess;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
@@ -196,17 +196,17 @@ public final class SVMHost implements HostVM {
 
     @Override
     public boolean platformSupported(ResolvedJavaField field) {
-        return NativeImageGenerator.includedIn(platform, field.getAnnotation(Platforms.class));
+        return NativeImageGenerator.includedIn(platform, AnnotationAccess.getAnnotation(field, Platforms.class));
     }
 
     @Override
     public boolean platformSupported(ResolvedJavaMethod method) {
-        return NativeImageGenerator.includedIn(platform, method.getAnnotation(Platforms.class));
+        return NativeImageGenerator.includedIn(platform, AnnotationAccess.getAnnotation(method, Platforms.class));
     }
 
     @Override
     public boolean platformSupported(ResolvedJavaType type) {
-        return NativeImageGenerator.includedIn(platform, type.getAnnotation(Platforms.class));
+        return NativeImageGenerator.includedIn(platform, AnnotationAccess.getAnnotation(type, Platforms.class));
     }
 
     @Override
@@ -270,8 +270,7 @@ public final class SVMHost implements HostVM {
             componentHub = dynamicHub(type.getComponentType());
         }
         Class<?> javaClass = type.getJavaClass();
-        boolean isStatic = Modifier.isStatic(javaClass.getModifiers());
-        boolean isSynthetic = javaClass.isSynthetic();
+        int modifiers = javaClass.getModifiers();
 
         Target_java_lang_ClassLoader hubClassLoader = ClassLoaderSupport.getInstance().getOrCreate(javaClass.getClassLoader());
 
@@ -283,7 +282,7 @@ public final class SVMHost implements HostVM {
          */
         String sourceFileName = stringTable.deduplicate(type.getSourceFileName(), true);
 
-        return new DynamicHub(className, type.isLocal(), superHub, componentHub, sourceFileName, isStatic, isSynthetic, hubClassLoader);
+        return new DynamicHub(className, type.isLocal(), superHub, componentHub, sourceFileName, modifiers, hubClassLoader);
     }
 
     public static boolean isUnknownClass(ResolvedJavaType resolvedJavaType) {

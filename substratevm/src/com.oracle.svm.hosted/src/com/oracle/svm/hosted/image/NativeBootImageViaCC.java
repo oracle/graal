@@ -180,8 +180,6 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
     }
 
     LinkerInvocation getLinkerInvocation(Path outputDirectory, Path tempDirectory, String imageName) {
-        String relocatableFileName = tempDirectory.resolve(imageName + ObjectFile.getFilenameSuffix()).toString();
-
         CCLinkerInvocation inv;
 
         switch (ObjectFile.getNativeFormat()) {
@@ -214,7 +212,9 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             inv.addLinkedLibrary(library);
         }
 
-        inv.addInputFile(relocatableFileName);
+        for (String filename : codeCache.getCCInputFiles(tempDirectory, imageName)) {
+            inv.addInputFile(filename);
+        }
 
         return inv;
     }

@@ -4,7 +4,7 @@ suite = {
   "sourceinprojectwhitelist" : [],
 
   "groupId" : "org.graalvm.compiler",
-  "version" : "1.0.0-rc11",
+  "version" : "1.0.0-rc12",
   "release" : False,
   "url" : "http://www.graalvm.org/",
   "developer" : {
@@ -2123,6 +2123,6 @@ suite = {
       "dependencies" : ["org.graalvm.micro.benchmarks"],
       "testDistribution" : True,
       "maven": False,
-    },
+    }
   },
 }

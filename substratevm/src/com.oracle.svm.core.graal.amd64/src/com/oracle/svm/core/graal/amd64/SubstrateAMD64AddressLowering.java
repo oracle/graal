@@ -22,11 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.code.amd64;
-
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
-import jdk.vm.ci.code.Register;
+package com.oracle.svm.core.graal.amd64;
 
 import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
 import org.graalvm.compiler.core.amd64.AMD64AddressNode;
@@ -34,6 +30,11 @@ import org.graalvm.compiler.core.amd64.AMD64CompressAddressLowering;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.nodes.CompressionNode;
 import org.graalvm.compiler.nodes.ValueNode;
+
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
+
+import jdk.vm.ci.code.Register;
 
 public class SubstrateAMD64AddressLowering extends AMD64CompressAddressLowering {
     private final long heapBase;

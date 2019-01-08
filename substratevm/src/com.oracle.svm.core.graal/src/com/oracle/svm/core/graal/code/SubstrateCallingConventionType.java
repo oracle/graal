@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,33 +22,39 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.c;
+package com.oracle.svm.core.graal.code;
 
-import org.graalvm.word.PointerBase;
+import jdk.vm.ci.code.CallingConvention;
 
-public final class MutableBoxedPointer {
+public enum SubstrateCallingConventionType implements CallingConvention.Type {
+    /**
+     * A request for the outgoing argument locations at a call site to Java code.
+     */
+    JavaCall(true, false),
 
-    private PointerBase pointer;
+    /**
+     * A request for the incoming argument locations.
+     */
+    JavaCallee(false, false),
 
-    public MutableBoxedPointer(PointerBase pointer) {
-        this.pointer = pointer;
+    /**
+     * A request for the outgoing argument locations at a call site to external native code that
+     * complies with the platform ABI.
+     */
+    NativeCall(true, true),
+
+    /**
+     * A request for the incoming argument locations that complies with the platform ABI.
+     */
+    NativeCallee(false, true);
+
+    /** Determines if this is a request for the outgoing argument locations at a call site. */
+    public final boolean outgoing;
+
+    public final boolean nativeABI;
+
+    SubstrateCallingConventionType(boolean outgoing, boolean nativeABI) {
+        this.outgoing = outgoing;
+        this.nativeABI = nativeABI;
     }
-
-    public PointerBase getPointer() {
-        return pointer;
-    }
-
-    public void setPointer(PointerBase pointer) {
-        this.pointer = pointer;
-    }
-
-    public static PointerBase unbox(MutableBoxedPointer boxed) {
-        return boxed.getPointer();
-    }
-
-    @Override
-    public String toString() {
-        return String.valueOf(pointer.rawValue());
-    }
-
 }

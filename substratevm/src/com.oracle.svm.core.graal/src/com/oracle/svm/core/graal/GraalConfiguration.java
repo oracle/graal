@@ -36,7 +36,6 @@ import org.graalvm.compiler.core.match.MatchRuleRegistry;
 import org.graalvm.compiler.core.match.MatchStatement;
 import org.graalvm.compiler.core.phases.CommunityCompilerConfiguration;
 import org.graalvm.compiler.core.phases.EconomyCompilerConfiguration;
-import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.hotspot.CommunityCompilerConfigurationFactory;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -51,6 +50,7 @@ import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
 import com.oracle.svm.core.graal.meta.SubstrateBasicLoweringProvider;
 
@@ -90,7 +90,7 @@ public class GraalConfiguration {
         matchRuleRegistry.put(AMD64NodeMatchRules.class, MatchRuleRegistry.createRules(AMD64NodeMatchRules.class));
     }
 
-    public Backend createBackend(Providers newProviders) {
+    public SubstrateBackend createBackend(Providers newProviders) {
         return SubstrateBackendFactory.get().newBackend(newProviders);
     }
 

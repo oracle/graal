@@ -30,6 +30,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.jni.JNIRuntimeAccess;
+import org.graalvm.nativeimage.RuntimeClassInitialization;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.Platform;
@@ -48,8 +49,27 @@ import java.io.PrintStream;
 class WindowsJavaIOSubstituteFeature implements Feature {
 
     @Override
+    public void duringSetup(DuringSetupAccess access) {
+        // Can't re-initialize the classes list below:
+        // Error: com.oracle.graal.pointsto.constraints.UnsupportedFeatureException: No instances
+        // are allowed in the image heap for a class
+        // that is initialized or reinitialized at image runtime: java.io.XXX.
+        //
+        // RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.io.FileDescriptor"));
+        // RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.io.FileInputStream"));
+        // RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.io.FileOutputStream"));
+        // RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.io.WinNTFileSystem"));
+
+        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.io.RandomAccessFile"));
+        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.util.zip.ZipFile"));
+        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.util.zip.Inflater"));
+        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.util.zip.Deflater"));
+    }
+
+    @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         try {
+            JNIRuntimeAccess.register(java.lang.String.class);
             JNIRuntimeAccess.register(java.io.File.class);
             JNIRuntimeAccess.register(java.io.File.class.getDeclaredField("path"));
             JNIRuntimeAccess.register(java.io.FileOutputStream.class);
@@ -66,6 +86,22 @@ class WindowsJavaIOSubstituteFeature implements Feature {
             VMError.shouldNotReachHere("WindowsJavaIOSubstitutionFeature: Error registering class or method: ", e);
         }
     }
+}
+
+@TargetClass(java.io.FileInputStream.class)
+@Platforms(Platform.WINDOWS.class)
+final class Target_java_io_FileInputStream {
+
+    @Alias
+    static native void initIDs();
+}
+
+@TargetClass(java.io.RandomAccessFile.class)
+@Platforms(Platform.WINDOWS.class)
+final class Target_java_io_RandomAccessFile {
+
+    @Alias
+    static native void initIDs();
 }
 
 @TargetClass(java.io.FileDescriptor.class)
@@ -92,22 +128,6 @@ final class Target_java_io_FileOutputStream {
     static native void initIDs();
 }
 
-@TargetClass(java.io.FileInputStream.class)
-@Platforms(Platform.WINDOWS.class)
-final class Target_java_io_FileInputStream {
-
-    @Alias
-    static native void initIDs();
-}
-
-@TargetClass(java.io.RandomAccessFile.class)
-@Platforms(Platform.WINDOWS.class)
-final class Target_java_io_RandomAccessFile {
-
-    @Alias
-    static native void initIDs();
-}
-
 @TargetClass(className = "java.io.WinNTFileSystem")
 @Platforms(Platform.WINDOWS.class)
 final class Target_java_io_WinNTFileSystem {
@@ -126,11 +146,17 @@ public final class WindowsJavaIOSubstitutions {
 
     public static boolean initIDs() {
         try {
+            /*
+             * java.dll is normally loaded by the VM. After loading java.dll, the VM then calls
+             * initializeSystemClasses which loads zip.dll.
+             *
+             * We might want to consider calling System.initializeSystemClasses instead of
+             * explicitly loading the builtin zip library.
+             */
             System.loadLibrary("java");
 
             Target_java_io_FileDescriptor.initIDs();
             Target_java_io_FileInputStream.initIDs();
-            Target_java_io_RandomAccessFile.initIDs();
             Target_java_io_FileOutputStream.initIDs();
             Target_java_io_WinNTFileSystem.initIDs();
 
@@ -141,9 +167,11 @@ public final class WindowsJavaIOSubstitutions {
             System.setIn(new BufferedInputStream(new FileInputStream(FileDescriptor.in)));
             System.setOut(new PrintStream(new BufferedOutputStream(new FileOutputStream(FileDescriptor.out), 128), true));
             System.setErr(new PrintStream(new BufferedOutputStream(new FileOutputStream(FileDescriptor.err), 128), true));
+
+            System.loadLibrary("zip");
             return true;
         } catch (UnsatisfiedLinkError e) {
-            Log.log().string("System.loadLibrary of builtIn java library failed, " + e).newline();
+            Log.log().string("System.loadLibrary failed, " + e).newline();
             return false;
         }
     }

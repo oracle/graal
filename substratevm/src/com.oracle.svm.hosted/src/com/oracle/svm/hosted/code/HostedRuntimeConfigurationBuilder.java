@@ -37,7 +37,7 @@ import org.graalvm.compiler.phases.util.Providers;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.graal.code.amd64.SubstrateAMD64Backend;
+import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.meta.HostedConstantFieldProvider;
 import com.oracle.svm.hosted.meta.HostedConstantReflectionProvider;
@@ -55,7 +55,7 @@ public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfiguratio
     private final HostedProviders analysisProviders;
 
     public HostedRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, HostedUniverse universe, HostedMetaAccess metaAccess, HostedProviders analysisProviders) {
-        super(options, hostVM, metaAccess, (providers) -> new SubstrateAMD64Backend(providers));
+        super(options, hostVM, metaAccess, SubstrateBackendFactory.get()::newBackend);
         this.universe = universe;
         this.analysisProviders = analysisProviders;
     }

@@ -29,7 +29,6 @@ import java.util.Collections;
 import java.util.EnumMap;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
@@ -37,6 +36,7 @@ import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig.ConfigKind;
 import com.oracle.svm.core.meta.SharedMethod;
 
@@ -49,7 +49,7 @@ public class RuntimeConfiguration {
 
     private final Providers providers;
     private final SnippetReflectionProvider snippetReflection;
-    private final EnumMap<ConfigKind, Backend> backends;
+    private final EnumMap<ConfigKind, SubstrateBackend> backends;
     private final Iterable<DebugHandlersFactory> debugHandlersFactories;
     private final WordTypes wordTypes;
 
@@ -59,7 +59,7 @@ public class RuntimeConfiguration {
     private int componentHubOffset;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public RuntimeConfiguration(Providers providers, SnippetReflectionProvider snippetReflection, EnumMap<ConfigKind, Backend> backends, WordTypes wordTypes) {
+    public RuntimeConfiguration(Providers providers, SnippetReflectionProvider snippetReflection, EnumMap<ConfigKind, SubstrateBackend> backends, WordTypes wordTypes) {
         this.providers = providers;
         this.snippetReflection = snippetReflection;
         this.backends = backends;
@@ -91,11 +91,11 @@ public class RuntimeConfiguration {
         return providers;
     }
 
-    public Collection<Backend> getBackends() {
+    public Collection<SubstrateBackend> getBackends() {
         return backends.values();
     }
 
-    public Backend lookupBackend(ResolvedJavaMethod method) {
+    public SubstrateBackend lookupBackend(ResolvedJavaMethod method) {
         if (((SharedMethod) method).isEntryPoint()) {
             return backends.get(ConfigKind.NATIVE_TO_JAVA);
         } else {
@@ -103,7 +103,7 @@ public class RuntimeConfiguration {
         }
     }
 
-    public Backend getBackendForNormalMethod() {
+    public SubstrateBackend getBackendForNormalMethod() {
         return backends.get(ConfigKind.NORMAL);
     }
 

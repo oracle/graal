@@ -31,8 +31,10 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.RuntimeClassInitialization;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -47,6 +49,13 @@ import java.nio.file.spi.FileSystemProvider;
 @AutomaticFeature
 @CLibrary("nio")
 class WindowsJavaNIOSubstituteFeature implements Feature {
+
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.nio.fs.WindowsNativeDispatcher"));
+        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.nio.fs.WindowsSecurity"));
+        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.nio.ch.ServerSocketChannelImpl"));
+    }
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
@@ -92,21 +101,18 @@ class WindowsJavaNIOSubstituteFeature implements Feature {
             JNIRuntimeAccess.register(access.findClassByName("sun.nio.ch.FileChannelImpl"));
             JNIRuntimeAccess.register(access.findClassByName("sun.nio.ch.FileChannelImpl").getDeclaredField("fd"));
 
+            JNIRuntimeAccess.register(access.findClassByName("java.lang.Exception"));
+            JNIRuntimeAccess.register(access.findClassByName("java.lang.Exception").getDeclaredConstructor());
             JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.WindowsException"));
+            JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.WindowsException").getDeclaredConstructor(int.class));
+            JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.WindowsException").getDeclaredConstructor(String.class));
 
-        } catch (NoSuchFieldException e) {
-            // Log.log().string("JNIRuntimeAccess.register failed, " + e);
+        } catch (NoSuchFieldException | NoSuchMethodException e) {
+            VMError.shouldNotReachHere("JNIRuntimeAccess.register failed: ", e);
+
         }
+
     }
-}
-
-@TargetClass(className = "sun.nio.ch.IOUtil")
-@Platforms(Platform.WINDOWS.class)
-final class Target_sun_nio_ch_IOUtil {
-
-    @Alias
-    static native void initIDs();
-
 }
 
 @TargetClass(className = "sun.nio.ch.FileChannelImpl")
@@ -115,43 +121,14 @@ final class Target_sun_nio_ch_FileChannelImpl {
 
     @Alias
     static native long initIDs();
-
 }
 
-@TargetClass(className = "sun.nio.fs.WindowsNativeDispatcher")
+@TargetClass(className = "sun.nio.ch.IOUtil")
 @Platforms(Platform.WINDOWS.class)
-final class Target_sun_nio_fs_WindowsNativeDispatcher {
+final class Target_sun_nio_ch_IOUtil {
 
     @Alias
     static native void initIDs();
-
-}
-
-@TargetClass(className = "sun.nio.fs.WindowsConstants")
-@Platforms(Platform.WINDOWS.class)
-final class Target_sun_nio_fs_WindowsConstants {
-
-    @Alias static final int TOKEN_DUPLICATE = 0x0002;
-    @Alias static final int TOKEN_QUERY = 0x0008;
-}
-
-@TargetClass(className = "sun.nio.fs.WindowsSecurity")
-@Platforms(Platform.WINDOWS.class)
-final class Target_sun_nio_fs_WindowsSecurity {
-
-    @Alias
-    // opens process token for given access
-    static native long openProcessToken(int access);
-
-    /**
-     * Returns the access token for this process with TOKEN_DUPLICATE access.
-     */
-    @Alias static long processTokenWithDuplicateAccess;
-
-    /**
-     * Returns the access token for this process with TOKEN_QUERY access.
-     */
-    @Alias static long processTokenWithQueryAccess;
 }
 
 @TargetClass(className = "sun.nio.fs.WindowsFileSystemProvider")
@@ -167,20 +144,15 @@ final class Target_sun_nio_fs_WindowsFileSystemProvider {
 public final class WindowsJavaNIOSubstitutions {
 
     public static boolean initIDs() {
-        try {
-            System.loadLibrary("nio");
-            Target_sun_nio_fs_WindowsNativeDispatcher.initIDs();
-            Target_sun_nio_ch_FileChannelImpl.initIDs();
-            Target_sun_nio_ch_IOUtil.initIDs();
+        // FileChannelImpl and IOUtil can't be reinitialized so we manually initialize it here.
+        //
+        // java.lang.AssertionError:
+        // at
+        // com.oracle.svm.core.Plugin_FoldedPredicate_test.execute(PluginFactory_SubstrateOptions.java:39)
+        Target_sun_nio_ch_FileChannelImpl.initIDs();
+        Target_sun_nio_ch_IOUtil.initIDs();
 
-            Target_sun_nio_fs_WindowsSecurity.processTokenWithDuplicateAccess = Target_sun_nio_fs_WindowsSecurity.openProcessToken(Target_sun_nio_fs_WindowsConstants.TOKEN_DUPLICATE);
-            Target_sun_nio_fs_WindowsSecurity.processTokenWithQueryAccess = Target_sun_nio_fs_WindowsSecurity.openProcessToken(Target_sun_nio_fs_WindowsConstants.TOKEN_QUERY);
-
-            return true;
-        } catch (UnsatisfiedLinkError e) {
-            Log.log().string("System.loadLibrary of builtIn nio library failed, " + e).newline();
-            return false;
-        }
+        return true;
     }
 
     static final class Util_Target_java_nio_file_FileSystems {

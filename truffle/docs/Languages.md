@@ -2,14 +2,14 @@ This page is intended to keep track of the growing number of Truffle language im
 
 ## Language implementations
 
-* [Graal.js](http://www.oracle.com/technetwork/oracle-labs/program-languages/overview/index.html), an ECMAScript 2017 compliant JavaScript implementation. *
+* [Graal.js](https://github.com/graalvm/graaljs), an ECMAScript 2017 compliant JavaScript implementation. *
 * [FastR](https://github.com/graalvm/fastr), an implementation of GNU R. *
 * [TruffleRuby](https://github.com/graalvm/truffleruby), an implementation of Ruby. *
-* [Sulong](https://github.com/oracle/graal/sulong), an LLVM bitcode interpreter. *
-* [Graal.Python](http://www.oracle.com/technetwork/oracle-labs/program-languages/overview/index.html), an early-stage implementation of Python. * 
-* [TruffleSOM](https://github.com/SOM-st/TruffleSOM), a SOM Smalltalk implementation. 
+* [Sulong](https://github.com/oracle/graal/tree/master/sulong), an LLVM bitcode interpreter. *
+* [Graal.Python](https://github.com/graalvm/graalpython), an early-stage implementation of Python. *
+* [TruffleSOM](https://github.com/SOM-st/TruffleSOM), a SOM Smalltalk implementation.
 * [SOMns](https://github.com/smarr/SOMns), a Newspeak implementation for Concurrency Research.
-* [SimpleLanguage](https://github.com/graalvm/simplelanguage), a toy language implementation to demonstrate Truffle features. 
+* [SimpleLanguage](https://github.com/graalvm/simplelanguage), a toy language implementation to demonstrate Truffle features.
 
 \* Shipped as part of [GraalVM](http://www.oracle.com/technetwork/oracle-labs/program-languages/overview/index.html).
 
@@ -22,7 +22,7 @@ This page is intended to keep track of the growing number of Truffle language im
 * [hextruffe](https://bitbucket.org/hexafraction/truffles), an implementation of Hex.
 * [TruffleMATE](https://github.com/charig/TruffleMATE), a Smalltalk with a completely reified runtime system.
 * [PureScript](https://github.com/slamdata/truffled-purescript), a small strongly typed programming language.
-* [Mozart-Graal](https://github.com/eregon/mozart-graal), an implementation of the Oz programming language. 
+* [Mozart-Graal](https://github.com/eregon/mozart-graal), an implementation of the Oz programming language.
 * [DynSem](https://github.com/metaborg/dynsem), a DSL for declarative specification of dynamic semantics of languages.
 * [Cover](https://github.com/gerard-/cover), a Safe Subset of C++.
 * [TrufflePascal](https://github.com/Aspect26/TrufflePascal/), a Pascal interpreter.

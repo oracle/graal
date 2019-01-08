@@ -59,6 +59,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import com.oracle.svm.core.OS;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
@@ -124,7 +125,7 @@ public final class ImageClassLoader {
 
     public static Path stringToClasspath(String cp) {
         String separators = Pattern.quote(File.separator);
-        if (System.getProperty("os.name").startsWith("Windows ")) {
+        if (OS.getCurrent().equals(OS.WINDOWS)) {
             separators += "/"; /* on Windows also / is accepted as valid separator */
         }
         String[] components = cp.split("[" + separators + "]", Integer.MAX_VALUE);
@@ -369,17 +370,7 @@ public final class ImageClassLoader {
     }
 
     private Class<?> forName(String name) throws ClassNotFoundException {
-        Class<?> clazz = Class.forName(name, false, classLoader);
-        if (NativeImageClassLoader.classIsMissing(clazz)) {
-            /*
-             * This is a ghost interface. Although Class.forName() doesn't trigger the creation of
-             * ghost interfaces it is possible that the class was referenced in the bytecode, loaded
-             * at an earlier stage and replaced with a ghost interface. Throw a
-             * ClassNotFoundException to maintain the contract of findClassByName().
-             */
-            throw new ClassNotFoundException(name);
-        }
-        return clazz;
+        return Class.forName(name, false, classLoader);
     }
 
     public List<String> getClasspath() {

@@ -71,8 +71,8 @@ public class AArch64TestBitAndBranchTest extends LIRTest {
 
     @Test
     public void testBit42() {
-        test("testBit42Snippet", 1 << 42, Long.MAX_VALUE, Long.MIN_VALUE);
-        test("testBit42Snippet", ~(1 << 42), Long.MAX_VALUE, Long.MIN_VALUE);
+        test("testBit42Snippet", 1L << 42L, Long.MAX_VALUE, Long.MIN_VALUE);
+        test("testBit42Snippet", ~(1L << 42L), Long.MAX_VALUE, Long.MIN_VALUE);
         checkLIR("testBit42Snippet", checkForBitTestAndBranchOp, 1);
     }
 

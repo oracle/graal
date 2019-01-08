@@ -53,7 +53,6 @@ import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.CompilationIdentifier.Verbosity;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
-import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.debug.GraalError;
@@ -123,6 +122,7 @@ import com.oracle.svm.core.code.FrameInfoEncoder;
 import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
 import com.oracle.svm.core.deopt.DeoptTester;
 import com.oracle.svm.core.graal.GraalConfiguration;
+import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
@@ -864,6 +864,7 @@ public class CompileQueue {
             }
         }
         executor.execute(task);
+        method.setCompiled();
     }
 
     class HostedCompilationResultBuilderFactory implements CompilationResultBuilderFactory {
@@ -888,7 +889,7 @@ public class CompileQueue {
             System.out.println("Compiling " + method.format("%r %H.%n(%p)") + "  [" + reason + "]");
         }
 
-        Backend backend = config.lookupBackend(method);
+        SubstrateBackend backend = config.lookupBackend(method);
 
         StructuredGraph graph = method.compilationInfo.graph;
         assert graph != null : method;
@@ -912,15 +913,9 @@ public class CompileQueue {
 
             Suites suites = method.compilationInfo.isDeoptTarget() ? deoptTargetSuites : regularSuites;
             LIRSuites lirSuites = method.compilationInfo.isDeoptTarget() ? deoptTargetLIRSuites : regularLIRSuites;
-            CompilationResult result = new CompilationResult(compilationIdentifier, method.format("%H.%n(%p)")) {
-                @Override
-                public void close() {
-                    /*
-                     * Do nothing, we do not want our CompilationResult to be closed because we
-                     * aggregate all data items and machine code in the native image heap.
-                     */
-                }
-            };
+
+            CompilationResult result = backend.newCompilationResult(compilationIdentifier, method.format("%H.%n(%p)"));
+
             try (Indent indent = debug.logAndIndent("compile %s", method)) {
                 GraalCompiler.compileGraph(graph, method, backend.getProviders(), backend, null, optimisticOpts, method.getProfilingInfo(), suites, lirSuites, result,
                                 new HostedCompilationResultBuilderFactory(), false);

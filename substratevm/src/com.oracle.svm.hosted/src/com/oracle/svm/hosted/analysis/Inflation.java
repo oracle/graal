@@ -80,7 +80,6 @@ import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import sun.reflect.generics.reflectiveObjects.ParameterizedTypeImpl;
 
 public class Inflation extends BigBang {
     private Set<AnalysisField> handledUnknownValueFields;
@@ -168,7 +167,17 @@ public class Inflation extends BigBang {
             /*
              * Support for Java annotations.
              */
-            hub.setAnnotationsEncoding(encodeAnnotations(metaAccess, type.getAnnotations(), hub.getAnnotationsEncoding()));
+            try {
+                /*
+                 * Get the annotations from the wrapped type since AnalysisType.getAnnotations()
+                 * defends against JDK-7183985 and we want to get the original behavior.
+                 */
+                Annotation[] annotations = type.getWrappedWithoutResolve().getAnnotations();
+                hub.setAnnotationsEncoding(encodeAnnotations(metaAccess, annotations, hub.getAnnotationsEncoding()));
+            } catch (ArrayStoreException e) {
+                /* If we hit JDK-7183985 just encode the exception. */
+                hub.setAnnotationsEncoding(e);
+            }
 
             /*
              * Support for Java enumerations.
@@ -353,18 +362,6 @@ public class Inflation extends BigBang {
         if (t instanceof Class) {
             Optional<? extends ResolvedJavaType> resolved = metaAccess.optionalLookupJavaType((Class<?>) t);
             return resolved.isPresent() && universe.hostVM().platformSupported(resolved.get());
-        } else if (t instanceof ParameterizedTypeImpl) {
-            ParameterizedTypeImpl paramType = (ParameterizedTypeImpl) t;
-            Type[] typeArgs = paramType.getActualTypeArguments();
-            for (Type typeArg : typeArgs) {
-                if (typeArg instanceof Class<?>) {
-                    Class<?> typeArgAsClass = (Class<?>) typeArg;
-                    if (NativeImageClassLoader.classIsMissing(typeArgAsClass)) {
-                        /* The type argument is a missing class. */
-                        return false;
-                    }
-                }
-            }
         }
         return true;
     }

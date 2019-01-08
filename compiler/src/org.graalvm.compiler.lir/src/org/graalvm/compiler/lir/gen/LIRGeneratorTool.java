@@ -24,6 +24,9 @@
  */
 package org.graalvm.compiler.lir.gen;
 
+import java.util.BitSet;
+import java.util.List;
+
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.calc.Condition;
@@ -39,11 +42,13 @@ import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LabelRef;
 import org.graalvm.compiler.lir.SwitchStrategy;
 import org.graalvm.compiler.lir.Variable;
+import org.graalvm.compiler.lir.VirtualStackSlot;
 
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterAttributes;
 import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.ValueKindFactory;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -318,4 +323,26 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
      * after this fence will execute until all previous instructions have retired.
      */
     void emitSpeculationFence();
+
+    default VirtualStackSlot allocateStackSlots(int slots, BitSet objects, List<VirtualStackSlot> outObjectStackSlots) {
+        return getResult().getFrameMapBuilder().allocateStackSlots(slots, objects, outObjectStackSlots);
+    }
+
+    default Value emitReadCallerStackPointer(Stamp wordStamp) {
+        /*
+         * We do not know the frame size yet. So we load the address of the first spill slot
+         * relative to the beginning of the frame, which is equivalent to the stack pointer of the
+         * caller.
+         */
+        return emitAddress(StackSlot.get(getLIRKind(wordStamp), 0, true));
+    }
+
+    default Value emitReadReturnAddress(Stamp wordStamp, int returnAddressSize) {
+        return emitMove(StackSlot.get(getLIRKind(wordStamp), -returnAddressSize, true));
+    }
+
+    default void emitThrow(@SuppressWarnings("unused") Value exception) {
+        throw GraalError.unimplemented("Throw is not implemented for this compiler backend");
+    }
+
 }

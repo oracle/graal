@@ -65,7 +65,6 @@ import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
-import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -690,7 +689,6 @@ public class SLInstrumentTest {
      */
     @Test
     public void testEarlyReturn() throws Exception {
-        Assume.assumeFalse("Crashes on AArch64 in C2 (GR-8733)", System.getProperty("os.arch").equalsIgnoreCase("aarch64"));
         String code = "function main() {\n" +
                         "  a = 10;\n" +
                         "  b = a;\n" +

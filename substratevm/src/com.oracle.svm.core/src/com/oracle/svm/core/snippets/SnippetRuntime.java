@@ -65,6 +65,7 @@ public class SnippetRuntime {
     public static final SubstrateForeignCallDescriptor UNRESOLVED = findForeignCall(SnippetRuntime.class, "unresolved", true, LocationIdentity.any());
 
     public static final SubstrateForeignCallDescriptor UNWIND_EXCEPTION = findForeignCall(SnippetRuntime.class, "unwindException", true, LocationIdentity.any());
+    public static final SubstrateForeignCallDescriptor REPORT_UNHANDLED_EXCEPTION_RAW = findForeignCall(SnippetRuntime.class, "reportUnhandledExceptionRaw", true, LocationIdentity.any());
 
     /* Implementation of runtime calls defined in a VM-independent way by Graal. */
     public static final SubstrateForeignCallDescriptor REGISTER_FINALIZER = findForeignCall(SnippetRuntime.class, "registerFinalizer", true);
@@ -272,7 +273,9 @@ public class SnippetRuntime {
         reportUnhandledExceptionRaw(exception);
     }
 
-    public static void reportUnhandledExceptionRaw(Throwable exception) {
+    /** Foreign call: {@link #REPORT_UNHANDLED_EXCEPTION_RAW}. */
+    @SubstrateForeignCallTarget
+    private static void reportUnhandledExceptionRaw(Throwable exception) {
         Log.log().string(exception.getClass().getName());
         String detail = JDKUtils.getRawMessage(exception);
         if (detail != null) {

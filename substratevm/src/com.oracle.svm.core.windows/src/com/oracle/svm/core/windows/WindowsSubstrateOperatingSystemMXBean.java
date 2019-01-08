@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,36 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.reflect.target;
+package com.oracle.svm.core.windows;
 
-import java.util.function.Function;
-
-import org.graalvm.compiler.serviceprovider.GraalServices;
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.jdk.SubstrateOperatingSystemMXBean;
+import java.lang.management.OperatingSystemMXBean;
+import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.annotate.TargetClass;
+class WindowsSubstrateOperatingSystemMXBean extends SubstrateOperatingSystemMXBean {
 
-@Platforms(Platform.HOSTED_ONLY.class)
-class Package_jdk_internal_reflect implements Function<TargetClass, String> {
+}
+
+@Platforms(Platform.WINDOWS.class)
+@AutomaticFeature
+class WindowsSubstrateOperatingSystemMXBeanFeature implements Feature {
     @Override
-    public String apply(TargetClass annotation) {
-        if (GraalServices.Java8OrEarlier) {
-            return "sun.reflect." + annotation.className();
-        } else {
-            return "jdk.internal.reflect." + annotation.className();
-        }
+    public void afterRegistration(Feature.AfterRegistrationAccess access) {
+        ImageSingletons.add(OperatingSystemMXBean.class, new WindowsSubstrateOperatingSystemMXBean());
     }
-}
-
-@TargetClass(classNameProvider = Package_jdk_internal_reflect.class, className = "ConstructorAccessor")
-final class Target_jdk_internal_reflect_ConstructorAccessor {
-}
-
-@TargetClass(classNameProvider = Package_jdk_internal_reflect.class, className = "FieldAccessor")
-final class Target_jdk_internal_reflect_FieldAccessor {
-}
-
-@TargetClass(classNameProvider = Package_jdk_internal_reflect.class, className = "MethodAccessor")
-final class Target_jdk_internal_reflect_MethodAccessor {
 }

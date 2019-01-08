@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.memory;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -187,58 +188,98 @@ public final class UnsafeArrayAccess {
     }
 
     public void writeI1(Object arr, long baseOffset, long offset, boolean value) {
+        assert inBounds(arr, offset, Byte.BYTES);
         unsafe.putByte(arr, baseOffset + offset, (byte) (value ? 1 : 0));
     }
 
     public boolean getI1(Object arr, long baseOffset, long offset) {
+        assert inBounds(arr, offset, Byte.BYTES);
         return unsafe.getByte(arr, baseOffset + offset) != 0;
     }
 
     public void writeI8(Object arr, long baseOffset, long offset, byte value) {
+        assert inBounds(arr, offset, Byte.BYTES);
         unsafe.putByte(arr, baseOffset + offset, value);
     }
 
     public byte getI8(Object arr, long baseOffset, long offset) {
+        assert inBounds(arr, offset, Byte.BYTES);
         return unsafe.getByte(arr, baseOffset + offset);
     }
 
     public void writeI16(Object arr, long baseOffset, long offset, short value) {
+        assert inBounds(arr, offset, Short.BYTES);
         unsafe.putShort(arr, baseOffset + offset, value);
     }
 
     public short getI16(Object arr, long baseOffset, long offset) {
+        assert inBounds(arr, offset, Short.BYTES);
         return unsafe.getShort(arr, baseOffset + offset);
     }
 
     public void writeI32(Object arr, long baseOffset, long offset, int value) {
+        assert inBounds(arr, offset, Integer.BYTES);
         unsafe.putInt(arr, baseOffset + offset, value);
     }
 
     public int getI32(Object arr, long baseOffset, long offset) {
+        assert inBounds(arr, offset, Integer.BYTES);
         return unsafe.getInt(arr, baseOffset + offset);
     }
 
     public void writeI64(Object arr, long baseOffset, long offset, long value) {
+        assert inBounds(arr, offset, Long.BYTES);
         unsafe.putLong(arr, baseOffset + offset, value);
     }
 
     public long getI64(Object arr, long baseOffset, long offset) {
+        assert inBounds(arr, offset, Long.BYTES);
         return unsafe.getLong(arr, baseOffset + offset);
     }
 
     public void writeFloat(Object arr, long baseOffset, long offset, float value) {
+        assert inBounds(arr, offset, Float.BYTES);
         unsafe.putFloat(arr, baseOffset + offset, value);
     }
 
     public float getFloat(Object arr, long baseOffset, long offset) {
+        assert inBounds(arr, offset, Float.BYTES);
         return unsafe.getFloat(arr, baseOffset + offset);
     }
 
     public void writeDouble(Object arr, long baseOffset, long offset, double value) {
+        assert inBounds(arr, offset, Double.BYTES);
         unsafe.putDouble(arr, baseOffset + offset, value);
     }
 
     public double getDouble(Object arr, long baseOffset, long offset) {
+        assert inBounds(arr, offset, Double.BYTES);
         return unsafe.getDouble(arr, baseOffset + offset);
+    }
+
+    private boolean inBounds(Object arr, long offset, int accessedBytes) {
+        assert accessedBytes > 0;
+        long arraySize = ((long) Array.getLength(arr)) * getArrayElementSize(arr);
+        return offset >= 0 && offset + accessedBytes <= arraySize;
+    }
+
+    private int getArrayElementSize(Object arr) {
+        assert arr.getClass().isArray();
+        Class<?> componentType = arr.getClass().getComponentType();
+        if (componentType == boolean.class || componentType == byte.class) {
+            return Byte.BYTES;
+        } else if (componentType == short.class) {
+            return Short.BYTES;
+        } else if (componentType == int.class) {
+            return Integer.BYTES;
+        } else if (componentType == long.class) {
+            return Long.BYTES;
+        } else if (componentType == float.class) {
+            return Float.BYTES;
+        } else if (componentType == double.class) {
+            return Double.BYTES;
+        } else {
+            throw new IllegalStateException("Unexpected type: " + componentType);
+        }
     }
 }
