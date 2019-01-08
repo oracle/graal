@@ -50,6 +50,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.amd64.AMD64ConvertSnippets;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
@@ -68,7 +69,7 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
     @Override
     public void initialize(OptionValues options, Iterable<DebugHandlersFactory> factories, HotSpotProviders providers, GraalHotSpotVMConfig config) {
         convertSnippets = new AMD64ConvertSnippets.Templates(options, factories, providers, providers.getSnippetReflection(), providers.getCodeCache().getTarget());
-        profileSnippets = ProfileNode.Options.ProbabilisticProfiling.getValue(options)
+        profileSnippets = ProfileNode.Options.ProbabilisticProfiling.getValue(options) && !GraalServices.Java8OrEarlier
                         ? new ProbabilisticProfileSnippets.Templates(options, factories, providers, providers.getCodeCache().getTarget())
                         : null;
         super.initialize(options, factories, providers, config);

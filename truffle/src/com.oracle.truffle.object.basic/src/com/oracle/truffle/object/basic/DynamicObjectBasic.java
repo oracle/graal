@@ -45,7 +45,6 @@ import java.io.PrintStream;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.object.DynamicObjectImpl;
-import com.oracle.truffle.object.ObjectStorageOptions;
 import com.oracle.truffle.object.ShapeImpl;
 import com.oracle.truffle.object.basic.BasicLocations.SimpleLongFieldLocation;
 import com.oracle.truffle.object.basic.BasicLocations.SimpleObjectFieldLocation;
@@ -225,13 +224,12 @@ public class DynamicObjectBasic extends DynamicObjectImpl {
         return clone;
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     protected final void reshape(ShapeImpl newShape) {
-        reshapeCount.inc();
-
-        ShapeImpl oldShape = getShape();
+        ShapeImpl oldShape = (ShapeImpl) getShape();
         ShapeImpl commonAncestor = ShapeImpl.findCommonAncestor(oldShape, newShape);
-        if (ObjectStorageOptions.TraceReshape) {
+        if (com.oracle.truffle.object.ObjectStorageOptions.TraceReshape) {
             int limit = 200;
             PrintStream out = System.out;
             out.printf("RESHAPE\nOLD %s\nNEW %s\nLCA %s\nDIFF %s\n---\n", oldShape.toStringLimit(limit), newShape.toStringLimit(limit), commonAncestor.toStringLimit(limit),

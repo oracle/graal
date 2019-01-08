@@ -270,6 +270,7 @@ import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.BytecodeDisassembler;
@@ -1279,8 +1280,8 @@ public class BytecodeParser implements GraphBuilderContext {
         return graph.addOrUniqueWithInputs(x);
     }
 
-    protected ValueNode genIfNode(LogicNode condition, FixedNode falseSuccessor, FixedNode trueSuccessor, double d) {
-        return new IfNode(condition, falseSuccessor, trueSuccessor, d);
+    protected ValueNode genIfNode(LogicNode condition, FixedNode trueSuccessor, FixedNode falseSuccessor, double d) {
+        return new IfNode(condition, trueSuccessor, falseSuccessor, d);
     }
 
     protected void genThrow() {
@@ -2529,6 +2530,7 @@ public class BytecodeParser implements GraphBuilderContext {
 
     protected void genReturn(ValueNode returnVal, JavaKind returnKind) {
         if (parsingIntrinsic() && returnVal != null) {
+
             if (returnVal instanceof StateSplit) {
                 StateSplit stateSplit = (StateSplit) returnVal;
                 FrameState stateAfter = stateSplit.stateAfter();
@@ -2537,7 +2539,20 @@ public class BytecodeParser implements GraphBuilderContext {
                     if (stateAfter.bci == BytecodeFrame.AFTER_BCI) {
                         assert stateAfter.usages().count() == 1;
                         assert stateAfter.usages().first() == stateSplit;
-                        stateAfter.replaceAtUsages(graph.add(new FrameState(BytecodeFrame.AFTER_BCI, returnVal)));
+                        FrameState state;
+                        if (returnVal.getStackKind() == JavaKind.Illegal) {
+                            // This should only occur when Fold and NodeIntrinsic plugins are
+                            // deferred. Their return value might not be a Java type and in that
+                            // case this can't be the final AFTER_BCI so just create a FrameState
+                            // without a return value on the top of stack.
+                            assert stateSplit instanceof Invoke;
+                            ResolvedJavaMethod targetMethod = ((Invoke) stateSplit).getTargetMethod();
+                            assert targetMethod != null && (targetMethod.getAnnotation(Fold.class) != null || targetMethod.getAnnotation(Node.NodeIntrinsic.class) != null);
+                            state = new FrameState(BytecodeFrame.AFTER_BCI);
+                        } else {
+                            state = new FrameState(BytecodeFrame.AFTER_BCI, returnVal);
+                        }
+                        stateAfter.replaceAtUsages(graph.add(state));
                         GraphUtil.killWithUnusedFloatingInputs(stateAfter);
                     } else {
                         /*
@@ -3384,26 +3399,38 @@ public class BytecodeParser implements GraphBuilderContext {
                 condition = genUnique(condition);
             }
 
-            NodeSourcePosition currentPosition = graph.currentNodeSourcePosition();
+            BciBlock deoptBlock = null;
+            BciBlock noDeoptBlock = null;
             if (isNeverExecutedCode(probability)) {
-                NodeSourcePosition survivingSuccessorPosition = graph.trackNodeSourcePosition()
-                                ? new NodeSourcePosition(currentPosition.getCaller(), currentPosition.getMethod(), falseBlock.startBci)
-                                : null;
-                append(new FixedGuardNode(condition, UnreachedCode, InvalidateReprofile, true, survivingSuccessorPosition));
-                if (profilingPlugin != null && profilingPlugin.shouldProfile(this, method)) {
-                    profilingPlugin.profileGoto(this, method, bci(), falseBlock.startBci, stateBefore);
-                }
-                appendGoto(falseBlock);
-                return;
+                deoptBlock = trueBlock;
+                noDeoptBlock = falseBlock;
             } else if (isNeverExecutedCode(1 - probability)) {
-                NodeSourcePosition survivingSuccessorPosition = graph.trackNodeSourcePosition()
-                                ? new NodeSourcePosition(currentPosition.getCaller(), currentPosition.getMethod(), trueBlock.startBci)
-                                : null;
-                append(new FixedGuardNode(condition, UnreachedCode, InvalidateReprofile, false, survivingSuccessorPosition));
-                if (profilingPlugin != null && profilingPlugin.shouldProfile(this, method)) {
-                    profilingPlugin.profileGoto(this, method, bci(), trueBlock.startBci, stateBefore);
+                deoptBlock = falseBlock;
+                noDeoptBlock = trueBlock;
+            }
+
+            if (deoptBlock != null) {
+                NodeSourcePosition currentPosition = graph.currentNodeSourcePosition();
+                NodeSourcePosition survivingSuccessorPosition = null;
+                if (graph.trackNodeSourcePosition()) {
+                    survivingSuccessorPosition = new NodeSourcePosition(currentPosition.getCaller(), currentPosition.getMethod(), noDeoptBlock.startBci);
                 }
-                appendGoto(trueBlock);
+                boolean negated = deoptBlock == trueBlock;
+                if (!isPotentialCountedLoopExit(condition, deoptBlock)) {
+                    if (profilingPlugin != null && profilingPlugin.shouldProfile(this, method)) {
+                        profilingPlugin.profileGoto(this, method, bci(), noDeoptBlock.startBci, stateBefore);
+                    }
+                    append(new FixedGuardNode(condition, UnreachedCode, InvalidateReprofile, negated, survivingSuccessorPosition));
+                    appendGoto(noDeoptBlock);
+                } else {
+                    this.controlFlowSplit = true;
+                    FixedNode noDeoptSuccessor = createTarget(noDeoptBlock, frameState, false, true);
+                    DeoptimizeNode deopt = graph.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
+                    FixedNode deoptSuccessor = checkLoopExit(deopt, deoptBlock, frameState).fixed;
+                    ValueNode ifNode = genIfNode(condition, negated ? deoptSuccessor : noDeoptSuccessor, negated ? noDeoptSuccessor : deoptSuccessor, negated ? 1 - probability : probability);
+                    postProcessIfNode(ifNode);
+                    append(ifNode);
+                }
                 return;
             }
 
@@ -3429,6 +3456,16 @@ public class BytecodeParser implements GraphBuilderContext {
             postProcessIfNode(ifNode);
             append(ifNode);
         }
+    }
+
+    public boolean isPotentialCountedLoopExit(LogicNode condition, BciBlock target) {
+        if (currentBlock != null) {
+            long exits = currentBlock.loops & ~target.loops;
+            if (exits != 0) {
+                return condition instanceof CompareNode;
+            }
+        }
+        return false;
     }
 
     /**
@@ -4195,7 +4232,6 @@ public class BytecodeParser implements GraphBuilderContext {
             handleIllegalNewInstance(resolvedType);
             return;
         }
-
         maybeEagerlyInitialize(resolvedType);
 
         ClassInitializationPlugin classInitializationPlugin = graphBuilderConfig.getPlugins().getClassInitializationPlugin();
@@ -4513,7 +4549,6 @@ public class BytecodeParser implements GraphBuilderContext {
         }
 
         ResolvedJavaType holder = resolvedField.getDeclaringClass();
-        maybeEagerlyInitialize(holder);
         ClassInitializationPlugin classInitializationPlugin = this.graphBuilderConfig.getPlugins().getClassInitializationPlugin();
         if (classInitializationPlugin != null) {
             classInitializationPlugin.apply(this, holder, this::createCurrentFrameState);
@@ -4549,16 +4584,20 @@ public class BytecodeParser implements GraphBuilderContext {
     private ResolvedJavaField resolveStaticFieldAccess(JavaField field, ValueNode value) {
         if (field instanceof ResolvedJavaField) {
             ResolvedJavaField resolvedField = (ResolvedJavaField) field;
-            if (resolvedField.getDeclaringClass().isInitialized() || graphBuilderConfig.getPlugins().getClassInitializationPlugin() != null) {
+            ResolvedJavaType resolvedType = resolvedField.getDeclaringClass();
+            maybeEagerlyInitialize(resolvedType);
+
+            if (resolvedType.isInitialized() || graphBuilderConfig.getPlugins().getClassInitializationPlugin() != null) {
                 return resolvedField;
             }
+
             /*
              * Static fields have initialization semantics but may be safely accessed under certain
              * conditions while the class is being initialized. Executing in the clinit or init of
-             * classes which are subtypes of the field holder are sure to be running in a context
-             * where the access is safe.
+             * subclasses (but not implementers) of the field holder are sure to be running in a
+             * context where the access is safe.
              */
-            if (resolvedField.getDeclaringClass().isAssignableFrom(method.getDeclaringClass())) {
+            if (!resolvedType.isInterface() && resolvedType.isAssignableFrom(method.getDeclaringClass())) {
                 if (method.isClassInitializer() || method.isConstructor()) {
                     return resolvedField;
                 }
@@ -4592,7 +4631,6 @@ public class BytecodeParser implements GraphBuilderContext {
 
         ClassInitializationPlugin classInitializationPlugin = this.graphBuilderConfig.getPlugins().getClassInitializationPlugin();
         ResolvedJavaType holder = resolvedField.getDeclaringClass();
-        maybeEagerlyInitialize(holder);
         if (classInitializationPlugin != null) {
             Supplier<FrameState> stateBefore = () -> {
                 JavaKind[] pushedSlotKinds = {field.getJavaKind()};

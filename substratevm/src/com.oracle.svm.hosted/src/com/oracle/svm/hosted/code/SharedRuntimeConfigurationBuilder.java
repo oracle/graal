@@ -29,11 +29,9 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import java.util.EnumMap;
 import java.util.function.Function;
 
-import com.oracle.svm.core.SubstrateOptions;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
-import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.spi.StampProvider;
@@ -42,9 +40,11 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.word.WordTypes;
 
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.GraalConfiguration;
-import com.oracle.svm.core.graal.code.amd64.SubstrateAMD64RegisterConfig;
+import com.oracle.svm.core.graal.amd64.SubstrateAMD64RegisterConfig;
+import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateCodeCacheProvider;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
@@ -69,9 +69,9 @@ public abstract class SharedRuntimeConfigurationBuilder {
     protected final MetaAccessProvider metaAccess;
     protected RuntimeConfiguration runtimeConfig;
     protected WordTypes wordTypes;
-    protected Function<Providers, Backend> backendProvider;
+    protected Function<Providers, SubstrateBackend> backendProvider;
 
-    public SharedRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, MetaAccessProvider metaAccess, Function<Providers, Backend> backendProvider) {
+    public SharedRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, MetaAccessProvider metaAccess, Function<Providers, SubstrateBackend> backendProvider) {
         this.options = options;
         this.hostVM = hostVM;
         this.metaAccess = metaAccess;
@@ -94,7 +94,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
         Replacements replacements = createReplacements(p, snippetReflection);
         p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, snippetReflection);
 
-        EnumMap<ConfigKind, Backend> backends = new EnumMap<>(ConfigKind.class);
+        EnumMap<ConfigKind, SubstrateBackend> backends = new EnumMap<>(ConfigKind.class);
         for (ConfigKind config : ConfigKind.values()) {
             RegisterConfig registerConfig = new SubstrateAMD64RegisterConfig(config, metaAccess, ConfigurationValues.getTarget(), SubstrateOptions.UseStackBasePointer.getValue());
             CodeCacheProvider codeCacheProvider = createCodeCacheProvider(registerConfig);

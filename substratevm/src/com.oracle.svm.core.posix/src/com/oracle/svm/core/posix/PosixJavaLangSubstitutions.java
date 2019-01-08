@@ -60,11 +60,9 @@ import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
-import com.oracle.svm.core.jdk.JDK9OrLater;
 import com.oracle.svm.core.posix.headers.Dirent;
 import com.oracle.svm.core.posix.headers.Dirent.DIR;
 import com.oracle.svm.core.posix.headers.Dirent.dirent;
@@ -209,7 +207,7 @@ final class Target_java_lang_UNIXProcess {
 
     // The reaper thread pool and thread groups (currently) confuse the analysis, so we launch
     // reaper threads individually (with the only difference being that threads are not recycled)
-    @Delete static final Executor processReaperExecutor = null;
+    @Delete static Executor processReaperExecutor;
 
     @Alias int pid;
     @Alias OutputStream stdin;
@@ -406,35 +404,6 @@ final class Target_java_lang_UNIXProcess {
     static void destroyProcess(int ppid, boolean force) {
         int sig = force ? Signal.SignalEnum.SIGKILL.getCValue() : Signal.SignalEnum.SIGTERM.getCValue();
         Signal.kill(ppid, sig);
-    }
-}
-
-@TargetClass(className = "java.lang.ProcessImpl")
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-final class Target_java_lang_ProcessImpl {
-
-    @Substitute //
-    @TargetElement(onlyWith = JDK9OrLater.class) //
-    @SuppressWarnings({"unused", "static-method"})
-    private /* native */ int forkAndExec(
-                    int mode,
-                    byte[] helperpath,
-                    byte[] prog,
-                    byte[] argBlock,
-                    int argc,
-                    byte[] envBlock,
-                    int envc,
-                    byte[] dir,
-                    int[] fds,
-                    boolean redirectErrorStream)
-                    throws IOException {
-        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ProcessImpl.forkAndExec");
-    }
-
-    @Substitute //
-    @TargetElement(onlyWith = JDK9OrLater.class) //
-    private static /* native */ void init() {
-        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ProcessImpl.init");
     }
 }
 
@@ -713,13 +682,13 @@ final class Target_java_lang_UNIXProcess_ProcessPipeOutputStream {
 @TargetClass(className = "java.lang.ProcessBuilder", innerClass = "NullInputStream")
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_lang_ProcessBuilder_NullInputStream {
-    @Alias static final Target_java_lang_ProcessBuilder_NullInputStream INSTANCE = null;
+    @Alias static Target_java_lang_ProcessBuilder_NullInputStream INSTANCE;
 }
 
 @TargetClass(className = "java.lang.ProcessBuilder", innerClass = "NullOutputStream")
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_lang_ProcessBuilder_NullOutputStream {
-    @Alias static final Target_java_lang_ProcessBuilder_NullOutputStream INSTANCE = null;
+    @Alias static Target_java_lang_ProcessBuilder_NullOutputStream INSTANCE;
 }
 
 @TargetClass(java.lang.System.class)

@@ -34,6 +34,9 @@ import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.Platform.DARWIN;
+import org.graalvm.nativeimage.Platform.LINUX;
 import org.graalvm.word.ComparableWord;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -47,6 +50,7 @@ import com.oracle.svm.core.posix.headers.Time.timespec;
  * Definitions manually translated from the C header file pthread.h.
  */
 @CContext(PosixDirectives.class)
+@Platforms({DARWIN.class, LINUX.class})
 @CLibrary("pthread")
 public class Pthread {
 

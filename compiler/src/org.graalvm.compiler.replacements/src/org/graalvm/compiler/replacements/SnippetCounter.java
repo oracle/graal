@@ -35,6 +35,9 @@ import org.graalvm.compiler.core.common.GraalOptions;
  * snippet specific metrics.
  */
 public final class SnippetCounter implements Comparable<SnippetCounter> {
+
+    public static final SnippetCounter DISABLED_COUNTER = new SnippetCounter(null, "Disabled", "Disabled");
+
     /**
      * A group of related counters.
      */

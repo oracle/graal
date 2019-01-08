@@ -48,7 +48,7 @@ public class DeoptSourcePositionInfoOp extends LIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb) {
-        ((SubstrateCompilationResult) crb.compilationResult).setDeoptimzationSourcePositions(deoptimzationSourcePositions);
+        ((SubstrateCompilationResult) crb.compilationResult).setDeoptimizationSourcePositions(deoptimzationSourcePositions);
     }
 
 }

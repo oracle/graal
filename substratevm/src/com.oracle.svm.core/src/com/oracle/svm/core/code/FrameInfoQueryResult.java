@@ -266,6 +266,10 @@ public class FrameInfoQueryResult {
         return sourceClass;
     }
 
+    public String getSourceMethodName() {
+        return sourceMethodName;
+    }
+
     /**
      * Returns the name and source code location of the method, for debugging purposes only.
      */

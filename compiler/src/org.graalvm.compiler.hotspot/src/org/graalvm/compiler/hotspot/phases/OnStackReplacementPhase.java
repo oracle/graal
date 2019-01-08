@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.hotspot.phases;
 
-import static jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Required;
 
 import org.graalvm.compiler.core.common.PermanentBailoutException;
@@ -37,6 +36,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
+import org.graalvm.compiler.loop.LoopEx;
 import org.graalvm.compiler.loop.LoopsData;
 import org.graalvm.compiler.loop.phases.LoopTransformations;
 import org.graalvm.compiler.nodeinfo.InputType;
@@ -77,6 +77,7 @@ import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 import jdk.vm.ci.runtime.JVMCICompiler;
 
 public class OnStackReplacementPhase extends Phase {
@@ -87,7 +88,7 @@ public class OnStackReplacementPhase extends Phase {
                        "if there is no mature profile available for the rest of the method.", type = OptionType.Debug)
         public static final OptionKey<Boolean> DeoptAfterOSR = new OptionKey<>(true);
         @Option(help = "Support OSR compilations with locks. If DeoptAfterOSR is true we can per definition not have " +
-                       "unbalaced enter/extis mappings. If DeoptAfterOSR is false insert artificial monitor enters after " +
+                       "unbalanced enter/exits mappings. If DeoptAfterOSR is false insert artificial monitor enters after " +
                        "the OSRStart to have balanced enter/exits in the graph.", type = OptionType.Debug)
         public static final OptionKey<Boolean> SupportOSRWithLocks = new OptionKey<>(true);
         // @formatter:on
@@ -152,7 +153,9 @@ public class OnStackReplacementPhase extends Phase {
                 l = l.getParent();
             }
 
-            LoopTransformations.peel(loops.loop(l));
+            LoopEx loop = loops.loop(l);
+            loop.loopBegin().markOsrLoop();
+            LoopTransformations.peel(loop);
             osr.replaceAtUsages(InputType.Guard, AbstractBeginNode.prevBegin((FixedNode) osr.predecessor()));
             for (Node usage : osr.usages().snapshot()) {
                 EntryProxyNode proxy = (EntryProxyNode) usage;
@@ -179,7 +182,7 @@ public class OnStackReplacementPhase extends Phase {
             final int locksSize = osrState.locksSize();
 
             for (int i = 0; i < localsSize + locksSize; i++) {
-                ValueNode value = null;
+                ValueNode value;
                 if (i >= localsSize) {
                     value = osrState.lockAt(i - localsSize);
                 } else {

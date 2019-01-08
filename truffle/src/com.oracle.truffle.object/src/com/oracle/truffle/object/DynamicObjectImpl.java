@@ -50,17 +50,14 @@ import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 
 /** @since 0.17 or earlier */
+@SuppressWarnings("deprecation")
 public abstract class DynamicObjectImpl extends DynamicObject implements Cloneable {
-    private ShapeImpl shape;
-
-    /** @since 0.17 or earlier */
-    public static final DebugCounter reshapeCount = DebugCounter.create("Reshape count");
 
     /** @since 0.17 or earlier */
     protected DynamicObjectImpl(Shape shape) {
-        assert shape instanceof ShapeImpl;
+        super(shape.getRoot());
         initialize(shape);
-        setShape(shape);
+        setShapeImpl(shape);
 
         if (ObjectStorageOptions.Profile) {
             Debug.trackObject(this);
@@ -68,21 +65,18 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
     }
 
     /** @since 0.17 or earlier */
-    @SuppressWarnings("deprecation")
+    @Deprecated
     public Object getTypeIdentifier() {
         return getShape();
     }
 
-    /** @since 0.17 or earlier */
-    @Override
-    public ShapeImpl getShape() {
-        return shape;
+    final ShapeImpl getShapeImpl() {
+        return (ShapeImpl) getShape();
     }
 
-    /** @since 0.17 or earlier */
-    protected void setShape(Shape shape) {
-        assert shape.getLayout().getType().isInstance(this);
-        this.shape = (ShapeImpl) shape;
+    private void setShapeImpl(Shape shape) {
+        assert shape instanceof ShapeImpl;
+        LayoutImpl.ACCESS.setShape(this, shape);
     }
 
     /** @since 0.17 or earlier */
@@ -100,7 +94,7 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
         assert !oldShape.isShared();
         if (oldShape != newShape) {
             resizeStore(oldShape, newShape);
-            setShape(newShape);
+            setShapeImpl(newShape);
 
             assert checkExtensionArrayInvariants(newShape);
         }
@@ -121,7 +115,7 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
             assert checkSetShape(oldShape, newShape);
 
             growStore(oldShape, newShape);
-            setShape(newShape);
+            setShapeImpl(newShape);
 
             assert checkExtensionArrayInvariants(newShape);
         }
@@ -201,7 +195,7 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
 
     private void copyProperties(DynamicObject fromObject) {
         ShapeImpl fromShape = (ShapeImpl) fromObject.getShape();
-        ShapeImpl toShape = getShape();
+        ShapeImpl toShape = getShapeImpl();
         assert toShape.isRelated(fromShape);
         assert toShape.isValid();
         assert !fromShape.isShared();
@@ -227,7 +221,7 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
             if (existing.getFlags() != newFlags) {
                 Property newProperty = existing.copyWithFlags(newFlags);
                 Shape newShape = oldShape.replaceProperty(existing, newProperty);
-                this.setShape(newShape);
+                setShapeImpl(newShape);
             }
             return true;
         } else {
@@ -292,14 +286,14 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
     @Override
     @TruffleBoundary
     public void define(Object key, Object value, int flags) {
-        define(key, value, flags, getShape().getLayout().getStrategy().getDefaultLocationFactory());
+        define(key, value, flags, getShapeImpl().getLayout().getStrategy().getDefaultLocationFactory());
     }
 
     /** @since 0.17 or earlier */
     @Override
     @TruffleBoundary
     public void define(Object key, Object value, int flags, LocationFactory locationFactory) {
-        ShapeImpl oldShape = getShape();
+        ShapeImpl oldShape = getShapeImpl();
         oldShape.getLayout().getStrategy().objectDefineProperty(this, key, value, flags, locationFactory, oldShape);
     }
 
@@ -307,7 +301,7 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
     @Override
     @TruffleBoundary
     public boolean delete(Object key) {
-        ShapeImpl oldShape = getShape();
+        ShapeImpl oldShape = getShapeImpl();
         Property existing = oldShape.getProperty(key);
         if (existing != null) {
             oldShape.getLayout().getStrategy().objectRemoveProperty(this, existing, oldShape);
@@ -332,7 +326,7 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
     /** @since 0.17 or earlier */
     @Override
     public final boolean updateShape() {
-        return getShape().getLayout().getStrategy().updateShape(this);
+        return getShapeImpl().getLayout().getStrategy().updateShape(this);
     }
 
     /** @since 0.17 or earlier */
@@ -344,6 +338,6 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
     /** @since 0.17 or earlier */
     @Override
     public ForeignAccess getForeignAccess() {
-        return getShape().getForeignAccessFactory(this);
+        return getShapeImpl().getForeignAccessFactory(this);
     }
 }

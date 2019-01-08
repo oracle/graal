@@ -589,13 +589,19 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
     }
 
+    @SuppressWarnings("try")
     public void decode(ResolvedJavaMethod method, boolean isSubstitution, boolean trackNodeSourcePosition) {
-        PEMethodScope methodScope = new PEMethodScope(graph, null, null, lookupEncodedGraph(method, null, null, isSubstitution, trackNodeSourcePosition), method, null, 0, loopExplosionPlugin, null);
-        decode(createInitialLoopScope(methodScope, null));
-        cleanupGraph(methodScope);
+        try (DebugContext.Scope scope = debug.scope("PEGraphDecode", graph)) {
+            EncodedGraph encodedGraph = lookupEncodedGraph(method, null, null, isSubstitution, trackNodeSourcePosition);
+            PEMethodScope methodScope = new PEMethodScope(graph, null, null, encodedGraph, method, null, 0, loopExplosionPlugin, null);
+            decode(createInitialLoopScope(methodScope, null));
+            cleanupGraph(methodScope);
 
-        debug.dump(DebugContext.VERBOSE_LEVEL, graph, "After graph cleanup");
-        assert graph.verify();
+            debug.dump(DebugContext.VERBOSE_LEVEL, graph, "After graph cleanup");
+            assert graph.verify();
+        } catch (Throwable t) {
+            throw debug.handle(t);
+        }
 
         try {
             /* Check that the control flow graph can be computed, to catch problems early. */
@@ -737,6 +743,10 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         Invoke invoke = invokeData.invoke;
 
         ResolvedJavaMethod targetMethod = callTarget.targetMethod();
+        if (loopScope.methodScope.encodedGraph.isCallToOriginal(targetMethod)) {
+            return false;
+        }
+
         InvocationPlugin invocationPlugin = getInvocationPlugin(targetMethod);
         if (invocationPlugin == null) {
             return false;

@@ -37,6 +37,9 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.Platform.DARWIN;
+import org.graalvm.nativeimage.Platform.LINUX;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
@@ -45,6 +48,7 @@ import org.graalvm.word.UnsignedWord;
 /**
  * Definitions manually translated from the C header file dlfcn.h.
  */
+@Platforms({DARWIN.class, LINUX.class})
 @CContext(PosixDirectives.class)
 @CLibrary("z")
 public class ZLib {

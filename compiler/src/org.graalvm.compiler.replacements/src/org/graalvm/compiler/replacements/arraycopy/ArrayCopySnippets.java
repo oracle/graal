@@ -30,12 +30,10 @@ import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQ
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
-import java.lang.reflect.Method;
 import java.util.EnumMap;
 
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.api.directives.GraalDirectives;
-import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
@@ -121,8 +119,8 @@ public abstract class ArrayCopySnippets implements Snippets {
 
     @Snippet
     public void arraycopyExactSnippet(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter ArrayCopyTypeCheck arrayTypeCheck,
-                    @ConstantParameter JavaKind elementKind, @ConstantParameter SnippetCounter elementKindCounter, @ConstantParameter SnippetCounter elementKindCopiedCounter,
-                    @ConstantParameter Counters counters) {
+                    @ConstantParameter JavaKind elementKind, @ConstantParameter LocationIdentity locationIdentity,
+                    @ConstantParameter SnippetCounter elementKindCounter, @ConstantParameter SnippetCounter elementKindCopiedCounter, @ConstantParameter Counters counters) {
         Object nonNullSrc = GraalDirectives.guardingNonNull(src);
         Object nonNullDest = GraalDirectives.guardingNonNull(dest);
         checkArrayTypes(nonNullSrc, nonNullDest, arrayTypeCheck);
@@ -131,19 +129,19 @@ public abstract class ArrayCopySnippets implements Snippets {
 
         elementKindCounter.inc();
         elementKindCopiedCounter.add(length);
-        ArrayCopyCallNode.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, elementKind, heapWordSize());
+        ArrayCopyCallNode.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, elementKind, locationIdentity, heapWordSize());
     }
 
     @Snippet
     public void arraycopyUnrolledSnippet(Object src, int srcPos, Object dest, int destPos, int length, @ConstantParameter ArrayCopyTypeCheck arrayTypeCheck,
-                    @ConstantParameter JavaKind elementKind, @ConstantParameter int unrolledLength, @ConstantParameter Counters counters) {
+                    @ConstantParameter JavaKind elementKind, @ConstantParameter LocationIdentity locationIdentity, @ConstantParameter int unrolledLength, @ConstantParameter Counters counters) {
         Object nonNullSrc = GraalDirectives.guardingNonNull(src);
         Object nonNullDest = GraalDirectives.guardingNonNull(dest);
         checkArrayTypes(nonNullSrc, nonNullDest, arrayTypeCheck);
         checkLimits(nonNullSrc, srcPos, nonNullDest, destPos, length, counters);
         incrementLengthCounter(length, counters);
 
-        unrolledArraycopyWork(nonNullSrc, srcPos, nonNullDest, destPos, unrolledLength, elementKind);
+        unrolledArraycopyWork(nonNullSrc, srcPos, nonNullDest, destPos, unrolledLength, elementKind, locationIdentity);
     }
 
     @Snippet
@@ -180,15 +178,9 @@ public abstract class ArrayCopySnippets implements Snippets {
         System.arraycopy(src, srcPos, dest, destPos, length);
     }
 
-    @Fold
-    static LocationIdentity getArrayLocation(JavaKind kind) {
-        return NamedLocationIdentity.getArrayLocation(kind);
-    }
-
-    private static void unrolledArraycopyWork(Object nonNullSrc, int srcPos, Object nonNullDest, int destPos, int length, JavaKind elementKind) {
+    private static void unrolledArraycopyWork(Object nonNullSrc, int srcPos, Object nonNullDest, int destPos, int length, JavaKind elementKind, LocationIdentity arrayLocation) {
         int scale = ReplacementsUtil.arrayIndexScale(INJECTED_META_ACCESS, elementKind);
         int arrayBaseOffset = ReplacementsUtil.getArrayBaseOffset(INJECTED_META_ACCESS, elementKind);
-        LocationIdentity arrayLocation = getArrayLocation(elementKind);
 
         long sourceOffset = arrayBaseOffset + (long) srcPos * scale;
         long destOffset = arrayBaseOffset + (long) destPos * scale;
@@ -290,7 +282,7 @@ public abstract class ArrayCopySnippets implements Snippets {
                 DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
             }
         } else {
-            ReplacementsUtil.staticAssert(false, "unknown array type check");
+            ReplacementsUtil.staticAssert(false, "unknown array type check ", arrayTypeCheck);
         }
     }
 
@@ -384,8 +376,7 @@ public abstract class ArrayCopySnippets implements Snippets {
         }
 
         protected SnippetInfo snippet(ArrayCopySnippets receiver, String methodName) {
-            SnippetInfo info = snippet(ArrayCopySnippets.class, methodName, receiver, LocationIdentity.any());
-            info.setOriginalMethod(originalArraycopy());
+            SnippetInfo info = snippet(ArrayCopySnippets.class, methodName, originalArraycopy(), receiver, LocationIdentity.any());
             return info;
         }
 
@@ -468,13 +459,16 @@ public abstract class ArrayCopySnippets implements Snippets {
                 assert arrayTypeCheck != ArrayCopyTypeCheck.UNDEFINED_ARRAY_TYPE_CHECK;
                 args.addConst("arrayTypeCheck", arrayTypeCheck);
             }
+            Object locationIdentity = arraycopy.killsAnyLocation() ? LocationIdentity.any() : NamedLocationIdentity.getArrayLocation(elementKind);
             if (snippetInfo == arraycopyUnrolledSnippet) {
                 args.addConst("elementKind", elementKind != null ? elementKind : JavaKind.Illegal);
+                args.addConst("locationIdentity", locationIdentity);
                 args.addConst("unrolledLength", arraycopy.getLength().asJavaConstant().asInt());
             }
             if (snippetInfo == arraycopyExactSnippet) {
                 assert elementKind != null;
                 args.addConst("elementKind", elementKind);
+                args.addConst("locationIdentity", locationIdentity);
                 args.addConst("elementKindCounter", counters.arraycopyCallCounters.get(elementKind));
                 args.addConst("elementKindCopiedCounter", counters.arraycopyCallCopiedCounters.get(elementKind));
             }
@@ -577,13 +571,11 @@ public abstract class ArrayCopySnippets implements Snippets {
 
         private ResolvedJavaMethod originalArraycopy() throws GraalError {
             if (originalArraycopy == null) {
-                Method method;
                 try {
-                    method = System.class.getDeclaredMethod("arraycopy", Object.class, int.class, Object.class, int.class, int.class);
-                } catch (NoSuchMethodException | SecurityException e) {
+                    originalArraycopy = findMethod(providers.getMetaAccess(), System.class, "arraycopy");
+                } catch (SecurityException e) {
                     throw new GraalError(e);
                 }
-                originalArraycopy = providers.getMetaAccess().lookupJavaMethod(method);
             }
             return originalArraycopy;
         }

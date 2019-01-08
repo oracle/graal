@@ -66,6 +66,7 @@ import com.oracle.svm.core.util.VMError;
 // TODO: This should be in some other package (svm.core.jdk?)
 // but then it can not use the non-public classes in this package.
 /** Native methods from jdk/src/share/native/java/net/net_util.c translated to Java. */
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 class JavaNetNetUtil {
 
     /* Private constructor: No instances. */
@@ -531,6 +532,7 @@ class JavaNetNetUtil {
 }
 
 /** Native methods from jdk/src/solaris/native/java/net/net_util_md.c translated to Java. */
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 class JavaNetNetUtilMD {
 
     /* Private constructor: No instances. */
@@ -2112,6 +2114,7 @@ class JavaNetNetUtilMD {
 }
 
 /** Native methods (and macros) from src/share/vm/prims/jni.cpp translated to Java. */
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 class VmPrimsJNI {
     /* Do not re-format commented-out code: @formatter:off */
 
@@ -2196,6 +2199,7 @@ class VmPrimsJNI {
 
 /** Translations of methods from src/os/bsd/vm/os_bsd.inline.hpp or src/os/bsd/vm/os_bsd.cpp. */
 // TODO: Maybe this should be Target_bsd_vm_os?
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 class Target_os {
     /* Do not re-format commented-out code: @formatter:off */
 
@@ -2385,6 +2389,7 @@ class Target_os {
 }
 
 /** Translations from src/share/vm/runtime/os.hpp. */
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 class VmRuntimeOS {
 
     /* Do not re-format commented-out code: @formatter:off */
@@ -2427,6 +2432,7 @@ class VmRuntimeOS {
 }
 
 /** Translations from src/share/javavm/export/jvm.h. */
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 class JavavmExportJvm {
 
     // 1100 #define JVM_IO_ERR (-1)

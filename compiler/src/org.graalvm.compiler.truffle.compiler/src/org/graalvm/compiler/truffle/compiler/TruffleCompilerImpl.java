@@ -45,11 +45,10 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
-import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -110,6 +109,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
+import org.graalvm.compiler.truffle.common.TruffleCompilation;
 
 /**
  * Coordinates partial evaluation of a Truffle AST and subsequent compilation via Graal.
@@ -127,7 +127,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
     protected final Backend backend;
     protected final SnippetReflectionProvider snippetReflection;
     protected final TrufflePostCodeInstallationTaskFactory codeInstallationTaskFactory;
-    private final Map<String, CompilationIdentifier> identifiers;
 
     public static final OptimisticOptimizations Optimizations = ALL.remove(
                     UseExceptionProbability,
@@ -164,7 +163,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
         this.firstTierProviders = firstTierProviders;
         this.firstTierSuites = firstTierSuites;
         this.firstTierLirSuites = firstTierLirSuites;
-        this.identifiers = new ConcurrentHashMap<>();
     }
 
     private ResolvedJavaType[] getSkippedExceptionTypes(TruffleCompilerRuntime runtime) {
@@ -214,45 +212,37 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
      * Implementations of this method must guarantee that the {@link Verbosity#ID} for each returned
      * value is unique.
      */
-    public abstract CompilationIdentifier createCompilationIdentifier(CompilableTruffleAST compilable);
+    public abstract TruffleCompilationIdentifier createCompilationIdentifier(CompilableTruffleAST compilable);
 
     protected abstract DebugContext createDebugContext(OptionValues options, CompilationIdentifier compilationId, CompilableTruffleAST compilable, PrintStream logStream);
 
     @Override
-    public final String getCompilationIdentifier(CompilableTruffleAST compilable) {
-        final CompilationIdentifier ident = createCompilationIdentifier(compilable);
-        final String id = ident.toString(CompilationIdentifier.Verbosity.ID);
-        CompilationIdentifier oldValue = identifiers.put(id, ident);
-        assert oldValue != ident : id;
-        assert oldValue == null : ident;
-        return id;
+    public final TruffleCompilation openCompilation(CompilableTruffleAST compilable) {
+        return createCompilationIdentifier(compilable);
     }
 
     @SuppressWarnings("try")
     @Override
-    public final TruffleDebugContext openDebugContext(Map<String, Object> options, String compilationId, CompilableTruffleAST compilable) {
+    public final TruffleDebugContext openDebugContext(Map<String, Object> options, TruffleCompilation compilation) {
         try (TruffleOptionsOverrideScope s = withOptions(options)) {
             DebugContext debugContext;
-            if (compilable == null) {
+            if (compilation == null) {
                 debugContext = DebugContext.create(TruffleCompilerOptions.getOptions(), DebugHandlersFactory.LOADER);
             } else {
-                debugContext = createDebugContext(TruffleCompilerOptions.getOptions(), getOrCreateCompilationId(compilationId, compilable).getValue(), compilable, DebugContext.DEFAULT_LOG_STREAM);
+                TruffleCompilationIdentifier ident = asTruffleCompilationIdentifier(compilation);
+                CompilableTruffleAST compilable = ident.getCompilable();
+                debugContext = createDebugContext(TruffleCompilerOptions.getOptions(), ident, compilable, DebugContext.DEFAULT_LOG_STREAM);
             }
             return new TruffleDebugContextImpl(debugContext);
         }
     }
 
-    private Map.Entry<String, CompilationIdentifier> getOrCreateCompilationId(final String inCompilationId, final CompilableTruffleAST compilable) {
-        String compilationId = inCompilationId;
-        CompilationIdentifier id = null;
-        if (compilationId != null) {
-            id = identifiers.get(compilationId);
+    private static TruffleCompilationIdentifier asTruffleCompilationIdentifier(TruffleCompilation compilation) {
+        if (compilation == null || compilation instanceof TruffleCompilationIdentifier) {
+            return (TruffleCompilationIdentifier) compilation;
+        } else {
+            throw new IllegalArgumentException("The compilation must be instanceof " + TruffleCompilationIdentifier.class.getSimpleName() + ", got: " + compilation.getClass());
         }
-        if (id == null) {
-            compilationId = getCompilationIdentifier(compilable);
-            id = identifiers.get(compilationId);
-        }
-        return new AbstractMap.SimpleImmutableEntry<>(compilationId, id);
     }
 
     /**
@@ -266,15 +256,17 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
 
     @Override
     @SuppressWarnings("try")
-    public final void doCompile(TruffleDebugContext truffleDebug, String inCompilationId, Map<String, Object> optionsMap, CompilableTruffleAST compilable, TruffleInliningPlan inliningPlan,
+    public final void doCompile(TruffleDebugContext truffleDebug, TruffleCompilation compilation, Map<String, Object> optionsMap, TruffleInliningPlan inliningPlan,
                     TruffleCompilationTask task,
                     TruffleCompilerListener inListener) {
+        Objects.requireNonNull(compilation, "Compilation must be non null.");
         try (TruffleOptionsOverrideScope optionsScope = withOptions(optionsMap)) {
-            final Map.Entry<String, CompilationIdentifier> compilationId = getOrCreateCompilationId(inCompilationId, compilable);
+            TruffleCompilationIdentifier compilationId = asTruffleCompilationIdentifier(compilation);
+            CompilableTruffleAST compilable = compilationId.getCompilable();
             final OptionValues optionValues = TruffleCompilerOptions.getOptions();
             boolean usingCallersDebug = truffleDebug instanceof TruffleDebugContextImpl;
             final DebugContext graalDebug = usingCallersDebug ? ((TruffleDebugContextImpl) truffleDebug).debugContext
-                            : createDebugContext(optionValues, compilationId.getValue(), compilable, DebugContext.DEFAULT_LOG_STREAM);
+                            : createDebugContext(optionValues, compilationId, compilable, DebugContext.DEFAULT_LOG_STREAM);
             try (DebugContext debugToClose = usingCallersDebug ? null : graalDebug;
                             DebugContext.Scope s = maybeOpenTruffleScope(compilable, graalDebug)) {
                 final TruffleCompilerListener listener = inListener == null ? null : new TruffleCompilerListenerPair(new TraceCompilationFailureListener(), inListener);
@@ -284,12 +276,11 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
                                 compilable,
                                 task == null ? null : new CancellableTruffleCompilationTask(task),
                                 inliningPlan,
-                                compilationId.getValue(),
+                                compilationId,
                                 listener).run(graalDebug);
             } catch (Throwable e) {
                 notifyCompilableOfFailure(compilable, e);
             }
-            identifiers.remove(compilationId.getKey());
         }
     }
 

@@ -4,7 +4,7 @@ suite = {
   "sourceinprojectwhitelist" : [],
 
   "groupId" : "org.graalvm.compiler",
-  "version" : "1.0.0-rc11",
+  "version" : "1.0.0-rc12",
   "release" : False,
   "url" : "http://www.graalvm.org/",
   "developer" : {
@@ -550,9 +550,27 @@ suite = {
         "org.graalvm.compiler.replacements.test",
         "org.graalvm.compiler.hotspot",
       ],
-      "annotationProcessors" : ["GRAAL_NODEINFO_PROCESSOR"],
+      "annotationProcessors" : [
+        "GRAAL_NODEINFO_PROCESSOR",
+        "GRAAL_REPLACEMENTS_PROCESSOR"
+      ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
+      "workingSets" : "Graal,HotSpot,Test",
+    },
+
+    "org.graalvm.compiler.hotspot.jdk9.test" : {
+      "testProject" : True,
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.hotspot.test"
+      ],
+      "checkstyle": "org.graalvm.compiler.graph",
+      "javaCompliance" : "9+",
+      "imports" : [
+        "jdk.internal.misc",
+      ],
       "workingSets" : "Graal,HotSpot,Test",
     },
 
@@ -1819,6 +1837,7 @@ suite = {
         "org.graalvm.compiler.replacements.jdk9_11.test",
         "org.graalvm.compiler.replacements.jdk12.test",
         "org.graalvm.compiler.core.jdk9.test",
+        "org.graalvm.compiler.hotspot.jdk9.test",
       ],
       "distDependencies" : [
         "JVMCI_HOTSPOT",
@@ -2104,6 +2123,6 @@ suite = {
       "dependencies" : ["org.graalvm.micro.benchmarks"],
       "testDistribution" : True,
       "maven": False,
-    },
+    }
   },
 }

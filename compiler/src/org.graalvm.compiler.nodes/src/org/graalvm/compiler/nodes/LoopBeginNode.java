@@ -53,6 +53,7 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
     protected int inversionCount;
     protected LoopType loopType;
     protected int unrollFactor;
+    protected boolean osrLoop;
 
     public enum LoopType {
         SIMPLE_LOOP,
@@ -414,5 +415,13 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
                 }
             }
         }
+    }
+
+    public void markOsrLoop() {
+        osrLoop = true;
+    }
+
+    public boolean isOsrLoop() {
+        return osrLoop;
     }
 }

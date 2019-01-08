@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.image;
 
+import static com.oracle.svm.core.SubstrateUtil.mangleName;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.io.ByteArrayOutputStream;
@@ -108,7 +109,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public abstract class NativeBootImage extends AbstractBootImage {
 
-    private static final long RWDATA_CGLOBALS_PARTITION_OFFSET = 0;
+    public static final long RWDATA_CGLOBALS_PARTITION_OFFSET = 0;
 
     @Override
     public Section getTextSection() {
@@ -347,7 +348,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
 
             // Text section (code)
             final RelocatableBuffer textBuffer = RelocatableBuffer.factory("text", textSectionSize, objectFile.getByteOrder());
-            final TextImpl textImpl = TextImpl.factory(textBuffer, objectFile, codeCache);
+            final NativeTextSectionImpl textImpl = NativeTextSectionImpl.factory(textBuffer, objectFile, codeCache);
             final String textSectionName = SectionName.TEXT.getFormatDependentName(objectFile.getFormat());
             textSection = objectFile.newProgbitsSection(textSectionName, objectFile.getPageSize(), false, true, textImpl);
 
@@ -365,7 +366,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
 
             // Define symbols for the sections.
             objectFile.createDefinedSymbol(textSection.getName(), textSection, 0, 0, false, false);
-            objectFile.createDefinedSymbol("__svm_text_end", textSection, codeCache.getCodeCacheSize(), 0, false, true);
+            objectFile.createDefinedSymbol("__svm_text_end", textSection, textSectionSize, 0, false, true);
             objectFile.createDefinedSymbol(roDataSection.getName(), roDataSection, 0, 0, false, false);
             objectFile.createDefinedSymbol(rwDataSection.getName(), rwDataSection, 0, 0, false, false);
 
@@ -648,47 +649,6 @@ public abstract class NativeBootImage extends AbstractBootImage {
         return mangleName(SubstrateUtil.uniqueShortName(sm));
     }
 
-    /**
-     * Mangle the given method name according to our image's (default) mangling convention. A rough
-     * requirement is that symbol names are valid symbol name tokens for the assembler. (This is
-     * necessary to use them in linker command lines, which we currently do in
-     * NativeImageGenerator.) These are of the form '[a-zA-Z\._\$][a-zA-Z0-9\$_]*'. We use the
-     * underscore sign as an escape character. It is always followed by four hex digits representing
-     * the escaped character in natural (big-endian) order. We do not allow the dollar sign, even
-     * though it is legal, because it has special meaning in some shells and disturbs command lines.
-     *
-     * @param methodName a string to mangle
-     * @return a mangled version of methodName
-     */
-    public static String mangleName(String methodName) {
-        StringBuilder out = new StringBuilder();
-        for (int i = 0; i < methodName.length(); ++i) {
-            char c = methodName.charAt(i);
-            if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (i == 0 && c == '.') || (i > 0 && c >= '0' && c <= '9')) {
-                // it's legal in this position
-                out.append(c);
-            } else if (c == '_') {
-                out.append("__");
-            } else {
-                out.append('_');
-                out.append(String.format("%04x", (int) c));
-            }
-        }
-        String mangled = out.toString();
-        assert mangled.matches("[a-zA-Z\\._][a-zA-Z0-9_]*");
-        //@formatter:off
-        /*
-         * To demangle, the following pipeline works for me (assuming no multi-byte characters):
-         *
-         * sed -r 's/\_([0-9a-f]{4})/\n\1\n/g' | sed -r 's#^[0-9a-f]{2}([0-9a-f]{2})#/usr/bin/printf "\\x\1"#e' | tr -d '\n'
-         *
-         * It's not strictly correct if the first characters after an escape sequence
-         * happen to match ^[0-9a-f]{2}, but hey....
-         */
-         //@formatter:on
-        return mangled;
-    }
-
     @Override
     public ObjectFile getOrCreateDebugObjectFile() {
         assert objectFile != null;
@@ -738,10 +698,10 @@ public abstract class NativeBootImage extends AbstractBootImage {
     private Section rwDataSection;
     private Section heapSection;
 
-    protected static final class TextImpl extends BasicProgbitsSectionImpl {
+    public abstract static class NativeTextSectionImpl extends BasicProgbitsSectionImpl {
 
-        public static TextImpl factory(RelocatableBuffer relocatableBuffer, ObjectFile objectFile, NativeImageCodeCache codeCache) {
-            return new TextImpl(relocatableBuffer, objectFile, codeCache);
+        public static NativeTextSectionImpl factory(RelocatableBuffer relocatableBuffer, ObjectFile objectFile, NativeImageCodeCache codeCache) {
+            return codeCache.getTextSectionImpl(relocatableBuffer, objectFile, codeCache);
         }
 
         private Element getRodataSection() {
@@ -765,13 +725,10 @@ public abstract class NativeBootImage extends AbstractBootImage {
             return getContent();
         }
 
-        private void defineMethodSymbol(String name, Element section, HostedMethod method, CompilationResult result) {
-            final int size = result == null ? 0 : result.getTargetCodeSize();
-            objectFile.createDefinedSymbol(name, section, method.getCodeAddressOffset(), size, true, true);
-        }
+        protected abstract void defineMethodSymbol(String name, Element section, HostedMethod method, CompilationResult result);
 
         @SuppressWarnings("try")
-        private void writeTextSection(DebugContext debug, final Section textSection, final List<HostedMethod> entryPoints) {
+        protected void writeTextSection(DebugContext debug, final Section textSection, final List<HostedMethod> entryPoints) {
             try (Indent indent = debug.logAndIndent("TextImpl.writeTextSection")) {
                 /*
                  * Write the text content. For slightly complicated reasons, we now call
@@ -860,7 +817,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
 
                 // the map starts out empty...
                 assert textBuffer.mapSize() == 0;
-                codeCache.patchMethods(textBuffer);
+                codeCache.patchMethods(textBuffer, objectFile);
                 // but now may be populated
 
                 /*
@@ -871,7 +828,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
             }
         }
 
-        protected TextImpl(RelocatableBuffer relocatableBuffer, ObjectFile objectFile, NativeImageCodeCache codeCache) {
+        protected NativeTextSectionImpl(RelocatableBuffer relocatableBuffer, ObjectFile objectFile, NativeImageCodeCache codeCache) {
             // TODO: Do not separate the byte[] from the RelocatableBuffer.
             super(relocatableBuffer.getBytes());
             this.textBuffer = relocatableBuffer;
@@ -879,8 +836,8 @@ public abstract class NativeBootImage extends AbstractBootImage {
             this.codeCache = codeCache;
         }
 
-        private final RelocatableBuffer textBuffer;
-        private final ObjectFile objectFile;
-        private final NativeImageCodeCache codeCache;
+        protected final RelocatableBuffer textBuffer;
+        protected final ObjectFile objectFile;
+        protected final NativeImageCodeCache codeCache;
     }
 }

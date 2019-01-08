@@ -84,6 +84,12 @@ public class StackTraceBuilder implements StackFrameVisitor {
                  * exiting to C code.
                  */
                 return true;
+            } else if (clazz.getAnnotation(IgnoreForGetCallerClass.class) != null) {
+                /*
+                 * Always ignore the frame. It is a synthetic frame for reflective method invocation
+                 * or lambda invocation.
+                 */
+                return true;
 
             } else if (filterExceptions) {
                 if (trace.size() == 0 && Throwable.class.isAssignableFrom(clazz)) {

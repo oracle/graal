@@ -222,6 +222,20 @@ public class InvocationPlugins {
          * @param plugins where to register the plugins
          * @param declaringClassName the name of the class class declaring the methods for which
          *            plugins will be registered via this object
+         */
+        public Registration(InvocationPlugins plugins, String declaringClassName) {
+            this.plugins = plugins;
+            this.declaringType = new OptionalLazySymbol(declaringClassName);
+            this.methodSubstitutionBytecodeProvider = null;
+        }
+
+        /**
+         * Creates an object for registering {@link InvocationPlugin}s for methods declared by a
+         * given class.
+         *
+         * @param plugins where to register the plugins
+         * @param declaringClassName the name of the class class declaring the methods for which
+         *            plugins will be registered via this object
          * @param methodSubstitutionBytecodeProvider provider used to get the bytecodes to parse for
          *            method substitutions
          */
@@ -736,8 +750,8 @@ public class InvocationPlugins {
     }
 
     @SuppressWarnings("serial")
-    static class InvocationPlugRegistrationError extends GraalError {
-        InvocationPlugRegistrationError(Throwable cause) {
+    static class InvocationPluginRegistrationError extends GraalError {
+        InvocationPluginRegistrationError(Throwable cause) {
             super(cause);
         }
     }
@@ -751,7 +765,7 @@ public class InvocationPlugins {
                             deferrable.run();
                         }
                         deferredRegistrations = null;
-                    } catch (InvocationPlugRegistrationError t) {
+                    } catch (InvocationPluginRegistrationError t) {
                         throw t;
                     } catch (Throwable t) {
                         /*
@@ -765,7 +779,7 @@ public class InvocationPlugins {
                         Runnable rethrow = new Runnable() {
                             @Override
                             public void run() {
-                                throw new InvocationPlugRegistrationError(t);
+                                throw new InvocationPluginRegistrationError(t);
                             }
                         };
                         deferredRegistrations.add(rethrow);

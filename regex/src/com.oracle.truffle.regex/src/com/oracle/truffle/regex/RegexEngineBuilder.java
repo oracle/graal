@@ -44,10 +44,24 @@ import com.oracle.truffle.regex.tregex.TRegexCompiler;
  * <li>{@link String} {@code options} (optional): a comma-separated list of options for the engine,
  * the currently supported options include:</li>
  * <ul>
+ * <li>{@code Flavor}: the flavor of regular expressions to support
+ * <ul>
+ * <li>{@code ECMAScript} (default): regular expressions as provided by RegExp objects in ECMAScript
+ * </li>
+ * <li>{@code PythonStr}: regular expressions as provided by the {@code re} module in Python when
+ * compiling {@code str}-based regular expressions</li>
+ * <li>{@code PythonBytes}: regular expressions as provided by the {@code re} module in Python when
+ * compiling {@code bytes}-based regular expressions</li>
+ * </ul>
+ * </li>
  * <li>{@code U180EWhitespace}: the U+180E Unicode character (MONGOLIAN VOWEL SEPARATOR) is to be
  * treated as whitespace (Unicode versions before 6.3.0)</li>
  * <li>{@code RegressionTestMode}: all compilation is done eagerly, so as to detect errors early
  * during testing</li>
+ * <li>{@code DumpAutomata}: ASTs and automata are dumped in JSON, DOT (GraphViz) and LaTeX formats
+ * </li>
+ * <li>{@code StepExecution}: the execution of automata is traced and logged in JSON files</li>
+ * <li>{@code AlwaysEager}: capture groups are always eagerly matched</li>
  * </ul>
  * <li>{@link RegexCompiler} {@code fallbackCompiler} (optional): an optional {@link RegexCompiler}
  * to be used when compilation by {@link TRegexCompiler}, the native compiler of

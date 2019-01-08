@@ -237,8 +237,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     }
 
     /**
-     * Marks all code from this context as unusable. Its important that a context is only disposed
-     * there is no code that could rely on the singleContextAssumption.
+     * Marks all code from this context as unusable. It's important that a context is only disposed
+     * when there is no code that could rely on the singleContextAssumption.
      */
     static void disposeStaticContext(PolyglotContextImpl context) {
         SingleContextState state = singleContextState;
@@ -246,6 +246,21 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             synchronized (state) {
                 if (state.singleContextAssumption.isValid()) {
                     assert state.singleContext == context;
+                    state.singleContext = null;
+                }
+            }
+        }
+    }
+
+    /**
+     * Invalidates the global single context assumption when creating an unbound Engine.
+     */
+    static void invalidateStaticContextAssumption() {
+        SingleContextState state = singleContextState;
+        if (state.singleContextAssumption.isValid()) {
+            synchronized (state) {
+                if (state.singleContextAssumption.isValid()) {
+                    state.singleContextAssumption.invalidate();
                     state.singleContext = null;
                 }
             }

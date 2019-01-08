@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,7 +42,7 @@ import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 
 public class AMD64CPUFeatureAccess {
-    @Platforms(value = {Platform.DARWIN.class, Platform.LINUX.class})
+    @Platforms(Platform.AMD64.class)
     public static EnumSet<AMD64.CPUFeature> determineHostCPUFeatures() {
         EnumSet<AMD64.CPUFeature> features = EnumSet.noneOf(AMD64.CPUFeature.class);
 

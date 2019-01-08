@@ -35,7 +35,7 @@ bench-llvm-linux: ${x52.default} ${labsjdk8} {
     RESULTS_FILE_SUFFIX: .json
     RESULTS_FILE: "${RESULTS_FILE_PREFIX}${BENCHMARK}${RESULTS_FILE_SUFFIX}"
   }
-  cmd: [mx, --dynamicimport, "/sulong", benchmark, --results-file, "${RESULTS_FILE}", "csuite:*"]
+  cmd: [mx, --dynamicimport, "/sulong,sulong-benchmarks", benchmark, --results-file, "${RESULTS_FILE}", "csuite:*"]
   setup: [
     [git, clone, --depth, "1", ${repoBase}"${BENCH_REPO_NAME}.git",  "../${BENCH_REPO_NAME}"]
   ]
@@ -79,7 +79,7 @@ bench-llvm-sulong-graalvm-ce: ${bench_vm_ce_linux_base} ${bench-llvm-sulong-comm
     [git, clone, --depth, "1", ${repoBase}"${BENCH_REPO_NAME}.git", "../../${BENCH_REPO_NAME}"]
   ]
   run: [
-    [mx, --no-sources, --env, ce, benchmark, --results-file, ${bench_vm_ce_linux_base.resultFile}, "csuite:*", --, --native-vm, sulong, --native-vm-config, default, --jvm, graalvm-ce, --jvm-config, "${JVM_CONFIG}"]
+    [mx, --no-sources, --dynamicimport, sulong-benchmarks, --env, ce, benchmark, --results-file, ${bench_vm_ce_linux_base.resultFile}, "csuite:*", --, --native-vm, sulong, --native-vm-config, default, --jvm, graalvm-ce, --jvm-config, "${JVM_CONFIG}"]
   ]
   timelimit: "10:00:01"
 }

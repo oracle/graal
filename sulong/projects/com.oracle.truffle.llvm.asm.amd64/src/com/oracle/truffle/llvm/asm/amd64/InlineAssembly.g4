@@ -611,6 +611,7 @@ binary_op :
   | 'cmovs'
   | 'cmovz'
   | 'cmpxchg'
+  | 'pmovmskb'
   | 'mov'
   | 'xadd'
   | 'xchg'
@@ -677,6 +678,7 @@ operand returns [AsmOperand op] :
   | register16                                   { $op = $register16.op; }
   | register32                                   { $op = $register32.op; }
   | register64                                   { $op = $register64.op; }
+  | registerXmm                                  { $op = $registerXmm.op; }
   | memory_reference                             { $op = $memory_reference.op; }
   | immediate                                    { $op = $immediate.op; }
   | argument                                     { $op = $argument.op; }
@@ -825,6 +827,26 @@ register64 returns [AsmRegisterOperand op] :
   | '%r13'
   | '%r14'
   | '%r15'
+  )                                              { $op = new AsmRegisterOperand($r.getText()); }
+  ;
+
+registerXmm returns [AsmRegisterOperand op] :
+  r=( '%xmm0'
+  | '%xmm1'
+  | '%xmm2'
+  | '%xmm3'
+  | '%xmm4'
+  | '%xmm5'
+  | '%xmm6'
+  | '%xmm7'
+  | '%xmm8'
+  | '%xmm9'
+  | '%xmm10'
+  | '%xmm11'
+  | '%xmm12'
+  | '%xmm13'
+  | '%xmm14'
+  | '%xmm15'
   )                                              { $op = new AsmRegisterOperand($r.getText()); }
   ;
 

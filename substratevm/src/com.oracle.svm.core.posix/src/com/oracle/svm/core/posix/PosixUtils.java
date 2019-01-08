@@ -156,7 +156,7 @@ public class PosixUtils {
         @TargetElement(onlyWith = JDK9OrLater.class) //
         @SuppressWarnings({"unused", "static-method"})
         private /* native */ void close0() throws IOException {
-            throw VMError.unsupportedFeature("JDK9OrLater: Target_java_io_FileDescriptor.close0");
+            fileClose(KnownIntrinsics.unsafeCast(this, FileDescriptor.class));
         }
     }
 

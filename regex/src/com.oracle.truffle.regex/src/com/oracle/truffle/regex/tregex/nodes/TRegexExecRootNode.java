@@ -86,7 +86,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
             if (eagerCompilation) {
                 compileEagerSearchNode();
             }
-            if (language.getLanguageOptions().isAlwaysEager()) {
+            if (tRegexCompiler.getOptions().isAlwaysEager()) {
                 switchToEagerSearch(null);
             }
         }

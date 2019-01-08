@@ -41,7 +41,6 @@ import org.graalvm.compiler.core.CompilationWrapper.ExceptionAction;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.gen.NodeMatchRules;
 import org.graalvm.compiler.core.match.MatchStatement;
-import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
@@ -68,7 +67,8 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.graal.code.amd64.SubstrateAMD64Backend;
+import com.oracle.svm.core.graal.code.SubstrateBackend;
+import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
 import com.oracle.svm.core.option.RuntimeOptionValues;
@@ -84,6 +84,9 @@ public class GraalSupport {
     private RuntimeConfiguration runtimeConfig;
     private Suites suites;
     private LIRSuites lirSuites;
+    private Suites firstTierSuites;
+    private LIRSuites firstTierLirSuites;
+    private Providers firstTierProviders;
 
     private SubstrateMethod[] methodsToCompile;
     private byte[] graphEncoding;
@@ -97,7 +100,7 @@ public class GraalSupport {
 
     protected Map<Class<?>, BasePhase.BasePhaseStatistics> basePhaseStatistics;
     protected Map<Class<?>, LIRPhase.LIRPhaseStatistics> lirPhaseStatistics;
-    protected Function<Providers, Backend> runtimeBackendProvider;
+    protected Function<Providers, SubstrateBackend> runtimeBackendProvider;
 
     protected final GlobalMetrics metricValues = new GlobalMetrics();
     protected final List<DebugHandlersFactory> debugHandlersFactories = new ArrayList<>();
@@ -120,7 +123,8 @@ public class GraalSupport {
     @Platforms(Platform.HOSTED_ONLY.class)
     public GraalSupport() {
         /* By default the backend configuration is the same as for the native image. */
-        runtimeBackendProvider = (providers) -> new SubstrateAMD64Backend(providers);
+        runtimeBackendProvider = SubstrateBackendFactory.get()::newBackend;
+
         for (DebugHandlersFactory c : GraalServices.load(DebugHandlersFactory.class)) {
             debugHandlersFactories.add(c);
         }
@@ -135,10 +139,13 @@ public class GraalSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void setRuntimeConfig(RuntimeConfiguration runtimeConfig, Suites suites, LIRSuites lirSuites) {
+    public static void setRuntimeConfig(RuntimeConfiguration runtimeConfig, Suites suites, LIRSuites lirSuites, Suites firstTierSuites, LIRSuites firstTierLirSuites) {
         get().runtimeConfig = runtimeConfig;
         get().suites = suites;
         get().lirSuites = lirSuites;
+        get().firstTierSuites = firstTierSuites;
+        get().firstTierLirSuites = firstTierLirSuites;
+        get().firstTierProviders = runtimeConfig.getBackendForNormalMethod().getProviders();
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -221,6 +228,18 @@ public class GraalSupport {
         return get().lirSuites;
     }
 
+    public static Suites getFirstTierSuites() {
+        return get().firstTierSuites;
+    }
+
+    public static LIRSuites getFirstTierLirSuites() {
+        return get().firstTierLirSuites;
+    }
+
+    public static Providers getFirstTierProviders() {
+        return get().firstTierProviders;
+    }
+
     public static SubstrateMethod[] getMethodsToCompile() {
         return get().methodsToCompile;
     }
@@ -255,11 +274,11 @@ public class GraalSupport {
         }
     }
 
-    public static Function<Providers, Backend> getRuntimeBackendProvider() {
+    public static Function<Providers, SubstrateBackend> getRuntimeBackendProvider() {
         return get().runtimeBackendProvider;
     }
 
-    public static void setRuntimeBackendProvider(Function<Providers, Backend> backendProvider) {
+    public static void setRuntimeBackendProvider(Function<Providers, SubstrateBackend> backendProvider) {
         get().runtimeBackendProvider = backendProvider;
     }
 }

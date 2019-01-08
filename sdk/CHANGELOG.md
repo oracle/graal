@@ -4,6 +4,8 @@ This changelog summarizes major changes between Graal SDK versions. The main foc
 
 ## Version 1.0 RC11
 * Added [SourceSection.hasLines()](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/SourceSection.html#hasLines--), [SourceSection.hasColumns()](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/SourceSection.html#hasColumns--) and [SourceSection.hasCharIndex()](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/SourceSection.html#hasCharIndex--) to distinguish which positions are defined and which are not.
+* Added [FileSystem.getSeparator()](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/FileSystem.html#getSeparator--) to remove a dependency on NIO `FileSystem` for custom `Path` implementations.
+* Added support for automatic string to primitive type conversion using the [Value API](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#as-java.lang.Class-).
 
 ## Version 1.0 RC10
 * Added [FileSystem.setCurrentWorkingDirectory](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/FileSystem.html#setCurrentWorkingDirectory-java.nio.file.Path-) method to set a current working directory for relative paths resolution in the polyglot FileSystem.
