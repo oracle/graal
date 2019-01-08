@@ -29,7 +29,14 @@
  */
 package com.oracle.truffle.llvm.test.interop;
 
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.CoreMatchers.is;
+
+import java.math.BigInteger;
+import java.util.HashMap;
+
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -37,6 +44,7 @@ import org.junit.runner.RunWith;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.test.interop.values.ArrayObject;
 import com.oracle.truffle.llvm.test.interop.values.BoxedTestValue;
 import com.oracle.truffle.llvm.test.interop.values.NullValue;
@@ -44,11 +52,6 @@ import com.oracle.truffle.llvm.test.interop.values.StructObject;
 import com.oracle.truffle.llvm.test.interop.values.TestConstructor;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
-import java.math.BigInteger;
-import java.util.HashMap;
-import static org.hamcrest.CoreMatchers.instanceOf;
-import static org.hamcrest.CoreMatchers.is;
-import org.junit.Assume;
 
 @RunWith(TruffleRunner.class)
 public class PolyglotBuiltinTest extends InteropTestBase {
@@ -156,5 +159,39 @@ public class PolyglotBuiltinTest extends InteropTestBase {
 
         Assert.assertTrue("isHostObject", runWithPolyglot.getTruffleTestEnv().isHostObject(ret));
         Assert.assertSame("ret", BigInteger.class, runWithPolyglot.getTruffleTestEnv().asHostObject(ret));
+    }
+
+    public static class TestEvalNoLang extends SulongTestNode {
+
+        public TestEvalNoLang() {
+            super(testLibrary, "test_eval_no_lang");
+        }
+    }
+
+    @Test
+    public void testHasEvalNoLang(@Inject(TestEvalNoLang.class) CallTarget testEvalNolang) {
+        try {
+            testEvalNolang.call();
+            Assert.fail("Should have thrown an exception.");
+        } catch (LLVMPolyglotException e) {
+            Assert.assertEquals("err_eval_no_lang", "Language 'not_impl_lang' not found.", e.getMessage());
+        }
+    }
+
+    public static class TestEvalNoInternal extends SulongTestNode {
+
+        public TestEvalNoInternal() {
+            super(testLibrary, "test_eval_internal_lang");
+        }
+    }
+
+    @Test
+    public void testHasEvalNoInternal(@Inject(TestEvalNoInternal.class) CallTarget testEvalNoInternal) {
+        try {
+            testEvalNoInternal.call();
+            Assert.fail("Should have thrown an exception.");
+        } catch (LLVMPolyglotException e) {
+            Assert.assertEquals("err_eval_no_lang", "Access to internal language 'nfi' is not allowed.", e.getMessage());
+        }
     }
 }

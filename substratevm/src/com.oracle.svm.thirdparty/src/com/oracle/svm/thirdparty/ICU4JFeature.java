@@ -155,7 +155,7 @@ final class Target_com_ibm_icu_impl_ICUBinary {
 final class Target_com_ibm_icu_impl_ICUResourceBundle {
     @Alias @RecomputeFieldValue(kind = Kind.FromAlias, isFinal = true)
     // Checkstyle: stop
-    private static final ClassLoader ICU_DATA_CLASS_LOADER = ICU4JFeature.Helper.DUMMY_LOADER;
+    private static ClassLoader ICU_DATA_CLASS_LOADER = ICU4JFeature.Helper.DUMMY_LOADER;
     // Checkstyle: resume
 
     @SuppressWarnings("unused")

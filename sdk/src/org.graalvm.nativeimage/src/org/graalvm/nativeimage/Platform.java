@@ -108,7 +108,7 @@ public interface Platform {
      *
      * @since 1.0
      */
-    final class LINUX_AMD64 implements LINUX, AMD64 {
+    class LINUX_AMD64 implements LINUX, AMD64 {
 
         /**
          * Instantiates a marker instance of this platform.
@@ -124,7 +124,7 @@ public interface Platform {
      *
      * @since 1.0
      */
-    final class DARWIN_AMD64 implements DARWIN, AMD64 {
+    class DARWIN_AMD64 implements DARWIN, AMD64 {
 
         /**
          * Instantiates a marker instance of this platform.
@@ -140,7 +140,7 @@ public interface Platform {
      *
      * @since 1.0
      */
-    final class WINDOWS_AMD64 implements WINDOWS, AMD64 {
+    class WINDOWS_AMD64 implements WINDOWS, AMD64 {
 
         /**
          * Instantiates a marker instance of this platform.

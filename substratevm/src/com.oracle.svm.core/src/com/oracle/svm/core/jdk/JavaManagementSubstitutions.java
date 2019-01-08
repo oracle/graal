@@ -55,12 +55,10 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -156,6 +154,10 @@ final class Target_java_lang_management_ManagementFactory {
 
 @AutomaticFeature
 final class ManagementFactoryFeature implements Feature {
+    @Override
+    public List<Class<? extends Feature>> getRequiredFeatures() {
+        return Collections.singletonList(RuntimeFeature.class);
+    }
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
@@ -167,7 +169,6 @@ final class ManagementFactoryFeature implements Feature {
         SubstrateRuntimeMXBean runtimeMXBean = new SubstrateRuntimeMXBean();
         ImageSingletons.add(RuntimeMXBean.class, runtimeMXBean);
         ImageSingletons.add(ThreadMXBean.class, new SubstrateThreadMXBean());
-        ImageSingletons.add(OperatingSystemMXBean.class, new SubstrateOperatingSystemMXBean());
         ImageSingletons.add(ClassLoadingMXBean.class, new SubstrateClassLoadingMXBean());
         ImageSingletons.add(CompilationMXBean.class, new SubstrateCompilationMXBean());
 
@@ -536,81 +537,6 @@ final class SubstrateThreadMXBean implements com.sun.management.ThreadMXBean {
 
     @Override
     public void setThreadAllocatedMemoryEnabled(boolean arg0) {
-        throw VMError.unsupportedFeature(MSG);
-    }
-}
-
-final class SubstrateOperatingSystemMXBean implements com.sun.management.OperatingSystemMXBean {
-
-    @Override
-    public ObjectName getObjectName() {
-        return Util.newObjectName(ManagementFactory.OPERATING_SYSTEM_MXBEAN_NAME);
-    }
-
-    @Override
-    public String getName() {
-        return System.getProperty("os.name");
-    }
-
-    @Override
-    public String getArch() {
-        return SubstrateUtil.getArchitectureName();
-    }
-
-    @Override
-    public String getVersion() {
-        return System.getProperty("os.version");
-    }
-
-    @Override
-    public int getAvailableProcessors() {
-        return Runtime.getRuntime().availableProcessors();
-    }
-
-    @Override
-    public long getTotalPhysicalMemorySize() {
-        return PhysicalMemory.size().rawValue();
-    }
-
-    @Override
-    public double getSystemLoadAverage() {
-        return -1;
-    }
-
-    private static final String MSG = "OperatingSystemMXBean methods";
-
-    @Override
-    public long getCommittedVirtualMemorySize() {
-        throw VMError.unsupportedFeature(MSG);
-    }
-
-    @Override
-    public long getTotalSwapSpaceSize() {
-        throw VMError.unsupportedFeature(MSG);
-    }
-
-    @Override
-    public long getFreeSwapSpaceSize() {
-        throw VMError.unsupportedFeature(MSG);
-    }
-
-    @Override
-    public long getProcessCpuTime() {
-        throw VMError.unsupportedFeature(MSG);
-    }
-
-    @Override
-    public long getFreePhysicalMemorySize() {
-        throw VMError.unsupportedFeature(MSG);
-    }
-
-    @Override
-    public double getSystemCpuLoad() {
-        throw VMError.unsupportedFeature(MSG);
-    }
-
-    @Override
-    public double getProcessCpuLoad() {
         throw VMError.unsupportedFeature(MSG);
     }
 }

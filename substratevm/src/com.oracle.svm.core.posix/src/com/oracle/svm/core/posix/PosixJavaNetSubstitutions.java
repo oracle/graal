@@ -2417,6 +2417,7 @@ final class Target_java_net_InetAddress_Cache {
 }
 
 @TargetClass(className = "java.net.InetAddress", innerClass = "CachedLocalHost", onlyWith = JDK9OrLater.class)
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_InetAddress_CachedLocalHost {
 }
 

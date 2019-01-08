@@ -309,6 +309,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     synchronized void initializeMultiContext(PolyglotContextImpl existingContext) {
         if (singleContext.isValid()) {
             singleContext.invalidate("More than one context introduced.");
+            PolyglotContextImpl.invalidateStaticContextAssumption();
             if (existingContext != null) {
                 for (PolyglotLanguageContext context : existingContext.contexts) {
                     if (context.isInitialized()) {

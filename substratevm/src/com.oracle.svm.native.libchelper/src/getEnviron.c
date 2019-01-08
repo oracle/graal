@@ -23,8 +23,78 @@
  * questions.
  */
 
+#ifndef _WIN64
 extern char **environ;
 
 char **getEnviron() {
   return environ;
 }
+
+#else
+
+#include <windows.h>
+
+static char **envptr = NULL; 
+static char *env = NULL;
+
+char **getEnviron() {
+    int i;
+    int numStrings, numChars;
+    LPSTR  lpszVariable; 
+    LPVOID lpvEnv; 
+    char **p;
+
+    if (envptr != NULL ) {
+        return envptr;
+    }
+
+    // Get a pointer to the environment block. 
+    lpvEnv = GetEnvironmentStringsA();
+
+    // If the returned pointer is NULL, exit.
+    if (lpvEnv == NULL) {
+        printf("GetEnvironmentStrings failed (%d)", GetLastError()); 
+        return NULL;
+    }
+ 
+    // Calculate the size of the buffer needed
+    numStrings = 0;
+    numChars = 0;
+    for (lpszVariable = (LPTSTR)lpvEnv; *lpszVariable; lpszVariable++) { 
+       numStrings++;
+       while (*lpszVariable) {
+           lpszVariable++;
+           numChars++;
+       }
+       numChars++;
+    }
+
+    // Duplcate the env strings
+    p = envptr = malloc((numStrings+1)*sizeof(char *));
+    env = malloc(numChars);
+    memcpy(env, lpvEnv, numChars);
+
+    // Create the pointer array
+    for (lpszVariable = (LPTSTR)env; *lpszVariable; lpszVariable++) { 
+       *p++ = lpszVariable;
+       while (*lpszVariable) {
+           lpszVariable++;
+       }
+    }
+    *p = NULL;
+
+    FreeEnvironmentStringsA((LPTSTR)lpvEnv);
+
+    return 0;
+}
+
+/*
+ * __report_rangecheckfailure is not available in the VS 2010 MSVCRT library
+ * so we declare it here to allow us to link JDK libraries built with
+ * later VS versions.  This can be removed once we build with as later
+ * VS version.
+ */
+void __report_rangecheckfailure() {
+}
+#endif
+

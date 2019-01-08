@@ -104,37 +104,20 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
     public void testRefTwoContextsWithSharedEngine() {
         Engine engine = Engine.create();
         Context context1 = enter(Context.newBuilder().engine(engine).build());
-        RootNode root = createAssertConstantFromRef();
-        assertCompiling(root);
-        context1.leave();
+        // context must not be constant
+        assertBailout(createAssertConstantFromRef());
 
-        Context context2 = enter(Context.newBuilder().engine(engine).build());
-        // this can no longer be a constant
-        assertBailout(root);
-        context2.leave();
-
-        context1.close();
-        context2.close();
-        engine.close();
-    }
-
-    @Test
-    public void testRefTwoContextsWithSharedEngineAlreadyCompiled() {
-        Engine engine = Engine.create();
-        Context context1 = enter(Context.newBuilder().engine(engine).build());
-        RootNode root = createAssertConstantFromRef();
-        OptimizedCallTarget target = assertCompiling(root);
-
+        OptimizedCallTarget target = assertCompiling(createGetFromRef());
         assertTrue("is valid", target.isValid());
         target.call();
         assertTrue("and keeps valid", target.isValid());
         context1.leave();
-        context1.close();
 
         Context context2 = enter(Context.newBuilder().engine(engine).build());
-        // the call target needs to be invalid
-        assertFalse("no longer valid", target.isValid());
+        assertTrue("still valid in second Context", target.isValid());
         context2.leave();
+
+        context1.close();
         context2.close();
         engine.close();
     }
@@ -172,38 +155,21 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
     public void testStaticTwoContextsWithSharedEngine() {
         Engine engine = Engine.create();
         Context context1 = enter(Context.newBuilder().engine(engine).build());
-        RootNode root = createAssertConstantFromStatic();
-        assertCompiling(root);
-        context1.leave();
+        // context must not be constant
+        assertBailout(createAssertConstantFromStatic());
 
-        Context context2 = enter(Context.newBuilder().engine(engine).build());
-        // this can no longer be a constant
-        assertBailout(root);
-        context2.leave();
-
-        context1.close();
-        context2.close();
-    }
-
-    @Test
-    public void testStaticTwoContextsWithSharedEngineAlreadyCompiled() {
-        Engine engine = Engine.create();
-        Context context1 = enter(Context.newBuilder().engine(engine).build());
-        RootNode root = createAssertConstantFromStatic();
-        OptimizedCallTarget target = assertCompiling(root);
-
+        OptimizedCallTarget target = assertCompiling(createGetFromStatic());
         assertTrue("is valid", target.isValid());
         target.call();
         assertTrue("and keeps valid", target.isValid());
         context1.leave();
-        context1.close();
 
         Context context2 = enter(Context.newBuilder().engine(engine).build());
-        // the call target needs to be invalid
-        assertFalse("no longer valid", target.isValid());
+        assertTrue("still valid in second Context", target.isValid());
         context2.leave();
-        context2.close();
 
+        context1.close();
+        context2.close();
         engine.close();
     }
 
@@ -228,6 +194,28 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
                 Object ctx = ProxyLanguage.getCurrentContext();
                 CompilerAsserts.partialEvaluationConstant(ctx);
                 return ctx;
+            }
+        };
+        return root;
+    }
+
+    private static RootNode createGetFromRef() {
+        RootNode root = new RootNode(null) {
+            final ContextReference<LanguageContext> ref = ProxyLanguage.getCurrentContextReference();
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return ref.get();
+            }
+        };
+        return root;
+    }
+
+    private static RootNode createGetFromStatic() {
+        RootNode root = new RootNode(null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return ProxyLanguage.getCurrentContext();
             }
         };
         return root;

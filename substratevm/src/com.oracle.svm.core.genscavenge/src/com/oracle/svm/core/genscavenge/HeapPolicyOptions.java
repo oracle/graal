@@ -37,6 +37,12 @@ public class HeapPolicyOptions {
     @Option(help = "The maximum heap size as percent of physical memory") //
     public static final RuntimeOptionKey<Integer> MaximumHeapSizePercent = new RuntimeOptionKey<>(80);
 
+    @Option(help = "The maximum size of the young generation as a percent of the maximum heap size") //
+    public static final RuntimeOptionKey<Integer> MaximumYoungGenerationSizePercent = new RuntimeOptionKey<>(10);
+
+    @Option(help = "Bytes that can be allocated before asking what the physical memory size is") //
+    public static final HostedOptionKey<Long> AllocationBeforePhysicalMemorySize = new HostedOptionKey<>(1L * 1024L * 1024L);
+
     @Option(help = "The size of an aligned chunk.") //
     public static final HostedOptionKey<Long> AlignedHeapChunkSize = new HostedOptionKey<>(1L * 1024L * 1024L);
 

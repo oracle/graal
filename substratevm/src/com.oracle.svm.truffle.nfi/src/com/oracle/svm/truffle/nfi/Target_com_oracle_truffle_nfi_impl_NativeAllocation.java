@@ -48,5 +48,5 @@ final class Target_com_oracle_truffle_nfi_impl_NativeAllocation {
      * loading.
      */
     @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
-    static final AtomicReference<Thread> gcThread = new AtomicReference<>(null);
+    static AtomicReference<Thread> gcThread = new AtomicReference<>(null);
 }

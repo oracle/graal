@@ -40,7 +40,13 @@
  */
 package com.oracle.truffle.api.object;
 
+import java.lang.reflect.Field;
+
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.TruffleObject;
+
+import sun.misc.Unsafe;
 
 /**
  * Represents an object members of which can be dynamically added and removed at run time.
@@ -51,12 +57,33 @@ import com.oracle.truffle.api.interop.TruffleObject;
 @SuppressWarnings("deprecation")
 public abstract class DynamicObject implements com.oracle.truffle.api.TypedObject, TruffleObject {
 
+    private Shape shape;
+
+    /**
+     * @since 0.8 or earlier
+     */
+    @Deprecated
+    protected DynamicObject() {
+        CompilerAsserts.neverPartOfCompilation();
+        throw new UnsupportedOperationException();
+    }
+
     /**
      * Constructor for subclasses.
      *
-     * @since 0.8 or earlier
+     * @since 1.0
      */
-    protected DynamicObject() {
+    protected DynamicObject(Shape shape) {
+        verifyShape(shape, this.getClass());
+        this.shape = shape;
+    }
+
+    private static void verifyShape(Shape shape, Class<? extends DynamicObject> subclass) {
+        Class<? extends DynamicObject> shapeType = shape.getLayout().getType();
+        if (!(shapeType == subclass || (shapeType.isAssignableFrom(subclass) && DynamicObject.class.isAssignableFrom(shapeType)))) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new IllegalArgumentException("Incompatible shape");
+        }
     }
 
     /**
@@ -64,7 +91,33 @@ public abstract class DynamicObject implements com.oracle.truffle.api.TypedObjec
      *
      * @since 0.8 or earlier
      */
-    public abstract Shape getShape();
+    public final Shape getShape() {
+        return getShapeHelper(shape);
+    }
+
+    /**
+     * @implNote This method may be intrinsified by the Truffle compiler.
+     */
+    private static Shape getShapeHelper(Shape shape) {
+        return shape;
+    }
+
+    /**
+     * Set the object's shape.
+     */
+    final void setShape(Shape shape) {
+        assert shape.getLayout().getType().isInstance(this);
+        setShapeHelper(shape, SHAPE_OFFSET);
+    }
+
+    /**
+     * @implNote This method may be intrinsified by the Truffle compiler.
+     *
+     * @param shapeOffset Shape field offset
+     */
+    private void setShapeHelper(Shape shape, long shapeOffset) {
+        this.shape = shape;
+    }
 
     /**
      * Get property value.
@@ -194,4 +247,29 @@ public abstract class DynamicObject implements com.oracle.truffle.api.TypedObjec
      * @since 0.8 or earlier
      */
     public abstract DynamicObject copy(Shape currentShape);
+
+    private static final Unsafe UNSAFE;
+    private static final long SHAPE_OFFSET;
+    static {
+        UNSAFE = getUnsafe();
+        try {
+            SHAPE_OFFSET = UNSAFE.objectFieldOffset(DynamicObject.class.getDeclaredField("shape"));
+        } catch (Exception e) {
+            throw new IllegalStateException("Could not get 'shape' field offset", e);
+        }
+    }
+
+    private static Unsafe getUnsafe() {
+        try {
+            return Unsafe.getUnsafe();
+        } catch (SecurityException e) {
+        }
+        try {
+            Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
+            theUnsafeInstance.setAccessible(true);
+            return (Unsafe) theUnsafeInstance.get(Unsafe.class);
+        } catch (Exception e) {
+            throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e);
+        }
+    }
 }

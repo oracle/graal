@@ -185,4 +185,12 @@ public abstract class Stamp {
         }
         return false;
     }
+
+    /**
+     * Convert a Stamp into a representation that can be resolved symbolically into the original
+     * stamp. If this stamp contains no references to JVMCI types then simply return null.
+     */
+    public SymbolicJVMCIReference<? extends Stamp> makeSymbolic() {
+        return null;
+    }
 }

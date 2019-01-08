@@ -78,15 +78,6 @@ public class SecurityServicesFeature implements Feature {
     private static final String KEY_AGREEMENT_SERVICE = "KeyAgreement";
 
     @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        /*
-         * Currently known to work on Java8 or earlier. One known difference on later Java versions
-         * is javax.crypto.JceSecurity (see Target_javax_crypto_JceSecurity).
-         */
-        return GraalServices.Java8OrEarlier;
-    }
-
-    @Override
     public void duringSetup(DuringSetupAccess access) {
         /*
          * The SecureRandom implementations open the /dev/random and /dev/urandom files which are
@@ -102,12 +93,16 @@ public class SecurityServicesFeature implements Feature {
         RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.security.provider.SeedGenerator"));
         RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.security.provider.SecureRandom$SeederHolder"));
 
+        if (!GraalServices.Java8OrEarlier) {
+            RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.security.provider.FileInputStreamPool"));
+        }
+
         /* java.util.UUID$Holder has a static final SecureRandom field. */
         RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.util.UUID$Holder"));
 
         /*
          * The classes bellow have a static final SecureRandom field. Note that if the classes are
-         * not found as reachable by the analaysis registering them form class initialization rerun
+         * not found as reachable by the analysis registering them form class initialization rerun
          * doesn't have any effect.
          */
         RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.security.jca.JCAUtil$CachedSecureRandomHolder"));

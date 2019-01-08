@@ -4,7 +4,7 @@ suite = {
     "defaultLicense" : "GPLv2-CPE",
 
     "groupId" : "org.graalvm.tools",
-    "version": "1.0.0-rc10",
+    "version" : "1.0.0-rc12",
     "release" : False,
     "url" : "http://openjdk.java.net/projects/graal",
     "developer" : {
@@ -142,21 +142,21 @@ suite = {
             }
         },
         "VISUALVM_COMMON" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-632.tar.gz"],
-            "sha1" : "dab8a050f338b6df627a8d6a864c8d6490b3a0a6",
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-644.tar.gz"],
+            "sha1" : "b42485ad882c4e3984556f01d9495cb48aa39465",
         },
         "VISUALVM_PLATFORM_SPECIFIC" : {
             "os_arch" : {
                 "linux" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-632-linux-amd64.tar.gz"],
-                        "sha1" : "cc822c762985b49343138b9c68496845ee179dd1",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-644-linux-amd64.tar.gz"],
+                        "sha1" : "14c32251990e8369f949c87e6e771dbf2dbc1055",
                     }
                 },
                 "darwin" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-632-macosx-x86_64.tar.gz"],
-                        "sha1" : "b32286a5ca9b59047f2d19a7f4646ab271a27980",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-644-macosx-x86_64.tar.gz"],
+                        "sha1" : "d27d264ed4744c229a43b8987f96d2a9319f960b",
                     }
                 },
             }

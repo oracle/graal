@@ -80,7 +80,7 @@ public class CEntryPointLiteralFeature implements Feature {
                     AnalysisMethod aStub = CEntryPointCallStubSupport.singleton().getStubForMethod(aMethod);
                     HostedMethod hStub = (HostedMethod) metaAccess.getUniverse().lookup(aStub);
                     assert hStub.wrapped.isEntryPoint();
-                    assert hStub.isCodeAddressOffsetValid();
+                    assert hStub.isCompiled();
                     /*
                      * Only during compilation and native image writing, we do the actual
                      * replacement.

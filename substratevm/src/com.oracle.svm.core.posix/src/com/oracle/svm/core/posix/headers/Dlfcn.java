@@ -31,6 +31,9 @@ import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.Platform.DARWIN;
+import org.graalvm.nativeimage.Platform.LINUX;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
@@ -40,6 +43,7 @@ import org.graalvm.word.WordBase;
 /**
  * Definitions manually translated from the C header file dlfcn.h.
  */
+@Platforms({DARWIN.class, LINUX.class})
 @CContext(PosixDirectives.class)
 @CLibrary("dl")
 public class Dlfcn {

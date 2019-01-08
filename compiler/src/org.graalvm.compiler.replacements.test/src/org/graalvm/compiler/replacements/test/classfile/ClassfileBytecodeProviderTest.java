@@ -205,15 +205,21 @@ public class ClassfileBytecodeProviderTest extends GraalCompilerTest {
     private static void checkMethod(ClassfileBytecodeProvider cbp, MetaAccessProvider metaAccess, Executable executable) {
         ResolvedJavaMethod method = metaAccess.lookupJavaMethod(executable);
         if (method.hasBytecodes()) {
-            ResolvedJavaMethodBytecode expected = new ResolvedJavaMethodBytecode(method);
             Bytecode actual = getBytecode(cbp, method);
-            new BytecodeComparer(expected, actual).compare();
+            if (actual != null) {
+                ResolvedJavaMethodBytecode expected = new ResolvedJavaMethodBytecode(method);
+                new BytecodeComparer(expected, actual).compare();
+            }
         }
     }
 
     protected static Bytecode getBytecode(ClassfileBytecodeProvider cbp, ResolvedJavaMethod method) {
         try {
             return cbp.getBytecode(method);
+        } catch (UnsupportedClassVersionError e) {
+            // This can happen when a library containing old class files
+            // is bundled into a Graal jar (GR-12672).
+            return null;
         } catch (Throwable e) {
             throw new AssertionError(String.format("Error getting bytecode for %s", method.format("%H.%n(%p)")), e);
         }

@@ -24,13 +24,13 @@
  */
 package com.oracle.truffle.regex.tregex.nodes;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.regex.tregex.util.json.Json;
-import com.oracle.truffle.regex.tregex.util.json.JsonValue;
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 import java.util.Arrays;
 
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 /**
  * This state node is responsible for selecting a DFA's initial state based on the index the search
@@ -82,7 +82,7 @@ public class DFAInitialStateNode extends DFAAbstractStateNode {
     }
 
     @Override
-    public void executeFindSuccessor(VirtualFrame frame, TRegexDFAExecutorNode executor) {
+    public void executeFindSuccessor(VirtualFrame frame, TRegexDFAExecutorNode executor, boolean compactString) {
         if (searching) {
             executor.setSuccessorIndex(frame, executor.rewindUpTo(frame, getPrefixLength()));
         } else {

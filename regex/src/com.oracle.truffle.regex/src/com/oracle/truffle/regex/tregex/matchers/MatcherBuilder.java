@@ -24,26 +24,27 @@
  */
 package com.oracle.truffle.regex.tregex.matchers;
 
+import java.util.Arrays;
+import java.util.List;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.chardata.CodePointRange;
+import com.oracle.truffle.regex.chardata.CodePointSet;
+import com.oracle.truffle.regex.chardata.Constants;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.buffer.ByteArrayBuffer;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.buffer.ObjectArrayBuffer;
 import com.oracle.truffle.regex.tregex.buffer.RangesArrayBuffer;
-import com.oracle.truffle.regex.chardata.CodePointRange;
-import com.oracle.truffle.regex.chardata.CodePointSet;
-import com.oracle.truffle.regex.chardata.Constants;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
-import java.util.Arrays;
-import java.util.List;
-
 public final class MatcherBuilder implements Comparable<MatcherBuilder>, JsonConvertible {
 
+    private static final MatcherBuilder BYTE_RANGE = new MatcherBuilder(new char[]{0x00, 0xff});
     private static final MatcherBuilder CONSTANT_EMPTY = new MatcherBuilder(new char[0]);
     private static final MatcherBuilder CONSTANT_FULL = new MatcherBuilder(new char[]{Character.MIN_VALUE, Character.MAX_VALUE});
 
@@ -788,38 +789,39 @@ public final class MatcherBuilder implements Comparable<MatcherBuilder>, JsonCon
         }
         if (size() == 1) {
             if (isSingle(0)) {
-                return new SingleCharMatcher(inverse, getLo(0));
+                return SingleCharMatcher.create(inverse, getLo(0));
             }
             if (size(0) == 1) {
                 // two equality checks are cheaper than one range check
-                return new TwoCharMatcher(inverse, getLo(0), getHi(0));
+                return TwoCharMatcher.create(inverse, getLo(0), getHi(0));
             }
-            return new SingleRangeMatcher(inverse, getLo(0), getHi(0));
+            return SingleRangeMatcher.create(inverse, getLo(0), getHi(0));
         }
         if (size() == 2 && isSingle(0) && isSingle(1)) {
-            return new TwoCharMatcher(inverse, getLo(0), getLo(1));
+            return TwoCharMatcher.create(inverse, getLo(0), getLo(1));
         }
         if (preferRangeListMatcherOverBitSetMatcher()) {
-            return new RangeListMatcher(inverse, ranges);
+            return RangeListMatcher.create(inverse, ranges);
         }
         if (allSameHighByte()) {
             CompilationFinalBitSet bs = convertToBitSet(0, size());
             int highByte = highByte(getLo(0));
             return BitSetMatcher.create(inverse, highByte, bs);
         }
+        CharMatcher charMatcher;
         if (size() > 100) {
-            return MultiBitSetMatcher.fromRanges(inverse, ranges);
-        }
-        if (tryHybrid) {
-            return createHybridMatcher(compilationBuffer, inverse);
+            charMatcher = MultiBitSetMatcher.fromRanges(inverse, ranges);
+        } else if (tryHybrid) {
+            charMatcher = createHybridMatcher(compilationBuffer, inverse);
         } else {
             if (size() <= 10) {
-                return new RangeListMatcher(inverse, ranges);
+                charMatcher = RangeListMatcher.create(inverse, ranges);
             } else {
                 assert size() <= 100;
-                return RangeTreeMatcher.fromRanges(inverse, ranges);
+                charMatcher = RangeTreeMatcher.fromRanges(inverse, ranges);
             }
         }
+        return ProfilingCharMatcher.create(createIntersectionMatcher(BYTE_RANGE, compilationBuffer).createMatcher(compilationBuffer, inverse, false), charMatcher);
     }
 
     private boolean preferRangeListMatcherOverBitSetMatcher() {
@@ -910,7 +912,7 @@ public final class MatcherBuilder implements Comparable<MatcherBuilder>, JsonCon
             return createMatcher(compilationBuffer, inverse, false);
         }
         CharMatcher restMatcher = MatcherBuilder.create(rest).createMatcher(compilationBuffer, false, false);
-        return new HybridBitSetMatcher(inverse, highBytes.toArray(), bitSets.toArray(new CompilationFinalBitSet[bitSets.size()]), restMatcher);
+        return HybridBitSetMatcher.create(inverse, highBytes.toArray(), bitSets.toArray(new CompilationFinalBitSet[bitSets.size()]), restMatcher);
     }
 
     private boolean rangeCrossesPlanes(int i) {

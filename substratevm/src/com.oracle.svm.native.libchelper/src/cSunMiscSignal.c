@@ -23,6 +23,8 @@
  * questions.
  */
 
+#ifndef _WIN64
+
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -254,3 +256,4 @@ static int cSunMiscSignal_atomicCompareAndSwap_int(volatile int* const ptr, int 
 static long cSunMiscSignal_atomicCompareAndSwap_long(volatile long* const ptr, long const oldval, long const newval) {
 	return __sync_val_compare_and_swap(ptr, oldval, newval);
 }
+#endif

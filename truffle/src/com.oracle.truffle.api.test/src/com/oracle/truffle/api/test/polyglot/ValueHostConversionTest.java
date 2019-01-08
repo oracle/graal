@@ -899,6 +899,76 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
         assertEquals("object", hierarchy.execute(false).asString());
     }
 
+    @SuppressWarnings("unused")
+    public static class PrimitiveHierarchy {
+        public String hierarchy(byte arg) {
+            return "byte";
+        }
+
+        public String hierarchy(short arg) {
+            return "short";
+        }
+
+        public String hierarchy(char arg) {
+            return "char";
+        }
+
+        public String hierarchy(int arg) {
+            return "int";
+        }
+
+        public String hierarchy(long arg) {
+            return "long";
+        }
+
+        public String hierarchy(double arg) {
+            return "double";
+        }
+
+        public String hierarchy(float arg) {
+            return "float";
+        }
+
+        public String hierarchy(boolean arg) {
+            return "boolean";
+        }
+    }
+
+    @Test
+    public void testStringToPrimitive() {
+        Value hierarchy = context.asValue(new PrimitiveHierarchy()).getMember("hierarchy");
+
+        assertEquals("int", hierarchy.execute(String.valueOf(Integer.MIN_VALUE)).asString());
+        assertEquals("int", hierarchy.execute(String.valueOf(Integer.MAX_VALUE)).asString());
+        assertEquals("int", hierarchy.execute(String.valueOf((long) Integer.MIN_VALUE)).asString());
+        assertEquals("int", hierarchy.execute(String.valueOf((long) Integer.MAX_VALUE)).asString());
+        assertEquals("byte", hierarchy.execute(String.valueOf(Byte.MIN_VALUE)).asString());
+        assertEquals("byte", hierarchy.execute(String.valueOf(Byte.MAX_VALUE)).asString());
+        assertEquals("short", hierarchy.execute(String.valueOf(Short.MIN_VALUE)).asString());
+        assertEquals("short", hierarchy.execute(String.valueOf(Short.MAX_VALUE)).asString());
+        assertEquals("long", hierarchy.execute(String.valueOf(Integer.MIN_VALUE - 1L)).asString());
+        assertEquals("long", hierarchy.execute(String.valueOf(Integer.MAX_VALUE + 1L)).asString());
+        assertEquals("long", hierarchy.execute(String.valueOf(Long.MIN_VALUE)).asString());
+        assertEquals("long", hierarchy.execute(String.valueOf(Long.MAX_VALUE)).asString());
+
+        assertEquals("float", hierarchy.execute(String.valueOf((float) -(Math.pow(2, 24) - 1))).asString());
+        assertEquals("float", hierarchy.execute(String.valueOf((float) +(Math.pow(2, 24) - 1))).asString());
+        assertEquals("float", hierarchy.execute(String.valueOf(Float.MIN_VALUE)).asString());
+        assertEquals("float", hierarchy.execute(String.valueOf(Float.MAX_VALUE)).asString());
+
+        // lossy
+        assertEquals("float", hierarchy.execute(String.valueOf((float) Integer.MIN_VALUE)).asString());
+        assertEquals("float", hierarchy.execute(String.valueOf((float) Integer.MAX_VALUE)).asString());
+        assertEquals("float", hierarchy.execute(String.valueOf((double) Integer.MIN_VALUE)).asString());
+        assertEquals("float", hierarchy.execute(String.valueOf((double) Integer.MAX_VALUE)).asString());
+
+        assertEquals("double", hierarchy.execute(String.valueOf(Double.MIN_VALUE)).asString());
+        assertEquals("double", hierarchy.execute(String.valueOf(Double.MAX_VALUE)).asString());
+
+        assertEquals("boolean", hierarchy.execute(String.valueOf(false)).asString());
+        assertEquals("boolean", hierarchy.execute(String.valueOf(true)).asString());
+    }
+
     @Test
     public void testExceptionFrames1() {
         Value innerInner = context.asValue(new Function<Object, Object>() {

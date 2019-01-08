@@ -57,6 +57,13 @@ public abstract class SystemPropertiesSupport {
                     "os.arch", "os.name",
                     /* For our convenience for now. */
                     "file.encoding", "sun.jnu.encoding",
+                    "java.class.version",
+                    "java.specification.name",
+                    "java.specification.vendor",
+                    "java.specification.version",
+                    "java.vm.specification.name",
+                    "java.vm.specification.vendor",
+                    "java.vm.specification.version"
     };
 
     /** System properties that are lazily computed at run time on first access. */
@@ -74,17 +81,26 @@ public abstract class SystemPropertiesSupport {
             properties.put(key, System.getProperty(key));
         }
 
+        properties.put("java.vm.name", "Substrate VM");
+        properties.put("java.vm.vendor", "Oracle Corporation");
+        properties.put("java.vm.version", "Substrate VM " + System.getProperty("java.vm.version"));
+        properties.put("java.vendor", "Oracle Corporation");
+        properties.put("java.vendor.url", "https://www.graalvm.org/");
+
+        properties.put("java.class.path", "");
+        properties.put("java.endorsed.dirs", "");
+        properties.put("java.ext.dirs", "");
+        properties.put("java.library.path", "");
+
+        properties.put(ImageInfo.PROPERTY_IMAGE_CODE_KEY, ImageInfo.PROPERTY_IMAGE_CODE_VALUE_RUNTIME);
+
         lazyRuntimeValues = new HashMap<>();
-        lazyRuntimeValues.put("java.vm.name", () -> "Substrate VM");
-        lazyRuntimeValues.put("java.vendor", () -> "Oracle Corporation");
-        lazyRuntimeValues.put("java.vendor.url", () -> "https://www.graalvm.org/");
         lazyRuntimeValues.put("user.name", this::userNameValue);
         lazyRuntimeValues.put("user.home", this::userHomeValue);
         lazyRuntimeValues.put("user.dir", this::userDirValue);
         lazyRuntimeValues.put("java.io.tmpdir", this::tmpdirValue);
         lazyRuntimeValues.put("os.version", this::osVersionValue);
 
-        lazyRuntimeValues.put(ImageInfo.PROPERTY_IMAGE_CODE_KEY, () -> ImageInfo.PROPERTY_IMAGE_CODE_VALUE_RUNTIME);
     }
 
     public Properties getProperties() {

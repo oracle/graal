@@ -39,7 +39,6 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
@@ -48,17 +47,17 @@ import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 
 public class DynamicTypeCastInteropTest extends InteropTestBase {
 
+    private static TruffleObject testLibraryInternal;
     private static Value testLibrary;
     private static Value test;
 
     @BeforeClass
     public static void loadTestBitcode() {
-        testLibrary = InteropTestBase.loadTestBitcodeValue("polyglotRegisterDynamicCast");
+        testLibraryInternal = InteropTestBase.loadTestBitcodeInternal("polyglotRegisterDynamicCast");
+        testLibrary = runWithPolyglot.getPolyglotContext().asValue(testLibraryInternal);
         test = testLibrary.getMember("test_dynamic_cast");
     }
 
@@ -99,9 +98,8 @@ public class DynamicTypeCastInteropTest extends InteropTestBase {
             Object access(@SuppressWarnings("unused") DynamicStructlikeObject object) {
                 if (cachedType == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    ContextReference<LLVMContext> contextRef = LLVMLanguage.getLLVMContextReference();
-                    TruffleObject typecall = (TruffleObject) contextRef.get().getEnv().importSymbol("get_object2_typeid");
                     try {
+                        TruffleObject typecall = (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), testLibraryInternal, "get_object2_typeid");
                         cachedType = ForeignAccess.send(Message.EXECUTE.createNode(), typecall);
                     } catch (InteropException e) {
                         throw new IllegalStateException("could not determine typeid");

@@ -165,7 +165,8 @@ public class VerifyDebugUsage extends VerifyPhase<PhaseContext> {
                     "org.graalvm.compiler.core.GraalCompiler.emitFrontEnd",
                     "org.graalvm.compiler.phases.BasePhase.dumpAfter",
                     "org.graalvm.compiler.replacements.ReplacementsImpl$GraphMaker.makeGraph",
-                    "org.graalvm.compiler.replacements.SnippetTemplate.instantiate"));
+                    "org.graalvm.compiler.replacements.SnippetTemplate.instantiate",
+                    "org.graalvm.compiler.hotspot.SymbolicSnippetEncoder.verifySnippetEncodeDecode"));
 
     private void verifyParameters(StructuredGraph callerGraph, MethodCallTargetNode debugCallTarget, List<? extends ValueNode> args, ResolvedJavaType stringType, int startArgIdx,
                     int varArgsIndex) {

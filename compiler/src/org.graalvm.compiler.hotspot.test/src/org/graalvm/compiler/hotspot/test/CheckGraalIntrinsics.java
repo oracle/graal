@@ -273,8 +273,6 @@ public class CheckGraalIntrinsics extends GraalTest {
             add(toBeInvestigated,
                             // Some logic and a stub call
                             "com/sun/crypto/provider/CounterMode.implCrypt([BII[BI)I",
-                            // Stub and very little logic
-                            "com/sun/crypto/provider/GHASH.processBlocks([BII[J[J)V",
                             // HotSpot MacroAssembler-based intrinsic
                             "java/lang/Math.fma(DDD)D",
                             // HotSpot MacroAssembler-based intrinsic
@@ -344,21 +342,27 @@ public class CheckGraalIntrinsics extends GraalTest {
             // Compact string support - HotSpot MacroAssembler-based intrinsic or complex C2 logic.
             add(toBeInvestigated,
                             "java/lang/StringCoding.hasNegatives([BII)Z",
-                            "java/lang/StringCoding.implEncodeISOArray([BI[BII)I",
+                            "java/lang/StringCoding.implEncodeISOArray([BI[BII)I");
+            add(ignore,
+                            // handled through an intrinsic for String.equals itself
+                            "java/lang/StringLatin1.equals([B[B)Z",
+
+                            // handled by an intrinsic for StringLatin1.indexOf([BI[BII)I
                             "java/lang/StringLatin1.indexOf([B[B)I",
-                            "java/lang/StringUTF16.getChar([BI)C",
-                            "java/lang/StringUTF16.getChars([BII[CI)V",
+
+                            // handled through an intrinsic for String.equals itself
+                            "java/lang/StringUTF16.equals([B[B)Z",
+
+                            // handled by an intrinsic for StringUTF16.indexOfUnsafe
                             "java/lang/StringUTF16.indexOf([BI[BII)I",
                             "java/lang/StringUTF16.indexOf([B[B)I",
+
+                            // handled by an intrinsic for StringUTF16.indexOfCharUnsafe
                             "java/lang/StringUTF16.indexOfChar([BIII)I",
+
+                            // handled by an intrinsic for StringUTF16.indexOfLatin1Unsafe
                             "java/lang/StringUTF16.indexOfLatin1([BI[BII)I",
-                            "java/lang/StringUTF16.indexOfLatin1([B[B)I",
-                            "java/lang/StringUTF16.putChar([BII)V",
-                            "java/lang/StringUTF16.toBytes([CII)[B");
-            // These are handled through an intrinsic for String.equals itself
-            add(ignore,
-                            "java/lang/StringLatin1.equals([B[B)Z",
-                            "java/lang/StringUTF16.equals([B[B)Z");
+                            "java/lang/StringUTF16.indexOfLatin1([B[B)I");
         }
 
         if (isJDK10OrHigher()) {
@@ -374,6 +378,22 @@ public class CheckGraalIntrinsics extends GraalTest {
                             "jdk/jfr/internal/JVM.getEventWriter()Ljava/lang/Object;");
         }
 
+        if (isJDK12OrHigher()) {
+            add(toBeInvestigated,
+                            "java/lang/CharacterDataLatin1.isDigit(I)Z",
+                            "java/lang/CharacterDataLatin1.isLowerCase(I)Z",
+                            "java/lang/CharacterDataLatin1.isUpperCase(I)Z",
+                            "java/lang/CharacterDataLatin1.isWhitespace(I)Z");
+        }
+
+        if (isJDK13OrHigher()) {
+            add(toBeInvestigated,
+                            "java/lang/Math.max(DD)D",
+                            "java/lang/Math.max(FF)F",
+                            "java/lang/Math.min(DD)D",
+                            "java/lang/Math.min(FF)F");
+        }
+
         if (!config.inlineNotify()) {
             add(ignore, "java/lang/Object.notify()V");
         }
@@ -385,10 +405,16 @@ public class CheckGraalIntrinsics extends GraalTest {
             // Can we implement these on non-AMD64 platforms? C2 seems to.
             add(toBeInvestigated,
                             "java/lang/String.compareTo(Ljava/lang/String;)I",
+                            "java/lang/StringLatin1.indexOf([B[B)I",
                             "java/lang/StringLatin1.inflate([BI[BII)V",
                             "java/lang/StringLatin1.inflate([BI[CII)V",
                             "java/lang/StringUTF16.compress([BI[BII)I",
                             "java/lang/StringUTF16.compress([CI[BII)I",
+                            "java/lang/StringUTF16.indexOf([BI[BII)I",
+                            "java/lang/StringUTF16.indexOf([B[B)I",
+                            "java/lang/StringUTF16.indexOfChar([BIII)I",
+                            "java/lang/StringUTF16.indexOfLatin1([BI[BII)I",
+                            "java/lang/StringUTF16.indexOfLatin1([B[B)I",
                             "jdk/internal/misc/Unsafe.compareAndExchangeByte(Ljava/lang/Object;JBB)B",
                             "jdk/internal/misc/Unsafe.compareAndExchangeShort(Ljava/lang/Object;JSS)S",
                             "jdk/internal/misc/Unsafe.compareAndSetByte(Ljava/lang/Object;JBB)Z",
@@ -410,7 +436,6 @@ public class CheckGraalIntrinsics extends GraalTest {
                                     "java/lang/StringLatin1.compareToUTF16([B[B)I",
                                     "java/lang/StringUTF16.compareTo([B[B)I",
                                     "java/lang/StringUTF16.compareToLatin1([B[B)I",
-                                    "java/lang/Thread.onSpinWait()V",
                                     "jdk/internal/misc/Unsafe.getAndAddInt(Ljava/lang/Object;JI)I",
                                     "jdk/internal/misc/Unsafe.getAndAddLong(Ljava/lang/Object;JJ)J",
                                     "jdk/internal/misc/Unsafe.getAndSetInt(Ljava/lang/Object;JI)I",
@@ -418,6 +443,7 @@ public class CheckGraalIntrinsics extends GraalTest {
                                     "jdk/internal/misc/Unsafe.getAndSet" + oopName + "(Ljava/lang/Object;JLjava/lang/Object;)Ljava/lang/Object;");
                 }
                 add(toBeInvestigated,
+                                "java/lang/Thread.onSpinWait()V",
                                 "jdk/internal/misc/Unsafe.getCharUnaligned(Ljava/lang/Object;J)C",
                                 "jdk/internal/misc/Unsafe.getIntUnaligned(Ljava/lang/Object;J)I",
                                 "jdk/internal/misc/Unsafe.getLongUnaligned(Ljava/lang/Object;J)J",
@@ -532,6 +558,10 @@ public class CheckGraalIntrinsics extends GraalTest {
 
     private static boolean isJDK12OrHigher() {
         return GraalServices.JAVA_SPECIFICATION_VERSION >= 12;
+    }
+
+    private static boolean isJDK13OrHigher() {
+        return GraalServices.JAVA_SPECIFICATION_VERSION >= 13;
     }
 
     public interface Refiner {

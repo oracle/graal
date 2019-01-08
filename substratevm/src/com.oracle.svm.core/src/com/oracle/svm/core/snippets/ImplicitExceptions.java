@@ -24,8 +24,16 @@
  */
 package com.oracle.svm.core.snippets;
 
+import com.oracle.svm.core.jdk.StackTraceBuilder;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 
+/**
+ * This class contains support methods to throw implicit exceptions of according to the
+ * specification of Java bytecode.
+ *
+ * All methods in this class are an implementation detail that should not be observable by users,
+ * therefore these methods are filtered in exception stack traces (see {@link StackTraceBuilder}).
+ */
 public class ImplicitExceptions {
     private static final String NO_STACK_MSG = "[no exception stack trace available because exception is thrown from code that must be allocation free]";
 
@@ -153,5 +161,29 @@ public class ImplicitExceptions {
     @SubstrateForeignCallTarget
     private static void throwCachedArithmeticException() {
         throw CACHED_ARITHMETIC_EXCEPTION;
+    }
+
+    public static void throwClassNotFoundException(String message) throws ClassNotFoundException {
+        throw new ClassNotFoundException(message);
+    }
+
+    public static void throwNoSuchFieldException(String message) throws NoSuchFieldException {
+        throw new NoSuchFieldException(message);
+    }
+
+    public static void throwNoSuchMethodException(String message) throws NoSuchMethodException {
+        throw new NoSuchMethodException(message);
+    }
+
+    public static void throwNoClassDefFoundError(String message) throws NoClassDefFoundError {
+        throw new NoClassDefFoundError(message);
+    }
+
+    public static void throwNoSuchFieldError(String message) throws NoSuchFieldError {
+        throw new NoSuchFieldError(message);
+    }
+
+    public static void throwNoSuchMethodError(String message) throws NoSuchMethodError {
+        throw new NoSuchMethodError(message);
     }
 }

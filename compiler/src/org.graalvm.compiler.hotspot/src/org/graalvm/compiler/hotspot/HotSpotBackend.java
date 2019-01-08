@@ -265,6 +265,11 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
         unsafeArraycopyStub(UNSAFE_ARRAYCOPY, srcAddr, dstAddr, size);
     }
 
+    /**
+     * Descriptor for {@code StubRoutines::_ghash_processBlocks}.
+     */
+    public static final ForeignCallDescriptor GHASH_PROCESS_BLOCKS = new ForeignCallDescriptor("ghashProcessBlocks", void.class, Word.class, Word.class, Word.class, int.class);
+
     @NodeIntrinsic(ForeignCallNode.class)
     private static native void unsafeArraycopyStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word srcAddr, Word dstAddr, Word size);
 
@@ -387,6 +392,13 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
         }
         return translateToCallerRegisters(destroyedRegisters);
     }
+
+    /**
+     * Translates a set of registers from the callee's perspective to the caller's perspective. This
+     * is needed for architectures where input/output registers are renamed during a call (e.g.
+     * register windows on SPARC). Registers which are not visible by the caller are removed.
+     */
+    protected abstract EconomicSet<Register> translateToCallerRegisters(EconomicSet<Register> calleeRegisters);
 
     /**
      * Updates a given stub with respect to the registers it destroys.
