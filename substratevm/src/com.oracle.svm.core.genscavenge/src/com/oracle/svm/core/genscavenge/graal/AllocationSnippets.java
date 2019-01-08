@@ -543,7 +543,6 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
                 offset = offset.add(4);
             }
             /* Assert that offset is now Word aligned, or past the end of the elements. */
-            assert isWordAligned(offset) : "offset should be Word aligned";
             while (offset.belowThan(size)) {
                 memory.writeWord(offset, WordFactory.zero(), LocationIdentity.INIT_LOCATION);
                 offset = offset.add(ConfigurationValues.getTarget().wordSize);
