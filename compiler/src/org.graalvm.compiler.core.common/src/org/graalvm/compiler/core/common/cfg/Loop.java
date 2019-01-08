@@ -31,13 +31,15 @@ import java.util.List;
 public abstract class Loop<T extends AbstractBlockBase<T>> {
 
     private final Loop<T> parent;
-    private final List<Loop<T>> children;
+    private final ArrayList<Loop<T>> children;
 
     private final int depth;
     private final int index;
     private final T header;
-    private final List<T> blocks;
-    private final List<T> exits;
+    private final ArrayList<T> blocks;
+    private final ArrayList<T> exits;
+    // "actual" exist, ignoring LoopExitNodes
+    private final ArrayList<T> cfgExits;
 
     protected Loop(Loop<T> parent, int index, T header) {
         this.parent = parent;
@@ -51,6 +53,7 @@ public abstract class Loop<T extends AbstractBlockBase<T>> {
         this.blocks = new ArrayList<>();
         this.children = new ArrayList<>();
         this.exits = new ArrayList<>();
+        this.cfgExits = new ArrayList<>();
     }
 
     public abstract long numBackedges();
@@ -84,12 +87,28 @@ public abstract class Loop<T extends AbstractBlockBase<T>> {
         return blocks;
     }
 
+    /**
+     * Returns the loop exits.
+     *
+     * This might be a conservative set: before framestate assignment it matches the LoopExitNodes
+     * even if earlier blocks could be considered as exits.
+     *
+     * @see #getCfgExits()
+     */
     public List<T> getExits() {
         return exits;
     }
 
-    public void addExit(T t) {
-        exits.add(t);
+    /**
+     * Returns the natural exit points: these are the earliest block that are guaranteed to never
+     * reach a back-edge.
+     *
+     * This can not be used in the context of preserving or using loop-closed form.
+     *
+     * @see #getExits()
+     */
+    public ArrayList<T> getCfgExits() {
+        return cfgExits;
     }
 
     /**
