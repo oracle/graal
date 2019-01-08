@@ -542,7 +542,6 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
                 memory.writeInt(offset, 0, LocationIdentity.INIT_LOCATION);
                 offset = offset.add(4);
             }
-            /* Assert that offset is now Word aligned, or past the end of the elements. */
             while (offset.belowThan(size)) {
                 memory.writeWord(offset, WordFactory.zero(), LocationIdentity.INIT_LOCATION);
                 offset = offset.add(ConfigurationValues.getTarget().wordSize);
