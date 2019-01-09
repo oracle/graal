@@ -35,7 +35,7 @@ import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescripto
  * therefore these methods are filtered in exception stack traces (see {@link StackTraceBuilder}).
  */
 public class ImplicitExceptions {
-    private static final String NO_STACK_MSG = "[no exception stack trace available because exception is thrown from code that must be allocation free]";
+    public static final String NO_STACK_MSG = "[no exception stack trace available because exception is thrown from code that must be allocation free]";
 
     public static final NullPointerException CACHED_NULL_POINTER_EXCEPTION = new NullPointerException(NO_STACK_MSG);
     public static final ArrayIndexOutOfBoundsException CACHED_OUT_OF_BOUNDS_EXCEPTION = new ArrayIndexOutOfBoundsException(NO_STACK_MSG);
