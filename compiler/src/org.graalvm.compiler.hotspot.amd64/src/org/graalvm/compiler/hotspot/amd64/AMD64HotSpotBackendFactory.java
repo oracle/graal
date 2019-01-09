@@ -140,7 +140,7 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
                 replacements = createReplacements(options, p, snippetReflection, bytecodeProvider);
             }
             try (InitTimer rt = timer("create GraphBuilderPhase plugins")) {
-                plugins = createGraphBuilderPlugins(compilerConfiguration, config, options, target, constantReflection, foreignCalls, metaAccess, snippetReflection, replacements, wordTypes);
+                plugins = createGraphBuilderPlugins(compilerConfiguration, config, target, constantReflection, foreignCalls, metaAccess, snippetReflection, replacements, wordTypes);
                 replacements.setGraphBuilderPlugins(plugins);
             }
             try (InitTimer rt = timer("create Suites provider")) {
@@ -156,7 +156,7 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
         }
     }
 
-    protected Plugins createGraphBuilderPlugins(CompilerConfiguration compilerConfiguration, GraalHotSpotVMConfig config, OptionValues options, TargetDescription target,
+    protected Plugins createGraphBuilderPlugins(CompilerConfiguration compilerConfiguration, GraalHotSpotVMConfig config, TargetDescription target,
                     HotSpotConstantReflectionProvider constantReflection, HotSpotHostForeignCallsProvider foreignCalls, HotSpotMetaAccessProvider metaAccess,
                     HotSpotSnippetReflectionProvider snippetReflection, HotSpotReplacementsImpl replacements, HotSpotWordTypes wordTypes) {
         Plugins plugins = HotSpotGraphBuilderPlugins.create(compilerConfiguration, config, wordTypes, metaAccess, constantReflection, snippetReflection, foreignCalls, replacements);

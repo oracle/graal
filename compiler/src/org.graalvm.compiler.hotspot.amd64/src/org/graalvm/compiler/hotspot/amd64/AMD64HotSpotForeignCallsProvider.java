@@ -49,7 +49,6 @@ import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.Una
 import static org.graalvm.word.LocationIdentity.any;
 
 import org.graalvm.compiler.core.common.LIRKind;
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkageImpl;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;

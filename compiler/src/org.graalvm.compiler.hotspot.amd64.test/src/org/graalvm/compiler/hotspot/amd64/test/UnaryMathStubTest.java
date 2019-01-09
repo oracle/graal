@@ -95,7 +95,6 @@ public class UnaryMathStubTest extends GraalCompilerTest {
     @Test
     public void testStub() {
         for (double input : inputs) {
-//            test(getResolvedJavaMethod(Math.class, stub), null, input);
             test(stub, input);
         }
     }

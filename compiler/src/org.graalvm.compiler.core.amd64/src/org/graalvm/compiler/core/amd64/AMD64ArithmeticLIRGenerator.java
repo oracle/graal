@@ -125,7 +125,6 @@ import org.graalvm.compiler.lir.amd64.vector.AMD64VectorBinary;
 import org.graalvm.compiler.lir.amd64.vector.AMD64VectorBinary.AVXBinaryOp;
 import org.graalvm.compiler.lir.amd64.vector.AMD64VectorUnary;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGenerator;
-import org.graalvm.compiler.lir.gen.LIRGenerator;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;

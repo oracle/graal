@@ -444,6 +444,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         return foreignCalls.get(descriptor);
     }
 
+    @SuppressWarnings("unused")
     protected void registerMathStubs(GraalHotSpotVMConfig hotSpotVMConfig, HotSpotProviders providers, OptionValues options) {
         registerForeignCall(SIN.foreignCallDescriptor, hotSpotVMConfig.arithmeticSinAddress, NativeCall, DESTROYS_REGISTERS, LEAF, REEXECUTABLE, NO_LOCATIONS);
         registerForeignCall(COS.foreignCallDescriptor, hotSpotVMConfig.arithmeticCosAddress, NativeCall, DESTROYS_REGISTERS, LEAF, REEXECUTABLE, NO_LOCATIONS);

@@ -40,7 +40,7 @@ import jdk.vm.ci.meta.Value;
 /**
  * AMD64MathIntrinsicUnaryOp assumes that the input value is stored at the xmm0 register, and will
  * emit the output value into the xmm0 register as well.
- * {{@link #emitLIRWrapper(LIRGeneratorTool, Value)}} is provided for emitting necessary mov LIRs
+ * {@link #emitLIRWrapper(LIRGeneratorTool, Value)} is provided for emitting necessary mov LIRs
  * before and after this LIR instruction.
  */
 public abstract class AMD64MathIntrinsicUnaryOp extends AMD64LIRInstruction {

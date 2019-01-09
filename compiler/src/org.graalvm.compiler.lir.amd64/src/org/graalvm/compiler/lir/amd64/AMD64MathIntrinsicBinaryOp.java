@@ -41,7 +41,7 @@ import jdk.vm.ci.meta.Value;
 /**
  * AMD64MathIntrinsicBinaryOp assumes that the input values are stored in the xmm0 and xmm1
  * registers, and it will emit the output value into the xmm0 register.
- * {{@link #emitLIRWrapper(LIRGenerator, Value, Value)}} is provided for emitting necessary mov LIRs
+ * {@link #emitLIRWrapper(LIRGenerator, Value, Value)} is provided for emitting necessary mov LIRs
  * before and after this LIR instruction.
  */
 public abstract class AMD64MathIntrinsicBinaryOp extends AMD64LIRInstruction {
