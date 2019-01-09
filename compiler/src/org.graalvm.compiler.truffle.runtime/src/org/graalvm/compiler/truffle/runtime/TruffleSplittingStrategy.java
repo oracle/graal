@@ -94,7 +94,7 @@ final class TruffleSplittingStrategy {
             return false;
         }
         final GraalTVMCI.EngineData engineData = getEngineData(call, tvmci);
-        if (!canSplit(call) || isRecursiveSplit(call) || engineData.splitCount + call.getCallTarget().getUninitializedNodeCount() >= engineData.splitLimit) {
+        if (!canSplit(call) || isRecursiveSplit(call, 3) || engineData.splitCount + call.getCallTarget().getUninitializedNodeCount() >= engineData.splitLimit) {
             return false;
         }
         if (callTarget.getUninitializedNodeCount() > TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingMaxCalleeSize)) {
@@ -106,7 +106,7 @@ final class TruffleSplittingStrategy {
     static void forceSplitting(OptimizedDirectCallNode call, GraalTVMCI tvmci, boolean traceSplittingSummary) {
         if (!TruffleRuntimeOptions.getValue(TruffleExperimentalSplitting) ||
                         TruffleRuntimeOptions.getValue(TruffleExperimentalSplittingAllowForcedSplits)) {
-            if (!canSplit(call) || isRecursiveSplit(call)) {
+            if (!canSplit(call) || isRecursiveSplit(call, 2)) {
                 return;
             }
             final GraalTVMCI.EngineData engineData = getEngineData(call, tvmci);
@@ -163,7 +163,7 @@ final class TruffleSplittingStrategy {
         }
 
         // Disable splitting if it will cause a deep split-only recursion
-        if (isRecursiveSplit(call)) {
+        if (isRecursiveSplit(call, 2)) {
             return false;
         }
 
@@ -174,7 +174,7 @@ final class TruffleSplittingStrategy {
         return countPolymorphic(call) >= 1;
     }
 
-    private static boolean isRecursiveSplit(OptimizedDirectCallNode call) {
+    private static boolean isRecursiveSplit(OptimizedDirectCallNode call, int allowedDepth) {
         final OptimizedCallTarget splitCandidateTarget = call.getCallTarget();
         final RootNode rootNode = call.getRootNode();
         if (rootNode == null) {
@@ -186,7 +186,7 @@ final class TruffleSplittingStrategy {
         while (callSourceTarget != null) {
             if (callSourceTarget == splitCandidateTarget) {
                 depth++;
-                if (depth == 2) {
+                if (depth == allowedDepth) {
                     return true;
                 }
             }
