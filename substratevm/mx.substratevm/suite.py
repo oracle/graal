@@ -154,7 +154,6 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "com.oracle.svm.core.posix",
                 "com.oracle.svm.hosted",
             ],
             "checkstyle": "com.oracle.svm.core",

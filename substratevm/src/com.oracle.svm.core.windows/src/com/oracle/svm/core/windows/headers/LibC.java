@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,10 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.headers;
+package com.oracle.svm.core.windows.headers;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
@@ -38,9 +39,10 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 //Checkstyle: stop
 
 /**
- * Basic functions from the standard C library that we require to be present on all Posix platforms.
+ * Basic functions from the standard Visual Studio C Run-Time library
  */
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@CContext(WindowsDirectives.class)
+@Platforms(Platform.WINDOWS.class)
 public class LibC {
 
     /**
@@ -145,11 +147,6 @@ public class LibC {
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public static void abort() {
-        /*
-         * Using the abort system call has unexpected performance implications on Oracle Enterprise
-         * Linux: Storing the crash dump information takes minutes even for tiny images. Therefore,
-         * we just exit with an otherwise unused exit code.
-         */
         exit(EXIT_CODE_ABORT);
     }
 
@@ -191,7 +188,7 @@ public class LibC {
     public static native UnsignedWord strlen(CCharPointer s);
 
     /* Split a string into substrings at locations of delimiters, modifying the string in place. */
-    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
+    @CFunction(value = "strtok_s", transition = CFunction.Transition.NO_TRANSITION)
     public static native CCharPointer strtok_r(CCharPointer str, CCharPointer delim, CCharPointerPointer saveptr);
 
     /** Convert the of the string to an integer, according to the specified radix. */
