@@ -153,6 +153,7 @@ suite = {
         "sdk:GRAAL_SDK",
         "com.oracle.truffle.api.instrumentation",
         "com.oracle.truffle.api.interop",
+        "com.oracle.truffle.api.utilities",
       ],
       "exports" : [
         "<package-info>", # exports all packages containing package-info.java
