@@ -48,15 +48,21 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
     private boolean inliningForced;
     @CompilationFinal private ValueProfile exceptionProfile;
 
+    private final boolean splitting;
     private final boolean experimentalSplitting;
+    private final boolean experimentalSplittingForced;
     private final boolean traceSplittingSummary;
+    private final int maxCalleSize;
     @CompilationFinal private OptimizedCallTarget splitCallTarget;
 
     public OptimizedDirectCallNode(OptimizedCallTarget target) {
         super(target);
         assert target.getSourceCallTarget() == null;
         this.experimentalSplitting = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplitting);
+        this.experimentalSplittingForced = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplittingAllowForcedSplits);
+        this.splitting = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplitting);
         this.traceSplittingSummary = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleTraceSplittingSummary);
+        this.maxCalleSize = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingMaxCalleeSize);
     }
 
     @Override
@@ -144,7 +150,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
         if (calls == 1) {
             getCurrentCallTarget().incrementKnownCallSites();
         }
-        TruffleSplittingStrategy.beforeCall(this, OptimizedCallTarget.runtime().getTvmci(), traceSplittingSummary, experimentalSplitting);
+        TruffleSplittingStrategy.beforeCall(this, OptimizedCallTarget.runtime().getTvmci(), traceSplittingSummary, experimentalSplitting, maxCalleSize, splitting);
     }
 
     /** Used by the splitting strategy to install new targets. */
@@ -186,7 +192,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
 
     @Override
     public boolean cloneCallTarget() {
-        TruffleSplittingStrategy.forceSplitting(this, OptimizedCallTarget.runtime().getTvmci(), traceSplittingSummary);
+        TruffleSplittingStrategy.forceSplitting(this, OptimizedCallTarget.runtime().getTvmci(), traceSplittingSummary, splitting, experimentalSplitting, experimentalSplittingForced);
         return true;
     }
 }
