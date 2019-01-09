@@ -152,7 +152,7 @@ public class AnalysisUniverse implements Universe {
         analysisDataValid = dataIsValid;
     }
 
-    AnalysisType optionalLookup(ResolvedJavaType type) {
+    public AnalysisType optionalLookup(ResolvedJavaType type) {
         Object claim = types.get(type);
         if (claim instanceof AnalysisType) {
             return (AnalysisType) claim;
