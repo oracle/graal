@@ -265,13 +265,27 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
         unsafeArraycopyStub(UNSAFE_ARRAYCOPY, srcAddr, dstAddr, size);
     }
 
+    @NodeIntrinsic(ForeignCallNode.class)
+    private static native void unsafeArraycopyStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word srcAddr, Word dstAddr, Word size);
+
     /**
      * Descriptor for {@code StubRoutines::_ghash_processBlocks}.
      */
     public static final ForeignCallDescriptor GHASH_PROCESS_BLOCKS = new ForeignCallDescriptor("ghashProcessBlocks", void.class, Word.class, Word.class, Word.class, int.class);
 
+    /**
+     * @see CounterMode#implCrypt
+     */
+    public static final ForeignCallDescriptor COUNTERMODE_IMPL_CRYPT = new ForeignCallDescriptor("counterModeAESCrypt", int.class, Word.class, Word.class, Word.class, Word.class, int.class,
+                    Word.class, Word.class);
+
+    public static int counterModeAESCrypt(Word srcAddr, Word dstAddr, Word kPtr, Word cntPtr, int len, Word encCntPtr, Word used) {
+        return counterModeAESCrypt(HotSpotBackend.COUNTERMODE_IMPL_CRYPT, srcAddr, dstAddr, kPtr, cntPtr, len, encCntPtr, used);
+    }
+
     @NodeIntrinsic(ForeignCallNode.class)
-    private static native void unsafeArraycopyStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word srcAddr, Word dstAddr, Word size);
+    private static native int counterModeAESCrypt(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word srcAddr, Word dstAddr, Word kPtr, Word cntPtr, int len, Word encCntPtr,
+                    Word used);
 
     /**
      * @see VMErrorNode
