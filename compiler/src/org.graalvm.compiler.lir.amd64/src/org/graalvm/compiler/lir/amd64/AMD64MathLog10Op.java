@@ -66,7 +66,7 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
  *    Result:  k*log10(2) - log(B) + p(r)
  *             p(r) is a degree 7 polynomial
  *             -log(B) read from data table (high, low parts)
- *             Result is formed from high and low parts
+ *             Result is formed from high and low parts.
  *
  * Special cases:
  *  log10(0) = -INF with divide-by-zero exception raised
