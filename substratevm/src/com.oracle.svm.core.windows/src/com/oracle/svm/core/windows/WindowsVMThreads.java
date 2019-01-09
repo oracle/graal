@@ -36,7 +36,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.windows.headers.LibC;
+import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.windows.headers.Process;
 
 public final class WindowsVMThreads extends VMThreads {

@@ -34,7 +34,7 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.windows.headers.LibC;
+import com.oracle.svm.core.posix.headers.LibC;
 
 @AutomaticFeature
 @Platforms(Platform.WINDOWS.class)

@@ -33,7 +33,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.windows.headers.LibC;
+import com.oracle.svm.core.posix.headers.LibC;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 
