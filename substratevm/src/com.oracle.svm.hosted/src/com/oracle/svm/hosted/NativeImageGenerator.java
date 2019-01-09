@@ -175,6 +175,7 @@ import com.oracle.svm.core.graal.snippets.TypeSnippets;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.graal.stackvalue.StackValuePhase;
 import com.oracle.svm.core.heap.NativeImageInfo;
+import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.LocalizationFeature;
@@ -216,7 +217,7 @@ import com.oracle.svm.hosted.code.CFunctionSubstitutionProcessor;
 import com.oracle.svm.hosted.code.CompileQueue;
 import com.oracle.svm.hosted.code.HostedRuntimeConfigurationBuilder;
 import com.oracle.svm.hosted.code.NativeMethodSubstitutionProcessor;
-import com.oracle.svm.hosted.code.RestrictHeapAccessCallees;
+import com.oracle.svm.hosted.code.RestrictHeapAccessCalleesImpl;
 import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
 import com.oracle.svm.hosted.code.SubstrateGraphMakerFactory;
 import com.oracle.svm.hosted.image.AbstractBootImage;
@@ -965,7 +966,7 @@ public class NativeImageGenerator {
      * Record callees of methods that must not allocate.
      */
     private static void recordRestrictHeapAccessCallees(Collection<AnalysisMethod> methods) {
-        ImageSingletons.lookup(RestrictHeapAccessCallees.class).aggregateMethods(methods);
+        ((RestrictHeapAccessCalleesImpl) ImageSingletons.lookup(RestrictHeapAccessCallees.class)).aggregateMethods(methods);
     }
 
     public void interruptBuild() {
