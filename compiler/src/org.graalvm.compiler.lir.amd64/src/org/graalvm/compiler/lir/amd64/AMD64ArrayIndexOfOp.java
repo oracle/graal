@@ -220,6 +220,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
         };
         Label lessThanVectorSizeRemaining = new Label();
         Label lessThanVectorSizeRemainingLoop = new Label();
+        Label lessThanVectorSizeRemainingLoopBegin = new Label();
         Label bulkVectorLoopExit = nVectors == 1 ? lessThanVectorSizeRemaining : singleVectorLoop;
         int bytesPerVector = vectorSize.getBytes();
         int arraySlotsPerVector = vectorSize.getBytes() / kind.getByteCount();
@@ -315,7 +316,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
         asm.andl(tmpArrayPtrLow, (vmPageSize - 1));
         asm.cmpl(tmpArrayPtrLow, (vmPageSize - (findTwoCharPrefix ? bytesPerVector + kind.getByteCount() : bytesPerVector)));
         // if the page boundary would be crossed, do byte/character-wise comparison instead.
-        asm.jccb(AMD64Assembler.ConditionFlag.Above, lessThanVectorSizeRemainingLoop);
+        asm.jccb(AMD64Assembler.ConditionFlag.Above, lessThanVectorSizeRemainingLoopBegin);
 
         Label[] overBoundsMatch = {new Label(), new Label()};
         // otherwise, do a vector compare that reads beyond array bounds
@@ -362,6 +363,12 @@ public final class AMD64ArrayIndexOfOp extends AMD64LIRInstruction {
         // match is in bounds, return offset
         asm.jmp(retFound);
 
+        asm.bind(lessThanVectorSizeRemainingLoopBegin);
+        if (!(charMode(kind) && findTwoCharPrefix)) {
+            for (int i = 0; i < nValues; i++) {
+                asm.andl(searchValue[i], byteMode(kind) && !findTwoCharPrefix ? 0xff : 0xffff);
+            }
+        }
         // compare remaining slots in the array one-by-one
         asm.bind(lessThanVectorSizeRemainingLoop);
         // check if enough array slots remain
