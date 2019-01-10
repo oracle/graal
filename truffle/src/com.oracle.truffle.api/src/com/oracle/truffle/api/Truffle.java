@@ -46,6 +46,8 @@ import java.security.PrivilegedAction;
 import java.util.ServiceLoader;
 
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
+import java.util.Iterator;
+import java.util.ServiceConfigurationError;
 
 /**
  * Class for obtaining the Truffle runtime singleton object of this virtual machine.
@@ -77,7 +79,14 @@ public class Truffle {
         TruffleRuntimeAccess selectedAccess = null;
         for (Iterable<TruffleRuntimeAccess> lookup : lookups) {
             if (lookup != null) {
-                for (TruffleRuntimeAccess access : lookup) {
+                Iterator<TruffleRuntimeAccess> it = lookup.iterator();
+                while (it.hasNext()) {
+                    TruffleRuntimeAccess access;
+                    try {
+                        access = it.next();
+                    } catch (ServiceConfigurationError err) {
+                        continue;
+                    }
                     if (selectedAccess == null) {
                         selectedAccess = access;
                     } else {
