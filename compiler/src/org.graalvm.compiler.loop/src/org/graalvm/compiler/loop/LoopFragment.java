@@ -432,12 +432,11 @@ public abstract class LoopFragment {
         assert isDuplicate();
         StructuredGraph graph = graph();
         for (AbstractBeginNode earlyExit : LoopFragment.toHirBlocks(original().loop().loop().getLoopExits())) {
-            LoopExitNode loopEarlyExit = (LoopExitNode) earlyExit;
-            FixedNode next = loopEarlyExit.next();
-            if (loopEarlyExit.isDeleted() || !this.original().contains(loopEarlyExit)) {
+            FixedNode next = earlyExit.next();
+            if (earlyExit.isDeleted() || !this.original().contains(earlyExit)) {
                 continue;
             }
-            AbstractBeginNode newEarlyExit = getDuplicatedNode(loopEarlyExit);
+            AbstractBeginNode newEarlyExit = getDuplicatedNode(earlyExit);
             if (newEarlyExit == null) {
                 continue;
             }
@@ -446,72 +445,79 @@ public abstract class LoopFragment {
             EndNode newEnd = graph.add(new EndNode());
             merge.addForwardEnd(originalEnd);
             merge.addForwardEnd(newEnd);
-            loopEarlyExit.setNext(originalEnd);
+            earlyExit.setNext(originalEnd);
             newEarlyExit.setNext(newEnd);
             merge.setNext(next);
 
-            FrameState exitState = loopEarlyExit.stateAfter();
-            if (exitState != null) {
-                FrameState originalExitState = exitState;
-                exitState = exitState.duplicateWithVirtualState();
-                loopEarlyExit.setStateAfter(exitState);
-                merge.setStateAfter(originalExitState);
-                /*
-                 * Using the old exit's state as the merge's state is necessary because some of the
-                 * VirtualState nodes contained in the old exit's state may be shared by other
-                 * dominated VirtualStates. Those dominated virtual states need to see the
-                 * proxy->phi update that are applied below.
-                 *
-                 * We now update the original fragment's nodes accordingly:
-                 */
-                originalExitState.applyToVirtual(node -> original.nodes.clearAndGrow(node));
-                exitState.applyToVirtual(node -> original.nodes.markAndGrow(node));
-            }
-            FrameState finalExitState = exitState;
-
-            for (Node anchored : loopEarlyExit.anchored().snapshot()) {
-                anchored.replaceFirstInput(loopEarlyExit, merge);
-            }
-
-            boolean newEarlyExitIsLoopExit = newEarlyExit instanceof LoopExitNode;
-            for (ProxyNode vpn : loopEarlyExit.proxies().snapshot()) {
-                if (vpn.hasNoUsages()) {
-                    continue;
+            FrameState exitState = null;
+            if (earlyExit instanceof LoopExitNode) {
+                LoopExitNode earlyLoopExit = (LoopExitNode) earlyExit;
+                exitState = earlyLoopExit.stateAfter();
+                if (exitState != null) {
+                    FrameState originalExitState = exitState;
+                    exitState = exitState.duplicateWithVirtualState();
+                    earlyLoopExit.setStateAfter(exitState);
+                    merge.setStateAfter(originalExitState);
+                    /*
+                     * Using the old exit's state as the merge's state is necessary because some of
+                     * the VirtualState nodes contained in the old exit's state may be shared by
+                     * other dominated VirtualStates. Those dominated virtual states need to see the
+                     * proxy->phi update that are applied below.
+                     *
+                     * We now update the original fragment's nodes accordingly:
+                     */
+                    originalExitState.applyToVirtual(node -> original.nodes.clearAndGrow(node));
+                    exitState.applyToVirtual(node -> original.nodes.markAndGrow(node));
                 }
-                if (vpn.value() == null) {
-                    assert vpn instanceof GuardProxyNode;
-                    vpn.replaceAtUsages(null);
-                    continue;
-                }
-                final ValueNode replaceWith;
-                ValueNode newVpn = prim(newEarlyExitIsLoopExit ? vpn : vpn.value());
-                if (newVpn != null) {
-                    PhiNode phi;
-                    if (vpn instanceof ValueProxyNode) {
-                        phi = graph.addWithoutUnique(new ValuePhiNode(vpn.stamp(NodeView.DEFAULT), merge));
-                    } else if (vpn instanceof GuardProxyNode) {
-                        phi = graph.addWithoutUnique(new GuardPhiNode(merge));
+            }
+
+            for (Node anchored : earlyExit.anchored().snapshot()) {
+                anchored.replaceFirstInput(earlyExit, merge);
+            }
+
+            if (earlyExit instanceof LoopExitNode) {
+                LoopExitNode earlyLoopExit = (LoopExitNode) earlyExit;
+                FrameState finalExitState = exitState;
+                boolean newEarlyExitIsLoopExit = newEarlyExit instanceof LoopExitNode;
+                for (ProxyNode vpn : earlyLoopExit.proxies().snapshot()) {
+                    if (vpn.hasNoUsages()) {
+                        continue;
+                    }
+                    if (vpn.value() == null) {
+                        assert vpn instanceof GuardProxyNode;
+                        vpn.replaceAtUsages(null);
+                        continue;
+                    }
+                    final ValueNode replaceWith;
+                    ValueNode newVpn = prim(newEarlyExitIsLoopExit ? vpn : vpn.value());
+                    if (newVpn != null) {
+                        PhiNode phi;
+                        if (vpn instanceof ValueProxyNode) {
+                            phi = graph.addWithoutUnique(new ValuePhiNode(vpn.stamp(NodeView.DEFAULT), merge));
+                        } else if (vpn instanceof GuardProxyNode) {
+                            phi = graph.addWithoutUnique(new GuardPhiNode(merge));
+                        } else {
+                            throw GraalError.shouldNotReachHere();
+                        }
+                        phi.addInput(vpn);
+                        phi.addInput(newVpn);
+                        replaceWith = phi;
                     } else {
-                        throw GraalError.shouldNotReachHere();
+                        replaceWith = vpn.value();
                     }
-                    phi.addInput(vpn);
-                    phi.addInput(newVpn);
-                    replaceWith = phi;
-                } else {
-                    replaceWith = vpn.value();
-                }
-                vpn.replaceAtMatchingUsages(replaceWith, usage -> {
-                    if (merge.isPhiAtMerge(usage)) {
-                        return false;
-                    }
-                    if (usage instanceof VirtualState) {
-                        VirtualState stateUsage = (VirtualState) usage;
-                        if (finalExitState != null && finalExitState.isPartOfThisState(stateUsage)) {
+                    vpn.replaceAtMatchingUsages(replaceWith, usage -> {
+                        if (merge.isPhiAtMerge(usage)) {
                             return false;
                         }
-                    }
-                    return true;
-                });
+                        if (usage instanceof VirtualState) {
+                            VirtualState stateUsage = (VirtualState) usage;
+                            if (finalExitState != null && finalExitState.isPartOfThisState(stateUsage)) {
+                                return false;
+                            }
+                        }
+                        return true;
+                    });
+                }
             }
         }
     }
