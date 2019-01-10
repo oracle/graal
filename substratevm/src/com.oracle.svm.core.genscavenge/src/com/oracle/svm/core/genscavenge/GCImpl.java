@@ -505,7 +505,7 @@ public class GCImpl implements GC {
 
     @Fold
     static boolean runtimeAssertions() {
-        return SubstrateOptions.RuntimeAssertions.getValue() && SubstrateOptions.getRuntimeAssertionsFilter().test(GCImpl.class.getName());
+        return SubstrateOptions.getRuntimeAssertionsForClass(GCImpl.class.getName());
     }
 
     @Override
