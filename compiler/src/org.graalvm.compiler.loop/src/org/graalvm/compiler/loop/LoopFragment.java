@@ -431,7 +431,7 @@ public abstract class LoopFragment {
     protected void mergeEarlyExits() {
         assert isDuplicate();
         StructuredGraph graph = graph();
-        for (AbstractBeginNode earlyExit : LoopFragment.toHirBlocks(original().loop().loop().getExits())) {
+        for (AbstractBeginNode earlyExit : LoopFragment.toHirBlocks(original().loop().loop().getLoopExits())) {
             LoopExitNode loopEarlyExit = (LoopExitNode) earlyExit;
             FixedNode next = loopEarlyExit.next();
             if (loopEarlyExit.isDeleted() || !this.original().contains(loopEarlyExit)) {

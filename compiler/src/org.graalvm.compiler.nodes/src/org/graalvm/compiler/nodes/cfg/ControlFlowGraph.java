@@ -622,7 +622,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                         for (Block sux : b.getSuccessors()) {
                             if (sux.getLoop() != loop) {
                                 assert sux.getLoopDepth() < loop.getDepth();
-                                loop.getCfgExits().add(sux);
+                                loop.getNaturalExits().add(sux);
                             }
                         }
                     }
@@ -632,7 +632,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                             Block exitBlock = nodeToBlock.get(exit);
                             assert exitBlock.getPredecessorCount() == 1;
                             computeLoopBlocks(exitBlock.getFirstPredecessor(), loop, stack, true);
-                            loop.getExits().add(exitBlock);
+                            loop.getLoopExits().add(exitBlock);
                         }
 
                         // The following loop can add new blocks to the end of the loop's block
@@ -653,7 +653,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                             }
                         }
                     } else {
-                        loop.getExits().addAll(loop.getCfgExits());
+                        loop.getLoopExits().addAll(loop.getNaturalExits());
                     }
                 }
             }
@@ -707,7 +707,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                 }
             }
             for (Map.Entry<Loop<Block>, List<Block>> e : cfgBlocks.entrySet()) {
-                ArrayList<Block> firstMethod = e.getKey().getCfgExits();
+                ArrayList<Block> firstMethod = e.getKey().getNaturalExits();
                 List<Block> secondMethod = e.getValue();
                 firstMethod.sort(Comparator.comparing(Block::getId));
                 secondMethod.sort(Comparator.comparing(Block::getId));

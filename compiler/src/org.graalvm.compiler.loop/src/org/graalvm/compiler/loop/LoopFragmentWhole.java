@@ -68,7 +68,7 @@ public class LoopFragmentWhole extends LoopFragment {
     public NodeBitMap nodes() {
         if (nodes == null) {
             Loop<Block> loop = loop().loop();
-            nodes = LoopFragment.computeNodes(graph(), LoopFragment.toHirBlocks(loop.getBlocks()), LoopFragment.toHirExits(loop.getExits()));
+            nodes = LoopFragment.computeNodes(graph(), LoopFragment.toHirBlocks(loop.getBlocks()), LoopFragment.toHirExits(loop.getLoopExits()));
         }
         return nodes;
     }
@@ -121,7 +121,7 @@ public class LoopFragmentWhole extends LoopFragment {
             // that the LoopExitNodes can be in a block which post dominates the true loop exit. For
             // cloning to work right they must agree.
             EconomicSet<LoopExitNode> exits = EconomicSet.create();
-            for (Block exitBlock : original().loop().loop().getExits()) {
+            for (Block exitBlock : original().loop().loop().getLoopExits()) {
                 LoopExitNode exitNode = exitBlock.getLoopExit();
                 if (exitNode == null) {
                     exitNode = graph.add(new LoopExitNode(loopBegin));
