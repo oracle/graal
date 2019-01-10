@@ -1,5 +1,10 @@
 package org.graalvm.tools.lsp.server.utils;
 
+import java.util.logging.Level;
+
+import org.graalvm.tools.lsp.instrument.LSPInstrument;
+
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
@@ -12,6 +17,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 public final class NearestSectionsFinder {
+    private static final TruffleLogger LOG = TruffleLogger.getLogger(LSPInstrument.ID, NearestSectionsFinder.class);
 
     public static enum NodeLocationType {
         CONTAINS,
@@ -28,11 +34,14 @@ public final class NearestSectionsFinder {
         int oneBasedLineNumber = SourceUtils.zeroBasedLineToOneBasedLine(line, source);
         NearestNode nearestNode = findNearestNodeOneBased(oneBasedLineNumber, character, source, env, tag);
 
-        // TODO(ds) wrap debug printing
         Node node = nearestNode.getNode();
-        System.out.println("nearestNode: " +
-                        (node != null ? node.getClass().getSimpleName() : "--NULL--") + "\t-" + nearestNode.getLocationType() + "-\t" +
-                        (node != null ? node.getSourceSection() : ""));
+
+        if (LOG.isLoggable(Level.FINE)) {
+            LOG.log(Level.FINE, "nearestNode: {0}\t{1}-\t{2}", new Object[]{
+                            (node != null ? node.getClass().getSimpleName() : "--NULL--"),
+                            nearestNode.getLocationType(),
+                            (node != null ? node.getSourceSection() : "")});
+        }
 
         return nearestNode;
     }

@@ -104,8 +104,7 @@ public class LanguageServerImpl implements LanguageServer, LanguageClientAware, 
         truffleAdapter.initialize();
 
         List<String> signatureTriggerChars = waitForResultAndHandleExceptions(truffleAdapter.getSignatureHelpTriggerCharactersOfAllLanguages());
-        System.out.println("SignatureHelp trigger character set: " + signatureTriggerChars);
-        final SignatureHelpOptions signatureHelpOptions = new SignatureHelpOptions(signatureTriggerChars);
+        List<String> triggerCharacters = waitForResultAndHandleExceptions(truffleAdapter.getCompletionTriggerCharactersOfAllLanguages());
 
         ServerCapabilities capabilities = new ServerCapabilities();
         capabilities.setTextDocumentSync(TEXT_DOCUMENT_SYNC_KIND);
@@ -116,11 +115,10 @@ public class LanguageServerImpl implements LanguageServer, LanguageClientAware, 
         capabilities.setCodeLensProvider(new CodeLensOptions(false));
         CompletionOptions completionOptions = new CompletionOptions();
         completionOptions.setResolveProvider(false);
-        List<String> triggerCharacters = waitForResultAndHandleExceptions(truffleAdapter.getCompletionTriggerCharactersOfAllLanguages());
-        System.out.println("Completion trigger character set: " + triggerCharacters);
         completionOptions.setTriggerCharacters(triggerCharacters);
         capabilities.setCompletionProvider(completionOptions);
         capabilities.setCodeActionProvider(true);
+        SignatureHelpOptions signatureHelpOptions = new SignatureHelpOptions(signatureTriggerChars);
         capabilities.setSignatureHelpProvider(signatureHelpOptions);
         capabilities.setHoverProvider(true);
         capabilities.setReferencesProvider(true);
@@ -423,7 +421,7 @@ public class LanguageServerImpl implements LanguageServer, LanguageClientAware, 
         } catch (ExecutionException e) {
             if (e.getCause() instanceof UnknownLanguageException) {
                 String message = "Unknown language: " + e.getCause().getMessage();
-                System.err.println(message);
+                err.println(message);
                 client.showMessage(new MessageParams(MessageType.Error, message));
             } else if (e.getCause() instanceof DiagnosticsNotification) {
                 for (PublishDiagnosticsParams params : ((DiagnosticsNotification) e.getCause()).getDiagnosticParamsCollection()) {

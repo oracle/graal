@@ -5,13 +5,16 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
+import java.util.logging.Level;
 
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.graalvm.options.OptionValues;
+import org.graalvm.tools.lsp.instrument.LSPInstrument;
 
 import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.SourcePredicate;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -19,6 +22,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 public class SourceUtils {
+    private static final TruffleLogger LOG = TruffleLogger.getLogger(LSPInstrument.ID, SourceUtils.class);
 
     public static final class SourceFix {
         public final String text;
@@ -46,7 +50,7 @@ public class SourceUtils {
 
     public static int zeroBasedLineToOneBasedLine(int line, Source source) {
         if (source.getLineCount() < line) {
-            System.err.println("Warning: Line is out of range: " + line);
+            LOG.log(Level.WARNING, "Line is out of range: {0}", line);
         }
 
         return line + 1;
@@ -140,7 +144,7 @@ public class SourceUtils {
         int liensOldText = oldSourceSnippet.getLineCount() + (oldSourceSnippet.getCharacters().toString().endsWith("\n") ? 1 : 0) + (oldSourceSnippet.getLength() == 0 ? 1 : 0);
 
         int newLineModification = linesNewText - liensOldText;
-        System.out.println("newLineModification: " + newLineModification);
+        LOG.log(Level.FINEST, "newLineModification: {0}", newLineModification);
 
         if (newLineModification != 0) {
             List<MutableSourceSection> sections = surrogate.getCoverageLocations();
@@ -148,14 +152,14 @@ public class SourceUtils {
                 MutableSourceSection migratedSection = new MutableSourceSection(section);
                 migratedSection.setEndLine(migratedSection.getEndLine() + newLineModification);
                 surrogate.replace(section, migratedSection);
-                System.out.println("Inlcuded - Old: " + section + " Fixed: " + migratedSection);
+                LOG.log(Level.FINEST, "Included - Old: {0} Fixed: {1}", new Object[]{section, migratedSection});
             });
             sections.stream().filter(section -> section.behind(range)).forEach(section -> {
                 MutableSourceSection migratedSection = new MutableSourceSection(section);
                 migratedSection.setStartLine(migratedSection.getStartLine() + newLineModification);
                 migratedSection.setEndLine(migratedSection.getEndLine() + newLineModification);
                 surrogate.replace(section, migratedSection);
-                System.out.println("Behind   - Old: " + section + " Fixed: " + migratedSection);
+                LOG.log(Level.FINEST, "Behind   - Old: {0} Fixed: {1}", new Object[]{section, migratedSection});
             });
         }
     }

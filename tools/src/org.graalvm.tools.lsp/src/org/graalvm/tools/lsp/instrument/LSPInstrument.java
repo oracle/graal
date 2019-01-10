@@ -18,11 +18,8 @@ import org.graalvm.tools.lsp.instrument.LSOptions.HostAndPort;
 import org.graalvm.tools.lsp.server.LanguageServerImpl;
 import org.graalvm.tools.lsp.server.TruffleAdapter;
 
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
-
-import org.graalvm.tools.lsp.instrument.LSOptionsOptionDescriptors;
 
 @Registration(id = LSPInstrument.ID, name = "Language Server", version = "0.1", services = {VirtualLanguageServerFileProvider.class, ContextAwareExecutorRegistry.class,
                 LanguageServerBootstrapper.class})
@@ -34,8 +31,6 @@ public class LSPInstrument extends TruffleInstrument implements LanguageServerBo
 
     @Override
     protected void onCreate(Env env) {
-        System.out.println("Truffle Runtime: " + Truffle.getRuntime().getName());
-
         options = env.getOptions();
         if (options.hasSetOptions()) {
             LanguageSpecificHacks.enableLanguageSpecificHacks = options.get(LSOptions.LanguageSpecificHacksOption).booleanValue();

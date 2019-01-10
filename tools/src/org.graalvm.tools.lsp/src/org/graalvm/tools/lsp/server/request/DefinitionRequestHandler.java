@@ -7,11 +7,13 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
+import java.util.logging.Level;
 
 import org.eclipse.lsp4j.Location;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.SymbolInformation;
 import org.graalvm.tools.lsp.api.ContextAwareExecutor;
+import org.graalvm.tools.lsp.instrument.LSPInstrument;
 import org.graalvm.tools.lsp.server.utils.EvaluationResult;
 import org.graalvm.tools.lsp.server.utils.InteropUtils;
 import org.graalvm.tools.lsp.server.utils.SourceUtils;
@@ -19,6 +21,7 @@ import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogate;
 import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogateMap;
 
 import com.oracle.truffle.api.Scope;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.SourcePredicate;
@@ -29,6 +32,7 @@ import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.source.SourceSection;
 
 public class DefinitionRequestHandler extends AbstractRequestHandler {
+    private static final TruffleLogger LOG = TruffleLogger.getLogger(LSPInstrument.ID, DefinitionRequestHandler.class);
 
     final SourceCodeEvaluator sourceCodeEvaluator;
     private final SymbolRequestHandler symbolHandler;
@@ -45,7 +49,7 @@ public class DefinitionRequestHandler extends AbstractRequestHandler {
         InstrumentableNode definitionSearchNode = findNodeAtCaret(surrogate, line, character, StandardTags.CallTag.class, StandardTags.ReadVariableTag.class);
         if (definitionSearchNode != null) {
             SourceSection definitionSearchSection = ((Node) definitionSearchNode).getSourceSection();
-            System.out.println(definitionSearchNode.getClass().getSimpleName() + " " + definitionSearchSection);
+            LOG.log(Level.FINER, "Definition node: {0} {1}", new Object[]{definitionSearchNode.getClass().getSimpleName(), definitionSearchSection});
 
             if (definitionSearchNode.hasTag(StandardTags.CallTag.class)) {
                 return definitionOfCallTaggedNode(surrogate, definitionSearchNode, definitionSearchSection);
@@ -98,7 +102,7 @@ public class DefinitionRequestHandler extends AbstractRequestHandler {
     }
 
     private List<? extends Location> definitionOfCallTaggedNode(TextDocumentSurrogate surrogate, InstrumentableNode definitionSearchNode, SourceSection definitionSearchSection) {
-        System.out.println("Trying run-to-section eval...");
+        LOG.fine("Trying run-to-section eval...");
 
         SourceSectionFilter.Builder builder = SourceCodeEvaluator.createSourceSectionFilter(surrogate.getUri(), definitionSearchSection);
         SourceSectionFilter eventFilter = builder.tagIs(StandardTags.CallTag.class).build();
@@ -121,7 +125,7 @@ public class DefinitionRequestHandler extends AbstractRequestHandler {
         }
 
         // Fallback: Static String-based name matching of symbols
-        System.out.println("Trying static symbol matching...");
+        LOG.fine("Trying static symbol matching...");
         String definitionSearchSymbol = definitionSearchSection.getCharacters().toString();
         definitionSearchSymbol = InteropUtils.getNormalizedSymbolName(definitionSearchNode.getNodeObject(), definitionSearchSymbol);
         return findMatchingSymbols(surrogate, definitionSearchSymbol);

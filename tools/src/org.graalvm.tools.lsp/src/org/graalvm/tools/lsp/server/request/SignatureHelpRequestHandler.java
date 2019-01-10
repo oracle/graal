@@ -4,6 +4,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.logging.Level;
 import java.util.stream.Collectors;
 
 import org.eclipse.lsp4j.ParameterInformation;
@@ -11,6 +12,7 @@ import org.eclipse.lsp4j.SignatureHelp;
 import org.eclipse.lsp4j.SignatureInformation;
 import org.graalvm.tools.lsp.api.ContextAwareExecutor;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
+import org.graalvm.tools.lsp.instrument.LSPInstrument;
 import org.graalvm.tools.lsp.interop.GetSignature;
 import org.graalvm.tools.lsp.interop.ObjectStructures;
 import org.graalvm.tools.lsp.server.utils.EvaluationResult;
@@ -19,6 +21,7 @@ import org.graalvm.tools.lsp.server.utils.SourceUtils;
 import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogate;
 import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogateMap;
 
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
@@ -34,6 +37,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 public class SignatureHelpRequestHandler extends AbstractRequestHandler {
+    private static final TruffleLogger LOG = TruffleLogger.getLogger(LSPInstrument.ID, SignatureHelpRequestHandler.class);
 
     private static final Node GET_SIGNATURE = GetSignature.INSTANCE.createNode();
     private static final Node INVOKE = Message.INVOKE.createNode();
@@ -80,7 +84,7 @@ public class SignatureHelpRequestHandler extends AbstractRequestHandler {
 
                         return new SignatureHelp(Arrays.asList(info), 0, numberOfArguments != null ? numberOfArguments - 1 : 0);
                     } catch (UnsupportedMessageException | UnsupportedTypeException e) {
-                        System.out.println("GET_SIGNATURE message not supported by " + result);
+                        LOG.log(Level.FINEST, "GET_SIGNATURE message not supported for TruffleObject: {0}", result);
                     } catch (InteropException e) {
                         e.printStackTrace(err);
                     }

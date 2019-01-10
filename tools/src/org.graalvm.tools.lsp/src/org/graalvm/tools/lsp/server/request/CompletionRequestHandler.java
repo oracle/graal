@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.Future;
+import java.util.logging.Level;
 import java.util.stream.Collectors;
 
 import org.eclipse.lsp4j.CompletionContext;
@@ -23,6 +24,7 @@ import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.graalvm.tools.lsp.api.ContextAwareExecutor;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
 import org.graalvm.tools.lsp.hacks.LanguageSpecificHacks;
+import org.graalvm.tools.lsp.instrument.LSPInstrument;
 import org.graalvm.tools.lsp.interop.GetDocumentation;
 import org.graalvm.tools.lsp.interop.GetSignature;
 import org.graalvm.tools.lsp.interop.ObjectStructures;
@@ -40,6 +42,7 @@ import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogateMap;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -57,6 +60,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 public class CompletionRequestHandler extends AbstractRequestHandler {
+    private static final TruffleLogger LOG = TruffleLogger.getLogger(LSPInstrument.ID, CompletionRequestHandler.class);
 
     private static boolean isInstrumentable(Node node) {
         return node instanceof InstrumentableNode && ((InstrumentableNode) node).isInstrumentable();
@@ -99,6 +103,8 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
     }
 
     public CompletionList completionWithEnteredContext(final URI uri, int line, int originalCharacter, CompletionContext completionContext) throws DiagnosticsNotification {
+        LOG.log(Level.FINER, "Start finding completions for {0}:{1}:{2}", new Object[]{uri, line, originalCharacter});
+
         TextDocumentSurrogate surrogate = surrogateMap.get(uri);
         Source source = surrogate.getSource();
 
@@ -116,7 +122,7 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
 
             SourceFix sourceFix = SourceUtils.removeLastTextInsertion(surrogate, originalCharacter);
             if (sourceFix == null) {
-                System.out.println("Unable to fix unparsable source code. No completion possible.");
+                LOG.fine("Unable to fix unparsable source code. No completion possible.");
                 return new CompletionList();
             }
 
@@ -239,7 +245,7 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
                                                 DiagnosticSeverity.Information, "Graal"));
             }
         } else {
-            System.out.println("No object property completion possible. Caret is not directly at the end of a source section. Nearest section: " + nearestNode.getSourceSection());
+            LOG.fine("No object property completion possible. Caret is not directly at the end of a source section. Nearest section: " + nearestNode.getSourceSection());
         }
     }
 
@@ -350,12 +356,12 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
             if (boxedObject instanceof TruffleObject) {
                 map = ObjectStructures.asMap(new ObjectStructures.MessageNodes(), (TruffleObject) boxedObject);
             } else {
-                System.out.println("Result is no TruffleObject: " + object.getClass());
+                LOG.fine("Result is no TruffleObject: " + object.getClass());
             }
         }
 
         if (map == null || map.isEmpty()) {
-            System.out.println("No completions found for object: " + object);
+            LOG.fine("No completions found for object: " + object);
             return false;
         }
 

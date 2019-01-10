@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.logging.Level;
 
 import org.eclipse.lsp4j.CompletionContext;
 import org.eclipse.lsp4j.CompletionList;
@@ -30,6 +31,7 @@ import org.graalvm.tools.lsp.api.ContextAwareExecutorRegistry;
 import org.graalvm.tools.lsp.api.VirtualLanguageServerFileProvider;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
 import org.graalvm.tools.lsp.exceptions.UnknownLanguageException;
+import org.graalvm.tools.lsp.instrument.LSPInstrument;
 import org.graalvm.tools.lsp.server.request.CompletionRequestHandler;
 import org.graalvm.tools.lsp.server.request.CoverageRequestHandler;
 import org.graalvm.tools.lsp.server.request.DefinitionRequestHandler;
@@ -44,12 +46,15 @@ import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogate;
 import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogateMap;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
 
 public class TruffleAdapter implements VirtualLanguageServerFileProvider, ContextAwareExecutorRegistry {
+    private static final TruffleLogger LOG = TruffleLogger.getLogger(LSPInstrument.ID, TruffleAdapter.class);
 
     private final TruffleInstrument.Env env;
     ContextAwareExecutor contextAwareExecutor;
@@ -91,6 +96,11 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
 
     private void initSurrogateMap() {
         try {
+            contextAwareExecutor.executeWithDefaultContext(() -> {
+                LOG.log(Level.CONFIG, "Truffle Runtime: {0}", Truffle.getRuntime().getName());
+                return null;
+            }).get();
+
             Future<Map<String, LanguageInfo>> futureMimeTypes = contextAwareExecutor.executeWithDefaultContext(() -> {
                 Map<String, LanguageInfo> mimeType2LangInfo = new HashMap<>();
                 for (LanguageInfo langInfo : env.getLanguages().values()) {
@@ -235,7 +245,7 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
             Map<String, LanguageInfo> mimeTypesAllLang = futureMimeTypes.get();
             try {
                 WorkspaceWalker walker = new WorkspaceWalker(mimeTypesAllLang);
-                System.out.println("Start walking file tree at: " + rootPath);
+                LOG.log(Level.FINE, "Start walking file tree at: {0}", rootPath);
                 Files.walkFileTree(rootPath, walker);
                 return walker.parsingTasks;
             } catch (IOException e) {
@@ -349,11 +359,19 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
     }
 
     public Future<List<String>> getCompletionTriggerCharactersOfAllLanguages() {
-        return contextAwareExecutor.executeWithDefaultContext(() -> completionHandler.getCompletionTriggerCharactersWithEnteredContext());
+        return contextAwareExecutor.executeWithDefaultContext(() -> {
+            List<String> triggerCharacters = completionHandler.getCompletionTriggerCharactersWithEnteredContext();
+            LOG.log(Level.CONFIG, "Completion trigger character set: {0}", triggerCharacters);
+            return triggerCharacters;
+        });
     }
 
     public Future<List<String>> getSignatureHelpTriggerCharactersOfAllLanguages() {
-        return contextAwareExecutor.executeWithDefaultContext(() -> signatureHelpHandler.getSignatureHelpTriggerCharactersWithEnteredContext());
+        return contextAwareExecutor.executeWithDefaultContext(() -> {
+            List<String> signatureTriggerChars = signatureHelpHandler.getSignatureHelpTriggerCharactersWithEnteredContext();
+            LOG.log(Level.CONFIG, "SignatureHelp trigger character set: {0}", signatureTriggerChars);
+            return signatureTriggerChars;
+        });
     }
 
     /**
@@ -362,7 +380,7 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
      */
     public Future<?> clearCoverage() {
         return contextAwareExecutor.executeWithDefaultContext(() -> {
-            System.out.println("Clearing and re-parsing all files with coverage data...");
+            LOG.fine("Clearing and re-parsing all files with coverage data...");
             List<PublishDiagnosticsParams> params = new ArrayList<>();
             surrogateMap.getSurrogates().stream().forEach(surrogate -> {
                 surrogate.clearCoverage();
@@ -373,7 +391,7 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
                     params.addAll(e.getDiagnosticParamsCollection());
                 }
             });
-            System.out.println("Clearing and re-parsing done.");
+            LOG.fine("Clearing and re-parsing done.");
 
             throw new DiagnosticsNotification(params);
         });

@@ -5,6 +5,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.logging.Level;
 import java.util.regex.Matcher;
 
 import org.eclipse.lsp4j.Diagnostic;
@@ -17,6 +18,7 @@ import org.graalvm.tools.lsp.exceptions.EvaluationResultException;
 import org.graalvm.tools.lsp.exceptions.InlineParsingNotSupportedException;
 import org.graalvm.tools.lsp.exceptions.InvalidCoverageScriptURI;
 import org.graalvm.tools.lsp.exceptions.UnknownLanguageException;
+import org.graalvm.tools.lsp.instrument.LSPInstrument;
 import org.graalvm.tools.lsp.server.utils.CoverageData;
 import org.graalvm.tools.lsp.server.utils.CoverageEventNode;
 import org.graalvm.tools.lsp.server.utils.EvaluationResult;
@@ -30,6 +32,7 @@ import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogateMap;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
@@ -56,6 +59,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 public class SourceCodeEvaluator extends AbstractRequestHandler {
+    private static final TruffleLogger LOG = TruffleLogger.getLogger(LSPInstrument.ID, SourceCodeEvaluator.class);
 
     public SourceCodeEvaluator(TruffleInstrument.Env env, TextDocumentSurrogateMap surrogateMap, ContextAwareExecutor executor) {
         super(env, surrogateMap, executor);
@@ -69,9 +73,9 @@ public class SourceCodeEvaluator extends AbstractRequestHandler {
         SourceWrapper sourceWrapper = surrogate.prepareParsing();
         CallTarget callTarget = null;
         try {
-            System.out.println("Parsing " + surrogate.getLangId() + " " + surrogate.getUri());
+            LOG.log(Level.FINE, "Parsing {0} {1}", new Object[]{surrogate.getLangId(), surrogate.getUri()});
             callTarget = env.parse(sourceWrapper.getSource());
-            System.out.println("Parsing done.");
+            LOG.log(Level.FINER, "Parsing done.");
             surrogate.notifyParsingSuccessful(callTarget);
         } catch (Exception e) {
             if (e instanceof TruffleException) {
@@ -87,7 +91,7 @@ public class SourceCodeEvaluator extends AbstractRequestHandler {
     }
 
     public EvaluationResult tryDifferentEvalStrategies(TextDocumentSurrogate surrogate, Node nearestNode) throws DiagnosticsNotification {
-        System.out.println("Trying literal eval...");
+        LOG.fine("Trying literal eval...");
         EvaluationResult literalResult = evalLiteral(nearestNode);
         if (literalResult.isEvaluationDone() && !literalResult.isError()) {
             return literalResult;
@@ -98,13 +102,13 @@ public class SourceCodeEvaluator extends AbstractRequestHandler {
             return coverageEvalResult;
         }
 
-        System.out.println("Trying run-to-section eval...");
+        LOG.fine("Trying run-to-section eval...");
         EvaluationResult runToSectionEvalResult = runToSectionAndEval(surrogate, nearestNode);
         if (runToSectionEvalResult.isEvaluationDone()) {
             return runToSectionEvalResult;
         }
 
-        System.out.println("Trying global eval...");
+        LOG.fine("Trying global eval...");
         EvaluationResult globalScopeEvalResult = evalInGlobalScope(surrogate.getLangId(), nearestNode);
         if (globalScopeEvalResult.isError()) {
             return EvaluationResult.createEvaluationSectionNotReached();
@@ -121,11 +125,11 @@ public class SourceCodeEvaluator extends AbstractRequestHandler {
                     if (result instanceof TruffleObject || InteropUtils.isPrimitive(result)) {
                         return EvaluationResult.createResult(result);
                     } else {
-                        System.out.println("Literal is no TruffleObject or primitive: " + result.getClass());
+                        LOG.log(Level.FINE, "Literal is no TruffleObject or primitive: {0}", result.getClass());
                     }
                 }
             } catch (UnknownIdentifierException | UnsupportedMessageException e) {
-                e.printStackTrace();
+                LOG.warning(e.getMessage());
                 return EvaluationResult.createError(e);
             }
         }
@@ -149,7 +153,7 @@ public class SourceCodeEvaluator extends AbstractRequestHandler {
             String symbol = nearestNode.getSourceSection().getCharacters().toString();
             FrameSlot frameSlot = slots.stream().filter(slot -> slot.getIdentifier().equals(symbol)).findFirst().orElseGet(() -> null);
             if (frameSlot != null) {
-                System.out.println("Coverage-based variable look-up");
+                LOG.fine("Coverage-based variable look-up");
                 Object frameSlotValue = coverageData.getFrame().getValue(frameSlot);
                 return EvaluationResult.createResult(frameSlotValue);
             }
@@ -164,7 +168,7 @@ public class SourceCodeEvaluator extends AbstractRequestHandler {
         coverageEventNode.insertOrReplaceChild(executableNode);
 
         try {
-            System.out.println("Trying coverage-based eval...");
+            LOG.fine("Trying coverage-based eval...");
             Object result = executableNode.execute(coverageData.getFrame());
             return EvaluationResult.createResult(result);
         } catch (Exception e) {
@@ -201,16 +205,18 @@ public class SourceCodeEvaluator extends AbstractRequestHandler {
                                 return new ExecutionEventNode() {
 
                                     private String sourceSectionFormat(SourceSection section) {
-                                        return "SourceSection(" + section.getCharacters().toString().replaceAll("\n", Matcher.quoteReplacement("\\n")) + ") ";
+                                        return "SourceSection(" + section.getCharacters().toString().replaceAll("\n", Matcher.quoteReplacement("\\n")) + ")";
                                     }
 
                                     @Override
                                     public void onReturnValue(VirtualFrame frame, Object result) {
-                                        if (indent.length() > 1) {
-                                            indent.setLength(indent.length() - 2);
+                                        if (LOG.isLoggable(Level.FINEST)) {
+                                            if (indent.length() > 1) {
+                                                indent.setLength(indent.length() - 2);
+                                            }
+                                            LOG.log(Level.FINEST, "{0}onReturnValue {1} {2} {3} {4}", new Object[]{indent, context.getInstrumentedNode().getClass().getSimpleName(),
+                                                            sourceSectionFormat(context.getInstrumentedSourceSection()), result});
                                         }
-                                        System.out.println(indent + "onReturnValue " + context.getInstrumentedNode().getClass().getSimpleName() + " " +
-                                                        sourceSectionFormat(context.getInstrumentedSourceSection()) + result);
 
                                         if (!isInputFilterDefined) {
                                             throw new EvaluationResultException(result);
@@ -219,28 +225,32 @@ public class SourceCodeEvaluator extends AbstractRequestHandler {
 
                                     @Override
                                     public void onReturnExceptional(VirtualFrame frame, Throwable exception) {
-                                        indent.setLength(indent.length() - 2);
-                                        System.out.println(indent + "onReturnExceptional " + sourceSectionFormat(context.getInstrumentedSourceSection()));
+                                        if (LOG.isLoggable(Level.FINEST)) {
+                                            indent.setLength(indent.length() - 2);
+                                            LOG.log(Level.FINEST, "{0}onReturnExceptional {1}", new Object[]{indent, sourceSectionFormat(context.getInstrumentedSourceSection())});
+                                        }
                                     }
 
                                     @Override
                                     public void onEnter(VirtualFrame frame) {
-                                        System.out.println(indent + "onEnter " + context.getInstrumentedNode().getClass().getSimpleName() + " " +
-                                                        sourceSectionFormat(context.getInstrumentedSourceSection()));
-                                        indent.append("  ");
+                                        if (LOG.isLoggable(Level.FINEST)) {
+                                            LOG.log(Level.FINEST, "{0}onEnter {1} {2}", new Object[]{indent, context.getInstrumentedNode().getClass().getSimpleName(),
+                                                            sourceSectionFormat(context.getInstrumentedSourceSection())});
+                                            indent.append("  ");
+                                        }
                                     }
 
                                     @Override
                                     public void onInputValue(VirtualFrame frame, EventContext inputContext, int inputIndex, Object inputValue) {
-                                        indent.setLength(indent.length() - 2);
-                                        System.out.println(indent + "onInputValue idx:" + inputIndex + " " +
-                                                        inputContext.getInstrumentedNode().getClass().getSimpleName() + " " +
-                                                        sourceSectionFormat(context.getInstrumentedSourceSection()) +
-                                                        sourceSectionFormat(inputContext.getInstrumentedSourceSection()) +
-                                                        inputValue + " " +
-                                                        env.findMetaObject(inputContext.getInstrumentedNode().getRootNode().getLanguageInfo(),
-                                                                        inputValue));
-                                        indent.append("  ");
+                                        if (LOG.isLoggable(Level.FINEST)) {
+                                            indent.setLength(indent.length() - 2);
+                                            LOG.log(Level.FINEST, "{0}onInputValue idx:{1} {2} {3} {4} {5} {6}",
+                                                            new Object[]{indent, inputIndex, inputContext.getInstrumentedNode().getClass().getSimpleName(),
+                                                                            sourceSectionFormat(context.getInstrumentedSourceSection()),
+                                                                            sourceSectionFormat(inputContext.getInstrumentedSourceSection()), inputValue,
+                                                                            env.findMetaObject(inputContext.getInstrumentedNode().getRootNode().getLanguageInfo(), inputValue)});
+                                            indent.append("  ");
+                                        }
 
                                         throw new EvaluationResultException(inputValue);
                                     }
@@ -254,7 +264,7 @@ public class SourceCodeEvaluator extends AbstractRequestHandler {
         } catch (EvaluationResultException e) {
             return e.isError() ? EvaluationResult.createError(e.getResult()) : EvaluationResult.createResult(e.getResult());
         } catch (InlineParsingNotSupportedException e) {
-            err.println("Inline parsing not supported for language " + surrogate.getLangId());
+            LOG.log(Level.WARNING, "Inline parsing not supported for language {0}", surrogate.getLangId());
             return EvaluationResult.createEvaluationSectionNotReached();
         } catch (RuntimeException e) {
             if (e instanceof TruffleException) {
