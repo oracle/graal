@@ -60,14 +60,8 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
     static {
         Method[] publicArrayMethods;
         try {
-            Method reflectionDataMethod = findMethod(Class.class, "reflectionData");
-            Class<?> originalReflectionDataClass = Class.forName("java.lang.Class$ReflectionData");
-            Field publicMethodsField = findField(originalReflectionDataClass, "publicMethods");
-
-            Class<?> clazz = Object[].class;
-            clazz.getMethods();
-            Object originalReflectionData = reflectionDataMethod.invoke(clazz);
-            publicArrayMethods = (Method[]) publicMethodsField.get(originalReflectionData);
+            Method getPublicMethodsMethod = findMethod(Class.class, "privateGetPublicMethods");
+            publicArrayMethods = (Method[]) getPublicMethodsMethod.invoke(Object[].class);
         } catch (ReflectiveOperationException e) {
             throw VMError.shouldNotReachHere(e);
         }
