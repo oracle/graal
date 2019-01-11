@@ -55,6 +55,8 @@ class WindowsJavaNIOSubstituteFeature implements Feature {
         RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.nio.fs.WindowsNativeDispatcher"));
         RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.nio.fs.WindowsSecurity"));
         RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.nio.ch.ServerSocketChannelImpl"));
+        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.nio.ch.IOUtil"));
+        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("sun.nio.ch.FileChannelImpl"));
     }
 
     @Override
@@ -115,22 +117,6 @@ class WindowsJavaNIOSubstituteFeature implements Feature {
     }
 }
 
-@TargetClass(className = "sun.nio.ch.FileChannelImpl")
-@Platforms(Platform.WINDOWS.class)
-final class Target_sun_nio_ch_FileChannelImpl {
-
-    @Alias
-    static native long initIDs();
-}
-
-@TargetClass(className = "sun.nio.ch.IOUtil")
-@Platforms(Platform.WINDOWS.class)
-final class Target_sun_nio_ch_IOUtil {
-
-    @Alias
-    static native void initIDs();
-}
-
 @TargetClass(className = "sun.nio.fs.WindowsFileSystemProvider")
 @Platforms(Platform.WINDOWS.class)
 final class Target_sun_nio_fs_WindowsFileSystemProvider {
@@ -144,14 +130,6 @@ final class Target_sun_nio_fs_WindowsFileSystemProvider {
 public final class WindowsJavaNIOSubstitutions {
 
     public static boolean initIDs() {
-        // FileChannelImpl and IOUtil can't be reinitialized so we manually initialize it here.
-        //
-        // java.lang.AssertionError:
-        // at
-        // com.oracle.svm.core.Plugin_FoldedPredicate_test.execute(PluginFactory_SubstrateOptions.java:39)
-        Target_sun_nio_ch_FileChannelImpl.initIDs();
-        Target_sun_nio_ch_IOUtil.initIDs();
-
         return true;
     }
 
@@ -192,5 +170,4 @@ public final class WindowsJavaNIOSubstitutions {
         @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Manual)//
         private long pollingAddress;
     }
-
 }

@@ -24,14 +24,13 @@
  */
 package com.oracle.svm.core.windows;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.jni.JNIRuntimeAccess;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.RuntimeClassInitialization;
+import org.graalvm.nativeimage.RuntimeReflection;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.windows.headers.WinSock;
@@ -46,6 +45,9 @@ class WindowsJavaNetSubstitutionsFeature implements Feature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         try {
+            RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.net.InetAddress"));
+            RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.net.Inet4AddressImpl"));
+            RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.net.Inet6AddressImpl"));
             RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.net.SocketInputStream"));
             RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.net.SocketOutputStream"));
             RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.net.NetworkInterface"));
@@ -165,18 +167,16 @@ class WindowsJavaNetSubstitutionsFeature implements Feature {
             JNIRuntimeAccess.register(access.findClassByName("java.lang.Boolean").getDeclaredConstructor(boolean.class));
             JNIRuntimeAccess.register(access.findClassByName("java.lang.Boolean").getDeclaredMethod("getBoolean", String.class));
 
+            RuntimeReflection.register(access.findClassByName("java.net.InetAddressImpl"));
+            RuntimeReflection.register(access.findClassByName("java.net.Inet4AddressImpl"));
+            RuntimeReflection.register(access.findClassByName("java.net.Inet6AddressImpl"));
+            RuntimeReflection.registerForReflectiveInstantiation(access.findClassByName("java.net.Inet4AddressImpl"));
+            RuntimeReflection.registerForReflectiveInstantiation(access.findClassByName("java.net.Inet6AddressImpl"));
+
         } catch (Exception e) {
             VMError.shouldNotReachHere("WindowsJavaNetSubstitutionsFeature: Error registering class or method: ", e);
         }
     }
-}
-
-@TargetClass(className = "java.net.DualStackPlainSocketImpl")
-@Platforms(Platform.WINDOWS.class)
-final class Target_java_net_DualStackPlainSocketImpl {
-
-    @Alias
-    static native void initIDs();
 }
 
 @Platforms(Platform.WINDOWS.class)
@@ -184,15 +184,6 @@ public final class WindowsJavaNetSubstitutions {
 
     public static boolean initIDs() {
         WinSock.init();
-
-        // Can't re-initialize java.net.InetAddress due to a BytecodeParsing error.
-        // We call DualStackPlainSocketImpl.initIDs instead which calls the InetAddress init
-        // functions via initInetAddressIDs.
-        //
-        // java.lang.AssertionError:
-        // at
-        // com.oracle.svm.core.Plugin_FoldedPredicate_test.execute(PluginFactory_SubstrateOptions.java:39)
-        Target_java_net_DualStackPlainSocketImpl.initIDs();
         return true;
     }
 }
