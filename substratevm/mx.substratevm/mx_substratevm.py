@@ -754,7 +754,7 @@ def _helloworld(native_image, javac_command, path, args):
 
     native_image(["-H:Path=" + path, '-cp', path, 'HelloWorld'] + args)
 
-    expected_output = [output + '\n']
+    expected_output = [output + os.linesep]
     actual_output = []
     def _collector(x):
         actual_output.append(x)
@@ -902,7 +902,7 @@ def helloworld(args):
     all_args = ['--output-path', '--javac-command']
     masked_args = [_mask(arg, all_args) for arg in args]
     parser.add_argument(all_args[0], metavar='<output-path>', nargs=1, help='Path of the generated image', default=[svmbuild_dir(suite)])
-    parser.add_argument(all_args[1], metavar='<javac-command>', help='A javac command to be used', default='javac')
+    parser.add_argument(all_args[1], metavar='<javac-command>', help='A javac command to be used', default=mx.get_jdk().javac)
     parser.add_argument('image_args', nargs='*', default=[])
     parsed = parser.parse_args(masked_args)
     javac_command = unmask(parsed.javac_command.split())
