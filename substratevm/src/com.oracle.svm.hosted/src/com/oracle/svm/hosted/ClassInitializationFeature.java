@@ -244,7 +244,11 @@ public final class ClassInitializationFeature implements Feature, RuntimeClassIn
         ClassInitializationInfo info;
         if (shouldInitializeAtRuntime(type)) {
             AnalysisMethod classInitializer = type.getClassInitializer();
-            if (classInitializer != null) {
+            /*
+             * If classInitializer.getCode() returns null then the type failed to initialize due to
+             * verification issues triggered by missing types.
+             */
+            if (classInitializer != null && classInitializer.getCode() != null) {
                 access.registerAsCompiled(classInitializer);
             }
             info = new ClassInitializationInfo(MethodPointer.factory(classInitializer));
