@@ -79,7 +79,11 @@ public abstract class CCallStubMethod extends CustomSubstitutionMethod {
         HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
         FrameStateBuilder state = kit.getFrameState();
         ValueNode callAddress = createTargetAddressNode(kit, providers);
-        List<ValueNode> arguments = kit.loadArguments(method.toParameterTypes());
+        JavaType[] parameterTypes = method.toParameterTypes();
+        if (method.hasReceiver()) {
+            parameterTypes = Arrays.copyOfRange(parameterTypes, 1, parameterTypes.length);
+        }
+        List<ValueNode> arguments = kit.loadArguments(parameterTypes);
         Signature signature = adaptSignatureAndConvertArguments(providers, nativeLibraries, kit, method.getSignature(), arguments);
         state.clearLocals();
         ValueNode returnValue = kit.createCFunctionCall(callAddress, arguments, signature, needsTransition, deoptimizationTarget);
