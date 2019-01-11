@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,39 +22,46 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.core.jdk9.posix;
 
-package com.oracle.svm.core.jdk;
+import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.JDK9OrLater;
+import com.oracle.svm.core.posix.Java_lang_Process_Supplement;
 import com.oracle.svm.core.util.VMError;
-
-public class JavaLangSubstitutionsJDK9OrLater {
-}
-
-/* This will be replaced with full JDK JNI implementations */
 
 @TargetClass(className = "java.lang.ProcessHandleImpl", onlyWith = JDK9OrLater.class)
 final class Target_java_lang_ProcessHandleImpl {
 
     @Substitute
     private static long isAlive0(long pid) {
-        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ProcessHandleImpl.isAlive0");
+        return ProcessProperties.isAlive(pid) ? 0 : -1;
     }
 
     @Substitute
     private static int waitForProcessExit0(long pid, boolean reapvalue) {
-        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ProcessHandleImpl.waitForProcessExit0");
+        return Java_lang_Process_Supplement.waitForProcessExit0(pid, reapvalue);
     }
 
     @Substitute
     private static long getCurrentPid0() {
-        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ProcessHandleImpl.getCurrentPid0");
+        return ProcessProperties.getProcessID();
+    }
 
+    @Substitute
+    private static boolean destroy0(long pid, long startTime, boolean forcibly) {
+        VMError.guarantee(startTime == 0, "startTime != 0 currently not supported");
+        if (forcibly) {
+            return ProcessProperties.destroyForcibly(pid);
+        } else {
+            return ProcessProperties.destroy(pid);
+        }
     }
 
     @Substitute
     private static void initNative() {
-        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ProcessHandleImpl.initNative");
+        /* Currently unused */
     }
 }

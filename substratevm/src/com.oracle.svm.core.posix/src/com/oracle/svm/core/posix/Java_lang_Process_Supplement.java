@@ -48,15 +48,16 @@ import com.oracle.svm.core.LibCHelper;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.posix.headers.Dirent;
+import com.oracle.svm.core.posix.headers.Dirent.DIR;
+import com.oracle.svm.core.posix.headers.Dirent.dirent;
+import com.oracle.svm.core.posix.headers.Dirent.direntPointer;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Fcntl;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Limits;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posix.headers.UnistdNoTransitions;
-import com.oracle.svm.core.posix.headers.Dirent.DIR;
-import com.oracle.svm.core.posix.headers.Dirent.dirent;
-import com.oracle.svm.core.posix.headers.Dirent.direntPointer;
+import com.oracle.svm.core.posix.headers.Wait;
 import com.oracle.svm.core.util.VMError;
 
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
@@ -413,5 +414,34 @@ public final class Java_lang_Process_Supplement {
             }
             throw e;
         }
+    }
+
+    public static int waitForProcessExit0(long pid, boolean reapvalue) {
+        if (reapvalue) {
+            return waitForProcessExit(Math.toIntExact(pid));
+        } else {
+            /* The waitid libc call, currently ... */
+            throw VMError.unimplemented();
+        }
+    }
+
+    public static int waitForProcessExit(int ppid) {
+        CIntPointer statusptr = StackValue.get(CIntPointer.class);
+        while (Wait.waitpid(ppid, statusptr, 0) < 0) {
+            if (Errno.errno() == Errno.ECHILD()) {
+                return 0;
+            } else if (Errno.errno() != Errno.EINTR()) {
+                return -1;
+            }
+        }
+
+        int status = statusptr.read();
+        if (Wait.WIFEXITED(status)) {
+            return Wait.WEXITSTATUS(status);
+        } else if (Wait.WIFSIGNALED(status)) {
+            // Exited because of signal: return 0x80 + signal number like shells do
+            return 0x80 + Wait.WTERMSIG(status);
+        }
+        return status;
     }
 }

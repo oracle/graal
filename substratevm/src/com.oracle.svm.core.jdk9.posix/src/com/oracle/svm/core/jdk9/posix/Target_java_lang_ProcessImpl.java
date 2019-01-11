@@ -62,7 +62,6 @@ final class Target_java_lang_ProcessImpl {
 
     @SuppressWarnings({"static-method"})
     @Substitute
-    @TargetElement(onlyWith = JDK9OrLater.class)
     private int forkAndExec(
                     int mode,
                     byte[] helperpath,
@@ -77,7 +76,6 @@ final class Target_java_lang_ProcessImpl {
     }
 
     @Substitute //
-    @TargetElement(onlyWith = JDK9OrLater.class)
     private static /* native */ void init() {
         throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ProcessImpl.init");
     }

@@ -594,6 +594,7 @@ suite = {
                 "com.oracle.svm.core.jdk8",
                 "com.oracle.svm.core.jdk9",
                 "com.oracle.svm.core.posix",
+                "com.oracle.svm.core.jdk9.posix",
                 "com.oracle.svm.core.windows",
                 "com.oracle.svm.core.genscavenge",
             ],

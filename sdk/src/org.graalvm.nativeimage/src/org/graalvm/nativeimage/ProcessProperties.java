@@ -82,8 +82,8 @@ public final class ProcessProperties {
      *
      * @since 1.0
      */
-    public static void destroy(long processID) {
-        ImageSingletons.lookup(ProcessPropertiesSupport.class).destroy(processID);
+    public static boolean destroy(long processID) {
+        return ImageSingletons.lookup(ProcessPropertiesSupport.class).destroy(processID);
     }
 
     /**
@@ -93,8 +93,8 @@ public final class ProcessProperties {
      *
      * @since 1.0
      */
-    public static void destroyForcibly(long processID) {
-        ImageSingletons.lookup(ProcessPropertiesSupport.class).destroyForcibly(processID);
+    public static boolean destroyForcibly(long processID) {
+        return ImageSingletons.lookup(ProcessPropertiesSupport.class).destroyForcibly(processID);
     }
 
     /**

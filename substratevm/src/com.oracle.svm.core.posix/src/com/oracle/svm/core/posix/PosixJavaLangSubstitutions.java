@@ -39,7 +39,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
-import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.WordFactory;
 
@@ -53,13 +52,11 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
-import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Time.timeval;
 import com.oracle.svm.core.posix.headers.Time.timezone;
 import com.oracle.svm.core.posix.headers.Unistd;
-import com.oracle.svm.core.posix.headers.Wait;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.PointerUtils;
 
@@ -270,23 +267,7 @@ final class Target_java_lang_UNIXProcess {
     @Substitute
     @SuppressWarnings({"static-method"})
     int waitForProcessExit(int ppid) {
-        CIntPointer statusptr = StackValue.get(CIntPointer.class);
-        while (Wait.waitpid(ppid, statusptr, 0) < 0) {
-            if (Errno.errno() == Errno.ECHILD()) {
-                return 0;
-            } else if (Errno.errno() != Errno.EINTR()) {
-                return -1;
-            }
-        }
-
-        int status = statusptr.read();
-        if (Wait.WIFEXITED(status)) {
-            return Wait.WEXITSTATUS(status);
-        } else if (Wait.WIFSIGNALED(status)) {
-            // Exited because of signal: return 0x80 + signal number like shells do
-            return 0x80 + Wait.WTERMSIG(status);
-        }
-        return status;
+        return Java_lang_Process_Supplement.waitForProcessExit(ppid);
     }
 
     @Substitute
