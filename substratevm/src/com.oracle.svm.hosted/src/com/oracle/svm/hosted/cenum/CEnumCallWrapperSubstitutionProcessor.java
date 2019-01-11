@@ -31,6 +31,7 @@ import org.graalvm.nativeimage.c.constant.CEnumLookup;
 import org.graalvm.nativeimage.c.constant.CEnumValue;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
+import com.oracle.svm.hosted.c.NativeLibraries;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -41,6 +42,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class CEnumCallWrapperSubstitutionProcessor extends SubstitutionProcessor {
 
     private final Map<ResolvedJavaMethod, CEnumCallWrapperMethod> callWrappers = new ConcurrentHashMap<>();
+    private NativeLibraries nativeLibraries;
 
     public CEnumCallWrapperSubstitutionProcessor() {
         super();
@@ -49,7 +51,7 @@ public class CEnumCallWrapperSubstitutionProcessor extends SubstitutionProcessor
     @Override
     public ResolvedJavaMethod lookup(ResolvedJavaMethod method) {
         if (method.getAnnotation(CEnumLookup.class) != null || method.getAnnotation(CEnumValue.class) != null) {
-            return callWrappers.computeIfAbsent(method, CEnumCallWrapperMethod::new);
+            return callWrappers.computeIfAbsent(method, v -> new CEnumCallWrapperMethod(nativeLibraries, v));
         } else {
             return method;
         }
@@ -61,5 +63,9 @@ public class CEnumCallWrapperSubstitutionProcessor extends SubstitutionProcessor
             return ((CEnumCallWrapperMethod) method).getOriginal();
         }
         return method;
+    }
+
+    public void setNativeLibraries(NativeLibraries nativeLibs) {
+        this.nativeLibraries = nativeLibs;
     }
 }

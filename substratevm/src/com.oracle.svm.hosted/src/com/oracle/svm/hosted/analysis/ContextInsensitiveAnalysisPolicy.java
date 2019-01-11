@@ -27,15 +27,15 @@ package com.oracle.svm.hosted.analysis;
 import org.graalvm.compiler.options.OptionValues;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.BytecodeSensitiveAnalysisPolicy;
+import com.oracle.graal.pointsto.DefaultAnalysisPolicy;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 
-public class SVMBytecodeAnalysisPolicy extends BytecodeSensitiveAnalysisPolicy implements SVMAnalysisPolicy {
+public class ContextInsensitiveAnalysisPolicy extends DefaultAnalysisPolicy implements SVMAnalysisPolicy {
 
-    public SVMBytecodeAnalysisPolicy(OptionValues options) {
+    public ContextInsensitiveAnalysisPolicy(OptionValues options) {
         super(options);
     }
 

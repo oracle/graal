@@ -110,7 +110,7 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
         this.type = type;
         this.kind = kind;
         this.merged = false;
-        this.arrayElementsTypeStore = universe.hostVM().analysisPolicy().createArrayElementsTypeStore(this, universe);
+        this.arrayElementsTypeStore = universe.analysisPolicy().createArrayElementsTypeStore(this, universe);
     }
 
     /**

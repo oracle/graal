@@ -159,7 +159,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         isArray = wrapped.isArray();
         this.storageKind = storageKind;
         this.unsafeAccessedFieldsRegistered = false;
-        if (universe.hostVM.analysisPolicy().needsConstantCache()) {
+        if (universe.analysisPolicy().needsConstantCache()) {
             this.constantObjectsCache = new ConcurrentHashMap<>();
         }
 
@@ -201,7 +201,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     private AnalysisType[] convertTypes(ResolvedJavaType[] originalTypes) {
         List<AnalysisType> result = new ArrayList<>(originalTypes.length);
         for (ResolvedJavaType originalType : originalTypes) {
-            if (!universe.hostVM().platformSupported(originalType)) {
+            if (!universe.platformSupported(originalType)) {
                 /* Ignore types that are not in our platform (including hosted-only types). */
                 continue;
             }
@@ -924,7 +924,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         try {
             return wrapped.isLocal();
         } catch (InternalError e) {
-            universe.getHostVM().warn("unknown locality of class " + wrapped.getName() + ", assuming class is not local. To remove the warning report an issue " +
+            universe.hostVM().warn("unknown locality of class " + wrapped.getName() + ", assuming class is not local. To remove the warning report an issue " +
                             "to the library or language author. The issue is caused by " + wrapped.getName() + " which is not following the naming convention.");
             return false;
         }
@@ -993,5 +993,4 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     public boolean isAnnotation() {
         return (getModifiers() & ANNOTATION) != 0;
     }
-
 }
