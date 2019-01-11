@@ -28,7 +28,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.intrinsics.Type;
 import com.oracle.truffle.espresso.meta.Meta;
 
-public class EspressoException extends RuntimeException implements TruffleException {
+public final class EspressoException extends RuntimeException implements TruffleException {
     private static final long serialVersionUID = -7667957575377419520L;
     private final StaticObject exception;
 
