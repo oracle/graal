@@ -144,7 +144,6 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @Uninterruptible(reason = "Called by an uninterruptible method.")
     public static void setHeapBase(PointerBase heapBase) {
-        assert SpawnIsolates.getValue();
         writeCurrentVMHeapBase(hasHeapBase() ? heapBase : WordFactory.nullPointer());
     }
 
@@ -396,7 +395,6 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     @Snippet
     public static int returnFromJavaToCSnippet() {
         if (MultiThreaded.getValue()) {
-            assert VMThreads.StatusSupport.isStatusJava() : "Should be coming from Java to native.";
             VMThreads.StatusSupport.setStatusNative();
         }
         return CEntryPointErrors.NO_ERROR;

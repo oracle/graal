@@ -4539,9 +4539,13 @@ public class BytecodeParser implements GraphBuilderContext {
          * Javac does not allow use of "$assertionsDisabled" for a field name but Eclipse does, in
          * which case a suffix is added to the generated field.
          */
-        if ((parsingIntrinsic() || graphBuilderConfig.omitAssertions()) && resolvedField.isSynthetic() && resolvedField.getName().startsWith("$assertionsDisabled")) {
-            frameState.push(field.getJavaKind(), ConstantNode.forBoolean(true, graph));
-            return;
+        if (resolvedField.isSynthetic() && resolvedField.getName().startsWith("$assertionsDisabled")) {
+            if (parsingIntrinsic()) {
+                throw new GraalError("Cannot use an assertion within the context of an intrinsic.");
+            } else if (graphBuilderConfig.omitAssertions()) {
+                frameState.push(field.getJavaKind(), ConstantNode.forBoolean(true, graph));
+                return;
+            }
         }
 
         ResolvedJavaType holder = resolvedField.getDeclaringClass();

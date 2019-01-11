@@ -40,9 +40,11 @@ import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.GraalGraphError;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
+import org.graalvm.compiler.java.BytecodeParser.BytecodeParserError;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -64,8 +66,10 @@ import org.graalvm.compiler.phases.common.FrameStateAssignmentPhase;
 import org.graalvm.compiler.phases.common.GuardLoweringPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.test.GraalTest;
 import org.graalvm.word.LocationIdentity;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -190,6 +194,10 @@ public class ReplacementsParseTest extends ReplacementsTest {
         static int nonVoidIntrinsicWithOptimizedSplit(int x) {
             return x;
         }
+
+        static int div(int x, int y) {
+            return x / y;
+        }
     }
 
     @ClassSubstitution(TestObject.class)
@@ -287,6 +295,12 @@ public class ReplacementsParseTest extends ReplacementsTest {
             return x;
         }
 
+        @MethodSubstitution
+        static int div(int x, int y) {
+            assert y != 0;
+            return x / y;
+        }
+
         public static void nonVoidIntrinsicWithCallStub(int zLen) {
             nonVoidIntrinsicWithCallStub(STUB_CALL, zLen);
         }
@@ -311,6 +325,7 @@ public class ReplacementsParseTest extends ReplacementsTest {
         r.registerMethodSubstitution(TestObjectSubstitutions.class, "copyFirstL2R", byte[].class, byte[].class);
         r.registerMethodSubstitution(TestObjectSubstitutions.class, "nonVoidIntrinsicWithCall", int.class, int.class);
         r.registerMethodSubstitution(TestObjectSubstitutions.class, "nonVoidIntrinsicWithOptimizedSplit", int.class);
+        r.registerMethodSubstitution(TestObjectSubstitutions.class, "div", int.class, int.class);
 
         if (replacementBytecodeProvider.supportsInvokedynamic()) {
             r.registerMethodSubstitution(TestObjectSubstitutions.class, "identity", String.class);
@@ -357,6 +372,7 @@ public class ReplacementsParseTest extends ReplacementsTest {
 
     @Test
     public void testNextAfter() {
+        Assume.assumeFalse(GraalTest.Java8OrEarlier);
         double[] inArray = new double[1024];
         double[] outArray = new double[1024];
         for (int i = 0; i < inArray.length; i++) {
@@ -588,6 +604,20 @@ public class ReplacementsParseTest extends ReplacementsTest {
     @Test
     public void testNonVoidIntrinsicWithOptimizedSplit() {
         testGraph("nonVoidIntrinsicWithOptimizedSplit");
+    }
+
+    public static int div(int x, int y) {
+        return TestObject.div(x, y);
+    }
+
+    @Test
+    public void testAssertionInMethodSubstitution() {
+        try {
+            parseEager("div", StructuredGraph.AllowAssumptions.YES);
+            throw GraalError.shouldNotReachHere("BytecodeParser should have complained about using assertion in an intrinsic.");
+        } catch (BytecodeParserError e) {
+            // Expected behavior
+        }
     }
 
     @SuppressWarnings("try")
