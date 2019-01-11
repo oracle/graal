@@ -63,7 +63,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class CSourceCodeWriter {
 
-    private static final String CHARSET = "US-ASCII";
     private static final String INDENT4 = "    ";
     public static final String C_SOURCE_FILE_EXTENSION = ".c";
     public static final String CXX_SOURCE_FILE_EXTENSION = ".cpp";
@@ -170,9 +169,8 @@ public class CSourceCodeWriter {
         }
 
         Path outputFile = tempDirectory.resolve(fixedFileName);
-        Charset charset = Charset.forName(CHARSET);
 
-        try (BufferedWriter writer = Files.newBufferedWriter(outputFile, charset)) {
+        try (BufferedWriter writer = Files.newBufferedWriter(outputFile, Charset.forName("UTF-8"))) {
             for (String line : lines) {
                 writer.write(line);
                 writer.write("\n");
