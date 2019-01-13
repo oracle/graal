@@ -572,6 +572,25 @@ suite = {
       "workingSets" : "Truffle",
     },
 
+    "libffi" : {
+      "class" : "LibffiBuilderProject",
+      "buildDependencies" : [
+        "LIBFFI",
+      ],
+      "os_arch" : {
+        "windows" : {
+          "<others>" : {
+            "ignore" : "windows is not supported",  # necessary until Truffle is fully supported (GR-7941)
+          },
+        },
+        "<others>" : {
+          "<others>" : {
+            "ignore" : False,
+          },
+        },
+      },
+    },
+
     "com.oracle.truffle.nfi.native" : {
       "subDir" : "src",
       "native" : True,
