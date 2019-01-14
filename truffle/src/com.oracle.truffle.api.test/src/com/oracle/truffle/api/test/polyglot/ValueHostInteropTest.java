@@ -69,6 +69,7 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.TypeLiteral;
@@ -439,6 +440,15 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
         String toString();
 
         Object call(Object... args);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void executableAsFunction() throws Exception {
+        TruffleObject executable = new FunctionObject();
+        Function<Integer, Integer> f = context.asValue(executable).as(Function.class);
+        assertEquals(13, (int) f.apply(13));
+        assertTrue(f.equals(f));
     }
 
     @Test

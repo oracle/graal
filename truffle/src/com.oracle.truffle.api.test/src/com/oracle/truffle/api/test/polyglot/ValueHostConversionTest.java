@@ -979,6 +979,17 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
     }
 
     @Test
+    public void testExecuteFunction() {
+        Value function = context.asValue(new Function<Object, Object>() {
+            public Object apply(Object t) {
+                return ((int) t) * 2;
+            }
+        });
+
+        assertEquals(2, function.execute(1).asInt());
+    }
+
+    @Test
     public void testExceptionFrames1() {
         Value innerInner = context.asValue(new Function<Object, Object>() {
             public Object apply(Object t) {
