@@ -96,14 +96,6 @@ final class Target_java_io_FileInputStream {
     static native void initIDs();
 }
 
-@TargetClass(java.io.RandomAccessFile.class)
-@Platforms(Platform.WINDOWS.class)
-final class Target_java_io_RandomAccessFile {
-
-    @Alias
-    static native void initIDs();
-}
-
 @TargetClass(java.io.FileDescriptor.class)
 @Platforms(Platform.WINDOWS.class)
 final class Target_java_io_FileDescriptor {
