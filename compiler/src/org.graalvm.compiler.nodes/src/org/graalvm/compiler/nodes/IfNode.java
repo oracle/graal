@@ -992,12 +992,6 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         return null;
     }
 
-    private static ConditionalNode createConditionalNode(boolean negateCondition, LogicNode condition, ValueNode trueValue, ValueNode falseValue) {
-        return negateCondition
-                        ? new ConditionalNode(condition, falseValue, trueValue)
-                        : new ConditionalNode(condition, trueValue, falseValue);
-    }
-
     /**
      * Take an if that is immediately dominated by a merge with a single phi and split off any paths
      * where the test would be statically decidable creating a new merge below the approriate side
