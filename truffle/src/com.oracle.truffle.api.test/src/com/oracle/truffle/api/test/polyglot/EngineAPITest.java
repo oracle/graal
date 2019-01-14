@@ -234,33 +234,66 @@ public class EngineAPITest {
     @Test
     @SuppressWarnings("try")
     public void testListLanguagesDoesNotInvalidateSingleContext() {
-        resetSingleContextState();
-        try (Engine engine = Engine.create()) {
-            engine.getLanguages();
-        }
-        assertTrue(isSingleContextAssumptionValid());
-        try (Engine engine = Engine.create()) {
-            try (Context ctx = Context.newBuilder().engine(engine).build()) {
-                assertFalse(isSingleContextAssumptionValid());
+        Object prev = resetSingleContextState();
+        try {
+            try (Engine engine = Engine.create()) {
+                engine.getLanguages();
             }
+            assertTrue(isSingleContextAssumptionValid());
+            try (Engine engine = Engine.create()) {
+                try (Context ctx = Context.newBuilder().engine(engine).build()) {
+                    assertFalse(isSingleContextAssumptionValid());
+                }
+            }
+        } finally {
+            restoreSingleContextState(prev);
         }
     }
 
     @Test
     public void testListInstrumentsDoesNotInvalidateSingleContext() {
-        resetSingleContextState();
-        try (Engine engine = Engine.create()) {
-            engine.getInstruments();
+        Object prev = resetSingleContextState();
+        try {
+            try (Engine engine = Engine.create()) {
+                engine.getInstruments();
+            }
+            assertTrue(isSingleContextAssumptionValid());
+        } finally {
+            restoreSingleContextState(prev);
         }
-        assertTrue(isSingleContextAssumptionValid());
     }
 
-    private static void resetSingleContextState() {
+    @Test
+    @SuppressWarnings("try")
+    public void testContextWithBoundEngineDoesNotInvalidateSingleContext() {
+        Object prev = resetSingleContextState();
+        try {
+            try (Context ctx = Context.create()) {
+                ctx.initialize(EngineAPITestLanguage.ID);
+            }
+            assertTrue(isSingleContextAssumptionValid());
+        } finally {
+            restoreSingleContextState(prev);
+        }
+    }
+
+    private static Object resetSingleContextState() {
         try {
             Class<?> c = Class.forName("com.oracle.truffle.polyglot.PolyglotContextImpl");
             Method m = c.getDeclaredMethod("resetSingleContextState");
             m.setAccessible(true);
-            m.invoke(null);
+            return m.invoke(null);
+        } catch (Exception e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    private static void restoreSingleContextState(Object state) {
+        try {
+            Class<?> c = Class.forName("com.oracle.truffle.polyglot.PolyglotContextImpl");
+            Method m = c.getDeclaredMethod("restoreSingleContextState", Object.class);
+            m.setAccessible(true);
+            m.invoke(null, state);
         } catch (Exception e) {
             throw new AssertionError(e);
         }

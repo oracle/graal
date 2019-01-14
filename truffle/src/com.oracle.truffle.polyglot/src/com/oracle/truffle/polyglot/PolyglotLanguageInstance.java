@@ -96,12 +96,11 @@ final class PolyglotLanguageInstance {
     }
 
     void ensureMultiContextInitialized() {
-        synchronized (language.engine) {
-            if (needsInitializeMultiContext) {
-                needsInitializeMultiContext = false;
-                language.engine.initializeMultiContext(null);
-                initializeMultiContext();
-            }
+        assert Thread.holdsLock(language.engine);
+        if (needsInitializeMultiContext) {
+            needsInitializeMultiContext = false;
+            language.engine.initializeMultiContext(null);
+            initializeMultiContext();
         }
     }
 

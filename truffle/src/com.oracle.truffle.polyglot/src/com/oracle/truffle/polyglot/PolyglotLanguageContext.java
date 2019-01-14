@@ -279,7 +279,6 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             PolyglotContextConfig envConfig = context.config;
             PolyglotLanguageInstance lang = language.allocateInstance(envConfig.getOptionValues(language));
             try {
-                lang.ensureMultiContextInitialized();
                 synchronized (context) {
                     if (lazy == null) {
                         Env localEnv = LANGUAGE.createEnv(PolyglotLanguageContext.this, lang.spi, envConfig.out,

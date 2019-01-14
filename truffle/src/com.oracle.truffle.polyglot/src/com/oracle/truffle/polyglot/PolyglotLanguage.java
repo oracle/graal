@@ -184,6 +184,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
                 default:
                     throw new AssertionError("Unknown context cardinality.");
             }
+            instance.ensureMultiContextInitialized();
         }
         return instance;
     }
