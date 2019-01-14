@@ -81,7 +81,7 @@ final class HostInteropReflect {
 
     @CompilerDirectives.TruffleBoundary
     static Class<?> findInnerClass(Class<?> clazz, String name) {
-        if (!TruffleOptions.AOT) { // SVM does not support Class.getClasses() yet
+        if (!TruffleOptions.AOT) { // GR-13208: SVM does not support Class.getClasses() yet
             if (Modifier.isPublic(clazz.getModifiers())) {
                 for (Class<?> t : clazz.getClasses()) {
                     // no support for non-static type members now
@@ -238,7 +238,7 @@ final class HostInteropReflect {
         names.addAll(classDesc.getMethodNames(onlyStatic, includeInternal));
         if (onlyStatic) {
             names.add("class");
-            if (!TruffleOptions.AOT) { // SVM does not support Class.getClasses() yet
+            if (!TruffleOptions.AOT) { // GR-13208: SVM does not support Class.getClasses() yet
                 if (Modifier.isPublic(clazz.getModifiers())) {
                     // no support for non-static member types now
                     for (Class<?> t : clazz.getClasses()) {
