@@ -299,7 +299,11 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
 
         /* Detect field offset computation in static initializers. */
         ResolvedJavaMethod clinit = hostType.getClassInitializer();
-        if (clinit != null && clinit.hasBytecodes()) {
+        /*
+         * Even if clinit.hasBytecodes() returns true, clinit.getCode() can return null when the
+         * type fails to initialize due to verification issues triggered by missing types.
+         */
+        if (clinit != null && clinit.hasBytecodes() && clinit.getCode() != null) {
             DebugContext debug = DebugContext.create(options, DebugHandlersFactory.LOADER);
             try (DebugContext.Scope s = debug.scope("Field offset computation", clinit)) {
                 StructuredGraph clinitGraph = getStaticInitializerGraph(clinit, options, debug);

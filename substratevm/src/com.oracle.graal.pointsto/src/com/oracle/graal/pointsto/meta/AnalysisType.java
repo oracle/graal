@@ -957,8 +957,11 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
 
     @Override
     public boolean isLinked() {
-        assert wrapped.isLinked();
-        return true;
+        /*
+         * If the wrapped type is referencing some missing types verification may fail and the type
+         * will not be linked.
+         */
+        return wrapped.isLinked();
     }
 
     @Override
