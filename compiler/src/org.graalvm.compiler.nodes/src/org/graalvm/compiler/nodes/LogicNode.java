@@ -96,7 +96,7 @@ public abstract class LogicNode extends FloatingNode implements IndirectCanonica
 
     protected static TriState flip(TriState triState) {
         return triState.isUnknown()
-                ? triState
-                : TriState.get(!triState.toBoolean());
+                        ? triState
+                        : TriState.get(!triState.toBoolean());
     }
 }
