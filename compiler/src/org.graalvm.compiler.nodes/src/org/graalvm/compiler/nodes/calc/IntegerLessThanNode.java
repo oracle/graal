@@ -300,26 +300,24 @@ public final class IntegerLessThanNode extends IntegerLowerThanNode {
 
     @Override
     public TriState implies(boolean thisNegated, LogicNode other) {
-        if (other instanceof IntegerLessThanNode) {
-            ValueNode otherX = ((IntegerLessThanNode) other).getX();
-            ValueNode otherY = ((IntegerLessThanNode) other).getY();
-            // x < y => !y < x
-            if (!thisNegated && getX() == otherY && getY() == otherX) {
-                return TriState.FALSE;
+        if (!thisNegated) {
+            if (other instanceof IntegerLessThanNode) {
+                ValueNode otherX = ((IntegerLessThanNode) other).getX();
+                ValueNode otherY = ((IntegerLessThanNode) other).getY();
+                // x < y => !y < x
+                if (getX() == otherY && getY() == otherX) {
+                    return TriState.FALSE;
+                }
             }
-            // x < y <=> x < y
-            if (getX() == otherX && getY() == otherY) {
-                return TriState.get(!thisNegated);
-            }
-        }
 
-        // x < y => !x == y
-        // x < y => !y == x
-        if (!thisNegated && other instanceof IntegerEqualsNode) {
-            ValueNode otherX = ((IntegerEqualsNode) other).getX();
-            ValueNode otherY = ((IntegerEqualsNode) other).getY();
-            if ((getX() == otherX && getY() == otherY) || (getX() == otherY && getY() == otherX)) {
-                return TriState.FALSE;
+            // x < y => !x == y
+            // x < y => !y == x
+            if (other instanceof IntegerEqualsNode) {
+                ValueNode otherX = ((IntegerEqualsNode) other).getX();
+                ValueNode otherY = ((IntegerEqualsNode) other).getY();
+                if ((getX() == otherX && getY() == otherY) || (getX() == otherY && getY() == otherX)) {
+                    return TriState.FALSE;
+                }
             }
         }
         return super.implies(thisNegated, other);
