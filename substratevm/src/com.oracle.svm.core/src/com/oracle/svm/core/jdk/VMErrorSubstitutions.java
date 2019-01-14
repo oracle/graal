@@ -147,7 +147,11 @@ public class VMErrorSubstitutions {
     }
 
     private static void doShutdown(Log log) {
-        SubstrateUtil.printDiagnostics(log, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
+        try {
+            SubstrateUtil.printDiagnostics(log, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
+        } catch (Throwable ex) {
+            /* Ignore exceptions reported during error reporting, we are going to exit anyway. */
+        }
         ImageSingletons.lookup(LogHandler.class).fatalError();
     }
 }

@@ -35,10 +35,10 @@ import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.graal.nodes.DeadEndNode;
+import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
-import com.oracle.svm.hosted.code.RestrictHeapAccessCallees;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;

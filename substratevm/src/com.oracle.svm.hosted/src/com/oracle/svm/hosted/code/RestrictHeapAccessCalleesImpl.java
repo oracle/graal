@@ -41,6 +41,7 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.RestrictHeapAccess.Access;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -51,7 +52,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * Construct a list of all the methods that are, or are called from, methods annotated with
  * {@link RestrictHeapAccess} or {@link Uninterruptible}.
  */
-public class RestrictHeapAccessCallees {
+public class RestrictHeapAccessCalleesImpl implements RestrictHeapAccessCallees {
 
     /**
      * A map from a callee to a caller on a path to an annotated caller. The keys are the set of
@@ -66,7 +67,7 @@ public class RestrictHeapAccessCallees {
     private boolean initialized;
 
     /** Constructor for the singleton instance. */
-    public RestrictHeapAccessCallees() {
+    public RestrictHeapAccessCalleesImpl() {
         calleeToCallerMap = Collections.emptyMap();
         this.assertionErrorConstructorList = Collections.emptyList();
         initialized = false;
@@ -83,6 +84,7 @@ public class RestrictHeapAccessCallees {
         return calleeToCallerMap.get(methodToKey(method));
     }
 
+    @Override
     public boolean mustNotAllocate(ResolvedJavaMethod method) {
         RestrictionInfo info = getRestrictionInfo(method);
         return info != null && (info.getAccess() == Access.NO_ALLOCATION || info.getAccess().isMoreRestrictiveThan(Access.NO_ALLOCATION));
@@ -228,14 +230,14 @@ class RestrictHeapAccessCalleesFeature implements Feature {
     /** This is called early, to register in the VMConfiguration. */
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(RestrictHeapAccessCallees.class, new RestrictHeapAccessCallees());
+        ImageSingletons.add(RestrictHeapAccessCallees.class, new RestrictHeapAccessCalleesImpl());
     }
 
     /** This is called during analysis, to find the AssertionError constructors. */
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
         List<ResolvedJavaMethod> assertionErrorConstructorList = initializeAssertionErrorConstructors(access);
-        ImageSingletons.lookup(RestrictHeapAccessCallees.class).setAssertionErrorConstructors(assertionErrorConstructorList);
+        ((RestrictHeapAccessCalleesImpl) ImageSingletons.lookup(RestrictHeapAccessCallees.class)).setAssertionErrorConstructors(assertionErrorConstructorList);
     }
 
     private static List<ResolvedJavaMethod> initializeAssertionErrorConstructors(DuringAnalysisAccess access) {

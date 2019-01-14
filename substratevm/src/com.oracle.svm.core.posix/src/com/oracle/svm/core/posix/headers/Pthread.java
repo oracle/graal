@@ -315,7 +315,7 @@ public class Pthread {
     public static native int pthread_attr_init(pthread_attr_t attr);
 
     /** Destroy thread attribute *ATTR. */
-    @CFunction
+    @CFunction(transition = Transition.NO_TRANSITION)
     public static native int pthread_attr_destroy(pthread_attr_t attr);
 
     /** Get detach state attribute. */
@@ -330,7 +330,7 @@ public class Pthread {
     public static native int pthread_attr_setdetachstate(pthread_attr_t attr, int detachstate);
 
     /** Get the size of the guard area created for stack overflow protection. */
-    @CFunction
+    @CFunction(transition = Transition.NO_TRANSITION)
     public static native int pthread_attr_getguardsize(pthread_attr_t attr, WordPointer guardsize);
 
     /** Set the size of the guard area created for stack overflow protection. */
@@ -393,7 +393,7 @@ public class Pthread {
     public static native int pthread_attr_setstacksize(pthread_attr_t attr, UnsignedWord stacksize);
 
     /** Return the previously set address for the stack. */
-    @CFunction
+    @CFunction(transition = Transition.NO_TRANSITION)
     public static native int pthread_attr_getstack(pthread_attr_t attr, WordPointer stackaddr, WordPointer stacksize);
 
     /**
@@ -432,7 +432,7 @@ public class Pthread {
      * TH. It shall be called on uninitialized ATTR and destroyed with pthread_attr_destroy when no
      * longer needed.
      */
-    @CFunction
+    @CFunction(transition = Transition.NO_TRANSITION)
     public static native int pthread_getattr_np(pthread_t th, pthread_attr_t attr);
 
     /* Functions for scheduling control. */

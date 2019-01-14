@@ -33,6 +33,8 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
+
 public abstract class Heap {
 
     /**
@@ -55,6 +57,7 @@ public abstract class Heap {
     public abstract void disableAllocation(IsolateThread vmThread);
 
     /** Allocation is disallowed if ... */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract boolean isAllocationDisallowed();
 
     /** Create a PinnedAllocator. */

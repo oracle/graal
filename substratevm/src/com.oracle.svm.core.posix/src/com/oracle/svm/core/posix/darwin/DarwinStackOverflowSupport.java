@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,38 +22,38 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.headers.darwin;
+package com.oracle.svm.core.posix.darwin;
 
+import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.function.CLibrary;
-import org.graalvm.nativeimage.c.function.CFunction.Transition;
-import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.posix.headers.PosixDirectives;
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.posix.headers.Pthread;
+import com.oracle.svm.core.posix.headers.darwin.DarwinPthread;
+import com.oracle.svm.core.stack.StackOverflowCheck;
 
-@CContext(PosixDirectives.class)
-@Platforms(Platform.DARWIN.class)
-@CLibrary("pthread")
-public class DarwinPthread {
+@Platforms({Platform.DARWIN.class})
+class DarwinStackOverflowSupport implements StackOverflowCheck.OSSupport {
 
-    /* { Allow names with underscores: Checkstyle: stop */
+    @Uninterruptible(reason = "Called while thread is being attached to the VM, i.e., when the thread state is not yet set up.")
+    @Override
+    public UnsignedWord lookupStackEnd() {
+        Pthread.pthread_t self = Pthread.pthread_self();
+        UnsignedWord stackaddr = DarwinPthread.pthread_get_stackaddr_np(self);
+        UnsignedWord stacksize = DarwinPthread.pthread_get_stacksize_np(self);
+        return stackaddr.subtract(stacksize);
+    }
+}
 
-    /** Set thread name visible in the kernel and its interfaces. */
-    @CFunction
-    public static native int pthread_setname_np(CCharPointer name);
-
-    @CFunction(transition = Transition.NO_TRANSITION)
-    public static native UnsignedWord pthread_get_stacksize_np(Pthread.pthread_t thread);
-
-    @CFunction(transition = Transition.NO_TRANSITION)
-    public static native Pointer pthread_get_stackaddr_np(Pthread.pthread_t thread);
-
-    /* } Allow names with underscores: Checkstyle: resume */
-
+@Platforms({Platform.DARWIN.class})
+@AutomaticFeature
+class DarwinStackOverflowSupportFeature implements Feature {
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(StackOverflowCheck.OSSupport.class, new DarwinStackOverflowSupport());
+    }
 }

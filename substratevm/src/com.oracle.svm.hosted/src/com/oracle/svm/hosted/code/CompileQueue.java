@@ -129,6 +129,7 @@ import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.graal.nodes.DeoptTestNode;
 import com.oracle.svm.core.graal.phases.DeadStoreRemovalPhase;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
+import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.VMError;
