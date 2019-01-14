@@ -550,6 +550,50 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
     }
 
     @Test
+    public void testMultiDimArray() {
+        long[][] matrix = {
+                        {1, 2},
+                        {3, 4},
+                        {5, 6},
+        };
+
+        Value object = context.asValue(matrix);
+        assertTrue(object.isHostObject());
+        assertTrue(object.hasArrayElements());
+        assertEquals(3, object.getArraySize());
+
+        Value row = object.getArrayElement(1);
+        assertTrue(row.hasArrayElements());
+        assertEquals(2, row.getArraySize());
+        assertEquals(3, row.getArrayElement(0).asInt());
+        assertEquals(4, row.getArrayElement(1).asInt());
+    }
+
+    @Test
+    public void testNewMultiDimArray() {
+        Value objectClass = context.asValue(long[][].class);
+
+        // Current behavior, but maybe this should work?
+        // Similar to Array.newInstance(long.class, 3, 4)
+        ValueAssert.assertFails(() -> objectClass.newInstance(3, 4), IllegalArgumentException.class);
+
+        Value object = objectClass.newInstance(4);
+        assertTrue(object.isHostObject());
+        assertTrue(object.hasArrayElements());
+        assertEquals(4, object.getArraySize());
+
+        Value row = object.getArrayElement(0);
+        assertTrue(row.isNull());
+
+        object.setArrayElement(0, new long[]{3, 4});
+        row = object.getArrayElement(0);
+        assertTrue(row.hasArrayElements());
+        assertEquals(2, row.getArraySize());
+        assertEquals(3, row.getArrayElement(0).asInt());
+        assertEquals(4, row.getArrayElement(1).asInt());
+    }
+
+    @Test
     public void testException() {
         Value iterator = context.asValue(Collections.emptyList().iterator());
         try {
