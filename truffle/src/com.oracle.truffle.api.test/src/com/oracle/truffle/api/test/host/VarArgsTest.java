@@ -44,6 +44,7 @@ import static org.junit.Assert.assertEquals;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -53,6 +54,7 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.test.host.AsCollectionsTest.ListBasedTO;
 
 public class VarArgsTest extends ProxyLanguageEnvTest {
 
@@ -135,6 +137,24 @@ public class VarArgsTest extends ProxyLanguageEnvTest {
         assertEquals("DD", result);
         result = ForeignAccess.sendInvoke(n, paths, "sum", 10, 20, 30);
         assertEquals("I[I", result);
+    }
+
+    @Test
+    public void testGuestArray() throws InteropException {
+        TruffleObject mainClass = asTruffleHostSymbol(Join.class);
+
+        TruffleObject ellipsis = (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), mainClass, "stringEllipsis");
+        TruffleObject element1 = asTruffleObject("Hello");
+        TruffleObject element2 = asTruffleObject("World");
+        Object result = ForeignAccess.sendExecute(Message.EXECUTE.createNode(), ellipsis, new ListBasedTO(Arrays.asList(element1, element2)));
+        Assert.assertEquals("Hello World", result);
+    }
+
+    @Test
+    public void testGuestArray2() throws InteropException {
+        TruffleObject sum = (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), asTruffleHostSymbol(Sum.class), "sum");
+        Object result = ForeignAccess.sendExecute(Message.EXECUTE.createNode(), sum, 10, new ListBasedTO(Arrays.asList(20, 30)));
+        Assert.assertEquals("I[I", result);
     }
 
     public static class Join {

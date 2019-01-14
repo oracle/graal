@@ -145,7 +145,7 @@ abstract class HostExecuteNode extends Node {
         for (int i = 0; i < minArity; i++) {
             convertedArguments[i] = toJavaNode.execute(args[i], types[i], genericTypes[i], languageContext);
         }
-        if (asVarArgs(args, cachedMethod)) {
+        if (asVarArgs(args, cachedMethod, languageContext, toJavaNode)) {
             for (int i = minArity; i < args.length; i++) {
                 Class<?> expectedType = types[minArity].getComponentType();
                 Type expectedGenericType = getGenericComponentType(genericTypes[minArity]);
@@ -180,7 +180,7 @@ abstract class HostExecuteNode extends Node {
                     @Cached("create()") ToHostNode toJavaNode,
                     @Cached(value = "createArgTypesArray(args)", dimensions = 1) Type[] cachedArgTypes,
                     @Cached("selectOverload(method, args, languageContext, cachedArgTypes)") SingleMethod overload,
-                    @Cached("asVarArgs(args, overload)") boolean asVarArgs,
+                    @Cached("asVarArgs(args, overload, languageContext, toJavaNode)") boolean asVarArgs,
                     @Cached("createClassProfile()") ValueProfile receiverProfile) {
         assert overload == selectOverload(method, args, languageContext);
         Class<?>[] types = overload.getParameterTypes();
@@ -216,7 +216,7 @@ abstract class HostExecuteNode extends Node {
         Class<?>[] types = method.getParameterTypes();
         Type[] genericTypes = method.getGenericParameterTypes();
         Object[] convertedArguments = new Object[args.length];
-        if (isVarArgsProfile.profile(method.isVarArgs()) && asVarArgs(args, method)) {
+        if (isVarArgsProfile.profile(method.isVarArgs()) && asVarArgs(args, method, languageContext, toJavaNode)) {
             int parameterCount = method.getParameterCount();
             for (int i = 0; i < args.length; i++) {
                 Class<?> expectedType = i < parameterCount - 1 ? types[i] : types[parameterCount - 1].getComponentType();
@@ -329,11 +329,13 @@ abstract class HostExecuteNode extends Node {
     }
 
     @TruffleBoundary
-    static boolean asVarArgs(Object[] args, SingleMethod overload) {
+    static boolean asVarArgs(Object[] args, SingleMethod overload, PolyglotLanguageContext languageContext, ToHostNode toJavaNode) {
         if (overload.isVarArgs()) {
             int parameterCount = overload.getParameterCount();
             if (args.length == parameterCount) {
-                return !isSubtypeOf(args[parameterCount - 1], overload.getParameterTypes()[parameterCount - 1]);
+                Class<?> varArgParamType = overload.getParameterTypes()[parameterCount - 1];
+                return !isSubtypeOf(args[parameterCount - 1], varArgParamType) &&
+                                !toJavaNode.canConvert(args[parameterCount - 1], varArgParamType, overload.getGenericParameterTypes()[parameterCount - 1], languageContext, ToHostNode.LOOSE);
             } else {
                 assert args.length != parameterCount;
                 return true;
