@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,7 +35,6 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.nodes.literals.LLVMSimpleLiteralNode.LLVMI64LiteralNode;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
@@ -47,28 +46,6 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 @NodeChild(value = "ptr", type = LLVMExpressionNode.class)
 @NodeChild(value = "typeid", type = LLVMExpressionNode.class)
 public abstract class LLVMPolyglotAsTyped extends LLVMIntrinsic {
-
-    /**
-     * For binary compatibility with bitcode files compiled with polyglot.h from 1.0-RC2 or earlier.
-     *
-     * @deprecated
-     */
-    @Deprecated
-    public static LLVMPolyglotAsTyped createStruct(LLVMExpressionNode ptr, LLVMExpressionNode typeid) {
-        return LLVMPolyglotAsTypedNodeGen.create(ptr, LLVMTypeIDNode.create(typeid));
-    }
-
-    /**
-     * For binary compatibility with bitcode files compiled with polyglot.h from 1.0-RC2 or earlier.
-     *
-     * @deprecated
-     */
-    @Deprecated
-    public static LLVMPolyglotAsTyped createArray(LLVMExpressionNode ptr, LLVMExpressionNode typeid) {
-        LLVMTypeIDNode elementType = LLVMTypeIDNode.create(typeid);
-        LLVMArrayTypeIDNode arrayType = LLVMArrayTypeIDNode.create(elementType, new LLVMI64LiteralNode(0));
-        return LLVMPolyglotAsTypedNodeGen.create(ptr, arrayType);
-    }
 
     public static LLVMPolyglotAsTyped create(LLVMExpressionNode ptr, LLVMExpressionNode typeid) {
         return LLVMPolyglotAsTypedNodeGen.create(ptr, typeid);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,72 +30,68 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
+import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
+import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @NodeChild(type = LLVMExpressionNode.class)
-@NodeChild(type = LLVMExpressionNode.class)
-public abstract class LLVMTruffleReadNBytes extends LLVMIntrinsic {
+public abstract class LLVMPolyglotAsPrimitive extends LLVMIntrinsic {
 
-    @Specialization
-    protected Object doIntrinsic(LLVMNativePointer value, int n,
-                    @Cached("getLLVMMemory()") LLVMMemory memory,
-                    @Cached("getContextReference()") ContextReference<LLVMContext> ctxRef) {
-        int count = n < 0 ? 0 : n;
-        byte[] bytes = new byte[count];
-        long ptr = value.asNative();
-        for (int i = 0; i < count; i++) {
-            bytes[i] = memory.getI8(ptr);
-            ptr += Byte.BYTES;
-        }
-        TruffleObject ret = (TruffleObject) ctxRef.get().getEnv().asGuestValue(bytes);
-        return LLVMManagedPointer.create(LLVMTypedForeignObject.createUnknown(ret));
+    @Child private Node foreignUnbox = Message.UNBOX.createNode();
+    @Child private ForeignToLLVM toLLVM;
+    @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.create();
+
+    public LLVMPolyglotAsPrimitive(ForeignToLLVM toLLVMNode) {
+        this.toLLVM = toLLVMNode;
+    }
+
+    @Specialization(rewriteOn = UnsupportedMessageException.class)
+    protected Object doIntrinsic(LLVMManagedPointer value) throws UnsupportedMessageException {
+        TruffleObject foreign = asForeign.execute(value);
+        Object rawValue = ForeignAccess.sendUnbox(foreignUnbox, foreign);
+        return toLLVM.executeWithTarget(rawValue);
     }
 
     @Specialization
-    protected Object interop(LLVMManagedPointer objectWithOffset, int n,
-                    @Cached("createForeignReadNode()") Node foreignRead,
-                    @Cached("createToByteNode()") ForeignToLLVM toLLVM,
-                    @Cached("getContextReference()") ContextReference<LLVMContext> ctxRef) {
-        long offset = objectWithOffset.getOffset();
-        TruffleObject object = objectWithOffset.getObject();
-        byte[] chars = new byte[n];
-        for (int i = 0; i < n; i++) {
-            Object rawValue;
+    protected Object doCheckIsBoxed(LLVMManagedPointer value,
+                    @Cached("createIsBoxed()") Node isBoxed) {
+        TruffleObject foreign = asForeign.execute(value);
+        if (ForeignAccess.sendIsBoxed(isBoxed, foreign)) {
             try {
-                rawValue = ForeignAccess.sendRead(foreignRead, object, offset + i);
-            } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+                Object rawValue = ForeignAccess.sendUnbox(foreignUnbox, foreign);
+                return toLLVM.executeWithTarget(rawValue);
+            } catch (UnsupportedMessageException ex) {
                 CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(e);
+                throw ex.raise();
             }
-            chars[i] = (byte) toLLVM.executeWithTarget(rawValue);
+        } else {
+            throw new LLVMPolyglotException(this, "Argument to polyglot_as_* is not a boxed primitive.");
         }
-        TruffleObject ret = (TruffleObject) ctxRef.get().getEnv().asGuestValue(chars);
-        return LLVMManagedPointer.create(LLVMTypedForeignObject.createUnknown(ret));
+    }
+
+    @Specialization
+    protected Object doIntrinsic(LLVMBoxedPrimitive value) {
+        return toLLVM.executeWithTarget(value.getValue());
     }
 
     @Fallback
     @TruffleBoundary
     @SuppressWarnings("unused")
-    public Object fallback(Object value, Object n) {
-        System.err.println("Invalid arguments to \"read n bytes\"-builtin.");
-        throw new IllegalArgumentException();
+    public Object fallback(Object value) {
+        throw new LLVMPolyglotException(this, "Invalid argument to polyglot_as_* builtin.");
     }
 }

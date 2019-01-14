@@ -1,3 +1,10 @@
+# Version 1.0.0 RC12
+
+Removed:
+
+* Removed deprecated `truffle_*` builtin functions.
+* Dropped binary compatibility to bitcode compiled with very old `polyglot.h` versions (1.0.0-RC2 or older).
+
 # Version 1.0.0 RC11
 
 Changes:
