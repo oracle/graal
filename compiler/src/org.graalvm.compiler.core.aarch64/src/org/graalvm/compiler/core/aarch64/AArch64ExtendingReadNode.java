@@ -51,14 +51,18 @@ import org.graalvm.word.LocationIdentity;
  */
 
 @NodeInfo
-public class AArch64ReadNode extends ReadNode {
-    public static final NodeClass<AArch64ReadNode> TYPE = NodeClass.create(AArch64ReadNode.class);
+public class AArch64ExtendingReadNode extends ReadNode {
+    public static final NodeClass<AArch64ExtendingReadNode> TYPE = NodeClass.create(AArch64ExtendingReadNode.class);
     private final IntegerStamp accessStamp;
     private final boolean isSigned;
 
-    public AArch64ReadNode(AddressNode address, LocationIdentity location, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean nullCheck,
-                    FrameState stateBefore, IntegerStamp accessStamp, boolean isSigned) {
-        super(TYPE, address, location, stamp, guard, barrierType, nullCheck, stateBefore);
+    public AArch64ExtendingReadNode(AddressNode address, LocationIdentity location, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean nullCheck,
+                                    FrameState stateBefore, IntegerStamp accessStamp, boolean isSigned) {
+        this(TYPE, address, location, stamp, guard, barrierType, nullCheck, stateBefore, accessStamp, isSigned);
+    }
+    protected AArch64ExtendingReadNode(NodeClass<? extends AArch64ExtendingReadNode> c, AddressNode address, LocationIdentity location, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean nullCheck,
+                                    FrameState stateBefore, IntegerStamp accessStamp, boolean isSigned) {
+        super(c, address, location, stamp, guard, barrierType, nullCheck, stateBefore);
         this.accessStamp = accessStamp;
         this.isSigned = isSigned;
     }
@@ -69,7 +73,8 @@ public class AArch64ReadNode extends ReadNode {
         AArch64ArithmeticLIRGenerator arithgen = (AArch64ArithmeticLIRGenerator) lirgen.getArithmetic();
         AArch64Kind readKind = (AArch64Kind) lirgen.getLIRKind(accessStamp).getPlatformKind();
         int resultBits = ((IntegerStamp) stamp(NodeView.DEFAULT)).getBits();
-        gen.setResult(this, arithgen.emitExtendMemory(isSigned, readKind, resultBits, (AArch64AddressValue) gen.operand(getAddress()), gen.state(this)));
+        boolean isVolatile =  (this instanceof AArch64VolatileExtendingReadNode);
+        gen.setResult(this, arithgen.emitExtendMemory(isSigned, readKind, resultBits, (AArch64AddressValue) gen.operand(getAddress()), gen.state(this),isVolatile));
     }
 
     /**
@@ -93,7 +98,13 @@ public class AArch64ReadNode extends ReadNode {
         BarrierType barrierType = readNode.getBarrierType();
         boolean nullCheck = readNode.getNullCheck();
         FrameState stateBefore = readNode.stateBefore();
-        AArch64ReadNode clone = new AArch64ReadNode(address, location, stamp, guard, barrierType, nullCheck, stateBefore, accessStamp, isSigned);
+        AArch64ExtendingReadNode clone;
+        boolean isVolatile = (readNode instanceof AArch64VolatileReadNode);
+        if (isVolatile) {
+            clone =  new AArch64VolatileExtendingReadNode(address, location, stamp, guard, barrierType, nullCheck, stateBefore, accessStamp, isSigned);
+        } else {
+            clone =  new AArch64ExtendingReadNode(address, location, stamp, guard, barrierType, nullCheck, stateBefore, accessStamp, isSigned);
+        }
         StructuredGraph graph = readNode.graph();
         graph.add(clone);
         // splice out the extend node

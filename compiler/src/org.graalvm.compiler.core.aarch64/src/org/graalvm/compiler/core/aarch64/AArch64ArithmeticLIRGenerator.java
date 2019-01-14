@@ -33,6 +33,7 @@ import static org.graalvm.compiler.lir.aarch64.AArch64BitManipulationOp.BitManip
 import static org.graalvm.compiler.lir.aarch64.AArch64BitManipulationOp.BitManipulationOpCode.CLZ;
 import static org.graalvm.compiler.lir.aarch64.AArch64BitManipulationOp.BitManipulationOpCode.CTZ;
 
+import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.NumUtil;
@@ -94,24 +95,54 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
         }
     }
 
-    public Value emitExtendMemory(boolean isSigned, AArch64Kind memoryKind, int resultBits, AArch64AddressValue address, LIRFrameState state) {
+    public Value emitExtendMemory(boolean isSigned, AArch64Kind memoryKind, int resultBits, AArch64AddressValue address, LIRFrameState state, boolean isVolatile) {
         // Issue a zero extending load of the proper bit size and set the result to
         // the proper kind.
         Variable result = getLIRGen().newVariable(LIRKind.value(resultBits == 32 ? AArch64Kind.DWORD : AArch64Kind.QWORD));
 
         int targetSize = resultBits <= 32 ? 32 : 64;
+        // if this is a volatile load then we need to ensure we load using BASE_REGISTER addressing
+        // mode
+        AArch64AddressValue loadAddress = address;
+        if (isVolatile) {
+            loadAddress = ensureBaseRegisterAddress(address);
+        }
+
         switch (memoryKind) {
             case BYTE:
             case WORD:
             case DWORD:
             case QWORD:
                 getLIRGen().append(new AArch64Unary.MemoryOp(isSigned, targetSize,
-                                memoryKind.getSizeInBytes() * 8, result, address, state));
+                                memoryKind.getSizeInBytes() * 8, result, loadAddress, state, isVolatile));
                 break;
             default:
                 throw GraalError.shouldNotReachHere();
         }
         return result;
+    }
+
+    private AArch64AddressValue ensureBaseRegisterAddress(AArch64AddressValue address) {
+        AArch64Address.AddressingMode addressingMode = address.getAddressingMode();
+        if (addressingMode == AArch64Address.AddressingMode.BASE_REGISTER_ONLY) {
+            // base register only is fine
+            assert (address.getDisplacement() == 0);
+            assert (address.getScaleFactor() == 1);
+            return address;
+        } else if ((addressingMode == AArch64Address.AddressingMode.REGISTER_OFFSET ||
+                addressingMode == AArch64Address.AddressingMode.EXTENDED_REGISTER_OFFSET) &&
+                address.getOffset().equals(Value.ILLEGAL)) {
+            // this is equivalent to base register
+            assert (address.getDisplacement() == 0);
+            assert (address.getScaleFactor() == 1);
+            return address;
+        } else {
+            // move the address into a new register and then use that as a base register only
+            // address
+            AllocatableValue base = getLIRGen().emitMove(address);
+            return new AArch64AddressValue(LIRKind.value(AArch64Kind.QWORD), base, Value.ILLEGAL,
+                                           0, 1, AArch64Address.AddressingMode.BASE_REGISTER_ONLY);
+        }
     }
 
     @Override
@@ -461,27 +492,64 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
 
     @Override
     public Variable emitLoad(LIRKind kind, Value address, LIRFrameState state) {
+        return emitLoad(kind, address, state, false);
+    }
+
+    public Variable emitLoad(LIRKind kind, Value address, LIRFrameState state, boolean isVolatile) {
         AArch64AddressValue loadAddress = getLIRGen().asAddressValue(address);
+        if (isVolatile) {
+            // ensure the load is via base address only
+            loadAddress = ensureBaseRegisterAddress(loadAddress);
+        }
+        AArch64Kind aarch64ResultKind = (AArch64Kind) kind.getPlatformKind();
         Variable result = getLIRGen().newVariable(getLIRGen().toRegisterKind(kind));
-        getLIRGen().append(new LoadOp((AArch64Kind) kind.getPlatformKind(), result, loadAddress, state));
+        if (aarch64ResultKind.isSIMD() && isVolatile) {
+            // ldar will not load to simd registers
+            // we have to load the value into an integer register
+            // and then schedule a move it to a float register
+            AArch64Kind intermediateKind = (aarch64ResultKind.getSizeInBytes() <= 4 ? AArch64Kind.DWORD : AArch64Kind.QWORD);
+            Variable intermediate = getLIRGen().newVariable(LIRKind.value(intermediateKind));
+            getLIRGen().append(new LoadOp(intermediateKind, intermediate, loadAddress, state, true));
+            getLIRGen().emitMove(result, intermediate);
+        } else {
+            getLIRGen().append(new LoadOp(aarch64ResultKind, result, loadAddress, state, isVolatile));
+        }
         return result;
     }
 
     @Override
     public void emitStore(ValueKind<?> lirKind, Value address, Value inputVal, LIRFrameState state) {
-        AArch64AddressValue storeAddress = getLIRGen().asAddressValue(address);
-        AArch64Kind kind = (AArch64Kind) lirKind.getPlatformKind();
+         emitStore(lirKind, address, inputVal, state, false);
+    }
 
-        if (isJavaConstant(inputVal) && kind.isInteger()) {
+    public void emitStore(ValueKind<?> lirKind, Value address, Value inputVal, LIRFrameState state, boolean isVolatile) {
+        AArch64AddressValue storeAddress = getLIRGen().asAddressValue(address);
+        // if this is a volatile store then we need to ensure we load using BASE_REGISTER addressing
+        // mode
+        if (isVolatile) {
+            storeAddress = ensureBaseRegisterAddress(storeAddress);
+        }
+        AArch64Kind storeKind = (AArch64Kind) lirKind.getPlatformKind();
+        if (isJavaConstant(inputVal) && storeKind.isInteger()) {
             JavaConstant c = asJavaConstant(inputVal);
             if (c.isDefaultForKind()) {
                 // We can load 0 directly into integer registers
-                getLIRGen().append(new StoreConstantOp(kind, storeAddress, c, state));
+                getLIRGen().append(new StoreConstantOp(storeKind, storeAddress, c, state, isVolatile));
                 return;
             }
         }
         AllocatableValue input = asAllocatable(inputVal);
-        getLIRGen().append(new StoreOp(kind, storeAddress, input, state));
+        if (storeKind.isSIMD() && isVolatile) {
+            // stlr will not store from simd registers
+            // we have to move the value into an integer register
+            // and then store the bits
+            AArch64Kind intermediateKind = (storeKind.getSizeInBytes() <= 4 ? AArch64Kind.DWORD : AArch64Kind.QWORD);
+            Variable intermediate = getLIRGen().newVariable(LIRKind.value(intermediateKind));
+            getLIRGen().emitMove(intermediate, input);
+            getLIRGen().append(new StoreOp(intermediateKind, storeAddress, intermediate, state, isVolatile));
+        } else {
+            getLIRGen().append(new StoreOp(storeKind, storeAddress, input, state, isVolatile));
+        }
     }
 
     @Override

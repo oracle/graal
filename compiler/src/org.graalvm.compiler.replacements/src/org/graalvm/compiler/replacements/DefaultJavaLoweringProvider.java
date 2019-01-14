@@ -388,6 +388,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
         ReadNode memoryRead = graph.add(new ReadNode(address, fieldLocationIdentity(field), loadStamp, fieldLoadBarrierType(field)));
         ValueNode readValue = implicitLoadConvert(graph, getStorageKind(field), memoryRead);
+         loadField.replaceAtUsages(InputType.Association, memoryRead);
         loadField.replaceAtUsages(readValue);
         graph.replaceFixed(loadField, memoryRead);
 
@@ -396,6 +397,9 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             graph.addBeforeFixed(memoryRead, preMembar);
             MembarNode postMembar = graph.add(new MembarNode(JMM_POST_VOLATILE_READ));
             graph.addAfterFixed(memoryRead, postMembar);
+             // associate the memory barriers with the volatile read
+            postMembar.setAccess(memoryRead);
+            postMembar.setLeading(preMembar);
         }
     }
 
@@ -417,6 +421,9 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             graph.addBeforeFixed(memoryWrite, preMembar);
             MembarNode postMembar = graph.add(new MembarNode(JMM_POST_VOLATILE_WRITE));
             graph.addAfterFixed(memoryWrite, postMembar);
+            // associate the memory barriers with the volatile read
+            postMembar.setAccess(memoryWrite);
+            postMembar.setLeading(preMembar);
         }
     }
 
@@ -665,6 +672,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             memoryRead.setGuard(guard);
         }
         ValueNode readValue = performBooleanCoercionIfNecessary(implicitLoadConvert(graph, readKind, memoryRead, compressible), readKind);
+        load.replaceAtUsages(InputType.Association, memoryRead);
         load.replaceAtUsages(readValue);
         return memoryRead;
     }
@@ -680,6 +688,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         // a test guaranteeing the read is safe.
         memoryRead.setForceFixed(true);
         ValueNode readValue = performBooleanCoercionIfNecessary(implicitLoadConvert(graph, readKind, memoryRead, false), readKind);
+        load.replaceAtUsages(InputType.Association, memoryRead);
         load.replaceAtUsages(readValue);
         graph.replaceFixedWithFixed(load, memoryRead);
     }

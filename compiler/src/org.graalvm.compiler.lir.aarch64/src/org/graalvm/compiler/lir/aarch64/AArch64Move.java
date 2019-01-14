@@ -235,12 +235,14 @@ public class AArch64Move {
         protected final AArch64Kind kind;
         @Use({COMPOSITE}) protected AArch64AddressValue addressValue;
         @State protected LIRFrameState state;
+        boolean isVolatile;
 
-        MemOp(LIRInstructionClass<? extends MemOp> c, AArch64Kind kind, AArch64AddressValue address, LIRFrameState state) {
+        MemOp(LIRInstructionClass<? extends MemOp> c, AArch64Kind kind, AArch64AddressValue address, LIRFrameState state, boolean isVolatile) {
             super(c);
             this.kind = kind;
             this.addressValue = address;
             this.state = state;
+            this.isVolatile = isVolatile;
         }
 
         protected abstract void emitMemAccess(CompilationResultBuilder crb, AArch64MacroAssembler masm);
@@ -270,7 +272,10 @@ public class AArch64Move {
         @Def protected AllocatableValue result;
 
         public LoadOp(AArch64Kind kind, AllocatableValue result, AArch64AddressValue address, LIRFrameState state) {
-            super(TYPE, kind, address, state);
+            this(kind, result, address, state, false);
+        }
+        public LoadOp(AArch64Kind kind, AllocatableValue result, AArch64AddressValue address, LIRFrameState state, boolean isVolatile) {
+            super(TYPE, kind, address, state, isVolatile);
             this.result = result;
         }
 
@@ -282,9 +287,15 @@ public class AArch64Move {
             int destSize = result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
             int srcSize = kind.getSizeInBytes() * Byte.SIZE;
             if (kind.isInteger()) {
-                masm.ldr(srcSize, dst, address);
+                if (isVolatile) {
+                    assert (address.getAddressingMode() == AArch64Address.AddressingMode.BASE_REGISTER_ONLY);
+                    masm.ldar(srcSize, dst, address.getBase());
+                } else {
+                    masm.ldr(srcSize, dst, address);
+                }
             } else {
                 assert srcSize == destSize;
+                assert !isVolatile;
                 masm.fldr(srcSize, dst, address);
             }
         }
@@ -295,13 +306,21 @@ public class AArch64Move {
         @Use protected AllocatableValue input;
 
         public StoreOp(AArch64Kind kind, AArch64AddressValue address, AllocatableValue input, LIRFrameState state) {
-            super(TYPE, kind, address, state);
+            this(kind, address, input, state, false);
+        }
+        public StoreOp(AArch64Kind kind, AArch64AddressValue address, AllocatableValue input, LIRFrameState state, boolean isVolatile) {
+            super(TYPE, kind, address, state, isVolatile);
             this.input = input;
         }
 
         @Override
         protected void emitMemAccess(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-            emitStore(crb, masm, kind, addressValue.toAddress(), input);
+            AArch64Address address = addressValue.toAddress();
+            if (isVolatile) {
+                emitVolatileStore(crb, masm, kind, address, input);
+            } else {
+                emitStore(crb, masm, kind, address, input);
+            }
         }
     }
 
@@ -310,8 +329,8 @@ public class AArch64Move {
 
         protected final JavaConstant input;
 
-        public StoreConstantOp(AArch64Kind kind, AArch64AddressValue address, JavaConstant input, LIRFrameState state) {
-            super(TYPE, kind, address, state);
+         public StoreConstantOp(AArch64Kind kind, AArch64AddressValue address, JavaConstant input, LIRFrameState state, boolean isVolatile) {
+            super(TYPE, kind, address, state, isVolatile);
             this.input = input;
             if (!input.isDefaultForKind()) {
                 throw GraalError.shouldNotReachHere("Can only store null constants to memory");
@@ -320,8 +339,13 @@ public class AArch64Move {
 
         @Override
         public void emitMemAccess(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-            emitStore(crb, masm, kind, addressValue.toAddress(), zr.asValue(LIRKind.combine(addressValue)));
-        }
+            AArch64Address address = addressValue.toAddress();
+           if (isVolatile) {
+               emitVolatileStore(crb, masm, kind, address, zr.asValue(LIRKind.combine(addressValue)));
+           } else {
+               emitStore(crb, masm, kind, address, zr.asValue(LIRKind.combine(addressValue)));
+           }
+       }
     }
 
     public static final class NullCheckOp extends AArch64LIRInstruction implements NullCheck {
@@ -360,6 +384,13 @@ public class AArch64Move {
         } else {
             masm.fstr(destSize, asRegister(src), dst);
         }
+    }
+
+    private static void emitVolatileStore(@SuppressWarnings("unused") CompilationResultBuilder crb, AArch64MacroAssembler masm, AArch64Kind kind, AArch64Address dst, Value src) {
+        int destSize = kind.getSizeInBytes() * Byte.SIZE;
+        assert kind.isInteger();
+        assert dst.getAddressingMode() == AArch64Address.AddressingMode.BASE_REGISTER_ONLY;
+        masm.stlr(destSize, asRegister(src), dst.getBase());
     }
 
     public static void move(CompilationResultBuilder crb, AArch64MacroAssembler masm, AllocatableValue result, Value input) {
@@ -416,8 +447,9 @@ public class AArch64Move {
             return;
         }
         AArch64Kind kind = (AArch64Kind) input.getPlatformKind();
+        AArch64Kind kind2 = (AArch64Kind) result.getPlatformKind();
         int size = kind.getSizeInBytes() * Byte.SIZE;
-        if (kind.isInteger()) {
+        if (kind.isInteger() && kind2.isInteger()) {
             masm.mov(size, dst, src);
         } else {
             masm.fmov(size, dst, src);

@@ -34,6 +34,7 @@ import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -65,7 +66,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 /**
  * The {@code LoadFieldNode} represents a read of a static or instance field.
  */
-@NodeInfo(nameTemplate = "LoadField#{p#field/s}")
+@NodeInfo(nameTemplate = "LoadField#{p#field/s}", allowedUsageTypes = InputType.Association)
 public final class LoadFieldNode extends AccessFieldNode implements Canonicalizable.Unary<ValueNode>, Virtualizable, UncheckedInterfaceProvider {
 
     public static final NodeClass<LoadFieldNode> TYPE = NodeClass.create(LoadFieldNode.class);

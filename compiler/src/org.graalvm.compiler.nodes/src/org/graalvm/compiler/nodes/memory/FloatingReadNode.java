@@ -36,6 +36,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNodeUtil;
@@ -49,7 +50,7 @@ import org.graalvm.word.LocationIdentity;
  * A floating read of a value from memory specified in terms of an object base and an object
  * relative location. This node does not null check the object.
  */
-@NodeInfo(nameTemplate = "Read#{p#location/s}", cycles = CYCLES_2, size = SIZE_1)
+@NodeInfo(nameTemplate = "Read#{p#location/s}", cycles = CYCLES_2, size = SIZE_1, allowedUsageTypes = InputType.Association)
 public final class FloatingReadNode extends FloatingAccessNode implements LIRLowerableAccess, Canonicalizable {
     public static final NodeClass<FloatingReadNode> TYPE = NodeClass.create(FloatingReadNode.class);
 

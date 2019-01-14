@@ -38,12 +38,12 @@ import org.graalvm.compiler.phases.Phase;
  * to allow merging of zero and sign extension into the read operation.
  */
 
-public class AArch64ReadReplacementPhase extends Phase {
+public class AArch64ExtendingReadReplacementPhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
         for (Node node : graph.getNodes()) {
             // don't process nodes we just added
-            if (node instanceof AArch64ReadNode) {
+            if (node instanceof AArch64ExtendingReadNode) {
                 continue;
             }
             if (node instanceof ReadNode) {
@@ -51,7 +51,7 @@ public class AArch64ReadReplacementPhase extends Phase {
                 if (readNode.hasExactlyOneUsage()) {
                     Node usage = readNode.getUsageAt(0);
                     if (usage instanceof ZeroExtendNode || usage instanceof SignExtendNode) {
-                        AArch64ReadNode.replace(readNode);
+                        AArch64ExtendingReadNode.replace(readNode);
                     }
                 }
             }

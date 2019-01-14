@@ -1088,11 +1088,20 @@ public class StandardGraphBuilderPlugins {
             // Emits a null-check for the otherwise unused receiver
             unsafe.get();
             if (accessKind.emitBarriers) {
-                b.add(new MembarNode(accessKind.preReadBarriers));
-            }
-            createUnsafeAccess(object, b, (obj, loc) -> new RawLoadNode(obj, offset, unsafeAccessKind, loc));
-            if (accessKind.emitBarriers) {
-                b.add(new MembarNode(accessKind.postReadBarriers));
+                // link the unsafe node to its leading and trailing membars
+                final MembarNode pre = new MembarNode(accessKind.preReadBarriers);
+                final RawLoadNode[] rawLoadNodes = new  RawLoadNode[1];
+                final MembarNode post = new MembarNode(accessKind.postReadBarriers);
+                b.add(pre);
+                createUnsafeAccess(object, b, (obj, loc) -> {
+                    rawLoadNodes[0] = new RawLoadNode(obj, offset, unsafeAccessKind, loc);
+                    return rawLoadNodes[0];
+                });
+                b.add(post);
+                post.setAccess(rawLoadNodes[0]);
+                post.setLeading(pre);
+            } else {
+                createUnsafeAccess(object, b, (obj, loc) -> new RawLoadNode(obj, offset, unsafeAccessKind, loc));
             }
             return true;
         }
@@ -1124,13 +1133,22 @@ public class StandardGraphBuilderPlugins {
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode value) {
             // Emits a null-check for the otherwise unused receiver
             unsafe.get();
-            if (accessKind.emitBarriers) {
-                b.add(new MembarNode(accessKind.preWriteBarriers));
-            }
             ValueNode maskedValue = b.maskSubWordValue(value, unsafeAccessKind);
-            createUnsafeAccess(object, b, (obj, loc) -> new RawStoreNode(obj, offset, maskedValue, unsafeAccessKind, loc));
             if (accessKind.emitBarriers) {
-                b.add(new MembarNode(accessKind.postWriteBarriers));
+                // link the unsafe node to its leading and trailing membars
+                final MembarNode pre = new MembarNode(accessKind.preWriteBarriers);
+                final MembarNode post = new MembarNode(accessKind.postWriteBarriers);
+                final RawStoreNode[] rawStoreNodes = new RawStoreNode[1];
+                b.add(pre);
+                createUnsafeAccess(object, b, (obj, loc) -> {
+                    rawStoreNodes[0] = new RawStoreNode(obj, offset, maskedValue, unsafeAccessKind, loc);
+                    return rawStoreNodes[0];
+                });
+                b.add(post);
+                post.setAccess(rawStoreNodes[0]);
+                post.setLeading(pre);
+            }  else {
+                createUnsafeAccess(object, b, (obj, loc) -> new RawStoreNode(obj, offset, maskedValue, unsafeAccessKind, loc));
             }
             return true;
         }

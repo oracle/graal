@@ -51,6 +51,7 @@ public class AArch64Unary {
         public static final LIRInstructionClass<MemoryOp> TYPE = LIRInstructionClass.create(MemoryOp.class);
 
         private final boolean isSigned;
+        private final boolean isVolatile;
 
         @Def({REG}) protected AllocatableValue result;
         @Use({COMPOSITE}) protected AArch64AddressValue input;
@@ -60,7 +61,7 @@ public class AArch64Unary {
         private int targetSize;
         private int srcSize;
 
-        public MemoryOp(boolean isSigned, int targetSize, int srcSize, AllocatableValue result, AArch64AddressValue input, LIRFrameState state) {
+        public MemoryOp(boolean isSigned, int targetSize, int srcSize, AllocatableValue result, AArch64AddressValue input, LIRFrameState state, boolean isVolatile) {
             super(TYPE);
             this.targetSize = targetSize;
             this.srcSize = srcSize;
@@ -68,6 +69,7 @@ public class AArch64Unary {
             this.result = result;
             this.input = input;
             this.state = state;
+            this.isVolatile = isVolatile;
         }
 
         @Override
@@ -77,6 +79,9 @@ public class AArch64Unary {
             }
             AArch64Address address = input.toAddress();
             Register dst = asRegister(result);
+
+            assert (!isVolatile || address.getAddressingMode() == AArch64Address.AddressingMode.BASE_REGISTER_ONLY);
+
             if (isSigned) {
                 masm.ldrs(targetSize, srcSize, dst, address);
             } else {

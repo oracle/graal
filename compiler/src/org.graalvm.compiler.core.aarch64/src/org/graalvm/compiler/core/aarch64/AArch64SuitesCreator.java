@@ -54,7 +54,8 @@ public class AArch64SuitesCreator extends DefaultSuitesCreator {
             // Search for last occurrence of SchedulePhase
         }
         findPhase.previous();
-        findPhase.add(new AArch64ReadReplacementPhase());
+        findPhase.add(new AArch64MembarElisionPhase());
+        findPhase.add(new AArch64ExtendingReadReplacementPhase());
         return suites;
     }
 }

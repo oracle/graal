@@ -34,6 +34,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -59,7 +60,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * Load of a value from a location specified as an offset relative to an object. No null check is
  * performed before the load.
  */
-@NodeInfo(cycles = CYCLES_2, size = SIZE_1)
+@NodeInfo(cycles = CYCLES_2, size = SIZE_1, allowedUsageTypes = InputType.Association)
 public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtualizable, Canonicalizable {
     public static final NodeClass<RawLoadNode> TYPE = NodeClass.create(RawLoadNode.class);
 

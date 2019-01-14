@@ -133,12 +133,12 @@ class TestProtectedAssembler extends AArch64Assembler {
     }
 
     @Override
-    protected void ldar(int size, Register rt, Register rn) {
+    public void ldar(int size, Register rt, Register rn) {
         super.ldar(size, rt, rn);
     }
 
     @Override
-    protected void stlr(int size, Register rt, Register rn) {
+    public void stlr(int size, Register rt, Register rn) {
         super.stlr(size, rt, rn);
     }
 

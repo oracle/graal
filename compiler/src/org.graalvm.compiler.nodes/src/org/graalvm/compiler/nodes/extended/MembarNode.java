@@ -24,14 +24,17 @@
  */
 package org.graalvm.compiler.nodes.extended;
 
+import static org.graalvm.compiler.nodeinfo.InputType.Association;
 import static org.graalvm.compiler.nodeinfo.InputType.Memory;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -40,12 +43,18 @@ import org.graalvm.word.LocationIdentity;
 /**
  * Creates a memory barrier.
  */
-@NodeInfo(nameTemplate = "Membar#{p#location/s}", allowedUsageTypes = Memory, cycles = CYCLES_2, size = SIZE_2)
+@NodeInfo(nameTemplate = "Membar#{p#location/s}", allowedUsageTypes = {Memory, Association}, cycles = CYCLES_2, size = SIZE_2)
 public final class MembarNode extends FixedWithNextNode implements LIRLowerable, MemoryCheckpoint.Single {
 
     public static final NodeClass<MembarNode> TYPE = NodeClass.create(MembarNode.class);
     protected final int barriers;
     protected final LocationIdentity location;
+    // optional volatile access with which this memory barrier is
+    // associated when it is a post-volatile membar
+    @OptionalInput(Association) private ValueNode access;
+    // optional volatile pre-membar with which this memory barrier
+    // is associated when it is a post-volatile membar
+    @OptionalInput(Association) private MembarNode leading;
 
     public MembarNode(int barriers) {
         this(barriers, LocationIdentity.any());
@@ -55,6 +64,8 @@ public final class MembarNode extends FixedWithNextNode implements LIRLowerable,
         super(TYPE, StampFactory.forVoid());
         this.barriers = barriers;
         this.location = location;
+        this.access = null;
+        this.leading = null;
     }
 
     @Override
@@ -65,6 +76,30 @@ public final class MembarNode extends FixedWithNextNode implements LIRLowerable,
     @Override
     public void generate(NodeLIRBuilderTool generator) {
         generator.getLIRGeneratorTool().emitMembar(barriers);
+    }
+
+    public int getBarriers() {
+        return barriers;
+    }
+
+    public void setAccess(ValueNode access) {
+        Node old = this.access;
+        this.access = access;
+        updateUsages(old, access);
+    }
+
+    public ValueNode getAccess() {
+        return access;
+    }
+
+    public void setLeading(MembarNode leading) {
+        MembarNode old = this.leading;
+        this.leading = leading;
+        updateUsages(old, leading);
+    }
+
+    public MembarNode getLeading() {
+        return leading;
     }
 
     @NodeIntrinsic

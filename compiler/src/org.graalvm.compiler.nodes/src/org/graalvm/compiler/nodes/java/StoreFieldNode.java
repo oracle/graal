@@ -44,7 +44,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 /**
  * The {@code StoreFieldNode} represents a write to a static or instance field.
  */
-@NodeInfo(nameTemplate = "StoreField#{p#field/s}")
+@NodeInfo(nameTemplate = "StoreField#{p#field/s}", allowedUsageTypes = InputType.Association)
 public final class StoreFieldNode extends AccessFieldNode implements StateSplit, Virtualizable {
     public static final NodeClass<StoreFieldNode> TYPE = NodeClass.create(StoreFieldNode.class);
 

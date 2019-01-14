@@ -30,6 +30,7 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.StateSplit;
@@ -51,7 +52,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * Store of a value at a location specified as an offset relative to an object. No null check is
  * performed before the store.
  */
-@NodeInfo(cycles = CYCLES_2, size = SIZE_1)
+@NodeInfo(cycles = CYCLES_2, size = SIZE_1, allowedUsageTypes = InputType.Association)
 public final class RawStoreNode extends UnsafeAccessNode implements StateSplit, Lowerable, Virtualizable, MemoryCheckpoint.Single {
 
     public static final NodeClass<RawStoreNode> TYPE = NodeClass.create(RawStoreNode.class);

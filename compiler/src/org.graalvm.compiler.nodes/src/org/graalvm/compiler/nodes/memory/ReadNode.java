@@ -59,7 +59,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 /**
  * Reads an {@linkplain FixedAccessNode accessed} value.
  */
-@NodeInfo(nameTemplate = "Read#{p#location/s}", cycles = CYCLES_2, size = SIZE_1)
+@NodeInfo(nameTemplate = "Read#{p#location/s}", cycles = CYCLES_2, size = SIZE_1,allowedUsageTypes = InputType.Association )
 public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess, Canonicalizable, Virtualizable, GuardingNode {
 
     public static final NodeClass<ReadNode> TYPE = NodeClass.create(ReadNode.class);

@@ -30,6 +30,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -40,7 +41,7 @@ import org.graalvm.word.LocationIdentity;
 /**
  * Writes a given {@linkplain #value() value} a {@linkplain FixedAccessNode memory location}.
  */
-@NodeInfo(nameTemplate = "Write#{p#location/s}")
+@NodeInfo(nameTemplate = "Write#{p#location/s}", allowedUsageTypes = InputType.Association)
 public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess, Canonicalizable {
 
     public static final NodeClass<WriteNode> TYPE = NodeClass.create(WriteNode.class);
