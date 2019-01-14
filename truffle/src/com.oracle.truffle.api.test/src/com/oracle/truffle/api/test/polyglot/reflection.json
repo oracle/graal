@@ -171,7 +171,6 @@
     "name": "java.lang.Class",
     "methods": [
       { "name": "getName", "parameterTypes": [] },
-      { "name": "isInterface", "parameterTypes": [] },
       { "name": "isInstance", "parameterTypes": ["java.lang.Object"] }
     ]
   }
