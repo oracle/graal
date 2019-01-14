@@ -24,14 +24,13 @@
  */
 package com.oracle.svm.core.windows;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.jni.JNIRuntimeAccess;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.RuntimeClassInitialization;
+import org.graalvm.nativeimage.RuntimeReflection;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.windows.headers.WinSock;
@@ -42,6 +41,27 @@ import java.net.InetAddress;
 @AutomaticFeature
 @CLibrary("net")
 class WindowsJavaNetSubstitutionsFeature implements Feature {
+
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        try {
+            RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.net.InetAddress"));
+            RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.net.Inet4AddressImpl"));
+            RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.net.Inet6AddressImpl"));
+            RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.net.SocketInputStream"));
+            RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.net.SocketOutputStream"));
+            RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.net.NetworkInterface"));
+            RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.net.DatagramPacket"));
+            RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.net.AbstractPlainSocketImpl"));
+            RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.net.AbstractPlainDatagramSocketImpl"));
+            RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.net.DualStackPlainSocketImpl"));
+            RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.net.TwoStacksPlainSocketImpl"));
+            RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.net.DualStackPlainDatagramSocketImpl"));
+            RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.net.TwoStacksPlainDatagramSocketImpl"));
+        } catch (Exception e) {
+            VMError.shouldNotReachHere("WindowsJavaNetSubstitutionsFeature: Error registering rerunClassInitialization: ", e);
+        }
+    }
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
@@ -97,6 +117,7 @@ class WindowsJavaNetSubstitutionsFeature implements Feature {
             JNIRuntimeAccess.register(access.findClassByName("java.net.DatagramPacket").getDeclaredField("length"));
             JNIRuntimeAccess.register(access.findClassByName("java.net.DatagramPacket").getDeclaredField("bufLength"));
 
+            JNIRuntimeAccess.register(access.findClassByName("java.net.InetSocketAddress"));
             JNIRuntimeAccess.register(access.findClassByName("java.net.InetSocketAddress").getDeclaredConstructor(InetAddress.class, int.class));
 
             JNIRuntimeAccess.register(access.findClassByName("java.net.SocketException"));
@@ -146,103 +167,23 @@ class WindowsJavaNetSubstitutionsFeature implements Feature {
             JNIRuntimeAccess.register(access.findClassByName("java.lang.Boolean").getDeclaredConstructor(boolean.class));
             JNIRuntimeAccess.register(access.findClassByName("java.lang.Boolean").getDeclaredMethod("getBoolean", String.class));
 
+            RuntimeReflection.register(access.findClassByName("java.net.InetAddressImpl"));
+            RuntimeReflection.register(access.findClassByName("java.net.Inet4AddressImpl"));
+            RuntimeReflection.register(access.findClassByName("java.net.Inet6AddressImpl"));
+            RuntimeReflection.registerForReflectiveInstantiation(access.findClassByName("java.net.Inet4AddressImpl"));
+            RuntimeReflection.registerForReflectiveInstantiation(access.findClassByName("java.net.Inet6AddressImpl"));
+
         } catch (Exception e) {
             VMError.shouldNotReachHere("WindowsJavaNetSubstitutionsFeature: Error registering class or method: ", e);
         }
     }
 }
 
-@TargetClass(className = "java.net.NetworkInterface")
-@Platforms(Platform.WINDOWS.class)
-final class Target_java_net_NetworkInterface {
-
-    @Alias
-    static native void init();
-
-}
-
-@TargetClass(className = "java.net.DatagramPacket")
-@Platforms(Platform.WINDOWS.class)
-final class Target_java_net_DatagramPacket {
-
-    @Alias
-    static native void init();
-
-}
-
-@TargetClass(className = "java.net.DualStackPlainDatagramSocketImpl")
-@Platforms(Platform.WINDOWS.class)
-final class Target_java_net_DualStackPlainDatagramSocketImpl {
-
-    @Alias
-    static native void initIDs();
-
-}
-
-@TargetClass(className = "java.net.DualStackPlainSocketImpl")
-@Platforms(Platform.WINDOWS.class)
-final class Target_java_net_DualStackPlainSocketImpl {
-
-    @Alias
-    static native void initIDs();
-
-}
-
-@TargetClass(className = "java.net.TwoStacksPlainDatagramSocketImpl")
-@Platforms(Platform.WINDOWS.class)
-final class Target_java_net_TwoStacksPlainDatagramSocketImpl {
-
-    @Alias
-    static native void init();
-
-}
-
-@TargetClass(className = "java.net.TwoStacksPlainSocketImpl")
-@Platforms(Platform.WINDOWS.class)
-final class Target_java_net_TwoStacksPlainSocketImpl {
-
-    @Alias
-    static native void initProto();
-
-}
-
-@TargetClass(className = "java.net.SocketInputStream")
-@Platforms(Platform.WINDOWS.class)
-final class Target_java_net_SocketInputStream {
-
-    @Alias
-    static native void init();
-
-}
-
-@TargetClass(className = "java.net.SocketOutputStream")
-@Platforms(Platform.WINDOWS.class)
-final class Target_java_net_SocketOutputStream {
-
-    @Alias
-    static native void init();
-
-}
-
 @Platforms(Platform.WINDOWS.class)
 public final class WindowsJavaNetSubstitutions {
 
     public static boolean initIDs() {
-        try {
-            WinSock.init();
-            System.loadLibrary("net");
-            Target_java_net_SocketInputStream.init();
-            Target_java_net_SocketOutputStream.init();
-            Target_java_net_NetworkInterface.init();
-            Target_java_net_DatagramPacket.init();
-            Target_java_net_DualStackPlainSocketImpl.initIDs();
-            Target_java_net_TwoStacksPlainSocketImpl.initProto();
-            Target_java_net_DualStackPlainDatagramSocketImpl.initIDs();
-            Target_java_net_TwoStacksPlainDatagramSocketImpl.init();
-            return true;
-        } catch (UnsatisfiedLinkError e) {
-            Log.log().string("System.loadLibrary of builtIn net library failed, " + e).newline();
-            return false;
-        }
+        WinSock.init();
+        return true;
     }
 }

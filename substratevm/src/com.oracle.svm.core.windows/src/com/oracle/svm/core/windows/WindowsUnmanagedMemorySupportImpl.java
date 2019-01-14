@@ -36,24 +36,29 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.windows.headers.LibC;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.annotate.Uninterruptible;
 
 class WindowsUnmanagedMemorySupportImpl implements UnmanagedMemorySupport {
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.")
     public <T extends PointerBase> T malloc(UnsignedWord size) {
         return LibC.malloc(size);
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.")
     public <T extends PointerBase> T calloc(UnsignedWord size) {
         return LibC.calloc(WordFactory.unsigned(1), size);
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.")
     public <T extends PointerBase> T realloc(T ptr, UnsignedWord size) {
         return LibC.realloc(ptr, size);
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.")
     public void free(PointerBase ptr) {
         LibC.free(ptr);
     }
