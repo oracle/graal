@@ -150,7 +150,18 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
                     addSubstitutionMethod(method, createWriteMethod(method, (Field) member, JavaKind.Double));
                     break;
                 case "newInstance":
-                    addSubstitutionMethod(method, new ReflectiveNewInstanceMethod(method, (Constructor<?>) member));
+                    Class<?> holder = member.getDeclaringClass();
+                    if (Modifier.isAbstract(holder.getModifiers()) || holder.isInterface() || holder.isPrimitive() || holder.isArray()) {
+                        /*
+                         * Invoking the constructor of an abstract class always throws an
+                         * InstantiationException. It should not be possible to get a Constructor
+                         * object for an interface, array, or primitive type, but we are defensive
+                         * and throw the exception in that case too.
+                         */
+                        addSubstitutionMethod(method, new ThrowingMethod(method, InstantiationException.class, "Cannot instantiate " + holder));
+                    } else {
+                        addSubstitutionMethod(method, new ReflectiveNewInstanceMethod(method, (Constructor<?>) member));
+                    }
                     break;
                 case "toString":
                     addSubstitutionMethod(method, new ToStringMethod(method, member.getName()));
