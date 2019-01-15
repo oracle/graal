@@ -1403,14 +1403,20 @@ public final class TruffleFile {
 
     private Path[] toAbsolutePathImpl() {
         Path normalizedAbsolute = fileSystem.toAbsolutePath(normalizedPath);
-        if (isNormalized()) {
-            return new Path[]{normalizedAbsolute, normalizedAbsolute};
+        Path renormalizedAbsolute = normalizedAbsolute.normalize();
+        if (isNormalized() && renormalizedAbsolute.equals(normalizedAbsolute)) {
+            return new Path[]{renormalizedAbsolute, renormalizedAbsolute};
         } else {
-            Path root = fileSystem.parsePath("/");
-            boolean emptyPath = normalizedPath.getFileName().getNameCount() == 1 && normalizedPath.getFileName().toString().isEmpty();
-            Path absolute = root.equals(normalizedAbsolute) ? root
-                            : root.resolve(normalizedAbsolute.subpath(0, normalizedAbsolute.getNameCount() - (emptyPath ? 0 : normalizedPath.getNameCount()))).resolve(path);
-            return new Path[]{absolute, normalizedAbsolute};
+            Path root = normalizedAbsolute.getRoot();
+            boolean emptyPath = normalizedPath.getNameCount() == 1 && normalizedPath.getFileName().toString().isEmpty();
+            int endIndex = normalizedAbsolute.getNameCount() - (emptyPath ? 0 : normalizedPath.getNameCount());
+            Path absolute;
+            if (endIndex == 0) {
+                absolute = root.resolve(path);
+            } else {
+                absolute = root.resolve(normalizedAbsolute.subpath(0, endIndex)).resolve(path);
+            }
+            return new Path[]{absolute, renormalizedAbsolute};
         }
     }
 
