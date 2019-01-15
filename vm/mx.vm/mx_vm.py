@@ -1353,7 +1353,6 @@ def get_lib_polyglot_project():
                     build_args=[
                         "-H:+IncludeAllTimeZones",
                         "--language:all",
-                        "--tool:truffle",
                         "-Dgraalvm.libpolyglot=true",
                         "-Dorg.graalvm.polyglot.install_name_id=@rpath/jre/lib/polyglot/<lib:polyglot>"
                     ] + GraalVmLanguageLauncher.default_tool_options() + polyglot_lib_build_args,
