@@ -99,8 +99,6 @@ import org.graalvm.compiler.replacements.PEGraphDecoder;
 import org.graalvm.compiler.replacements.ReplacementsImpl;
 import org.graalvm.compiler.replacements.SnippetCounter;
 import org.graalvm.compiler.replacements.SnippetIntegerHistogram;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.TargetDescription;
@@ -171,7 +169,6 @@ public class SymbolicSnippetEncoder extends DelegatingReplacements {
         return snippetMethods;
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
     protected class SnippetInlineInvokePlugin implements InlineInvokePlugin {
 
         @Override
@@ -245,7 +242,6 @@ public class SymbolicSnippetEncoder extends DelegatingReplacements {
         return method.format("%f %H.%n(%P)");
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
     SymbolicSnippetEncoder(HotSpotReplacementsImpl replacements) {
         super(replacements);
 
@@ -268,7 +264,6 @@ public class SymbolicSnippetEncoder extends DelegatingReplacements {
     /**
      * Compiles the snippet and stores the graph.
      */
-    @Platforms(Platform.HOSTED_ONLY.class)
     public void registerMethodSubstitution(ResolvedJavaMethod method, ResolvedJavaMethod original) {
         assert method.getAnnotation(MethodSubstitution.class) != null : "MethodSubstitution must be annotated with @" + MethodSubstitution.class.getSimpleName();
         buildGraph(method, original, null, false, false);
@@ -536,7 +531,6 @@ public class SymbolicSnippetEncoder extends DelegatingReplacements {
         }
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
     EncodedSnippets encodeSnippets(DebugContext debug) {
         GraphEncoder encoder = new GraphEncoder(HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getTarget().arch);
         for (StructuredGraph graph : preparedSnippetGraphs.values()) {
