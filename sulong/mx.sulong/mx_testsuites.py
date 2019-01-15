@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2019, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -163,7 +163,7 @@ class SulongTestSuite(mx.NativeProject):
         return super(SulongTestSuite, self).getResults(replaceVar=replaceVar)
 
 
-class ExternalTestSuite(SulongTestSuite):
+class ExternalTestSuite(SulongTestSuite):  # pylint: disable=too-many-ancestors
     def __init__(self, *args, **kwargs):
         super(ExternalTestSuite, self).__init__(*args, **kwargs)
         if hasattr(self, 'testDir'):
