@@ -22,6 +22,10 @@
  */
 package com.oracle.truffle.espresso.bytecode;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -31,10 +35,10 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.types.SignatureDescriptor;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-
+/**
+ * JVM operand stack. Underlying storage is implementation specific e.g. boxed array, primitive +
+ * reference storage, on-frame...
+ */
 public interface OperandStack {
 
     List<JavaKind> KIND_VALUES = Collections.unmodifiableList(Arrays.asList(JavaKind.values()));

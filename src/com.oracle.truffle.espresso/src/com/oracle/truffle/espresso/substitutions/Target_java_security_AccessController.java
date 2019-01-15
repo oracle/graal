@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.intrinsics;
+package com.oracle.truffle.espresso.substitutions;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.MethodInfo;
@@ -37,26 +37,26 @@ import java.security.PrivilegedExceptionAction;
 
 import static com.oracle.truffle.espresso.meta.Meta.meta;
 
-@EspressoIntrinsics
+@EspressoSubstitutions
 public class Target_java_security_AccessController {
-    @Intrinsic
+    @Substitution
     public static Object doPrivileged(@Type(PrivilegedAction.class) StaticObject action) {
         MethodInfo runMethod = action.getKlass().findDeclaredConcreteMethod("run", EspressoLanguage.getCurrentContext().getSignatureDescriptors().make("()Ljava/lang/Object;"));
         Object result = runMethod.getCallTarget().call(action);
         return result;
     }
 
-    @Intrinsic(methodName = "doPrivileged")
+    @Substitution(methodName = "doPrivileged")
     public static Object doPrivileged2(@Type(PrivilegedExceptionAction.class) StaticObject action) {
         return doPrivileged3(action, StaticObject.NULL);
     }
 
-    @Intrinsic
+    @Substitution
     public static @Type(AccessControlContext.class) StaticObject getStackAccessControlContext() {
         return StaticObject.NULL;
     }
 
-    @Intrinsic(methodName = "doPrivileged")
+    @Substitution(methodName = "doPrivileged")
     public static Object doPrivileged3(@Type(PrivilegedExceptionAction.class) StaticObject action, @SuppressWarnings("unused") @Type(AccessControlContext.class) StaticObject context) {
         try {
             return doPrivileged(action);
@@ -70,7 +70,7 @@ public class Target_java_security_AccessController {
         }
     }
 
-    @Intrinsic(methodName = "doPrivileged")
+    @Substitution(methodName = "doPrivileged")
     public static Object doPrivileged4(@Type(PrivilegedAction.class) StaticObject action, @SuppressWarnings("unused") @Type(AccessControlContext.class) StaticObject context) {
         return doPrivileged(action);
     }

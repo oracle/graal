@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.intrinsics;
+package com.oracle.truffle.espresso.substitutions;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -30,6 +30,6 @@ import static java.lang.annotation.ElementType.TYPE;
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target(value = {TYPE})
-public @interface EspressoIntrinsics {
-    Class<?> value() default EspressoIntrinsics.class;
+public @interface EspressoSubstitutions {
+    Class<?> value() default EspressoSubstitutions.class;
 }

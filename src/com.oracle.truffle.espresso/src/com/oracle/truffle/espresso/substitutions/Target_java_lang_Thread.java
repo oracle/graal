@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.intrinsics;
+package com.oracle.truffle.espresso.substitutions;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
@@ -29,11 +29,11 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-@EspressoIntrinsics
+@EspressoSubstitutions
 public class Target_java_lang_Thread {
 
     // TODO(peterssen): Remove single thread shim, support real threads.
-    @Intrinsic
+    @Substitution
     public static @Type(Thread.class) StaticObject currentThread() {
         EspressoContext context = EspressoLanguage.getCurrentContext();
         if (context.getMainThread() == null) {
@@ -54,38 +54,38 @@ public class Target_java_lang_Thread {
     }
 
     @SuppressWarnings("unused")
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static void setPriority0(@Type(Thread.class) StaticObject self, int newPriority) {
         /* nop */ }
 
     @SuppressWarnings("unused")
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static void setDaemon(@Type(Thread.class) StaticObject self, boolean on) {
         /* nop */ }
 
     @SuppressWarnings("unused")
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static boolean isAlive(@Type(Thread.class) StaticObject self) {
         return false;
     }
 
     @SuppressWarnings("unused")
-    @Intrinsic
+    @Substitution
     public static void registerNatives() {
         /* nop */ }
 
     @SuppressWarnings("unused")
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static void start0(@Type(Thread.class) StaticObject self) {
         /* nop */ }
 
     @SuppressWarnings("unused")
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static boolean isInterrupted(@Type(Thread.class) StaticObject self, boolean ClearInterrupted) {
         return false;
     }
 
-    @Intrinsic
+    @Substitution
     public static boolean holdsLock(Object object) {
         if (!EspressoOptions.RUNNING_ON_SVM) {
             // Sane behavior on HotSpot.
@@ -96,7 +96,7 @@ public class Target_java_lang_Thread {
         return true;
     }
 
-    @Intrinsic
+    @Substitution
     public static void sleep(long millis) {
         try {
             Thread.sleep(millis);

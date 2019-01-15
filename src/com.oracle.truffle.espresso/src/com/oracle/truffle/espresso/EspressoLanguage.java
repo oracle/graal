@@ -124,7 +124,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
                                         "            public static void main(String[] args)\n",
                         className);
 
-        assert mainMethod.isPublic() && mainMethod.isStatic();
+        assert mainMethod != null && mainMethod.isPublic() && mainMethod.isStatic();
         mainClass.initialize();
         return Truffle.getRuntime().createCallTarget(new MainLauncherRootNode(this, mainMethod.rawMethod()));
     }

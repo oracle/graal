@@ -34,66 +34,55 @@
     ]
   },
   {
-    "name": "java.lang.Package",
-    "methods": [
-      {
-        "name": "getSystemPackage0",
-        "parameterTypes": [
-          "java.lang.String"
-        ]
-      }
-    ]
-  },
-  {
-    "name": "com.oracle.truffle.espresso.intrinsics.Target_java_lang_Class",    
+    "name": "com.oracle.truffle.espresso.substitutions.Target_java_lang_Class",    
     "allPublicMethods": true
   },
   {
-    "name": "com.oracle.truffle.espresso.intrinsics.Target_java_lang_ClassLoader",    
+    "name": "com.oracle.truffle.espresso.substitutions.Target_java_lang_ClassLoader",    
     "allPublicMethods": true
   },
   {
-    "name": "com.oracle.truffle.espresso.intrinsics.Target_java_lang_Package",    
+    "name": "com.oracle.truffle.espresso.substitutions.Target_java_lang_Package",    
     "allPublicMethods": true
   },
   {
-    "name": "com.oracle.truffle.espresso.intrinsics.Target_java_lang_Runtime",    
+    "name": "com.oracle.truffle.espresso.substitutions.Target_java_lang_Runtime",    
     "allPublicMethods": true
   },
   {
-    "name": "com.oracle.truffle.espresso.intrinsics.Target_java_lang_Thread",    
+    "name": "com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread",    
     "allPublicMethods": true
   },
   {
-    "name": "com.oracle.truffle.espresso.intrinsics.Target_java_lang_reflect_Array",    
+    "name": "com.oracle.truffle.espresso.substitutions.Target_java_lang_reflect_Array",    
     "allPublicMethods": true
   },
   {
-    "name": "com.oracle.truffle.espresso.intrinsics.Target_java_security_AccessController",    
+    "name": "com.oracle.truffle.espresso.substitutions.Target_java_security_AccessController",    
     "allPublicMethods": true
   },
   {
-    "name": "com.oracle.truffle.espresso.intrinsics.Target_sun_misc_Perf",    
+    "name": "com.oracle.truffle.espresso.substitutions.Target_sun_misc_Perf",    
     "allPublicMethods": true
   },
   {
-    "name": "com.oracle.truffle.espresso.intrinsics.Target_sun_misc_Signal",    
+    "name": "com.oracle.truffle.espresso.substitutions.Target_sun_misc_Signal",    
     "allPublicMethods": true
   },
   {
-    "name": "com.oracle.truffle.espresso.intrinsics.Target_sun_misc_Unsafe",    
+    "name": "com.oracle.truffle.espresso.substitutions.Target_sun_misc_Unsafe",    
     "allPublicMethods": true
   },  
   {
-    "name": "com.oracle.truffle.espresso.intrinsics.Target_sun_misc_URLClassPath",
+    "name": "com.oracle.truffle.espresso.substitutions.Target_sun_misc_URLClassPath",
     "allPublicMethods": true
   },
   {
-    "name": "com.oracle.truffle.espresso.intrinsics.Target_sun_misc_VM",    
+    "name": "com.oracle.truffle.espresso.substitutions.Target_sun_misc_VM",    
     "allPublicMethods": true
   },
   {
-    "name": "com.oracle.truffle.espresso.intrinsics.Target_sun_reflect_NativeMethodAccessorImpl",    
+    "name": "com.oracle.truffle.espresso.substitutions.Target_sun_reflect_NativeMethodAccessorImpl",    
     "allPublicMethods": true
   },
   {

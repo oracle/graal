@@ -21,15 +21,33 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.intrinsics;
+package com.oracle.truffle.espresso.substitutions;
 
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-@EspressoIntrinsics
-public class Target_java_lang_Package {
-    @Intrinsic
-    public static @Type(String.class) Object getSystemPackage0(@SuppressWarnings("unused") @Type(String.class) StaticObject name) {
-        // TODO(peterssen): This is a workaround, mainly to be able to run on SVM.
+@EspressoSubstitutions
+public class Target_java_lang_ClassLoader {
+    @Substitution
+    public static void registerNatives() {
+        /* nop */
+    }
+
+    @Substitution
+    public static @Type(String.class) StaticObject findBuiltinLib(@SuppressWarnings("unused") @Type(String.class) StaticObject name) {
+        /**
+         * The native implementation assumes builtin libraries are loaded in the default namespace,
+         * Espresso loads isolated copies (mainly libjava).
+         *
+         * Native method linking needs special handling, since classes in the BCL must peek in
+         * libjava first, try different signatures in case of overloading, the naming scheme can be
+         * also platform dependent.
+         *
+         * A better workaround would be to load libjava the same way as libzip, we could then remove
+         * the logic to link native methods by hand and rely on the pure Java implementation e.g.
+         * ClassLoader.findNative.
+         *
+         * This substitution disables builtin libraries in Espresso.
+         */
         return StaticObject.NULL;
     }
 }

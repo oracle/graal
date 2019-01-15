@@ -20,16 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.intrinsics;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+package com.oracle.truffle.espresso.substitutions;
 
-import static java.lang.annotation.ElementType.TYPE;
-
-@Retention(RetentionPolicy.RUNTIME)
-@Target(value = {TYPE})
-public @interface Surrogate {
-    String value();
+@EspressoSubstitutions
+public class Target_sun_misc_VM {
+    @Substitution
+    public static void initialize() {
+        /* nop */
+    }
 }

@@ -25,7 +25,7 @@ package com.oracle.truffle.espresso.runtime;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.nodes.Node;
 
-public class EspressoExitException extends RuntimeException implements TruffleException {
+public final class EspressoExitException extends RuntimeException implements TruffleException {
 
     private static final long serialVersionUID = 7140601650442131207L;
 

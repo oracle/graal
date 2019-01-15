@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.intrinsics;
+package com.oracle.truffle.espresso.substitutions;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ClassConstant;
@@ -56,13 +56,13 @@ import java.util.function.Predicate;
 
 import static com.oracle.truffle.espresso.meta.Meta.meta;
 
-@EspressoIntrinsics
+@EspressoSubstitutions
 public class Target_java_lang_Class {
 
     public static final String HIDDEN_METHOD_KEY = "$$method_info";
     public static final String HIDDEN_FIELD_KEY = "$$field_info";
 
-    @Intrinsic
+    @Substitution
     public static @Type(Class.class) StaticObject getPrimitiveClass(
                     @Type(String.class) StaticObject name) {
 
@@ -70,12 +70,12 @@ public class Target_java_lang_Class {
         return EspressoLanguage.getCurrentContext().getRegistries().resolveWithBootClassLoader(TypeDescriptors.forPrimitive(JavaKind.fromTypeString(hostName))).mirror();
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static boolean desiredAssertionStatus(@SuppressWarnings("unused") Object self) {
         return false;
     }
 
-    @Intrinsic
+    @Substitution
     public static @Type(Class.class) StaticObject forName0(
                     @Type(String.class) StaticObject name,
                     boolean initialize,
@@ -108,19 +108,19 @@ public class Target_java_lang_Class {
         }
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static @Type(String.class) StaticObject getName0(@Type(Class.class) StaticObjectClass self) {
         String name = self.getMirror().getName();
         // Class name is stored in internal form.
         return EspressoLanguage.getCurrentContext().getMeta().toGuest(MetaUtil.internalNameToJava(name, true, true));
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static @Type(ClassLoader.class) StaticObject getClassLoader0(@Type(Class.class) StaticObjectClass self) {
         return self.getMirror().getClassLoader();
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static @Type(Field[].class) StaticObject getDeclaredFields0(@Type(Class.class) StaticObjectClass self, boolean publicOnly) {
         final FieldInfo[] fields = Arrays.stream(self.getMirror().getDeclaredFields()).filter(new Predicate<FieldInfo>() {
             @Override
@@ -159,7 +159,7 @@ public class Target_java_lang_Class {
         return arr;
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static @Type(Constructor[].class) StaticObject getDeclaredConstructors0(@Type(Class.class) StaticObjectClass self, boolean publicOnly) {
         final MethodInfo[] constructors = Arrays.stream(self.getMirror().getDeclaredConstructors()).filter(new Predicate<MethodInfo>() {
             @Override
@@ -215,7 +215,7 @@ public class Target_java_lang_Class {
         return arr;
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static @Type(Method[].class) StaticObject getDeclaredMethods0(StaticObjectClass self, boolean publicOnly) {
         final MethodInfo[] methods = Arrays.stream(self.getMirror().getDeclaredMethods()).filter(new Predicate<MethodInfo>() {
             @Override
@@ -273,7 +273,7 @@ public class Target_java_lang_Class {
         return arr;
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static @Type(Class[].class) StaticObject getInterfaces0(StaticObjectClass self) {
         final Klass[] interfaces = Arrays.stream(self.getMirror().getInterfaces()).toArray(
                         new IntFunction<Klass[]>() {
@@ -293,22 +293,22 @@ public class Target_java_lang_Class {
         return arr;
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static boolean isPrimitive(@Type(Class.class) StaticObjectClass self) {
         return self.getMirror().isPrimitive();
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static boolean isInterface(@Type(Class.class) StaticObjectClass self) {
         return self.getMirror().isInterface();
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static int getModifiers(@Type(Class.class) StaticObjectClass self) {
         return self.getMirror().getModifiers();
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static @Type(Class.class) StaticObject getSuperclass(@Type(Class.class) StaticObjectClass self) {
         if (self.getMirror().isInterface()) {
             return StaticObject.NULL;
@@ -320,12 +320,12 @@ public class Target_java_lang_Class {
         return superclass.mirror();
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static boolean isArray(@Type(Class.class) StaticObjectClass self) {
         return self.getMirror().isArray();
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static @Type(Class.class) StaticObject getComponentType(@Type(Class.class) StaticObjectClass self) {
         Klass comp = self.getMirror().getComponentType();
         if (comp == null) {
@@ -334,7 +334,7 @@ public class Target_java_lang_Class {
         return comp.mirror();
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static @Type(Object[].class) StaticObject getEnclosingMethod0(StaticObjectClass self) {
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
         InterpreterToVM vm = EspressoLanguage.getCurrentContext().getInterpreterToVM();
@@ -362,7 +362,7 @@ public class Target_java_lang_Class {
         return StaticObject.NULL;
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static @Type(Class.class) StaticObject getDeclaringClass0(StaticObjectClass self) {
         // Primitives and arrays are not "enclosed".
         if (!(self.getMirror() instanceof ObjectKlass)) {
@@ -440,22 +440,22 @@ public class Target_java_lang_Class {
      *
      * @since JDK1.1
      */
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static boolean isInstance(StaticObjectClass self, StaticObject obj) {
         return EspressoLanguage.getCurrentContext().getInterpreterToVM().instanceOf(obj, self.getMirror());
     }
 
-    @Intrinsic
+    @Substitution
     public static void registerNatives() {
         /* nop */
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static @Type(ProtectionDomain.class) StaticObject getProtectionDomain0(@SuppressWarnings("unused") StaticObject self) {
         return StaticObject.NULL;
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static @Type(byte[].class) StaticObject getRawAnnotations(StaticObjectClass self) {
         Klass klass = self.getMirror();
         if (klass instanceof ObjectKlass) {
@@ -467,7 +467,7 @@ public class Target_java_lang_Class {
         return StaticObject.NULL;
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static @Type(sun.reflect.ConstantPool.class) StaticObject getConstantPool(StaticObjectClass self) {
         Klass klass = self.getMirror();
         if (klass instanceof ObjectKlass) {
