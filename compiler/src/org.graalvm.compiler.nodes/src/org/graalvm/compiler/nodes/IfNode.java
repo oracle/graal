@@ -869,7 +869,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         }
     }
 
-    private ValueNode canonicalizeConditionalViaImplies(LogicNode condition, ValueNode trueValue, ValueNode falseValue) {
+    private ValueNode canonicalizeConditionalViaImplies(ValueNode trueValue, ValueNode falseValue) {
         ValueNode collapsedTrue = trueValue;
         ValueNode collapsedFalse = falseValue;
         boolean simplify = false;
@@ -888,7 +888,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             }
         }
         if (simplify) {
-            return graph().unique(new ConditionalNode(condition, collapsedTrue, collapsedFalse));
+            return graph().unique(new ConditionalNode(condition(), collapsedTrue, collapsedFalse));
         }
         return null;
     }
@@ -903,7 +903,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         if (trueValue.isConstant() && falseValue.isConstant()) {
             return graph().unique(new ConditionalNode(condition(), trueValue, falseValue));
         }
-        ValueNode value = canonicalizeConditionalViaImplies(condition(), trueValue, falseValue);
+        ValueNode value = canonicalizeConditionalViaImplies(trueValue, falseValue);
         if (value != null) {
             return value;
         }
