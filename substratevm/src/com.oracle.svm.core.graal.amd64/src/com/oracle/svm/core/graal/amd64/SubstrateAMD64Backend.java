@@ -592,8 +592,6 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         public void enter(CompilationResultBuilder tasm) {
             AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
 
-            assert getDeoptScratchSpace() >= 16;
-
             // Move the DeoptimizedFrame into rdi
             asm.movq(rdi, new AMD64Address(rsp, 0));
 
@@ -632,8 +630,6 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         @Override
         public void leave(CompilationResultBuilder tasm) {
             AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
-
-            assert getDeoptScratchSpace() >= 16;
 
             super.leave(tasm);
 
@@ -882,14 +878,5 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         result.setTargetCode(instructions, instructions.length);
         result.setTotalFrameSize(getTarget().wordSize); // not really, but 0 not allowed
         return result;
-    }
-
-    /**
-     * Returns the amount of scratch space which must be reserved for return value registers in
-     * {@link DeoptimizedFrame}.
-     */
-    public static int getDeoptScratchSpace() {
-        // Space for two 64-bit registers: rax and xmm0
-        return 2 * 8;
     }
 }

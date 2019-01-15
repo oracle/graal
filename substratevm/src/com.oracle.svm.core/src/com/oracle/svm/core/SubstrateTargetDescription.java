@@ -22,18 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.meta;
+package com.oracle.svm.core;
 
 import java.util.EnumSet;
+
+import com.oracle.svm.core.deopt.DeoptimizedFrame;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.TargetDescription;
 
 public class SubstrateTargetDescription extends TargetDescription {
+    private final int deoptScratchSpace;
 
-    public SubstrateTargetDescription(Architecture arch, boolean isMP, int stackAlignment, int implicitNullCheckLimit, boolean inlineObjects) {
+    public SubstrateTargetDescription(Architecture arch, boolean isMP, int stackAlignment, int implicitNullCheckLimit, boolean inlineObjects, int deoptScratchSpace) {
         super(arch, isMP, stackAlignment, implicitNullCheckLimit, inlineObjects);
+        this.deoptScratchSpace = deoptScratchSpace;
     }
 
     /**
@@ -44,5 +48,13 @@ public class SubstrateTargetDescription extends TargetDescription {
      */
     public static EnumSet<AMD64.Flag> allFlags() {
         return EnumSet.of(AMD64.Flag.UseCountLeadingZerosInstruction, AMD64.Flag.UseCountLeadingZerosInstruction);
+    }
+
+    /**
+     * Returns the amount of scratch space which must be reserved for return value registers in
+     * {@link DeoptimizedFrame}.
+     */
+    public int getDeoptScratchSpace() {
+        return deoptScratchSpace;
     }
 }

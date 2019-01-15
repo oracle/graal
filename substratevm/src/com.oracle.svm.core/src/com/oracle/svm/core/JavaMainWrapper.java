@@ -66,7 +66,6 @@ import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.code.TargetDescription;
 
 public class JavaMainWrapper {
 
@@ -134,7 +133,8 @@ public class JavaMainWrapper {
 
         JavaMainWrapper.argc = paramArgc;
         JavaMainWrapper.argv = paramArgv;
-        Architecture imageArchitecture = ImageSingletons.lookup(TargetDescription.class).arch;
+
+        Architecture imageArchitecture = ImageSingletons.lookup(SubstrateTargetDescription.class).arch;
         AMD64CPUFeatureAccess.verifyHostSupportsArchitecture(imageArchitecture);
         String[] args = SubstrateUtil.getArgs(paramArgc, paramArgv);
         if (SubstrateOptions.ParseRuntimeOptions.getValue()) {
