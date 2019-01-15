@@ -104,12 +104,6 @@ public abstract class BinaryOpLogicNode extends LogicNode implements LIRLowerabl
         if (other instanceof LogicNegationNode) {
             return flip(this.implies(thisNegated, ((LogicNegationNode) other).getValue()));
         }
-        if (getClass() == other.getClass()) {
-            BinaryOpLogicNode binOp = (BinaryOpLogicNode) other;
-            if (getX() == binOp.getX() && getY() == binOp.getY()) {
-                return TriState.get(!thisNegated);
-            }
-        }
         return super.implies(thisNegated, other);
     }
 }
