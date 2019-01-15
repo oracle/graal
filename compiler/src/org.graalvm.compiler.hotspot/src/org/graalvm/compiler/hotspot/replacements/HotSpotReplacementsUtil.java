@@ -139,7 +139,7 @@ public class HotSpotReplacementsUtil {
     }
 
     @Fold
-    public static ResolvedJavaType methodHolderClass(@Fold.InjectedParameter IntrinsicContext context) {
+    public static ResolvedJavaType methodHolderClass(@InjectedParameter IntrinsicContext context) {
         return context.getOriginalMethod().getDeclaringClass();
     }
 
@@ -731,7 +731,7 @@ public class HotSpotReplacementsUtil {
     }
 
     public static KlassPointer loadKlassFromObject(Object object, int offset, LocationIdentity identity) {
-        ReplacementsUtil.staticAssert(offset != hubOffset(INJECTED_VMCONFIG), "Use loadHubIntrinsic instead of loadWordFromObject");
+        ReplacementsUtil.staticAssert(offset != hubOffset(INJECTED_VMCONFIG), "Use loadHubIntrinsic instead of loadKlassFromObject");
         return loadKlassFromObjectIntrinsic(object, offset, identity, getWordKind());
     }
 
