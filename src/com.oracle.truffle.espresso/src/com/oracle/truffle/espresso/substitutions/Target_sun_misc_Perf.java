@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.intrinsics;
+package com.oracle.truffle.espresso.substitutions;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.MethodInfo;
@@ -32,7 +32,7 @@ import sun.misc.Perf;
 
 import java.nio.ByteBuffer;
 
-@EspressoIntrinsics
+@EspressoSubstitutions
 public class Target_sun_misc_Perf {
 
     static class ByteUtils {
@@ -52,25 +52,25 @@ public class Target_sun_misc_Perf {
 
     private final static Perf hostPerf = Perf.getPerf();
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static long highResCounter(@SuppressWarnings("unused") Object self) {
         return hostPerf.highResCounter();
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static long highResFrequency(@SuppressWarnings("unused") Object self) {
         return hostPerf.highResFrequency();
     }
 
     @SuppressWarnings("unused")
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static @Type(ByteBuffer.class) StaticObject createLong(Object self, @Type(String.class) StaticObject var1, int var2, int var3, long var4) {
         EspressoContext context = EspressoLanguage.getCurrentContext();
         MethodInfo wrap = context.getRegistries().resolveWithBootClassLoader(context.getTypeDescriptors().make("Ljava/nio/ByteBuffer;")).findDeclaredMethod("wrap", ByteBuffer.class, byte[].class);
         return (StaticObject) wrap.getCallTarget().call(StaticObjectArray.wrap(ByteUtils.longToBytes(var4)));
     }
 
-    @Intrinsic
+    @Substitution
     public static void registerNatives() {
         // nop
     }

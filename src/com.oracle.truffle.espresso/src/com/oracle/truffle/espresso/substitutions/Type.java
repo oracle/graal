@@ -21,15 +21,18 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.intrinsics;
+package com.oracle.truffle.espresso.substitutions;
 
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-@EspressoIntrinsics
-public class Target_java_lang_Package {
-    @Intrinsic
-    public static @Type(String.class) Object getSystemPackage0(@SuppressWarnings("unused") @Type(String.class) StaticObject name) {
-        // TODO(peterssen): This is a workaround, mainly to be able to run on SVM.
-        return StaticObject.NULL;
-    }
+import static java.lang.annotation.ElementType.TYPE_USE;
+
+@Retention(RetentionPolicy.RUNTIME)
+@Target(value = {TYPE_USE})
+public @interface Type {
+    Class<?> value() default Type.class;
+
+    String typeName() default "";
 }

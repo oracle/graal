@@ -21,11 +21,11 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.intrinsics;
+package com.oracle.truffle.espresso.substitutions;
 
-@EspressoIntrinsics
+@EspressoSubstitutions
 public class Target_sun_misc_VM {
-    @Intrinsic
+    @Substitution
     public static void initialize() {
         /* nop */
     }

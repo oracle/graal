@@ -1,4 +1,4 @@
-package com.oracle.truffle.espresso.intrinsics;
+package com.oracle.truffle.espresso.substitutions;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -13,7 +13,7 @@ public @interface SuppressFBWarnings {
      * <a href="http://findbugs.sourceforge.net/bugDescriptions.html">warnings</a> that are to be
      * suppressed in annotated element. The value can be a bug category, kind or pattern.
      */
-    java.lang.String[] value();
+    String[] value();
 
     /**
      * Reason why the warning is suppressed.

@@ -20,18 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.intrinsics;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+package com.oracle.truffle.espresso.substitutions;
 
-import static java.lang.annotation.ElementType.METHOD;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
-@Retention(RetentionPolicy.RUNTIME)
-@Target(value = {METHOD})
-public @interface Intrinsic {
-    String methodName() default "";
+import java.net.URL;
 
-    boolean hasReceiver() default false;
+@EspressoSubstitutions
+public class Target_sun_misc_URLClassPath {
+    /**
+     * These ... new JVM_ functions uses hotspot internals to improve sun.misc.URLClassPath search
+     * time, a hack! http://mail.openjdk.java.net/pipermail/distro-pkg-dev/2015-December/034337.html
+     */
+    @SuppressWarnings("unused")
+    @Substitution
+    public static @Type(URL[].class) StaticObject getLookupCacheURLs(@Type(ClassLoader.class) StaticObject classLoader) {
+        return StaticObject.NULL;
+    }
 }

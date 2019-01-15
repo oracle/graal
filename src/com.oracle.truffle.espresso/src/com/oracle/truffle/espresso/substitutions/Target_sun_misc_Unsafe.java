@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.intrinsics;
+package com.oracle.truffle.espresso.substitutions;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.FieldInfo;
@@ -41,7 +41,7 @@ import java.util.Arrays;
 
 import static com.oracle.truffle.espresso.meta.Meta.meta;
 
-@EspressoIntrinsics
+@EspressoSubstitutions
 public class Target_sun_misc_Unsafe {
 
     private static final int SAFETY_FIELD_OFFSET = 123456789;
@@ -58,7 +58,7 @@ public class Target_sun_misc_Unsafe {
         }
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static int arrayBaseOffset(@SuppressWarnings("unused") Object self, @Type(Class.class) StaticObjectClass clazz) {
         assert clazz.getMirror().isArray();
         if (clazz.getMirror().getComponentType().isPrimitive()) {
@@ -70,7 +70,7 @@ public class Target_sun_misc_Unsafe {
         }
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static int arrayIndexScale(@SuppressWarnings("unused") Object self, @Type(Class.class) StaticObjectClass clazz) {
         assert clazz.getMirror().isArray();
         if (clazz.getMirror().getComponentType().isPrimitive()) {
@@ -82,12 +82,12 @@ public class Target_sun_misc_Unsafe {
         }
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static int addressSize(@SuppressWarnings("unused") Object self) {
         return 4;
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static long objectFieldOffset(@SuppressWarnings("unused") Object self, @Type(Field.class) StaticObjectImpl field) {
         StaticObjectImpl curField = field;
         FieldInfo target = null;
@@ -101,7 +101,7 @@ public class Target_sun_misc_Unsafe {
         return SAFETY_FIELD_OFFSET + target.getSlot();
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static final boolean compareAndSwapObject(@SuppressWarnings("unused") Object self, @Type(Object.class) StaticObject holder, long offset, Object before, Object after) {
         if (holder instanceof StaticObjectArray) {
             return U.compareAndSwapObject(((StaticObjectArray) holder).unwrap(), offset, before, after);
@@ -128,21 +128,21 @@ public class Target_sun_misc_Unsafe {
         return meta(field);
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static int getIntVolatile(@SuppressWarnings("unused") Object unsafe, @Type(Object.class) StaticObject holder, long offset) {
         // TODO(peterssen): Use holder.getKlass().findInstanceFieldWithOffset
         Meta.Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         return (int) f.get(holder);
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static long getLongVolatile(@SuppressWarnings("unused") Object unsafe, @Type(Object.class) StaticObject holder, long offset) {
         // TODO(peterssen): Use holder.getKlass().findInstanceFieldWithOffset
         Meta.Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         return (long) f.get(holder);
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static @Type(Class.class) StaticObject defineClass(@SuppressWarnings("unused") Object self, @Type(String.class) StaticObject name,
                     @Type(byte[].class) StaticObject guestBuf, int offset, int len, @Type(ClassLoader.class) StaticObject loader,
                     @SuppressWarnings("unused") @Type(ProtectionDomain.class) StaticObject pd) {
@@ -153,7 +153,7 @@ public class Target_sun_misc_Unsafe {
 
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static boolean compareAndSwapInt(@SuppressWarnings("unused") Object self, @Type(Object.class) StaticObject holder, long offset, int before, int after) {
         // TODO(peterssen): Use holder.getKlass().findInstanceFieldWithOffset
         Meta.Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
@@ -166,7 +166,7 @@ public class Target_sun_misc_Unsafe {
         }
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static boolean compareAndSwapLong(@SuppressWarnings("unused") Object self, @Type(Object.class) StaticObject holder, long offset, long before, long after) {
         // TODO(peterssen): Use holder.getKlass().findInstanceFieldWithOffset
         Meta.Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
@@ -179,58 +179,58 @@ public class Target_sun_misc_Unsafe {
         }
     }
 
-    @Intrinsic
+    @Substitution
     public static void registerNatives() {
         /* nop */
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static long allocateMemory(@SuppressWarnings("unused") Object self, long length) {
         return U.allocateMemory(length);
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static void freeMemory(@SuppressWarnings("unused") Object self, long address) {
         U.freeMemory(address);
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static void putLong(@SuppressWarnings("unused") Object self, @Type(Object.class) StaticObject holder, long offset, long x) {
         // TODO(peterssen): Use holder.getKlass().findInstanceFieldWithOffset
         Meta.Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         f.set(holder, x);
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static void putLong(@SuppressWarnings("unused") Object self, long offset, long x) {
         U.putLong(offset, x);
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static byte getByte(@SuppressWarnings("unused") Object self, @Type(Object.class) StaticObject holder, long offset) {
         // TODO(peterssen): Use holder.getKlass().findInstanceFieldWithOffset
         Meta.Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         return (byte) f.get(holder);
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static int getInt(@SuppressWarnings("unused") Object self, @Type(Object.class) StaticObject holder, long offset) {
         // TODO(peterssen): Use holder.getKlass().findInstanceFieldWithOffset
         Meta.Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         return (int) f.get(holder);
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static byte getByte(@SuppressWarnings("unused") Object self, long offset) {
         return U.getByte(offset);
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static int getInt(@SuppressWarnings("unused") Object self, long offset) {
         return U.getInt(offset);
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static Object getObjectVolatile(@SuppressWarnings("unused") Object self, @Type(Object.class) StaticObject holder, long offset) {
         if (holder instanceof StaticObjectArray) {
             return U.getObjectVolatile(((StaticObjectArray) holder).unwrap(), offset);
@@ -242,7 +242,7 @@ public class Target_sun_misc_Unsafe {
         return f.get(holder);
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static void putObjectVolatile(@SuppressWarnings("unused") Object self, @Type(Object.class) StaticObject holder, long offset, Object value) {
         if (holder instanceof StaticObjectArray) {
             U.putObjectVolatile(((StaticObjectArray) holder).unwrap(), offset, value);
@@ -255,12 +255,12 @@ public class Target_sun_misc_Unsafe {
         f.set(holder, value);
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static void ensureClassInitialized(@SuppressWarnings("unused") Object self, @Type(Class.class) StaticObject clazz) {
         meta(((StaticObjectClass) clazz).getMirror()).safeInitialize();
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static void copyMemory(@SuppressWarnings("unused") Object self, @Type(Object.class) StaticObject srcBase, long srcOffset, @Type(Object.class) StaticObject destBase, long destOffset,
                     long bytes) {
         if (bytes == 0) {
@@ -269,34 +269,34 @@ public class Target_sun_misc_Unsafe {
         U.copyMemory(MetaUtil.unwrap(srcBase), srcOffset, MetaUtil.unwrap(destBase), destOffset, bytes);
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static void putByte(@SuppressWarnings("unused") Object self, long offset, byte value) {
         U.putByte(offset, value);
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static void putByte(@SuppressWarnings("unused") Object self, @Type(Object.class) StaticObject object, long offset, byte value) {
         U.putByte(MetaUtil.unwrap(object), offset, value);
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static Object allocateInstance(@SuppressWarnings("unused") Object self, @Type(Class.class) StaticObject clazz) { // throws
         // InstantiationException;
         assert !((StaticObjectClass) clazz).getMirror().isAbstract();
         return EspressoLanguage.getCurrentContext().getInterpreterToVM().newObject(((StaticObjectClass) clazz).getMirror());
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static int pageSize(@SuppressWarnings("unused") Object self) {
         return U.pageSize();
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static void setMemory(@SuppressWarnings("unused") Object self, @Type(Object.class) StaticObject o, long offset, long bytes, byte value) {
         U.setMemory(StaticObject.isNull(o) ? null : o, offset, bytes, value);
     }
 
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static Object staticFieldBase(@Type(Field.class) StaticObject field) {
         StaticObject curField = field;
         FieldInfo target = null;

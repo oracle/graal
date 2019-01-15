@@ -1,4 +1,4 @@
-package com.oracle.truffle.espresso.intrinsics;
+package com.oracle.truffle.espresso.substitutions;
 
 import com.oracle.truffle.espresso.impl.MethodInfo;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -10,9 +10,9 @@ import java.lang.reflect.Method;
 
 import static com.oracle.truffle.espresso.meta.Meta.meta;
 
-@EspressoIntrinsics
+@EspressoSubstitutions
 public class Target_sun_reflect_NativeMethodAccessorImpl {
-    @Intrinsic
+    @Substitution
     public static Object invoke0(@Type(Method.class) StaticObject method, @Type(Object.class) StaticObject receiver, @Type(Object[].class) StaticObject args) {
         StaticObject curMethod = method;
         MethodInfo target = null;

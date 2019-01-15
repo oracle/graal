@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.intrinsics;
+package com.oracle.truffle.espresso.substitutions;
 
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -31,10 +31,10 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.function.IntFunction;
 
-@EspressoIntrinsics
+@EspressoSubstitutions
 public class Target_java_lang_Runtime {
     // TODO(peterssen): This a hack to be able to spawn processes without going down to UNIXProcess.
-    @Intrinsic(hasReceiver = true)
+    @Substitution(hasReceiver = true)
     public static @Type(Process.class) Object exec(@SuppressWarnings("unused") StaticObject self, @Type(String[].class) StaticObject cmdarray) {
         StaticObject[] wrapped = ((StaticObjectArray) cmdarray).unwrap();
         String[] hostArgs = new String[wrapped.length];

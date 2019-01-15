@@ -21,24 +21,15 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.intrinsics;
+package com.oracle.truffle.espresso.substitutions;
 
-import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import sun.misc.Signal;
 
-@EspressoIntrinsics
-public class Target_sun_misc_Signal {
-    @Intrinsic
-    public static int findSignal(@Type(String.class) StaticObject name) {
-        return new Signal(Meta.toHostString(name)).getNumber();
-    }
-
-    @SuppressWarnings("unused")
-    @Intrinsic
-    public static long handle0(int sig, long nativeH) {
-        // TODO(peterssen): Find out how to properly manage host/guest signals.
-        /* nop */
-        return 0;
+@EspressoSubstitutions
+public class Target_java_lang_Package {
+    @Substitution
+    public static @Type(String.class) Object getSystemPackage0(@SuppressWarnings("unused") @Type(String.class) StaticObject name) {
+        // TODO(peterssen): This is a workaround, mainly to be able to run on SVM.
+        return StaticObject.NULL;
     }
 }

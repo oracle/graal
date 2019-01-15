@@ -20,19 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
-package com.oracle.truffle.espresso.intrinsics;
+package com.oracle.truffle.espresso.substitutions;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import static java.lang.annotation.ElementType.TYPE_USE;
+import static java.lang.annotation.ElementType.TYPE;
 
 @Retention(RetentionPolicy.RUNTIME)
-@Target(value = {TYPE_USE})
-public @interface Type {
-    Class<?> value() default Type.class;
-
-    String typeName() default "";
+@Target(value = {TYPE})
+public @interface EspressoSubstitutions {
+    Class<?> value() default EspressoSubstitutions.class;
 }
