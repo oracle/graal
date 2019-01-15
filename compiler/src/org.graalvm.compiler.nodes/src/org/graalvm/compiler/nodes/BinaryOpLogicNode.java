@@ -98,12 +98,4 @@ public abstract class BinaryOpLogicNode extends LogicNode implements LIRLowerabl
     public abstract Stamp getSucceedingStampForY(boolean negated, Stamp xStamp, Stamp yStamp);
 
     public abstract TriState tryFold(Stamp xStamp, Stamp yStamp);
-
-    @Override
-    public TriState implies(boolean thisNegated, LogicNode other) {
-        if (other instanceof LogicNegationNode) {
-            return flip(this.implies(thisNegated, ((LogicNegationNode) other).getValue()));
-        }
-        return super.implies(thisNegated, other);
-    }
 }
