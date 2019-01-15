@@ -45,6 +45,7 @@ import static org.junit.Assert.assertEquals;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.List;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -157,6 +158,28 @@ public class VarArgsTest extends ProxyLanguageEnvTest {
         Assert.assertEquals("I[I", result);
     }
 
+    @Test
+    public void testGenericReturnType() throws InteropException {
+        for (Container<?> c : new Container<?>[]{new GenericContainer<>(), new GenericContainer2<>()}) {
+            TruffleObject container = asTruffleObject(c);
+            Object result;
+            result = ForeignAccess.sendExecute(Message.INVOKE.createNode(), container, "withPorts", 80);
+            Assert.assertEquals(container, result);
+            result = ForeignAccess.sendExecute(Message.INVOKE.createNode(), container, "getPorts");
+            Assert.assertEquals(Arrays.asList(80), asJavaObject(List.class, (TruffleObject) result));
+
+            result = ForeignAccess.sendExecute(Message.INVOKE.createNode(), container, "withPorts", new ListBasedTO(Arrays.asList(80)));
+            Assert.assertEquals(container, result);
+            result = ForeignAccess.sendExecute(Message.INVOKE.createNode(), container, "getPorts");
+            Assert.assertEquals(Arrays.asList(80), asJavaObject(List.class, (TruffleObject) result));
+
+            result = ForeignAccess.sendExecute(Message.INVOKE.createNode(), container, "withPorts", asTruffleObject(new int[]{80}));
+            Assert.assertEquals(container, result);
+            result = ForeignAccess.sendExecute(Message.INVOKE.createNode(), container, "getPorts");
+            Assert.assertEquals(Arrays.asList(80), asJavaObject(List.class, (TruffleObject) result));
+        }
+    }
+
     public static class Join {
         public static String stringEllipsis(String... args) {
             return String.join(" ", args);
@@ -188,5 +211,46 @@ public class VarArgsTest extends ProxyLanguageEnvTest {
         public static String sum(double first, double... more) {
             return "D[D";
         }
+    }
+
+    public interface Container<SELF extends Container<SELF>> {
+        @SuppressWarnings("unchecked")
+        default SELF self() {
+            return (SELF) this;
+        }
+
+        SELF withPorts(Integer... ports);
+
+        List<Integer> getPorts();
+    }
+
+    abstract static class AbstractContainer<SELF extends Container<SELF>> implements Container<SELF> {
+        private Integer[] ports;
+
+        @Override
+        public SELF withPorts(Integer... newPorts) {
+            this.ports = newPorts;
+            return self();
+        }
+
+        @Override
+        public List<Integer> getPorts() {
+            return Arrays.asList(ports);
+        }
+    }
+
+    public static class GenericContainer<SELF extends GenericContainer<SELF>> extends AbstractContainer<SELF> {
+        @Override
+        public SELF withPorts(Integer... newPorts) {
+            return super.withPorts(newPorts);
+        }
+
+        @Override
+        public List<Integer> getPorts() {
+            return super.getPorts();
+        }
+    }
+
+    public static class GenericContainer2<SELF extends GenericContainer<SELF>> extends AbstractContainer<SELF> {
     }
 }
