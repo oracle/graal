@@ -27,10 +27,12 @@ package org.graalvm.compiler.jtt.optimize;
 import static org.junit.runners.Parameterized.Parameter;
 import static org.junit.runners.Parameterized.Parameters;
 
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.jtt.JTTTest;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -38,6 +40,8 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @RunWith(Parameterized.class)
 public class IfNodeCanonicalizationsTest extends JTTTest {
@@ -50,8 +54,9 @@ public class IfNodeCanonicalizationsTest extends JTTTest {
         return super.bytecodeParserShouldInlineInvoke(b, method, args);
     }
 
-    @Parameter(value = 0) public int x;
-    @Parameter(value = 1) public int y;
+    @Parameter(value = 0) public String testName;
+    @Parameter(value = 1) public int x;
+    @Parameter(value = 2) public int y;
 
     public static int compare0(int a, int b) {
         return (a < b) ? 1 : ((a < b) ? 2 : 3);
@@ -342,375 +347,20 @@ public class IfNodeCanonicalizationsTest extends JTTTest {
     }
 
     @Test
-    public void run0() {
-        runTest("compare0", x, y);
+    public void runNamedTest() {
+        runTest(testName, x, y);
     }
 
-    @Test
-    public void run1() {
-        runTest("compare1", x, y);
-    }
-
-    @Test
-    public void run2() {
-        runTest("compare2", x, y);
-    }
-
-    @Test
-    public void run3() {
-        runTest("compare3", x, y);
-    }
-
-    @Test
-    public void run4() {
-        runTest("compare4", x, y);
-    }
-
-    @Test
-    public void run5() {
-        runTest("compare5", x, y);
-    }
-
-    @Test
-    public void run6() {
-        runTest("compare6", x, y);
-    }
-
-    @Test
-    public void run7() {
-        runTest("compare7", x, y);
-    }
-
-    @Test
-    public void run8() {
-        runTest("compare8", x, y);
-    }
-
-    @Test
-    public void run9() {
-        runTest("compare9", x, y);
-    }
-
-    @Test
-    public void run10() {
-        runTest("compare10", x, y);
-    }
-
-    @Test
-    public void run11() {
-        runTest("compare11", x, y);
-    }
-
-    @Test
-    public void run12() {
-        runTest("compare12", x, y);
-    }
-
-    @Test
-    public void run13() {
-        runTest("compare13", x, y);
-    }
-
-    @Test
-    public void run14() {
-        runTest("compare14", x, y);
-    }
-
-    @Test
-    public void run15() {
-        runTest("compare15", x, y);
-    }
-
-    @Test
-    public void run16() {
-        runTest("compare16", x, y);
-    }
-
-    @Test
-    public void run17() {
-        runTest("compare17", x, y);
-    }
-
-    @Test
-    public void run18() {
-        runTest("compare18", x, y);
-    }
-
-    @Test
-    public void run19() {
-        runTest("compare19", x, y);
-    }
-
-    @Test
-    public void run20() {
-        runTest("compare20", x, y);
-    }
-
-    @Test
-    public void run21() {
-        runTest("compare21", x, y);
-    }
-
-    @Test
-    public void run22() {
-        runTest("compare22", x, y);
-    }
-
-    @Test
-    public void run23() {
-        runTest("compare23", x, y);
-    }
-
-    @Test
-    public void run24() {
-        runTest("compare24", x, y);
-    }
-
-    @Test
-    public void run25() {
-        runTest("compare25", x, y);
-    }
-
-    @Test
-    public void run26() {
-        runTest("compare26", x, y);
-    }
-
-    @Test
-    public void run27() {
-        runTest("compare27", x, y);
-    }
-
-    @Test
-    public void run28() {
-        runTest("compare28", x, y);
-    }
-
-    @Test
-    public void run29() {
-        runTest("compare29", x, y);
-    }
-
-    @Test
-    public void run30() {
-        runTest("compare30", x, y);
-    }
-
-    @Test
-    public void run31() {
-        runTest("compare31", x, y);
-    }
-
-    @Test
-    public void run32() {
-        runTest("compare32", x, y);
-    }
-
-    @Test
-    public void run33() {
-        runTest("compare33", x, y);
-    }
-
-    @Test
-    public void run34() {
-        runTest("compare34", x, y);
-    }
-
-    @Test
-    public void run35() {
-        runTest("compare35", x, y);
-    }
-
-    @Test
-    public void run36() {
-        runTest("compare36", x, y);
-    }
-
-    @Test
-    public void run37() {
-        runTest("compare37", x, y);
-    }
-
-    @Test
-    public void run38() {
-        runTest("compare38", x, y);
-    }
-
-    @Test
-    public void run39() {
-        runTest("compare39", x, y);
-    }
-
-    @Test
-    public void run40() {
-        runTest("compare40", x, y);
-    }
-
-    @Test
-    public void run41() {
-        runTest("compare41", x, y);
-    }
-
-    @Test
-    public void run42() {
-        runTest("compare42", x, y);
-    }
-
-    @Test
-    public void run43() {
-        runTest("compare43", x, y);
-    }
-
-    @Test
-    public void run44() {
-        runTest("compare44", x, y);
-    }
-
-    @Test
-    public void run45() {
-        runTest("compare45", x, y);
-    }
-
-    @Test
-    public void run46() {
-        runTest("compare46", x, y);
-    }
-
-    @Test
-    public void run47() {
-        runTest("compare47", x, y);
-    }
-
-    @Test
-    public void run48() {
-        runTest("compare48", x, y);
-    }
-
-    @Test
-    public void run49() {
-        runTest("compare49", x, y);
-    }
-
-    @Test
-    public void run50() {
-        runTest("compare50", x, y);
-    }
-
-    @Test
-    public void run51() {
-        runTest("compare51", x, y);
-    }
-
-    @Test
-    public void run52() {
-        runTest("compare52", x, y);
-    }
-
-    @Test
-    public void run53() {
-        runTest("compare53", x, y);
-    }
-
-    @Test
-    public void run54() {
-        runTest("compare54", x, y);
-    }
-
-    @Test
-    public void run55() {
-        runTest("compare55", x, y);
-    }
-
-    @Test
-    public void run56() {
-        runTest("compare56", x, y);
-    }
-
-    @Test
-    public void run57() {
-        runTest("compare57", x, y);
-    }
-
-    @Test
-    public void run58() {
-        runTest("compare58", x, y);
-    }
-
-    @Test
-    public void run59() {
-        runTest("compare59", x, y);
-    }
-
-    @Test
-    public void run60() {
-        runTest("compare60", x, y);
-    }
-
-    @Test
-    public void run61() {
-        runTest("compare61", x, y);
-    }
-
-    @Test
-    public void run62() {
-        runTest("compare62", x, y);
-    }
-
-    @Test
-    public void run63() {
-        runTest("compare63", x, y);
-    }
-
-    @Test
-    public void run64() {
-        runTest("compare64", x, y);
-    }
-
-    @Test
-    public void run65() {
-        runTest("compare65", x, y);
-    }
-
-    @Test
-    public void run66() {
-        runTest("compare66", x, y);
-    }
-
-    @Test
-    public void run67() {
-        runTest("compare67", x, y);
-    }
-
-    @Test
-    public void run68() {
-        runTest("compare68", x, y);
-    }
-
-    @Test
-    public void run69() {
-        runTest("compare69", x, y);
-    }
-
-    @Test
-    public void run70() {
-        runTest("compare70", x, y);
-    }
-
-    @Test
-    public void run71() {
-        runTest("compare71", x, y);
-    }
-
-    @Parameters(name = "{0}, {1}")
+    @Parameters(name = "{0}(a = {1}, b = {2})")
     public static Collection<Object[]> data() {
-        ArrayList<Object[]> tests = new ArrayList<>();
-        addTest(tests, 0, 0);
-        addTest(tests, 1, 0);
-        addTest(tests, 0, 1);
+        List<Object[]> tests = new ArrayList<>();
+        for (Method m : IfNodeCanonicalizationsTest.class.getDeclaredMethods()) {
+            if (m.getName().startsWith("compare") && Modifier.isStatic(m.getModifiers())) {
+                tests.add(new Object[]{m.getName(), 0, 0});
+                tests.add(new Object[]{m.getName(), 0, 1});
+                tests.add(new Object[]{m.getName(), 1, 0});
+            }
+        }
         return tests;
-    }
-
-    private static void addTest(ArrayList<Object[]> tests, int x, int b) {
-        tests.add(new Object[]{x, b});
     }
 }
