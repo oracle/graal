@@ -23,41 +23,7 @@
 
 package com.oracle.truffle.espresso.vm;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.EspressoOptions;
-import com.oracle.truffle.espresso.impl.FieldInfo;
-import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.impl.MethodInfo;
-import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.intrinsics.EspressoIntrinsics;
-import com.oracle.truffle.espresso.intrinsics.Intrinsic;
-import com.oracle.truffle.espresso.intrinsics.Surrogate;
-import com.oracle.truffle.espresso.intrinsics.Target_java_lang_Class;
-import com.oracle.truffle.espresso.intrinsics.Target_java_lang_ClassLoader;
-import com.oracle.truffle.espresso.intrinsics.Target_java_lang_Package;
-import com.oracle.truffle.espresso.intrinsics.Target_java_lang_Runtime;
-import com.oracle.truffle.espresso.intrinsics.Target_java_lang_Thread;
-import com.oracle.truffle.espresso.intrinsics.Target_java_lang_reflect_Array;
-import com.oracle.truffle.espresso.intrinsics.Target_java_security_AccessController;
-import com.oracle.truffle.espresso.intrinsics.Target_sun_misc_Perf;
-import com.oracle.truffle.espresso.intrinsics.Target_sun_misc_Signal;
-import com.oracle.truffle.espresso.intrinsics.Target_sun_misc_URLClassPath;
-import com.oracle.truffle.espresso.intrinsics.Target_sun_misc_Unsafe;
-import com.oracle.truffle.espresso.intrinsics.Target_sun_misc_VM;
-import com.oracle.truffle.espresso.intrinsics.Target_sun_reflect_NativeMethodAccessorImpl;
-import com.oracle.truffle.espresso.intrinsics.Type;
-import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.JavaKind;
-import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.meta.MetaUtil;
-import com.oracle.truffle.espresso.nodes.IntrinsicReflectionRootNode;
-import com.oracle.truffle.espresso.nodes.IntrinsicRootNode;
-import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObjectArray;
-import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
-import sun.misc.Unsafe;
+import static com.oracle.truffle.espresso.meta.Meta.meta;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -72,7 +38,41 @@ import java.util.Objects;
 import java.util.function.IntFunction;
 import java.util.function.IntPredicate;
 
-import static com.oracle.truffle.espresso.meta.Meta.meta;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso.impl.FieldInfo;
+import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.MethodInfo;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.meta.MetaUtil;
+import com.oracle.truffle.espresso.nodes.IntrinsicReflectionRootNode;
+import com.oracle.truffle.espresso.nodes.IntrinsicRootNode;
+import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.StaticObjectArray;
+import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
+import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
+import com.oracle.truffle.espresso.substitutions.Substitution;
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_Class;
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_ClassLoader;
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_Package;
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_Runtime;
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_reflect_Array;
+import com.oracle.truffle.espresso.substitutions.Target_java_security_AccessController;
+import com.oracle.truffle.espresso.substitutions.Target_sun_misc_Perf;
+import com.oracle.truffle.espresso.substitutions.Target_sun_misc_Signal;
+import com.oracle.truffle.espresso.substitutions.Target_sun_misc_URLClassPath;
+import com.oracle.truffle.espresso.substitutions.Target_sun_misc_Unsafe;
+import com.oracle.truffle.espresso.substitutions.Target_sun_misc_VM;
+import com.oracle.truffle.espresso.substitutions.Target_sun_reflect_NativeMethodAccessorImpl;
+import com.oracle.truffle.espresso.substitutions.Type;
+
+import sun.misc.Unsafe;
 
 public class InterpreterToVM {
 
@@ -88,7 +88,7 @@ public class InterpreterToVM {
         }
     }
 
-    private final Map<MethodKey, RootNode> intrinsics = new HashMap<>();
+    private final Map<MethodKey, RootNode> substitutions = new HashMap<>();
 
     public static List<Class<?>> DEFAULTS = Arrays.asList(
                     Target_java_lang_Class.class,
@@ -105,9 +105,9 @@ public class InterpreterToVM {
                     Target_sun_misc_VM.class,
                     Target_sun_reflect_NativeMethodAccessorImpl.class);
 
-    private InterpreterToVM(EspressoLanguage language, List<Class<?>> intrinsics) {
-        for (Class<?> clazz : intrinsics) {
-            registerIntrinsics(clazz, language);
+    private InterpreterToVM(EspressoLanguage language, List<Class<?>> substitutions) {
+        for (Class<?> clazz : substitutions) {
+            registerSubstitutions(clazz, language);
         }
     }
 
@@ -128,9 +128,9 @@ public class InterpreterToVM {
     }
 
     @CompilerDirectives.TruffleBoundary
-    public RootNode getIntrinsic(MethodInfo method) {
+    public RootNode getSubstitution(MethodInfo method) {
         assert method != null;
-        return intrinsics.get(getMethodKey(method));
+        return substitutions.get(getMethodKey(method));
     }
 
     private static final class MethodKey {
@@ -208,43 +208,33 @@ public class InterpreterToVM {
         }
     }
 
-    public void registerIntrinsics(Class<?> clazz, EspressoLanguage language) {
+    public void registerSubstitutions(Class<?> clazz, EspressoLanguage language) {
 
         String className;
-        Class<?> annotatedClass = clazz.getAnnotation(EspressoIntrinsics.class).value();
-        if (annotatedClass == EspressoIntrinsics.class) {
+        Class<?> annotatedClass = clazz.getAnnotation(EspressoSubstitutions.class).value();
+        if (annotatedClass == EspressoSubstitutions.class) {
             // Target class is derived from class name by simple substitution
             // e.g. Target_java_lang_System becomes java.lang.System
             assert clazz.getSimpleName().startsWith("Target_");
             className = MetaUtil.toInternalName(clazz.getSimpleName().substring("Target_".length()).replace('_', '.'));
         } else {
-            Surrogate surrogate = annotatedClass.getAnnotation(Surrogate.class);
-            if (surrogate != null) {
-                className = MetaUtil.toInternalName(surrogate.value());
-            } else {
-                className = MetaUtil.toInternalName(annotatedClass.getName());
-            }
+            throw EspressoError.shouldNotReachHere("Substitutions class must be decorated with @" + EspressoSubstitutions.class.getName());
         }
         for (Method method : clazz.getDeclaredMethods()) {
-            Intrinsic intrinsic = method.getAnnotation(Intrinsic.class);
-            if (intrinsic == null) {
+            Substitution substitution = method.getAnnotation(Substitution.class);
+            if (substitution == null) {
                 continue;
             }
 
             RootNode rootNode = createRootNodeForMethod(language, method);
             StringBuilder signature = new StringBuilder("(");
             Parameter[] parameters = method.getParameters();
-            for (int i = intrinsic.hasReceiver() ? 1 : 0; i < parameters.length; i++) {
+            for (int i = substitution.hasReceiver() ? 1 : 0; i < parameters.length; i++) {
                 Parameter parameter = parameters[i];
                 String parameterTypeName;
                 Type annotatedType = parameter.getAnnotatedType().getAnnotation(Type.class);
                 if (annotatedType != null) {
-                    Surrogate surrogate = annotatedType.value().getAnnotation(Surrogate.class);
-                    if (surrogate != null) {
-                        parameterTypeName = surrogate.value();
-                    } else {
-                        parameterTypeName = annotatedType.value().getName();
-                    }
+                    parameterTypeName = annotatedType.value().getName();
                 } else {
                     parameterTypeName = parameter.getType().getName();
                 }
@@ -255,23 +245,18 @@ public class InterpreterToVM {
             Type annotatedReturnType = method.getAnnotatedReturnType().getAnnotation(Type.class);
             String returnTypeName;
             if (annotatedReturnType != null) {
-                Surrogate surrogate = annotatedReturnType.value().getAnnotation(Surrogate.class);
-                if (surrogate != null) {
-                    returnTypeName = surrogate.value();
-                } else {
-                    returnTypeName = annotatedReturnType.value().getName();
-                }
+                returnTypeName = annotatedReturnType.value().getName();
             } else {
                 returnTypeName = method.getReturnType().getName();
             }
             signature.append(fixTypeName(returnTypeName));
 
-            String methodName = intrinsic.methodName();
+            String methodName = substitution.methodName();
             if (methodName.length() == 0) {
                 methodName = method.getName();
             }
 
-            registerIntrinsic(fixTypeName(className), methodName, signature.toString(), rootNode, false);
+            registerSubstitution(fixTypeName(className), methodName, signature.toString(), rootNode, false);
         }
     }
 
@@ -289,12 +274,12 @@ public class InterpreterToVM {
         }
     }
 
-    public void registerIntrinsic(String clazz, String methodName, String signature, RootNode intrinsic, boolean update) {
+    public void registerSubstitution(String clazz, String methodName, String signature, RootNode intrinsic, boolean update) {
         MethodKey key = new MethodKey(clazz, methodName, signature);
         assert intrinsic != null;
-        if (update || !intrinsics.containsKey(key)) {
-            // assert !intrinsics.containsKey(key) : key + " intrinsic is already registered";
-            intrinsics.put(key, intrinsic);
+        if (update || !substitutions.containsKey(key)) {
+            // assert !substitutions.containsKey(key) : key + " intrinsic is already registered";
+            substitutions.put(key, intrinsic);
         }
     }
 

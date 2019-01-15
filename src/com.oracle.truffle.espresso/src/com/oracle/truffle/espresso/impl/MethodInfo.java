@@ -172,7 +172,7 @@ public final class MethodInfo implements ModifiersProvider {
             CompilerDirectives.transferToInterpreterAndInvalidate();
 
             // TODO(peterssen): Rethink method substitution logic.
-            RootNode redirectedMethod = getContext().getInterpreterToVM().getIntrinsic(this);
+            RootNode redirectedMethod = getContext().getInterpreterToVM().getSubstitution(this);
             if (redirectedMethod != null) {
                 if (redirectedMethod instanceof IntrinsicReflectionRootNode) {
                     ((IntrinsicReflectionRootNode) redirectedMethod).setOriginalMethod(Meta.meta(this));
