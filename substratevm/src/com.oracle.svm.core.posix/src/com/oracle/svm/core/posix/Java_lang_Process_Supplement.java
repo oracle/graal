@@ -430,7 +430,9 @@ public final class Java_lang_Process_Supplement {
         while (Wait.waitpid(ppid, statusptr, 0) < 0) {
             if (Errno.errno() == Errno.ECHILD()) {
                 return 0;
-            } else if (Errno.errno() != Errno.EINTR()) {
+            } else if (Errno.errno() == Errno.EINTR()) {
+                break;
+            } else {
                 return -1;
             }
         }
