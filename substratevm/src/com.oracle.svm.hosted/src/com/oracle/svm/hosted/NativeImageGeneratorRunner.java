@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.hosted;
 
-import static com.oracle.svm.hosted.NativeImageGenerator.defaultPlatform;
-import static com.oracle.svm.hosted.server.NativeImageBuildServer.IMAGE_CLASSPATH_PREFIX;
-
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Method;
@@ -75,6 +72,9 @@ import jdk.vm.ci.amd64.AMD64;
 
 public class NativeImageGeneratorRunner implements ImageBuildTask {
 
+    public static final String IMAGE_CLASSPATH_PREFIX = "-imagecp";
+    public static final String WATCHPID_PREFIX = "-watchpid";
+
     private volatile NativeImageGenerator generator;
 
     public static void main(String[] args) {
@@ -82,7 +82,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
         final String[] classpath = extractImageClassPath(arguments);
         int watchPID = extractWatchPID(arguments);
         if (watchPID >= 0) {
-            VMError.guarantee(OS.getCurrent().hasProcFS, "-watchpid <pid> requires system with /proc");
+            VMError.guarantee(OS.getCurrent().hasProcFS, WATCHPID_PREFIX + " <pid> requires system with /proc");
             TimerTask timerTask = new TimerTask() {
                 @Override
                 public void run() {
@@ -114,26 +114,25 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
     }
 
     public static String[] extractImageClassPath(List<String> arguments) {
-        int cpIndex = arguments.indexOf(IMAGE_CLASSPATH_PREFIX);
-        if (cpIndex == -1) {
-            throw UserError.abort("Classpath must be provided as an argument after '" + IMAGE_CLASSPATH_PREFIX + "'.");
+        int cpArgIndex = arguments.indexOf(IMAGE_CLASSPATH_PREFIX);
+        String msgTail = " '" + IMAGE_CLASSPATH_PREFIX + " <image classpath>' argument.";
+        if (cpArgIndex == -1) {
+            throw UserError.abort("Missing" + msgTail);
         }
-        if (cpIndex + 1 >= arguments.size()) {
-            throw UserError.abort("Classpath must be provided after the '" + IMAGE_CLASSPATH_PREFIX + "' argument.\n");
+        arguments.remove(cpArgIndex);
+        try {
+            String imageClasspath = arguments.remove(cpArgIndex);
+            return imageClasspath.split(File.pathSeparator, Integer.MAX_VALUE);
+        } catch (IndexOutOfBoundsException e) {
+            throw UserError.abort("Missing <image classpath> for" + msgTail);
         }
-
-        String[] classpath = arguments.get(cpIndex + 1).split(File.pathSeparator);
-        arguments.remove(cpIndex);
-        arguments.remove(cpIndex);
-        return classpath;
     }
 
     public static int extractWatchPID(List<String> arguments) {
-        String watchpidArg = "-watchpid";
-        int cpIndex = arguments.indexOf(watchpidArg);
+        int cpIndex = arguments.indexOf(WATCHPID_PREFIX);
         if (cpIndex >= 0) {
             if (cpIndex + 1 >= arguments.size()) {
-                throw UserError.abort("ProcessID must be provided after the '" + watchpidArg + "' argument.\n");
+                throw UserError.abort("ProcessID must be provided after the '" + WATCHPID_PREFIX + "' argument.\n");
             }
             arguments.remove(cpIndex);
             String pidStr = arguments.get(cpIndex);
@@ -182,7 +181,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             ImageClassLoader imageClassLoader;
             Timer classlistTimer = new Timer("classlist", false);
             try (StopTimer ignored1 = classlistTimer.start()) {
-                imageClassLoader = ImageClassLoader.create(defaultPlatform(classLoader), classpath, classLoader);
+                imageClassLoader = ImageClassLoader.create(NativeImageGenerator.defaultPlatform(classLoader), classpath, classLoader);
             }
 
             HostedOptionParser optionParser = new HostedOptionParser(imageClassLoader);
