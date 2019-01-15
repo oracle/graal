@@ -277,7 +277,9 @@ import com.oracle.truffle.object.DebugCounter;
 
 /**
  * Bytecode interpreter loop.
- * This follows the Java types, although internally, it uses the VM types
+ *
+ * Calling convention use Java primitive types although internally the VM basic types (e.g. sub-word
+ * types are coerced to int) are used with conversions at the boundaries.
  */
 public final class EspressoRootNode extends RootNode implements LinkedNode {
 
@@ -590,7 +592,9 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
                     case JSR         : // fall through
                     case JSR_W       : stack.pushReturnAddress(bs.nextBCI(curBCI)); curBCI = bs.readBranchDest(curBCI); continue loop;
                     case RET         : curBCI = getReturnAddressLocal(frame, bs.readLocalIndex(curBCI)); continue loop;
-                    case TABLESWITCH : {
+                    // @formatter:on
+                    // Checkstyle: resume
+                    case TABLESWITCH: {
                         int index = stack.popInt();
                         BytecodeTableSwitch switchHelper = bs.getBytecodeTableSwitch();
                         int low = switchHelper.lowKey(curBCI);
@@ -624,7 +628,7 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
                         curBCI = switchHelper.defaultTarget(curBCI);
                         continue loop;
                     }
-                    case LOOKUPSWITCH : {
+                    case LOOKUPSWITCH: {
                         int key = stack.popInt();
                         BytecodeLookupSwitch switchHelper = bs.getBytecodeLookupSwitch();
                         int low = 0;
@@ -646,6 +650,8 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
                         curBCI = switchHelper.defaultTarget(curBCI); // key not found.
                         continue loop;
                     }
+                    // @formatter:off
+                    // Checkstyle: stop
                     case IRETURN               : return exitMethodAndReturn(stack.popInt());
                     case LRETURN               : return exitMethodAndReturnObject(stack.popLong());
                     case FRETURN               : return exitMethodAndReturnObject(stack.popFloat());
@@ -712,7 +718,6 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
             curBCI = bs.next(curBCI);
         }
     }
-
 
     @ExplodeLoop
     private ExceptionHandler resolveExceptionHandlers(int bci, StaticObject ex) {
