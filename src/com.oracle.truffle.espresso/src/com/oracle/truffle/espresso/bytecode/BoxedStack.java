@@ -28,6 +28,9 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.ReturnAddress;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
+/**
+ * Operand stack backed by an Object[] array.
+ */
 public final class BoxedStack implements OperandStack {
 
     private final Object[] stack;
@@ -39,8 +42,6 @@ public final class BoxedStack implements OperandStack {
         this.stackTag = new byte[maxStackSize];
         this.stackSize = 0;
     }
-
-    // region Operand stack operations
 
     @Override
     public void popVoid(int slots) {

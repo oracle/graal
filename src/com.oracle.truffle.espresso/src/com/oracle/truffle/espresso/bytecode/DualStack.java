@@ -30,6 +30,10 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 
 import java.lang.reflect.Modifier;
 
+/**
+ * Operand stack backed by two arrays, a long[] for primitives and Object[] for references.
+ * Removes the boxing overhead at the expense of memory.
+ */
 public final class DualStack implements OperandStack {
 
     private final Object[] stack;
@@ -44,8 +48,6 @@ public final class DualStack implements OperandStack {
         this.stackTag = new byte[maxStackSize];
         this.stackSize = 0;
     }
-
-    // region Operand stack operations
 
     private static int numberOfSlots(JavaKind kind) {
         assert kind != null;
@@ -384,6 +386,4 @@ public final class DualStack implements OperandStack {
     public void clear() {
         stackSize = 0;
     }
-
-    // endregion Stack operations
 }
