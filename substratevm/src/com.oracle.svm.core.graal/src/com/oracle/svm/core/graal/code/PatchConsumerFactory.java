@@ -24,12 +24,25 @@
  */
 package com.oracle.svm.core.graal.code;
 
-import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig.ConfigKind;
+import java.util.function.Consumer;
 
-import jdk.vm.ci.code.RegisterConfig;
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.MetaAccessProvider;
+import org.graalvm.compiler.asm.Assembler.CodeAnnotation;
+import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.nativeimage.ImageSingletons;
 
-public interface SubstrateRegisterConfigFactory {
-    RegisterConfig newRegisterFactory(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target, Boolean useStackBasePointer);
+public abstract class PatchConsumerFactory {
+
+    public abstract static class HostedPatchConsumerFactory extends PatchConsumerFactory {
+        public static HostedPatchConsumerFactory factory() {
+            return ImageSingletons.lookup(HostedPatchConsumerFactory.class);
+        }
+    }
+
+    public abstract static class NativePatchConsumerFactory extends PatchConsumerFactory {
+        public static NativePatchConsumerFactory factory() {
+            return ImageSingletons.lookup(NativePatchConsumerFactory.class);
+        }
+    }
+
+    public abstract Consumer<CodeAnnotation> newConsumer(CompilationResult compilationResult);
 }

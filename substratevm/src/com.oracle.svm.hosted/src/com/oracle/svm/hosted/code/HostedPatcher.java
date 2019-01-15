@@ -22,14 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.code;
+package com.oracle.svm.hosted.code;
 
-import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig.ConfigKind;
+import com.oracle.svm.hosted.image.RelocatableBuffer;
 
-import jdk.vm.ci.code.RegisterConfig;
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.code.site.Reference;
 
-public interface SubstrateRegisterConfigFactory {
-    RegisterConfig newRegisterFactory(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target, Boolean useStackBasePointer);
+/**
+ * Patcher used when building native images (Hosted mode).
+ */
+public interface HostedPatcher {
+    /**
+     * Create relocation for the binary file.
+     */
+    void relocate(Reference ref, RelocatableBuffer relocs, int compStart);
+
+    /**
+     * Patch the code buffer.
+     */
+    void patch(int codePos, int relative, byte[] code);
 }

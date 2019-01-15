@@ -200,7 +200,6 @@ suite = {
             ],
             "workingSets": "SVM",
         },
-
         "com.oracle.svm.hosted": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -589,9 +588,9 @@ suite = {
                 "com.oracle.svm.graal",  # necessary until Truffle is fully supported on Windows (GR-7941)
                 "com.oracle.svm.truffle",  # necessary until Truffle is fully supported on Windows (GR-7941)
                 "com.oracle.svm.hosted",
-                "com.oracle.svm.core.graal.amd64",
                 "com.oracle.svm.truffle.nfi",
                 "com.oracle.svm.core",
+                "com.oracle.svm.core.graal.amd64",
                 "com.oracle.svm.core.jdk8",
                 "com.oracle.svm.core.jdk9",
                 "com.oracle.svm.core.posix",

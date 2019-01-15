@@ -24,12 +24,27 @@
  */
 package com.oracle.svm.core.graal.code;
 
-import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig.ConfigKind;
+import org.graalvm.word.Pointer;
 
-import jdk.vm.ci.code.RegisterConfig;
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.MetaAccessProvider;
+import com.oracle.svm.core.annotate.Uninterruptible;
 
-public interface SubstrateRegisterConfigFactory {
-    RegisterConfig newRegisterFactory(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target, Boolean useStackBasePointer);
+/**
+ * Patcher used during native image runtime.
+ */
+public interface NativeImagePatcher {
+    /**
+     * Patch the code buffer.
+     */
+    void patch(int codePos, int relative, byte[] code);
+
+    /**
+     * Patch a VMConstant in the native-image.
+     */
+    @Uninterruptible(reason = "The patcher is intended to work with raw pointers")
+    void patchData(Pointer pointer, Object object);
+
+    /**
+     * Return the position where the patch is applied. This offset is used in the reference map.
+     */
+    int getPosition();
 }
