@@ -383,16 +383,16 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
                             NamedLocationIdentity.getArrayLocation(JavaKind.Int));
         }
         if (c.useSHA1Intrinsics()) {
-            registerForeignCall(SHA_IMPL_COMPRESS, c.sha1ImplCompress, NativeCall, DESTROYS_REGISTERS, LEAF_NOFP, REEXECUTABLE_ONLY_AFTER_EXCEPTION, NamedLocationIdentity.any());
+            registerForeignCall(SHA_IMPL_COMPRESS, c.sha1ImplCompress, NativeCall, DESTROYS_REGISTERS, LEAF, REEXECUTABLE_ONLY_AFTER_EXCEPTION, NamedLocationIdentity.any());
         }
         if (c.useSHA256Intrinsics()) {
-            registerForeignCall(SHA2_IMPL_COMPRESS, c.sha256ImplCompress, NativeCall, DESTROYS_REGISTERS, LEAF_NOFP, REEXECUTABLE_ONLY_AFTER_EXCEPTION, NamedLocationIdentity.any());
+            registerForeignCall(SHA2_IMPL_COMPRESS, c.sha256ImplCompress, NativeCall, DESTROYS_REGISTERS, LEAF, REEXECUTABLE_ONLY_AFTER_EXCEPTION, NamedLocationIdentity.any());
         }
         if (c.useSHA512Intrinsics()) {
-            registerForeignCall(SHA5_IMPL_COMPRESS, c.sha512ImplCompress, NativeCall, DESTROYS_REGISTERS, LEAF_NOFP, REEXECUTABLE_ONLY_AFTER_EXCEPTION, NamedLocationIdentity.any());
+            registerForeignCall(SHA5_IMPL_COMPRESS, c.sha512ImplCompress, NativeCall, DESTROYS_REGISTERS, LEAF, REEXECUTABLE_ONLY_AFTER_EXCEPTION, NamedLocationIdentity.any());
         }
         if (c.useGHASHIntrinsics()) {
-            registerForeignCall(GHASH_PROCESS_BLOCKS, c.ghashProcessBlocks, NativeCall, DESTROYS_REGISTERS, LEAF_NOFP, REEXECUTABLE_ONLY_AFTER_EXCEPTION, NamedLocationIdentity.any());
+            registerForeignCall(GHASH_PROCESS_BLOCKS, c.ghashProcessBlocks, NativeCall, DESTROYS_REGISTERS, LEAF, REEXECUTABLE_ONLY_AFTER_EXCEPTION, NamedLocationIdentity.any());
         }
         if (c.useMulAddIntrinsic()) {
             registerForeignCall(MUL_ADD, c.mulAdd, NativeCall, DESTROYS_REGISTERS, LEAF_NOFP, REEXECUTABLE_ONLY_AFTER_EXCEPTION, NamedLocationIdentity.getArrayLocation(JavaKind.Int));
@@ -417,11 +417,11 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
              */
             try {
                 // These stubs do callee saving
-                registerForeignCall(ENCRYPT_BLOCK, c.aescryptEncryptBlockStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, REEXECUTABLE_ONLY_AFTER_EXCEPTION,
+                registerForeignCall(ENCRYPT_BLOCK, c.aescryptEncryptBlockStub, NativeCall, PRESERVES_REGISTERS, LEAF, REEXECUTABLE_ONLY_AFTER_EXCEPTION,
                                 NamedLocationIdentity.getArrayLocation(JavaKind.Byte));
-                registerForeignCall(DECRYPT_BLOCK, c.aescryptDecryptBlockStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, REEXECUTABLE_ONLY_AFTER_EXCEPTION,
+                registerForeignCall(DECRYPT_BLOCK, c.aescryptDecryptBlockStub, NativeCall, PRESERVES_REGISTERS, LEAF, REEXECUTABLE_ONLY_AFTER_EXCEPTION,
                                 NamedLocationIdentity.getArrayLocation(JavaKind.Byte));
-                registerForeignCall(DECRYPT_BLOCK_WITH_ORIGINAL_KEY, c.aescryptDecryptBlockStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, REEXECUTABLE_ONLY_AFTER_EXCEPTION,
+                registerForeignCall(DECRYPT_BLOCK_WITH_ORIGINAL_KEY, c.aescryptDecryptBlockStub, NativeCall, PRESERVES_REGISTERS, LEAF, REEXECUTABLE_ONLY_AFTER_EXCEPTION,
                                 NamedLocationIdentity.getArrayLocation(JavaKind.Byte));
             } catch (GraalError e) {
                 if (!(e.getCause() instanceof ClassNotFoundException)) {
@@ -430,11 +430,11 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
             }
             try {
                 // These stubs do callee saving
-                registerForeignCall(ENCRYPT, c.cipherBlockChainingEncryptAESCryptStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, REEXECUTABLE_ONLY_AFTER_EXCEPTION,
+                registerForeignCall(ENCRYPT, c.cipherBlockChainingEncryptAESCryptStub, NativeCall, PRESERVES_REGISTERS, LEAF, REEXECUTABLE_ONLY_AFTER_EXCEPTION,
                                 NamedLocationIdentity.getArrayLocation(JavaKind.Byte));
-                registerForeignCall(DECRYPT, c.cipherBlockChainingDecryptAESCryptStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, REEXECUTABLE_ONLY_AFTER_EXCEPTION,
+                registerForeignCall(DECRYPT, c.cipherBlockChainingDecryptAESCryptStub, NativeCall, PRESERVES_REGISTERS, LEAF, REEXECUTABLE_ONLY_AFTER_EXCEPTION,
                                 NamedLocationIdentity.getArrayLocation(JavaKind.Byte));
-                registerForeignCall(DECRYPT_WITH_ORIGINAL_KEY, c.cipherBlockChainingDecryptAESCryptStub, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, REEXECUTABLE_ONLY_AFTER_EXCEPTION,
+                registerForeignCall(DECRYPT_WITH_ORIGINAL_KEY, c.cipherBlockChainingDecryptAESCryptStub, NativeCall, PRESERVES_REGISTERS, LEAF, REEXECUTABLE_ONLY_AFTER_EXCEPTION,
                                 NamedLocationIdentity.getArrayLocation(JavaKind.Byte));
             } catch (GraalError e) {
                 if (!(e.getCause() instanceof ClassNotFoundException)) {
@@ -445,7 +445,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
 
         if (c.useAESCTRIntrinsics) {
             assert (c.counterModeAESCrypt != 0L);
-            registerForeignCall(COUNTERMODE_IMPL_CRYPT, c.counterModeAESCrypt, NativeCall, PRESERVES_REGISTERS, LEAF_NOFP, REEXECUTABLE_ONLY_AFTER_EXCEPTION,
+            registerForeignCall(COUNTERMODE_IMPL_CRYPT, c.counterModeAESCrypt, NativeCall, PRESERVES_REGISTERS, LEAF, REEXECUTABLE_ONLY_AFTER_EXCEPTION,
                             NamedLocationIdentity.any());
         }
     }
