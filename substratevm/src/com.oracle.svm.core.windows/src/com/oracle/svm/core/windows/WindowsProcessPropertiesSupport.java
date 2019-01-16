@@ -24,20 +24,21 @@
  */
 package com.oracle.svm.core.windows;
 
-import com.oracle.svm.core.util.VMError;
-import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.impl.ProcessPropertiesSupport;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.windows.headers.WinBase;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.nativeimage.impl.ProcessPropertiesSupport;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.WordFactory;
+
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.windows.headers.WinBase;
 
 @Platforms(Platform.WINDOWS.class)
 public class WindowsProcessPropertiesSupport implements ProcessPropertiesSupport {
@@ -78,12 +79,12 @@ public class WindowsProcessPropertiesSupport implements ProcessPropertiesSupport
     }
 
     @Override
-    public void destroy(long processID) {
+    public boolean destroy(long processID) {
         throw VMError.unimplemented();
     }
 
     @Override
-    public void destroyForcibly(long processID) {
+    public boolean destroyForcibly(long processID) {
         throw VMError.unimplemented();
     }
 

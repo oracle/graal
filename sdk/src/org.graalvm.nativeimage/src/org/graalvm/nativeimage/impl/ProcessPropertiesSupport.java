@@ -55,9 +55,9 @@ public interface ProcessPropertiesSupport {
 
     String setLocale(String category, String locale);
 
-    void destroy(long processID);
+    boolean destroy(long processID);
 
-    void destroyForcibly(long processID);
+    boolean destroyForcibly(long processID);
 
     boolean isAlive(long processID);
 }

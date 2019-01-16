@@ -54,13 +54,13 @@ public abstract class PosixProcessPropertiesSupport implements ProcessProperties
     }
 
     @Override
-    public void destroy(long processID) {
-        Signal.kill(Math.toIntExact(processID), SIGTERM.getCValue());
+    public boolean destroy(long processID) {
+        return Signal.kill(Math.toIntExact(processID), SIGTERM.getCValue()) == 0;
     }
 
     @Override
-    public void destroyForcibly(long processID) {
-        Signal.kill(Math.toIntExact(processID), SIGKILL.getCValue());
+    public boolean destroyForcibly(long processID) {
+        return Signal.kill(Math.toIntExact(processID), SIGKILL.getCValue()) == 0;
     }
 
     @Override

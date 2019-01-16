@@ -22,27 +22,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.core.jdk9.posix;
 
-import java.util.HashMap;
-import java.util.zip.ZipFile;
+import java.io.IOException;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.JDK9OrLater;
+import com.oracle.svm.core.posix.PosixUtils;
+import com.oracle.svm.core.posix.headers.Unistd;
 
-@TargetClass(value = ZipFile.class, innerClass = "Source", onlyWith = JDK9OrLater.class)
-final class Target_java_util_zip_ZipFile_Source {
+@TargetClass(className = "java.io.FileCleanable", onlyWith = JDK9OrLater.class)
+final class Target_java_io_FileCleanable {
 
-    @Alias//
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = HashMap.class, isFinal = true)//
-    private static HashMap<Target_java_util_zip_ZipFile_Source_Key, Target_java_util_zip_ZipFile_Source> files;
-}
-
-@TargetClass(value = ZipFile.class, innerClass = {"Source", "Key"}, onlyWith = JDK9OrLater.class)
-final class Target_java_util_zip_ZipFile_Source_Key {
-}
-
-/* Dummy class to have the same name as the file. */
-public class Target_java_util_zip_ZipFile {
+    /* { Do not re-format commented out C code. @formatter:off */
+    @Substitute //
+    @SuppressWarnings({"unused"})
+    // Translated from open-jdk11/src/java.base/unix/native/libjava/FileDescriptor_md.c
+    // 84  JNIEXPORT void JNICALL
+    // 85  Java_java_io_FileCleanable_cleanupClose0(JNIEnv *env, jclass fdClass, jint fd, jlong unused) {
+    private static /* native */ void cleanupClose0(int fd, long handle) throws IOException {
+        // 86      if (fd != -1) {
+        if (fd != -1) {
+            // 87          if (close(fd) == -1) {
+            if (Unistd.close(fd) == -1) {
+                // 88              JNU_ThrowIOExceptionWithLastError(env, "close failed");
+                throw new IOException(PosixUtils.lastErrorString("close failed"));
+            }
+        }
+    }
+    /* } Do not re-format commented out C code. @formatter:on */
 }
