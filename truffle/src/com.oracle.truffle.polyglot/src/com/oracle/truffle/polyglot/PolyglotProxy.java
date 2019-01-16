@@ -286,7 +286,7 @@ final class PolyglotProxy implements TruffleObject {
     }
 
     @ExportMessage
-    boolean isObject() {
+    boolean hasMembers() {
         return proxy instanceof ProxyObject;
     }
 

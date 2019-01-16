@@ -625,7 +625,7 @@ public class ValueLanguageTest extends AbstractDebugTest {
 
             @SuppressWarnings("static-method")
             @ExportMessage
-            boolean isObject() {
+            boolean hasMembers() {
                 return true;
             }
 

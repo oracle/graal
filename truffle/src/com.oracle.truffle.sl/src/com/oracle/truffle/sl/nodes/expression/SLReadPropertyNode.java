@@ -80,7 +80,7 @@ public abstract class SLReadPropertyNode extends SLExpressionNode {
         }
     }
 
-    @Specialization(guards = "objects.isObject(receiver)", limit = "LIBRARY_LIMIT")
+    @Specialization(guards = "objects.hasMembers(receiver)", limit = "LIBRARY_LIMIT")
     protected Object writeObject(Object receiver, Object name,
                     @CachedLibrary("receiver") InteropLibrary objects,
                     @Cached SLToMemberNode asMember) {

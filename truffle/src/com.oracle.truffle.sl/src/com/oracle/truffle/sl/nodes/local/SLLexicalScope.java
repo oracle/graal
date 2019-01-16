@@ -328,7 +328,7 @@ public final class SLLexicalScope {
 
         @SuppressWarnings("static-method")
         @ExportMessage
-        boolean isObject() {
+        boolean hasMembers() {
             return true;
         }
 

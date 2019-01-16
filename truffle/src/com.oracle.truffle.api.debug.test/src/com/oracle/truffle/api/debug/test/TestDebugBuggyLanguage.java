@@ -224,7 +224,7 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
         }
 
         @ExportMessage
-        boolean isObject() {
+        boolean hasMembers() {
             return true;
         }
 

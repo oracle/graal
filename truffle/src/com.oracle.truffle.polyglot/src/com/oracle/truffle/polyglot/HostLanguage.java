@@ -352,7 +352,7 @@ class HostLanguage extends TruffleLanguage<HostContext> {
 
         @SuppressWarnings("static-method")
         @ExportMessage
-        boolean isObject() {
+        boolean hasMembers() {
             return true;
         }
 

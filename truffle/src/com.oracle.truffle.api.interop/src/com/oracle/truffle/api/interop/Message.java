@@ -575,7 +575,7 @@ public abstract class Message {
      * {@link Message#createNode() created node}.
      *
      * @since 0.26
-     * @deprecated for {@link ObjectLibrary#isObject(Object) objects} use
+     * @deprecated for {@link ObjectLibrary#hasMembers(Object) objects} use
      *             {@link ObjectLibrary#isMemberReadable(Object, String)},
      *             {@link ObjectLibrary#isMemberWritable(Object, String)},
      *             {@link ObjectLibrary#isMemberInsertable(Object, String)},
@@ -604,7 +604,7 @@ public abstract class Message {
      * @since 0.30
      * @see ForeignAccess#sendHasKeys(com.oracle.truffle.api.nodes.Node,
      *      com.oracle.truffle.api.interop.TruffleObject)
-     * @deprecated use {@link ObjectLibrary#isObject(Object)} instead. See {@link InteropLibrary}
+     * @deprecated use {@link ObjectLibrary#hasMembers(Object)} instead. See {@link InteropLibrary}
      *             for an overview of the new interop messages.
      */
     @Deprecated public static final Message HAS_KEYS = HasKeys.INSTANCE;

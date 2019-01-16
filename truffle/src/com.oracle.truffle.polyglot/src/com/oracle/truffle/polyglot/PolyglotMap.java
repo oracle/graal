@@ -469,7 +469,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
             protected Object doCached(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
                             @CachedLibrary("receiver") InteropLibrary interop) {
                 Object key = args[ARGUMENT_OFFSET];
-                if (cache.memberKey && interop.isObject(receiver)) {
+                if (cache.memberKey && interop.hasMembers(receiver)) {
                     if (isObjectKey(key)) {
                         return interop.isMemberReadable(receiver, ((String) key));
                     }
@@ -505,7 +505,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                 long elemSize = 0;
                 PolyglotMap<Object, Object> originalMap = (PolyglotMap<Object, Object>) args[ARGUMENT_OFFSET];
 
-                if (cache.memberKey && interop.isObject(receiver)) {
+                if (cache.memberKey && interop.hasMembers(receiver)) {
                     Object truffleKeys;
                     try {
                         truffleKeys = interop.getMembers(receiver);
@@ -551,7 +551,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                 Object key = args[ARGUMENT_OFFSET];
                 Object result;
                 try {
-                    if (cache.memberKey && interop.isObject(receiver)) {
+                    if (cache.memberKey && interop.hasMembers(receiver)) {
                         if (isObjectKey(key)) {
                             result = interop.readMember(receiver, ((String) key));
                         } else {
@@ -595,7 +595,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                 Object key = args[ARGUMENT_OFFSET];
                 Object guestValue = toGuest.execute(languageContext, args[ARGUMENT_OFFSET + 1]);
                 try {
-                    if (cache.memberKey && interop.isObject(receiver)) {
+                    if (cache.memberKey && interop.hasMembers(receiver)) {
                         if (isObjectKey(key)) {
                             interop.writeMember(receiver, ((String) key), guestValue);
                             return null;
@@ -642,7 +642,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                             @CachedLibrary("receiver") InteropLibrary interop) {
                 Object key = args[ARGUMENT_OFFSET];
                 try {
-                    if (cache.memberKey && interop.isObject(receiver)) {
+                    if (cache.memberKey && interop.hasMembers(receiver)) {
                         if (isObjectKey(key)) {
                             interop.removeMember(receiver, ((String) key));
                             return null;
@@ -688,7 +688,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                 Object key = args[ARGUMENT_OFFSET];
                 Object expectedValue = args[ARGUMENT_OFFSET + 1];
                 try {
-                    if (cache.memberKey && interop.isObject(receiver)) {
+                    if (cache.memberKey && interop.hasMembers(receiver)) {
                         if (isObjectKey(key)) {
                             String member = (String) key;
                             Object readValue = interop.readMember(receiver, member);

@@ -69,7 +69,7 @@ final class DefaultScope {
 
     static Iterable<Scope> topScope(Object global) {
         TruffleObject globalObject;
-        if (global != null && InteropLibrary.resolve().getUncachedDispatch().isObject(global)) {
+        if (global != null && InteropLibrary.resolve().getUncachedDispatch().hasMembers(global)) {
             globalObject = (TruffleObject) global;
         } else {
             globalObject = new EmptyGlobalBindings();
@@ -165,7 +165,7 @@ final class DefaultScope {
 
         @SuppressWarnings("static-method")
         @ExportMessage
-        boolean isObject() {
+        boolean hasMembers() {
             return true;
         }
 
@@ -336,7 +336,7 @@ final class DefaultScope {
 
         @SuppressWarnings("static-method")
         @ExportMessage
-        boolean isObject() {
+        boolean hasMembers() {
             return true;
         }
 

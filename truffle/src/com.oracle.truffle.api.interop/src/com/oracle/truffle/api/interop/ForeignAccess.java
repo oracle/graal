@@ -749,7 +749,7 @@ public final class ForeignAccess {
      * @throws ClassCastException if the createNode has not been created by
      *             {@link Message#createNode()} method.
      * @since 0.26
-     * @deprecated for {@link ObjectLibrary#isObject(Object) objects} use
+     * @deprecated for {@link ObjectLibrary#hasMembers(Object) objects} use
      *             {@link ObjectLibrary#isMemberReadable(Object, String)},
      *             {@link ObjectLibrary#isMemberWritable(Object, String)},
      *             {@link ObjectLibrary#isMemberInsertable(Object, String)},
@@ -821,7 +821,7 @@ public final class ForeignAccess {
      * @throws ClassCastException if the createNode has not been created by
      *             {@link Message#createNode()} method.
      * @since 0.30
-     * @deprecated use {@link ObjectLibrary#isObject(Object)} instead. See {@link InteropLibrary}
+     * @deprecated use {@link ObjectLibrary#hasMembers(Object)} instead. See {@link InteropLibrary}
      *             for an overview of the new interop messages.
      */
     @Deprecated

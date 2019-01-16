@@ -77,7 +77,7 @@ public final class SLObjectType extends ObjectType {
 
     @ExportMessage
     @SuppressWarnings("unused")
-    static boolean isObject(DynamicObject receiver) {
+    static boolean hasMembers(DynamicObject receiver) {
         return true;
     }
 

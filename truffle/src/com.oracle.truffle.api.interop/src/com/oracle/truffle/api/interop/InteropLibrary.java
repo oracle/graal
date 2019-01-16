@@ -244,11 +244,11 @@ public abstract class InteropLibrary extends Library {
 
     @Abstract(ifExported = {"getMembers", "isMemberReadable", "readMember", "isMemberModifiable", "isMemberInsertable", "writeMember", "isMemberRemovable", "removeMember", "isMemberInvokable",
                     "invokeMember", "isMemberInternal", "hasMemberReadSideEffects", "hasMemberWriteSideEffects"})
-    public boolean isObject(Object receiver) {
+    public boolean hasMembers(Object receiver) {
         return false;
     }
 
-    @Abstract(ifExported = "isObject")
+    @Abstract(ifExported = "hasMembers")
     public Object getMembers(Object receiver, boolean includeInternal) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
     }
@@ -702,9 +702,9 @@ public abstract class InteropLibrary extends Library {
         }
 
         @Override
-        public boolean isObject(Object receiver) {
+        public boolean hasMembers(Object receiver) {
             assert preCondition(receiver);
-            return delegate.isObject(receiver);
+            return delegate.hasMembers(receiver);
         }
 
         @Override
@@ -714,7 +714,7 @@ public abstract class InteropLibrary extends Library {
             boolean wasReadable = ASSERTIONS_ENABLED && delegate.isMemberReadable(receiver, identifier);
             try {
                 Object result = delegate.readMember(receiver, identifier);
-                assert delegate.isObject(receiver) : violationInvariant(receiver, identifier);
+                assert delegate.hasMembers(receiver) : violationInvariant(receiver, identifier);
                 assert wasReadable : violationInvariant(receiver, identifier);
                 assert validReturn(receiver, result);
                 return result;
@@ -732,7 +732,7 @@ public abstract class InteropLibrary extends Library {
             boolean wasWritable = ASSERTIONS_ENABLED && (delegate.isMemberModifiable(receiver, identifier) || delegate.isMemberInsertable(receiver, identifier));
             try {
                 delegate.writeMember(receiver, identifier, value);
-                assert delegate.isObject(receiver) : violationInvariant(receiver, identifier);
+                assert delegate.hasMembers(receiver) : violationInvariant(receiver, identifier);
                 assert wasWritable : violationInvariant(receiver, identifier);
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException || e instanceof UnknownIdentifierException || e instanceof UnsupportedTypeException : violationPost(receiver, e);
@@ -747,7 +747,7 @@ public abstract class InteropLibrary extends Library {
             boolean wasRemovable = ASSERTIONS_ENABLED && delegate.isMemberRemovable(receiver, identifier);
             try {
                 delegate.removeMember(receiver, identifier);
-                assert delegate.isObject(receiver) : violationInvariant(receiver, identifier);
+                assert delegate.hasMembers(receiver) : violationInvariant(receiver, identifier);
                 assert wasRemovable : violationInvariant(receiver, identifier);
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException || e instanceof UnknownIdentifierException : violationPost(receiver, e);
@@ -763,7 +763,7 @@ public abstract class InteropLibrary extends Library {
             boolean wasInvocable = ASSERTIONS_ENABLED && delegate.isMemberInvokable(receiver, identifier);
             try {
                 Object result = delegate.invokeMember(receiver, identifier, arguments);
-                assert delegate.isObject(receiver) : violationInvariant(receiver, identifier);
+                assert delegate.hasMembers(receiver) : violationInvariant(receiver, identifier);
                 assert wasInvocable : violationInvariant(receiver, identifier);
                 assert validReturn(receiver, result);
                 return result;
@@ -823,7 +823,7 @@ public abstract class InteropLibrary extends Library {
             assert preCondition(receiver);
             assert validArgument(receiver, identifier);
             boolean result = delegate.hasMemberReadSideEffects(receiver, identifier);
-            assert !result || delegate.isObject(receiver) : violationInvariant(receiver, identifier);
+            assert !result || delegate.hasMembers(receiver) : violationInvariant(receiver, identifier);
             assert !result || delegate.isMemberReadable(receiver, identifier) : violationInvariant(receiver, identifier);
             return result;
         }
@@ -833,7 +833,7 @@ public abstract class InteropLibrary extends Library {
             assert preCondition(receiver);
             assert validArgument(receiver, identifier);
             boolean result = delegate.hasMemberWriteSideEffects(receiver, identifier);
-            assert !result || delegate.isObject(receiver) : violationInvariant(receiver, identifier);
+            assert !result || delegate.hasMembers(receiver) : violationInvariant(receiver, identifier);
             assert !result || delegate.isMemberWritable(receiver, identifier) : violationInvariant(receiver, identifier);
             return result;
         }
@@ -843,7 +843,7 @@ public abstract class InteropLibrary extends Library {
             assert preCondition(receiver);
             assert validArgument(receiver, identifier);
             boolean result = delegate.isMemberReadable(receiver, identifier);
-            assert !result || delegate.isObject(receiver) : violationInvariant(receiver, identifier);
+            assert !result || delegate.hasMembers(receiver) : violationInvariant(receiver, identifier);
             return result;
         }
 
@@ -852,7 +852,7 @@ public abstract class InteropLibrary extends Library {
             assert preCondition(receiver);
             assert validArgument(receiver, identifier);
             boolean result = delegate.isMemberModifiable(receiver, identifier);
-            assert !result || delegate.isObject(receiver) : violationInvariant(receiver, identifier);
+            assert !result || delegate.hasMembers(receiver) : violationInvariant(receiver, identifier);
             return result;
         }
 
@@ -861,7 +861,7 @@ public abstract class InteropLibrary extends Library {
             assert preCondition(receiver);
             assert validArgument(receiver, identifier);
             boolean result = delegate.isMemberInsertable(receiver, identifier);
-            assert !result || delegate.isObject(receiver) : violationInvariant(receiver, identifier);
+            assert !result || delegate.hasMembers(receiver) : violationInvariant(receiver, identifier);
             return result;
         }
 
@@ -870,7 +870,7 @@ public abstract class InteropLibrary extends Library {
             assert preCondition(receiver);
             assert validArgument(receiver, identifier);
             boolean result = delegate.isMemberRemovable(receiver, identifier);
-            assert !result || delegate.isObject(receiver) : violationInvariant(receiver, identifier);
+            assert !result || delegate.hasMembers(receiver) : violationInvariant(receiver, identifier);
             return result;
         }
 
@@ -879,7 +879,7 @@ public abstract class InteropLibrary extends Library {
             assert preCondition(receiver);
             assert validArgument(receiver, identifier);
             boolean result = delegate.isMemberInvokable(receiver, identifier);
-            assert !result || delegate.isObject(receiver) : violationInvariant(receiver, identifier);
+            assert !result || delegate.hasMembers(receiver) : violationInvariant(receiver, identifier);
             return result;
         }
 
@@ -888,7 +888,7 @@ public abstract class InteropLibrary extends Library {
             assert preCondition(receiver);
             assert validArgument(receiver, identifier);
             boolean result = delegate.isMemberInternal(receiver, identifier);
-            assert !result || delegate.isObject(receiver) : violationInvariant(receiver, identifier);
+            assert !result || delegate.hasMembers(receiver) : violationInvariant(receiver, identifier);
             return result;
         }
 

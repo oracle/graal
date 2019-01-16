@@ -134,7 +134,7 @@ public abstract class ProxyInteropObject implements TruffleObject {
     }
 
     @ExportMessage
-    protected boolean isObject() {
+    protected boolean hasMembers() {
         return false;
     }
 

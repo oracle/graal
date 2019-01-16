@@ -78,7 +78,7 @@ final class PolyglotLanguageBindings implements TruffleObject {
         List<Object> otherScopes = null;
         while (scope.hasNext()) {
             Object variables = scope.next().getVariables();
-            assert InteropLibrary.resolve().getUncachedDispatch().isObject(variables) : "Variables object must return true for isObject().";
+            assert InteropLibrary.resolve().getUncachedDispatch().hasMembers(variables) : "Variables object must return true for isObject().";
             if (firstScope == null) {
                 firstScope = variables;
             } else {
@@ -97,7 +97,7 @@ final class PolyglotLanguageBindings implements TruffleObject {
     }
 
     @ExportMessage
-    boolean isObject() {
+    boolean hasMembers() {
         return true;
     }
 

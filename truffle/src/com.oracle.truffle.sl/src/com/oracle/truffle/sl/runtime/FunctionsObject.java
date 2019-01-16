@@ -61,7 +61,7 @@ final class FunctionsObject implements TruffleObject {
     }
 
     @ExportMessage
-    boolean isObject() {
+    boolean hasMembers() {
         return true;
     }
 

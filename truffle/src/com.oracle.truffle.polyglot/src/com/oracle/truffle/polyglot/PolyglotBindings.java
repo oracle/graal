@@ -67,7 +67,7 @@ final class PolyglotBindings implements TruffleObject {
 
     @SuppressWarnings("static-method")
     @ExportMessage
-    boolean isObject() {
+    boolean hasMembers() {
         return true;
     }
 

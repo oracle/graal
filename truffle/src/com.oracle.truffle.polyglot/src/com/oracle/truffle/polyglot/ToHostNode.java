@@ -270,7 +270,7 @@ abstract class ToHostNode extends Node {
             } else if (targetType == List.class) {
                 return interop.isArray(value);
             } else if (targetType == Map.class) {
-                return interop.isObject(value);
+                return interop.hasMembers(value);
             } else if (targetType.isArray()) {
                 return interop.isArray(value);
             } else if (priority < HOST_PROXY && HostObject.isInstance(value)) {
@@ -278,7 +278,7 @@ abstract class ToHostNode extends Node {
             } else {
                 if (priority >= FUNCTION_PROXY && HostInteropReflect.isFunctionalInterface(targetType) && (interop.isExecutable(value) || interop.isInstantiable(value))) {
                     return true;
-                } else if (priority >= OBJECT_PROXY && targetType.isInterface() && interop.isObject(value)) {
+                } else if (priority >= OBJECT_PROXY && targetType.isInterface() && interop.hasMembers(value)) {
                     return true;
                 } else {
                     return false;
@@ -331,7 +331,7 @@ abstract class ToHostNode extends Node {
                     return result;
                 }
                 // fallthrough
-            } else if (interop.isObject(value)) {
+            } else if (interop.hasMembers(value)) {
                 return asJavaObject(value, Map.class, null, languageContext, interop);
             } else if (interop.isArray(value)) {
                 return asJavaObject(value, List.class, null, languageContext, interop);
@@ -394,7 +394,7 @@ abstract class ToHostNode extends Node {
                 throw newInvalidKeyTypeException(keyClazz);
             }
             boolean hasSize = (Number.class.isAssignableFrom(keyClazz)) && interop.isArray(value);
-            boolean hasKeys = (keyClazz == Object.class || keyClazz == String.class) && interop.isObject(value);
+            boolean hasKeys = (keyClazz == Object.class || keyClazz == String.class) && interop.hasMembers(value);
             if (hasKeys || hasSize) {
                 boolean implementsFunction = shouldImplementFunction(value, interop);
                 obj = PolyglotMap.create(languageContext, value, implementsFunction, keyClazz, valueType.clazz, valueType.type);
@@ -405,7 +405,7 @@ abstract class ToHostNode extends Node {
             TypeAndClass<?> returnType = getGenericParameterType(genericType, 1);
             if (interop.isExecutable(value) || interop.isInstantiable(value)) {
                 obj = PolyglotFunction.create(languageContext, value, returnType.clazz, returnType.type);
-            } else if (interop.isObject(value)) {
+            } else if (interop.hasMembers(value)) {
                 obj = HostInteropReflect.newProxyInstance(targetType, value, languageContext);
             } else {
                 throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must be executable or instantiable.");
@@ -419,7 +419,7 @@ abstract class ToHostNode extends Node {
         } else if (targetType.isInterface()) {
             if (HostInteropReflect.isFunctionalInterface(targetType) && (interop.isExecutable(value) || interop.isInstantiable(value))) {
                 obj = HostInteropReflect.asJavaFunction(targetType, value, languageContext);
-            } else if (interop.isObject(value)) {
+            } else if (interop.hasMembers(value)) {
                 obj = HostInteropReflect.newProxyInstance(targetType, value, languageContext);
             } else {
                 throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have members.");

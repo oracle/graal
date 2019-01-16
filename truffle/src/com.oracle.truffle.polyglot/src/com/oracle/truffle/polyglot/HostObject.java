@@ -152,7 +152,7 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    boolean isObject() {
+    boolean hasMembers() {
         return !isNull();
     }
 

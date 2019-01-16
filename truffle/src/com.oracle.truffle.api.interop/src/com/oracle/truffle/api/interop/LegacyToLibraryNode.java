@@ -341,7 +341,7 @@ final class LegacyToLibraryNode extends Node {
     }
 
     boolean sendHasKeys(TruffleObject receiver) {
-        return interop.isObject(receiver);
+        return interop.hasMembers(receiver);
     }
 
     TruffleObject sendKeys(TruffleObject receiver) throws UnsupportedMessageException {

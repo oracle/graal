@@ -130,7 +130,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertFalse(INTEROP.isExecutable(proxyInner));
         assertFalse(INTEROP.isInstantiable(proxyInner));
         assertFalse(INTEROP.isNull(proxyInner));
-        assertFalse(INTEROP.isObject(proxyInner));
+        assertFalse(INTEROP.hasMembers(proxyInner));
         assertFalse(INTEROP.isArray(proxyInner));
         assertFalse(INTEROP.isPointer(proxyInner));
     }
@@ -174,7 +174,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertFalse(INTEROP.isExecutable(proxyInner));
         assertFalse(INTEROP.isInstantiable(proxyInner));
         assertFalse(INTEROP.isNull(proxyInner));
-        assertFalse(INTEROP.isObject(proxyInner));
+        assertFalse(INTEROP.hasMembers(proxyInner));
         assertFalse(INTEROP.isPointer(proxyInner));
 
         assertTrue(INTEROP.isArray(proxyInner));
@@ -246,7 +246,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertFalse(INTEROP.isArray(proxyInner));
         assertFalse(INTEROP.isPointer(proxyInner));
 
-        assertTrue(INTEROP.isObject(proxyInner));
+        assertTrue(INTEROP.hasMembers(proxyInner));
         assertEmpty(INTEROP.getMembers(proxyInner));
 
         INTEROP.writeMember(proxyInner, "a", 42);
@@ -314,7 +314,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertFalse(INTEROP.isExecutable(proxyInner));
         assertFalse(INTEROP.isInstantiable(proxyInner));
         assertFalse(INTEROP.isNull(proxyInner));
-        assertTrue(INTEROP.isObject(proxyInner));
+        assertTrue(INTEROP.hasMembers(proxyInner));
         assertFalse(INTEROP.isArray(proxyInner));
         assertFalse(INTEROP.isPointer(proxyInner));
     }
@@ -348,7 +348,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertFalse(INTEROP.isExecutable(proxyInner));
         assertFalse(INTEROP.isInstantiable(proxyInner));
         assertFalse(INTEROP.isNull(proxyInner));
-        assertFalse(INTEROP.isObject(proxyInner));
+        assertFalse(INTEROP.hasMembers(proxyInner));
         assertFalse(INTEROP.isArray(proxyInner));
 
         assertTrue(INTEROP.isPointer(proxyInner));
@@ -381,7 +381,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertFalse(INTEROP.isNumber(proxyInner));
         assertFalse(INTEROP.isInstantiable(proxyInner));
         assertFalse(INTEROP.isNull(proxyInner));
-        assertFalse(INTEROP.isObject(proxyInner));
+        assertFalse(INTEROP.hasMembers(proxyInner));
         assertFalse(INTEROP.isArray(proxyInner));
         assertFalse(INTEROP.isPointer(proxyInner));
 
@@ -418,7 +418,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertFalse(INTEROP.isNumber(proxyInner));
         assertFalse(INTEROP.isExecutable(proxyInner));
         assertFalse(INTEROP.isNull(proxyInner));
-        assertFalse(INTEROP.isObject(proxyInner));
+        assertFalse(INTEROP.hasMembers(proxyInner));
         assertFalse(INTEROP.isArray(proxyInner));
         assertFalse(INTEROP.isPointer(proxyInner));
 
@@ -529,7 +529,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertTrue(INTEROP.isExecutable(proxyInner));
         assertTrue(INTEROP.isInstantiable(proxyInner));
         assertFalse(INTEROP.isNull(proxyInner));
-        assertTrue(INTEROP.isObject(proxyInner));
+        assertTrue(INTEROP.hasMembers(proxyInner));
         assertTrue(INTEROP.isArray(proxyInner));
         assertTrue(INTEROP.isPointer(proxyInner));
     }

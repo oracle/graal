@@ -1437,7 +1437,7 @@ public class LanguageSPITest {
         boolean removable;
 
         @ExportMessage
-        public boolean isObject() {
+        public boolean hasMembers() {
             return true;
         }
 

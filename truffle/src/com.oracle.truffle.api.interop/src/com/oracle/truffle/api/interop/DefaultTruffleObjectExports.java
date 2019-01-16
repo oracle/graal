@@ -115,7 +115,7 @@ class DefaultTruffleObjectExports {
     }
 
     @ExportMessage
-    static boolean isObject(TruffleObject receiver,
+    static boolean hasMembers(TruffleObject receiver,
                     @Cached(parameters = "HAS_KEYS") InteropAccessNode hasKeys) {
         return LibraryToLegacy.sendHasKeys(hasKeys, receiver);
     }

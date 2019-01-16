@@ -189,7 +189,7 @@ public class DebugValueTest extends AbstractDebugTest {
     static final class NoAttributesTruffleObject implements TruffleObject {
 
         @ExportMessage
-        boolean isObject() {
+        boolean hasMembers() {
             return true;
         }
 
@@ -233,7 +233,7 @@ public class DebugValueTest extends AbstractDebugTest {
         private boolean isInternal;
 
         @ExportMessage
-        boolean isObject() {
+        boolean hasMembers() {
             return true;
         }
 

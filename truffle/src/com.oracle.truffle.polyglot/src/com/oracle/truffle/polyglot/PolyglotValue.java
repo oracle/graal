@@ -1055,7 +1055,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                     value = toHost.execute(context, objects.readMember(receiver, key));
                 } catch (UnsupportedMessageException e) {
                     unsupported.enter();
-                    if (objects.isObject(receiver)) {
+                    if (objects.hasMembers(receiver)) {
                         value = null;
                     } else {
                         return getMemberUnsupported(context, receiver, key);
@@ -1198,7 +1198,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
             @Specialization(limit = "CACHE_LIMIT")
             static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
                             @CachedLibrary("receiver") InteropLibrary objects) {
-                return objects.isObject(receiver);
+                return objects.hasMembers(receiver);
             }
 
         }

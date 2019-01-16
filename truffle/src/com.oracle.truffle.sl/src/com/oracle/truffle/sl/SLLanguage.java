@@ -308,7 +308,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
                 } else {
                     return "Function";
                 }
-            } else if (interop.isObject(value)) {
+            } else if (interop.hasMembers(value)) {
                 return "Object";
             } else {
                 return "Unsupported";
@@ -339,7 +339,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
             return "NULL";
         } else if (interop.isExecutable(value)) {
             return "Function";
-        } else if (interop.isObject(value)) {
+        } else if (interop.hasMembers(value)) {
             return "Object";
         } else {
             return "Unsupported";

@@ -109,7 +109,7 @@ public class DebuggerRetrievalTest {
             }
 
             @ExportMessage
-            boolean isObject() {
+            boolean hasMembers() {
                 return true;
             }
 

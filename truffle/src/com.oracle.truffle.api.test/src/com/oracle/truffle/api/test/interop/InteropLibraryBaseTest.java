@@ -137,7 +137,7 @@ public abstract class InteropLibraryBaseTest {
 
     protected final void assertNoObject(Object value) {
         InteropLibrary lib = createLibrary(InteropLibrary.class, value);
-        assertFalse(lib.isObject(value));
+        assertFalse(lib.hasMembers(value));
         assertFalse(lib.isMemberReadable(value, "foo"));
         assertFalse(lib.isMemberModifiable(value, "foo"));
         assertFalse(lib.isMemberInsertable(value, "foo"));

@@ -363,10 +363,10 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
         InteropLibrary library = createLibrary(InteropLibrary.class, v);
 
         assertEquals(0, v.hasKeysCalls);
-        assertTrue(library.isObject(v));
+        assertTrue(library.hasMembers(v));
         assertEquals(1, v.hasKeysCalls);
         v.hasKeys = false;
-        assertFalse(library.isObject(v));
+        assertFalse(library.hasMembers(v));
         v.hasKeys = true;
 
         v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.READABLE;

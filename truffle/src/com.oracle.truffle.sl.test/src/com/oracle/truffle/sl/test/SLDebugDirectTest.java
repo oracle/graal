@@ -434,7 +434,7 @@ public class SLDebugDirectTest {
         }
 
         @ExportMessage
-        final boolean isObject() {
+        final boolean hasMembers() {
             return true;
         }
 

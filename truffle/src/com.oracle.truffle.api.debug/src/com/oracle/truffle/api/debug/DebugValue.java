@@ -213,7 +213,7 @@ public abstract class DebugValue {
 
 
     static ValuePropertiesCollection getProperties(Object value, Debugger debugger, LanguageInfo language, DebugScope scope) {
-        if (INTEROP.isObject(value)) {
+        if (INTEROP.hasMembers(value)) {
             Object keys;
             try {
                 keys = INTEROP.getMembers(value, true);
