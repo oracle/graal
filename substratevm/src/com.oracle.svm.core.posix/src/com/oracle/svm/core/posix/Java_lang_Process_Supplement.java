@@ -76,7 +76,7 @@ public final class Java_lang_Process_Supplement {
     };
 
     @SuppressWarnings("try")
-    static int doForkAndExec(CCharPointer file, CCharPointer dir, CCharPointerPointer argv, CCharPointerPointer envp, int[] stdioFds, int failFd) {
+    static int doForkAndExec(CCharPointer file, CCharPointer dir, CCharPointerPointer argv, CCharPointerPointer envp, int[] stdioFds, int failFd, boolean redirectErrorStream) {
         final int buflen = SizeOf.get(dirent.class) + Limits.PATH_MAX() + 1;
         final boolean haveProcFs = Platform.includedIn(Platform.LINUX.class);
         try (// Allocate any objects we need in the child after the fork() ahead of time here, since
@@ -89,14 +89,14 @@ public final class Java_lang_Process_Supplement {
 
             CCharPointer procFdsPathPtr = (procFdsPath != null) ? procFdsPath.get() : WordFactory.nullPointer();
             return uninterruptibleForkAndExec(file, dir, argv, envp, stdioFds, failFd, bufferPin.addressOfArrayElement(0),
-                            buflen, procFdsPathPtr, searchPaths.get(), searchPathSeparator.get());
+                            buflen, procFdsPathPtr, searchPaths.get(), searchPathSeparator.get(), redirectErrorStream);
         }
     }
 
     @Uninterruptible(reason = "fragile state after fork()")
     private static int uninterruptibleForkAndExec(CCharPointer file, CCharPointer dir, CCharPointerPointer argv,
                     CCharPointerPointer envp, int[] stdioFds, int initialFailFd, PointerBase buffer, int buflen,
-                    CCharPointer procFdsPath, CCharPointer searchPaths, CCharPointer searchPathSeparator) {
+                    CCharPointer procFdsPath, CCharPointer searchPaths, CCharPointer searchPathSeparator, boolean redirectErrorStream) {
 
         int childPid;
         childPid = UnistdNoTransitions.fork();
@@ -117,8 +117,14 @@ public final class Java_lang_Process_Supplement {
             if (Java_lang_Process_Supplement.dup2(stdioFds[1], 1) < 0) {
                 return gotoFinally;
             }
-            if (Java_lang_Process_Supplement.dup2(stdioFds[2], 2) < 0) {
-                return gotoFinally;
+            if (redirectErrorStream) {
+                if (UnistdNoTransitions.close(stdioFds[2]) < 0 || Java_lang_Process_Supplement.dup2(1, 2) < 0) {
+                    return gotoFinally;
+                }
+            } else {
+                if (Java_lang_Process_Supplement.dup2(stdioFds[2], 2) < 0) {
+                    return gotoFinally;
+                }
             }
 
             if (Java_lang_Process_Supplement.dup2(failFd, 3) < 0) {
@@ -365,7 +371,7 @@ public final class Java_lang_Process_Supplement {
 
             CCharPointer filep = filePin.addressOfArrayElement(0);
             CCharPointer dirp = (dir != null) ? dirPin.addressOfArrayElement(0) : WordFactory.nullPointer();
-            int childPid = Java_lang_Process_Supplement.doForkAndExec(filep, dirp, argv, envp, childStdioFds, childFailFd);
+            int childPid = Java_lang_Process_Supplement.doForkAndExec(filep, dirp, argv, envp, childStdioFds, childFailFd, redirectErrorStream);
             if (childPid < 0) {
                 throw new IOException("fork() failed");
             }
