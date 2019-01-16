@@ -44,6 +44,8 @@ final class TruffleSplittingStrategy {
 
     private static Set<OptimizedCallTarget> waste = new HashSet<>();
     private static SplitStatisticsReporter reporter = new SplitStatisticsReporter();
+    private static final int RECURSIVE_SPLIT_DEPTH = 2;
+    private static final int EXPERIMENTAL_RECURSIVE_SPLIT_DEPTH = 3;
 
     static void beforeCall(OptimizedDirectCallNode call, GraalTVMCI tvmci) {
         if (RuntimeOptionsCache.isTraceSplittingSummary()) {
@@ -92,7 +94,7 @@ final class TruffleSplittingStrategy {
             return false;
         }
         final GraalTVMCI.EngineData engineData = getEngineData(call, tvmci);
-        if (!canSplit(call) || isRecursiveSplit(call, 3) || engineData.splitCount + call.getCallTarget().getUninitializedNodeCount() >= engineData.splitLimit) {
+        if (!canSplit(call) || isRecursiveSplit(call, EXPERIMENTAL_RECURSIVE_SPLIT_DEPTH) || engineData.splitCount + call.getCallTarget().getUninitializedNodeCount() >= engineData.splitLimit) {
             return false;
         }
         if (callTarget.getUninitializedNodeCount() > RuntimeOptionsCache.getSplittingMaxCalleeSize()) {
@@ -103,7 +105,7 @@ final class TruffleSplittingStrategy {
 
     static void forceSplitting(OptimizedDirectCallNode call, GraalTVMCI tvmci) {
         if (!RuntimeOptionsCache.isExperimentalSplitting() || RuntimeOptionsCache.isExperimentalSplittingAllowForcedSplits()) {
-            if (!canSplit(call) || isRecursiveSplit(call, 2)) {
+            if (!canSplit(call) || isRecursiveSplit(call, RECURSIVE_SPLIT_DEPTH)) {
                 return;
             }
             final GraalTVMCI.EngineData engineData = getEngineData(call, tvmci);
@@ -160,7 +162,7 @@ final class TruffleSplittingStrategy {
         }
 
         // Disable splitting if it will cause a deep split-only recursion
-        if (isRecursiveSplit(call, 2)) {
+        if (isRecursiveSplit(call, RECURSIVE_SPLIT_DEPTH)) {
             return false;
         }
 
