@@ -547,6 +547,7 @@ final class NativeImageServer extends NativeImage {
     private Server startServer(Path serverDir, int serverPort, LinkedHashSet<Path> classpath, LinkedHashSet<Path> bootClasspath, List<String> javaArgs) {
         ProcessBuilder pb = new ProcessBuilder();
         pb.directory(serverDir.toFile());
+        pb.redirectErrorStream(true);
         List<String> command = pb.command();
         command.add(canonicalize(config.getJavaExecutable()).toString());
         if (!bootClasspath.isEmpty()) {
