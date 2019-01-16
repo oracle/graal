@@ -99,7 +99,7 @@ public class AnalysisField implements ResolvedJavaField {
         this.wrapped = wrappedField;
         this.id = universe.nextFieldId.getAndIncrement();
 
-        readBy = PointstoOptions.TrackAccessChain.getValue(universe.getHostVM().options()) ? new ConcurrentHashMap<>() : null;
+        readBy = PointstoOptions.TrackAccessChain.getValue(universe.hostVM().options()) ? new ConcurrentHashMap<>() : null;
         writtenBy = new ConcurrentHashMap<>();
 
         declaringClass = universe.lookup(wrappedField.getDeclaringClass());

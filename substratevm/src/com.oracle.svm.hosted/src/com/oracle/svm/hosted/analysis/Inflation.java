@@ -52,7 +52,6 @@ import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;
-import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
@@ -67,6 +66,7 @@ import com.oracle.graal.pointsto.reports.CallTreePrinter;
 import com.oracle.graal.pointsto.util.AnalysisError.TypeNotFoundError;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.annotate.UnknownPrimitiveField;
+import com.oracle.svm.core.graal.meta.SubstrateReplacements;
 import com.oracle.svm.core.hub.AnnotatedSuperInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.GenericInfo;
@@ -90,8 +90,8 @@ public class Inflation extends BigBang {
     private final Pattern illegalCalleesPattern;
     private final Pattern targetCallersPattern;
 
-    public Inflation(OptionValues options, AnalysisUniverse universe, HostedProviders providers, HostVM hostVM, ForkJoinPool executor) {
-        super(options, universe, providers, hostVM, executor, new SubstrateUnsupportedFeatures());
+    public Inflation(OptionValues options, AnalysisUniverse universe, HostedProviders providers, ForkJoinPool executor) {
+        super(options, universe, providers, universe.hostVM(), executor, new SubstrateUnsupportedFeatures());
 
         String[] targetCallers = new String[]{"com\\.oracle\\.graal\\.", "org\\.graalvm[^\\.polyglot\\.nativeapi]"};
         targetCallersPattern = buildPrefixMatchPattern(targetCallers);
@@ -135,10 +135,13 @@ public class Inflation extends BigBang {
         universe.getTypes().stream().filter(type -> type.isInstantiated() || type.isInTypeCheck() || type.isPrimitive()).forEach(type -> scanHub(objectScanner, type));
     }
 
-    private void checkType(AnalysisType type) {
-        SVMHost svmHost = (SVMHost) hostVM;
+    @Override
+    public SVMHost getHostVM() {
+        return (SVMHost) hostVM;
+    }
 
-        DynamicHub hub = svmHost.dynamicHub(type);
+    private void checkType(AnalysisType type) {
+        DynamicHub hub = getHostVM().dynamicHub(type);
         if (hub.getGenericInfo() == null) {
             fillGenericInfo(type, hub);
         }
@@ -154,7 +157,7 @@ public class Inflation extends BigBang {
             try {
                 AnalysisType enclosingType = type.getEnclosingType();
                 if (enclosingType != null) {
-                    hub.setEnclosingClass(svmHost.dynamicHub(enclosingType));
+                    hub.setEnclosingClass(getHostVM().dynamicHub(enclosingType));
                 }
             } catch (UnsupportedFeatureException ex) {
                 getUnsupportedFeatures().addMessage(type.toJavaName(true), null, ex.getMessage(), null, ex);
@@ -361,7 +364,7 @@ public class Inflation extends BigBang {
     private boolean isTypeAllowed(Type t) {
         if (t instanceof Class) {
             Optional<? extends ResolvedJavaType> resolved = metaAccess.optionalLookupJavaType((Class<?>) t);
-            return resolved.isPresent() && universe.hostVM().platformSupported(resolved.get());
+            return resolved.isPresent() && universe.platformSupported(resolved.get());
         }
         return true;
     }
@@ -664,4 +667,8 @@ public class Inflation extends BigBang {
         return true;
     }
 
+    @Override
+    public SubstrateReplacements getReplacements() {
+        return (SubstrateReplacements) super.getReplacements();
+    }
 }

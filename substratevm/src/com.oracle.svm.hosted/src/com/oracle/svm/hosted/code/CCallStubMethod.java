@@ -109,7 +109,7 @@ public abstract class CCallStubMethod extends CustomSubstitutionMethod {
 
         for (int i = 0; i < parameterTypes.length; i++) {
             if (!isPrimitiveOrWord(providers, parameterTypes[i])) {
-                ElementInfo typeInfo = nativeLibraries.findElementInfo(parameterTypes[i]);
+                ElementInfo typeInfo = nativeLibraries.findElementInfo((ResolvedJavaType) parameterTypes[i]);
                 if (typeInfo instanceof EnumInfo) {
                     UserError.guarantee(typeInfo.getChildren().stream().anyMatch(EnumValueInfo.class::isInstance), "Enum class " +
                                     returnType.toJavaName() + " needs a method that is annotated with @" + CEnumValue.class.getSimpleName() +
@@ -173,7 +173,7 @@ public abstract class CCallStubMethod extends CustomSubstitutionMethod {
         if (isPrimitiveOrWord(providers, declaredReturnType)) {
             return returnValue;
         }
-        ElementInfo typeInfo = nativeLibraries.findElementInfo(declaredReturnType);
+        ElementInfo typeInfo = nativeLibraries.findElementInfo((ResolvedJavaType) declaredReturnType);
         if (typeInfo instanceof EnumInfo) {
             UserError.guarantee(typeInfo.getChildren().stream().anyMatch(EnumValueInfo.class::isInstance), "Enum class " +
                             declaredReturnType.toJavaName() + " needs a method that is annotated with @" + CEnumLookup.class +

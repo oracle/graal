@@ -139,7 +139,8 @@ public abstract class AbstractBootImage {
     public abstract ObjectFile.Section getTextSection();
 
     // factory method
-    public static AbstractBootImage create(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap, NativeImageCodeCache codeCache,
+    public static AbstractBootImage create(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap,
+                    NativeImageCodeCache codeCache,
                     List<HostedMethod> entryPoints, HostedMethod mainEntryPoint, ClassLoader classLoader) {
         switch (k) {
             case SHARED_LIBRARY:

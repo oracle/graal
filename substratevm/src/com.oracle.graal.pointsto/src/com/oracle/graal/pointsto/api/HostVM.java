@@ -34,14 +34,9 @@ import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 
-import com.oracle.graal.pointsto.AnalysisPolicy;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-
-import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * This is an interface for the functionality that the hosting VM must support.
@@ -50,23 +45,13 @@ public interface HostVM {
 
     OptionValues options();
 
-    AnalysisPolicy analysisPolicy();
-
     boolean isRelocatedPointer(Object originalObject);
-
-    boolean isCFunction(AnalysisMethod result);
 
     void clearInThread();
 
     void installInThread(Object vmConfig);
 
     Object getConfiguration();
-
-    boolean platformSupported(ResolvedJavaField field);
-
-    boolean platformSupported(ResolvedJavaMethod method);
-
-    boolean platformSupported(ResolvedJavaType type);
 
     void checkForbidden(AnalysisType type, AnalysisType.UsageKind kind);
 
