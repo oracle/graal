@@ -77,6 +77,15 @@ public final class ProcessProperties {
     }
 
     /**
+     * Wait for process termination and return its exit status.
+     *
+     * @since 1.0
+     */
+    public static int waitForProcessExit(long processID) {
+        return ImageSingletons.lookup(ProcessPropertiesSupport.class).waitForProcessExit(processID);
+    }
+
+    /**
      * Kills the process. Whether the process represented by the given Process ID is normally
      * terminated or not is implementation dependent.
      *

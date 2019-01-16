@@ -69,6 +69,11 @@ public abstract class PosixProcessPropertiesSupport implements ProcessProperties
     }
 
     @Override
+    public int waitForProcessExit(long processID) {
+        return Java_lang_Process_Supplement.waitForProcessExit(Math.toIntExact(processID));
+    }
+
+    @Override
     public String getObjectFile(String symbol) {
         return getObjectPathDefiningSymbol(symbol);
     }

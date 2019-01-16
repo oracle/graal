@@ -60,4 +60,6 @@ public interface ProcessPropertiesSupport {
     boolean destroyForcibly(long processID);
 
     boolean isAlive(long processID);
+
+    int waitForProcessExit(long processID);
 }
