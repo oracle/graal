@@ -2,6 +2,9 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 1.0.0 RC12
+* Fixed: [Env.asHostException()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#asHostException-java.lang.Throwable-) should throw an `IllegalArgumentException` if the provided value is not a host exception.
+
 ## Version 1.0.0 RC11
 * `Source` can be created from a relative `TruffleFile`.
 * `Source` can be created without content using `Source.CONTENT_NONE` constant.
