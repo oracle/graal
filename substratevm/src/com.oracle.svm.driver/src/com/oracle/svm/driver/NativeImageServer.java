@@ -417,14 +417,14 @@ final class NativeImageServer extends NativeImage {
                 if (reusableServer.isPresent()) {
                     Server server = reusableServer.get();
                     if (!server.isAlive()) {
-                        throw showError("Found defunct server:" + server.getServerInfo());
+                        throw showError("Found defunct image-build server:" + server.getServerInfo());
                     }
-                    showVerboseMessage(verboseServer, "Reuse running server: " + server);
+                    showVerboseMessage(verboseServer, "Reuse existing image-build server: " + server);
                     result[0] = server;
                 } else {
                     if (aliveServers.size() >= maxServers) {
                         /* Server limit reached */
-                        showVerboseMessage(verboseServer, "Server limit reached -> remove least recently used server");
+                        showVerboseMessage(verboseServer, "Image-build server limit reached -> remove least recently used");
                         /* Shutdown least recently used within session */
                         Server victim = findVictim(aliveServers);
                         /* If none found also consider servers from other sessions on machine */
@@ -432,13 +432,13 @@ final class NativeImageServer extends NativeImage {
                             showMessage("Shutdown " + victim);
                             victim.shutdown();
                         } else {
-                            showWarning("Native image server limit exceeded. Use options --server{-list,-shutdown[-all]} to fix the problem.");
+                            showWarning("Image-build server limit exceeded. Use options --server{-list,-shutdown[-all]} to fix the problem.");
                         }
                     }
                     /* Instantiate new server and write properties file */
                     Server server = startServer(serverDir, 0, classpath, bootClasspath, javaArgs);
-                    if (server != null) {
-                        showVerboseMessage(verboseServer, "Created new server: " + server);
+                    if (server == null) {
+                        showWarning("Creating image-build server failed. Fallback to one-shot image building ...");
                     }
                     result[0] = server;
                 }
@@ -568,13 +568,15 @@ final class NativeImageServer extends NativeImage {
                 showVerboseMessage(verboseServer, "Starting new server ...");
                 Process process = pb.start();
                 long serverPID = ProcessProperties.getProcessID(process);
-                showVerboseMessage(verboseServer, "PID of new server: " + serverPID);
+                showVerboseMessage(verboseServer, "New image-build server pid: " + serverPID);
                 int selectedPort = serverPort;
                 if (selectedPort == 0) {
                     try (BufferedReader serverStdout = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
                         String line;
                         int readLineTries = 60;
+                        ArrayList<String> lines = new ArrayList<>(readLineTries);
                         while ((line = serverStdout.readLine()) != null && --readLineTries > 0) {
+                            lines.add(line);
                             if (line.startsWith(NativeImageBuildServer.PORT_LOG_MESSAGE_PREFIX)) {
                                 String portStr = line.substring(NativeImageBuildServer.PORT_LOG_MESSAGE_PREFIX.length());
                                 try {
@@ -583,50 +585,52 @@ final class NativeImageServer extends NativeImage {
                                 } catch (NumberFormatException ex) {
                                     /* Fall through */
                                 }
-                            } else {
-                                showWarning(line);
                             }
                         }
                         if (selectedPort == 0) {
-                            throw showError("Server showed invalid port selection message: " + line);
+                            String serverOutputMessage = "";
+                            if (!lines.isEmpty()) {
+                                serverOutputMessage = "\nServer stdout/stderr:\n" + String.join("\n", lines);
+                            }
+                            throw showError("Could not determine port for sending image-build requests." + serverOutputMessage);
                         }
-                        showVerboseMessage(verboseServer, "Server selected port " + selectedPort);
+                        showVerboseMessage(verboseServer, "Image-build server selected port " + selectedPort);
                     }
                 }
                 writeServerFile(serverDir, selectedPort, serverPID, classpath, bootClasspath, javaArgs);
-            } catch (Exception e) {
-                e.printStackTrace();
+            } catch (Throwable e) {
                 deleteAllFiles(serverDir);
+                throw showError("Starting image-build server instance failed", e);
             }
         });
-        if (childPid >= 0) {
-            Server server = null;
-            while (ProcessProperties.isAlive(childPid)) {
-                try {
-                    /* Wait for server.properties to appear in serverDir */
-                    if (server == null) {
-                        server = new Server(serverDir);
-                    }
-                    /* Once we see the server check if it is alive (accepts commands) */
-                    if (server.isAlive()) {
-                        return server;
-                    }
-                } catch (ServerInstanceError e) {
-                    showVerboseMessage(verboseServer, "Server instance is unusable");
-                    /* Build without server */
-                    return null;
-                } catch (Exception e) {
-                    /* It might take a few moments before server becomes visible */
+
+        int exitStatus = ProcessProperties.waitForProcessExit(childPid);
+        showVerboseMessage(verboseServer, "Exit status forked child process: " + exitStatus);
+        if (exitStatus == 0) {
+            Server server;
+            try {
+                server = new Server(serverDir);
+            } catch (Exception e) {
+                showVerboseMessage(verboseServer, "Image-build server unusable.");
+                /* Build without server */
+                return null;
+            }
+
+            for (int i = 0; i < 6; i += 1) {
+                /* Check if it is alive (accepts commands) */
+                if (server.isAlive()) {
+                    showVerboseMessage(verboseServer, "Image-build server found.");
+                    return server;
                 }
                 try {
-                    Thread.sleep(500);
+                    Thread.sleep(200);
                 } catch (InterruptedException e) {
-                    String serverStr = server == null ? "server" : server.toString();
-                    throw showError("Woke up from waiting for " + serverStr + " to become alive", e);
+                    break;
                 }
             }
+            showVerboseMessage(verboseServer, "Image-build server not responding.");
+            server.shutdown();
         }
-        /* Build without server */
         return null;
     }
 
