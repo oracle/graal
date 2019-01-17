@@ -81,9 +81,10 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
         ArrayList<String> arguments = new ArrayList<>(Arrays.asList(args));
         final String[] classpath = extractImageClassPath(arguments);
         int watchPID = extractWatchPID(arguments);
+        TimerTask timerTask = null;
         if (watchPID >= 0) {
             VMError.guarantee(OS.getCurrent().hasProcFS, WATCHPID_PREFIX + " <pid> requires system with /proc");
-            TimerTask timerTask = new TimerTask() {
+            timerTask = new TimerTask() {
                 @Override
                 public void run() {
                     try (Stream<String> stream = Files.lines(Paths.get("/proc/" + watchPID + "/comm"))) {
@@ -99,9 +100,15 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             timer.scheduleAtFixedRate(timerTask, 0, 1000);
 
         }
-        NativeImageClassLoader nativeImageClassLoader = installNativeImageClassLoader(classpath);
-
-        int exitStatus = new NativeImageGeneratorRunner().build(arguments.toArray(new String[arguments.size()]), classpath, nativeImageClassLoader);
+        int exitStatus = 1;
+        try {
+            NativeImageClassLoader nativeImageClassLoader = installNativeImageClassLoader(classpath);
+            exitStatus = new NativeImageGeneratorRunner().build(arguments.toArray(new String[arguments.size()]), classpath, nativeImageClassLoader);
+        } finally {
+            if (timerTask != null) {
+                timerTask.cancel();
+            }
+        }
         System.exit(exitStatus == 0 ? 0 : 1);
     }
 
@@ -349,7 +356,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
      * @param e error to be reported.
      */
     private static void reportFatalError(Throwable e) {
-        System.err.print("fatal error: ");
+        System.err.print("Fatal error: ");
         e.printStackTrace();
     }
 
@@ -359,7 +366,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
      * @param msg error message that is printed.
      */
     public static void reportUserError(String msg) {
-        System.err.println("error: " + msg);
+        System.err.println("Error: " + msg);
     }
 
     /**
@@ -387,7 +394,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
      * @param msg error message that is printed.
      */
     private static void info(String msg) {
-        System.out.println("info: " + msg);
+        System.out.println("Info: " + msg);
     }
 
     @Override

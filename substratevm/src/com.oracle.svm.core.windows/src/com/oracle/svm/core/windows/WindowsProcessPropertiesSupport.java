@@ -93,6 +93,11 @@ public class WindowsProcessPropertiesSupport implements ProcessPropertiesSupport
         throw VMError.unimplemented();
     }
 
+    @Override
+    public int waitForProcessExit(long processID) {
+        throw VMError.unimplemented();
+    }
+
     @AutomaticFeature
     public static class ImagePropertiesFeature implements Feature {
 
