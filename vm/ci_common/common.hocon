@@ -200,6 +200,14 @@ builds += [
     timelimit: "1:30:00"
     name: deploy-vm-base-darwin-amd64
   },
+  ${svm-common-linux-amd64} ${custom_vm_linux} ${gate_vm_linux} {
+    run: [
+      [export, "SVM_SUITE="${svm_suite}]
+      [mx, --dynamicimports, "$SVM_SUITE", --disable-polyglot, --disable-libpolyglot, "--force-bash-launchers=true", gate, --no-warning-as-error, --tags, "build,truffle"]
+    ]
+    timelimit: "15:00"
+    name: gate-vm-native-truffle
+  },
   ${svm-common-linux-amd64} ${sulong_linux} ${custom_vm_linux} ${gate_vm_linux} {
     run: [
       [export, "SVM_SUITE="${svm_suite}]
