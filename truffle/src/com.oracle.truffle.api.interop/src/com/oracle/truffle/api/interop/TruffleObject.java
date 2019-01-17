@@ -63,4 +63,5 @@ public interface TruffleObject {
     default ForeignAccess getForeignAccess() {
         return null;
     }
+
 }

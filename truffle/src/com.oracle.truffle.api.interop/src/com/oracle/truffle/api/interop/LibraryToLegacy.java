@@ -259,7 +259,7 @@ final class LibraryToLegacy {
                     Object keys = uncached.getMembers(receiver);
                     long size = uncached.getArraySize(keys);
                     for (long i = 0; i < size; i++) {
-                        Object key = uncached.readElement(keys, i);
+                        Object key = uncached.readArrayElement(keys, i);
                         // identifier must not be null
                         if (identifier.equals(key)) {
                             return 0b111;

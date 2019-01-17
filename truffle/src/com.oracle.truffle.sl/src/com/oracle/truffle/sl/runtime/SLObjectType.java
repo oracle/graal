@@ -148,7 +148,7 @@ public final class SLObjectType extends ObjectType {
         }
 
         @ExportMessage
-        Object readElement(long index) throws InvalidArrayIndexException {
+        Object readArrayElement(long index) throws InvalidArrayIndexException {
             try {
                 return keys[(int) index];
             } catch (IndexOutOfBoundsException e) {
@@ -169,7 +169,7 @@ public final class SLObjectType extends ObjectType {
         }
 
         @ExportMessage
-        boolean isElementReadable(long index) {
+        boolean isArrayElementReadable(long index) {
             return index >= 0 && index < keys.length;
         }
     }

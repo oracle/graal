@@ -209,7 +209,7 @@ public final class ForeignAccess {
      *             property for the given <code>identifier</code>
      * @since 0.24
      * @deprecated use {@link ObjectLibrary#readMember(Object, String)} or
-     *             {@link ArrayLibrary#readElement(Object, long)} instead. See
+     *             {@link ArrayLibrary#readArrayElement(Object, long)} instead. See
      *             {@link InteropLibrary} for an overview of the new interop messages.
      */
     @Deprecated
@@ -251,7 +251,7 @@ public final class ForeignAccess {
      * @throws UnsupportedTypeException if <code>value</code> has an unsupported type
      * @since 0.24
      * @deprecated use {@link ObjectLibrary#writeMember(Object, String, Object)} or
-     *             {@link ArrayLibrary#writeElement(Object, long, Object)} instead.
+     *             {@link ArrayLibrary#writeArrayElement(Object, long, Object)} instead.
      */
     @Deprecated
     public static Object sendWrite(Node writeNode, TruffleObject receiver, Object identifier, Object value)
@@ -290,7 +290,7 @@ public final class ForeignAccess {
      *             property for the given <code>identifier</code>
      * @since 0.32
      * @deprecated use {@link ObjectLibrary#removeMember(Object, String)} or
-     *             {@link ArrayLibrary#removeElement(Object, long)} instead.
+     *             {@link ArrayLibrary#removeArrayElement(Object, long)} instead.
      */
     @Deprecated
     public static boolean sendRemove(Node removeNode, TruffleObject receiver, Object identifier)
@@ -756,9 +756,9 @@ public final class ForeignAccess {
      *             {@link ObjectLibrary#isMemberRemovable(Object, String)} or
      *             {@link ObjectLibrary#isMemberInternal(Object, String)} instead. For
      *             {@link ArrayLibrary#hasArrayElements(Object) arras} use
-     *             {@link ArrayLibrary#isElementReadable(Object, long)},
-     *             {@link ArrayLibrary#isElementWritable(Object, long)},
-     *             {@link ArrayLibrary#isElementInsertable(Object, long)} instead. See
+     *             {@link ArrayLibrary#isArrayElementReadable(Object, long)},
+     *             {@link ArrayLibrary#isArrayElementWritable(Object, long)},
+     *             {@link ArrayLibrary#isArrayElementInsertable(Object, long)} instead. See
      *             {@link InteropLibrary} for an overview of the new interop messages.
      */
     @Deprecated

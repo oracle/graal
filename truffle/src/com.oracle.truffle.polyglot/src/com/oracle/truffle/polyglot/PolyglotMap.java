@@ -475,7 +475,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                     }
                 } else if (cache.numberKey && interop.hasArrayElements(receiver)) {
                     if (isArrayKey(key)) {
-                        return interop.isElementReadable(receiver, ((Number) key).intValue());
+                        return interop.isArrayElementReadable(receiver, ((Number) key).intValue());
                     }
                 }
                 return false;
@@ -559,7 +559,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                         }
                     } else if (cache.numberKey && interop.hasArrayElements(receiver)) {
                         if (isArrayKey(key)) {
-                            result = interop.readElement(receiver, ((Number) key).intValue());
+                            result = interop.readArrayElement(receiver, ((Number) key).intValue());
                         } else {
                             return null;
                         }
@@ -602,7 +602,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                         }
                     } else if (cache.numberKey && interop.hasArrayElements(receiver)) {
                         if (isArrayKey(key)) {
-                            interop.writeElement(receiver, ((Number) key).intValue(), guestValue);
+                            interop.writeArrayElement(receiver, ((Number) key).intValue(), guestValue);
                             return null;
                         }
                     }
@@ -649,7 +649,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                         }
                     } else if (cache.numberKey && interop.hasArrayElements(receiver)) {
                         if (isArrayKey(key)) {
-                            interop.removeElement(receiver, ((Number) key).intValue());
+                            interop.removeArrayElement(receiver, ((Number) key).intValue());
                             return null;
                         }
                     }
@@ -701,11 +701,11 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                     } else if (cache.numberKey && interop.hasArrayElements(receiver)) {
                         if (isArrayKey(key)) {
                             int index = ((Number) key).intValue();
-                            Object readValue = interop.readElement(receiver, index);
+                            Object readValue = interop.readArrayElement(receiver, index);
                             if (!Objects.equals(expectedValue, readValue)) {
                                 return false;
                             }
-                            interop.removeElement(receiver, index);
+                            interop.removeArrayElement(receiver, index);
                             return true;
                         }
                     }

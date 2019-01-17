@@ -182,7 +182,7 @@ final class PolyglotProxy implements TruffleObject {
 
     @ExportMessage
     @TruffleBoundary
-    Object readElement(long index, @CachedLibrary("this") InteropLibrary library) throws UnsupportedMessageException {
+    Object readArrayElement(long index, @CachedLibrary("this") InteropLibrary library) throws UnsupportedMessageException {
         if (proxy instanceof ProxyArray) {
             Object result = guestToHostCall(library, ARRAY_GET, languageContext, proxy, index);
             return languageContext.toGuestValue(result);
@@ -208,7 +208,7 @@ final class PolyglotProxy implements TruffleObject {
 
     @ExportMessage
     @TruffleBoundary
-    void writeElement(long index, Object value, @CachedLibrary("this") InteropLibrary library) throws UnsupportedMessageException {
+    void writeArrayElement(long index, Object value, @CachedLibrary("this") InteropLibrary library) throws UnsupportedMessageException {
         if (proxy instanceof ProxyArray) {
             Value castValue = languageContext.asValue(value);
             guestToHostCall(library, ARRAY_SET, languageContext, proxy, index, castValue);
@@ -233,7 +233,7 @@ final class PolyglotProxy implements TruffleObject {
 
     @ExportMessage
     @TruffleBoundary
-    void removeElement(long index, @CachedLibrary("this") InteropLibrary library) throws UnsupportedMessageException, InvalidArrayIndexException {
+    void removeArrayElement(long index, @CachedLibrary("this") InteropLibrary library) throws UnsupportedMessageException, InvalidArrayIndexException {
         if (proxy instanceof ProxyArray) {
             boolean result = (boolean) guestToHostCall(library, ARRAY_REMOVE, languageContext, proxy, index);
             if (!result) {
@@ -261,11 +261,11 @@ final class PolyglotProxy implements TruffleObject {
         }
     }
 
-    @ExportMessage(name = "isElementReadable")
-    @ExportMessage(name = "isElementModifiable")
-    @ExportMessage(name = "isElementRemovable")
+    @ExportMessage(name = "isArrayElementReadable")
+    @ExportMessage(name = "isArrayElementModifiable")
+    @ExportMessage(name = "isArrayElementRemovable")
     @TruffleBoundary
-    boolean isElementExisting(long index, @CachedLibrary("this") InteropLibrary library) {
+    boolean isArrayElementExisting(long index, @CachedLibrary("this") InteropLibrary library) {
         if (proxy instanceof ProxyArray) {
             long size = (long) guestToHostCall(library, ARRAY_SIZE, languageContext, proxy);
             return index >= 0 && index < size;
@@ -276,7 +276,7 @@ final class PolyglotProxy implements TruffleObject {
 
     @ExportMessage
     @TruffleBoundary
-    boolean isElementInsertable(long index, @CachedLibrary("this") InteropLibrary library) {
+    boolean isArrayElementInsertable(long index, @CachedLibrary("this") InteropLibrary library) {
         if (proxy instanceof ProxyArray) {
             long size = (long) guestToHostCall(library, ARRAY_SIZE, languageContext, proxy);
             return index < 0 || index >= size;

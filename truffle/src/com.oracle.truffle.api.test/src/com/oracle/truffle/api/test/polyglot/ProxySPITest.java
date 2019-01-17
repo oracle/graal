@@ -118,9 +118,9 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertUnsupported(() -> INTEROP.readMember(proxyInner, ""));
         assertUnsupported(() -> INTEROP.writeMember(proxyInner, "", ""));
         assertUnsupported(() -> INTEROP.removeMember(proxyInner, ""));
-        assertUnsupported(() -> INTEROP.readElement(proxyInner, 0));
-        assertUnsupported(() -> INTEROP.removeElement(proxyInner, 0));
-        assertUnsupported(() -> INTEROP.writeElement(proxyInner, 0, ""));
+        assertUnsupported(() -> INTEROP.readArrayElement(proxyInner, 0));
+        assertUnsupported(() -> INTEROP.removeArrayElement(proxyInner, 0));
+        assertUnsupported(() -> INTEROP.writeArrayElement(proxyInner, 0, ""));
         assertUnsupported(() -> INTEROP.toNative(proxyInner));
         assertUnsupported(() -> INTEROP.invokeMember(proxyInner, ""));
         assertUnsupported(() -> INTEROP.execute(proxyInner));
@@ -181,29 +181,29 @@ public class ProxySPITest extends AbstractPolyglotTest {
 
         assertEquals(size, INTEROP.getArraySize(proxyInner));
         for (int i = 0; i < size; i++) {
-            assertEquals(42, INTEROP.readElement(proxyInner, i));
+            assertEquals(42, INTEROP.readArrayElement(proxyInner, i));
         }
         for (int i = 0; i < size; i++) {
-            INTEROP.writeElement(proxyInner, i, 41);
+            INTEROP.writeArrayElement(proxyInner, i, 41);
         }
         for (int i = 0; i < size; i++) {
-            assertEquals(41, INTEROP.readElement(proxyInner, i));
+            assertEquals(41, INTEROP.readArrayElement(proxyInner, i));
         }
 
-        assertInvalidArrayIndex(() -> INTEROP.readElement(proxyInner, 42));
-        assertInvalidArrayIndex(() -> INTEROP.readElement(proxyInner, -1));
-        assertInvalidArrayIndex(() -> INTEROP.readElement(proxyInner, Integer.MAX_VALUE));
-        assertInvalidArrayIndex(() -> INTEROP.readElement(proxyInner, Integer.MIN_VALUE));
+        assertInvalidArrayIndex(() -> INTEROP.readArrayElement(proxyInner, 42));
+        assertInvalidArrayIndex(() -> INTEROP.readArrayElement(proxyInner, -1));
+        assertInvalidArrayIndex(() -> INTEROP.readArrayElement(proxyInner, Integer.MAX_VALUE));
+        assertInvalidArrayIndex(() -> INTEROP.readArrayElement(proxyInner, Integer.MIN_VALUE));
 
-        assertTrue(INTEROP.isElementReadable(proxyInner, 41));
-        assertTrue(INTEROP.isElementModifiable(proxyInner, 41));
-        assertTrue(INTEROP.isElementRemovable(proxyInner, 41));
-        assertFalse(INTEROP.isElementInsertable(proxyInner, 41));
+        assertTrue(INTEROP.isArrayElementReadable(proxyInner, 41));
+        assertTrue(INTEROP.isArrayElementModifiable(proxyInner, 41));
+        assertTrue(INTEROP.isArrayElementRemovable(proxyInner, 41));
+        assertFalse(INTEROP.isArrayElementInsertable(proxyInner, 41));
 
-        assertFalse(INTEROP.isElementReadable(proxyInner, 42));
-        assertFalse(INTEROP.isElementModifiable(proxyInner, 42));
-        assertFalse(INTEROP.isElementRemovable(proxyInner, 42));
-        assertTrue(INTEROP.isElementInsertable(proxyInner, 42));
+        assertFalse(INTEROP.isArrayElementReadable(proxyInner, 42));
+        assertFalse(INTEROP.isArrayElementModifiable(proxyInner, 42));
+        assertFalse(INTEROP.isArrayElementRemovable(proxyInner, 42));
+        assertTrue(INTEROP.isArrayElementInsertable(proxyInner, 42));
     }
 
     @Test
@@ -218,7 +218,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
 
         assertTrue(INTEROP.hasArrayElements(proxyInner));
         assertEquals(size, INTEROP.getArraySize(proxyInner));
-        INTEROP.removeElement(proxyInner, 10);
+        INTEROP.removeArrayElement(proxyInner, 10);
         assertEquals(size - 1, INTEROP.getArraySize(proxyInner));
     }
 
@@ -232,9 +232,9 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertUnsupported(() -> INTEROP.execute(proxyInner));
         assertUnsupported(() -> INTEROP.asPointer(proxyInner));
         assertUnsupported(() -> INTEROP.getArraySize(proxyInner));
-        assertUnsupported(() -> INTEROP.readElement(proxyInner, 0));
-        assertUnsupported(() -> INTEROP.removeElement(proxyInner, 0));
-        assertUnsupported(() -> INTEROP.writeElement(proxyInner, 0, ""));
+        assertUnsupported(() -> INTEROP.readArrayElement(proxyInner, 0));
+        assertUnsupported(() -> INTEROP.removeArrayElement(proxyInner, 0));
+        assertUnsupported(() -> INTEROP.writeArrayElement(proxyInner, 0, ""));
         assertUnsupported(() -> INTEROP.toNative(proxyInner));
         assertUnsupported(() -> INTEROP.execute(proxyInner));
         assertUnsupported(() -> INTEROP.instantiate(proxyInner));
@@ -301,9 +301,9 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertUnsupported(() -> INTEROP.readMember(proxyInner, ""));
         assertUnsupported(() -> INTEROP.writeMember(proxyInner, "", ""));
         assertUnsupported(() -> INTEROP.removeMember(proxyInner, ""));
-        assertUnsupported(() -> INTEROP.readElement(proxyInner, 0));
-        assertUnsupported(() -> INTEROP.removeElement(proxyInner, 0));
-        assertUnsupported(() -> INTEROP.writeElement(proxyInner, 0, ""));
+        assertUnsupported(() -> INTEROP.readArrayElement(proxyInner, 0));
+        assertUnsupported(() -> INTEROP.removeArrayElement(proxyInner, 0));
+        assertUnsupported(() -> INTEROP.writeArrayElement(proxyInner, 0, ""));
         assertUnsupported(() -> INTEROP.toNative(proxyInner));
         assertUnsupported(() -> INTEROP.invokeMember(proxyInner, ""));
         assertUnsupported(() -> INTEROP.execute(proxyInner));
@@ -336,9 +336,9 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertUnsupported(() -> INTEROP.readMember(proxyInner, ""));
         assertUnsupported(() -> INTEROP.writeMember(proxyInner, "", ""));
         assertUnsupported(() -> INTEROP.removeMember(proxyInner, ""));
-        assertUnsupported(() -> INTEROP.readElement(proxyInner, 0));
-        assertUnsupported(() -> INTEROP.removeElement(proxyInner, 0));
-        assertUnsupported(() -> INTEROP.writeElement(proxyInner, 0, ""));
+        assertUnsupported(() -> INTEROP.readArrayElement(proxyInner, 0));
+        assertUnsupported(() -> INTEROP.removeArrayElement(proxyInner, 0));
+        assertUnsupported(() -> INTEROP.writeArrayElement(proxyInner, 0, ""));
         assertUnsupported(() -> INTEROP.toNative(proxyInner));
         assertUnsupported(() -> INTEROP.invokeMember(proxyInner, ""));
         assertUnsupported(() -> INTEROP.execute(proxyInner));
@@ -371,9 +371,9 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertUnsupported(() -> INTEROP.readMember(proxyInner, ""));
         assertUnsupported(() -> INTEROP.writeMember(proxyInner, "", ""));
         assertUnsupported(() -> INTEROP.removeMember(proxyInner, ""));
-        assertUnsupported(() -> INTEROP.readElement(proxyInner, 0));
-        assertUnsupported(() -> INTEROP.removeElement(proxyInner, 0));
-        assertUnsupported(() -> INTEROP.writeElement(proxyInner, 0, ""));
+        assertUnsupported(() -> INTEROP.readArrayElement(proxyInner, 0));
+        assertUnsupported(() -> INTEROP.removeArrayElement(proxyInner, 0));
+        assertUnsupported(() -> INTEROP.writeArrayElement(proxyInner, 0, ""));
         assertUnsupported(() -> INTEROP.toNative(proxyInner));
         assertUnsupported(() -> INTEROP.invokeMember(proxyInner, ""));
         assertUnsupported(() -> INTEROP.instantiate(proxyInner));
@@ -408,9 +408,9 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertUnsupported(() -> INTEROP.readMember(proxyInner, ""));
         assertUnsupported(() -> INTEROP.writeMember(proxyInner, "", ""));
         assertUnsupported(() -> INTEROP.removeMember(proxyInner, ""));
-        assertUnsupported(() -> INTEROP.readElement(proxyInner, 0));
-        assertUnsupported(() -> INTEROP.removeElement(proxyInner, 0));
-        assertUnsupported(() -> INTEROP.writeElement(proxyInner, 0, ""));
+        assertUnsupported(() -> INTEROP.readArrayElement(proxyInner, 0));
+        assertUnsupported(() -> INTEROP.removeArrayElement(proxyInner, 0));
+        assertUnsupported(() -> INTEROP.writeArrayElement(proxyInner, 0, ""));
         assertUnsupported(() -> INTEROP.toNative(proxyInner));
         assertUnsupported(() -> INTEROP.invokeMember(proxyInner, ""));
         assertUnsupported(() -> INTEROP.execute(proxyInner));
@@ -505,9 +505,9 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertHostError(() -> INTEROP.readMember(proxyInner, ""));
         assertHostError(() -> INTEROP.writeMember(proxyInner, "", ""));
         assertHostError(() -> INTEROP.removeMember(proxyInner, ""));
-        assertHostError(() -> INTEROP.readElement(proxyInner, 0));
-        assertHostError(() -> INTEROP.removeElement(proxyInner, 0));
-        assertHostError(() -> INTEROP.writeElement(proxyInner, 0, ""));
+        assertHostError(() -> INTEROP.readArrayElement(proxyInner, 0));
+        assertHostError(() -> INTEROP.removeArrayElement(proxyInner, 0));
+        assertHostError(() -> INTEROP.writeArrayElement(proxyInner, 0, ""));
         assertUnsupported(() -> INTEROP.toNative(proxyInner));
         assertHostError(() -> INTEROP.invokeMember(proxyInner, ""));
         assertHostError(() -> INTEROP.execute(proxyInner));
@@ -520,10 +520,10 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertHostError(() -> INTEROP.isMemberInvokable(proxyInner, ""));
         assertFalse(INTEROP.isMemberInternal(proxyInner, ""));
 
-        assertHostError(() -> INTEROP.isElementReadable(proxyInner, 0L));
-        assertHostError(() -> INTEROP.isElementModifiable(proxyInner, 0L));
-        assertHostError(() -> INTEROP.isElementInsertable(proxyInner, 0L));
-        assertHostError(() -> INTEROP.isElementRemovable(proxyInner, 0L));
+        assertHostError(() -> INTEROP.isArrayElementReadable(proxyInner, 0L));
+        assertHostError(() -> INTEROP.isArrayElementModifiable(proxyInner, 0L));
+        assertHostError(() -> INTEROP.isArrayElementInsertable(proxyInner, 0L));
+        assertHostError(() -> INTEROP.isArrayElementRemovable(proxyInner, 0L));
 
         assertFalse(INTEROP.isNumber(proxyInner));
         assertTrue(INTEROP.isExecutable(proxyInner));

@@ -308,7 +308,7 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
         static class Keys implements TruffleObject {
 
             @ExportMessage
-            public boolean isArray() {
+            public boolean hasArrayElements() {
                 return true;
             }
 
@@ -318,12 +318,12 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
             }
 
             @ExportMessage
-            public boolean isElementReadable(long key) {
+            public boolean isArrayElementReadable(long key) {
                 return key == 0 || key == 1;
             }
 
             @ExportMessage
-            public Object readElement(long key) throws InvalidArrayIndexException {
+            public Object readArrayElement(long key) throws InvalidArrayIndexException {
                 if (key == 0) {
                     return "A";
                 } else if (key == 1) {

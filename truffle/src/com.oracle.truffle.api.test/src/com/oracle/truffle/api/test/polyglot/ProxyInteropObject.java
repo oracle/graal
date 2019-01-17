@@ -189,37 +189,37 @@ public abstract class ProxyInteropObject implements TruffleObject {
     }
 
     @ExportMessage
-    protected boolean isElementReadable(long index) {
+    protected boolean isArrayElementReadable(long index) {
         return false;
     }
 
     @ExportMessage
-    protected boolean isElementModifiable(long index) {
+    protected boolean isArrayElementModifiable(long index) {
         return false;
     }
 
     @ExportMessage
-    protected boolean isElementInsertable(long index) {
+    protected boolean isArrayElementInsertable(long index) {
         return false;
     }
 
     @ExportMessage
-    protected boolean isElementRemovable(long index) {
+    protected boolean isArrayElementRemovable(long index) {
         return false;
     }
 
     @ExportMessage
-    protected void writeElement(long index, Object value) throws UnsupportedMessageException {
+    protected void writeArrayElement(long index, Object value) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
     }
 
     @ExportMessage
-    protected void removeElement(long index) throws UnsupportedMessageException {
+    protected void removeArrayElement(long index) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
     }
 
     @ExportMessage
-    protected Object readElement(long index) throws UnsupportedMessageException {
+    protected Object readArrayElement(long index) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
     }
 

@@ -86,7 +86,7 @@ public final class KeyInfo {
      * @since 0.33
      * @see #READ_SIDE_EFFECTS
      * @deprecated see {@link ObjectLibrary#isMemberReadable(Object, String)} or
-     *             {@link ArrayLibrary#isElementReadable(Object, long)} instead.
+     *             {@link ArrayLibrary#isArrayElementReadable(Object, long)} instead.
      */
     @Deprecated public static final int READABLE = 1 << 1;
 
@@ -96,7 +96,7 @@ public final class KeyInfo {
      * @since 0.33
      * @see #WRITE_SIDE_EFFECTS
      * @deprecated see {@link ObjectLibrary#isMemberModifiable(Object, String)} or
-     *             {@link ArrayLibrary#isElementModifiable(Object, long)} instead.
+     *             {@link ArrayLibrary#isArrayElementModifiable(Object, long)} instead.
      */
     @Deprecated public static final int MODIFIABLE = 1 << 2;
 
@@ -121,7 +121,7 @@ public final class KeyInfo {
      *
      * @since 0.33
      * @deprecated see {@link ObjectLibrary#isMemberRemovable(Object, String)} or
-     *             {@link ArrayLibrary#isElementRemovable(Object, long)} instead.
+     *             {@link ArrayLibrary#isArrayElementRemovable(Object, long)} instead.
      */
     @Deprecated public static final int REMOVABLE = 1 << 5;
 
@@ -130,7 +130,7 @@ public final class KeyInfo {
      *
      * @since 0.33
      * @deprecated see {@link ObjectLibrary#isMemberInsertable(Object, String)} or
-     *             {@link ArrayLibrary#isElementInsertable(Object, long)} instead.
+     *             {@link ArrayLibrary#isArrayElementInsertable(Object, long)} instead.
      */
     @Deprecated public static final int INSERTABLE = 1 << 6;
 
@@ -168,7 +168,7 @@ public final class KeyInfo {
      *
      * @since 0.26
      * @deprecated use {@link ObjectLibrary#isMemberExisting(Object, String)} or
-     *             {@link ArrayLibrary#isElementExisting(Object, long)} instead.
+     *             {@link ArrayLibrary#isArrayElementExisting(Object, long)} instead.
      */
     @Deprecated
     public static boolean isExisting(int infoBits) {
@@ -180,7 +180,7 @@ public final class KeyInfo {
      *
      * @since 0.26
      * @deprecated use {@link ObjectLibrary#isMemberReadable(Object, String)} or
-     *             {@link ArrayLibrary#isElementReadable(Object, long)} instead.
+     *             {@link ArrayLibrary#isArrayElementReadable(Object, long)} instead.
      */
     @Deprecated
     public static boolean isReadable(int infoBits) {
@@ -192,7 +192,7 @@ public final class KeyInfo {
      *
      * @since 0.26
      * @deprecated use {@link ObjectLibrary#isMemberWritable(Object, String)} or
-     *             {@link ArrayLibrary#isElementWritable(Object, long)} instead.
+     *             {@link ArrayLibrary#isArrayElementWritable(Object, long)} instead.
      */
     @Deprecated
     public static boolean isWritable(int infoBits) {
@@ -248,7 +248,7 @@ public final class KeyInfo {
      *
      * @since 0.33
      * @deprecated use {@link ObjectLibrary#isMemberRemovable(Object, String)} or
-     *             {@link ArrayLibrary#isElementRemovable(Object, long)} instead.
+     *             {@link ArrayLibrary#isArrayElementRemovable(Object, long)} instead.
      */
     @Deprecated
     public static boolean isRemovable(int infoBits) {
@@ -260,7 +260,7 @@ public final class KeyInfo {
      *
      * @since 0.33
      * @deprecated use {@link ObjectLibrary#isMemberModifiable(Object, String)} or
-     *             {@link ArrayLibrary#isElementModifiable(Object, long)} instead.
+     *             {@link ArrayLibrary#isArrayElementModifiable(Object, long)} instead.
      */
     @Deprecated
     public static boolean isModifiable(int infoBits) {
@@ -272,7 +272,7 @@ public final class KeyInfo {
      *
      * @since 0.33
      * @deprecated use {@link ObjectLibrary#isMemberInsertable(Object, String)} or
-     *             {@link ArrayLibrary#isElementInsertable(Object, long)} instead.
+     *             {@link ArrayLibrary#isArrayElementInsertable(Object, long)} instead.
      */
     @Deprecated
     public static boolean isInsertable(int infoBits) {

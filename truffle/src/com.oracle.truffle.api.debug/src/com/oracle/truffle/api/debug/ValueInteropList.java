@@ -73,7 +73,7 @@ final class ValueInteropList extends AbstractList<DebugValue> {
     public DebugValue set(int index, DebugValue newValue) {
         Object oldValue = null;
         DebugValue currentValue = get(index);
-        if (INTEROP.isElementReadable(list, index)) {
+        if (INTEROP.isArrayElementReadable(list, index)) {
             oldValue = currentValue.get();
         }
         currentValue.set(newValue);

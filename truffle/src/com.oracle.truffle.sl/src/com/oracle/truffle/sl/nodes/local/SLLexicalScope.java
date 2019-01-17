@@ -414,7 +414,7 @@ public final class SLLexicalScope {
         }
 
         @ExportMessage
-        boolean isElementReadable(long index) {
+        boolean isArrayElementReadable(long index) {
             return index >= 0 && index < keys.length;
         }
 
@@ -424,7 +424,7 @@ public final class SLLexicalScope {
         }
 
         @ExportMessage
-        Object readElement(long index) throws InvalidArrayIndexException {
+        Object readArrayElement(long index) throws InvalidArrayIndexException {
             try {
                 return keys[(int) index];
             } catch (IndexOutOfBoundsException e) {

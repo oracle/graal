@@ -118,14 +118,14 @@ public abstract class InteropLibraryBaseTest {
     protected final void assertNoArray(Object value) {
         InteropLibrary lib = createLibrary(InteropLibrary.class, value);
         assertFalse(lib.hasArrayElements(value));
-        assertFalse(lib.isElementInsertable(value, 0L));
-        assertFalse(lib.isElementModifiable(value, 0L));
-        assertFalse(lib.isElementReadable(value, 0L));
-        assertFalse(lib.isElementRemovable(value, 0L));
-        assertUnsupported(() -> lib.readElement(value, 0));
+        assertFalse(lib.isArrayElementInsertable(value, 0L));
+        assertFalse(lib.isArrayElementModifiable(value, 0L));
+        assertFalse(lib.isArrayElementReadable(value, 0L));
+        assertFalse(lib.isArrayElementRemovable(value, 0L));
+        assertUnsupported(() -> lib.readArrayElement(value, 0));
         assertUnsupported(() -> lib.getArraySize(value));
-        assertUnsupported(() -> lib.removeElement(value, 0));
-        assertUnsupported(() -> lib.writeElement(value, 0, ""));
+        assertUnsupported(() -> lib.removeArrayElement(value, 0));
+        assertUnsupported(() -> lib.writeArrayElement(value, 0, ""));
     }
 
     protected final void assertNoNative(Object value) {

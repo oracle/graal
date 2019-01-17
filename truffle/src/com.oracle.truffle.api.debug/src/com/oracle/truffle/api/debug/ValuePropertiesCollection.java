@@ -97,7 +97,7 @@ final class ValuePropertiesCollection extends AbstractCollection<DebugValue> {
 
         @Override
         public boolean hasNext() {
-            return INTEROP.isElementExisting(keys, currentIndex);
+            return INTEROP.isArrayElementExisting(keys, currentIndex);
         }
 
         @Override
@@ -106,7 +106,7 @@ final class ValuePropertiesCollection extends AbstractCollection<DebugValue> {
                 throw new NoSuchElementException();
             }
             try {
-                Object key = INTEROP.readElement(keys, currentIndex);
+                Object key = INTEROP.readArrayElement(keys, currentIndex);
                 String member = INTEROP.asString(key);
                 this.currentIndex++;
                 return new DebugValue.ObjectMemberValue(debugger, language, scope, object, member);

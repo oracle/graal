@@ -258,7 +258,7 @@ final class DefaultScope {
 
         @ExportMessage
         @TruffleBoundary
-        Object readElement(long index) throws InvalidArrayIndexException {
+        Object readArrayElement(long index) throws InvalidArrayIndexException {
             try {
                 return names.get((int) index);
             } catch (IndexOutOfBoundsException ioob) {
@@ -268,7 +268,7 @@ final class DefaultScope {
 
         @ExportMessage
         @TruffleBoundary
-        boolean isElementReadable(long index) {
+        boolean isArrayElementReadable(long index) {
             return index >= 0 && index < names.size();
         }
     }
@@ -296,7 +296,7 @@ final class DefaultScope {
 
         @ExportMessage
         @TruffleBoundary
-        Object readElement(long index) throws InvalidArrayIndexException {
+        Object readArrayElement(long index) throws InvalidArrayIndexException {
             try {
                 return args[(int) index];
             } catch (IndexOutOfBoundsException ioob) {
@@ -304,21 +304,21 @@ final class DefaultScope {
             }
         }
 
-        @ExportMessage(name = "isElementReadable")
-        @ExportMessage(name = "isElementModifiable")
+        @ExportMessage(name = "isArrayElementReadable")
+        @ExportMessage(name = "isArrayElementModifiable")
         @TruffleBoundary
-        boolean isElementReadable(long index) {
+        boolean isArrayElementReadable(long index) {
             return index >= 0 && index < args.length;
         }
 
         @SuppressWarnings("static-method")
         @ExportMessage
-        boolean isElementInsertable(@SuppressWarnings("unused") long index) {
+        boolean isArrayElementInsertable(@SuppressWarnings("unused") long index) {
             return false;
         }
 
         @ExportMessage
-        void writeElement(long index, Object value) throws InvalidArrayIndexException {
+        void writeArrayElement(long index, Object value) throws InvalidArrayIndexException {
             try {
                 args[(int) index] = value;
             } catch (IndexOutOfBoundsException ioob) {

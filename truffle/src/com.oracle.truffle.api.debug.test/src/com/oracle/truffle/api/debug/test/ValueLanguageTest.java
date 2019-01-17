@@ -681,12 +681,12 @@ public class ValueLanguageTest extends AbstractDebugTest {
             }
 
             @ExportMessage
-            boolean isArray() {
+            boolean hasArrayElements() {
                 return true;
             }
 
             @ExportMessage
-            Object readElement(long index) throws InvalidArrayIndexException {
+            Object readArrayElement(long index) throws InvalidArrayIndexException {
                 if (index >= names.size()) {
                     throw InvalidArrayIndexException.create(index);
                 }
@@ -705,7 +705,7 @@ public class ValueLanguageTest extends AbstractDebugTest {
             }
 
             @ExportMessage
-            boolean isElementReadable(long index) {
+            boolean isArrayElementReadable(long index) {
                 return index >= 0 && index < getArraySize();
             }
         }

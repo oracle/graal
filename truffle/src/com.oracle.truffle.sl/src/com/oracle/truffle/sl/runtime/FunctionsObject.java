@@ -101,7 +101,7 @@ final class FunctionsObject implements TruffleObject {
         }
 
         @ExportMessage
-        boolean isElementReadable(long index) {
+        boolean isArrayElementReadable(long index) {
             return index > 0 && index < names.length;
         }
 
@@ -111,8 +111,8 @@ final class FunctionsObject implements TruffleObject {
         }
 
         @ExportMessage
-        Object readElement(long index) throws InvalidArrayIndexException {
-            if (!isElementReadable(index)) {
+        Object readArrayElement(long index) throws InvalidArrayIndexException {
+            if (!isArrayElementReadable(index)) {
                 CompilerDirectives.transferToInterpreter();
                 throw InvalidArrayIndexException.create(index);
             }

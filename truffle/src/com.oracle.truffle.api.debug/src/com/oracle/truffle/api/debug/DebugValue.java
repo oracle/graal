@@ -781,7 +781,7 @@ public abstract class DebugValue {
         Object get() {
             checkValid();
             try {
-                return INTEROP.readElement(array, index);
+                return INTEROP.readArrayElement(array, index);
             } catch (ThreadDeath td) {
                 throw td;
             } catch (Throwable ex) {
@@ -797,13 +797,13 @@ public abstract class DebugValue {
         @Override
         public boolean isReadable() {
             checkValid();
-            return INTEROP.isElementReadable(array, index);
+            return INTEROP.isArrayElementReadable(array, index);
         }
 
         @Override
         public boolean isWritable() {
             checkValid();
-            return INTEROP.isElementWritable(array, index);
+            return INTEROP.isArrayElementWritable(array, index);
         }
 
         @Override
@@ -834,7 +834,7 @@ public abstract class DebugValue {
         public void set(DebugValue value) {
             checkValid();
             try {
-                INTEROP.writeElement(array, index, value.get());
+                INTEROP.writeArrayElement(array, index, value.get());
             } catch (ThreadDeath td) {
                 throw td;
             } catch (Throwable ex) {
@@ -847,7 +847,7 @@ public abstract class DebugValue {
             checkValid();
             checkPrimitive(primitiveValue);
             try {
-                INTEROP.writeElement(array, index, primitiveValue);
+                INTEROP.writeArrayElement(array, index, primitiveValue);
             } catch (Throwable ex) {
                 throw new DebugException(getDebugger(), ex, resolveLanguage(), null, true, null);
             }

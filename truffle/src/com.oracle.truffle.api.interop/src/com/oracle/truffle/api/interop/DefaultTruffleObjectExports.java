@@ -234,31 +234,31 @@ class DefaultTruffleObjectExports {
     }
 
     @ExportMessage
-    static boolean isElementReadable(TruffleObject receiver, long index,
+    static boolean isArrayElementReadable(TruffleObject receiver, long index,
                     @Shared("keyInfo") @Cached(parameters = "KEY_INFO") InteropAccessNode keyInfo) {
         return KeyInfo.isReadable(LibraryToLegacy.sendKeyInfo(keyInfo, receiver, (int) index));
     }
 
     @ExportMessage
-    static boolean isElementModifiable(TruffleObject receiver, long index,
+    static boolean isArrayElementModifiable(TruffleObject receiver, long index,
                     @Shared("keyInfo") @Cached(parameters = "KEY_INFO") InteropAccessNode keyInfo) {
         return KeyInfo.isModifiable(LibraryToLegacy.sendKeyInfo(keyInfo, receiver, (int) index));
     }
 
     @ExportMessage
-    static boolean isElementInsertable(TruffleObject receiver, long index,
+    static boolean isArrayElementInsertable(TruffleObject receiver, long index,
                     @Shared("keyInfo") @Cached(parameters = "KEY_INFO") InteropAccessNode keyInfo) {
         return KeyInfo.isInsertable(LibraryToLegacy.sendKeyInfo(keyInfo, receiver, (int) index));
     }
 
     @ExportMessage
-    static boolean isElementRemovable(TruffleObject receiver, long index,
+    static boolean isArrayElementRemovable(TruffleObject receiver, long index,
                     @Shared("keyInfo") @Cached(parameters = "KEY_INFO") InteropAccessNode keyInfo) {
         return KeyInfo.isRemovable(LibraryToLegacy.sendKeyInfo(keyInfo, receiver, (int) index));
     }
 
     @ExportMessage
-    static Object readElement(TruffleObject receiver, long index,
+    static Object readArrayElement(TruffleObject receiver, long index,
                     @Shared("read") @Cached(parameters = "READ") InteropAccessNode read) throws UnsupportedMessageException, InvalidArrayIndexException {
         try {
             return LibraryToLegacy.sendRead(read, receiver, (int) index);
@@ -278,7 +278,7 @@ class DefaultTruffleObjectExports {
     }
 
     @ExportMessage
-    static void writeElement(TruffleObject receiver, long index, Object value,
+    static void writeArrayElement(TruffleObject receiver, long index, Object value,
                     @Shared("write") @Cached(parameters = "WRITE") InteropAccessNode write) throws UnsupportedMessageException, UnsupportedTypeException, InvalidArrayIndexException {
         try {
             LibraryToLegacy.sendWrite(write, receiver, (int) index, value);
@@ -288,7 +288,7 @@ class DefaultTruffleObjectExports {
     }
 
     @ExportMessage
-    static void removeElement(TruffleObject receiver, long index,
+    static void removeArrayElement(TruffleObject receiver, long index,
                     @Shared("remove") @Cached(parameters = "REMOVE") InteropAccessNode remove) throws UnsupportedMessageException, InvalidArrayIndexException {
         try {
             boolean returnedValue = LibraryToLegacy.sendRemove(remove, receiver, (int) index);

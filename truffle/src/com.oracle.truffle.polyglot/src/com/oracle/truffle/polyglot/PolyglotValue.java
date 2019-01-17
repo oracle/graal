@@ -907,7 +907,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                             @Cached BranchProfile unknown) {
                 long index = (long) args[ARGUMENT_OFFSET];
                 try {
-                    return toHost.execute(context, arrays.readElement(receiver, index));
+                    return toHost.execute(context, arrays.readArrayElement(receiver, index));
                 } catch (UnsupportedMessageException e) {
                     unsupported.enter();
                     return getArrayElementUnsupported(context, receiver);
@@ -943,7 +943,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                 long index = (long) args[ARGUMENT_OFFSET];
                 Object value = toGuestValue.execute(context, args[ARGUMENT_OFFSET + 1]);
                 try {
-                    arrays.writeElement(receiver, index, value);
+                    arrays.writeArrayElement(receiver, index, value);
                 } catch (UnsupportedMessageException e) {
                     unsupported.enter();
                     setArrayElementUnsupported(context, receiver);
@@ -982,7 +982,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                 long index = (long) args[ARGUMENT_OFFSET];
                 Object value;
                 try {
-                    arrays.removeElement(receiver, index);
+                    arrays.removeArrayElement(receiver, index);
                     value = Boolean.TRUE;
                 } catch (UnsupportedMessageException e) {
                     unsupported.enter();

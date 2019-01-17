@@ -393,7 +393,7 @@ class HostLanguage extends TruffleLanguage<HostContext> {
 
         @ExportMessage
         @TruffleBoundary
-        Object readElement(long index) throws InvalidArrayIndexException {
+        Object readArrayElement(long index) throws InvalidArrayIndexException {
             if (index > Integer.MAX_VALUE) {
                 throw InvalidArrayIndexException.create(index);
             }
@@ -410,7 +410,7 @@ class HostLanguage extends TruffleLanguage<HostContext> {
         }
 
         @ExportMessage
-        boolean isElementReadable(long index) {
+        boolean isArrayElementReadable(long index) {
             return index >= 0 && index < getArraySize();
         }
     }

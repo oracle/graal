@@ -318,12 +318,12 @@ public class DebugValueTest extends AbstractDebugTest {
     static final class PropertyKeysTruffleObject implements TruffleObject {
 
         @ExportMessage
-        boolean isArray() {
+        boolean hasArrayElements() {
             return true;
         }
 
         @ExportMessage
-        Object readElement(long index) throws UnsupportedMessageException, InvalidArrayIndexException {
+        Object readArrayElement(long index) throws UnsupportedMessageException, InvalidArrayIndexException {
             return "property";
         }
 
@@ -333,7 +333,7 @@ public class DebugValueTest extends AbstractDebugTest {
         }
 
         @ExportMessage
-        boolean isElementReadable(long index) {
+        boolean isArrayElementReadable(long index) {
             return index == 0;
         }
     }
@@ -342,12 +342,12 @@ public class DebugValueTest extends AbstractDebugTest {
     static final class EmptyKeysTruffleObject implements TruffleObject {
 
         @ExportMessage
-        boolean isArray() {
+        boolean hasArrayElements() {
             return true;
         }
 
         @ExportMessage
-        Object readElement(long index) throws UnsupportedMessageException, InvalidArrayIndexException {
+        Object readArrayElement(long index) throws UnsupportedMessageException, InvalidArrayIndexException {
             throw InvalidArrayIndexException.create(index);
         }
 
@@ -357,7 +357,7 @@ public class DebugValueTest extends AbstractDebugTest {
         }
 
         @ExportMessage
-        boolean isElementReadable(long index) {
+        boolean isArrayElementReadable(long index) {
             return false;
         }
     }

@@ -345,9 +345,9 @@ final class HostObject implements TruffleObject {
         throw UnknownIdentifierException.create(name);
     }
 
-    @ExportMessage(name = "isElementReadable")
-    @ExportMessage(name = "isElementModifiable")
-    static class IsElementExistingNode extends Node {
+    @ExportMessage(name = "isArrayElementReadable")
+    @ExportMessage(name = "isArrayElementModifiable")
+    static class IsArrayElementExistingNode extends Node {
 
         @Specialization(guards = "receiver.isHostArray()")
         static boolean doArray(HostObject receiver, long index) {
@@ -368,12 +368,12 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    boolean isElementInsertable(long index) {
+    boolean isArrayElementInsertable(long index) {
         return isList() && getListSize() == index;
     }
 
     @ExportMessage
-    static class WriteElementNode extends Node {
+    static class WriteArrayElementNode extends Node {
 
         @Specialization(guards = {"receiver.isHostArray()"})
         @SuppressWarnings("unchecked")
@@ -426,7 +426,7 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    static class IsElementRemovableNode extends Node {
+    static class IsArrayElementRemovableNode extends Node {
         @Specialization(guards = "receiver.isList()")
         static boolean doList(HostObject receiver, long index) {
             return index >= 0 && index < ((List<?>) receiver.obj).size();
@@ -439,7 +439,7 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    static class RemoveElementNode extends Node {
+    static class RemoveArrayElementNode extends Node {
         @SuppressWarnings("unchecked")
         @Specialization(guards = "receiver.isList()")
         static void doList(HostObject receiver, long index) throws InvalidArrayIndexException {
@@ -465,7 +465,7 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    abstract static class ReadElementNode extends Node {
+    abstract static class ReadArrayElementNode extends Node {
 
         @Specialization(guards = {"receiver.isHostArray()"})
         protected static Object doArray(HostObject receiver, long index,

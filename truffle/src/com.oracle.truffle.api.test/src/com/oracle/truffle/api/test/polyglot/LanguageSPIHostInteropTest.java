@@ -157,14 +157,14 @@ public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
         int[] a = new int[]{1, 2, 3};
         TruffleObject truffleObject = (TruffleObject) languageEnv.asGuestValue(a);
 
-        assertEquals(2, INTEROP.readElement(truffleObject, 1));
-        assertEquals(2, INTEROP.readElement(truffleObject, 1L));
+        assertEquals(2, INTEROP.readArrayElement(truffleObject, 1));
+        assertEquals(2, INTEROP.readArrayElement(truffleObject, 1L));
 
-        INTEROP.writeElement(truffleObject, 1, 42);
-        INTEROP.writeElement(truffleObject, 1L, 42);
+        INTEROP.writeArrayElement(truffleObject, 1, 42);
+        INTEROP.writeArrayElement(truffleObject, 1L, 42);
 
-        assertEquals(42, INTEROP.readElement(truffleObject, 1));
-        assertEquals(42, INTEROP.readElement(truffleObject, 1L));
+        assertEquals(42, INTEROP.readArrayElement(truffleObject, 1));
+        assertEquals(42, INTEROP.readArrayElement(truffleObject, 1L));
 
     }
 
@@ -261,7 +261,7 @@ public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
         long size = INTEROP.getArraySize(keys);
         List<String> allKeys = new ArrayList<>();
         for (int i = 0; i < size; i++) {
-            String search = (String) INTEROP.readElement(keys, i);
+            String search = (String) INTEROP.readArrayElement(keys, i);
             if (search.equals(key)) {
                 return;
             }

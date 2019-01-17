@@ -115,7 +115,7 @@ final class PolyglotLanguageBindings implements TruffleObject {
             long size = membersLibrary.getArraySize(members);
             for (long i = 0; i < size; i++) {
                 try {
-                    keySet.add(interopDispatch.asString(membersLibrary.readElement(members, i)));
+                    keySet.add(interopDispatch.asString(membersLibrary.readArrayElement(members, i)));
                 } catch (InvalidArrayIndexException | UnsupportedMessageException e) {
                 }
             }

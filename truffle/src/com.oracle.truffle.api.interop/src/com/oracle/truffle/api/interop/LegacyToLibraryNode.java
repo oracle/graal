@@ -95,7 +95,7 @@ final class LegacyToLibraryNode extends Node {
             return interop.readMember(receiver, (String) identifier);
         } else if (identifier instanceof Number) {
             try {
-                return interop.readElement(receiver, ((Number) identifier).longValue());
+                return interop.readArrayElement(receiver, ((Number) identifier).longValue());
             } catch (InvalidArrayIndexException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw UnknownIdentifierException.raise(String.valueOf(e.getInvalidIndex()));
@@ -125,7 +125,7 @@ final class LegacyToLibraryNode extends Node {
             interop.writeMember(receiver, (String) identifier, value);
         } else if (identifier instanceof Number) {
             try {
-                interop.writeElement(receiver, ((Number) identifier).longValue(), value);
+                interop.writeArrayElement(receiver, ((Number) identifier).longValue(), value);
             } catch (InvalidArrayIndexException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw UnknownIdentifierException.raise(String.valueOf(e.getInvalidIndex()));
@@ -157,7 +157,7 @@ final class LegacyToLibraryNode extends Node {
             return true;
         } else if (identifier instanceof Number) {
             try {
-                interop.removeElement(receiver, ((Number) identifier).longValue());
+                interop.removeArrayElement(receiver, ((Number) identifier).longValue());
                 return true;
             } catch (InvalidArrayIndexException e) {
                 CompilerDirectives.transferToInterpreter();
@@ -309,16 +309,16 @@ final class LegacyToLibraryNode extends Node {
                     return KeyInfo.NONE;
                 }
             }
-            if (interop.isElementReadable(receiver, index)) {
+            if (interop.isArrayElementReadable(receiver, index)) {
                 keyInfo |= KeyInfo.READABLE;
             }
-            if (interop.isElementModifiable(receiver, index)) {
+            if (interop.isArrayElementModifiable(receiver, index)) {
                 keyInfo |= KeyInfo.MODIFIABLE;
             }
-            if (interop.isElementInsertable(receiver, index)) {
+            if (interop.isArrayElementInsertable(receiver, index)) {
                 keyInfo |= KeyInfo.INSERTABLE;
             }
-            if (interop.isElementRemovable(receiver, index)) {
+            if (interop.isArrayElementRemovable(receiver, index)) {
                 keyInfo |= KeyInfo.REMOVABLE;
             }
         } else if (key instanceof TruffleObject) {
