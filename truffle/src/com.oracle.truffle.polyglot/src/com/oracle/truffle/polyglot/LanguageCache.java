@@ -224,6 +224,15 @@ final class LanguageCache implements Comparable<LanguageCache> {
         if (loader == null) {
             return;
         }
+        try {
+            Class<?> truffleLanguageClassAsSeenByLoader = Class.forName(TruffleLanguage.class.getName(), true, loader);
+            if (truffleLanguageClassAsSeenByLoader != TruffleLanguage.class) {
+                return;
+            }
+        } catch (ClassNotFoundException ex) {
+            return;
+        }
+
         Enumeration<URL> en;
         try {
             en = loader.getResources("META-INF/truffle/language");
@@ -408,8 +417,10 @@ final class LanguageCache implements Comparable<LanguageCache> {
                         } else {
                             policy = loadedClass.getAnnotation(Registration.class).contextPolicy();
                         }
-                        languageClass = (Class<? extends TruffleLanguage<?>>) loadedClass;
-                    } catch (Exception e) {
+                        @SuppressWarnings("rawtypes")
+                        Class<? extends TruffleLanguage> loadedLanguageClass = loadedClass.asSubclass(TruffleLanguage.class);
+                        languageClass = (Class<? extends TruffleLanguage<?>>) loadedLanguageClass;
+                    } catch (ClassNotFoundException e) {
                         throw new IllegalStateException("Cannot load language " + name + ". Language implementation class " + className + " failed to load.", e);
                     }
                 }

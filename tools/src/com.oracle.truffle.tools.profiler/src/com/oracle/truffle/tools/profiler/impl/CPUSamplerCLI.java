@@ -229,10 +229,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         long samples = sampler.getSampleCount();
         String sep = repeat("-", title.length());
         out.println(sep);
-        out.println(String.format("Sampling Histogram. Recorded %s samples with period %dms", samples, sampler.getPeriod()));
-        out.println("  Self Time: Time spent on the top of the stack.");
-        out.println("  Total Time: Time the location spent on the stack. ");
-        out.println("  Opt %: Percent of time spent in compiled and therfore non-interpreted code.");
+        printLegend(out, "Histogram", samples, sampler.getPeriod());
         out.println(sep);
         for (Map.Entry<Thread, List<List<ProfilerNode<CPUSampler.Payload>>>> entry : linesPerThread.entrySet()) {
             if (!summariseThreads) {
@@ -263,10 +260,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         String title = String.format(" %-" + maxLength + "s |      Total Time     |  Opt %% ||       Self Time     |  Opt %% | Location             ", "Name");
         String sep = repeat("-", title.length());
         out.println(sep);
-        out.println(String.format("Sampling CallTree. Recorded %s samples with period %dms.", sampler.getSampleCount(), sampler.getPeriod()));
-        out.println("  Self Time: Time spent on the top of the stack.");
-        out.println("  Total Time: Time spent somewhere on the stack. ");
-        out.println("  Opt %: Percent of time spent in compiled and therfore non-interpreted code.");
+        printLegend(out, "CallTree", sampler.getSampleCount(), sampler.getPeriod());
         out.println(sep);
         for (Map.Entry<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> node : threadToNodesMap.entrySet()) {
             if (!summariseThreads) {
@@ -296,6 +290,13 @@ class CPUSamplerCLI extends ProfilerCLI {
             printSamplingCallTreeRec(sampler, maxRootLength, printed ? prefix + " " : prefix, treeNode.getChildren(), out);
 
         }
+    }
+
+    private static void printLegend(PrintStream out, String type, long samples, long period) {
+        out.println(String.format("Sampling %s. Recorded %s samples with period %dms.", type, samples, period));
+        out.println("  Self Time: Time spent on the top of the stack.");
+        out.println("  Total Time: Time spent somewhere on the stack.");
+        out.println("  Opt %: Percent of time spent in compiled and therefore non-interpreted code.");
     }
 
     private static int computeTitleMaxLength(Collection<ProfilerNode<CPUSampler.Payload>> children, int baseLength) {

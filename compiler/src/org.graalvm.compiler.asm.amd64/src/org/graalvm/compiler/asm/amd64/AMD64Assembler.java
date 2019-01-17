@@ -1759,6 +1759,14 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         emitOperandHelper(dst, src, 0);
     }
 
+    public final void cmpb(Register dst, Register src) {
+        CMP.byteRmOp.emit(this, BYTE, dst, src);
+    }
+
+    public final void cmpw(Register dst, Register src) {
+        CMP.rmOp.emit(this, WORD, dst, src);
+    }
+
     public final void cmpl(Register dst, int imm32) {
         CMP.getMIOpcode(DWORD, isByte(imm32)).emit(this, DWORD, dst, imm32);
     }

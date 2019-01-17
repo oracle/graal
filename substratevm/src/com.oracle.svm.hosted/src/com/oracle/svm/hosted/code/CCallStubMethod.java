@@ -79,7 +79,11 @@ public abstract class CCallStubMethod extends CustomSubstitutionMethod {
         HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
         FrameStateBuilder state = kit.getFrameState();
         ValueNode callAddress = createTargetAddressNode(kit, providers);
-        List<ValueNode> arguments = kit.loadArguments(method.toParameterTypes());
+        JavaType[] parameterTypes = method.toParameterTypes();
+        if (method.hasReceiver()) {
+            parameterTypes = Arrays.copyOfRange(parameterTypes, 1, parameterTypes.length);
+        }
+        List<ValueNode> arguments = kit.loadArguments(parameterTypes);
         Signature signature = adaptSignatureAndConvertArguments(providers, nativeLibraries, kit, method.getSignature(), arguments);
         state.clearLocals();
         ValueNode returnValue = kit.createCFunctionCall(callAddress, arguments, signature, needsTransition, deoptimizationTarget);
@@ -105,7 +109,7 @@ public abstract class CCallStubMethod extends CustomSubstitutionMethod {
 
         for (int i = 0; i < parameterTypes.length; i++) {
             if (!isPrimitiveOrWord(providers, parameterTypes[i])) {
-                ElementInfo typeInfo = nativeLibraries.findElementInfo(parameterTypes[i]);
+                ElementInfo typeInfo = nativeLibraries.findElementInfo((ResolvedJavaType) parameterTypes[i]);
                 if (typeInfo instanceof EnumInfo) {
                     UserError.guarantee(typeInfo.getChildren().stream().anyMatch(EnumValueInfo.class::isInstance), "Enum class " +
                                     returnType.toJavaName() + " needs a method that is annotated with @" + CEnumValue.class.getSimpleName() +
@@ -169,7 +173,7 @@ public abstract class CCallStubMethod extends CustomSubstitutionMethod {
         if (isPrimitiveOrWord(providers, declaredReturnType)) {
             return returnValue;
         }
-        ElementInfo typeInfo = nativeLibraries.findElementInfo(declaredReturnType);
+        ElementInfo typeInfo = nativeLibraries.findElementInfo((ResolvedJavaType) declaredReturnType);
         if (typeInfo instanceof EnumInfo) {
             UserError.guarantee(typeInfo.getChildren().stream().anyMatch(EnumValueInfo.class::isInstance), "Enum class " +
                             declaredReturnType.toJavaName() + " needs a method that is annotated with @" + CEnumLookup.class +

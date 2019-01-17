@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -57,15 +57,11 @@ public abstract class LLVMPolyglotEval extends LLVMIntrinsic {
     @Child GetSourceNode getSource;
 
     public static LLVMPolyglotEval create(LLVMExpressionNode id, LLVMExpressionNode code) {
-        return LLVMPolyglotEvalNodeGen.create(GetSourceStringNodeGen.create(false), id, code);
+        return LLVMPolyglotEvalNodeGen.create(GetSourceStringNodeGen.create(), id, code);
     }
 
     public static LLVMPolyglotEval createFile(LLVMExpressionNode id, LLVMExpressionNode filename) {
         return LLVMPolyglotEvalNodeGen.create(GetSourceFileNodeGen.create(), id, filename);
-    }
-
-    public static LLVMPolyglotEval createLegacy(LLVMExpressionNode mime, LLVMExpressionNode code) {
-        return LLVMPolyglotEvalNodeGen.create(GetSourceStringNodeGen.create(true), mime, code);
     }
 
     LLVMPolyglotEval(GetSourceNode getSource) {
@@ -99,12 +95,6 @@ public abstract class LLVMPolyglotEval extends LLVMIntrinsic {
 
     abstract static class GetSourceStringNode extends GetSourceNode {
 
-        private final boolean legacyMimeTypeEval;
-
-        protected GetSourceStringNode(boolean legacyMimeTypeEval) {
-            this.legacyMimeTypeEval = legacyMimeTypeEval;
-        }
-
         @SuppressWarnings("unused")
         @Specialization(limit = "2", guards = {"id.equals(cachedId)", "code.equals(cachedCode)"})
         CallTarget doCached(String id, String code,
@@ -119,7 +109,6 @@ public abstract class LLVMPolyglotEval extends LLVMIntrinsic {
         @Specialization(replaces = "doCached")
         CallTarget uncached(String id, String code,
                         @Cached("getContextReference()") ContextReference<LLVMContext> ctxRef) {
-            Source sourceObject;
             Env env = ctxRef.get().getEnv();
             LanguageInfo lang = env.getLanguages().get(id);
             if (lang == null) {
@@ -127,12 +116,7 @@ public abstract class LLVMPolyglotEval extends LLVMIntrinsic {
             } else if (lang.isInternal()) {
                 throw new LLVMPolyglotException(this, "Access to internal language '%s' is not allowed.", id);
             }
-            if (legacyMimeTypeEval) {
-                String language = Source.findLanguage(id);
-                sourceObject = Source.newBuilder(language, code, "<eval>").mimeType(id).build();
-            } else {
-                sourceObject = Source.newBuilder(id, code, "<eval>").build();
-            }
+            Source sourceObject = Source.newBuilder(id, code, "<eval>").build();
             return ctxRef.get().getEnv().parse(sourceObject);
         }
     }

@@ -30,7 +30,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.net.URI;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.charset.StandardCharsets;
@@ -61,6 +60,7 @@ import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.server.NativeImageBuildClient;
 import com.oracle.svm.hosted.server.NativeImageBuildServer;
 import com.oracle.svm.hosted.server.SubstrateServerMessage.ServerCommand;
@@ -149,7 +149,7 @@ final class NativeImageServer extends NativeImage {
         private LinkedHashSet<Path> readClasspath(String rawClasspathString) {
             LinkedHashSet<Path> result = new LinkedHashSet<>();
             for (String pathStr : rawClasspathString.split(" ")) {
-                result.add(stringToPath(pathStr));
+                result.add(ImageClassLoader.stringToClasspath(pathStr));
             }
             return result;
         }
@@ -195,11 +195,12 @@ final class NativeImageServer extends NativeImage {
 
                         /* Now we have the server-lock and can send the build-request */
                         List<String> command = new ArrayList<>();
-                        command.add("-task=" + "com.oracle.svm.hosted.NativeImageGeneratorRunner");
+                        command.add(NativeImageBuildServer.TASK_PREFIX + "com.oracle.svm.hosted.NativeImageGeneratorRunner");
+
                         LinkedHashSet<Path> imagecp = new LinkedHashSet<>(serverClasspath);
                         imagecp.addAll(imageCP);
-                        command.addAll(Arrays.asList("-imagecp", imagecp.stream().map(NativeImageServer::pathToString).collect(Collectors.joining(File.pathSeparator))));
-                        command.addAll(imageArgs);
+                        command.addAll(createImageBuilderArgs(imageArgs, imagecp));
+
                         showVerboseMessage(isVerbose(), "SendBuildRequest [");
                         showVerboseMessage(isVerbose(), String.join("\n", command));
                         showVerboseMessage(isVerbose(), "]");
@@ -554,9 +555,9 @@ final class NativeImageServer extends NativeImage {
         command.addAll(Arrays.asList("-cp", classpath.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator))));
         command.addAll(javaArgs);
         command.add("com.oracle.svm.hosted.server.NativeImageBuildServer");
-        command.add("-port=" + serverPort);
+        command.add(NativeImageBuildServer.PORT_PREFIX + serverPort);
         Path logFilePath = serverDir.resolve("server.log");
-        command.add("-logFile=" + logFilePath);
+        command.add(NativeImageBuildServer.LOG_PREFIX + logFilePath);
         showVerboseMessage(isVerbose(), "StartServer [");
         showVerboseMessage(isVerbose(), String.join(" \\\n", command));
         showVerboseMessage(isVerbose(), "]");
@@ -628,21 +629,13 @@ final class NativeImageServer extends NativeImage {
         return null;
     }
 
-    private static String pathToString(Path p) {
-        return p.toUri().toString();
-    }
-
-    private static Path stringToPath(String s) {
-        return Paths.get(URI.create(s));
-    }
-
     private static void writeServerFile(Path serverDir, int port, long pid, LinkedHashSet<Path> classpath, LinkedHashSet<Path> bootClasspath, List<String> javaArgs) throws Exception {
         Properties sp = new Properties();
         sp.setProperty(Server.pKeyPort, String.valueOf(port));
         sp.setProperty(Server.pKeyPID, String.valueOf(pid));
         sp.setProperty(Server.pKeyJavaArgs, String.join(" ", javaArgs));
-        sp.setProperty(Server.pKeyBCP, bootClasspath.stream().map(NativeImageServer::pathToString).collect(Collectors.joining(" ")));
-        sp.setProperty(Server.pKeyCP, classpath.stream().map(NativeImageServer::pathToString).collect(Collectors.joining(" ")));
+        sp.setProperty(Server.pKeyBCP, bootClasspath.stream().map(ImageClassLoader::classpathToString).collect(Collectors.joining(" ")));
+        sp.setProperty(Server.pKeyCP, classpath.stream().map(ImageClassLoader::classpathToString).collect(Collectors.joining(" ")));
         Path serverPropertiesPath = serverDir.resolve(Server.serverProperties);
         try (OutputStream os = Files.newOutputStream(serverPropertiesPath)) {
             sp.store(os, "");

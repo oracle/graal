@@ -53,13 +53,11 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 @Platforms(Platform.HOSTED_ONLY.class)
 public class AnalysisConstantReflectionProvider extends SharedConstantReflectionProvider {
-    private final SVMHost hostVM;
     private final AnalysisUniverse universe;
     private final ConstantReflectionProvider originalConstantReflection;
     private final ClassInitializationFeature classInitializationFeature;
 
-    public AnalysisConstantReflectionProvider(SVMHost hostVM, AnalysisUniverse universe, ConstantReflectionProvider originalConstantReflection) {
-        this.hostVM = hostVM;
+    public AnalysisConstantReflectionProvider(AnalysisUniverse universe, ConstantReflectionProvider originalConstantReflection) {
         this.universe = universe;
         this.originalConstantReflection = originalConstantReflection;
         this.classInitializationFeature = ClassInitializationFeature.singleton();
@@ -144,12 +142,9 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
                  */
                 return JavaConstant.TRUE;
             }
-            if (SubstrateOptions.RuntimeAssertions.getValue()) {
-                // For the user-provided filter, match substitution target names to avoid confusion
-                String className = field.getDeclaringClass().toJavaName();
-                return JavaConstant.forBoolean(!SubstrateOptions.getRuntimeAssertionsFilter().test(className));
-            }
-            return JavaConstant.TRUE;
+            /* For the user-provided filter, match substitution target names to avoid confusion. */
+            String className = field.getDeclaringClass().toJavaName();
+            return JavaConstant.forBoolean(!SubstrateOptions.getRuntimeAssertionsForClass(className));
         }
         return value;
     }
@@ -170,9 +165,9 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
                  */
                 return value;
             } else if (originalObject instanceof WordBase) {
-                return JavaConstant.forIntegerKind(universe.getTarget().wordJavaKind, ((WordBase) originalObject).rawValue());
+                return JavaConstant.forIntegerKind(universe.getWordKind(), ((WordBase) originalObject).rawValue());
             } else if (originalObject == null && field.getType().isWordType()) {
-                return JavaConstant.forIntegerKind(universe.getTarget().wordJavaKind, 0);
+                return JavaConstant.forIntegerKind(universe.getWordKind(), 0);
             }
         }
         return value;
@@ -183,7 +178,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
         if (constant instanceof SubstrateObjectConstant) {
             Object obj = SubstrateObjectConstant.asObject(constant);
             if (obj instanceof DynamicHub) {
-                return hostVM.lookupType((DynamicHub) obj);
+                return getHostVM().lookupType((DynamicHub) obj);
             } else if (obj instanceof Class) {
                 throw VMError.shouldNotReachHere("Must not have java.lang.Class object: " + obj);
             }
@@ -193,9 +188,13 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
 
     @Override
     public JavaConstant asJavaClass(ResolvedJavaType type) {
-        DynamicHub dynamicHub = hostVM.dynamicHub(type);
-        registerHub(hostVM, dynamicHub);
+        DynamicHub dynamicHub = getHostVM().dynamicHub(type);
+        registerHub(getHostVM(), dynamicHub);
         return SubstrateObjectConstant.forObject(dynamicHub);
+    }
+
+    private SVMHost getHostVM() {
+        return (SVMHost) universe.hostVM();
     }
 
     protected static void registerHub(SVMHost hostVM, DynamicHub dynamicHub) {

@@ -51,6 +51,7 @@ import com.oracle.svm.core.jdk.JDKUtils;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
+import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.VMError;
@@ -214,6 +215,8 @@ public class SnippetRuntime {
             Throwable exception = currentException.get();
             currentException.set(null);
 
+            StackOverflowCheck.singleton().protectYellowZone();
+
             KnownIntrinsics.farReturn(exception, sp, continueIP);
             /*
              * The intrinsic performs a jump to the specified instruction pointer, so this code is
@@ -241,6 +244,8 @@ public class SnippetRuntime {
     @Uninterruptible(reason = "Set currentException atomically with regard to the safepoint mechanism", calleeMustBe = false)
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when unwinding the stack.")
     private static void unwindException(Throwable exception, Pointer callerSP, CodePointer callerIP) {
+        StackOverflowCheck.singleton().makeYellowZoneAvailable();
+
         if (currentException.get() != null) {
             /*
              * Exception unwinding cannot be called recursively. The most likely reason to end up

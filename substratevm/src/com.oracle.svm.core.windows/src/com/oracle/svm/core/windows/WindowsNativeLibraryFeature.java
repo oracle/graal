@@ -54,7 +54,8 @@ class WindowsNativeLibrarySupport implements PlatformNativeLibrarySupport {
     static final String[] builtInLibraries = {
                     "java",
                     "nio",
-                    "net"
+                    "net",
+                    "zip"
     };
 
     static final String[] builtInPkgNatives = {

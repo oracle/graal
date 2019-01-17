@@ -29,9 +29,13 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CLibrary;
+import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.posix.headers.PosixDirectives;
+import com.oracle.svm.core.posix.headers.Pthread;
 
 @CContext(PosixDirectives.class)
 @Platforms(Platform.DARWIN.class)
@@ -43,6 +47,12 @@ public class DarwinPthread {
     /** Set thread name visible in the kernel and its interfaces. */
     @CFunction
     public static native int pthread_setname_np(CCharPointer name);
+
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native UnsignedWord pthread_get_stacksize_np(Pthread.pthread_t thread);
+
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native Pointer pthread_get_stackaddr_np(Pthread.pthread_t thread);
 
     /* } Allow names with underscores: Checkstyle: resume */
 

@@ -22,22 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.core.jdk9.posix;
 
 import java.io.IOException;
 
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.RuntimeClassInitialization;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.JDK9OrLater;
+import com.oracle.svm.core.posix.Java_lang_Process_Supplement;
 import com.oracle.svm.core.util.VMError;
-
-public class JavaLangSubstitutionsJDK9OrLater {
-}
 
 @AutomaticFeature
 class JavaLangSubstitutionsJDK9OrLaterFeature implements Feature {
@@ -56,54 +57,26 @@ class JavaLangSubstitutionsJDK9OrLaterFeature implements Feature {
 }
 
 @TargetClass(className = "java.lang.ProcessImpl", onlyWith = JDK9OrLater.class)
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_lang_ProcessImpl {
 
-    @Substitute //
-    @SuppressWarnings({"unused", "static-method"})
-    private /* native */ int forkAndExec(
+    @SuppressWarnings({"static-method"})
+    @Substitute
+    private int forkAndExec(
                     int mode,
                     byte[] helperpath,
                     byte[] prog,
-                    byte[] argBlock,
-                    int argc,
-                    byte[] envBlock,
-                    int envc,
+                    byte[] argBlock, int argc,
+                    byte[] envBlock, int envc,
                     byte[] dir,
                     int[] fds,
                     boolean redirectErrorStream)
                     throws IOException {
-        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ProcessImpl.forkAndExec");
+        return Java_lang_Process_Supplement.forkAndExec(mode, helperpath, prog, argBlock, argc, envBlock, envc, dir, fds, redirectErrorStream);
     }
 
     @Substitute //
     private static /* native */ void init() {
         throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ProcessImpl.init");
-    }
-}
-
-/* This will be replaced with full JDK JNI implementations */
-
-@TargetClass(className = "java.lang.ProcessHandleImpl", onlyWith = JDK9OrLater.class)
-final class Target_java_lang_ProcessHandleImpl {
-
-    @Substitute
-    private static long isAlive0(long pid) {
-        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ProcessHandleImpl.isAlive0");
-    }
-
-    @Substitute
-    private static int waitForProcessExit0(long pid, boolean reapvalue) {
-        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ProcessHandleImpl.waitForProcessExit0");
-    }
-
-    @Substitute
-    private static long getCurrentPid0() {
-        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ProcessHandleImpl.getCurrentPid0");
-
-    }
-
-    @Substitute
-    private static void initNative() {
-        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ProcessHandleImpl.initNative");
     }
 }

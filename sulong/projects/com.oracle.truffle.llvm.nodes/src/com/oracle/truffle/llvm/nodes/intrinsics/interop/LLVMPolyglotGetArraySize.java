@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -49,17 +49,11 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
 @NodeChild(type = LLVMExpressionNode.class)
-public abstract class LLVMTruffleGetSize extends LLVMIntrinsic {
+public abstract class LLVMPolyglotGetArraySize extends LLVMIntrinsic {
 
     @Child private Node foreignGetSize = Message.GET_SIZE.createNode();
     @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.create();
     @Child private ForeignToLLVM toLLVM;
-
-    private final ForeignToLLVMType type;
-
-    protected LLVMTruffleGetSize(ForeignToLLVMType type) {
-        this.type = type;
-    }
 
     @Specialization(rewriteOn = UnsupportedMessageException.class)
     protected Object doIntrinsic(LLVMManagedPointer value) throws UnsupportedMessageException {
@@ -88,7 +82,7 @@ public abstract class LLVMTruffleGetSize extends LLVMIntrinsic {
     private ForeignToLLVM getToLLVM() {
         if (toLLVM == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            toLLVM = getNodeFactory().createForeignToLLVM(type);
+            toLLVM = getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I64);
         }
         return toLLVM;
     }

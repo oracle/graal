@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -79,7 +79,7 @@ public abstract class LLVMStructArrayLiteralNode extends LLVMExpressionNode {
     protected Object doVoid(VirtualFrame frame, LLVMManagedPointer addr) {
         LLVMManagedPointer currentPtr = addr;
         for (int i = 0; i < values.length; i++) {
-            LLVMManagedPointer currentValue = (LLVMManagedPointer) values[i].executeGeneric(frame);
+            Object currentValue = values[i].executeGeneric(frame);
             memMove.executeWithTarget(currentPtr, currentValue, stride);
             currentPtr = currentPtr.increment(stride);
         }

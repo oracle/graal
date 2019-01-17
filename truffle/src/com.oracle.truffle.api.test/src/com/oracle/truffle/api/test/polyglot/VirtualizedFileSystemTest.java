@@ -103,6 +103,8 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.nodes.RootNode;
+import org.graalvm.polyglot.PolyglotException;
+import org.junit.Assume;
 
 @RunWith(Parameterized.class)
 public class VirtualizedFileSystemTest {
@@ -117,6 +119,7 @@ public class VirtualizedFileSystemTest {
     private static final String FILE_EXISTING_WRITE_MMAP = "write_mmap.txt";
     private static final String FILE_EXISTING_DELETE = "delete.txt";
     private static final String FILE_EXISTING_RENAME = "rename.txt";
+    private static final String SYMLINK_EXISTING = "lnk_to_folder";
     private static final String FILE_NEW_WRITE_CHANNEL = "write_channel.txt";
     private static final String FILE_NEW_WRITE_STREAM = "write_stream.txt";
     private static final String FILE_NEW_CREATE_DIR = "new_dir";
@@ -564,7 +567,7 @@ public class VirtualizedFileSystemTest {
     }
 
     @Test
-    public void isReadable() {
+    public void testIsReadable() {
         final Context ctx = cfg.getContext();
         final Path path = cfg.getPath();
         final boolean canRead = cfg.canRead();
@@ -583,7 +586,7 @@ public class VirtualizedFileSystemTest {
     }
 
     @Test
-    public void isWritable() {
+    public void testIsWritable() {
         final Context ctx = cfg.getContext();
         final Path path = cfg.getPath();
         final boolean canRead = cfg.canRead();
@@ -602,7 +605,7 @@ public class VirtualizedFileSystemTest {
     }
 
     @Test
-    public void isExecutable() {
+    public void testIsExecutable() {
         final Context ctx = cfg.getContext();
         final Path path = cfg.getPath();
         final boolean canRead = cfg.canRead();
@@ -618,6 +621,32 @@ public class VirtualizedFileSystemTest {
             }
         };
         ctx.eval(LANGAUGE_ID, "");
+    }
+
+    @Test
+    public void testIsSymbolicLink() throws Throwable {
+        final Context ctx = cfg.getContext();
+        final Path path = cfg.getPath();
+        final boolean canRead = cfg.canRead();
+        languageAction = (Env env) -> {
+            final TruffleFile root = env.getTruffleFile(path.toString());
+            try {
+                final TruffleFile file = root.resolve(SYMLINK_EXISTING);
+                Assume.assumeTrue("File System does not support optional symbolic links", file.exists(LinkOption.NOFOLLOW_LINKS));
+                final boolean symlink = file.isSymbolicLink();
+                Assert.assertTrue(cfg.formatErrorMessage("Expected SecurityException"), canRead);
+                Assert.assertTrue(cfg.formatErrorMessage("Is symbolic link"), symlink);
+            } catch (SecurityException se) {
+                Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canRead);
+            }
+        };
+        try {
+            ctx.eval(LANGAUGE_ID, "");
+        } catch (PolyglotException pe) {
+            if (pe.isHostException()) {
+                throw pe.asHostException();
+            }
+        }
     }
 
     @Test
@@ -1090,6 +1119,8 @@ public class VirtualizedFileSystemTest {
                 TruffleFile link = root.resolve(FILE_NEW_SYMLINK);
                 link.createSymbolicLink(target);
                 Assert.assertTrue(cfg.formatErrorMessage("Expected SecurityException"), canWrite);
+                Assert.assertTrue(link.isSymbolicLink());
+                Assert.assertEquals(target.getCanonicalFile(), link.getCanonicalFile());
             } catch (SecurityException se) {
                 Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canWrite);
             } catch (IOException ioe) {
@@ -1443,6 +1474,11 @@ public class VirtualizedFileSystemTest {
         touch(folder.resolve(FILE_EXISTING_WRITE_MMAP), fs);
         touch(folder.resolve(FILE_EXISTING_DELETE), fs);
         touch(folder.resolve(FILE_EXISTING_RENAME), fs);
+        try {
+            ln(folder.resolve(FOLDER_EXISTING), folder.resolve(SYMLINK_EXISTING), fs);
+        } catch (UnsupportedOperationException unsupported) {
+            // File system does not support optional symbolic links, test will be ignored
+        }
         return folder;
     }
 
@@ -1482,6 +1518,10 @@ public class VirtualizedFileSystemTest {
         fs.newByteChannel(
                         path,
                         EnumSet.<StandardOpenOption> of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)).close();
+    }
+
+    private static void ln(Path file, Path link, FileSystem fs) throws IOException {
+        fs.createSymbolicLink(link, file);
     }
 
     private static boolean isDirectory(final Path path, final FileSystem fs) throws IOException {

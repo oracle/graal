@@ -56,7 +56,6 @@ import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.IsDefined;
-import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.LibC;
@@ -105,10 +104,6 @@ public final class PosixJavaThreads extends JavaThreads {
                             Pthread.pthread_attr_setstacksize(attributes, threadStackSize),
                             "PosixJavaThreads.start0: pthread_attr_setstacksize");
         }
-
-        PosixUtils.checkStatusIs0(
-                        Pthread.pthread_attr_setguardsize(attributes, VirtualMemoryProvider.get().getGranularity()),
-                        "PosixJavaThreads.start0: pthread_attr_setguardsize");
 
         ThreadStartData startData = UnmanagedMemory.malloc(SizeOf.get(ThreadStartData.class));
         prepareStartData(thread, startData);

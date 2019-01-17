@@ -42,3 +42,7 @@ final class Target_java_util_zip_ZipFile_Source {
 @TargetClass(value = ZipFile.class, innerClass = {"Source", "Key"}, onlyWith = JDK9OrLater.class)
 final class Target_java_util_zip_ZipFile_Source_Key {
 }
+
+/* Dummy class to have the same name as the file. */
+public class Target_java_util_zip_ZipFile {
+}

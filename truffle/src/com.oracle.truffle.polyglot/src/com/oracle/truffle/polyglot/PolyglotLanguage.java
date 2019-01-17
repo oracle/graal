@@ -57,6 +57,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.api.utilities.NeverValidAssumption;
 
 final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
@@ -183,6 +184,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
                 default:
                     throw new AssertionError("Unknown context cardinality.");
             }
+            instance.ensureMultiContextInitialized();
         }
         return instance;
     }
@@ -295,15 +297,13 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
         private static final Object UNSET_CONTEXT = new Object();
 
         private final PolyglotLanguage language;
-        private final Assumption singleContext = Truffle.getRuntime().createAssumption("Language single context.");
+        private final Assumption singleContext;
         @CompilationFinal private volatile Object cachedSingleContext = UNSET_CONTEXT;
         @CompilationFinal private volatile Object cachedSingleLanguageContext = UNSET_CONTEXT;
 
         ContextProfile(PolyglotLanguage language) {
             this.language = language;
-            if (!language.engine.boundEngine) {
-                singleContext.invalidate();
-            }
+            singleContext = language.engine.boundEngine ? Truffle.getRuntime().createAssumption("Language single context.") : NeverValidAssumption.INSTANCE;
         }
 
         public Assumption getSingleContext() {

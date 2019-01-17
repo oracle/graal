@@ -84,6 +84,23 @@ suite = {
             "workingSets": "SVM",
         },
 
+        "com.oracle.svm.core.jdk9.posix": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.core.jdk9",
+                "com.oracle.svm.core.posix"
+                ],
+            "imports" : [
+                "jdk.internal.misc",
+                "jdk.internal.perf",
+            ],
+            "javaCompliance": "9+",
+            "multiReleaseJarVersion": "9",
+            "checkstyle": "com.oracle.svm.core",
+            "workingSets": "SVM",
+        },
+
         "com.oracle.svm.core.genscavenge": {
             "subDir": "src",
             "sourceDirs": [
@@ -577,6 +594,7 @@ suite = {
                 "com.oracle.svm.core.jdk8",
                 "com.oracle.svm.core.jdk9",
                 "com.oracle.svm.core.posix",
+                "com.oracle.svm.core.jdk9.posix",
                 "com.oracle.svm.core.windows",
                 "com.oracle.svm.core.genscavenge",
             ],

@@ -274,12 +274,13 @@ public class HeapImpl extends Heap {
 
     /** Allocation is disallowed if ... */
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isAllocationDisallowed() {
         /*
          * This method exists because Heap is the place clients should ask this question, and to
          * aggregate all the reasons allocation might be disallowed.
          */
-        return (NoAllocationVerifier.isActive() || getGCImpl().collectionInProgress.getState());
+        return NoAllocationVerifier.isActive() || gcImpl.collectionInProgress.getState();
     }
 
     /** A guard to place before an allocation, giving the call site and the allocation type. */

@@ -48,10 +48,10 @@ import java.lang.annotation.Target;
 import org.graalvm.nativeimage.c.CContext;
 
 /**
- * Denotes a {@code static native} method that calls directly from Java to C, without following the
- * JNI protocol. This means that there are no artificial additional parameters such as the JNI
+ * Denotes a {@code native} method that calls directly from Java to C, without following the JNI
+ * protocol. This means that there are no artificial additional parameters such as the JNI
  * environment passed, and no marshaling or processing of arguments (such as creating handles for
- * objects) is performed.
+ * objects) is performed. If the method is non-static, the receiver will be ignored.
  * <p>
  * Parameter and return types must not be Java reference types; only primitive Java values and Word
  * values are allowed. If a Word value is passed that points to a Java object, no guarantees are
