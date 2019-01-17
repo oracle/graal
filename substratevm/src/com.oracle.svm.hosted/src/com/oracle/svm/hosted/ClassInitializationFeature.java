@@ -154,6 +154,16 @@ public final class ClassInitializationFeature implements Feature, RuntimeClassIn
         return type instanceof HostedType ? ((HostedType) type).getWrapped() : (AnalysisType) type;
     }
 
+    private static ResolvedJavaType toWrappedType(ResolvedJavaType type) {
+        if (type instanceof AnalysisType) {
+            return ((AnalysisType) type).getWrappedWithoutResolve();
+        } else if (type instanceof HostedType) {
+            return ((HostedType) type).getWrapped().getWrappedWithoutResolve();
+        } else {
+            return type;
+        }
+    }
+
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(RuntimeClassInitializationSupport.class, this);
@@ -283,7 +293,11 @@ public final class ClassInitializationFeature implements Feature, RuntimeClassIn
             /* Only interfaces can declare default methods. */
             return false;
         }
-        for (ResolvedJavaMethod method : type.getDeclaredMethods()) {
+        /*
+         * We call getDeclaredMethods() directly on the wrapped type. We avoid calling it on the
+         * AnalysisType because it resolves all the methods in the AnalysisUniverse.
+         */
+        for (ResolvedJavaMethod method : toWrappedType(type).getDeclaredMethods()) {
             if (method.isDefault()) {
                 assert !Modifier.isStatic(method.getModifiers()) : "Default method that is static?";
                 return true;
