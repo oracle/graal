@@ -36,12 +36,13 @@ public final class InvokeSpecialNode extends InvokeNode {
     }
 
     @Override
-    public void invoke(final VirtualFrame frame) {
-        // TODO(peterssen): Constant fold this check.
+    public int invoke(final VirtualFrame frame, int top) {
         EspressoRootNode root = (EspressoRootNode) getParent();
-        nullCheck(root.peekReceiver(frame, method));
-        Object[] arguments = root.popArguments(frame, true, method.getSignature());
-        Object result = directCallNode.call(arguments);
-        root.pushKind(frame, result, method.getSignature().getReturnTypeDescriptor().toKind());
+        // TODO(peterssen): IsNull Node?
+        nullCheck(root.peekReceiver(frame, top, method));
+        Object[] args = root.peekArguments(frame, top, true, method.getSignature());
+        Object result = directCallNode.call(args);
+        int resultAt = top - method.getSignature().getNumberOfSlotsForParameters() - 1; // -receiver
+        return (resultAt - top) + root.putKind(frame, resultAt, result, method.getSignature().resultKind());
     }
 }

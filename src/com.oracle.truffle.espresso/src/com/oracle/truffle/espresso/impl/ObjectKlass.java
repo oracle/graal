@@ -133,11 +133,12 @@ public final class ObjectKlass extends Klass {
     }
 
     @Override
-    public StaticObject getStatics() {
+    public StaticObject tryInitializeAndGetStatics() {
         if (statics == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             statics = new StaticObjectImpl(this, true);
         }
+        initialize();
         return statics;
     }
 

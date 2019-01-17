@@ -37,12 +37,13 @@ public final class InvokeStaticNode extends InvokeNode {
     }
 
     @Override
-    public void invoke(final VirtualFrame frame) {
+    public int invoke(final VirtualFrame frame, int top) {
         // TODO(peterssen): Constant fold this check.
         method.getDeclaringClass().initialize();
         EspressoRootNode root = (EspressoRootNode) getParent();
-        Object[] arguments = root.popArguments(frame, false, method.getSignature());
-        Object result = directCallNode.call(arguments);
-        root.pushKind(frame, result, method.getSignature().getReturnTypeDescriptor().toKind());
+        Object[] args = root.peekArguments(frame, top, false, method.getSignature());
+        Object result = directCallNode.call(args);
+        int resultAt = top - method.getSignature().getNumberOfSlotsForParameters(); // no receiver
+        return (resultAt - top) + root.putKind(frame, resultAt, result, method.getSignature().resultKind());
     }
 }

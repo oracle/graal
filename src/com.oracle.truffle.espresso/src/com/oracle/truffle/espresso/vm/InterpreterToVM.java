@@ -556,7 +556,7 @@ public class InterpreterToVM {
     }
 
     @CompilerDirectives.TruffleBoundary
-    public StaticObject newMultiArray(Klass klass, int[] dimensions) {
+    public StaticObject newMultiArray(Klass klass, int... dimensions) {
         assert dimensions.length > 1;
 
         if (Arrays.stream(dimensions).anyMatch(new IntPredicate() {
