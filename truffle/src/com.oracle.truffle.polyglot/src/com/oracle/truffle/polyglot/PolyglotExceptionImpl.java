@@ -63,7 +63,6 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExceptionImpl;
 import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.TruffleException;
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 
 final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
@@ -413,12 +412,17 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
                         HOST_INTEROP_PACKAGE + "FunctionProxyHandler",
                         HOST_INTEROP_PACKAGE + "ObjectProxyHandler"
         };
-        private static final String JVM8_REFLECT_INVOKE = "sun.reflect.NativeMethodAccessorImpl";
-        private static final String JVM9_REFLECT_INVOKE = "jdk.internal.reflect.NativeMethodAccessorImpl";
-        private static final String SVM_REFLECT_INVOKE = "java.lang.reflect.Method";
+        private static final String[] GUEST_TO_HOST_IMPLEMENTATION_CLASSES = {
+                        "com.oracle.truffle.polyglot.HostMethodDesc$SingleMethod$MHBase",
+                        "sun.reflect.NativeMethodAccessorImpl",
+                        "sun.reflect.DelegatingMethodAccessorImpl",
+                        "jdk.internal.reflect.NativeMethodAccessorImpl",
+                        "java.lang.reflect.Method",
+        };
 
         final PolyglotExceptionImpl impl;
         final Iterator<TruffleStackTraceElement> guestFrames;
+        final StackTraceElement[] hostStack;
         final ListIterator<StackTraceElement> hostFrames;
         /*
          * Initial host frames are skipped if the error is a regular non-internal guest language
@@ -442,18 +446,21 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
                     cause = cause.getCause();
                 }
             }
-            StackTraceElement[] hostStack;
             if (VMAccessor.LANGUAGE.isTruffleStackTrace(cause)) {
-                hostStack = VMAccessor.LANGUAGE.getInternalStackTraceElements(cause);
+                this.hostStack = VMAccessor.LANGUAGE.getInternalStackTraceElements(cause);
             } else if (cause.getStackTrace().length == 0) {
-                hostStack = impl.exception.getStackTrace();
+                this.hostStack = impl.exception.getStackTrace();
             } else {
-                hostStack = cause.getStackTrace();
+                this.hostStack = cause.getStackTrace();
             }
             this.guestFrames = impl.guestFrames == null ? Collections.<TruffleStackTraceElement> emptyList().iterator() : impl.guestFrames.iterator();
             this.hostFrames = Arrays.asList(hostStack).listIterator();
             // we always start in some host stack frame
             this.inHostLanguage = impl.isHostException() || impl.isInternalError();
+
+            if (TRACE_STACK_TRACE_WALKING) {
+                System.out.println();
+            }
         }
 
         public boolean hasNext() {
@@ -476,12 +483,26 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
 
             while (hostFrames.hasNext()) {
                 StackTraceElement element = hostFrames.next();
+                traceStackTraceElement(element);
                 // we need to flip inHostLanguage state in opposite order as the stack is top to
                 // bottom.
                 if (inHostLanguage) {
-                    if (isGuestToHost(element)) {
+                    if (isGuestToHost(element, hostStack, hostFrames.nextIndex())) {
                         assert !isHostToGuest(element);
                         inHostLanguage = false;
+
+                        // skip extra guest-to-host frames
+                        while (hostFrames.hasNext()) {
+                            StackTraceElement next = hostFrames.next();
+                            traceStackTraceElement(next);
+                            if (isGuestToHostCallFromHostInterop(next)) {
+                                element = next;
+                                break;
+                            } else {
+                                assert isGuestToHostReflectiveCall(next) : next;
+                            }
+                        }
+                        assert isGuestToHostCallFromHostInterop(element);
                     }
                 } else {
                     if (isHostToGuest(element)) {
@@ -490,10 +511,9 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
                         // skip extra host-to-guest frames
                         while (hostFrames.hasNext()) {
                             StackTraceElement next = hostFrames.next();
+                            traceStackTraceElement(next);
                             if (isHostToGuest(next)) {
-                                traceStackTraceElement(element);
                                 element = next;
-                                continue;
                             } else {
                                 hostFrames.previous();
                                 break;
@@ -501,8 +521,6 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
                         }
                     }
                 }
-
-                traceStackTraceElement(element);
 
                 if (isGuestCall(element)) {
                     inHostLanguage = false;
@@ -564,27 +582,43 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
             return false;
         }
 
-        static boolean isGuestToHost(StackTraceElement element) {
-            if (isLazyStackTraceElement(element)) {
+        static boolean isGuestToHost(StackTraceElement firstElement, StackTraceElement[] hostStack, int nextElementIndex) {
+            if (isLazyStackTraceElement(firstElement)) {
                 return false;
             }
 
+            StackTraceElement element = firstElement;
+            int index = nextElementIndex;
+            boolean foundReflectiveCall = false;
+            while (isGuestToHostReflectiveCall(element) && nextElementIndex < hostStack.length) {
+                element = hostStack[index++];
+                foundReflectiveCall = true;
+            }
+            return foundReflectiveCall && isGuestToHostCallFromHostInterop(element);
+        }
+
+        private static boolean isGuestToHostCallFromHostInterop(StackTraceElement element) {
+            return element.getClassName().startsWith(PROXY_PACKAGE) || element.getClassName().startsWith(HOST_INTEROP_PACKAGE);
+        }
+
+        static boolean isGuestToHostReflectiveCall(StackTraceElement element) {
             String className = element.getClassName();
-            if (className.startsWith(PROXY_PACKAGE) || className.startsWith(HOST_INTEROP_PACKAGE)) {
-                return true;
+
+            for (String methodInvokeClass : GUEST_TO_HOST_IMPLEMENTATION_CLASSES) {
+                if (className.equals(methodInvokeClass) && element.getMethodName().startsWith("invoke")) {
+                    return true;
+                }
             }
 
-            if (TruffleOptions.AOT) {
-                return className.equals(SVM_REFLECT_INVOKE) && element.getMethodName().equals("invoke");
-            } else {
-                return className.equals(JVM8_REFLECT_INVOKE) || className.equals(JVM9_REFLECT_INVOKE);
-            }
+            return className.equals("com.oracle.truffle.polyglot.PolyglotProxy$ProxyExecuteNode") && element.getMethodName().equals("executeProxy");
         }
 
         private void traceStackTraceElement(StackTraceElement element) {
             if (TRACE_STACK_TRACE_WALKING) {
                 PrintStream out = System.out;
-                out.printf("host: %5s, guestToHost: %5s, hostToGuest: %5s, guestCall: %5s, -- %s %n", inHostLanguage, isGuestToHost(element), isHostToGuest(element), isGuestCall(element), element);
+                out.printf("host: %5s, guestToHost: %5s, hostToGuest: %5s, guestCall: %5s, -- %s %n", inHostLanguage,
+                                isGuestToHost(element, hostStack, hostFrames.nextIndex()), isHostToGuest(element),
+                                isGuestCall(element), element);
             }
         }
     }
