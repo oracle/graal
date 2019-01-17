@@ -23,14 +23,14 @@
 package com.oracle.truffle.espresso.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.bytecode.OperandStack;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public abstract class InvokeNode extends Node {
-    public abstract void invoke(OperandStack stack);
+    public abstract void invoke(final VirtualFrame frame);
 
     // TODO(peterssen): Make this a node?
     protected static final StaticObject nullCheck(StaticObject value) {

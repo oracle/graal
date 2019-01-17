@@ -555,6 +555,7 @@ public class InterpreterToVM {
         return new StaticObjectArray(componentType.getArrayClass(), arr);
     }
 
+    @CompilerDirectives.TruffleBoundary
     public StaticObject newMultiArray(Klass klass, int[] dimensions) {
         assert dimensions.length > 1;
 
