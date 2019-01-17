@@ -44,11 +44,10 @@ _env_flags = []
 if 'CPPFLAGS' in os.environ:
     _env_flags = os.environ['CPPFLAGS'].split(' ')
 
-
 class SulongBenchmarkRule(mx_benchmark.StdOutRule):
-    def __init__(self, replacement):
+    def __init__(self, pattern, replacement):
         super(SulongBenchmarkRule, self).__init__(
-            pattern=r'^last 10 iterations (?P<benchmark>[\S]+):(?P<line>([ ,]+(?:\d+(?:\.\d+)?))+)',
+            pattern=pattern,
             replacement=replacement)
 
     def parseResults(self, text):
@@ -131,7 +130,20 @@ class SulongBenchmarkSuite(VmBenchmarkSuite):
 
     def rules(self, out, benchmarks, bmSuiteArgs):
         return [
-            SulongBenchmarkRule({
+            SulongBenchmarkRule(
+		r'^first [\d]+ warmup iterations (?P<benchmark>[\S]+):(?P<line>([ ,]+(?:\d+(?:\.\d+)?))+)',
+		{
+                "benchmark": ("<benchmark>", str),
+                "metric.name": "warmup",
+                "metric.type": "numeric",
+                "metric.value": ("<score>", float),
+                "metric.score-function": "id",
+                "metric.better": "lower",
+                "metric.iteration": ("<iteration>", int),
+            }),
+            SulongBenchmarkRule(
+		r'^last [\d]+ iterations (?P<benchmark>[\S]+):(?P<line>([ ,]+(?:\d+(?:\.\d+)?))+)',
+		{
                 "benchmark": ("<benchmark>", str),
                 "metric.name": "time",
                 "metric.type": "numeric",
