@@ -3520,10 +3520,21 @@ final class Util_java_net_Inet6AddressImpl {
                         j = includeLoopback ? addrs4 : (addrs4 - numV4Loopbacks);
                     }
                 } else {
-                    /* TODO: `i` and `j` need to be initialized. But to what values? */
-                    i = 0;
-                    j = 0;
-                    throw VMError.unsupportedFeature("JDK9OrLater: PosixJavaNetSubstitutions.Util_java_net_Inet6AddressImpl.lookupIfLocalhost: https://bugs.openjdk.java.net/browse/JDK-8205076");
+                    /*
+                     * TODO: Until https://bugs.openjdk.java.net/browse/JDK-8205076 is addressed.
+                     *
+                     * Cf. open-jdk11/src/java.base/share/classes/java/net/Inet6AddressImpl.java in
+                     * Inet6AddressImpl.anyLocalAddress() for what seems to be a corresponding
+                     * comparison.
+                     */
+                    if ((Target_java_net_InetAddress.preferIPv6AddressJDK9OrLater == Target_java_net_InetAddress.PREFER_IPV6_VALUE) ||
+                                    (Target_java_net_InetAddress.preferIPv6AddressJDK9OrLater == Target_java_net_InetAddress.PREFER_SYSTEM_VALUE)) {
+                        i = includeLoopback ? addrs6 : (addrs6 - numV6Loopbacks);
+                        j = 0;
+                    } else {
+                        i = 0;
+                        j = includeLoopback ? addrs4 : (addrs4 - numV4Loopbacks);
+                    }
                 }
                 // Now loop around the ifaddrs
                 iter = ifa;
