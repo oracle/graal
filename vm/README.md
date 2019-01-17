@@ -83,7 +83,7 @@ To override the default behavior, the `vm` suite defines the following `mx` argu
 ```
   --disable-libpolyglot         Disable the 'polyglot' library project
   --disable-polyglot            Disable the 'polyglot' launcher project
-  --force-bash-launchers        Force the use of bash launchers instead of native images.
+  --force-bash-launchers=...    Force the use of bash launchers instead of native images.
                                 This can be a comma-separated list of disabled launchers or `true` to disable all native launchers.
 ```
 And the following environment variables:
