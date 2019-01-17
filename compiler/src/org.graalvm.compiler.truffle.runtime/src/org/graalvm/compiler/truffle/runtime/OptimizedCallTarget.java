@@ -121,6 +121,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     private final List<WeakReference<OptimizedDirectCallNode>> knownCallNodes;
     private boolean needsSplit;
+    private static final String SPLIT_LOG_FORMAT = "[truffle] [poly-event] %-70s %s";
 
     public OptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
         assert sourceCallTarget == null || sourceCallTarget.sourceCallTarget == null : "Cannot create a clone of a cloned CallTarget";
@@ -128,7 +129,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         this.speculationLog = sourceCallTarget != null ? sourceCallTarget.getSpeculationLog() : null;
         this.rootNode = rootNode;
         uninitializedNodeCount = runtime().getTvmci().adoptChildrenAndCount(this.rootNode);
-        knownCallNodes = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplitting) ? new ArrayList<>(1) : null;
+        RuntimeOptionsCache.reinitialize();
+        knownCallNodes = RuntimeOptionsCache.isExperimentalSplitting() ? new ArrayList<>(1) : null;
     }
 
     public Assumption getNodeRewritingAssumption() {
@@ -723,14 +725,14 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     void polymorphicSpecialize(Node source) {
-        if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplitting)) {
-            List<Node> toDump = null;
-            if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplittingDumpDecisions)) {
-                toDump = new ArrayList<>();
-                pullOutParentChain(source, toDump);
-            }
-            this.maybeSetNeedsSplit(0, toDump);
+        assert RuntimeOptionsCache.isExperimentalSplitting();
+        List<Node> toDump = null;
+        if (RuntimeOptionsCache.isExperimentalSplittingDumpDecisions()) {
+            toDump = new ArrayList<>();
+            pullOutParentChain(source, toDump);
         }
+        logPolymorphicEvent(0, "Polymorphic event! Source:", source);
+        this.maybeSetNeedsSplit(0, toDump);
     }
 
     private boolean maybeSetNeedsSplit(int depth, List<Node> toDump) {
@@ -740,32 +742,54 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             numberOfKnownCallNodes = knownCallNodes.size();
             onlyCaller = numberOfKnownCallNodes == 1 ? knownCallNodes.get(0).get() : null;
         }
-        if (depth > TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplittingMaxPropagationDepth) || needsSplit || numberOfKnownCallNodes == 0 ||
-                        compilationProfile.getCallCount() == 1) {
-            return false;
+        if (depth > RuntimeOptionsCache.getSplittingMaxPropagationDepth() || needsSplit || numberOfKnownCallNodes == 0 || compilationProfile.getCallCount() == 1) {
+            logEarlyReturn(depth, numberOfKnownCallNodes);
+            return needsSplit;
         }
         if (numberOfKnownCallNodes == 1) {
             if (onlyCaller != null) {
                 final RootNode callerRootNode = onlyCaller.getRootNode();
                 if (callerRootNode != null && callerRootNode.getCallTarget() != null) {
                     final OptimizedCallTarget callerTarget = (OptimizedCallTarget) callerRootNode.getCallTarget();
-                    if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplittingDumpDecisions)) {
+                    if (RuntimeOptionsCache.isExperimentalSplittingDumpDecisions()) {
                         pullOutParentChain(onlyCaller, toDump);
                     }
+                    logPolymorphicEvent(depth, "One caller! Analysing parent.");
                     if (callerTarget.maybeSetNeedsSplit(depth + 1, toDump)) {
+                        logPolymorphicEvent(depth, "Set needs split to true via parent");
                         needsSplit = true;
                     }
                 }
             }
         } else {
+            logPolymorphicEvent(depth, "Set needs split to true");
             needsSplit = true;
             maybeDump(toDump);
         }
+        logPolymorphicEvent(depth, "Return:", needsSplit);
         return needsSplit;
     }
 
+    private void logEarlyReturn(int depth, int numberOfKnownCallNodes) {
+        if (RuntimeOptionsCache.isExperimentalSplittingTraceEvents()) {
+            logPolymorphicEvent(depth, "Early return: " + needsSplit + " callCount: " + compilationProfile.getCallCount() + ", numberOfKnownCallNodes: " + numberOfKnownCallNodes);
+        }
+    }
+
+    private void logPolymorphicEvent(int depth, String message) {
+        logPolymorphicEvent(depth, message, null);
+    }
+
+    private void logPolymorphicEvent(int depth, String message, Object arg) {
+        if (RuntimeOptionsCache.isExperimentalSplittingTraceEvents()) {
+            final String indent = new String(new char[depth]).replace("\0", "  ");
+            final String argString = (arg == null) ? "" : " " + arg;
+            log(String.format(SPLIT_LOG_FORMAT, indent + message + argString, this.toString()));
+        }
+    }
+
     private void maybeDump(List<Node> toDump) {
-        if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplittingDumpDecisions)) {
+        if (RuntimeOptionsCache.isExperimentalSplittingDumpDecisions()) {
             final List<OptimizedDirectCallNode> callers = new ArrayList<>();
             synchronized (this) {
                 for (WeakReference<OptimizedDirectCallNode> nodeRef : knownCallNodes) {
