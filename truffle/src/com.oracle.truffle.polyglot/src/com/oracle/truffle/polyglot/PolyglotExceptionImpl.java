@@ -413,7 +413,8 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
                         HOST_INTEROP_PACKAGE + "FunctionProxyHandler",
                         HOST_INTEROP_PACKAGE + "ObjectProxyHandler"
         };
-        private static final String SUN_REFLECT_INVOKE = "sun.reflect.NativeMethodAccessorImpl";
+        private static final String JVM8_REFLECT_INVOKE = "sun.reflect.NativeMethodAccessorImpl";
+        private static final String JVM9_REFLECT_INVOKE = "jdk.internal.reflect.NativeMethodAccessorImpl";
         private static final String SVM_REFLECT_INVOKE = "java.lang.reflect.Method";
 
         final PolyglotExceptionImpl impl;
@@ -576,7 +577,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
             if (TruffleOptions.AOT) {
                 return className.equals(SVM_REFLECT_INVOKE) && element.getMethodName().equals("invoke");
             } else {
-                return className.equals(SUN_REFLECT_INVOKE);
+                return className.equals(JVM8_REFLECT_INVOKE) || className.equals(JVM9_REFLECT_INVOKE);
             }
         }
 
