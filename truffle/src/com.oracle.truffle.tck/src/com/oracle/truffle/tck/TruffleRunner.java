@@ -78,11 +78,9 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
 import com.oracle.truffle.tck.TruffleRunner.RunWithPolyglotRule;
@@ -377,18 +375,18 @@ class TruffleRunnerSnippets {
     // BEGIN: TruffleRunnerSnippets#TestExecuteNode
     public class TestExecuteNode extends RootNode {
 
-        @Child Node executeNode;
+        @Child InteropLibrary interop;
 
         public TestExecuteNode() {
             super(null);
-            executeNode = Message.EXECUTE.createNode();
+            interop = InteropLibrary.resolve().createCachedDispatch(5);
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
-            TruffleObject obj = (TruffleObject) frame.getArguments()[0];
+            Object obj = frame.getArguments()[0];
             try {
-                return ForeignAccess.sendExecute(executeNode, obj);
+                return interop.execute(obj);
             } catch (InteropException ex) {
                 CompilerDirectives.transferToInterpreter();
                 Assert.fail(ex.getMessage());
@@ -452,7 +450,7 @@ class TruffleRunnerSnippets {
             private final int iArg;
             private final String sArg;
 
-            @Child Node executeNode;
+            @Child InteropLibrary interop;
 
             public TestConstArgNode() {
                 super(null);
@@ -464,7 +462,7 @@ class TruffleRunnerSnippets {
             public Object execute(VirtualFrame frame) {
                 TruffleObject obj = (TruffleObject) frame.getArguments()[0];
                 try {
-                    return ForeignAccess.sendExecute(executeNode, obj, iArg, sArg);
+                    return interop.execute(obj, iArg, sArg);
                 } catch (InteropException ex) {
                     CompilerDirectives.transferToInterpreter();
                     Assert.fail(ex.getMessage());
