@@ -352,6 +352,9 @@ public class FlatNodeGenFactory {
             if (expression.getDefaultExpression() == null) {
                 continue;
             }
+            if (sharedCaches.containsKey(expression)) {
+                return false;
+            }
             if (isNodeInterfaceArray(expression.getDefaultExpression().getResolvedType())) {
                 return true;
             }
@@ -3857,7 +3860,8 @@ public class FlatNodeGenFactory {
         CodeTreeBuilder builder = new CodeTreeBuilder(null);
         String refName = name + "_";
         CodeTree useValue;
-        if ((ElementUtils.isAssignable(type, context.getType(Node.class)) || ElementUtils.isAssignable(type, context.getType(Node[].class))) && !cache.isInitializedInFastPath()) {
+        if ((ElementUtils.isAssignable(type, context.getType(Node.class)) || ElementUtils.isAssignable(type, context.getType(Node[].class))) &&
+                        (!cache.isInitializedInFastPath())) {
             useValue = builder.create().startCall("super.insert").tree(value).end().build();
         } else {
             useValue = value;
