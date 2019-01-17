@@ -264,7 +264,6 @@ public class EngineAPITest {
     }
 
     @Test
-    @SuppressWarnings("try")
     public void testContextWithBoundEngineDoesNotInvalidateSingleContext() {
         Object prev = resetSingleContextState();
         try {
@@ -272,6 +271,23 @@ public class EngineAPITest {
                 ctx.initialize(EngineAPITestLanguage.ID);
             }
             assertTrue(isSingleContextAssumptionValid());
+        } finally {
+            restoreSingleContextState(prev);
+        }
+    }
+
+    @Test
+    @SuppressWarnings("try")
+    public void testListLanguagesAndCreateBoundContextDoNotInvalidateSingleContext() {
+        Object prev = resetSingleContextState();
+        try {
+            try (Engine engine = Engine.create()) {
+                engine.getLanguages();
+            }
+            assertTrue(isSingleContextAssumptionValid());
+            try (Context ctx = Context.create()) {
+                assertTrue(isSingleContextAssumptionValid());
+            }
         } finally {
             restoreSingleContextState(prev);
         }
