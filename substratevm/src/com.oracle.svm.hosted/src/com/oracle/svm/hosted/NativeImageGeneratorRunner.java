@@ -81,9 +81,10 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
         ArrayList<String> arguments = new ArrayList<>(Arrays.asList(args));
         final String[] classpath = extractImageClassPath(arguments);
         int watchPID = extractWatchPID(arguments);
+        TimerTask timerTask = null;
         if (watchPID >= 0) {
             VMError.guarantee(OS.getCurrent().hasProcFS, WATCHPID_PREFIX + " <pid> requires system with /proc");
-            TimerTask timerTask = new TimerTask() {
+            timerTask = new TimerTask() {
                 @Override
                 public void run() {
                     try (Stream<String> stream = Files.lines(Paths.get("/proc/" + watchPID + "/comm"))) {
@@ -99,9 +100,15 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             timer.scheduleAtFixedRate(timerTask, 0, 1000);
 
         }
-        NativeImageClassLoader nativeImageClassLoader = installNativeImageClassLoader(classpath);
-
-        int exitStatus = new NativeImageGeneratorRunner().build(arguments.toArray(new String[arguments.size()]), classpath, nativeImageClassLoader);
+        int exitStatus = 1;
+        try {
+            NativeImageClassLoader nativeImageClassLoader = installNativeImageClassLoader(classpath);
+            exitStatus = new NativeImageGeneratorRunner().build(arguments.toArray(new String[arguments.size()]), classpath, nativeImageClassLoader);
+        } finally {
+            if (timerTask != null) {
+                timerTask.cancel();
+            }
+        }
         System.exit(exitStatus == 0 ? 0 : 1);
     }
 
