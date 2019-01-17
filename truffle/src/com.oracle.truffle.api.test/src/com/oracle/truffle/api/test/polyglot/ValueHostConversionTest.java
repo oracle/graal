@@ -55,6 +55,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -1097,6 +1099,98 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
             assertTrue(frame.isHostFrame());
             assertEquals("testExceptionFrames3", frame.toHostFrame().getMethodName());
         }
+    }
+
+    public static class TestExceptionFramesWithCallToMethodInvoke {
+
+        static final Method METHOD;
+        static {
+            try {
+                METHOD = TestExceptionFramesWithCallToMethodInvoke.class.getMethod("callCallback");
+            } catch (NoSuchMethodException e) {
+                throw new Error(e);
+            }
+        }
+
+        final Value callback;
+
+        public TestExceptionFramesWithCallToMethodInvoke(Value callback) {
+            this.callback = callback;
+        }
+
+        public void callCallback() {
+            callback.execute();
+        }
+
+        public void callReflectively() {
+            try {
+                METHOD.invoke(this);
+            } catch (InvocationTargetException e) {
+                throw (RuntimeException) e.getCause();
+            } catch (ReflectiveOperationException e) {
+                throw new Error(e);
+            }
+        }
+
+        public void foo() {
+            callReflectively();
+        }
+
+    }
+
+    @Test
+    public void testExceptionFramesWithCallToMethodInvoke() {
+        Value inner = context.asValue(new Supplier<Object>() {
+            public Object get() {
+                throw new RuntimeException("foobar");
+            }
+        });
+
+        Value value = context.asValue(new TestExceptionFramesWithCallToMethodInvoke(inner));
+        try {
+            value.getMember("foo").execute();
+            Assert.fail();
+        } catch (PolyglotException e) {
+            assertTrue(e.isHostException());
+            assertEquals(RuntimeException.class, e.asHostException().getClass());
+            assertEquals("foobar", e.getMessage());
+            Iterator<StackFrame> frameIterator = e.getPolyglotStackTrace().iterator();
+            StackFrame frame;
+            frame = frameIterator.next();
+            assertTrue(frame.isHostFrame());
+            assertEquals("get", frame.toHostFrame().getMethodName());
+            frame = frameIterator.next();
+            assertTrue(frame.isHostFrame());
+            assertEquals("execute", frame.toHostFrame().getMethodName());
+            frame = frameIterator.next();
+            assertTrue(frame.isHostFrame());
+            assertEquals("callCallback", frame.toHostFrame().getMethodName());
+
+            frame = frameIterator.next();
+            assertTrue(frame.isHostFrame());
+            StackFrame last = frame;
+            // Skip Method.invoke implementation classes
+            while (frame.toHostFrame().getMethodName().startsWith("invoke")) {
+                last = frame;
+                frame = frameIterator.next();
+                assertTrue(frame.isHostFrame());
+            }
+            assertEquals(Method.class.getName(), last.toHostFrame().getClassName());
+            assertEquals("invoke", last.toHostFrame().getMethodName());
+
+            assertTrue(frame.isHostFrame());
+            assertEquals("callReflectively", frame.toHostFrame().getMethodName());
+            frame = frameIterator.next();
+            assertTrue(frame.isHostFrame());
+            assertEquals("foo", frame.toHostFrame().getMethodName());
+            frame = frameIterator.next();
+            assertTrue(frame.isHostFrame());
+            assertEquals("execute", frame.toHostFrame().getMethodName());
+            frame = frameIterator.next();
+            assertTrue(frame.isHostFrame());
+            assertEquals("testExceptionFramesWithCallToMethodInvoke", frame.toHostFrame().getMethodName());
+        }
+
     }
 
     public static class TestExceptionFramesCallerSensitive {
