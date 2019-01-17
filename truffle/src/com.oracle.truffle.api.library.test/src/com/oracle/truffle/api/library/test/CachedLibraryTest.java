@@ -634,4 +634,19 @@ public class CachedLibraryTest extends AbstractLibraryTest {
         }
     }
 
+    /*
+     * Test that testNode is not sharable (does not produce a warning)
+     */
+    public abstract static class SharedLibraryTestNode extends Node {
+
+        abstract String execute(Object receiver);
+
+        @Specialization(limit = "2")
+        public static String s0(Object receiver,
+                        @CachedLibrary("receiver") SomethingLibrary lib1,
+                        @SuppressWarnings("unused") @Cached SimpleNode testNode) {
+            return lib1.call(receiver);
+        }
+    }
+
 }

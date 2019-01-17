@@ -362,7 +362,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
     }
 
     public static Map<CacheExpression, String> computeSharing(Collection<NodeData> nodes) {
-        Map<SharableCache, List<CacheExpression>> groups = computeSharableCaches(nodes);
+        Map<SharableCache, Collection<CacheExpression>> groups = computeSharableCaches(nodes);
         // compute unnecessary sharing.
 
         Map<String, List<SharableCache>> declaredGroups = new HashMap<>();
@@ -389,7 +389,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     }
                     String group = cache.getSharedGroup();
                     SharableCache sharable = new SharableCache(specialization, cache);
-                    List<CacheExpression> expressions = groups.get(sharable);
+                    Collection<CacheExpression> expressions = groups.get(sharable);
                     List<SharableCache> declaredSharing = declaredGroups.get(group);
                     if (group != null) {
                         if (declaredSharing.size() <= 1 && (expressions == null || expressions.size() <= 1)) {
@@ -2650,8 +2650,8 @@ public final class NodeParser extends AbstractParser<NodeData> {
         return collection;
     }
 
-    private static Map<SharableCache, List<CacheExpression>> computeSharableCaches(Collection<NodeData> nodes) {
-        Map<SharableCache, List<CacheExpression>> sharableCaches = new LinkedHashMap<>();
+    private static Map<SharableCache, Collection<CacheExpression>> computeSharableCaches(Collection<NodeData> nodes) {
+        Map<SharableCache, Collection<CacheExpression>> sharableCaches = new LinkedHashMap<>();
         for (NodeData node : nodes) {
             for (SpecializationData specialization : node.getSpecializations()) {
                 if (specialization == null) {
@@ -2692,6 +2692,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
             if (this == obj) {
                 return true;
             } else if (ElementUtils.executableEquals(specialization.getMethod(), other.specialization.getMethod()) &&
+                            !specialization.hasMultipleInstances() && !other.specialization.hasMultipleInstances() &&
                             ElementUtils.variableEquals(expression.getParameter().getVariableElement(), other.expression.getParameter().getVariableElement())) {
                 return true;
             }

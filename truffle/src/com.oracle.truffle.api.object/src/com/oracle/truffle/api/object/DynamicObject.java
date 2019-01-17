@@ -45,6 +45,7 @@ import java.lang.reflect.Field;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.DynamicDispatchLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -92,13 +93,15 @@ public abstract class DynamicObject implements TruffleObject {
     }
 
     @ExportMessage
-    final boolean accepts(@Cached(value = "this.getShape().getObjectType()", allowUncached = true) ObjectType objectType) {
+    final boolean accepts(
+                    @Shared("objectType") @Cached(value = "this.getShape().getObjectType()", allowUncached = true) ObjectType objectType) {
         return objectType == getShape().getObjectType();
     }
 
     @SuppressWarnings("static-method")
     @ExportMessage
-    final Class<?> dispatch(@Cached(value = "this.getShape().getObjectType()", allowUncached = true) ObjectType objectType) {
+    final Class<?> dispatch(
+                    @Shared("objectType") @Cached(value = "this.getShape().getObjectType()", allowUncached = true) ObjectType objectType) {
         return objectType.dispatch();
     }
 

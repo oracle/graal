@@ -46,6 +46,7 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
@@ -190,9 +191,9 @@ final class HostObject implements TruffleObject {
 
     @ExportMessage
     Object readMember(String name,
-                    @Cached LookupFieldNode lookupField,
-                    @Cached ReadFieldNode readField,
-                    @Cached LookupMethodNode lookupMethod,
+                    @Shared("lookupField") @Cached LookupFieldNode lookupField,
+                    @Shared("readField") @Cached ReadFieldNode readField,
+                    @Shared("lookupMethod") @Cached LookupMethodNode lookupMethod,
                     @Cached LookupInnerClassNode lookupInnerClass) throws UnsupportedMessageException, UnknownIdentifierException {
         if (TruffleOptions.AOT || isNull()) {
             throw UnsupportedMessageException.create();
@@ -273,7 +274,7 @@ final class HostObject implements TruffleObject {
 
     @ExportMessage
     void writeMember(String member, Object value,
-                    @Cached LookupFieldNode lookupField,
+                    @Shared("lookupField") @Cached LookupFieldNode lookupField,
                     @Cached WriteFieldNode writeField)
                     throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException {
         if (TruffleOptions.AOT || isNull()) {
@@ -315,10 +316,10 @@ final class HostObject implements TruffleObject {
 
     @ExportMessage
     Object invokeMember(String name, Object[] args,
-                    @Cached LookupMethodNode lookupMethod,
-                    @Cached HostExecuteNode executeMethod,
-                    @Cached LookupFieldNode lookupField,
-                    @Cached ReadFieldNode readField,
+                    @Shared("lookupMethod") @Cached LookupMethodNode lookupMethod,
+                    @Shared("hostExecute") @Cached HostExecuteNode executeMethod,
+                    @Shared("lookupField") @Cached LookupFieldNode lookupField,
+                    @Shared("readField") @Cached ReadFieldNode readField,
                     @CachedLibrary(limit = "5") InteropLibrary fieldValues) throws UnsupportedTypeException, ArityException, UnsupportedMessageException, UnknownIdentifierException {
         if (TruffleOptions.AOT || isNull()) {
             throw UnsupportedMessageException.create();
@@ -377,7 +378,7 @@ final class HostObject implements TruffleObject {
         @Specialization(guards = {"receiver.isHostArray()"})
         @SuppressWarnings("unchecked")
         static void doArray(HostObject receiver, long index, Object value,
-                        @Cached ToHostNode toHostNode,
+                        @Shared("toHost") @Cached ToHostNode toHostNode,
                         @Cached ArraySet arraySet) throws InvalidArrayIndexException {
             if (index > Integer.MAX_VALUE) {
                 throw InvalidArrayIndexException.create(index);
@@ -394,7 +395,7 @@ final class HostObject implements TruffleObject {
         @Specialization(guards = {"receiver.isList()"})
         @SuppressWarnings("unchecked")
         static void doList(HostObject receiver, long index, Object value,
-                        @Cached ToHostNode toHostNode) throws InvalidArrayIndexException {
+                        @Shared("toHost") @Cached ToHostNode toHostNode) throws InvalidArrayIndexException {
             if (index > Integer.MAX_VALUE) {
                 throw InvalidArrayIndexException.create(index);
             }
@@ -469,7 +470,7 @@ final class HostObject implements TruffleObject {
         @Specialization(guards = {"receiver.isHostArray()"})
         protected static Object doArray(HostObject receiver, long index,
                         @Cached ArrayGet arrayGet,
-                        @Cached ToGuestValueNode toGuest) throws InvalidArrayIndexException {
+                        @Shared("toGuest") @Cached ToGuestValueNode toGuest) throws InvalidArrayIndexException {
             if (index > Integer.MAX_VALUE) {
                 throw InvalidArrayIndexException.create(index);
             }
@@ -487,7 +488,8 @@ final class HostObject implements TruffleObject {
 
         @TruffleBoundary
         @Specialization(guards = {"receiver.isList()"})
-        protected static Object doList(HostObject receiver, long index, @Cached ToGuestValueNode toGuest) throws InvalidArrayIndexException {
+        protected static Object doList(HostObject receiver, long index,
+                        @Shared("toGuest") @Cached ToGuestValueNode toGuest) throws InvalidArrayIndexException {
             try {
                 if (index > Integer.MAX_VALUE) {
                     throw InvalidArrayIndexException.create(index);
@@ -545,13 +547,14 @@ final class HostObject implements TruffleObject {
         }
 
         @Specialization(guards = "receiver.isDefaultClass()")
-        static boolean doObjectCached(HostObject receiver, @Cached LookupConstructorNode lookupConstructor) {
+        static boolean doObjectCached(HostObject receiver,
+                        @Shared("lookupConstructor") @Cached LookupConstructorNode lookupConstructor) {
             return lookupConstructor.execute(receiver.asClass()) != null;
         }
     }
 
     @ExportMessage
-    boolean isExecutable(@Cached LookupFunctionalMethodNode lookupMethod) {
+    boolean isExecutable(@Shared("lookupFunctionalMethod") @Cached LookupFunctionalMethodNode lookupMethod) {
         if (TruffleOptions.AOT) {
             return false;
         }
@@ -560,8 +563,8 @@ final class HostObject implements TruffleObject {
 
     @ExportMessage
     Object execute(Object[] args,
-                    @Cached HostExecuteNode doExecute,
-                    @Cached LookupFunctionalMethodNode lookupMethod) throws UnsupportedMessageException, UnsupportedTypeException, ArityException {
+                    @Shared("hostExecute") @Cached HostExecuteNode doExecute,
+                    @Shared("lookupFunctionalMethod") @Cached LookupFunctionalMethodNode lookupMethod) throws UnsupportedMessageException, UnsupportedTypeException, ArityException {
         if (TruffleOptions.AOT) {
             throw UnsupportedMessageException.create();
         }
@@ -605,8 +608,8 @@ final class HostObject implements TruffleObject {
 
         @Specialization(guards = "receiver.isDefaultClass()")
         static Object doObjectCached(HostObject receiver, Object[] arguments,
-                        @Cached LookupConstructorNode lookupConstructor,
-                        @Cached HostExecuteNode executeMethod) throws UnsupportedMessageException, UnsupportedTypeException, ArityException {
+                        @Shared("lookupConstructor") @Cached LookupConstructorNode lookupConstructor,
+                        @Shared("hostExecute") @Cached HostExecuteNode executeMethod) throws UnsupportedMessageException, UnsupportedTypeException, ArityException {
             assert !receiver.isArrayClass();
             if (TruffleOptions.AOT) {
                 throw UnsupportedMessageException.create();
@@ -632,7 +635,7 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    boolean fitsInByte(@CachedLibrary(limit = "LIMIT") InteropLibrary numbers) {
+    boolean fitsInByte(@Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers) {
         if (isNumber()) {
             return numbers.fitsInByte(obj);
         } else {
@@ -641,7 +644,7 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    boolean fitsInShort(@CachedLibrary(limit = "LIMIT") InteropLibrary numbers) {
+    boolean fitsInShort(@Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers) {
         if (isNumber()) {
             return numbers.fitsInShort(obj);
         } else {
@@ -650,7 +653,7 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    boolean fitsInInt(@CachedLibrary(limit = "LIMIT") InteropLibrary numbers) {
+    boolean fitsInInt(@Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers) {
         if (isNumber()) {
             return numbers.fitsInInt(obj);
         } else {
@@ -659,7 +662,7 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    boolean fitsInLong(@CachedLibrary(limit = "LIMIT") InteropLibrary numbers) {
+    boolean fitsInLong(@Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers) {
         if (isNumber()) {
             return numbers.fitsInLong(obj);
         } else {
@@ -668,7 +671,7 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    boolean fitsInFloat(@CachedLibrary(limit = "LIMIT") InteropLibrary numbers) {
+    boolean fitsInFloat(@Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers) {
         if (isNumber()) {
             return numbers.fitsInFloat(obj);
         } else {
@@ -677,7 +680,7 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    boolean fitsInDouble(@CachedLibrary(limit = "LIMIT") InteropLibrary numbers) {
+    boolean fitsInDouble(@Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers) {
         if (isNumber()) {
             return numbers.fitsInDouble(obj);
         } else {
@@ -686,7 +689,7 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    byte asByte(@CachedLibrary(limit = "LIMIT") InteropLibrary numbers) throws UnsupportedMessageException {
+    byte asByte(@Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers) throws UnsupportedMessageException {
         if (isNumber()) {
             return numbers.asByte(obj);
         } else {
@@ -695,7 +698,7 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    short asShort(@CachedLibrary(limit = "LIMIT") InteropLibrary numbers) throws UnsupportedMessageException {
+    short asShort(@Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers) throws UnsupportedMessageException {
         if (isNumber()) {
             return numbers.asShort(obj);
         } else {
@@ -704,7 +707,7 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    int asInt(@CachedLibrary(limit = "LIMIT") InteropLibrary numbers) throws UnsupportedMessageException {
+    int asInt(@Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers) throws UnsupportedMessageException {
         if (isNumber()) {
             return numbers.asInt(obj);
         } else {
@@ -713,7 +716,7 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    long asLong(@CachedLibrary(limit = "LIMIT") InteropLibrary numbers) throws UnsupportedMessageException {
+    long asLong(@Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers) throws UnsupportedMessageException {
         if (isNumber()) {
             return numbers.asLong(obj);
         } else {
@@ -722,7 +725,7 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    float asFloat(@CachedLibrary(limit = "LIMIT") InteropLibrary numbers) throws UnsupportedMessageException {
+    float asFloat(@Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers) throws UnsupportedMessageException {
         if (isNumber()) {
             return numbers.asFloat(obj);
         } else {
@@ -731,7 +734,7 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    double asDouble(@CachedLibrary(limit = "LIMIT") InteropLibrary numbers) throws UnsupportedMessageException {
+    double asDouble(@Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary numbers) throws UnsupportedMessageException {
         if (isNumber()) {
             return numbers.asDouble(obj);
         } else {
@@ -749,7 +752,7 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    String asString(@CachedLibrary(limit = "LIMIT") InteropLibrary strings) throws UnsupportedMessageException {
+    String asString(@Shared("numbers") @CachedLibrary(limit = "LIMIT") InteropLibrary strings) throws UnsupportedMessageException {
         if (isString()) {
             return strings.asString(obj);
         } else {
