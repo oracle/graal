@@ -221,7 +221,8 @@ final class LegacyToLibraryNode extends Node {
     }
 
     Object sendToNative(TruffleObject receiver) throws UnsupportedMessageException {
-        return interop.toNative(receiver);
+        interop.toNative(receiver);
+        return receiver;
     }
 
     Object sendExecute(TruffleObject receiver, Object... arguments) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {

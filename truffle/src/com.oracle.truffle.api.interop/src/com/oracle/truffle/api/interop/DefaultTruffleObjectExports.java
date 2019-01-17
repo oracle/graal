@@ -319,9 +319,12 @@ class DefaultTruffleObjectExports {
     }
 
     @ExportMessage
-    static Object toNative(TruffleObject receiver,
-                    @Cached(parameters = "TO_NATIVE") InteropAccessNode toNative) throws UnsupportedMessageException {
-        return LibraryToLegacy.sendToNative(toNative, receiver);
+    static void toNative(TruffleObject receiver,
+                    @Cached(parameters = "TO_NATIVE") InteropAccessNode toNative) {
+        try {
+            LibraryToLegacy.sendToNative(toNative, receiver);
+        } catch (UnsupportedMessageException e) {
+        }
     }
 
     @ExportMessage

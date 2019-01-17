@@ -112,11 +112,11 @@ public class ProxySPILegacyTest extends AbstractPolyglotTest {
         assertUnsupported(com.oracle.truffle.api.interop.Message.READ, proxyInner);
         assertUnsupported(com.oracle.truffle.api.interop.Message.WRITE, proxyInner);
         assertUnsupported(com.oracle.truffle.api.interop.Message.REMOVE, proxyInner);
-        assertUnsupported(com.oracle.truffle.api.interop.Message.TO_NATIVE, proxyInner);
         assertUnsupported(com.oracle.truffle.api.interop.Message.UNBOX, proxyInner);
         assertUnsupported(com.oracle.truffle.api.interop.Message.INVOKE, proxyInner, "");
         assertUnsupported(com.oracle.truffle.api.interop.Message.EXECUTE, proxyInner);
         assertUnsupported(com.oracle.truffle.api.interop.Message.NEW, proxyInner);
+        assertEquals(proxyInner, com.oracle.truffle.api.interop.Message.TO_NATIVE, proxyInner);
         assertEquals(false, com.oracle.truffle.api.interop.Message.IS_BOXED, proxyInner);
         assertEquals(false, com.oracle.truffle.api.interop.Message.IS_EXECUTABLE, proxyInner);
         assertEquals(false, com.oracle.truffle.api.interop.Message.IS_INSTANTIABLE, proxyInner);
@@ -179,7 +179,7 @@ public class ProxySPILegacyTest extends AbstractPolyglotTest {
         assertUnsupported(com.oracle.truffle.api.interop.Message.KEYS, proxyInner);
         assertUnsupported(com.oracle.truffle.api.interop.Message.READ, proxyInner, "");
         assertUnsupported(com.oracle.truffle.api.interop.Message.WRITE, proxyInner, "", "");
-        assertUnsupported(com.oracle.truffle.api.interop.Message.TO_NATIVE, proxyInner);
+        assertEquals(proxyInner, com.oracle.truffle.api.interop.Message.TO_NATIVE, proxyInner);
         assertUnsupported(com.oracle.truffle.api.interop.Message.UNBOX, proxyInner);
         assertUnsupported(com.oracle.truffle.api.interop.Message.INVOKE, proxyInner, "");
         assertUnsupported(com.oracle.truffle.api.interop.Message.EXECUTE, proxyInner);
@@ -234,7 +234,7 @@ public class ProxySPILegacyTest extends AbstractPolyglotTest {
         assertUnsupported(com.oracle.truffle.api.interop.Message.READ, proxyInner, 0);
         assertUnsupported(com.oracle.truffle.api.interop.Message.WRITE, proxyInner, 1, "");
         assertUnsupported(com.oracle.truffle.api.interop.Message.UNBOX, proxyInner);
-        assertUnsupported(com.oracle.truffle.api.interop.Message.TO_NATIVE, proxyInner);
+        assertEquals(proxyInner, com.oracle.truffle.api.interop.Message.TO_NATIVE, proxyInner);
         assertUnsupported(com.oracle.truffle.api.interop.Message.AS_POINTER, proxyInner);
         assertUnsupported(com.oracle.truffle.api.interop.Message.EXECUTE, proxyInner);
         assertUnsupported(com.oracle.truffle.api.interop.Message.NEW, proxyInner);
@@ -282,7 +282,7 @@ public class ProxySPILegacyTest extends AbstractPolyglotTest {
         assertUnsupported(com.oracle.truffle.api.interop.Message.READ, proxyInner, 0);
         assertUnsupported(com.oracle.truffle.api.interop.Message.WRITE, proxyInner, 1, "");
         assertUnsupported(com.oracle.truffle.api.interop.Message.UNBOX, proxyInner);
-        assertUnsupported(com.oracle.truffle.api.interop.Message.TO_NATIVE, proxyInner);
+        assertEquals(proxyInner, com.oracle.truffle.api.interop.Message.TO_NATIVE, proxyInner);
         assertUnsupported(com.oracle.truffle.api.interop.Message.AS_POINTER, proxyInner);
         assertUnsupported(com.oracle.truffle.api.interop.Message.INVOKE, proxyInner, "", "");
         assertUnsupported(com.oracle.truffle.api.interop.Message.EXECUTE, proxyInner);
@@ -317,7 +317,7 @@ public class ProxySPILegacyTest extends AbstractPolyglotTest {
         assertUnsupported(com.oracle.truffle.api.interop.Message.KEYS, proxyInner);
         assertUnsupported(com.oracle.truffle.api.interop.Message.READ, proxyInner);
         assertUnsupported(com.oracle.truffle.api.interop.Message.WRITE, proxyInner);
-        assertUnsupported(com.oracle.truffle.api.interop.Message.TO_NATIVE, proxyInner);
+        assertEquals(proxyInner, com.oracle.truffle.api.interop.Message.TO_NATIVE, proxyInner);
         assertUnsupported(com.oracle.truffle.api.interop.Message.UNBOX, proxyInner);
         assertUnsupported(com.oracle.truffle.api.interop.Message.INVOKE, proxyInner, "");
         assertUnsupported(com.oracle.truffle.api.interop.Message.EXECUTE, proxyInner);
@@ -350,7 +350,7 @@ public class ProxySPILegacyTest extends AbstractPolyglotTest {
         assertUnsupported(com.oracle.truffle.api.interop.Message.KEYS, proxyInner);
         assertUnsupported(com.oracle.truffle.api.interop.Message.READ, proxyInner);
         assertUnsupported(com.oracle.truffle.api.interop.Message.WRITE, proxyInner);
-        assertUnsupported(com.oracle.truffle.api.interop.Message.TO_NATIVE, proxyInner);
+        assertEquals(proxyInner, com.oracle.truffle.api.interop.Message.TO_NATIVE, proxyInner);
         assertUnsupported(com.oracle.truffle.api.interop.Message.UNBOX, proxyInner);
         assertUnsupported(com.oracle.truffle.api.interop.Message.INVOKE, proxyInner, "");
         assertEquals(false, com.oracle.truffle.api.interop.Message.IS_INSTANTIABLE, proxyInner);
@@ -383,7 +383,7 @@ public class ProxySPILegacyTest extends AbstractPolyglotTest {
         assertUnsupported(com.oracle.truffle.api.interop.Message.KEYS, proxyInner);
         assertUnsupported(com.oracle.truffle.api.interop.Message.READ, proxyInner, "");
         assertUnsupported(com.oracle.truffle.api.interop.Message.WRITE, proxyInner, "", "");
-        assertUnsupported(com.oracle.truffle.api.interop.Message.TO_NATIVE, proxyInner);
+        assertEquals(proxyInner, com.oracle.truffle.api.interop.Message.TO_NATIVE, proxyInner);
         assertUnsupported(com.oracle.truffle.api.interop.Message.UNBOX, proxyInner);
         assertUnsupported(com.oracle.truffle.api.interop.Message.INVOKE, proxyInner, "");
         assertEquals(false, com.oracle.truffle.api.interop.Message.IS_BOXED, proxyInner);
@@ -479,7 +479,7 @@ public class ProxySPILegacyTest extends AbstractPolyglotTest {
         assertHostError(com.oracle.truffle.api.interop.Message.NEW, proxyInner);
         assertHostError(com.oracle.truffle.api.interop.Message.KEY_INFO, proxyInner, "");
         assertHostError(com.oracle.truffle.api.interop.Message.KEY_INFO, proxyInner, 42);
-        assertUnsupported(com.oracle.truffle.api.interop.Message.TO_NATIVE, proxyInner);
+        assertEquals(proxyInner, com.oracle.truffle.api.interop.Message.TO_NATIVE, proxyInner);
         assertEquals(false, com.oracle.truffle.api.interop.Message.IS_BOXED, proxyInner);
         assertEquals(true, com.oracle.truffle.api.interop.Message.IS_EXECUTABLE, proxyInner);
         assertEquals(true, com.oracle.truffle.api.interop.Message.IS_INSTANTIABLE, proxyInner);

@@ -42,7 +42,6 @@ package com.oracle.truffle.api.test.interop;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -634,7 +633,7 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
 
         v.pointer = 42;
         assertEquals(42, library.asPointer(v));
-        assertSame(v, library.toNative(v));
+        library.toNative(v);
 
         assertNotNull(v);
         assertNoString(v);

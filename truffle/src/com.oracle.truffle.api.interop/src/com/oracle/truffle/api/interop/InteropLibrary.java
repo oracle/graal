@@ -388,8 +388,7 @@ public abstract class InteropLibrary extends Library {
         throw UnsupportedMessageException.create();
     }
 
-    public Object toNative(Object receiver) throws UnsupportedMessageException {
-        throw UnsupportedMessageException.create();
+    public void toNative(Object receiver) {
     }
 
     /**
@@ -996,16 +995,11 @@ public abstract class InteropLibrary extends Library {
         }
 
         @Override
-        public Object toNative(Object receiver) throws UnsupportedMessageException {
+        public void toNative(Object receiver) {
             assert preCondition(receiver);
-            try {
-                Object result = delegate.toNative(receiver);
-                assert validReturn(receiver, result);
-                return result;
-            } catch (InteropException e) {
-                assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
-                throw e;
-            }
+            boolean wasPointer = delegate.isPointer(receiver);
+            delegate.toNative(receiver);
+            assert !wasPointer || delegate.isPointer(receiver) : violationInvariant(receiver);
         }
 
         @Override

@@ -132,7 +132,7 @@ public abstract class InteropLibraryBaseTest {
         InteropLibrary lib = createLibrary(InteropLibrary.class, value);
         assertFalse(lib.isPointer(value));
         assertUnsupported(() -> lib.asPointer(value));
-        assertUnsupported(() -> lib.toNative(value));
+        lib.toNative(value); // must not fail.
     }
 
     protected final void assertNoObject(Object value) {

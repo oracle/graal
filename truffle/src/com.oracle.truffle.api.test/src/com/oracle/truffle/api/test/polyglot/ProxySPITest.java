@@ -121,7 +121,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertUnsupported(() -> INTEROP.readArrayElement(proxyInner, 0));
         assertUnsupported(() -> INTEROP.removeArrayElement(proxyInner, 0));
         assertUnsupported(() -> INTEROP.writeArrayElement(proxyInner, 0, ""));
-        assertUnsupported(() -> INTEROP.toNative(proxyInner));
+        INTEROP.toNative(proxyInner);
         assertUnsupported(() -> INTEROP.invokeMember(proxyInner, ""));
         assertUnsupported(() -> INTEROP.execute(proxyInner));
         assertUnsupported(() -> INTEROP.instantiate(proxyInner));
@@ -165,7 +165,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertUnsupported(() -> INTEROP.readMember(proxyInner, ""));
         assertUnsupported(() -> INTEROP.writeMember(proxyInner, "", ""));
         assertUnsupported(() -> INTEROP.removeMember(proxyInner, ""));
-        assertUnsupported(() -> INTEROP.toNative(proxyInner));
+        INTEROP.toNative(proxyInner);
         assertUnsupported(() -> INTEROP.invokeMember(proxyInner, ""));
         assertUnsupported(() -> INTEROP.execute(proxyInner));
         assertUnsupported(() -> INTEROP.instantiate(proxyInner));
@@ -235,7 +235,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertUnsupported(() -> INTEROP.readArrayElement(proxyInner, 0));
         assertUnsupported(() -> INTEROP.removeArrayElement(proxyInner, 0));
         assertUnsupported(() -> INTEROP.writeArrayElement(proxyInner, 0, ""));
-        assertUnsupported(() -> INTEROP.toNative(proxyInner));
+        INTEROP.toNative(proxyInner);
         assertUnsupported(() -> INTEROP.execute(proxyInner));
         assertUnsupported(() -> INTEROP.instantiate(proxyInner));
 
@@ -304,7 +304,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertUnsupported(() -> INTEROP.readArrayElement(proxyInner, 0));
         assertUnsupported(() -> INTEROP.removeArrayElement(proxyInner, 0));
         assertUnsupported(() -> INTEROP.writeArrayElement(proxyInner, 0, ""));
-        assertUnsupported(() -> INTEROP.toNative(proxyInner));
+        INTEROP.toNative(proxyInner);
         assertUnsupported(() -> INTEROP.invokeMember(proxyInner, ""));
         assertUnsupported(() -> INTEROP.execute(proxyInner));
         assertUnsupported(() -> INTEROP.instantiate(proxyInner));
@@ -339,7 +339,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertUnsupported(() -> INTEROP.readArrayElement(proxyInner, 0));
         assertUnsupported(() -> INTEROP.removeArrayElement(proxyInner, 0));
         assertUnsupported(() -> INTEROP.writeArrayElement(proxyInner, 0, ""));
-        assertUnsupported(() -> INTEROP.toNative(proxyInner));
+        INTEROP.toNative(proxyInner);
         assertUnsupported(() -> INTEROP.invokeMember(proxyInner, ""));
         assertUnsupported(() -> INTEROP.execute(proxyInner));
         assertUnsupported(() -> INTEROP.instantiate(proxyInner));
@@ -374,7 +374,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertUnsupported(() -> INTEROP.readArrayElement(proxyInner, 0));
         assertUnsupported(() -> INTEROP.removeArrayElement(proxyInner, 0));
         assertUnsupported(() -> INTEROP.writeArrayElement(proxyInner, 0, ""));
-        assertUnsupported(() -> INTEROP.toNative(proxyInner));
+        INTEROP.toNative(proxyInner);
         assertUnsupported(() -> INTEROP.invokeMember(proxyInner, ""));
         assertUnsupported(() -> INTEROP.instantiate(proxyInner));
 
@@ -411,7 +411,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertUnsupported(() -> INTEROP.readArrayElement(proxyInner, 0));
         assertUnsupported(() -> INTEROP.removeArrayElement(proxyInner, 0));
         assertUnsupported(() -> INTEROP.writeArrayElement(proxyInner, 0, ""));
-        assertUnsupported(() -> INTEROP.toNative(proxyInner));
+        INTEROP.toNative(proxyInner);
         assertUnsupported(() -> INTEROP.invokeMember(proxyInner, ""));
         assertUnsupported(() -> INTEROP.execute(proxyInner));
 
@@ -508,7 +508,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertHostError(() -> INTEROP.readArrayElement(proxyInner, 0));
         assertHostError(() -> INTEROP.removeArrayElement(proxyInner, 0));
         assertHostError(() -> INTEROP.writeArrayElement(proxyInner, 0, ""));
-        assertUnsupported(() -> INTEROP.toNative(proxyInner));
+        INTEROP.toNative(proxyInner);
         assertHostError(() -> INTEROP.invokeMember(proxyInner, ""));
         assertHostError(() -> INTEROP.execute(proxyInner));
         assertHostError(() -> INTEROP.instantiate(proxyInner));
