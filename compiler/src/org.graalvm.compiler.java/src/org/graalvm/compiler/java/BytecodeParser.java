@@ -4240,13 +4240,10 @@ public class BytecodeParser implements GraphBuilderContext {
             return;
         }
 
-        ResolvedJavaType[] skippedExceptionTypes = this.graphBuilderConfig.getSkippedExceptionTypes();
-        if (skippedExceptionTypes != null) {
-            for (ResolvedJavaType exceptionType : skippedExceptionTypes) {
-                if (exceptionType.isAssignableFrom(resolvedType)) {
-                    append(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, RuntimeConstraint));
-                    return;
-                }
+        for (ResolvedJavaType exceptionType : this.graphBuilderConfig.getSkippedExceptionTypes()) {
+            if (exceptionType.isAssignableFrom(resolvedType)) {
+                append(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, RuntimeConstraint));
+                return;
             }
         }
 
