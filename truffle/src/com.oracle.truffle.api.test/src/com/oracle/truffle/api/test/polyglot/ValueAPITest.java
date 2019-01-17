@@ -842,7 +842,7 @@ public class ValueAPITest {
 
             @SuppressWarnings("static-method")
             @ExportMessage
-            boolean isArray() {
+            boolean hasArrayElements() {
                 return true;
             }
 

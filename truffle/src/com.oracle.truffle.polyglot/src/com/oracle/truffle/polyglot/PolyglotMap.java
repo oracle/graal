@@ -473,7 +473,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                     if (isObjectKey(key)) {
                         return interop.isMemberReadable(receiver, ((String) key));
                     }
-                } else if (cache.numberKey && interop.isArray(receiver)) {
+                } else if (cache.numberKey && interop.hasArrayElements(receiver)) {
                     if (isArrayKey(key)) {
                         return interop.isElementReadable(receiver, ((Number) key).intValue());
                     }
@@ -515,7 +515,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                     }
                     keys = PolyglotList.create(languageContext, truffleKeys, false, String.class, null);
                     keysSize = keys.size();
-                } else if (cache.numberKey && interop.isArray(receiver)) {
+                } else if (cache.numberKey && interop.hasArrayElements(receiver)) {
                     try {
                         elemSize = interop.getArraySize(receiver);
                     } catch (UnsupportedMessageException e) {
@@ -557,7 +557,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                         } else {
                             return null;
                         }
-                    } else if (cache.numberKey && interop.isArray(receiver)) {
+                    } else if (cache.numberKey && interop.hasArrayElements(receiver)) {
                         if (isArrayKey(key)) {
                             result = interop.readElement(receiver, ((Number) key).intValue());
                         } else {
@@ -600,7 +600,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                             interop.writeMember(receiver, ((String) key), guestValue);
                             return null;
                         }
-                    } else if (cache.numberKey && interop.isArray(receiver)) {
+                    } else if (cache.numberKey && interop.hasArrayElements(receiver)) {
                         if (isArrayKey(key)) {
                             interop.writeElement(receiver, ((Number) key).intValue(), guestValue);
                             return null;
@@ -647,7 +647,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                             interop.removeMember(receiver, ((String) key));
                             return null;
                         }
-                    } else if (cache.numberKey && interop.isArray(receiver)) {
+                    } else if (cache.numberKey && interop.hasArrayElements(receiver)) {
                         if (isArrayKey(key)) {
                             interop.removeElement(receiver, ((Number) key).intValue());
                             return null;
@@ -698,7 +698,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                             interop.removeMember(receiver, ((String) key));
                             return true;
                         }
-                    } else if (cache.numberKey && interop.isArray(receiver)) {
+                    } else if (cache.numberKey && interop.hasArrayElements(receiver)) {
                         if (isArrayKey(key)) {
                             int index = ((Number) key).intValue();
                             Object readValue = interop.readElement(receiver, index);

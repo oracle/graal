@@ -849,7 +849,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
             @Specialization(limit = "CACHE_LIMIT")
             static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
                             @CachedLibrary("receiver") InteropLibrary arrays) {
-                return arrays.isArray(receiver);
+                return arrays.hasArrayElements(receiver);
             }
 
         }

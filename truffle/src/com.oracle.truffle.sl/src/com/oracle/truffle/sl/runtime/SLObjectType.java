@@ -159,7 +159,7 @@ public final class SLObjectType extends ObjectType {
 
         @SuppressWarnings("static-method")
         @ExportMessage
-        boolean isArray() {
+        boolean hasArrayElements() {
             return true;
         }
 

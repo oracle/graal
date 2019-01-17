@@ -117,7 +117,7 @@ public abstract class InteropLibraryBaseTest {
 
     protected final void assertNoArray(Object value) {
         InteropLibrary lib = createLibrary(InteropLibrary.class, value);
-        assertFalse(lib.isArray(value));
+        assertFalse(lib.hasArrayElements(value));
         assertFalse(lib.isElementInsertable(value, 0L));
         assertFalse(lib.isElementModifiable(value, 0L));
         assertFalse(lib.isElementReadable(value, 0L));

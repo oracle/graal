@@ -266,7 +266,7 @@ public abstract class DebugValue {
         if (!isReadable()) {
             return false;
         }
-        return INTEROP.isArray(get());
+        return INTEROP.hasArrayElements(get());
     }
 
     /**
@@ -283,7 +283,7 @@ public abstract class DebugValue {
             return null;
         }
         Object value = get();
-        if (INTEROP.isArray(value)) {
+        if (INTEROP.hasArrayElements(value)) {
             return new ValueInteropList(getDebugger(), resolveLanguage(), value);
         }
         return null;

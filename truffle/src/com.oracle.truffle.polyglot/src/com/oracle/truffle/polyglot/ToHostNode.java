@@ -268,11 +268,11 @@ abstract class ToHostNode extends Node {
             } else if (HostObject.isJavaInstance(targetType, value)) {
                 return true;
             } else if (targetType == List.class) {
-                return interop.isArray(value);
+                return interop.hasArrayElements(value);
             } else if (targetType == Map.class) {
                 return interop.hasMembers(value);
             } else if (targetType.isArray()) {
-                return interop.isArray(value);
+                return interop.hasArrayElements(value);
             } else if (priority < HOST_PROXY && HostObject.isInstance(value)) {
                 return false;
             } else {
@@ -333,7 +333,7 @@ abstract class ToHostNode extends Node {
                 // fallthrough
             } else if (interop.hasMembers(value)) {
                 return asJavaObject(value, Map.class, null, languageContext, interop);
-            } else if (interop.isArray(value)) {
+            } else if (interop.hasArrayElements(value)) {
                 return asJavaObject(value, List.class, null, languageContext, interop);
             } else if (interop.isExecutable(value) || interop.isInstantiable(value)) {
                 return asJavaObject(value, Function.class, null, languageContext, interop);
@@ -380,7 +380,7 @@ abstract class ToHostNode extends Node {
         } else if (targetType == Object.class) {
             obj = convertToObject(value, languageContext, interop);
         } else if (targetType == List.class) {
-            if (interop.isArray(value)) {
+            if (interop.hasArrayElements(value)) {
                 boolean implementsFunction = shouldImplementFunction(value, interop);
                 TypeAndClass<?> elementType = getGenericParameterType(genericType, 0);
                 obj = PolyglotList.create(languageContext, value, implementsFunction, elementType.clazz, elementType.type);
@@ -393,7 +393,7 @@ abstract class ToHostNode extends Node {
             if (!isSupportedMapKeyType(keyClazz)) {
                 throw newInvalidKeyTypeException(keyClazz);
             }
-            boolean hasSize = (Number.class.isAssignableFrom(keyClazz)) && interop.isArray(value);
+            boolean hasSize = (Number.class.isAssignableFrom(keyClazz)) && interop.hasArrayElements(value);
             boolean hasKeys = (keyClazz == Object.class || keyClazz == String.class) && interop.hasMembers(value);
             if (hasKeys || hasSize) {
                 boolean implementsFunction = shouldImplementFunction(value, interop);
@@ -411,7 +411,7 @@ abstract class ToHostNode extends Node {
                 throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must be executable or instantiable.");
             }
         } else if (targetType.isArray()) {
-            if (interop.isArray(value)) {
+            if (interop.hasArrayElements(value)) {
                 obj = truffleObjectToArray(value, targetType, genericType, languageContext);
             } else {
                 throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have array elements.");

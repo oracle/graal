@@ -250,7 +250,7 @@ final class LegacyToLibraryNode extends Node {
     }
 
     boolean sendHasSize(TruffleObject receiver) {
-        return interop.isArray(receiver);
+        return interop.hasArrayElements(receiver);
     }
 
     Object sendGetSize(TruffleObject receiver) throws UnsupportedMessageException {

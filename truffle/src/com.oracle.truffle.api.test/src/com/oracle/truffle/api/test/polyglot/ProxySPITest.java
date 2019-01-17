@@ -131,7 +131,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertFalse(INTEROP.isInstantiable(proxyInner));
         assertFalse(INTEROP.isNull(proxyInner));
         assertFalse(INTEROP.hasMembers(proxyInner));
-        assertFalse(INTEROP.isArray(proxyInner));
+        assertFalse(INTEROP.hasArrayElements(proxyInner));
         assertFalse(INTEROP.isPointer(proxyInner));
     }
 
@@ -177,7 +177,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertFalse(INTEROP.hasMembers(proxyInner));
         assertFalse(INTEROP.isPointer(proxyInner));
 
-        assertTrue(INTEROP.isArray(proxyInner));
+        assertTrue(INTEROP.hasArrayElements(proxyInner));
 
         assertEquals(size, INTEROP.getArraySize(proxyInner));
         for (int i = 0; i < size; i++) {
@@ -216,7 +216,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
         ProxyArray proxyOuter = ProxyArray.fromList(list);
         Object proxyInner = toInnerProxy(proxyOuter);
 
-        assertTrue(INTEROP.isArray(proxyInner));
+        assertTrue(INTEROP.hasArrayElements(proxyInner));
         assertEquals(size, INTEROP.getArraySize(proxyInner));
         INTEROP.removeElement(proxyInner, 10);
         assertEquals(size - 1, INTEROP.getArraySize(proxyInner));
@@ -243,7 +243,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertFalse(INTEROP.isExecutable(proxyInner));
         assertFalse(INTEROP.isInstantiable(proxyInner));
         assertFalse(INTEROP.isNull(proxyInner));
-        assertFalse(INTEROP.isArray(proxyInner));
+        assertFalse(INTEROP.hasArrayElements(proxyInner));
         assertFalse(INTEROP.isPointer(proxyInner));
 
         assertTrue(INTEROP.hasMembers(proxyInner));
@@ -315,7 +315,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertFalse(INTEROP.isInstantiable(proxyInner));
         assertFalse(INTEROP.isNull(proxyInner));
         assertTrue(INTEROP.hasMembers(proxyInner));
-        assertFalse(INTEROP.isArray(proxyInner));
+        assertFalse(INTEROP.hasArrayElements(proxyInner));
         assertFalse(INTEROP.isPointer(proxyInner));
     }
 
@@ -349,7 +349,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertFalse(INTEROP.isInstantiable(proxyInner));
         assertFalse(INTEROP.isNull(proxyInner));
         assertFalse(INTEROP.hasMembers(proxyInner));
-        assertFalse(INTEROP.isArray(proxyInner));
+        assertFalse(INTEROP.hasArrayElements(proxyInner));
 
         assertTrue(INTEROP.isPointer(proxyInner));
         assertEquals(42L, INTEROP.asPointer(proxyInner));
@@ -382,7 +382,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertFalse(INTEROP.isInstantiable(proxyInner));
         assertFalse(INTEROP.isNull(proxyInner));
         assertFalse(INTEROP.hasMembers(proxyInner));
-        assertFalse(INTEROP.isArray(proxyInner));
+        assertFalse(INTEROP.hasArrayElements(proxyInner));
         assertFalse(INTEROP.isPointer(proxyInner));
 
         assertTrue(INTEROP.isExecutable(proxyInner));
@@ -419,7 +419,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertFalse(INTEROP.isExecutable(proxyInner));
         assertFalse(INTEROP.isNull(proxyInner));
         assertFalse(INTEROP.hasMembers(proxyInner));
-        assertFalse(INTEROP.isArray(proxyInner));
+        assertFalse(INTEROP.hasArrayElements(proxyInner));
         assertFalse(INTEROP.isPointer(proxyInner));
 
         assertTrue(INTEROP.isInstantiable(proxyInner));
@@ -530,13 +530,13 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertTrue(INTEROP.isInstantiable(proxyInner));
         assertFalse(INTEROP.isNull(proxyInner));
         assertTrue(INTEROP.hasMembers(proxyInner));
-        assertTrue(INTEROP.isArray(proxyInner));
+        assertTrue(INTEROP.hasArrayElements(proxyInner));
         assertTrue(INTEROP.isPointer(proxyInner));
     }
 
     private static void assertEmpty(Object proxyInner) {
         try {
-            assertTrue(INTEROP.isArray(proxyInner));
+            assertTrue(INTEROP.hasArrayElements(proxyInner));
             assertEquals(0L, INTEROP.getArraySize(proxyInner));
         } catch (InteropException e) {
             Assert.fail();

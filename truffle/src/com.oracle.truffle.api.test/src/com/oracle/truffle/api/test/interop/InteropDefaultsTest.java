@@ -445,9 +445,9 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
         ArrayDefaults v = new ArrayDefaults(array);
         InteropLibrary library = createLibrary(InteropLibrary.class, v);
 
-        assertTrue(library.isArray(v));
+        assertTrue(library.hasArrayElements(v));
         v.hasSize = false;
-        assertFalse(library.isArray(v));
+        assertFalse(library.hasArrayElements(v));
         v.hasSize = true;
 
         v.keyInfo = com.oracle.truffle.api.interop.KeyInfo.READABLE;

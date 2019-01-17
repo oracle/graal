@@ -177,7 +177,7 @@ public final class DebugScope {
                 if (properties != null) {
                     return properties;
                 }
-                if (ValueInteropList.INTEROP.isArray(argumentsObj)) {
+                if (ValueInteropList.INTEROP.hasArrayElements(argumentsObj)) {
                     return new ValueInteropList(debugger, getLanguage(), argumentsObj);
                 }
             }

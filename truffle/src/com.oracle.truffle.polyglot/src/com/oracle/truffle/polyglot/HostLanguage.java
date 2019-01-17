@@ -387,7 +387,7 @@ class HostLanguage extends TruffleLanguage<HostContext> {
 
         @SuppressWarnings("static-method")
         @ExportMessage
-        boolean isArray() {
+        boolean hasArrayElements() {
             return true;
         }
 

@@ -904,7 +904,7 @@ public class SLInstrumentTest {
 
         @SuppressWarnings("static-method")
         @ExportMessage
-        boolean isArray() {
+        boolean hasArrayElements() {
             return true;
         }
 

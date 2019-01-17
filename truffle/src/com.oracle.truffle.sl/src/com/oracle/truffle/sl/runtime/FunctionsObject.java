@@ -96,7 +96,7 @@ final class FunctionsObject implements TruffleObject {
         }
 
         @ExportMessage
-        boolean isArray() {
+        boolean hasArrayElements() {
             return true;
         }
 

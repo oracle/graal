@@ -228,7 +228,7 @@ class DefaultTruffleObjectExports {
     }
 
     @ExportMessage
-    static boolean isArray(TruffleObject receiver,
+    static boolean hasArrayElements(TruffleObject receiver,
                     @Cached(parameters = "HAS_SIZE") InteropAccessNode hasSize) {
         return LibraryToLegacy.sendHasSize(hasSize, receiver);
     }

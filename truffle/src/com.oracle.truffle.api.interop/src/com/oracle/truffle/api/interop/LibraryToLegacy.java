@@ -271,7 +271,7 @@ final class LibraryToLegacy {
             try {
                 if (identifier instanceof Number) {
                     InteropLibrary uncached = InteropLibrary.resolve().getUncached(receiver);
-                    boolean hasSize = uncached.isArray(receiver);
+                    boolean hasSize = uncached.hasArrayElements(receiver);
                     if (hasSize) {
                         int id = ((Number) identifier).intValue();
                         if (id < 0 || id != ((Number) identifier).doubleValue()) {

@@ -54,6 +54,6 @@ public abstract class SLHasSizeBuiltin extends SLBuiltinNode {
 
     @Specialization(limit = "3")
     public boolean hasSize(Object obj, @CachedLibrary("obj") InteropLibrary arrays) {
-        return arrays.isArray(obj);
+        return arrays.hasArrayElements(obj);
     }
 }

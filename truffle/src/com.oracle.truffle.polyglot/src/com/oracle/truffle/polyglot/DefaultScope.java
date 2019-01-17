@@ -246,7 +246,7 @@ final class DefaultScope {
 
         @SuppressWarnings("static-method")
         @ExportMessage
-        boolean isArray() {
+        boolean hasArrayElements() {
             return true;
         }
 
@@ -284,7 +284,7 @@ final class DefaultScope {
 
         @SuppressWarnings("static-method")
         @ExportMessage
-        boolean isArray() {
+        boolean hasArrayElements() {
             return true;
         }
 

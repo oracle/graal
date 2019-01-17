@@ -361,7 +361,7 @@ final class HostObject implements TruffleObject {
             return index >= 0 && index < size;
         }
 
-        @Specialization(guards = "!receiver.isArray()")
+        @Specialization(guards = "!receiver.hasArrayElements()")
         static boolean doOther(HostObject receiver, long index) {
             return false;
         }
@@ -418,7 +418,7 @@ final class HostObject implements TruffleObject {
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"!receiver.isArray()"})
+        @Specialization(guards = {"!receiver.hasArrayElements()"})
         static void doNotArrayOrList(HostObject receiver, long index, Object value) throws UnsupportedMessageException {
             throw UnsupportedMessageException.create();
         }
@@ -460,7 +460,7 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    boolean isArray() {
+    boolean hasArrayElements() {
         return isHostArray() || obj instanceof List<?>;
     }
 
@@ -501,7 +501,7 @@ final class HostObject implements TruffleObject {
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"!receiver.isArray()", "!receiver.isList()"})
+        @Specialization(guards = {"!receiver.hasArrayElements()", "!receiver.isList()"})
         protected static Object doNotArrayOrList(HostObject receiver, long index) throws UnsupportedMessageException {
             throw UnsupportedMessageException.create();
         }

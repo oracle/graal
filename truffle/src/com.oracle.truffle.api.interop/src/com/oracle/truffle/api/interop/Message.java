@@ -493,7 +493,7 @@ public abstract class Message {
      * @since 0.8 or earlier
      * @see ForeignAccess#sendHasSize(com.oracle.truffle.api.nodes.Node,
      *      com.oracle.truffle.api.interop.TruffleObject)
-     * @deprecated use {@link ArrayLibrary#isArray(Object)} instead. See {@link InteropLibrary} for
+     * @deprecated use {@link ArrayLibrary#hasArrayElements(Object)} instead. See {@link InteropLibrary} for
      *             an overview of the new interop messages.
      */
     @Deprecated public static final Message HAS_SIZE = HasSize.INSTANCE;
@@ -581,7 +581,7 @@ public abstract class Message {
      *             {@link ObjectLibrary#isMemberInsertable(Object, String)},
      *             {@link ObjectLibrary#isMemberRemovable(Object, String)} or
      *             {@link ObjectLibrary#isMemberInternal(Object, String)} instead. For
-     *             {@link ArrayLibrary#isArray(Object) arras} use
+     *             {@link ArrayLibrary#hasArrayElements(Object) arras} use
      *             {@link ArrayLibrary#isElementReadable(Object, long)},
      *             {@link ArrayLibrary#isElementWritable(Object, long)},
      *             {@link ArrayLibrary#isElementInsertable(Object, long)} instead. See

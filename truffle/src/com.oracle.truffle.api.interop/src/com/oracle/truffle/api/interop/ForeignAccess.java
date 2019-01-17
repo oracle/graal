@@ -656,7 +656,7 @@ public final class ForeignAccess {
      * @throws ClassCastException if the createNode has not been created by
      *             {@link Message#createNode()} method.
      * @since 0.24
-     * @deprecated use {@link ArrayLibrary#isArray(Object)} instead. See {@link InteropLibrary} for
+     * @deprecated use {@link ArrayLibrary#hasArrayElements(Object)} instead. See {@link InteropLibrary} for
      *             an overview of the new interop messages.
      */
     @Deprecated
@@ -755,7 +755,7 @@ public final class ForeignAccess {
      *             {@link ObjectLibrary#isMemberInsertable(Object, String)},
      *             {@link ObjectLibrary#isMemberRemovable(Object, String)} or
      *             {@link ObjectLibrary#isMemberInternal(Object, String)} instead. For
-     *             {@link ArrayLibrary#isArray(Object) arras} use
+     *             {@link ArrayLibrary#hasArrayElements(Object) arras} use
      *             {@link ArrayLibrary#isElementReadable(Object, long)},
      *             {@link ArrayLibrary#isElementWritable(Object, long)},
      *             {@link ArrayLibrary#isElementInsertable(Object, long)} instead. See
