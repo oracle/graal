@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,37 +36,32 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
-import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateStructNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
-import com.oracle.truffle.llvm.runtime.types.StructureType;
 
-public final class NativeAllocateStructNode extends LLVMNode implements LLVMAllocateStructNode {
-
-    private final long size;
+public final class NativeFreeStructNode extends LLVMNode implements LLVMMemoryOpNode {
 
     @Child Node execute;
     @Child LLVMToNativeNode toNative;
 
-    private final TruffleObject allocateGlobalsBlock;
+    private final TruffleObject freeGlobalsBlock;
 
-    public NativeAllocateStructNode(LLVMContext context, StructureType type) {
-        this.size = context.getByteSize(type);
+    public NativeFreeStructNode(LLVMContext context) {
         this.execute = Message.EXECUTE.createNode();
         this.toNative = LLVMToNativeNode.createToNativeWithTarget();
 
         NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
-        this.allocateGlobalsBlock = nfiContextExtension.getNativeFunction(context, "@__sulong_allocate_globals_block", "(UINT64):POINTER");
+        this.freeGlobalsBlock = nfiContextExtension.getNativeFunction(context, "@__sulong_free_globals_block", "(POINTER):VOID");
     }
 
     @Override
-    public LLVMPointer executeWithTarget() {
+    public void execute(LLVMPointer ptr) {
         try {
-            Object ret = ForeignAccess.sendExecute(execute, allocateGlobalsBlock, size);
-            return toNative.executeWithTarget(ret);
+            ForeignAccess.sendExecute(execute, freeGlobalsBlock, ptr);
         } catch (InteropException ex) {
-            throw new OutOfMemoryError("could not allocate globals block");
+            assert false; // should never happen, but probably also safe to ignore
         }
     }
 }

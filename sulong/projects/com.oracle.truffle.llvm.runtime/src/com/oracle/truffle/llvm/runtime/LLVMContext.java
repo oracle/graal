@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -49,10 +49,13 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ControlFlowException;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
@@ -62,6 +65,7 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
@@ -283,14 +287,20 @@ public final class LLVMContext {
         threadingStack.freeMainStack(memory);
 
         // free the space allocated for non-pointer globals
-        LLVMIntrinsicProvider provider = getContextExtension(LLVMIntrinsicProvider.class);
-        RootCallTarget free = provider.generateIntrinsicTarget("@free", 2);
+        Truffle.getRuntime().createCallTarget(new RootNode(language) {
 
-        for (LLVMPointer store : globalsNonPointerStore) {
-            if (store != null) {
-                free.call(-1, store);
+            @Child LLVMMemoryOpNode free = nodeFactory.createFreeGlobalsBlock();
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                for (LLVMPointer store : globalsNonPointerStore) {
+                    if (store != null) {
+                        free.execute(store);
+                    }
+                }
+                return null;
             }
-        }
+        }).call();
 
         // free the space which might have been when putting pointer-type globals into native memory
         for (LLVMPointer pointer : globalsReverseMap.keySet()) {
@@ -626,8 +636,11 @@ public final class LLVMContext {
         return globalsReverseMap.get(pointer);
     }
 
-    public void registerGlobals(LLVMPointer nonPointerStore, HashMap<LLVMPointer, LLVMGlobal> reverseMap) {
+    public void registerGlobals(LLVMPointer nonPointerStore) {
         globalsNonPointerStore.add(nonPointerStore);
+    }
+
+    public void registerGlobalsReverseMap(HashMap<LLVMPointer, LLVMGlobal> reverseMap) {
         globalsReverseMap.putAll(reverseMap);
     }
 

@@ -48,6 +48,7 @@ import com.oracle.truffle.llvm.runtime.interop.export.InteropNodeFactory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateStructNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion.UniquesRegionAllocator;
 import com.oracle.truffle.llvm.runtime.memory.VarargsAreaStackAllocationNode;
@@ -233,7 +234,11 @@ public interface NodeFactory extends InteropNodeFactory {
 
     LLVMMemSetNode createMemSet();
 
-    LLVMAllocateStructNode createAllocateStruct(StructureType structType);
+    LLVMAllocateStructNode createAllocateGlobalsBlock(StructureType structType);
+
+    LLVMMemoryOpNode createProtectGlobalsBlock();
+
+    LLVMMemoryOpNode createFreeGlobalsBlock();
 
     LLVMExpressionNode createStackSave(LLVMSourceLocation sourceSection);
 

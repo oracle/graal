@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -99,6 +99,7 @@ import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension.NativeLookupResult;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension.NativePointerIntoLibrary;
+import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.SystemContextExtension;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
@@ -394,65 +395,126 @@ public final class Runner {
         }
     }
 
+    private abstract static class AllocGlobalNode extends LLVMNode {
+
+        final String name;
+
+        AllocGlobalNode(GlobalVariable global) {
+            this.name = global.getName();
+        }
+
+        abstract LLVMPointer allocate(LLVMPointer roBase, LLVMPointer rwBase);
+    }
+
+    private static final class AllocPointerGlobalNode extends AllocGlobalNode {
+
+        AllocPointerGlobalNode(GlobalVariable global) {
+            super(global);
+        }
+
+        @Override
+        LLVMPointer allocate(LLVMPointer roBase, LLVMPointer rwBase) {
+            return LLVMManagedPointer.create(new LLVMGlobalContainer());
+        }
+    }
+
+    private static final class AllocOtherGlobalNode extends AllocGlobalNode {
+
+        final boolean readOnly;
+        final long offset;
+
+        AllocOtherGlobalNode(GlobalVariable global, Type type, DataSection roSection, DataSection rwSection) {
+            super(global);
+            this.readOnly = global.isReadOnly();
+
+            DataSection dataSection = readOnly ? roSection : rwSection;
+            this.offset = dataSection.add(global, type);
+        }
+
+        @Override
+        LLVMPointer allocate(LLVMPointer roBase, LLVMPointer rwBase) {
+            LLVMPointer base = readOnly ? roBase : rwBase;
+            return base.increment(offset);
+        }
+    }
+
+    private static final class DataSection {
+
+        final DataLayout dataLayout;
+        final ArrayList<Type> types = new ArrayList<>();
+
+        private int offset = 0;
+
+        DataSection(DataLayout dataLayout) {
+            this.dataLayout = dataLayout;
+        }
+
+        long add(GlobalVariable global, Type type) {
+            int alignment = getAlignment(dataLayout, global, type);
+            int padding = Type.getPadding(offset, alignment);
+            addPaddingTypes(types, padding);
+            offset += padding;
+            long ret = offset;
+            types.add(type);
+            offset += type.getSize(dataLayout);
+            return ret;
+        }
+
+        LLVMPointer allocate(NodeFactory factory, String typeName) {
+            if (offset > 0) {
+                StructureType structType = new StructureType(typeName, true, types.toArray(Type.EMPTY_ARRAY));
+                LLVMAllocateStructNode allocationNode = factory.createAllocateGlobalsBlock(structType);
+                return allocationNode.executeWithTarget();
+            } else {
+                return null;
+            }
+        }
+    }
+
     private void allocateGlobals(LLVMParserResult res) {
         DataLayout dataLayout = context.getDataSpecConverter();
 
-        // allocate all non-pointer types as one struct
-        ArrayList<Type> nonPointerTypes = getNonPointerTypes(res, dataLayout);
-        StructureType structType = new StructureType("globals_struct", true, nonPointerTypes.toArray(Type.EMPTY_ARRAY));
-        LLVMAllocateStructNode allocationNode = context.getNodeFactory().createAllocateStruct(structType);
-        LLVMPointer nonPointerStore = allocationNode.executeWithTarget();
-        LLVMScope fileScope = res.getRuntime().getFileScope();
-
-        HashMap<LLVMPointer, LLVMGlobal> reverseMap = new HashMap<>();
-        int nonPointerOffset = 0;
+        // allocate all non-pointer types as two structs, one for read-only and one for read-write
+        DataSection roSection = new DataSection(dataLayout);
+        DataSection rwSection = new DataSection(dataLayout);
+        ArrayList<AllocGlobalNode> allocGlobals = new ArrayList<>();
         for (GlobalVariable global : res.getDefinedGlobals()) {
             Type type = global.getType().getPointeeType();
-            LLVMPointer ref;
-            if (isSpecialGlobalSlot(global.getType().getPointeeType())) {
-                ref = LLVMManagedPointer.create(new LLVMGlobalContainer());
+            if (isSpecialGlobalSlot(type)) {
+                allocGlobals.add(new AllocPointerGlobalNode(global));
             } else {
                 // allocate at least one byte per global (to make the pointers unique)
                 if (type.getSize(dataLayout) == 0) {
                     type = PrimitiveType.getIntegerType(8);
                 }
-                int alignment = getAlignment(dataLayout, global, type);
-                nonPointerOffset += Type.getPadding(nonPointerOffset, alignment);
-                ref = nonPointerStore.increment(nonPointerOffset);
-                nonPointerOffset += type.getSize(dataLayout);
+                allocGlobals.add(new AllocOtherGlobalNode(global, type, roSection, rwSection));
             }
+        }
 
-            LLVMGlobal descriptor = fileScope.getGlobalVariable(global.getName());
+        LLVMPointer roBase = roSection.allocate(context.getNodeFactory(), "roglobals_struct");
+        LLVMPointer rwBase = rwSection.allocate(context.getNodeFactory(), "rwglobals_struct");
+
+        LLVMScope fileScope = res.getRuntime().getFileScope();
+        HashMap<LLVMPointer, LLVMGlobal> reverseMap = new HashMap<>();
+
+        for (AllocGlobalNode allocGlobal : allocGlobals) {
+            LLVMGlobal descriptor = fileScope.getGlobalVariable(allocGlobal.name);
             if (!descriptor.isInitialized()) {
                 // because of our symbol overriding support, it can happen that the global was
                 // already bound before to a different target location
+                LLVMPointer ref = allocGlobal.allocate(roBase, rwBase);
                 descriptor.setTarget(ref);
                 reverseMap.put(ref, descriptor);
             }
         }
 
-        context.registerGlobals(nonPointerStore, reverseMap);
-    }
-
-    private static ArrayList<Type> getNonPointerTypes(LLVMParserResult res, DataLayout dataLayout) {
-        ArrayList<Type> result = new ArrayList<>();
-        int nonPointerOffset = 0;
-        for (GlobalVariable global : res.getDefinedGlobals()) {
-            Type type = global.getType().getPointeeType();
-            if (!isSpecialGlobalSlot(type)) {
-                // allocate at least one byte per global (to make the pointers unique)
-                if (type.getSize(dataLayout) == 0) {
-                    type = PrimitiveType.getIntegerType(8);
-                }
-                int alignment = getAlignment(dataLayout, global, type);
-                int padding = Type.getPadding(nonPointerOffset, alignment);
-                addPaddingTypes(result, padding);
-                nonPointerOffset += padding;
-                result.add(type);
-                nonPointerOffset += type.getSize(dataLayout);
-            }
+        if (roBase != null) {
+            context.registerGlobals(roBase);
         }
-        return result;
+        if (rwBase != null) {
+            context.registerGlobals(rwBase);
+        }
+        context.registerGlobalsReverseMap(reverseMap);
     }
 
     private static void addPaddingTypes(ArrayList<Type> result, int padding) {

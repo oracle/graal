@@ -214,8 +214,10 @@ import com.oracle.truffle.llvm.nodes.memory.LLVMNativeVarargsAreaStackAllocation
 import com.oracle.truffle.llvm.nodes.memory.LLVMStructByValueNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMVarArgCompoundAddressNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.NativeAllocateStructNode;
+import com.oracle.truffle.llvm.nodes.memory.NativeFreeStructNode;
 import com.oracle.truffle.llvm.nodes.memory.NativeMemSetNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.NativeProfiledMemMoveNodeGen;
+import com.oracle.truffle.llvm.nodes.memory.NativeProtectStructNode;
 import com.oracle.truffle.llvm.nodes.memory.literal.LLVMArrayLiteralNode;
 import com.oracle.truffle.llvm.nodes.memory.literal.LLVMArrayLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.literal.LLVMStructArrayLiteralNodeGen;
@@ -408,6 +410,7 @@ import com.oracle.truffle.llvm.runtime.interop.convert.ToVoidLLVMNodeGen;
 import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateStructNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion.UniqueSlot;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion.UniquesRegionAllocator;
@@ -2220,8 +2223,18 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMAllocateStructNode createAllocateStruct(StructureType structType) {
+    public LLVMAllocateStructNode createAllocateGlobalsBlock(StructureType structType) {
         return new NativeAllocateStructNode(context, structType);
+    }
+
+    @Override
+    public LLVMMemoryOpNode createProtectGlobalsBlock() {
+        return new NativeProtectStructNode(context);
+    }
+
+    @Override
+    public LLVMMemoryOpNode createFreeGlobalsBlock() {
+        return new NativeFreeStructNode(context);
     }
 
     @Override
