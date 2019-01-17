@@ -60,27 +60,6 @@ import com.oracle.truffle.api.library.ResolvedLibrary;
  * Subclasses of this class represent guest language interoperability libraries. This class is only
  * a marker base class used for documentation purposes.
  * <p>
- * The following libraries are available:
- * <ul>
- * <li>{@link ValueLibrary}: contains messages for values, e.g. whether a value is
- * <code>null</code>.
- * <li>{@link ObjectLibrary}: contains messages for objects. e.g. whether a value represents an
- * object and access to its members.
- * <li>{@link ArrayLibrary}: contains messages for arrays. e.g. whether a value is an array and
- * access to its elements.
- * <li>{@link NumberLibrary}: contains messages for numbers. e.g. whether a value is a number and
- * access to its primitive value.
- * <li>{@link BooleanLibrary}: contains messages for booleans. e.g. whether a value is a boolean and
- * access to its value.
- * <li>{@link StringLibrary}: contains messages for strings.
- * <li>{@link ExecutableLibrary}: contains contracts for executable values, e.g. functions, methods
- * or promises.
- * <li>{@link InstantiableLibrary}: contains contracts for instantiable values, e.g. constructors or
- * meta-objects, like Java classes.
- * <li>{@link NativeLibrary}: contains contracts for native values, e.g. pointers.
- * </ul>
- * Please see the individual subclass for details.
- * <p>
  * With interop libraries only certain values are allowed to be passed. The following Java types are
  * allowed to be passed as receiver or argument value:
  * <ul>
@@ -101,6 +80,8 @@ import com.oracle.truffle.api.library.ResolvedLibrary;
  *
  * TODO examples.
  *
+ * <h3>Implementing</h3>
+ *
  * @since 1.0
  */
 @GenerateLibrary(assertions = Asserts.class, receiverType = TruffleObject.class)
@@ -120,8 +101,25 @@ public abstract class InteropLibrary extends Library {
     protected InteropLibrary() {
     }
 
-    // Value Messages
-
+    /**
+     * Returns <code>true</code> if the receiver represents a <code>null</code> like value, else
+     * <code>false</code>. Most object oriented languages have one or many values representing null
+     * values. If a receiver represents a null then cannot represent any of the following types:
+     * <ul>
+     * <li>{@link #isString(Object) String}
+     * <li>{@link #isBoolean(Object) Boolean}
+     * <li>{@link #isExecutable(Object) Executable}
+     * <li>{@link #isInstantiable(Object) Instantiable}
+     * <li>{@link #isNumber(Object) Number}
+     * <li>{@link #isPointer(Object) Pointer}
+     * </ul>
+     * Null values may have {@link #hasMembers(Object) members} or {@link #hasArrayElements(Object)
+     * array elements}.
+     * <p>
+     * <b>Example Interpretations</b>:
+     *
+     * @since 1.0
+     */
     public boolean isNull(Object receiver) {
         return false;
     }

@@ -208,8 +208,8 @@ public final class ForeignAccess {
      * @throws UnknownIdentifierException if the <code>receiver</code> does not allow reading a
      *             property for the given <code>identifier</code>
      * @since 0.24
-     * @deprecated use {@link ObjectLibrary#readMember(Object, String)} or
-     *             {@link ArrayLibrary#readArrayElement(Object, long)} instead. See
+     * @deprecated use {@link InteropLibrary#readMember(Object, String)} or
+     *             {@link InteropLibrary#readArrayElement(Object, long)} instead. See
      *             {@link InteropLibrary} for an overview of the new interop messages.
      */
     @Deprecated
@@ -250,8 +250,8 @@ public final class ForeignAccess {
      *             property for the given <code>identifier</code>
      * @throws UnsupportedTypeException if <code>value</code> has an unsupported type
      * @since 0.24
-     * @deprecated use {@link ObjectLibrary#writeMember(Object, String, Object)} or
-     *             {@link ArrayLibrary#writeArrayElement(Object, long, Object)} instead.
+     * @deprecated use {@link InteropLibrary#writeMember(Object, String, Object)} or
+     *             {@link InteropLibrary#writeArrayElement(Object, long, Object)} instead.
      */
     @Deprecated
     public static Object sendWrite(Node writeNode, TruffleObject receiver, Object identifier, Object value)
@@ -289,8 +289,8 @@ public final class ForeignAccess {
      * @throws UnknownIdentifierException if the <code>receiver</code> does not allow removing a
      *             property for the given <code>identifier</code>
      * @since 0.32
-     * @deprecated use {@link ObjectLibrary#removeMember(Object, String)} or
-     *             {@link ArrayLibrary#removeArrayElement(Object, long)} instead.
+     * @deprecated use {@link InteropLibrary#removeMember(Object, String)} or
+     *             {@link InteropLibrary#removeArrayElement(Object, long)} instead.
      */
     @Deprecated
     public static boolean sendRemove(Node removeNode, TruffleObject receiver, Object identifier)
@@ -326,12 +326,12 @@ public final class ForeignAccess {
      * @throws UnsupportedMessageException if the <code>receiver</code> does not support the
      *             {@link Message#createNode() message represented} by <code>unboxNode</code>
      * @since 0.24
-     * @deprecated use {@link StringLibrary#asString(Object)},
-     *             {@link BooleanLibrary#asBoolean(Object)}, {@link NumberLibrary#asByte(Object)},
-     *             {@link NumberLibrary#asShort(Object)}, {@link NumberLibrary#asInt(Object)},
-     *             {@link NumberLibrary#asLong(Object)}, {@link NumberLibrary#asFloat(Object)} or
-     *             {@link NumberLibrary#asDouble(Object)} instead. See {@link InteropLibrary} for an
-     *             overview of the new interop messages.
+     * @deprecated use {@link InteropLibrary#asString(Object)},
+     *             {@link InteropLibrary#asBoolean(Object)}, {@link InteropLibrary#asByte(Object)},
+     *             {@link InteropLibrary#asShort(Object)}, {@link InteropLibrary#asInt(Object)},
+     *             {@link InteropLibrary#asLong(Object)}, {@link InteropLibrary#asFloat(Object)} or
+     *             {@link InteropLibrary#asDouble(Object)} instead. See {@link InteropLibrary} for
+     *             an overview of the new interop messages.
      */
     @Deprecated
     public static Object sendUnbox(Node unboxNode, TruffleObject receiver) throws UnsupportedMessageException {
@@ -361,7 +361,7 @@ public final class ForeignAccess {
      * @throws ClassCastException if the createNode has not been created by
      *             {@link Message#createNode()} method.
      * @since 0.26
-     * @deprecated use {@link NativeLibrary#isPointer(Object)} instead. See {@link InteropLibrary}
+     * @deprecated use {@link InteropLibrary#isPointer(Object)} instead. See {@link InteropLibrary}
      *             for an overview of the new interop messages.
      */
     @Deprecated
@@ -391,7 +391,7 @@ public final class ForeignAccess {
      * @throws UnsupportedMessageException if the <code>receiver</code> does not support the
      *             {@link Message#createNode() message represented} by <code>asPointerNode</code>
      * @since 0.26
-     * @deprecated use {@link NativeLibrary#asPointer(Object)} instead. See {@link InteropLibrary}
+     * @deprecated use {@link InteropLibrary#asPointer(Object)} instead. See {@link InteropLibrary}
      *             for an overview of the new interop messages.
      */
     @Deprecated
@@ -424,7 +424,7 @@ public final class ForeignAccess {
      * @throws UnsupportedMessageException if the <code>receiver</code> does not support the
      *             {@link Message#createNode() message represented} by <code>toNativeNode</code>
      * @since 0.26
-     * @deprecated use {@link NativeLibrary#toNative(Object)} instead. See {@link InteropLibrary}
+     * @deprecated use {@link InteropLibrary#toNative(Object)} instead. See {@link InteropLibrary}
      *             for an overview of the new interop messages.
      */
     @Deprecated
@@ -462,7 +462,7 @@ public final class ForeignAccess {
      * @throws UnsupportedMessageException if the <code>receiver</code> does not support the
      *             {@link Message#createNode() message represented} by <code>executeNode</code>
      * @since 0.24
-     * @deprecated use {@link ExecutableLibrary#execute(Object, Object...)} instead. See
+     * @deprecated use {@link InteropLibrary#execute(Object, Object...)} instead. See
      *             {@link InteropLibrary} for an overview of the new interop messages.
      */
     @Deprecated
@@ -493,7 +493,7 @@ public final class ForeignAccess {
      * @throws ClassCastException if the createNode has not been created by
      *             {@link Message#createNode()} method.
      * @since 0.24
-     * @deprecated use {@link ExecutableLibrary#isExecutable(Object)} instead. See
+     * @deprecated use {@link InteropLibrary#isExecutable(Object)} instead. See
      *             {@link InteropLibrary} for an overview of the new interop messages.
      */
     @Deprecated
@@ -521,7 +521,7 @@ public final class ForeignAccess {
      * @throws ClassCastException if the createNode has not been created by
      *             {@link Message#createNode()} method.
      * @since 0.30
-     * @deprecated use {@link InstantiableLibrary#isInstantiable(Object)} instead. See
+     * @deprecated use {@link InteropLibrary#isInstantiable(Object)} instead. See
      *             {@link InteropLibrary} for an overview of the new interop messages.
      */
     @Deprecated
@@ -558,7 +558,7 @@ public final class ForeignAccess {
      * @throws UnsupportedMessageException if the <code>receiver</code> does not support the
      *             {@link Message#createNode() message represented} by <code>invokeNode</code>
      * @since 0.24
-     * @deprecated use {@link ObjectLibrary#invokeMember(Object, String, Object...)} instead. See
+     * @deprecated use {@link InteropLibrary#invokeMember(Object, String, Object...)} instead. See
      *             {@link InteropLibrary} for an overview of the new interop messages.
      */
     @Deprecated
@@ -597,7 +597,7 @@ public final class ForeignAccess {
      * @throws UnsupportedMessageException if the <code>receiver</code> does not support the
      *             {@link Message#createNode() message represented} by <code>newNode</code>
      * @since 0.24
-     * @deprecated use {@link InstantiableLibrary#instantiate(Object, Object...)} instead. See
+     * @deprecated use {@link InteropLibrary#instantiate(Object, Object...)} instead. See
      *             {@link InteropLibrary} for an overview of the new interop messages.
      */
     @Deprecated
@@ -628,7 +628,7 @@ public final class ForeignAccess {
      * @throws ClassCastException if the createNode has not been created by
      *             {@link Message#createNode()} method.
      * @since 0.24
-     * @deprecated use {@link ValueLibrary#isNull(Object)} instead. See {@link InteropLibrary} for
+     * @deprecated use {@link InteropLibrary#isNull(Object)} instead. See {@link InteropLibrary} for
      *             an overview of the new interop messages.
      */
     @Deprecated
@@ -656,8 +656,8 @@ public final class ForeignAccess {
      * @throws ClassCastException if the createNode has not been created by
      *             {@link Message#createNode()} method.
      * @since 0.24
-     * @deprecated use {@link ArrayLibrary#hasArrayElements(Object)} instead. See {@link InteropLibrary} for
-     *             an overview of the new interop messages.
+     * @deprecated use {@link InteropLibrary#hasArrayElements(Object)} instead. See
+     *             {@link InteropLibrary} for an overview of the new interop messages.
      */
     @Deprecated
     public static boolean sendHasSize(Node hasSizeNode, TruffleObject receiver) {
@@ -686,8 +686,8 @@ public final class ForeignAccess {
      * @throws UnsupportedMessageException if the <code>receiver</code> does not support the
      *             {@link Message#createNode() message represented} by <code>getSizeNode</code>
      * @since 0.24
-     * @deprecated use {@link ArrayLibrary#getArraySize(Object)} instead. See {@link InteropLibrary}
-     *             for an overview of the new interop messages.
+     * @deprecated use {@link InteropLibrary#getArraySize(Object)} instead. See
+     *             {@link InteropLibrary} for an overview of the new interop messages.
      */
     @Deprecated
     public static Object sendGetSize(Node getSizeNode, TruffleObject receiver) throws UnsupportedMessageException {
@@ -717,10 +717,10 @@ public final class ForeignAccess {
      * @throws ClassCastException if the createNode has not been created by
      *             {@link Message#createNode()} method.
      * @since 0.24
-     * @deprecated use {@link StringLibrary#isString(Object)},
-     *             {@link BooleanLibrary#isBoolean(Object)} or
-     *             {@link NumberLibrary#isNumber(Object)} instead. See {@link InteropLibrary} for an
-     *             overview of the new interop messages.
+     * @deprecated use {@link InteropLibrary#isString(Object)},
+     *             {@link InteropLibrary#isBoolean(Object)} or
+     *             {@link InteropLibrary#isNumber(Object)} instead. See {@link InteropLibrary} for
+     *             an overview of the new interop messages.
      */
     @Deprecated
     public static boolean sendIsBoxed(Node isBoxedNode, TruffleObject receiver) {
@@ -749,16 +749,16 @@ public final class ForeignAccess {
      * @throws ClassCastException if the createNode has not been created by
      *             {@link Message#createNode()} method.
      * @since 0.26
-     * @deprecated for {@link ObjectLibrary#hasMembers(Object) objects} use
-     *             {@link ObjectLibrary#isMemberReadable(Object, String)},
-     *             {@link ObjectLibrary#isMemberWritable(Object, String)},
-     *             {@link ObjectLibrary#isMemberInsertable(Object, String)},
-     *             {@link ObjectLibrary#isMemberRemovable(Object, String)} or
-     *             {@link ObjectLibrary#isMemberInternal(Object, String)} instead. For
-     *             {@link ArrayLibrary#hasArrayElements(Object) arras} use
-     *             {@link ArrayLibrary#isArrayElementReadable(Object, long)},
-     *             {@link ArrayLibrary#isArrayElementWritable(Object, long)},
-     *             {@link ArrayLibrary#isArrayElementInsertable(Object, long)} instead. See
+     * @deprecated for {@link InteropLibrary#hasMembers(Object) objects} use
+     *             {@link InteropLibrary#isMemberReadable(Object, String)},
+     *             {@link InteropLibrary#isMemberWritable(Object, String)},
+     *             {@link InteropLibrary#isMemberInsertable(Object, String)},
+     *             {@link InteropLibrary#isMemberRemovable(Object, String)} or
+     *             {@link InteropLibrary#isMemberInternal(Object, String)} instead. For
+     *             {@link InteropLibrary#hasArrayElements(Object) arras} use
+     *             {@link InteropLibrary#isArrayElementReadable(Object, long)},
+     *             {@link InteropLibrary#isArrayElementWritable(Object, long)},
+     *             {@link InteropLibrary#isArrayElementInsertable(Object, long)} instead. See
      *             {@link InteropLibrary} for an overview of the new interop messages.
      */
     @Deprecated
@@ -821,7 +821,7 @@ public final class ForeignAccess {
      * @throws ClassCastException if the createNode has not been created by
      *             {@link Message#createNode()} method.
      * @since 0.30
-     * @deprecated use {@link ObjectLibrary#hasMembers(Object)} instead. See {@link InteropLibrary}
+     * @deprecated use {@link InteropLibrary#hasMembers(Object)} instead. See {@link InteropLibrary}
      *             for an overview of the new interop messages.
      */
     @Deprecated
@@ -860,7 +860,7 @@ public final class ForeignAccess {
      * @throws ClassCastException if the createNode has not been created by
      *             {@link Message#createNode()} method.
      * @since 0.24
-     * @deprecated use {@link ObjectLibrary#getMembers(Object)} instead. See {@link InteropLibrary}
+     * @deprecated use {@link InteropLibrary#getMembers(Object)} instead. See {@link InteropLibrary}
      *             for an overview of the new interop messages.
      */
     @Deprecated
@@ -896,7 +896,7 @@ public final class ForeignAccess {
      * @throws ClassCastException if the createNode has not been created by
      *             {@link Message#createNode()} method.
      * @since 0.26
-     * @deprecated use {@link ObjectLibrary#getMembers(Object, boolean)} instead. See
+     * @deprecated use {@link InteropLibrary#getMembers(Object, boolean)} instead. See
      *             {@link InteropLibrary} for an overview of the new interop messages.
      */
     @Deprecated
