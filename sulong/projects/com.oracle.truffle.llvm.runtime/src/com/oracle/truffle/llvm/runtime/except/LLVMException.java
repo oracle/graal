@@ -60,9 +60,9 @@ public abstract class LLVMException extends RuntimeException implements TruffleE
         return location;
     }
 
-    @Override
     @SuppressWarnings("sync-override")
+    @Override
     public final Throwable fillInStackTrace() {
-        return null;
+        return this;
     }
 }

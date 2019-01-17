@@ -434,8 +434,9 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             this.e = e;
         }
 
+        @SuppressWarnings("sync-override")
         @Override
-        public synchronized Throwable fillInStackTrace() {
+        public final Throwable fillInStackTrace() {
             return this;
         }
 
