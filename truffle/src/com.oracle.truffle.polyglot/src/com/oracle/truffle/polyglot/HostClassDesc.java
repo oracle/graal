@@ -172,7 +172,7 @@ final class HostClassDesc {
         private static void collectPublicMethods(Class<?> type, Map<String, HostMethodDesc> methodMap, Map<String, HostMethodDesc> staticMethodMap, Set<Object> visited, Class<?> startType) {
             boolean isPublicType = Modifier.isPublic(type.getModifiers()) && !Proxy.isProxyClass(type);
             boolean allMethodsPublic = true;
-            List<Method> bridgeMethods = new ArrayList<>();
+            List<Method> bridgeMethods = null;
             if (isPublicType) {
                 for (Method m : type.getMethods()) {
                     if (Modifier.isStatic(m.getModifiers()) && (m.getDeclaringClass() != startType && Modifier.isInterface(m.getDeclaringClass().getModifiers()))) {
@@ -199,6 +199,9 @@ final class HostClassDesc {
                          * the end if no equivalent public non-bridge method was found.
                          */
                         allMethodsPublic = false;
+                        if (bridgeMethods == null) {
+                            bridgeMethods = new ArrayList<>();
+                        }
                         bridgeMethods.add(m);
                         continue;
                     }
@@ -223,7 +226,7 @@ final class HostClassDesc {
                 }
             }
             // Add bridge methods for public methods inherited from non-public superclasses.
-            if (!bridgeMethods.isEmpty()) {
+            if (bridgeMethods != null && !bridgeMethods.isEmpty()) {
                 for (Method m : bridgeMethods) {
                     if (visited.add(methodInfo(m))) {
                         putMethod(m, methodMap, staticMethodMap);
