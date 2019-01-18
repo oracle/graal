@@ -1215,12 +1215,17 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
         }
     }
 
+    private int injectAndCall(VirtualFrame frame, int top, int curBCI, QuickNode quick, int opCode) {
+        CompilerAsserts.neverPartOfCompilation();
+        int nodeIndex = addQuickNode(quick);
+        patchBci(curBCI, (byte) QUICK, (char) nodeIndex);
+        return quick.invoke(frame, top) - Bytecodes.stackEffectOf(opCode);
+    }
+
     private int quickenInstanceOf(final VirtualFrame frame, int top, int curBCI, Klass typeToCheck, int opCode) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert opCode == INSTANCEOF;
-        int nodeIndex = addQuickNode(InstanceOfNodeGen.create(typeToCheck));
-        patchBci(curBCI, (byte) QUICK, (char) nodeIndex);
-        return nodes[nodeIndex].invoke(frame, top) - Bytecodes.stackEffectOf(opCode);
+        return injectAndCall(frame, top, curBCI, InstanceOfNodeGen.create(typeToCheck), opCode);
     }
 
     private int quickenInvoke(final VirtualFrame frame, int top, int curBCI, MethodInfo resolutionSeed, int opCode) {
@@ -1243,9 +1248,7 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
         }
         // @formatter:on
         // Checkstyle: resume
-        int nodeIndex = addQuickNode(invoke);
-        patchBci(curBCI, (byte) QUICK, (char) nodeIndex);
-        return nodes[nodeIndex].invoke(frame, top) - Bytecodes.stackEffectOf(opCode);
+        return injectAndCall(frame, top, curBCI, invoke, opCode);
     }
 
     // endregion Bytecode quickening
