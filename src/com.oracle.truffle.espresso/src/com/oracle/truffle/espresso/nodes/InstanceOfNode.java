@@ -10,7 +10,7 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public abstract class InstanceOfNode extends InvokeNode {
+public abstract class InstanceOfNode extends QuickNode {
 
     final Klass typeToCheck;
 

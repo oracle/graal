@@ -276,7 +276,7 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
  */
 public final class EspressoRootNode extends RootNode implements LinkedNode {
 
-    @Children private InvokeNode[] nodes = InvokeNode.EMPTY_ARRAY;
+    @Children private QuickNode[] nodes = QuickNode.EMPTY_ARRAY;
 
     private final MethodInfo method;
     private final InterpreterToVM vm;
@@ -946,7 +946,6 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
 
                     case CHECKCAST             : putObject(frame, top - 1, checkCast(peekObject(frame, top - 1), resolveType(curOpcode, bs.readCPI(curBCI)))); break;
                     case INSTANCEOF            : top += quickenInstanceOf(frame, top, curBCI, resolveType(curOpcode, bs.readCPI(curBCI)), curOpcode); break;
-                        // putInt(frame, top - 1, instanceOf(peekObject(frame, top - 1), resolveType(curOpcode, bs.readCPI(curBCI))) ? 1  : 0); break;
 
                     case MONITORENTER          : vm.monitorEnter(nullCheck(peekObject(frame, top - 1))); break;
                     case MONITOREXIT           : vm.monitorExit(nullCheck(peekObject(frame, top - 1))); break;
@@ -1188,7 +1187,7 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
 
     // region Bytecode quickening
 
-    private char addInvokeNode(InvokeNode node) {
+    private char addQuickNode(QuickNode node) {
         CompilerAsserts.neverPartOfCompilation();
         Objects.requireNonNull(node);
         nodes = Arrays.copyOf(nodes, nodes.length + 1);
@@ -1198,6 +1197,7 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
     }
 
     private void patchBci(int bci, byte opcode, char nodeIndex) {
+        CompilerAsserts.neverPartOfCompilation();
         assert Bytecodes.isQuickened(opcode);
         byte[] code = getMethod().getCode();
 
@@ -1218,7 +1218,7 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
     private int quickenInstanceOf(final VirtualFrame frame, int top, int curBCI, Klass typeToCheck, int opCode) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert opCode == INSTANCEOF;
-        int nodeIndex = addInvokeNode(InstanceOfNodeGen.create(typeToCheck));
+        int nodeIndex = addQuickNode(InstanceOfNodeGen.create(typeToCheck));
         patchBci(curBCI, (byte) QUICK, (char) nodeIndex);
         return nodes[nodeIndex].invoke(frame, top) - Bytecodes.stackEffectOf(opCode);
     }
@@ -1230,7 +1230,7 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
         if (opCode == INVOKEVIRTUAL && (resolutionSeed.isFinal() || resolutionSeed.getDeclaringClass().isFinalFlagSet())) {
             return quickenInvoke(frame, top, curBCI, resolutionSeed, INVOKESPECIAL);
         }
-        InvokeNode invoke = null;
+        QuickNode invoke = null;
         // @formatter:off
         // Checkstyle: stop
         switch (opCode) {
@@ -1243,7 +1243,7 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
         }
         // @formatter:on
         // Checkstyle: resume
-        int nodeIndex = addInvokeNode(invoke);
+        int nodeIndex = addQuickNode(invoke);
         patchBci(curBCI, (byte) QUICK, (char) nodeIndex);
         return nodes[nodeIndex].invoke(frame, top) - Bytecodes.stackEffectOf(opCode);
     }

@@ -33,7 +33,7 @@ import com.oracle.truffle.espresso.impl.MethodInfo;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 
-public abstract class InvokeVirtualNode extends InvokeNode {
+public abstract class InvokeVirtualNode extends QuickNode {
 
     final MethodInfo resolutionSeed;
 

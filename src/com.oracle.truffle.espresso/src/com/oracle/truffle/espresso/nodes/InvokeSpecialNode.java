@@ -26,7 +26,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.impl.MethodInfo;
 
-public final class InvokeSpecialNode extends InvokeNode {
+public final class InvokeSpecialNode extends QuickNode {
     protected final MethodInfo method;
     @Child private DirectCallNode directCallNode;
 
