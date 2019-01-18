@@ -554,7 +554,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 // ignore fields in Node. They are safe.
                 continue;
             }
-            // local fields not allowed
+            // uncachable because local non-static fields are not allowed
             uncachable = false;
 
             if (requireUncachable) {

@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.library.test;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
@@ -73,6 +74,44 @@ public class ExportLibraryTest {
     @ExportLibrary(NoLibrary.class)
     static class ExportsTestObjectError1 {
 
+    }
+
+    @ExportLibrary(TestLibrary.class)
+    @ExpectError("The exported type must not be private. Increase visibility to resolve this.")
+    private static class ExportsTestObjectError2 {
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        final Object m0() {
+            return null;
+        }
+    }
+
+    @ExportLibrary(TestLibrary.class)
+    static class ExportsTestObjectError3 {
+        @SuppressWarnings("static-method")
+        @ExpectError("The exported method must not be private. Increase visibility to resolve this.")
+        @ExportMessage
+        private Object m0() {
+            return null;
+        }
+    }
+
+    @ExportLibrary(TestLibrary.class)
+    static class ExportsTestObjectError4 {
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        @ExpectError("The exported method must not be private. Increase visibility to resolve this.")
+        private Object m0(@SuppressWarnings("unused") @Cached("null") Object foo) {
+            return null;
+        }
+    }
+
+    @ExportLibrary(TestLibrary.class)
+    static class ExportsTestObjectError5 {
+        @ExpectError("Exported message node class must not be private.")
+        @ExportMessage
+        private static class M0 {
+        }
     }
 
 }

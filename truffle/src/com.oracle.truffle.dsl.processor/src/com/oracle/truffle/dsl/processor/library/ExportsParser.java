@@ -336,6 +336,12 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             return model;
         }
 
+        if (ElementUtils.getVisibility(type.getModifiers()) == Modifier.PRIVATE) {
+            model.addError("The exported type must not be private. " +
+                            "Increase visibility to resolve this.");
+            return model;
+        }
+
         List<AnnotationMirror> mirrors = new ArrayList<>(elementMirrors);
         TypeElement superType = type;
         while ((superType = getSuperType(superType)) != null) {
@@ -688,6 +694,12 @@ public class ExportsParser extends AbstractParser<ExportsData> {
         ExecutableElement exportedMethod = (ExecutableElement) exportedElement.getMessageElement();
         LibraryMessage message = exportedElement.getExport().getResolvedMessage();
         ExportsLibrary exportsLibrary = exportedElement.getExport().getExportsLibrary();
+
+        if (ElementUtils.getVisibility(exportedMethod.getModifiers()) == Modifier.PRIVATE) {
+            exportedElement.addError("The exported method must not be private. " +
+                            "Increase visibility to resolve this.");
+            return;
+        }
 
         TypeMirror cached = context.getType(Cached.class);
         TypeMirror cachedLibrary = context.getType(CachedLibrary.class);
