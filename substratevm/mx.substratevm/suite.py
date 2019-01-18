@@ -476,12 +476,13 @@ suite = {
                 "include/svm_libffi.h",
             ],
             "buildEnv": {
-                "LIBFFI_SRC": "<path:truffle:LIBFFI>",
+                "LIBFFI_DIST": "<path:truffle:LIBFFI_DIST>",
                 "TRUFFLE_NFI": "<path:truffle:TRUFFLE_NFI_NATIVE>",
                 "ARCH": "<arch>",
                 "OS": "<os>"
             },
             "buildDependencies": [
+                "truffle:LIBFFI_DIST",
                 "truffle:TRUFFLE_NFI_NATIVE",
             ],
         },
