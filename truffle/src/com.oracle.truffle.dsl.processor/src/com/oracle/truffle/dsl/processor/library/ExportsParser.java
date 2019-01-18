@@ -359,6 +359,11 @@ public class ExportsParser extends AbstractParser<ExportsData> {
     private ExportsData parseExports(TypeElement type, List<AnnotationMirror> elementMirrors) {
         ExportsData model = new ExportsData(context, type, null);
 
+        if (type.getKind().isInterface()) {
+            model.addError("@%s is not supported for interfaces at the moment.", ExportLibrary.class.getSimpleName());
+            return model;
+        }
+
         List<AnnotationMirror> mirrors = new ArrayList<>(elementMirrors);
         TypeElement superType = type;
         while ((superType = getSuperType(superType)) != null) {

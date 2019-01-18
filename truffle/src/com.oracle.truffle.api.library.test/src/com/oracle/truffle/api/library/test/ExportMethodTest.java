@@ -557,4 +557,15 @@ public class ExportMethodTest extends AbstractLibraryTest {
         }
     }
 
+    @ExpectError("@ExportLibrary is not supported for interfaces at the moment.")
+    @ExportLibrary(ExportsTestLibrary4.class)
+    interface ExportsTestObjectError18 {
+
+        @ExportMessage
+        default int intArg(int arg) {
+            return 42;
+        }
+
+    }
+
 }
