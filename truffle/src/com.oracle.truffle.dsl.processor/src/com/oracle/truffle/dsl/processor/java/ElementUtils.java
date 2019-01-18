@@ -1580,4 +1580,28 @@ public class ElementUtils {
         return null;
     }
 
+    public static String getReadableReference(Element element) {
+        String parent;
+        switch (element.getKind()) {
+            case CLASS:
+            case INTERFACE:
+            case ENUM:
+                return getQualifiedName((TypeElement) element);
+            case PACKAGE:
+                return ((PackageElement) element).getQualifiedName().toString();
+            case CONSTRUCTOR:
+            case METHOD:
+                parent = getReadableReference(element.getEnclosingElement());
+                return parent + "." + getReadableSignature((ExecutableElement) element);
+            case PARAMETER:
+                parent = getReadableReference(element.getEnclosingElement());
+                return parent + " parameter " + element.getSimpleName().toString();
+            case FIELD:
+                parent = getReadableReference(element.getEnclosingElement());
+                return parent + "." + element.getSimpleName().toString();
+            default:
+                return "Unknown Element";
+        }
+    }
+
 }

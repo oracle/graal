@@ -260,41 +260,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                 for (LibraryMessage message : missingAbstractMessage) {
                     msg.append("  ").append(generateExpectedSignature(type, message, exportLib.getExplicitReceiver())).append(" {");
                     if (!ElementUtils.isVoid(message.getExecutable().getReturnType())) {
-                        msg.append(" return ");
-                        switch (message.getExecutable().getReturnType().getKind()) {
-                            case ARRAY:
-                            case DECLARED:
-                            case PACKAGE:
-                            case NULL:
-                                msg.append("null");
-                                break;
-                            case BOOLEAN:
-                                msg.append("false");
-                                break;
-                            case BYTE:
-                                msg.append("(byte) 0");
-                                break;
-                            case CHAR:
-                                msg.append("(char) 0");
-                                break;
-                            case DOUBLE:
-                                msg.append("0.0D");
-                                break;
-                            case LONG:
-                                msg.append("0L");
-                                break;
-                            case INT:
-                                msg.append("0");
-                                break;
-                            case FLOAT:
-                                msg.append("0.0F");
-                                break;
-                            case SHORT:
-                                msg.append("(short) 0");
-                                break;
-                            default:
-                                throw new AssertionError();
-                        }
+                        msg.append(" return ").append(ElementUtils.defaultValue(message.getExecutable().getReturnType()));
                         msg.append(";");
                     }
                     msg.append(" }%n");
@@ -328,6 +294,13 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                     nodeData.redirectMessagesOnGeneratedElements(exportedMessage);
                 }
                 nodeData.setGenerateUncached(false);
+            }
+        }
+
+        for (ExportMessageElement message : exportedElements) {
+            if (!elementEquals(message.getMessageElement().getEnclosingElement(),
+                            model.getTemplateType())) {
+                message.redirectMessages(message.getExport().getExportsLibrary());
             }
         }
 

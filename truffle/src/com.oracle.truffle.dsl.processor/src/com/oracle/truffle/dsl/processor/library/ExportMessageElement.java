@@ -47,6 +47,7 @@ import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
+import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
@@ -75,12 +76,21 @@ public final class ExportMessageElement extends MessageContainer {
     }
 
     public TypeMirror getReceiverType() {
-        if (element instanceof ExecutableElement) {
-            if (element.getModifiers().contains(Modifier.STATIC)) {
-                return ((ExecutableElement) element).getParameters().get(0).asType();
-            }
+        if (element == null || export.getExportsLibrary().isExplicitReceiver()) {
+            return export.getExportsLibrary().getReceiverClass();
         }
-        return export.getExportsLibrary().getReceiverClass();
+        if (element instanceof ExecutableElement) {
+            ExecutableElement method = ((ExecutableElement) element);
+            if (element.getModifiers().contains(Modifier.STATIC)) {
+                return method.getParameters().get(0).asType();
+            } else {
+                return method.getEnclosingElement().asType();
+            }
+        } else if (element instanceof TypeElement) {
+            return element.getEnclosingElement().asType();
+        } else {
+            throw new AssertionError(element.getClass().getName());
+        }
     }
 
     public void setSpecializedNode(NodeData specializedNode) {

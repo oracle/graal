@@ -57,7 +57,6 @@ import com.oracle.truffle.dsl.processor.Log;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedElement;
-import com.oracle.truffle.dsl.processor.library.ExportMessageElement;
 
 public abstract class MessageContainer implements Iterable<MessageContainer> {
 
@@ -101,12 +100,30 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
         return findChildContainers().iterator();
     }
 
+    public final void redirectMessages(MessageContainer to) {
+        if (!getMessages().isEmpty()) {
+            for (Message message : getMessages()) {
+                Element element = message.getEnclosedElement();
+                if (element == null) {
+                    element = message.getOriginalContainer().getMessageElement();
+                }
+                String reference = ElementUtils.getReadableReference(element);
+                String prefix = "Message redirected from element " + reference + ":\n";
+                to.getMessages().add(message.redirect(prefix, to.getMessageElement()));
+            }
+            getMessages().clear();
+        }
+        for (MessageContainer container : findChildContainers()) {
+            container.redirectMessages(to);
+        }
+    }
+
     public final void redirectMessagesOnGeneratedElements(MessageContainer to) {
         if (!getMessages().isEmpty()) {
             Element messageElement = getMessageElement();
             if (messageElement == null || messageElement instanceof GeneratedElement || messageElement.getEnclosingElement() instanceof GeneratedElement) {
                 for (Message message : getMessages()) {
-                    to.getMessages().add(message.redirect(to.getMessageElement()));
+                    to.getMessages().add(message.redirect("", to.getMessageElement()));
                 }
                 getMessages().clear();
             }
@@ -128,7 +145,9 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
             childMessages = verifiedMessages;
         }
 
-        verifyExpectedMessages(context, log, childMessages);
+        if (verifiedMessages != null) {
+            verifyExpectedMessages(context, log, childMessages);
+        }
 
         for (int i = getMessages().size() - 1; i >= 0; i--) {
             emitDefault(context, log, getMessages().get(i));
@@ -270,7 +289,7 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
     public static final class Message {
 
         private final MessageContainer originalContainer;
-        private Element enclosedElement;
+        private final Element enclosedElement;
 
         private final AnnotationMirror annotationMirror;
         private final AnnotationValue annotationValue;
@@ -286,8 +305,8 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
             this.kind = kind;
         }
 
-        public Message redirect(Element element) {
-            return new Message(null, null, element, originalContainer, text, kind);
+        public Message redirect(String textPrefix, Element element) {
+            return new Message(null, null, element, originalContainer, textPrefix + text, kind);
         }
 
         public Element getEnclosedElement() {
