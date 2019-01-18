@@ -683,7 +683,7 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
                             } else {
                                 nextBCI = switchHelper.defaultTarget(curBCI);
                             }
-                            break;
+                            break exit_switch; // break
                         }
 
                         for (int i = low; i <= high; ++i) {
