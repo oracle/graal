@@ -94,7 +94,6 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
@@ -494,7 +493,8 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             if (isMethodElement(member)) {
                 name = member.getSimpleName().toString();
             } else if (isNodeElement(member)) {
-                name = inferNodeMessageName((TypeElement) member);
+                TypeElement type = (TypeElement) member;
+                name = inferNodeMessageName(type);
             } else {
                 error = "Unsupported exported element.";
             }
@@ -653,14 +653,41 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             }
         }
 
-        if (!isAssignable(exportedTypeElement.asType(), context.getTruffleTypes().getNode())) {
-            exportElement.addError("An @%s annotated class must be a subclass of @%s.", ExportMessage.class.getSimpleName(), Node.class.getSimpleName());
+        if (!typeEquals(exportedTypeElement.getSuperclass(), context.getType(Object.class))) {
+            exportElement.addError("An @%s annotated class must extend Object. Other base classes are not supported.", ExportMessage.class.getSimpleName(), Node.class.getSimpleName());
             return;
         }
 
         if (!hasSpecialization) {
-            exportElement.addError("An @%s annotated class must have at least one method with @%s annotation.",
-                            ExportMessage.class.getSimpleName(), Specialization.class.getSimpleName());
+            ExecutableElement signature = exportElement.getExport().getResolvedMessage().getExecutable();
+            StringBuilder fix = new StringBuilder();
+            fix.append("@").append(Specialization.class.getSimpleName()).append(" ");
+            fix.append("static ");
+            fix.append(ElementUtils.getSimpleName(signature.getReturnType()));
+            fix.append(" ").append("doDefault(");
+            String sep = "";
+            for (VariableElement var : signature.getParameters()) {
+                fix.append(sep);
+                TypeMirror type;
+                if (sep.length() == 0) { // if receiver
+                    type = exportElement.getExport().getExportsLibrary().getReceiverClass();
+                } else {
+                    type = var.asType();
+                }
+                fix.append(ElementUtils.getSimpleName(type));
+                fix.append(" ");
+                fix.append(var.getSimpleName().toString());
+                sep = ", ";
+            }
+            fix.append(") { ");
+            if (!ElementUtils.isVoid(signature.getReturnType())) {
+                fix.append("return ").append(ElementUtils.defaultValue(signature.getReturnType())).append("; ");
+            }
+            fix.append("}");
+            exportElement.addError("An @%s annotated class must have at least one method with @%s annotation. " +
+                            "Add the following method to resolve this:%n     %s",
+                            ExportMessage.class.getSimpleName(), Specialization.class.getSimpleName(),
+                            fix.toString());
             return;
         }
 
@@ -771,30 +798,33 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             return cachedData;
         }
 
-        List<ExecutableElement> foundExecutes = new ArrayList<>();
         for (ExecutableElement method : ElementFilter.methodsIn(members)) {
             if (!method.getModifiers().contains(Modifier.PRIVATE) //
                             && !method.getModifiers().contains(Modifier.STATIC) //
-                            && method.getSimpleName().toString().startsWith("execute") &&
-                            !ElementUtils.canThrowTypeExact(method.getThrownTypes(), context.getType(UnexpectedResultException.class))) {
-                foundExecutes.add(method);
+                            && method.getSimpleName().toString().startsWith("execute")) {
+                exportedMessage.addError(method, "A class annotated with with @%s must not specify methods starting with execute. " +
+                                "Execute methods for such classes can be inferred automatically from the message signature.",
+                                ExportMessage.class.getSimpleName());
             }
         }
 
+        if (exportedMessage.hasErrors()) {
+            return null;
+        }
+
         LibraryMessage message = exportedMessage.getExport().getResolvedMessage();
-        TypeElement parseNodeType;
         CodeExecutableElement syntheticExecute = null;
         CodeTypeElement clonedType = CodeTypeElement.cloneShallow(nodeType);
+        // make the node parser happy
+        clonedType.setSuperClass(context.getType(Node.class));
 
-        if (foundExecutes.isEmpty()) {
-            syntheticExecute = CodeExecutableElement.clone(message.getExecutable());
-            // temporarily set to execute* to allow the parser to parse it
-            syntheticExecute.setSimpleName(CodeNames.of("execute" + ElementUtils.firstLetterUpperCase(message.getName())));
-            syntheticExecute.getParameters().set(0, new CodeVariableElement(exportedMessage.getReceiverType(), "receiver"));
-            syntheticExecute.getModifiers().add(Modifier.ABSTRACT);
-            syntheticExecute.setVarArgs(false);
-            clonedType.add(syntheticExecute);
-        }
+        syntheticExecute = CodeExecutableElement.clone(message.getExecutable());
+        // temporarily set to execute* to allow the parser to parse it
+        syntheticExecute.setSimpleName(CodeNames.of("execute" + ElementUtils.firstLetterUpperCase(message.getName())));
+        syntheticExecute.getParameters().set(0, new CodeVariableElement(exportedMessage.getReceiverType(), "receiver"));
+        syntheticExecute.getModifiers().add(Modifier.ABSTRACT);
+        syntheticExecute.setVarArgs(false);
+        clonedType.add(syntheticExecute);
 
         boolean requireUncached = (isNodeElement(exportedMessage.getMessageElement()) && exportedMessage.getExport().getExportedMethod() == null) ||
                         isMethodElement(exportedMessage.getMessageElement());
@@ -821,17 +851,12 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             clonedType.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(GenerateUncached.class)));
         }
 
-        parseNodeType = clonedType;
-
-        NodeData parsedNodeData = NodeParser.createExportParser(exportedMessage.getExport().getExportsLibrary().getLibrary().getTemplateType().asType()).parse(parseNodeType, false);
-        if (syntheticExecute != null) {
-            // reset name to library
-            syntheticExecute.setEnclosingElement(message.getExecutable().getEnclosingElement());
-        }
+        NodeData parsedNodeData = NodeParser.createExportParser(exportedMessage.getExport().getExportsLibrary().getLibrary().getTemplateType().asType()).parse(clonedType, false);
 
         parsedNodeCache.put(nodeTypeId, parsedNodeData);
 
         return parsedNodeData;
+
     }
 
     private static boolean isNodeElement(Element member) {
@@ -844,10 +869,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
 
     private static String inferNodeMessageName(TypeElement type) {
         String name = type.getSimpleName().toString();
-        if (name.endsWith("Node") && !name.equals("Node")) {
-            name = firstLetterLowerCase(name.substring(0, name.length() - 4));
-        }
-        return name;
+        return firstLetterLowerCase(name);
     }
 
     private static boolean verifyMethodSignature(TypeElement type, LibraryMessage message, ExportMessageElement exportedMessage, ExecutableElement exportedMethod, TypeMirror receiverType,

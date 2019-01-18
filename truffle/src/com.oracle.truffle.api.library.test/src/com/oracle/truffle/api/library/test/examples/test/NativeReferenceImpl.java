@@ -64,7 +64,7 @@ public class NativeReferenceImpl {
     }
 
     @ExportMessage
-    static class WriteNode extends Node {
+    static class Write {
 
         @Specialization(guards = "offset < receiver.table.length")
         static void doInBounds(NativeReferenceImpl receiver, int offset, Object value,

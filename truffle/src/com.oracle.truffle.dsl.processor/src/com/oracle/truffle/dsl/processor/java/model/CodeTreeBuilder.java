@@ -782,33 +782,7 @@ public class CodeTreeBuilder {
     }
 
     public CodeTreeBuilder defaultValue(TypeMirror mirror) {
-        switch (mirror.getKind()) {
-            case VOID:
-                return string("");
-            case ARRAY:
-            case DECLARED:
-            case PACKAGE:
-            case NULL:
-                return string("null");
-            case BOOLEAN:
-                return string("false");
-            case BYTE:
-                return string("(byte) 0");
-            case CHAR:
-                return string("(char) 0");
-            case DOUBLE:
-                return string("0.0D");
-            case LONG:
-                return string("0L");
-            case INT:
-                return string("0");
-            case FLOAT:
-                return string("0.0F");
-            case SHORT:
-                return string("(short) 0");
-            default:
-                throw new AssertionError();
-        }
+        return string(ElementUtils.defaultValue(mirror));
     }
 
     public CodeTreeBuilder startTryBlock() {

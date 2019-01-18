@@ -55,6 +55,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
+import com.oracle.truffle.api.library.test.ExportMethodTest.ExportsTestLibrary4;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.ExpectError;
 
@@ -82,7 +83,7 @@ public class ExportNodeTest extends AbstractLibraryTest {
         }
 
         @ExportMessage
-        abstract static class FooNode extends Node {
+        abstract static class Foo {
 
             @Specialization
             static void doFoo(ExportNodeTestObject1 receiver) {
@@ -120,7 +121,7 @@ public class ExportNodeTest extends AbstractLibraryTest {
         }
 
         @ExportMessage
-        abstract static class FooNode extends Node {
+        abstract static class Foo {
 
             @Specialization
             static void doFoo(ExportNodeTestObject2 receiver) {
@@ -158,7 +159,7 @@ public class ExportNodeTest extends AbstractLibraryTest {
         }
 
         @ExportMessage
-        abstract static class FooNode extends Node {
+        abstract static class Foo {
 
             static boolean guard0() {
                 return true;
@@ -231,7 +232,7 @@ public class ExportNodeTest extends AbstractLibraryTest {
         }
 
         @ExportMessage
-        abstract static class FooNode extends Node {
+        abstract static class Foo {
 
             @Specialization(guards = {"guard0()", "guard1", "!receiver.equals(c0)"}, limit = " limit()")
             static void s0(ExportNodeTestObject4 receiver,
@@ -333,7 +334,7 @@ public class ExportNodeTest extends AbstractLibraryTest {
         @ExportMessage(name = "m0")
         @ExportMessage(name = "m1")
         @ExportMessage(name = "m2")
-        static class M extends Node {
+        static class M {
             @Specialization
             static String m(MultiExportMethod3 receiver, String arg) {
                 return arg;
@@ -349,7 +350,7 @@ public class ExportNodeTest extends AbstractLibraryTest {
         @ExportMessage(name = "m0")
         @ExportMessage(name = "m1")
         @ExportMessage(name = "m2")
-        static class M extends Node {
+        static class M {
             @Specialization
             static String m(MultiExportMethod4 receiver, String arg, @Shared("group") @Cached("arg") String cachedArg) {
                 return cachedArg;
@@ -366,7 +367,7 @@ public class ExportNodeTest extends AbstractLibraryTest {
         @ExportMessage(name = "m0")
         @ExportMessage(name = "m1")
         @ExportMessage(name = "m2")
-        static class M extends Node {
+        static class M {
             @Specialization(guards = "receiver == cachedReceiver")
             static String m(MultiExportMethod5 receiver, String arg, @Exclusive @Cached("arg") String cachedArg,
                             @Exclusive @Cached("receiver") MultiExportMethod5 cachedReceiver) {
@@ -378,12 +379,12 @@ public class ExportNodeTest extends AbstractLibraryTest {
 
     // forgot ExportMessage
     @ExportLibrary(ExportNodeLibrary1.class)
-    @ExpectError("The method has the same name 'FooNode' as a message in the exported library ExportNodeLibrary1. " +
+    @ExpectError("The method has the same name 'Foo' as a message in the exported library ExportNodeLibrary1. " +
                     "Did you forget to export it? " +
                     "Use @ExportMessage to export the message, @Ignore to ignore this warning, rename the method or reduce the visibility of the method to private to resolve this warning.")
     static class TestObjectError1 {
 
-        static class FooNode extends Node {
+        static class Foo {
 
         }
     }
@@ -394,7 +395,7 @@ public class ExportNodeTest extends AbstractLibraryTest {
     static class TestObjectError2 {
 
         @ExportMessage
-        static class Foo2Node extends Node {
+        static class Foo2 {
 
         }
 
@@ -406,9 +407,9 @@ public class ExportNodeTest extends AbstractLibraryTest {
 
         @ExportMessage
         @ExpectError("Exported message node class must not be private.")
-        private static class FooNode extends Node {
+        private static class Foo {
 
-            static FooNode create() {
+            static Foo create() {
                 return null;
             }
         }
@@ -421,7 +422,7 @@ public class ExportNodeTest extends AbstractLibraryTest {
 
         @ExpectError("Inner message node class must be static.")
         @ExportMessage
-        class FooNode extends Node {
+        class Foo {
         }
 
     }
@@ -432,9 +433,9 @@ public class ExportNodeTest extends AbstractLibraryTest {
 
         @ExpectError("At least one constructor must be non-private.")
         @ExportMessage
-        static final class FooNode extends Node {
+        static final class Foo {
 
-            private FooNode() {
+            private Foo() {
             }
 
             @Specialization
@@ -450,7 +451,7 @@ public class ExportNodeTest extends AbstractLibraryTest {
 
         @ExpectError("An @ExportMessage annotated class must have at least one method with @Specialization annotation.%")
         @ExportMessage
-        static class FooNode extends Node {
+        static class Foo {
 
             private void execute(TestObjectError7 receiver) {
             }
@@ -464,7 +465,7 @@ public class ExportNodeTest extends AbstractLibraryTest {
 
         @ExpectError("An @ExportMessage annotated class must not declare any visible methods starting with 'execute'.%")
         @ExportMessage
-        abstract static class FooNode extends Node {
+        abstract static class Foo {
 
             abstract void execute(TestObjectError8 receiver);
         }
@@ -477,7 +478,7 @@ public class ExportNodeTest extends AbstractLibraryTest {
 
         @ExportMessage
         @ExpectError("An @ExportMessage annotated class must not declare any visible methods starting with 'execute'.%")
-        static class FooNode extends Node {
+        static class Foo {
 
             void execute(TestObjectError9 receiver, int param) {
             }
@@ -490,7 +491,7 @@ public class ExportNodeTest extends AbstractLibraryTest {
     static class TestObjectError10 {
 
         @ExportMessage
-        static class FooNode extends Node {
+        static class Foo {
 
             @ExpectError("Method signature (Object) does not match to the expected signature: \n" +
                             "    void doFoo(TestObjectError10 arg0)")
@@ -506,7 +507,7 @@ public class ExportNodeTest extends AbstractLibraryTest {
     static class TestObjectError11 {
 
         @ExportMessage
-        static class FooNode extends Node {
+        static class Foo {
 
             @Specialization
             static void doFoo1(TestObjectError11 receiver) {
@@ -526,7 +527,7 @@ public class ExportNodeTest extends AbstractLibraryTest {
     static class TestObjectError12 {
 
         @ExportMessage
-        abstract static class FooNode extends Node {
+        abstract static class Foo {
 
             @ExpectError("Method signature (Object) does not match to the expected signature:%")
             @Specialization
@@ -541,7 +542,7 @@ public class ExportNodeTest extends AbstractLibraryTest {
     static class TestObjectError13 {
 
         @ExportMessage
-        abstract static class FooNode extends Node {
+        abstract static class Foo {
 
             @Specialization
             static void doFoo(TestObjectError13 receiver,
@@ -567,7 +568,7 @@ public class ExportNodeTest extends AbstractLibraryTest {
         }
 
         @ExportMessage
-        abstract static class FooNode extends Node {
+        abstract static class Foo {
 
             Object instanceVar;
 
@@ -589,7 +590,7 @@ public class ExportNodeTest extends AbstractLibraryTest {
         }
 
         @ExportMessage
-        abstract static class FooNode extends Node {
+        abstract static class Foo {
 
             Object instanceMethod() {
                 return null;
@@ -613,7 +614,7 @@ public class ExportNodeTest extends AbstractLibraryTest {
         }
 
         @ExportMessage
-        abstract static class FooNode extends Node {
+        abstract static class Foo {
 
             boolean guard;
 
@@ -634,7 +635,7 @@ public class ExportNodeTest extends AbstractLibraryTest {
         }
 
         @ExportMessage
-        abstract static class FooNode extends Node {
+        abstract static class Foo {
 
             boolean guard() {
                 return false;
@@ -657,7 +658,7 @@ public class ExportNodeTest extends AbstractLibraryTest {
         }
 
         @ExportMessage
-        abstract static class FooNode extends Node {
+        abstract static class Foo {
 
             int limit = 42;
 
@@ -678,7 +679,7 @@ public class ExportNodeTest extends AbstractLibraryTest {
         }
 
         @ExportMessage
-        abstract static class FooNode extends Node {
+        abstract static class Foo {
 
             int limit() {
                 return 42;
@@ -701,11 +702,32 @@ public class ExportNodeTest extends AbstractLibraryTest {
         }
 
         @ExportMessage
-        abstract static class FooNode extends Node {
+        abstract static class Foo {
 
             @ExpectError("Error parsing expression 'guard()': The method guard is undefined for the enclosing scope.")
             @Specialization(guards = "guard()")
             static void doFoo(TestObjectError20 receiver) {
+            }
+        }
+    }
+
+    @ExportLibrary(ExportsTestLibrary4.class)
+    abstract static class TestObjectError21 {
+
+        @ExpectError("An @ExportMessage annotated class must have at least one method with @Specialization annotation. %")
+        @ExportMessage
+        static class IntArg {
+        }
+    }
+
+    @ExportLibrary(ExportsTestLibrary4.class)
+    abstract static class TestObjectError22 {
+
+        @ExportMessage
+        static class IntArg {
+            @Specialization
+            static int doDefault(TestObjectError22 receiver, int arg) {
+                return 0;
             }
         }
     }

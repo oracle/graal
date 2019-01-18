@@ -73,7 +73,7 @@ public class NodeAdoptionTest extends AbstractLibraryTest {
         }
 
         @ExportMessage
-        static class M0Node extends Node {
+        static class M0 {
             @Specialization(guards = "innerNode.execute(receiver)")
             static String doM0(NodeAdoptionObject receiver,
                             @Cached InnerNode innerNode) {

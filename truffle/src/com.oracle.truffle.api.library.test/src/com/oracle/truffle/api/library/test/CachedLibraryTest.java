@@ -109,7 +109,7 @@ public class CachedLibraryTest extends AbstractLibraryTest {
         }
 
         @ExportMessage
-        static class CallNode extends Node {
+        static class Call {
             @Specialization
             static final String call(Something s) {
                 if (s.name != null) {

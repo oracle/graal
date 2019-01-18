@@ -58,7 +58,7 @@ public @interface ExportLibrary {
     /***
      * The library exported.
      */
-    Class<?> value();
+    Class<? extends Library> value();
 
     /**
      * Custom receiver type. -> all methods must be static.

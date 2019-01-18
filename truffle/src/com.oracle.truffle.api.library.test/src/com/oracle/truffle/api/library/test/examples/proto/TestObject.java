@@ -54,7 +54,7 @@ public class TestObject {
     }
 
     @ExportMessage
-    static class FooNode extends Node {
+    static class Foo {
 
         @Specialization
         static int foo(TestObject o, int arg0) {

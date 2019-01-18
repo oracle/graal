@@ -158,7 +158,7 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    static class IsMemberReadableNode extends Node {
+    static class IsMemberReadable {
 
         @Specialization(guards = {"receiver.isStaticClass()", "receiver.isStaticClass() == cachedStatic", "receiver.getLookupClass() == cachedClazz", "cachedName.equals(name)"}, limit = "LIMIT")
         static boolean doCached(HostObject receiver, String name,
@@ -222,7 +222,7 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    static class IsMemberModifiableNode extends Node {
+    static class IsMemberModifiable {
 
         @Specialization(guards = {"receiver.isStaticClass()", "receiver.isStaticClass() == cachedStatic", "receiver.getLookupClass() == cachedClazz", "cachedName.equals(name)"}, limit = "LIMIT")
         static boolean doCached(HostObject receiver, String name,
@@ -245,7 +245,7 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    static class IsMemberInternalNode extends Node {
+    static class IsMemberInternal {
 
         @Specialization(guards = {"receiver.isStaticClass()", "receiver.isStaticClass() == cachedStatic", "receiver.getLookupClass() == cachedClazz", "cachedName.equals(name)"}, limit = "LIMIT")
         static boolean doCached(HostObject receiver, String name,
@@ -293,7 +293,7 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    static class IsMemberInvokableNode extends Node {
+    static class IsMemberInvokable {
 
         @Specialization(guards = {"receiver.isStaticClass()", "receiver.isStaticClass() == cachedStatic", "receiver.getLookupClass() == cachedClazz", "cachedName.equals(name)"}, limit = "LIMIT")
         static boolean doCached(HostObject receiver, String name,
@@ -347,7 +347,7 @@ final class HostObject implements TruffleObject {
 
     @ExportMessage(name = "isArrayElementReadable")
     @ExportMessage(name = "isArrayElementModifiable")
-    static class IsArrayElementExistingNode extends Node {
+    static class IsArrayElementExisting {
 
         @Specialization(guards = "receiver.isHostArray()")
         static boolean doArray(HostObject receiver, long index) {
@@ -373,7 +373,7 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    static class WriteArrayElementNode extends Node {
+    static class WriteArrayElement {
 
         @Specialization(guards = {"receiver.isHostArray()"})
         @SuppressWarnings("unchecked")
@@ -426,7 +426,7 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    static class IsArrayElementRemovableNode extends Node {
+    static class IsArrayElementRemovable {
         @Specialization(guards = "receiver.isList()")
         static boolean doList(HostObject receiver, long index) {
             return index >= 0 && index < ((List<?>) receiver.obj).size();
@@ -439,7 +439,7 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    static class RemoveArrayElementNode extends Node {
+    static class RemoveArrayElement {
         @SuppressWarnings("unchecked")
         @Specialization(guards = "receiver.isList()")
         static void doList(HostObject receiver, long index) throws InvalidArrayIndexException {
@@ -465,7 +465,7 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    abstract static class ReadArrayElementNode extends Node {
+    abstract static class ReadArrayElement {
 
         @Specialization(guards = {"receiver.isHostArray()"})
         protected static Object doArray(HostObject receiver, long index,
@@ -533,7 +533,7 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    static class IsInstantiableNode extends Node {
+    static class IsInstantiable {
 
         @Specialization(guards = "!receiver.isClass()")
         @SuppressWarnings("unused")
@@ -578,7 +578,7 @@ final class HostObject implements TruffleObject {
     }
 
     @ExportMessage
-    static class InstantiateNode extends Node {
+    static class Instantiate {
 
         @Specialization(guards = "!receiver.isClass()")
         @SuppressWarnings("unused")

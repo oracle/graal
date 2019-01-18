@@ -52,7 +52,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.FinalLocationException;
 import com.oracle.truffle.api.object.IncompatibleLocationException;
@@ -92,7 +91,7 @@ public final class SLObjectType extends ObjectType {
 
     @ExportMessage
     @SuppressWarnings("unused")
-    static class GetMembersNode extends Node {
+    static class GetMembers {
 
         @Specialization(guards = "receiver.getShape() == cachedShape")
         static Keys doCached(DynamicObject receiver, boolean includeInternal, //
@@ -111,7 +110,7 @@ public final class SLObjectType extends ObjectType {
     @ExportMessage(name = "isMemberModifiable")
     @ExportMessage(name = "isMemberRemovable")
     @SuppressWarnings("unused")
-    static class ExistsMemberNode extends Node {
+    static class ExistsMember {
 
         @Specialization(guards = {"receiver.getShape() == cachedShape", "cachedMember.equals(member)"})
         static boolean doCached(DynamicObject receiver, String member,
@@ -176,7 +175,7 @@ public final class SLObjectType extends ObjectType {
 
     @GenerateUncached
     @ExportMessage
-    abstract static class ReadMemberNode extends Node {
+    abstract static class ReadMember {
 
         /**
          * Polymorphic inline cache for a limited number of distinct property names and shapes.
@@ -232,7 +231,7 @@ public final class SLObjectType extends ObjectType {
 
     @GenerateUncached
     @ExportMessage
-    abstract static class WriteMemberNode extends Node {
+    abstract static class WriteMember {
 
         /**
          * Polymorphic inline cache for writing a property that already exists (no shape change is

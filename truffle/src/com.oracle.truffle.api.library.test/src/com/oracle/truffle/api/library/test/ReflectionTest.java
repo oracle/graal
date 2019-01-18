@@ -89,7 +89,7 @@ public class ReflectionTest extends AbstractParametrizedLibraryTest {
         static int voidReturnUncachedCount = 0;
 
         @ExportMessage
-        static class VoidReturnNode extends Node {
+        static class VoidReturn {
 
             @Specialization
             static void doDefault(@SuppressWarnings("unused") ReflectiveObject arg) {

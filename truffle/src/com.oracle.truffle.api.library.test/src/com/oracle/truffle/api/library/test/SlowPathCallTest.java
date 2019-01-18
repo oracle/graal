@@ -48,7 +48,6 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
-import com.oracle.truffle.api.nodes.Node;
 
 public class SlowPathCallTest extends AbstractLibraryTest {
 
@@ -68,7 +67,7 @@ public class SlowPathCallTest extends AbstractLibraryTest {
         }
 
         @ExportMessage
-        static class SomeCallNode extends Node {
+        static class SomeCall {
 
             @Specialization
             static Object s0(@SuppressWarnings("unused") MyObject receiver) {

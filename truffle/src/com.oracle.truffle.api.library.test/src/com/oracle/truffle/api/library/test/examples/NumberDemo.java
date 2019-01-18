@@ -94,9 +94,8 @@ public class NumberDemo {
         }
 
         @ExportMessage
-        @GenerateUncached
         @ImportStatic(NumberDemo.class)
-        static class AddNode extends Node {
+        static class Add {
 
             @Specialization(guards = "targetLib.fitsInInt(target)", rewriteOn = ArithmeticException.class, limit = "LIMIT")
             static SmallNumber doSmallNoOverflow(Integer receiver, Object target,
@@ -129,7 +128,7 @@ public class NumberDemo {
         }
 
         @ExportMessage
-        static class GetSignNumberNode extends Node {
+        static class GetSignNumber {
 
             @Specialization(guards = "receiver.intValue() < 0")
             static int doNegative(Integer receiver) {
@@ -144,7 +143,7 @@ public class NumberDemo {
         }
 
         @ExportMessage
-        static class GetMagnitudeNode extends Node {
+        static class GetMagnitude {
 
             @Specialization(guards = "receiver.intValue() == 0")
             static int[] doZero(Integer receiver) {
@@ -186,7 +185,7 @@ public class NumberDemo {
 
         @ExportMessage
         @ImportStatic(NumberDemo.class)
-        static class AddNode extends Node {
+        static class Add {
 
             @Specialization(limit = "LIMIT")
             static BigNumber doSmallOverflow(BigNumber receiver, Object target,
@@ -217,7 +216,7 @@ public class NumberDemo {
         }
 
         @ExportMessage
-        static class AsIntNode extends Node {
+        static class AsInt {
 
             @Specialization(guards = {"receiver.signum > 0", "receiver.magnitude.length == 1"})
             static int doSingleDigitPositive(BigNumber receiver) {
@@ -339,7 +338,7 @@ public class NumberDemo {
         }
 
         @ExportMessage
-        static class GetSignNumberNode extends Node {
+        static class GetSignNumber {
 
             @Specialization(guards = "receiver.value < 0")
             static int doNegative(SmallNumber receiver) {
@@ -354,7 +353,7 @@ public class NumberDemo {
         }
 
         @ExportMessage
-        static class GetMagnitudeNode extends Node {
+        static class GetMagnitude {
 
             @Specialization(guards = "receiver.value == 0")
             static int[] doZero(SmallNumber receiver) {

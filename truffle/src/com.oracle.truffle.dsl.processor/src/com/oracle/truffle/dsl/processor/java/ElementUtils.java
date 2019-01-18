@@ -101,6 +101,36 @@ public class ElementUtils {
         return null;
     }
 
+    public static String defaultValue(TypeMirror mirror) {
+        switch (mirror.getKind()) {
+            case VOID:
+                return "";
+            case ARRAY:
+            case DECLARED:
+            case PACKAGE:
+            case NULL:
+                return "null";
+            case BOOLEAN:
+                return "false";
+            case BYTE:
+                return "(byte) 0";
+            case CHAR:
+                return "(char) 0";
+            case DOUBLE:
+                return "0.0D";
+            case LONG:
+                return "0L";
+            case INT:
+                return "0";
+            case FLOAT:
+                return "0.0F";
+            case SHORT:
+                return "(short) 0";
+            default:
+                throw new AssertionError();
+        }
+    }
+
     public static TypeMirror getType(ProcessingEnvironment processingEnv, Class<?> element) {
         if (element.isArray()) {
             return processingEnv.getTypeUtils().getArrayType(getType(processingEnv, element.getComponentType()));

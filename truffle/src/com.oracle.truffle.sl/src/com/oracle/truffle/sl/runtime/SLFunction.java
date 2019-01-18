@@ -55,7 +55,6 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.utilities.CyclicAssumption;
 import com.oracle.truffle.sl.SLLanguage;
@@ -159,7 +158,7 @@ public final class SLFunction implements TruffleObject {
      * forwards to a function dispatch.
      */
     @ExportMessage
-    abstract static class ExecuteNode extends Node {
+    abstract static class Execute {
 
         /**
          * Inline cached specialization of the dispatch.

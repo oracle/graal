@@ -44,7 +44,6 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.Node;
 
 @ExportLibrary(VectorLibrary.class)
 final class MyVector {
@@ -65,7 +64,7 @@ final class MyVector {
     }
 
     @ExportMessage
-    abstract static class MultiplyNode extends Node {
+    abstract static class Multiply {
 
         @Specialization
         static void multiply(MyVector vector, double value) {
