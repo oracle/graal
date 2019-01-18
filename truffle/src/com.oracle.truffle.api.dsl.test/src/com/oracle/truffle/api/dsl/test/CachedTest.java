@@ -44,6 +44,7 @@ import static com.oracle.truffle.api.dsl.test.TestHelper.assertionsEnabled;
 import static com.oracle.truffle.api.dsl.test.TestHelper.createCallTarget;
 import static com.oracle.truffle.api.dsl.test.TestHelper.createNode;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
 import java.lang.reflect.Field;
@@ -56,6 +57,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.NodeField;
@@ -75,6 +77,7 @@ import com.oracle.truffle.api.dsl.test.CachedTestFactory.ChildrenAdoption5Factor
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.ChildrenAdoption6Factory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.ChildrenAdoption7Factory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.NullChildAdoptionNodeGen;
+import com.oracle.truffle.api.dsl.test.CachedTestFactory.NullLiteralNodeGen;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestBoundCacheOverflowContainsFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestCacheFieldFactory;
 import com.oracle.truffle.api.dsl.test.CachedTestFactory.TestCacheMethodFactory;
@@ -741,6 +744,27 @@ public class CachedTest {
         Node child = new ValueNode();
         root.execute(child);
         Assert.assertTrue(hasParent(root, child));
+    }
+
+    @GenerateUncached
+    abstract static class NullLiteralNode extends Node {
+
+        abstract Object execute(Object value);
+
+        @Specialization
+        static Object do1(String value, @Cached(value = "null", uncached = "null") Object cachedValue) {
+            return cachedValue;
+        }
+
+        protected static Object createChildren() {
+            return null;
+        }
+    }
+
+    @Test
+    public void testNullLiteral() {
+        assertNull(NullLiteralNodeGen.create().execute(""));
+        assertNull(NullLiteralNodeGen.getUncached().execute(""));
     }
 
     private static boolean hasParent(Node parent, Node node) {
