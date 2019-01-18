@@ -27,32 +27,21 @@ package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 import static org.graalvm.compiler.truffle.runtime.hotspot.libgraal.LibGraalTruffleRuntime.getIsolateThreadId;
 
 import java.io.Closeable;
-import java.io.File;
 import java.io.IOException;
-import java.io.InterruptedIOException;
-import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.channels.ClosedByInterruptException;
-import java.nio.channels.FileChannel;
-import java.nio.channels.SocketChannel;
 import java.nio.channels.WritableByteChannel;
-import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
-import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.Supplier;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleDebugContext;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.OptionsEncoder;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.graphio.GraphOutput;
 
 import jdk.vm.ci.meta.JavaMethod;
@@ -83,7 +72,7 @@ final class IgvSupport extends SVMObject implements TruffleDebugContext {
             return builder.build(parent);
         }
         if (sharedChannel == null) {
-            sharedChannel = new IgvDumpChannel(this::getPath);
+            sharedChannel = new IgvDumpChannel(HotSpotToSVMCalls.getDumpChannel(getIsolateThreadId(), handle));
         }
         final GraphOutput<G, M> res = builder.build(sharedChannel);
         parentOutput = res;
@@ -145,36 +134,12 @@ final class IgvSupport extends SVMObject implements TruffleDebugContext {
 
     @Override
     public void close() {
-        try {
-            if (sharedChannel != null) {
-                try {
-                    sharedChannel.realClose();
-                } catch (IOException ex) {
-                    // ignore.
-                }
-            }
-        } finally {
-            HotSpotToSVMCalls.closeDebugContext(getIsolateThreadId(), handle);
-        }
+        HotSpotToSVMCalls.closeDebugContext(getIsolateThreadId(), handle);
     }
 
     @Override
     public void closeDebugChannels() {
         close();
-    }
-
-    private Path getPath() {
-        try {
-            String id = description.getId();
-            String label = description.getLabel();
-            Path result = createUnique(id, label, ".bgv", false);
-            if (IgvOptions.getValue(IgvOptions.ShowDumpFiles)) {
-                GraalTruffleRuntime.getRuntime().log(String.format("Dumping debug output to %s", result.toAbsolutePath().toString()));
-            }
-            return result;
-        } catch (IOException ex) {
-            throw new RuntimeException(ex);
-        }
     }
 
     private static Path findReleaseFile() {
@@ -196,80 +161,6 @@ final class IgvSupport extends SVMObject implements TruffleDebugContext {
         }
         releaseFile = jdkDir.resolve("release");
         return Files.exists(releaseFile) ? releaseFile : null;
-    }
-
-    /**
-     * Copied from {@code org.graalvm.compiler.truffle.runtime.PathUtilities}.
-     */
-    private static final int MAX_FILE_NAME_LENGTH = 255;
-
-    private static final String ELLIPSIS = "...";
-
-    private static Path createUnique(String id, String label, String ext, boolean createDirectory) throws IOException {
-        String uniqueTag = "";
-        int dumpCounter = 1;
-        String prefix = id;
-        for (;;) {
-            int fileNameLengthWithoutLabel = uniqueTag.length() + ext.length() + prefix.length() + "[]".length();
-            int labelLengthLimit = MAX_FILE_NAME_LENGTH - fileNameLengthWithoutLabel;
-            String fileName;
-            if (labelLengthLimit < ELLIPSIS.length()) {
-                // This means `id` is very long
-                String suffix = uniqueTag + ext;
-                int idLengthLimit = Math.min(MAX_FILE_NAME_LENGTH - suffix.length(), prefix.length());
-                fileName = sanitizeFileName(prefix.substring(0, idLengthLimit) + suffix);
-            } else {
-                if (label == null) {
-                    fileName = sanitizeFileName(prefix + uniqueTag + ext);
-                } else {
-                    String adjustedLabel = label;
-                    if (label.length() > labelLengthLimit) {
-                        adjustedLabel = label.substring(0, labelLengthLimit - ELLIPSIS.length()) + ELLIPSIS;
-                    }
-                    fileName = sanitizeFileName(prefix + '[' + adjustedLabel + ']' + uniqueTag + ext);
-                }
-            }
-            String path = HotSpotToSVMCalls.getGraphDumpDirectory(getIsolateThreadId());
-            if (path == null) {
-                throw new IOException("Cannot locate graph dump directory.");
-            }
-            Path dumpDir = Paths.get(path);
-            Path result = Paths.get(dumpDir.toString(), fileName);
-            try {
-                if (createDirectory) {
-                    return Files.createDirectory(result);
-                } else {
-                    return Files.createFile(result);
-                }
-            } catch (FileAlreadyExistsException e) {
-                uniqueTag = "_" + dumpCounter++;
-            }
-        }
-    }
-
-    private static String sanitizeFileName(String name) {
-        try {
-            Path path = Paths.get(name);
-            if (path.getNameCount() == 0) {
-                return name;
-            }
-        } catch (InvalidPathException e) {
-            // fall through
-        }
-        StringBuilder buf = new StringBuilder(name.length());
-        for (int i = 0; i < name.length(); i++) {
-            char c = name.charAt(i);
-            if (c != File.separatorChar && c != ' ' && !Character.isISOControl(c)) {
-                try {
-                    Paths.get(String.valueOf(c));
-                    buf.append(c);
-                    continue;
-                } catch (InvalidPathException e) {
-                }
-            }
-            buf.append('_');
-        }
-        return buf.toString();
     }
 
     static IgvSupport create(SVMHotSpotTruffleCompiler compiler, Map<String, Object> options, SVMTruffleCompilation compilation) {
@@ -309,82 +200,39 @@ final class IgvSupport extends SVMObject implements TruffleDebugContext {
         }
     }
 
-    private static final class IgvDumpChannel implements WritableByteChannel {
+    private static final class IgvDumpChannel extends SVMObject implements WritableByteChannel {
 
-        private final Supplier<Path> pathProvider;
-        private WritableByteChannel sharedChannel;
-        private boolean closed;
-
-        IgvDumpChannel(final Supplier<Path> pathProvider) {
-            this.pathProvider = pathProvider;
+        IgvDumpChannel(long handle) {
+            super(handle);
         }
 
         @Override
         public int write(ByteBuffer src) throws IOException {
-            return channel().write(src);
+            byte[] buffer;
+            int start;
+            int length;
+            if (src.hasArray()) {
+                buffer = src.array();
+                start = src.position();
+                length = src.limit() - start;
+            } else {
+                // Todo: Pass ByteBuffer and use JNI GetDirectBufferAddress to access it
+                start = src.position();
+                length = src.limit() - start;
+                buffer = new byte[length];
+                src.get(buffer, 0, length);
+                start = 0;
+            }
+            return HotSpotToSVMCalls.dumpChannelWrite(getIsolateThreadId(), handle, buffer, start, length);
         }
 
         @Override
         public boolean isOpen() {
-            return !closed;
+            return HotSpotToSVMCalls.isDumpChannelOpen(getIsolateThreadId(), handle);
         }
 
         @Override
         public void close() throws IOException {
-        }
-
-        void realClose() throws IOException {
-            closed = true;
-            if (sharedChannel != null) {
-                sharedChannel.close();
-                sharedChannel = null;
-            }
-        }
-
-        WritableByteChannel channel() throws IOException {
-            if (closed) {
-                throw new IOException();
-            }
-            if (sharedChannel == null) {
-                if (IgvOptions.getValue(IgvOptions.PrintGraphFile)) {
-                    sharedChannel = createFileChannel(pathProvider);
-                } else {
-                    sharedChannel = createNetworkChannel(pathProvider);
-                }
-            }
-            return sharedChannel;
-        }
-
-        private static WritableByteChannel createNetworkChannel(Supplier<Path> pathProvider) throws IOException {
-            String host = IgvOptions.getValue(IgvOptions.PrintGraphHost);
-            int port = IgvOptions.getValue(IgvOptions.PrintBinaryGraphPort);
-            try {
-                WritableByteChannel channel = SocketChannel.open(new InetSocketAddress(host, port));
-                GraalTruffleRuntime.getRuntime().log(String.format("Connected to the IGV on %s:%d", host, port));
-                return channel;
-            } catch (ClosedByInterruptException | InterruptedIOException e) {
-                /*
-                 * Interrupts should not count as errors because they may be caused by a cancelled
-                 * Graal compilation. ClosedByInterruptException occurs if the SocketChannel could
-                 * not be opened. InterruptedIOException occurs if new Socket(..) was interrupted.
-                 */
-                return null;
-            } catch (IOException e) {
-                if (!IgvOptions.PrintGraphFile.hasBeenSet(IgvOptions.getOptions())) {
-                    return createFileChannel(pathProvider);
-                } else {
-                    throw new IOException(String.format("Could not connect to the IGV on %s:%d", host, port), e);
-                }
-            }
-        }
-
-        private static WritableByteChannel createFileChannel(final Supplier<Path> pathProvider) throws IOException {
-            final Path path = pathProvider.get();
-            try {
-                return FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
-            } catch (IOException e) {
-                throw new IOException(String.format("Failed to open %s to dump IGV graphs", path), e);
-            }
         }
     }
 

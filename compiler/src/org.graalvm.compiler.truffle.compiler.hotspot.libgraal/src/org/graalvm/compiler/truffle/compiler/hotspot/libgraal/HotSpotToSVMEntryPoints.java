@@ -32,9 +32,11 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.CloseDebugContextScope;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.CreateSpeculationLog;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.DoCompile;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.DumpChannelWrite;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.GetCompilerConfigurationFactoryName;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.GetCompilerConfigurationName;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.GetDataPatchesCount;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.GetDumpChannel;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.GetExceptionHandlersCount;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.GetGraphDumpDirectory;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.GetInfopoints;
@@ -52,6 +54,7 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.InitializeRuntime;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.InstallTruffleCallBoundaryMethods;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.IsBasicDumpEnabled;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.IsDumpChannelOpen;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.Log;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.OpenCompilation;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.OpenDebugContext;
@@ -74,6 +77,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.nio.ByteBuffer;
+import java.nio.channels.WritableByteChannel;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -129,6 +134,7 @@ import org.graalvm.compiler.truffle.common.TruffleDebugContext;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.common.TruffleOutputGroup;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
+import org.graalvm.compiler.truffle.compiler.TruffleDebugContextImpl;
 
 /**
  * Entry points in SVM for {@linkplain HotSpotToSVM calls} from HotSpot.
@@ -716,6 +722,55 @@ final class HotSpotToSVMEntryPoints {
             return WordFactory.nullPointer();
         }
         return scope.getObjectResult();
+    }
+
+    @HotSpotToSVM(GetDumpChannel)
+    @CEntryPoint(name = "Java_org_graalvm_compiler_truffle_runtime_hotspot_libgraal_HotSpotToSVMCalls_getDumpChannel")
+    @SuppressWarnings("try")
+    public static long getDumpChannel(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long debugContextHandle) {
+        try (HotSpotToSVMScope s = new HotSpotToSVMScope(GetDumpChannel, env)) {
+            TruffleDebugContextImpl debugContext = SVMObjectHandles.resolve(debugContextHandle, TruffleDebugContextImpl.class);
+            WritableByteChannel channel = debugContext.getChannel();
+            return SVMObjectHandles.create(channel);
+        } catch (Throwable t) {
+            JNIExceptionWrapper.throwInHotSpot(env, t);
+            return 0;
+        }
+    }
+
+    @HotSpotToSVM(IsDumpChannelOpen)
+    @CEntryPoint(name = "Java_org_graalvm_compiler_truffle_runtime_hotspot_libgraal_HotSpotToSVMCalls_isDumpChannelOpen")
+    @SuppressWarnings("try")
+    public static boolean isDumpChannelOpen(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long channelHandle) {
+        try (HotSpotToSVMScope s = new HotSpotToSVMScope(IsDumpChannelOpen, env)) {
+            return SVMObjectHandles.resolve(channelHandle, WritableByteChannel.class).isOpen();
+        } catch (Throwable t) {
+            JNIExceptionWrapper.throwInHotSpot(env, t);
+            return false;
+        }
+    }
+
+    @HotSpotToSVM(DumpChannelWrite)
+    @CEntryPoint(name = "Java_org_graalvm_compiler_truffle_runtime_hotspot_libgraal_HotSpotToSVMCalls_dumpChannelWrite")
+    @SuppressWarnings("try")
+    public static int dumpChannelWrite(JNIEnv env, JClass hsClass, @CEntryPoint.IsolateThreadContext long isolateThreadId, long channelHandle, JByteArray buffer, int start, int length) {
+        try (HotSpotToSVMScope s = new HotSpotToSVMScope(DumpChannelWrite, env)) {
+            WritableByteChannel channel = SVMObjectHandles.resolve(channelHandle, WritableByteChannel.class);
+            CCharPointer cbuffer = JNIUtil.GetByteArrayElements(env, buffer, WordFactory.nullPointer());
+            try {
+                byte[] arr = new byte[length];
+                for (int si = start, di = 0; di < length;) {
+                    arr[di++] = cbuffer.read(si++);
+                }
+                ByteBuffer source = ByteBuffer.wrap(arr);
+                return channel.write(source);
+            } finally {
+                JNIUtil.ReleaseByteArrayElements(env, buffer, cbuffer, JArray.MODE_RELEASE);
+            }
+        } catch (Throwable t) {
+            JNIExceptionWrapper.throwInHotSpot(env, t);
+            return -1;
+        }
     }
 
     /*----------------- TRACING ------------------*/
