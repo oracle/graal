@@ -48,26 +48,31 @@ public class StringUTF16Substitutions {
     private static final int MAX_LENGTH = Integer.MAX_VALUE >> 1;
 
     @MethodSubstitution
-    public static byte[] toBytes(char[] value, int off, int len) {
-        if (probability(SLOW_PATH_PROBABILITY, len < 0) || probability(SLOW_PATH_PROBABILITY, len > MAX_LENGTH)) {
-            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
+    public static byte[] toBytes(char[] value, int srcBegin, int length) {
+        if (probability(SLOW_PATH_PROBABILITY, srcBegin < 0) ||
+                        probability(SLOW_PATH_PROBABILITY, length < 0) ||
+                        probability(SLOW_PATH_PROBABILITY, length > MAX_LENGTH) ||
+                        probability(SLOW_PATH_PROBABILITY, srcBegin > value.length - length)) {
+            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.BoundsCheckException);
         }
-        byte[] val = (byte[]) NewArrayNode.newUninitializedArray(Byte.TYPE, len << 1);
+        byte[] val = (byte[]) NewArrayNode.newUninitializedArray(Byte.TYPE, length << 1);
         // the intrinsic does not perform bounds/type checks, so it can be used here.
         // Using KillsAny variant since we are reading and writing 2 different types.
-        ArrayCopyCallNode.disjointArraycopyKillsAny(value, off, val, 0, len, JavaKind.Char, HotSpotReplacementsUtil.getHeapWordSize(INJECTED_VMCONFIG));
+        ArrayCopyCallNode.disjointArraycopyKillsAny(value, srcBegin, val, 0, length, JavaKind.Char, HotSpotReplacementsUtil.getHeapWordSize(INJECTED_VMCONFIG));
         return val;
     }
 
     @MethodSubstitution
     public static void getChars(byte[] value, int srcBegin, int srcEnd, char[] dst, int dstBegin) {
-        if (srcBegin < srcEnd && (probability(SLOW_PATH_PROBABILITY, srcBegin < 0) ||
-                        probability(SLOW_PATH_PROBABILITY, srcEnd - srcBegin < 0) ||
-                        probability(SLOW_PATH_PROBABILITY, srcBegin > (value.length >> 1) - (srcEnd - srcBegin)))) {
+        int length = srcEnd - srcBegin;
+        if (probability(SLOW_PATH_PROBABILITY, srcBegin < 0) ||
+                        probability(SLOW_PATH_PROBABILITY, length < 0) ||
+                        probability(SLOW_PATH_PROBABILITY, srcBegin > (value.length >> 1) - length) ||
+                        probability(SLOW_PATH_PROBABILITY, dstBegin > dst.length - length)) {
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.BoundsCheckException);
         }
         // The intrinsic does not perform bounds/type checks, so it can be used here.
         // Using KillsAny variant since we are reading and writing 2 different types.
-        ArrayCopyCallNode.disjointArraycopyKillsAny(value, srcBegin, dst, dstBegin, srcEnd - srcBegin, JavaKind.Char, HotSpotReplacementsUtil.getHeapWordSize(INJECTED_VMCONFIG));
+        ArrayCopyCallNode.disjointArraycopyKillsAny(value, srcBegin, dst, dstBegin, length, JavaKind.Char, HotSpotReplacementsUtil.getHeapWordSize(INJECTED_VMCONFIG));
     }
 }
