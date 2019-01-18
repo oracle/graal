@@ -278,7 +278,7 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
  */
 public final class EspressoRootNode extends RootNode implements LinkedNode {
 
-    @Children private InvokeNode[] nodes = new InvokeNode[0];
+    @Children private InvokeNode[] nodes = InvokeNode.EMPTY_ARRAY;
 
     private final MethodInfo method;
     private final InterpreterToVM vm;
