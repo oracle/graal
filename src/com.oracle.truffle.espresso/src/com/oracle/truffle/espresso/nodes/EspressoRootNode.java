@@ -684,159 +684,45 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
                     case DCMPL       : putInt(frame, top - 4, compareDoubleLess(peekDouble(frame, top - 1), peekDouble(frame, top - 3))); break;
                     case DCMPG       : putInt(frame, top - 4, compareDoubleGreater(peekDouble(frame, top - 1), peekDouble(frame, top - 3))); break;
 
-                    case IFEQ        :
-                        if (peekInt(frame, top - 1) == 0) {
-                            top += Bytecodes.stackEffectOf(curOpcode);
-                            int targetBCI = bs.readBranchDest(curBCI);
-                            top = checkBackEdge(curBCI, targetBCI, top);
-                            curBCI = targetBCI;
-                            continue loop;
-                        }
-                        break;
-                    case IFNE        :
-                        if (peekInt(frame, top - 1) != 0) {
-                            top += Bytecodes.stackEffectOf(curOpcode);
-                            int targetBCI = bs.readBranchDest(curBCI);
-                            top = checkBackEdge(curBCI, targetBCI, top);
-                            curBCI = targetBCI;
-                            continue loop;
-                        }
-                        break;
-                    case IFLT        :
-                        if (peekInt(frame, top - 1)  < 0) {
-                            top += Bytecodes.stackEffectOf(curOpcode);
-                            int targetBCI = bs.readBranchDest(curBCI);
-                            top = checkBackEdge(curBCI, targetBCI, top);
-                            curBCI = targetBCI;
-                            continue loop;
-                        }
-                        break;
-                    case IFGE        :
-                        if (peekInt(frame, top - 1) >= 0) {
-                            top += Bytecodes.stackEffectOf(curOpcode);
-                            int targetBCI = bs.readBranchDest(curBCI);
-                            top = checkBackEdge(curBCI, targetBCI, top);
-                            curBCI = targetBCI;
-                            continue loop;
-                        }
-                        break;
-                    case IFGT        :
-                        if (peekInt(frame, top - 1)  > 0) {
-                            top += Bytecodes.stackEffectOf(curOpcode);
-                            int targetBCI = bs.readBranchDest(curBCI);
-                            top = checkBackEdge(curBCI, targetBCI, top);
-                            curBCI = targetBCI;
-                            continue loop;
-                        }
-                        break;
-                    case IFLE        :
-                        if (peekInt(frame, top - 1) <= 0) {
-                            top += Bytecodes.stackEffectOf(curOpcode);
-                            int targetBCI = bs.readBranchDest(curBCI);
-                            top = checkBackEdge(curBCI, targetBCI, top);
-                            curBCI = targetBCI;
-                            continue loop;
-                        }
-                        break;
-
-                    case IF_ICMPEQ   :
-                        if (peekInt(frame, top - 1) == peekInt(frame, top - 2)) {
-                            top += Bytecodes.stackEffectOf(curOpcode);
-                            int targetBCI = bs.readBranchDest(curBCI);
-                            top = checkBackEdge(curBCI, targetBCI, top);
-                            curBCI = targetBCI;
-                            continue loop;
-                        }
-                        break;
-                    case IF_ICMPNE   :
-                        if (peekInt(frame, top - 1) != peekInt(frame, top - 2)) {
-                            top += Bytecodes.stackEffectOf(curOpcode);
-                            int targetBCI = bs.readBranchDest(curBCI);
-                            top = checkBackEdge(curBCI, targetBCI, top);
-                            curBCI = targetBCI;
-                            continue loop;
-                        }
-                        break;
-                    case IF_ICMPLT   :
-                        if (peekInt(frame, top - 1)  > peekInt(frame, top - 2)) {
-                            top += Bytecodes.stackEffectOf(curOpcode);
-                            int targetBCI = bs.readBranchDest(curBCI);
-                            top = checkBackEdge(curBCI, targetBCI, top);
-                            curBCI = targetBCI;
-                            continue loop;
-                        }
-                        break;
-                    case IF_ICMPGE   :
-                        if (peekInt(frame, top - 1) <= peekInt(frame, top - 2)) {
-                            top += Bytecodes.stackEffectOf(curOpcode);
-                            int targetBCI = bs.readBranchDest(curBCI);
-                            top = checkBackEdge(curBCI, targetBCI, top);
-                            curBCI = targetBCI;
-                            continue loop;
-                        }
-                        break;
-                    case IF_ICMPGT   :
-                        if (peekInt(frame, top - 1)  < peekInt(frame, top - 2)) {
-                            top += Bytecodes.stackEffectOf(curOpcode);
-                            int targetBCI = bs.readBranchDest(curBCI);
-                            top = checkBackEdge(curBCI, targetBCI, top);
-                            curBCI = targetBCI;
-                            continue loop;
-                        }
-                        break;
-                    case IF_ICMPLE   :
-                        if (peekInt(frame, top - 1) >= peekInt(frame, top - 2)) {
-                            top += Bytecodes.stackEffectOf(curOpcode);
-                            int targetBCI = bs.readBranchDest(curBCI);
-                            top = checkBackEdge(curBCI, targetBCI, top);
-                            curBCI = targetBCI;
-                            continue loop;
-                        }
-                        break;
-
-                    case IF_ACMPEQ   :
-                        if (peekObject(frame, top - 1) == peekObject(frame, top - 2)) {
-                            top += Bytecodes.stackEffectOf(curOpcode);
-                            int targetBCI = bs.readBranchDest(curBCI);
-                            top = checkBackEdge(curBCI, targetBCI, top);
-                            curBCI = targetBCI;
-                            continue loop;
-                        }
-                        break;
-                    case IF_ACMPNE   :
-                        if (peekObject(frame, top - 1) != peekObject(frame, top - 2)) {
-                            top += Bytecodes.stackEffectOf(curOpcode);
-                            int targetBCI = bs.readBranchDest(curBCI);
-                            top = checkBackEdge(curBCI, targetBCI, top);
-                            curBCI = targetBCI;
-                            continue loop;
-                        }
-                        break;
-
+                    case IFEQ        : // fall through
+                    case IFNE        : // fall through
+                    case IFLT        : // fall through
+                    case IFGE        : // fall through
+                    case IFGT        : // fall through
+                    case IFLE        : // fall through
+                    case IF_ICMPEQ   : // fall through
+                    case IF_ICMPNE   : // fall through
+                    case IF_ICMPLT   : // fall through
+                    case IF_ICMPGE   : // fall through
+                    case IF_ICMPGT   : // fall through
+                    case IF_ICMPLE   : // fall through
+                    case IF_ACMPEQ   : // fall through
+                    case IF_ACMPNE   : // fall through
                     case GOTO        : // fall through
-                    case GOTO_W      : {
-                        top += Bytecodes.stackEffectOf(curOpcode);
-                        int targetBCI = bs.readBranchDest(curBCI);
-                        top = checkBackEdge(curBCI, targetBCI, top);
-                        curBCI = targetBCI;
-                        continue loop;
-                    }
+                    case GOTO_W      : // fall through
+                    case IFNULL      : // fall through
+                    case IFNONNULL   :
+                        if (takeBranch(frame, top, curOpcode)) {
+                            int targetBCI = bs.readBranchDest(curBCI);
+                            top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
+                            curBCI = targetBCI;
+                            continue loop;
+                        }
+                        break;
 
                     case JSR         : // fall through
                     case JSR_W       : {
                         CompilerDirectives.bailout("JSR/RET bytecodes not supported");
                         putReturnAddress(frame, top, bs.nextBCI(curBCI));
-                        top += Bytecodes.stackEffectOf(curOpcode);
                         int targetBCI = bs.readBranchDest(curBCI);
-                        top = checkBackEdge(curBCI, targetBCI, top);
+                        top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
                         curBCI = targetBCI;
                         continue loop;
                     }
                     case RET         : {
                         CompilerDirectives.bailout("JSR/RET bytecodes not supported");
-                        top += Bytecodes.stackEffectOf(curOpcode);
                         int targetBCI = getLocalReturnAddress(frame, bs.readLocalIndex(curBCI));
-                        top = checkBackEdge(curBCI, targetBCI, top);
+                        top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
                         curBCI = targetBCI;
                         continue loop;
                     }
@@ -845,7 +731,6 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
                     // Checkstyle: resume
                     case TABLESWITCH: {
                         int index = peekInt(frame, top - 1);
-                        top += Bytecodes.stackEffectOf(curOpcode);
 
                         BytecodeTableSwitch switchHelper = bs.getBytecodeTableSwitch();
                         int low = switchHelper.lowKey(curBCI);
@@ -857,11 +742,14 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
 
                         // Interpreter uses direct lookup.
                         if (CompilerDirectives.inInterpreter()) {
+                            int targetBCI;
                             if (low <= index && index <= high) {
-                                curBCI = switchHelper.targetAt(curBCI, index - low);
+                                targetBCI = switchHelper.targetAt(curBCI, index - low);
                             } else {
-                                curBCI = switchHelper.defaultTarget(curBCI);
+                                targetBCI = switchHelper.defaultTarget(curBCI);
                             }
+                            top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
+                            curBCI = targetBCI;
                             continue loop;
                         }
 
@@ -871,7 +759,7 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
                                 CompilerAsserts.partialEvaluationConstant(i - low);
                                 CompilerAsserts.partialEvaluationConstant(switchHelper.targetAt(curBCI, i - low));
                                 int targetBCI = switchHelper.targetAt(curBCI, i - low);
-                                top = checkBackEdge(curBCI, targetBCI, top);
+                                top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
                                 curBCI = targetBCI;
                                 continue loop;
                             }
@@ -879,14 +767,12 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
 
                         CompilerAsserts.partialEvaluationConstant(switchHelper.defaultTarget(curBCI));
                         int targetBCI = switchHelper.defaultTarget(curBCI);
-                        top = checkBackEdge(curBCI, targetBCI, top);
+                        top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
                         curBCI = targetBCI;
                         continue loop;
                     }
                     case LOOKUPSWITCH: {
                         int key = peekInt(frame, top - 1);
-                        top += Bytecodes.stackEffectOf(curOpcode);
-
                         BytecodeLookupSwitch switchHelper = bs.getBytecodeLookupSwitch();
                         int low = 0;
                         int high = switchHelper.numberOfCases(curBCI) - 1;
@@ -902,13 +788,13 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
                             } else {
                                 int targetBCI = curBCI + switchHelper.offsetAt(curBCI, mid); // key
                                                                                              // found.
-                                top = checkBackEdge(curBCI, targetBCI, top);
+                                top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
                                 curBCI = targetBCI;
                                 continue loop;
                             }
                         }
                         int targetBCI = switchHelper.defaultTarget(curBCI); // key not found.
-                        top = checkBackEdge(curBCI, targetBCI, top);
+                        top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
                         curBCI = targetBCI;
                         continue loop;
                     }
@@ -948,24 +834,7 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
                     case WIDE                  : throw EspressoError.shouldNotReachHere("BytecodeStream.currentBC() should never return this bytecode.");
                     case MULTIANEWARRAY        : top += allocateMultiArray(frame, top, resolveType(curOpcode, bs.readCPI(curBCI)), bs.readUByte(curBCI + 3)); break;
 
-                    case IFNULL                :
-                        if (StaticObject.isNull(peekObject(frame, top - 1)))  {
-                            top += Bytecodes.stackEffectOf(curOpcode);
-                            int targetBCI = bs.readBranchDest(curBCI);
-                            top = checkBackEdge(curBCI, targetBCI, top);
-                            curBCI = targetBCI;
-                            continue loop;
-                        }
-                        break;
-                    case IFNONNULL             :
-                        if (StaticObject.notNull(peekObject(frame, top - 1))) {
-                            top += Bytecodes.stackEffectOf(curOpcode);
-                            int targetBCI = bs.readBranchDest(curBCI);
-                            top = checkBackEdge(curBCI, targetBCI, top);
-                            curBCI = targetBCI;
-                            continue loop;
-                        }
-                        break;
+
 
                     case BREAKPOINT            : throw EspressoError.unimplemented(Bytecodes.nameOf(curOpcode) + " not supported.");
                     case INVOKEDYNAMIC         : throw EspressoError.unimplemented(Bytecodes.nameOf(curOpcode) + " not supported.");
@@ -1008,12 +877,41 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
         }
     }
 
-    private int checkBackEdge(int curBCI, int targetBCI, int top) {
+    private boolean takeBranch(VirtualFrame frame, int top, int opCode) {
+        // @formatter:off
+        // Checkstyle: stop
+        switch (opCode) {
+            case IFEQ      : return peekInt(frame, top - 1) == 0;
+            case IFNE      : return peekInt(frame, top - 1) != 0;
+            case IFLT      : return peekInt(frame, top - 1)  < 0;
+            case IFGE      : return peekInt(frame, top - 1) >= 0;
+            case IFGT      : return peekInt(frame, top - 1)  > 0;
+            case IFLE      : return peekInt(frame, top - 1) <= 0;
+            case IF_ICMPEQ : return peekInt(frame, top - 1) == peekInt(frame, top - 2);
+            case IF_ICMPNE : return peekInt(frame, top - 1) != peekInt(frame, top - 2);
+            case IF_ICMPLT : return peekInt(frame, top - 1)  > peekInt(frame, top - 2);
+            case IF_ICMPGE : return peekInt(frame, top - 1) <= peekInt(frame, top - 2);
+            case IF_ICMPGT : return peekInt(frame, top - 1)  < peekInt(frame, top - 2);
+            case IF_ICMPLE : return peekInt(frame, top - 1) >= peekInt(frame, top - 2);
+            case IF_ACMPEQ : return peekObject(frame, top - 1) == peekObject(frame, top - 2);
+            case IF_ACMPNE : return peekObject(frame, top - 1) != peekObject(frame, top - 2);
+            case GOTO      : // fall though
+            case GOTO_W    : return true; // unconditional
+            case IFNULL    : return StaticObject.isNull(peekObject(frame, top - 1));
+            case IFNONNULL : return StaticObject.notNull(peekObject(frame, top - 1));
+            default        :
+                throw EspressoError.shouldNotReachHere("non branching bytecode");
+        }
+        // @formatter:on
+        // Checkstyle: resume
+    }
+
+    private int checkBackEdge(int curBCI, int targetBCI, int top, int opCode) {
+        top += Bytecodes.stackEffectOf(opCode);
         if (!zeroStackBackEdges && targetBCI < curBCI) {
             if (top != 0) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 zeroStackBackEdges = true;
-                // CompilerDirectives.bailout("back-edge with non-empty operand stack");
             } else {
                 return 0;
             }
