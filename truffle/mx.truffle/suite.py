@@ -82,10 +82,12 @@ suite = {
       }
     },
 
-    "LIBFFI" : {
+    "LIBFFI_SOURCES" : {
+      "resource" : True,
+      "version" : "3.2.1",
       "urls" : [
-        "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/libffi-3.2.1.tar.gz",
-        "ftp://sourceware.org/pub/libffi/libffi-3.2.1.tar.gz",
+        "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/libffi-{version}.tar.gz",
+        "ftp://sourceware.org/pub/libffi/libffi-{version}.tar.gz",
       ],
       "sha1" : "280c265b789e041c02e5c97815793dfc283fb1e6",
     },
@@ -575,12 +577,12 @@ suite = {
     "libffi" : {
       "class" : "LibffiBuilderProject",
       "buildDependencies" : [
-        "LIBFFI",
+        "LIBFFI_SOURCES",
       ],
       "os_arch" : {
         "windows" : {
           "<others>" : {
-            "ignore" : "windows is not supported",  # necessary until Truffle is fully supported (GR-7941)
+            "ignore" : "windows is not supported",
           },
         },
         "<others>" : {
