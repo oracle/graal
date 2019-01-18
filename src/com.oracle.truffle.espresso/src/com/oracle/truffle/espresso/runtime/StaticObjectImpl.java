@@ -63,7 +63,7 @@ public class StaticObjectImpl extends StaticObject {
 
     public StaticObjectImpl(ObjectKlass klass, boolean isStatic) {
         super(klass);
-        assert !isStatic || klass.isInitialized();
+        // assert !isStatic || klass.isInitialized();
         this.hiddenFields = null;
         this.fields = isStatic ? new Object[klass.getStaticFieldSlots()] : new Object[klass.getInstanceFieldSlots()];
         FieldInfo[] allFields = isStatic ? klass.getStaticFields() : klass.getInstanceFields(true);
