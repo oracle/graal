@@ -29,7 +29,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 @EspressoSubstitutions
 public class Target_java_lang_Object {
     @Substitution(hasReceiver = true)
-    @SuppressWarnings("unused")
+
     public static int hashCode(@Type(Object.class) StaticObject self) {
         return System.identityHashCode(MetaUtil.unwrap(self));
     }
@@ -39,6 +39,7 @@ public class Target_java_lang_Object {
         return self.getKlass().mirror();
     }
 
+    @SuppressWarnings("unused")
     @Substitution(hasReceiver = true, methodName = "<init>")
     public static void init(@Type(Object.class) StaticObject self) {
         /* nop */

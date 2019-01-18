@@ -281,11 +281,6 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
     private final MethodInfo method;
     private final InterpreterToVM vm;
 
-// private static final DebugCounter bytecodesExecuted = DebugCounter.create("Bytecodes executed");
-// private static final DebugCounter newInstances = DebugCounter.create("New instances");
-// private static final DebugCounter fieldWrites = DebugCounter.create("Field writes");
-// private static final DebugCounter fieldReads = DebugCounter.create("Field reads");
-
     @CompilerDirectives.CompilationFinal(dimensions = 1) private final FrameSlot[] locals;
     @CompilerDirectives.CompilationFinal(dimensions = 1) private final FrameSlot[] stackSlots;
 
@@ -1202,7 +1197,6 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
         byte[] code = getMethod().getCode();
 
         int oldBC = code[bci];
-        assert oldBC != WIDE;
         assert Bytecodes.lengthOf(oldBC) >= 3 : "cannot patch slim bc";
 
         code[bci] = opcode;
@@ -1394,10 +1388,6 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
 
     // region Type checks
 
-//    private boolean instanceOf(StaticObject instance, Klass typeToCheck) {
-//        return vm.instanceOf(instance, typeToCheck);
-//    }
-
     private StaticObject checkCast(StaticObject instance, Klass typeToCheck) {
         return vm.checkCast(instance, typeToCheck);
     }
@@ -1460,6 +1450,17 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
 
     // region Field read/write
 
+    /**
+     * Returns the stack effect (slot delta) that cannot be inferred solely from the bytecode. e.g.
+     * GETFIELD always pops the receiver, but the (read) result size (1 or 2) is unknown.
+     *
+     * <pre>
+     *   top += putField(frame, top, resolveField(...)); break; // stack effect that depends on the field
+     *   top += Bytecodes.stackEffectOf(curOpcode); // stack effect that depends solely on PUTFIELD.
+     *   // at this point `top` must have the correct value.
+     *   curBCI = bs.next(curBCI);
+     * </pre>
+     */
     private int putField(final VirtualFrame frame, int top, FieldInfo field, int opcode) {
         assert opcode == PUTFIELD || opcode == PUTSTATIC;
         assert field.isStatic() == (opcode == PUTSTATIC);
@@ -1482,20 +1483,20 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
         }
         // @formatter:on
         // Checkstyle: resume
-        /**
-         * Returns the stack effect (slot delta) that cannot be inferred solely from the bytecode.
-         * e.g. GETFIELD always pops the receiver, but the (read) result size (1 or 2) is unknown.
-         * 
-         * <pre>
-         *   top += putField(frame, top, resolveField(...)); break; // stack effect that depends on the field
-         *   top += Bytecodes.stackEffectOf(curOpcode); // stack effect that depends solely on PUTFIELD.
-         *   // at this point `top` must have the correct value.
-         *   curBCI = bs.next(curBCI);
-         * </pre>
-         */
         return -field.getKind().getSlotCount();
     }
 
+    /**
+     * Returns the stack effect (slot delta) that cannot be inferred solely from the bytecode. e.g.
+     * PUTFIELD always pops the receiver, but the result size (1 or 2) is unknown.
+     *
+     * <pre>
+     *   top += getField(frame, top, resolveField(...)); break; // stack effect that depends on the field
+     *   top += Bytecodes.stackEffectOf(curOpcode); // stack effect that depends solely on GETFIELD.
+     *   // at this point `top` must have the correct value.
+     *   curBCI = bs.next(curBCI);
+     * </pre>
+     */
     private int getField(final VirtualFrame frame, int top, FieldInfo field, int opcode) {
         assert opcode == GETFIELD || opcode == GETSTATIC;
         assert field.isStatic() == (opcode == GETSTATIC);
@@ -1522,17 +1523,6 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
         }
         // @formatter:on
         // Checkstyle: resume
-        /**
-         * Returns the stack effect (slot delta) that cannot be inferred solely from the bytecode.
-         * e.g. PUTFIELD always pops the receiver, but the result size (1 or 2) is unknown.
-         *
-         * <pre>
-         *   top += getField(frame, top, resolveField(...)); break; // stack effect that depends on the field
-         *   top += Bytecodes.stackEffectOf(curOpcode); // stack effect that depends solely on GETFIELD.
-         *   // at this point `top` must have the correct value.
-         *   curBCI = bs.next(curBCI);
-         * </pre>
-         */
         return field.getKind().getSlotCount();
     }
 
