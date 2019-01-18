@@ -217,10 +217,7 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.POP;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.POP2;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.PUTFIELD;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.PUTSTATIC;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.QUICK_INVOKEINTERFACE;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.QUICK_INVOKESPECIAL;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.QUICK_INVOKESTATIC;
-import static com.oracle.truffle.espresso.bytecode.Bytecodes.QUICK_INVOKEVIRTUAL;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.QUICK;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.RET;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.RETURN;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.SALOAD;
@@ -232,6 +229,7 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.WIDE;
 import static com.oracle.truffle.espresso.meta.Meta.meta;
 
 import java.util.Arrays;
+import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -737,11 +735,10 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
                     case PUTSTATIC             : // fall through
                     case PUTFIELD              : top += putField(frame, top, resolveField(curOpcode, bs.readCPI(curBCI)), curOpcode); break;
 
-                    // TODO(peterssen): De-duplicate quickening logic. Single QUICK(nodeIndex) bytecode?.
-                    case INVOKEVIRTUAL         : top += 1 + quickenAndCallInvokeVirtual(frame, top, curBCI, resolveMethod(curOpcode, bs.readCPI(curBCI))); break;
-                    case INVOKESPECIAL         : top += 1 + quickenAndCallInvokeSpecial(frame, top, curBCI, resolveMethod(curOpcode, bs.readCPI(curBCI))); break;
-                    case INVOKESTATIC          : top += quickenAndCallInvokeStatic(frame, top, curBCI, resolveMethod(curOpcode, bs.readCPI(curBCI))); break;
-                    case INVOKEINTERFACE       : top += 1 + quickenAndCallInvokeInterface(frame, top, curBCI, resolveMethod(curOpcode, bs.readCPI(curBCI))); break;
+                    case INVOKEVIRTUAL         : // fall through
+                    case INVOKESPECIAL         : // fall through
+                    case INVOKESTATIC          : // fall through
+                    case INVOKEINTERFACE       : top += quickenInvoke(frame, top, curBCI, resolveMethod(curOpcode, bs.readCPI(curBCI)), curOpcode); break;
 
                     case NEW                   : putObject(frame, top, allocateInstance(resolveType(curOpcode, bs.readCPI(curBCI)))); break;
                     case NEWARRAY              : putObject(frame, top - 1, InterpreterToVM.allocatePrimitiveArray(bs.readByte(curBCI), peekInt(frame, top - 1))); break;
@@ -759,16 +756,29 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
                     case WIDE                  : throw EspressoError.shouldNotReachHere("BytecodeStream.currentBC() should never return this bytecode.");
                     case MULTIANEWARRAY        : top += allocateMultiArray(frame, top, resolveType(curOpcode, bs.readCPI(curBCI)), bs.readUByte(curBCI + 3)); break;
 
-                    case IFNULL                : if (StaticObject.isNull(peekObject(frame, top - 1)))  { nextBCI = bs.readBranchDest(curBCI); } break;
-                    case IFNONNULL             : if (StaticObject.notNull(peekObject(frame, top - 1))) { nextBCI = bs.readBranchDest(curBCI); } break;
+                    case IFNULL                :
+                        if (StaticObject.isNull(peekObject(frame, top - 1)))  {
+                            top += Bytecodes.stackEffectOf(curOpcode);
+                            int targetBCI = bs.readBranchDest(curBCI);
+                            top = checkBackEdge(curBCI, targetBCI, top);
+                            curBCI = targetBCI;
+                            continue loop;
+                        }
+                        break;
+                    case IFNONNULL             :
+                        if (StaticObject.notNull(peekObject(frame, top - 1))) {
+                            top += Bytecodes.stackEffectOf(curOpcode);
+                            int targetBCI = bs.readBranchDest(curBCI);
+                            top = checkBackEdge(curBCI, targetBCI, top);
+                            curBCI = targetBCI;
+                            continue loop;
+                        }
+                        break;
 
                     case BREAKPOINT            : throw EspressoError.unimplemented(Bytecodes.nameOf(curOpcode) + " not supported.");
                     case INVOKEDYNAMIC         : throw EspressoError.unimplemented(Bytecodes.nameOf(curOpcode) + " not supported.");
 
-                    case QUICK_INVOKESPECIAL   : // fall through
-                    case QUICK_INVOKESTATIC    : // fall through
-                    case QUICK_INVOKEVIRTUAL   : // fall through
-                    case QUICK_INVOKEINTERFACE : top += nodes[bs.readCPI(curBCI)].invoke(frame, top); break;
+                    case QUICK                 : top += nodes[bs.readCPI(curBCI)].invoke(frame, top); break;
                     default                    : throw EspressoError.shouldNotReachHere(Bytecodes.nameOf(curOpcode));
                 }
                 // @formatter:on
@@ -998,6 +1008,7 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
 
     private char addInvokeNode(InvokeNode node) {
         CompilerAsserts.neverPartOfCompilation();
+        Objects.requireNonNull(node);
         nodes = Arrays.copyOf(nodes, nodes.length + 1);
         int nodeIndex = nodes.length - 1; // latest empty slot
         nodes[nodeIndex] = insert(node);
@@ -1007,23 +1018,19 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
     private void patchBci(int bci, byte opcode, char nodeIndex) {
         assert Bytecodes.isQuickened(opcode);
         byte[] code = getMethod().getCode();
+
+        int oldBC = code[bci];
+        assert oldBC != WIDE;
+        assert Bytecodes.lengthOf(oldBC) >= 3 : "cannot patch slim bc";
+
         code[bci] = opcode;
         code[bci + 1] = (byte) ((nodeIndex >> 8) & 0xFF);
         code[bci + 2] = (byte) ((nodeIndex) & 0xFF);
-    }
 
-    private int quickenAndCallInvokeStatic(final VirtualFrame frame, int top, int curBCI, MethodInfo resolvedMethod) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        int nodeIndex = addInvokeNode(new InvokeStaticNode(resolvedMethod));
-        patchBci(curBCI, (byte) QUICK_INVOKESTATIC, (char) nodeIndex);
-        return nodes[nodeIndex].invoke(frame, top);
-    }
-
-    private int quickenAndCallInvokeSpecial(final VirtualFrame frame, int top, int curBCI, MethodInfo resolvedMethod) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        int nodeIndex = addInvokeNode(new InvokeSpecialNode(resolvedMethod));
-        patchBci(curBCI, (byte) QUICK_INVOKESPECIAL, (char) nodeIndex);
-        return nodes[nodeIndex].invoke(frame, top);
+        // NOP-padding.
+        for (int i = 3; i < Bytecodes.lengthOf(oldBC); ++i) {
+            code[bci + i] = (byte) NOP;
+        }
     }
 
     private int quickenAndCallInvokeInterface(final VirtualFrame frame, int top, int curBCI, MethodInfo resolutionSeed) {
@@ -1033,15 +1040,29 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
         return nodes[nodeIndex].invoke(frame, top);
     }
 
-    // TODO(peterssen): Remove duplicated methods.
-    private int quickenAndCallInvokeVirtual(final VirtualFrame frame, int top, int curBCI, MethodInfo resolutionSeed) {
+    private int quickenInvoke(final VirtualFrame frame, int top, int curBCI, MethodInfo resolutionSeed, int opCode) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        if (resolutionSeed.isFinal() || resolutionSeed.getDeclaringClass().isFinalFlagSet()) {
-            return quickenAndCallInvokeSpecial(frame, top, curBCI, resolutionSeed);
+        assert Bytecodes.isInvoke(opCode);
+        assert opCode != INVOKEDYNAMIC : "not supported";
+        if (opCode == INVOKEVIRTUAL && (resolutionSeed.isFinal() || resolutionSeed.getDeclaringClass().isFinalFlagSet())) {
+            return quickenInvoke(frame, top, curBCI, resolutionSeed, INVOKESPECIAL);
         }
-        int nodeIndex = addInvokeNode(InvokeVirtualNodeGen.create(resolutionSeed));
-        patchBci(curBCI, (byte) QUICK_INVOKEVIRTUAL, (char) nodeIndex);
-        return nodes[nodeIndex].invoke(frame, top);
+        InvokeNode invoke = null;
+        // @formatter:off
+        // Checkstyle: stop
+        switch (opCode) {
+            case INVOKESTATIC    : invoke = new InvokeStaticNode(resolutionSeed);          break;
+            case INVOKEINTERFACE : invoke = InvokeInterfaceNodeGen.create(resolutionSeed); break;
+            case INVOKEVIRTUAL   : invoke = InvokeVirtualNodeGen.create(resolutionSeed);   break;
+            case INVOKESPECIAL   : invoke = new InvokeSpecialNode(resolutionSeed);         break;
+            default              :
+                throw EspressoError.unimplemented("Quickening for " + Bytecodes.nameOf(opCode));
+        }
+        // @formatter:on
+        // Checkstyle: resume
+        int nodeIndex = addInvokeNode(invoke);
+        patchBci(curBCI, (byte) QUICK, (char) nodeIndex);
+        return nodes[nodeIndex].invoke(frame, top) - Bytecodes.stackEffectOf(opCode);
     }
 
     // endregion Bytecode quickening
