@@ -945,7 +945,8 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
                     case ATHROW                : CompilerDirectives.transferToInterpreter(); throw new EspressoException(nullCheck(peekObject(frame, top - 1)));
 
                     case CHECKCAST             : putObject(frame, top - 1, checkCast(peekObject(frame, top - 1), resolveType(curOpcode, bs.readCPI(curBCI)))); break;
-                    case INSTANCEOF            : putInt(frame, top - 1, instanceOf(peekObject(frame, top - 1), resolveType(curOpcode, bs.readCPI(curBCI))) ? 1  : 0); break;
+                    case INSTANCEOF            : top += quickenInstanceOf(frame, top, curBCI, resolveType(curOpcode, bs.readCPI(curBCI)), curOpcode); break;
+                        // putInt(frame, top - 1, instanceOf(peekObject(frame, top - 1), resolveType(curOpcode, bs.readCPI(curBCI))) ? 1  : 0); break;
 
                     case MONITORENTER          : vm.monitorEnter(nullCheck(peekObject(frame, top - 1))); break;
                     case MONITOREXIT           : vm.monitorExit(nullCheck(peekObject(frame, top - 1))); break;
@@ -1214,11 +1215,12 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
         }
     }
 
-    private int quickenAndCallInvokeInterface(final VirtualFrame frame, int top, int curBCI, MethodInfo resolutionSeed) {
+    private int quickenInstanceOf(final VirtualFrame frame, int top, int curBCI, Klass typeToCheck, int opCode) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        int nodeIndex = addInvokeNode(InvokeInterfaceNodeGen.create(resolutionSeed));
-        patchBci(curBCI, (byte) QUICK_INVOKEINTERFACE, (char) nodeIndex);
-        return nodes[nodeIndex].invoke(frame, top);
+        assert opCode == INSTANCEOF;
+        int nodeIndex = addInvokeNode(InstanceOfNodeGen.create(typeToCheck));
+        patchBci(curBCI, (byte) QUICK, (char) nodeIndex);
+        return nodes[nodeIndex].invoke(frame, top) - Bytecodes.stackEffectOf(opCode);
     }
 
     private int quickenInvoke(final VirtualFrame frame, int top, int curBCI, MethodInfo resolutionSeed, int opCode) {
@@ -1389,9 +1391,9 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
 
     // region Type checks
 
-    private boolean instanceOf(StaticObject instance, Klass typeToCheck) {
-        return vm.instanceOf(instance, typeToCheck);
-    }
+//    private boolean instanceOf(StaticObject instance, Klass typeToCheck) {
+//        return vm.instanceOf(instance, typeToCheck);
+//    }
 
     private StaticObject checkCast(StaticObject instance, Klass typeToCheck) {
         return vm.checkCast(instance, typeToCheck);
