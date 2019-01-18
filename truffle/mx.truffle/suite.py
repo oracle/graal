@@ -700,6 +700,14 @@ suite = {
 
     # ------------- Distributions -------------
 
+    "LIBFFI_DIST" : {
+      "native" : True,
+      "platformDependent" : True,
+      "layout" : {
+        "./" : "dependency:libffi/*"
+      }
+    },
+
     "TRUFFLE_API" : {
       # This distribution defines a module.
       "moduleName" : "org.graalvm.truffle",
