@@ -603,10 +603,11 @@ suite = {
       ],
       "buildDependencies" : [
         "com.oracle.truffle.nfi",
+        "LIBFFI_DIST"
       ],
       "buildEnv" : {
         "CPPFLAGS" : "-I<jnigen:com.oracle.truffle.nfi>",
-        "LIBFFI_SRC" : "<path:LIBFFI>",
+        "LIBFFI_DIST" : "<path:LIBFFI_DIST>",
         "LIBTRUFFLENFI" : "<lib:trufflenfi>",
         "OS" : "<os>",
       },
