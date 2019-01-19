@@ -55,6 +55,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
@@ -82,8 +83,6 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.ValueAssert.Trait;
-
-import sun.reflect.CallerSensitive;
 
 /**
  * Tests class for {@link Context#asValue(Object)}.
@@ -1194,29 +1193,30 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
     }
 
     public static class TestExceptionFramesCallerSensitive {
-
-        @CallerSensitive
-        public void foo() {
-            throw new RuntimeException("message");
-        }
-
+        public int testField;
     }
 
+    // Methods annotated with @CallerSensitive use reflection, even on JVM, so we test that case.
     @Test
-    public void testExceptionFramesCallerSensitive() {
-        Value value = context.asValue(new TestExceptionFramesCallerSensitive());
+    public void testExceptionFramesCallerSensitive() throws NoSuchFieldException {
+        // We cannot easily mark a method as @CallerSensitive (the annotation moved between JDK 8
+        // and 9), so we use an existing method marked as @CallerSensitive, Field#get().
+        Field field = TestExceptionFramesCallerSensitive.class.getField("testField");
+        Value value = context.asValue(field);
         try {
-            value.getMember("foo").execute();
+            value.getMember("get").execute(new Object());
             Assert.fail();
         } catch (PolyglotException e) {
             assertTrue(e.isHostException());
-            assertTrue(e.asHostException() instanceof RuntimeException);
-            assertEquals("message", e.getMessage());
+            assertTrue(e.asHostException() instanceof IllegalArgumentException);
             Iterator<StackFrame> frameIterator = e.getPolyglotStackTrace().iterator();
-            StackFrame frame;
-            frame = frameIterator.next();
+            StackFrame frame = frameIterator.next();
+            while (!(frame.toHostFrame().getMethodName().equals("get") &&
+                            frame.toHostFrame().getClassName().equals(Field.class.getName()))) {
+                frame = frameIterator.next();
+            }
             assertTrue(frame.isHostFrame());
-            assertEquals("foo", frame.toHostFrame().getMethodName());
+            assertEquals("get", frame.toHostFrame().getMethodName());
             frame = frameIterator.next();
             assertTrue(frame.isHostFrame());
             assertEquals("execute", frame.toHostFrame().getMethodName());

@@ -80,6 +80,12 @@
     "allDeclaredConstructors": true, "allPublicConstructors": true, "allDeclaredMethods": true, "allPublicMethods": true, "allDeclaredFields": true, "allPublicFields": true
   },
   {
+    "name": "java.lang.reflect.Field",
+    "methods": [
+      { "name": "get", "parameterTypes": ["java.lang.Object"] }
+    ]
+  },
+  {
     "name": "java.lang.Class",
     "methods": [
       { "name": "getName", "parameterTypes": [] },
