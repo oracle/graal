@@ -43,6 +43,11 @@ package com.oracle.truffle.api.test.polyglot;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.RuntimeReflection;
 
+/**
+ * Register all <i>named</i> inner classes under {@link #TEST_CLASSES} for reflection, so that they
+ * do not need to be listed in {@code reflection.json}. Anonymous inner classes however must be
+ * listed in {@code reflection.json}, as Java provides no way to list those.
+ */
 public class RegisterTestClassesForReflectionFeature implements Feature {
 
     private static final Class<?>[] TEST_CLASSES = {
