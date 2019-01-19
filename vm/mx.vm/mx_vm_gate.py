@@ -50,7 +50,6 @@ class VmGateTasks:
     fastr = 'fastr'
     graalpython = 'graalpython'
     integration = 'integration'
-    truffle = 'truffle'
     tools = 'tools'
 
 
@@ -87,7 +86,7 @@ def gate_body(args, tasks):
         if t and mx_vm.has_component('Graal.Python', fatalIfMissing=True):
             pass
 
-    gate_truffle(tasks)
+    gate_substratevm(tasks)
     gate_sulong(tasks)
     gate_ruby(tasks)
     gate_python(tasks)
@@ -106,8 +105,8 @@ def graalvm_svm():
             yield native_image
     return native_image_context, svm.extensions
 
-def gate_truffle(tasks):
-    with Task('Run Truffle host interop tests on SVM', tasks, tags=[VmGateTasks.truffle]) as t:
+def gate_substratevm(tasks):
+    with Task('Run Truffle host interop tests on SVM', tasks, tags=[VmGateTasks.substratevm]) as t:
         if t:
             tests = ['ValueHostInteropTest', 'ValueHostConversionTest']
             truffle_no_compilation = ['--tool:truffle', '-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime', '-Dcom.oracle.truffle.aot=true']
