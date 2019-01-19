@@ -451,7 +451,9 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
             this.inHostLanguage = impl.isHostException() || impl.isInternalError();
 
             if (TRACE_STACK_TRACE_WALKING) {
-                System.out.println();
+                // To mark the beginning of the stack trace and separate from the previous one
+                PrintStream out = System.out;
+                out.println();
             }
         }
 
