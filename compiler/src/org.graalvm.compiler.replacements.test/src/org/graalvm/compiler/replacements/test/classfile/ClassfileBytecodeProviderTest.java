@@ -195,6 +195,10 @@ public class ClassfileBytecodeProviderTest extends GraalCompilerTest {
     }
 
     protected void checkClass(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, String className) throws ClassNotFoundException {
+        if (className.equals("jdk.vm.ci.services.JVMCIClassLoaderFactory")) {
+            // JVMCIClassLoaderFactory must only be initialized by the VM
+            return;
+        }
         Class<?> c = Class.forName(className, true, getClass().getClassLoader());
         ClassfileBytecodeProvider cbp = new ClassfileBytecodeProvider(metaAccess, snippetReflection);
         for (Method method : c.getDeclaredMethods()) {
