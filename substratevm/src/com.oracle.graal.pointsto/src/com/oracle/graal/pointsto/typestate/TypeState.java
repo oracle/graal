@@ -1032,6 +1032,11 @@ public abstract class TypeState {
             return a;
         }
 
+        <T> T[] copyToArray(T[] a, int dstPos) {
+            System.arraycopy(elementData, 0, a, dstPos, size);
+            return a;
+        }
+
         public <E1 extends E> void addAll(E1[] c, int startIndex, int endIndex) {
             assert startIndex <= endIndex : "start index can't be smaller than the end index.";
             int newElements = endIndex - startIndex;
@@ -1087,60 +1092,66 @@ public abstract class TypeState {
     }
 
     private static TypeState doIntersection2(BigBang bb, MultiTypeState s1, MultiTypeState s2, boolean resultCanBeNull, int idx1Param, int idx2Param) {
-        int idx1 = idx1Param;
-        int idx2 = idx2Param;
+
         try (UnsafeArrayListClosable<AnalysisObject> tlArrayClosable = getTLArrayList(intersectionArrayListTL, 256)) {
             UnsafeArrayList<AnalysisObject> resultObjects = tlArrayClosable.list;
 
-            /* Add the beginning of the s1 list that we already walked above. */
-            resultObjects.addAll(s1.objects, 0, idx1);
-
-            while (idx1 < s1.objects.length && idx2 < s2.objects.length) {
-                AnalysisObject o1 = s1.objects[idx1];
-                AnalysisObject o2 = s2.objects[idx2];
-
-                /* See comment above for the limitation explanation. */
-                assert o2.isContextInsensitiveObject() : "Current implementation limitation.";
-
-                if (o1.type().getId() < o2.type().getId()) {
-                    idx1++;
-                } else if (o1.type().getId() > o2.type().getId()) {
-                    idx2++;
-                } else {
-                    assert o1.type().equals(o2.type());
-                    while (idx1 < s1.objects.length && s1.objects[idx1].type().equals(o2.type())) {
-                        /* Walk over the s1 objects of the same type and add them to the result. */
-                        resultObjects.add(s1.objects[idx1]);
-                        idx1++;
-                    }
-                    idx2++;
+            AnalysisObject[] so1 = s1.objects;
+            AnalysisObject[] so2 = s2.objects;
+            int[] types1 = s1.getObjectTypeIds();
+            int[] types2 = s2.getObjectTypeIds();
+            int idx1 = idx1Param;
+            int idx2 = idx2Param;
+            int l1 = so1.length;
+            int l2 = so2.length;
+            int t1 = types1[idx1];
+            int t2 = types2[idx2];
+            while (idx1 < l1 && idx2 < l2) {
+                assert so2[idx2].isContextInsensitiveObject() : "Current implementation limitation.";
+                if (t1 == t2) {
+                    assert so1[idx1].type().equals(so2[idx2].type());
+                    resultObjects.add(so1[idx1]);
+                    t1 = types1[++idx1];
+                } else if (t1 < t2) {
+                    t1 = types1[++idx1];
+                } else if (t1 > t2) {
+                    t2 = types2[++idx2];
                 }
             }
 
-            if (resultObjects.size() == 0) {
+            int totalLength = idx1Param + resultObjects.size();
+
+            if (totalLength == 0) {
                 return TypeState.forEmpty().forCanBeNull(bb, resultCanBeNull);
-            } else if (TypeStateUtils.holdsSingleTypeState(resultObjects.elementData, resultObjects.size)) {
-                /* Multiple objects of the same type. */
-                AnalysisObject[] objects = resultObjects.copyToArray(new AnalysisObject[resultObjects.size()]);
-                return new SingleTypeState(bb, resultCanBeNull, bb.analysisPolicy().makePoperties(bb, objects), objects);
             } else {
-                /* Logical AND the type bit sets. */
-                BitSet resultTypesBitSet = TypeStateUtils.and(s1.typesBitSet, s2.typesBitSet);
-                AnalysisObject[] objects = resultObjects.copyToArray(new AnalysisObject[resultObjects.size()]);
-                MultiTypeState result = new MultiTypeState(bb, resultCanBeNull, bb.analysisPolicy().makePoperties(bb, objects), resultTypesBitSet, objects);
+                AnalysisObject[] objects = new AnalysisObject[totalLength];
+                /* Copy the recently touched first */
+                resultObjects.copyToArray(objects, idx1Param);
+                /* Add the beginning of the s1 list that we already walked above. */
+                System.arraycopy(s1.objects, 0, objects, 0, idx1Param);
 
-                /*
-                 * The result can be equal to s1 if and only if s1 and s2 have the same type count.
-                 */
-                if (s1.typesCount() == s2.typesCount() && result.equals(s1)) {
-                    return s1.forCanBeNull(bb, resultCanBeNull);
+                if (TypeStateUtils.holdsSingleTypeState(objects, objects.length)) {
+                    /* Multiple objects of the same type. */
+                    return new SingleTypeState(bb, resultCanBeNull, bb.analysisPolicy().makePoperties(bb, objects), objects);
+                } else {
+                    /* Logical AND the type bit sets. */
+                    BitSet resultTypesBitSet = TypeStateUtils.and(s1.typesBitSet, s2.typesBitSet);
+                    MultiTypeState result = new MultiTypeState(bb, resultCanBeNull, bb.analysisPolicy().makePoperties(bb, objects), resultTypesBitSet, objects);
+
+                    /*
+                     * The result can be equal to s1 if and only if s1 and s2 have the same type
+                     * count.
+                     */
+                    if (s1.typesCount() == s2.typesCount() && result.equals(s1)) {
+                        return s1.forCanBeNull(bb, resultCanBeNull);
+                    }
+
+                    /*
+                     * Don't need to check if the result is close-to-all-instantiated since result
+                     * <= s1.
+                     */
+                    return result;
                 }
-
-                /*
-                 * Don't need to check if the result is close-to-all-instantiated since result <=
-                 * s1.
-                 */
-                return result;
             }
         }
     }

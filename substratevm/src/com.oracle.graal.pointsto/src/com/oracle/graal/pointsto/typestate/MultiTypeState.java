@@ -41,6 +41,8 @@ public class MultiTypeState extends TypeState {
     protected final BigBang bigbang;
     /** The objects of this type state. */
     protected final AnalysisObject[] objects;
+    /** See {@link #getObjectTypeIds()}. */
+    protected int[] objectTypeIds;
     /**
      * Keep a bit set for types to easily answer queries like contains type or types count, and
      * quickly iterate over the types. It costs us one linear pass over the objects when the state
@@ -94,6 +96,24 @@ public class MultiTypeState extends TypeState {
         this.canBeNull = canBeNull;
         this.merged = other.merged;
         PointsToStats.registerTypeState(bb, this);
+    }
+
+    /**
+     * Returns an array of all type ids from the {@link #objects} array. This mitigates the CPU
+     * cache misses when iterating over all AnalysisObject and dereferencing the type field over and
+     * over again.
+     */
+    public int[] getObjectTypeIds() {
+        if (objectTypeIds == null) {
+            // One item longer, so we can support readahead of one in the loop without
+            // ArrayOutOfBoundsException
+            int[] result = new int[objects.length + 1];
+            for (int i = 0; i < objects.length; i++) {
+                result[i] = objects[i].type().getId();
+            }
+            this.objectTypeIds = result;
+        }
+        return objectTypeIds;
     }
 
     private boolean checkObjects(OptionValues options) {
