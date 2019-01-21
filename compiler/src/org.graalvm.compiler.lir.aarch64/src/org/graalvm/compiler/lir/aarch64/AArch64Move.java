@@ -608,7 +608,7 @@ public class AArch64Move {
             return encoding.getShift();
         }
 
-        protected final void move(LIRKind kind, CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+        protected final void move(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
             AArch64Move.move(crb, masm, result, input);
         }
     }
