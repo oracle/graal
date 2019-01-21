@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.library;
 
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -47,6 +48,26 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
+/**
+ * Represents a single static message of a library. Message are specified as public methods in
+ * {@link Library library} subclasses. Messages may be resolved dynamically by calling
+ * {@link #resolve(Class, String)} with a known library class or with
+ * {@link #resolve(String, String)} with both library class and message as string. Message instances
+ * provide meta-data about the simple and qualified name of the message, return type, receiver type,
+ * parameter types and library name. Message instances are used to invoke library messages or
+ * implement library messages reflectively using the {@link ReflectionLibrary reflection library}.
+ * <p>
+ * Message instances are globally unique and can safely be compared by identity. In other words, if
+ * the same message is {@link #resolve(Class, String) resolved} twice the same instance will be
+ * returned. Since they are shared message instances must not be used as locks to avoid deadlocks.
+ * <p>
+ * Note: This class is intended to be sub-classed by generated code only and must *not* be
+ * sub-classed by user-code.
+ *
+ * @see ReflectionLibrary
+ * @see Library
+ * @since 1.0
+ */
 public abstract class Message {
 
     private final String simpleName;
@@ -70,30 +91,84 @@ public abstract class Message {
         this.hash = qualifiedName.hashCode();
     }
 
+    /**
+     * Returns a qualified and unique name of this message. The qualified name is specified as
+     * <code>getLibraryName() + "." + getSimpleName()</code>. The returned name is
+     * {@link String#intern() interned} can can safely be compared by identity. The returned name is
+     * never <code>null</code>.
+     *
+     * @see #getSimpleName()
+     * @see #getLibraryName()
+     * @since 1.0
+     */
     public final String getQualifiedName() {
         return qualifiedName;
     }
 
+    /**
+     * Returns the simple name of this message. The simple name is unique per library and equals the
+     * method name of the method in the library specification class. The returned name is
+     * {@link String#intern() interned} can can safely be compared by identity. The returned name is
+     * never <code>null</code>.
+     *
+     * @since 1.0
+     */
     public final String getSimpleName() {
         return simpleName;
     }
 
-    public final Class<?> getReturnType() {
-        return returnType;
-    }
-
-    public final Class<?> getReceiverType() {
-        return parameterTypes.get(0);
-    }
-
-    public final List<Class<?>> getParameterTypes() {
-        return parameterTypes;
-    }
-
+    /**
+     * Returns the name of the library of this message. The name of the library is specified as the
+     * {@link Class#getName() name} of the {@link #getLibraryClass() library class}. The returned
+     * name is never <code>null</code>.
+     *
+     * @since 1.0
+     */
     public final String getLibraryName() {
         return getLibraryClass().getName();
     }
 
+    /**
+     * Returns the return type of the message. The return type can be useful for
+     * {@link ReflectionLibrary reflective} invocations of the message.
+     *
+     * @since 1.0
+     */
+    public final Class<?> getReturnType() {
+        return returnType;
+    }
+
+    /**
+     * Returns the receiver type of the message. The receiver type is always the same as the first
+     * {@link #getParameterTypes() parameter type}. In many cases the receiver type of a message is
+     * {@link Object}. However, it possible for libraries to restrict the receiver type to
+     * sub-types. The receiver type may be useful for {@link ReflectionLibrary reflective}
+     * invocations of the message.
+     *
+     * @since 1.0
+     */
+    public final Class<?> getReceiverType() {
+        return parameterTypes.get(0);
+    }
+
+    /**
+     * Returns all parameter types including the receiver type of the message. The returned
+     * immutable parameter types list corresponds to the {@link Method#getParameterTypes()}
+     * parameter types of the declared library method. The parameter types may be useful for
+     * {@link ReflectionLibrary reflective} invocations of the message.
+     *
+     * @since 1.0
+     */
+    public final List<Class<?>> getParameterTypes() {
+        return parameterTypes;
+    }
+
+    /**
+     * Returns the library class of this message. The library class may be used to
+     * {@link #resolve(Class, String) resolve} other messages of the same library.
+     *
+     * @since 1.0
+     */
     public final Class<? extends Library> getLibraryClass() {
         return libraryClass;
     }
@@ -102,32 +177,87 @@ public abstract class Message {
         return library;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 1.0
+     */
     @Override
     public final boolean equals(Object obj) {
         return this == obj;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 1.0
+     */
     @Override
     public final int hashCode() {
         return hash;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 1.0
+     */
     @Override
     protected final Object clone() throws CloneNotSupportedException {
         throw new CloneNotSupportedException();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 1.0
+     */
     @Override
     public final String toString() {
-        return "Message[" + getLibraryClass().getSimpleName() + ":" + simpleName + "]";
+        StringBuilder b = new StringBuilder();
+        b.append("Message[");
+        b.append(getReturnType().getSimpleName());
+        b.append(" ").append(getQualifiedName());
+        b.append("(");
+        String sep = "";
+        for (Class<?> param : getParameterTypes()) {
+            b.append(sep);
+            b.append(param.getSimpleName());
+            sep = ", ";
+        }
+        b.append(")");
+        return b.toString();
     }
 
+    /**
+     * Resolves a message globally for a given library name and message name. The library name
+     * corresponds to the {@link Class#getName() name} of the library class and the message name
+     * corresponds to the method name of the library message. The returned message always returns
+     * the same instance for a combination of library name and message. If the library or message is
+     * invalid or not found an {@link IllegalArgumentException} is thrown. The provided library and
+     * message name must not be <code>null</code>.
+     *
+     * @param libraryName the name of the library this message is contained in.
+     * @param messageName the simple name of this message.
+     * @since {@link #exists(String, String)} To verify the existence of a message.
+     */
     public static Message resolve(String libraryName, String messageName) {
-        return ResolvedLibrary.resolveMessage(libraryName, messageName);
+        return ResolvedLibrary.resolveMessage(libraryName, messageName, true);
     }
 
-    public static Message lookup(Class<? extends Library> libraryClass, String messageName) {
-        return ResolvedLibrary.resolveMessage(libraryClass, messageName);
+    /**
+     * Resolves a message globally for a given library class and message name. The message name
+     * corresponds to the method name of the library message. The returned message always returns
+     * the same instance for a combination of library class and message. If the library or message
+     * is invalid or not found an {@link IllegalArgumentException} is thrown. The provided library
+     * class and message name must not be <code>null</code>.
+     *
+     * @param libraryClass the class of the library this message is contained in.
+     * @param messageName the simple name of this message.
+     * @since {@link #exists(String, String)} To verify the existence of a message.
+     */
+    public static Message resolve(Class<? extends Library> libraryClass, String messageName) {
+        return ResolvedLibrary.resolveMessage(libraryClass, messageName, true);
     }
 
 }

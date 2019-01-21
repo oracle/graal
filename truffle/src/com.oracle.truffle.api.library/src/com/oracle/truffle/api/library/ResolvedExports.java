@@ -71,10 +71,6 @@ public abstract class ResolvedExports<T extends Library> {
 
     protected abstract T createCached(Object receiver);
 
-    protected int getPriority() {
-        return 0;
-    }
-
     @Override
     public final String toString() {
         return "ResolvedExports[" + library.getName() + "]";

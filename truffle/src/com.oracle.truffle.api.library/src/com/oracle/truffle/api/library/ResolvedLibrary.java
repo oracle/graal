@@ -290,9 +290,13 @@ public abstract class ResolvedLibrary<T extends Library> {
      * @see Library
      * @since 1.0
      */
-    @SuppressWarnings("unchecked")
     public static <T extends Library> ResolvedLibrary<T> resolve(Class<T> library) {
         Objects.requireNonNull(library);
+        return resolveImpl(library, true);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T extends Library> ResolvedLibrary<T> resolveImpl(Class<T> library, boolean fail) {
         ResolvedLibrary<?> lib = LIBRARIES.get(library);
         if (lib == null) {
             if (!TruffleOptions.AOT) {
@@ -300,7 +304,13 @@ public abstract class ResolvedLibrary<T extends Library> {
                 lib = LIBRARIES.get(library);
             }
             if (lib == null) {
-                throw new IllegalArgumentException(String.format("Class %s is not a registered library.", library.getName()));
+                if (fail) {
+                    throw new IllegalArgumentException(
+                                    String.format("Class '%s' is not a registered library. Truffle libraries must be annotated with @%s to be registered. Did the Truffle annotation processor run?",
+                                                    library.getName(),
+                                                    GenerateLibrary.class.getSimpleName()));
+                }
+                return null;
             }
         }
         return (ResolvedLibrary<T>) lib;
@@ -329,29 +339,42 @@ public abstract class ResolvedLibrary<T extends Library> {
     }
 
     @SuppressWarnings("unchecked")
-    static ResolvedLibrary<?> resolveLibraryByName(String name) {
+    static ResolvedLibrary<?> resolveLibraryByName(String name, boolean fail) {
         try {
-            return resolve((Class<? extends Library>) Class.forName(name));
+            return resolveImpl((Class<? extends Library>) Class.forName(name), fail);
         } catch (ClassNotFoundException e) {
             return null;
         }
     }
 
-    static Message resolveMessage(Class<? extends Library> library, String message) {
-        ResolvedLibrary<?> lib = resolve(library);
+    static Message resolveMessage(Class<? extends Library> library, String message, boolean fail) {
+        Objects.requireNonNull(message);
+        ResolvedLibrary<?> lib = resolveImpl(library, fail);
         if (lib == null) {
+            assert !fail;
             return null;
-        } else {
-            return lib.nameToMessages.get(message);
         }
+        return resolveLibraryMessage(lib, message, fail);
     }
 
-    static Message resolveMessage(String library, String message) {
-        ResolvedLibrary<?> lib = resolveLibraryByName(library);
+    private static Message resolveLibraryMessage(ResolvedLibrary<?> lib, String message, boolean fail) {
+        Message foundMessage = lib.nameToMessages.get(message);
+        if (fail && foundMessage == null) {
+            throw new IllegalArgumentException(String.format("Unknown message '%s' for library '%s' specified.", message, lib.getLibraryClass().getName()));
+        }
+        return foundMessage;
+    }
+
+    static Message resolveMessage(String library, String message, boolean fail) {
+        Objects.requireNonNull(message);
+        ResolvedLibrary<?> lib = resolveLibraryByName(library, fail);
         if (lib == null) {
+            if (fail) {
+                throw new IllegalArgumentException(String.format("Unknown library '%s' specified.", library));
+            }
             return null;
         } else {
-            return lib.nameToMessages.get(message);
+            return resolveLibraryMessage(lib, message, fail);
         }
     }
 

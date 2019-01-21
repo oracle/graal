@@ -397,22 +397,10 @@ public abstract class InteropLibrary extends Library {
      * @see ResolvedLibrary#resolve(Class)
      */
     public static ResolvedLibrary<InteropLibrary> resolve() {
-        return Lazy.INTEROP_LIBRARY;
+        return INTEROP_LIBRARY;
     }
 
-    /*
-     * This indirection is needed to avoid cyclic class initialization. The enclosing class needs to
-     * be loaded before ResolvedLibrary.resolve can be used.
-     */
-    static final class Lazy {
-
-        private Lazy() {
-            /* No instances */
-        }
-
-        static final ResolvedLibrary<InteropLibrary> INTEROP_LIBRARY = ResolvedLibrary.resolve(InteropLibrary.class);
-
-    }
+    static final ResolvedLibrary<InteropLibrary> INTEROP_LIBRARY = ResolvedLibrary.resolve(InteropLibrary.class);
 
     static class Asserts extends InteropLibrary {
 
