@@ -365,6 +365,17 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param imm immediate loaded into register.
      */
     public void mov(Register dst, long imm) {
+        mov(dst, imm, false);
+    }
+
+    /**
+     * Loads immediate into register.
+     *
+     * @param dst general purpose register. May not be null, zero-register or stackpointer.
+     * @param imm immediate loaded into register.
+     * @param annotateImm Flag to signal of the immediate value should be annotated.
+     */
+    public void mov(Register dst, long imm, boolean annotateImm) {
         assert dst.getRegisterCategory().equals(CPU);
         if (imm == 0L) {
             movx(dst, zr);
@@ -403,6 +414,21 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param imm
      */
     public void movNativeAddress(Register dst, long imm) {
+        movNativeAddress(dst, imm, false);
+    }
+
+    /**
+     * Generates a 48-bit immediate move code sequence. The immediate may later be updated by
+     * HotSpot.
+     *
+     * In AArch64 mode the virtual address space is 48-bits in size, so we only need three
+     * instructions to create a patchable instruction sequence that can reach anywhere.
+     *
+     * @param dst general purpose register. May not be null, stackpointer or zero-register.
+     * @param imm The immediate address
+     * @param annotateImm Flag to signal of the immediate value should be annotated.
+     */
+    public void movNativeAddress(Register dst, long imm, boolean annotateImm) {
         assert (imm & 0xFFFF_0000_0000_0000L) == 0;
         // We have to move all non zero parts of the immediate in 16-bit chunks
         boolean firstMove = true;
