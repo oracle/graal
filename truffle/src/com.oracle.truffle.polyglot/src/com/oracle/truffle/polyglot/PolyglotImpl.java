@@ -1022,9 +1022,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         @Override
         public boolean isHostFunction(Object obj) {
-            if (TruffleOptions.AOT) {
-                return false;
-            }
             return HostFunction.isInstance(obj);
         }
 

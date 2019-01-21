@@ -200,6 +200,15 @@ builds += [
     timelimit: "1:30:00"
     name: deploy-vm-base-darwin-amd64
   },
+  ${svm-common-linux-amd64} ${custom_vm_linux} ${gate_vm_linux} {
+    run: [
+      [export, "SVM_SUITE="${svm_suite}]
+      [export, "NATIVE_IMAGE_TESTING=True"]
+      [mx, --dynamicimports, "$SVM_SUITE", --disable-polyglot, --disable-libpolyglot, gate, --no-warning-as-error, --tags, "build,substratevm"]
+    ]
+    timelimit: "15:00"
+    name: gate-vm-native-substratevm-truffle
+  },
   ${svm-common-linux-amd64} ${sulong_linux} ${custom_vm_linux} ${gate_vm_linux} {
     run: [
       [export, "SVM_SUITE="${svm_suite}]
