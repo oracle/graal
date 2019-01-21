@@ -6,10 +6,11 @@ import com.oracle.truffle.api.source.Source;
 public class SourceWrapper {
     private Source source;
     private boolean parsingSuccessful = false;
-    @SuppressWarnings("unused") private CallTarget callTarget; // Needed to have a strong reference
-                                                               // to the RootNode so that it and its
-                                                               // children will not be garbage
-                                                               // collected
+    /**
+     * Needed to have a strong reference to the RootNode so that it and its children will not be
+     * garbage collected.
+     */
+    @SuppressWarnings("unused") private CallTarget callTarget;
 
     public SourceWrapper(Source source) {
         this.setSource(source);

@@ -77,7 +77,7 @@ public class CoverageEventNode extends ExecutionEventNode {
 
         MaterializedFrame frameCopy = copyFrame(frame);
         TextDocumentSurrogate surrogate = surrogateProvider.apply(sourceUri);
-        surrogate.addLocationCoverage(MutableSourceSection.from(instrumentedSection), new CoverageData(coverageUri, frameCopy, this));
+        surrogate.addLocationCoverage(SourceSectionReference.from(instrumentedSection), new CoverageData(coverageUri, frameCopy, this));
     }
 
     /**

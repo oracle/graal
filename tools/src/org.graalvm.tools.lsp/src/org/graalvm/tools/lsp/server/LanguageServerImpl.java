@@ -75,6 +75,11 @@ import org.graalvm.tools.lsp.exceptions.UnknownLanguageException;
 
 import com.google.gson.JsonPrimitive;
 
+/**
+ * A LSP4J {@link LanguageServer} implementation using TCP sockets as transportation layer for the
+ * JSON-RPC requests. It delegates all requests to {@link TruffleAdapter}.
+ *
+ */
 public class LanguageServerImpl implements LanguageServer, LanguageClientAware, TextDocumentService, WorkspaceService {
     private static final String SHOW_COVERAGE = "show_coverage";
     private static final String ANALYSE_COVERAGE = "analyse_coverage";
@@ -86,7 +91,6 @@ public class LanguageServerImpl implements LanguageServer, LanguageClientAware, 
     private final PrintWriter info;
     private LanguageClient client;
     private Map<URI, String> openedFileUri2LangId = new HashMap<>();
-    private String trace_server = "off";
     private ExecutorService clientConnectionExecutor;
 
     private LanguageServerImpl(TruffleAdapter adapter, PrintWriter info, PrintWriter err) {
@@ -433,10 +437,6 @@ public class LanguageServerImpl implements LanguageServer, LanguageClientAware, 
         }
 
         return resultOnError;
-    }
-
-    public boolean isVerbose() {
-        return "verbose".equals(trace_server);
     }
 
     public Future<?> start(final ServerSocket serverSocket) {

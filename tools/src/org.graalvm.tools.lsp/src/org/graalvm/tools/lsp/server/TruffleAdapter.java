@@ -32,6 +32,7 @@ import org.graalvm.tools.lsp.api.VirtualLanguageServerFileProvider;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
 import org.graalvm.tools.lsp.exceptions.UnknownLanguageException;
 import org.graalvm.tools.lsp.instrument.LSPInstrument;
+import org.graalvm.tools.lsp.server.request.AbstractRequestHandler;
 import org.graalvm.tools.lsp.server.request.CompletionRequestHandler;
 import org.graalvm.tools.lsp.server.request.CoverageRequestHandler;
 import org.graalvm.tools.lsp.server.request.DefinitionRequestHandler;
@@ -53,6 +54,13 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
 
+/**
+ * This class delegates LSP requests of {@link LanguageServerImpl} to specific implementations of
+ * {@link AbstractRequestHandler}. It is responsible for wrapping requests into tasks for an
+ * instance of {@link ContextAwareExecutor}, so that these tasks are executed by a Thread which has
+ * entered a {@link org.graalvm.polyglot.Context}.
+ *
+ */
 public class TruffleAdapter implements VirtualLanguageServerFileProvider, ContextAwareExecutorRegistry {
     private static final TruffleLogger LOG = TruffleLogger.getLogger(LSPInstrument.ID, TruffleAdapter.class);
 

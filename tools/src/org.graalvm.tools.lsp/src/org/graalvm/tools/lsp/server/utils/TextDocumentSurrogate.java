@@ -18,11 +18,16 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
+/**
+ * A data structure representing the state of text documents (source code files) which have been
+ * opened at client-side.
+ *
+ */
 public final class TextDocumentSurrogate {
 
     private final URI uri;
     private final List<TextDocumentContentChangeEvent> changeEventsSinceLastSuccessfulParsing;
-    private final Map<MutableSourceSection, List<CoverageData>> section2coverageData;
+    private final Map<SourceSectionReference, List<CoverageData>> section2coverageData;
     private String editorText;
     private Boolean coverageAnalysisDone = Boolean.FALSE;
     private SourceWrapper sourceWrapper;
@@ -111,26 +116,26 @@ public final class TextDocumentSurrogate {
     }
 
     public List<CoverageData> getCoverageData(SourceSection section) {
-        return section2coverageData.get(MutableSourceSection.from(section));
+        return section2coverageData.get(SourceSectionReference.from(section));
     }
 
-    public List<CoverageData> getCoverageData(MutableSourceSection section) {
+    public List<CoverageData> getCoverageData(SourceSectionReference section) {
         return section2coverageData.get(section);
     }
 
     public Set<URI> getCoverageUris(SourceSection section) {
-        List<CoverageData> coverageDataObjects = section2coverageData.get(MutableSourceSection.from(section));
+        List<CoverageData> coverageDataObjects = section2coverageData.get(SourceSectionReference.from(section));
         return coverageDataObjects == null ? null : coverageDataObjects.stream().map(coverageData -> coverageData.getCovarageUri()).collect(Collectors.toSet());
     }
 
-    public void addLocationCoverage(MutableSourceSection section, CoverageData coverageData) {
+    public void addLocationCoverage(SourceSectionReference section, CoverageData coverageData) {
         if (!section2coverageData.containsKey(section)) {
             section2coverageData.put(section, new ArrayList<>());
         }
         section2coverageData.get(section).add(coverageData);
     }
 
-    public boolean isLocationCovered(MutableSourceSection section) {
+    public boolean isLocationCovered(SourceSectionReference section) {
         return section2coverageData.containsKey(section);
     }
 
@@ -143,8 +148,8 @@ public final class TextDocumentSurrogate {
     }
 
     public void clearCoverage(URI runScriptUri) {
-        for (Iterator<Entry<MutableSourceSection, List<CoverageData>>> iterator = section2coverageData.entrySet().iterator(); iterator.hasNext();) {
-            Entry<MutableSourceSection, List<CoverageData>> entry = iterator.next();
+        for (Iterator<Entry<SourceSectionReference, List<CoverageData>>> iterator = section2coverageData.entrySet().iterator(); iterator.hasNext();) {
+            Entry<SourceSectionReference, List<CoverageData>> entry = iterator.next();
             for (Iterator<CoverageData> iteratorData = entry.getValue().iterator(); iteratorData.hasNext();) {
                 CoverageData coverageData = iteratorData.next();
                 if (coverageData.getCovarageUri().equals(runScriptUri)) {
@@ -157,11 +162,11 @@ public final class TextDocumentSurrogate {
         }
     }
 
-    public List<MutableSourceSection> getCoverageLocations() {
+    public List<SourceSectionReference> getCoverageLocations() {
         return new ArrayList<>(section2coverageData.keySet());
     }
 
-    public void replace(MutableSourceSection oldSection, MutableSourceSection newSection) {
+    public void replace(SourceSectionReference oldSection, SourceSectionReference newSection) {
         List<CoverageData> removedCoverageData = section2coverageData.remove(oldSection);
         assert removedCoverageData != null;
         section2coverageData.put(newSection, removedCoverageData);

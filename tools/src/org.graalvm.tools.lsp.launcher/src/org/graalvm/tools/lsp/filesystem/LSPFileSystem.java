@@ -23,6 +23,12 @@ import java.util.Set;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.tools.lsp.api.VirtualLanguageServerFileProvider;
 
+/**
+ * A custom, read-only file system, to create a sandbox to avoid unwanted side-effects. A
+ * {@link VirtualLanguageServerFileProvider} allows to ask the LSP language server for file state as
+ * seen by the server/editor.
+ *
+ */
 public class LSPFileSystem implements FileSystem {
 
     private final FileSystemProvider delegate;

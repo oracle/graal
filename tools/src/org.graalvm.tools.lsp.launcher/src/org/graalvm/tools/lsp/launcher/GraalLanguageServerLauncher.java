@@ -26,6 +26,16 @@ import org.graalvm.tools.lsp.filesystem.LSPFileSystem;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
 
+/**
+ * A special launcher used to start the LSP server. As the language server executes arbitrary source
+ * snippets to collect run-time information, sandboxing of file system and {@link Context}s is
+ * needed. This class provides the glue between Truffle-API and Graal-SDK. It does a look-up for the
+ * an LSP instrument and uses its services ({@link VirtualLanguageServerFileProvider},
+ * {@link ContextAwareExecutorRegistry} and {@link LanguageServerBootstrapper}) to register
+ * callbacks for a custom file system, the creation of new {@link Context} instances and the start
+ * of the actual LSP language server.
+ *
+ */
 public class GraalLanguageServerLauncher extends AbstractLanguageLauncher {
     private final ArrayList<String> lspargs = new ArrayList<>();
 
@@ -126,6 +136,11 @@ public class GraalLanguageServerLauncher extends AbstractLanguageLauncher {
         private final Builder contextBuilder;
         final String WORKER_THREAD_ID = "Context-aware worker";
         Context lastNestedContext = null;
+        /**
+         * This implementation uses a single-thread-executor, so that there is only one worker
+         * Thread which calls the Truffle-API. This way, no further synchronization of data
+         * structures is needed in the language server.
+         */
         private ExecutorService executor = Executors.newSingleThreadExecutor(new ThreadFactory() {
             private final ThreadFactory factory = Executors.defaultThreadFactory();
 

@@ -711,16 +711,40 @@ public abstract class TruffleInstrument {
             return langScopes;
         }
 
+        /**
+         * Get a list of completion trigger characters of a language. A completion trigger character
+         * is a String which might for example auto-activate a code completion system of a source
+         * code editor.
+         *
+         * @param languageInfo a language
+         * @return a list of completion trigger characters of that language, can be empty.
+         */
         public List<String> getCompletionTriggerCharacters(LanguageInfo languageInfo) {
             final TruffleLanguage.Env env = AccessorInstrumentHandler.engineAccess().getEnvForInstrument(languageInfo);
             return AccessorInstrumentHandler.langAccess().getCompletionTriggerCharacters(env);
         }
 
+        /**
+         * Get a list of signature help trigger characters of a language. A signature help trigger
+         * character is a String which might for example auto-activate visual support in a source
+         * code editor for completing the signature of a callable.
+         *
+         * @param languageInfo a language
+         * @return a list of signature help trigger characters of that language, can be empty.
+         */
         public List<String> getSignatureHelpTriggerCharacters(LanguageInfo languageInfo) {
             final TruffleLanguage.Env env = AccessorInstrumentHandler.engineAccess().getEnvForInstrument(languageInfo);
             return AccessorInstrumentHandler.langAccess().getSignatureHelpTriggerCharacters(env);
         }
 
+        /**
+         * Try to box a primitive value into a language-specific TruffleObject.
+         *
+         * @param languageId a language id
+         * @param primitive a primitive value
+         * @return a TruffleObject representing the primitive or <code>null</code> if the primitive
+         *         cannot be boxed into a language-specific TruffleObject.
+         */
         public Object boxPrimitive(String languageId, Object primitive) {
             LanguageInfo languageInfo = getLanguages().get(languageId);
             if (languageInfo == null) {

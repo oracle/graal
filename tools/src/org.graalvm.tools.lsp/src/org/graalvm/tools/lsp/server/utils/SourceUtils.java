@@ -147,15 +147,15 @@ public class SourceUtils {
         LOG.log(Level.FINEST, "newLineModification: {0}", newLineModification);
 
         if (newLineModification != 0) {
-            List<MutableSourceSection> sections = surrogate.getCoverageLocations();
+            List<SourceSectionReference> sections = surrogate.getCoverageLocations();
             sections.stream().filter(section -> section.includes(range)).forEach(section -> {
-                MutableSourceSection migratedSection = new MutableSourceSection(section);
+                SourceSectionReference migratedSection = new SourceSectionReference(section);
                 migratedSection.setEndLine(migratedSection.getEndLine() + newLineModification);
                 surrogate.replace(section, migratedSection);
                 LOG.log(Level.FINEST, "Included - Old: {0} Fixed: {1}", new Object[]{section, migratedSection});
             });
             sections.stream().filter(section -> section.behind(range)).forEach(section -> {
-                MutableSourceSection migratedSection = new MutableSourceSection(section);
+                SourceSectionReference migratedSection = new SourceSectionReference(section);
                 migratedSection.setStartLine(migratedSection.getStartLine() + newLineModification);
                 migratedSection.setEndLine(migratedSection.getEndLine() + newLineModification);
                 surrogate.replace(section, migratedSection);

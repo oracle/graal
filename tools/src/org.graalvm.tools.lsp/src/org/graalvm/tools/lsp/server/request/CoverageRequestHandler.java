@@ -16,7 +16,7 @@ import org.eclipse.lsp4j.Range;
 import org.graalvm.tools.lsp.api.ContextAwareExecutor;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
 import org.graalvm.tools.lsp.server.utils.CoverageEventNode;
-import org.graalvm.tools.lsp.server.utils.MutableSourceSection;
+import org.graalvm.tools.lsp.server.utils.SourceSectionReference;
 import org.graalvm.tools.lsp.server.utils.SourcePredicateBuilder;
 import org.graalvm.tools.lsp.server.utils.SourceUtils;
 import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogate;
@@ -142,7 +142,7 @@ public class CoverageRequestHandler extends AbstractRequestHandler {
 
                 public void onLoad(LoadSourceSectionEvent event) {
                     SourceSection section = event.getSourceSection();
-                    if (!surrogate.isLocationCovered(MutableSourceSection.from(section)) && !duplicateFilter.contains(section)) {
+                    if (!surrogate.isLocationCovered(SourceSectionReference.from(section)) && !duplicateFilter.contains(section)) {
                         duplicateFilter.add(section);
                         Diagnostic diag = new Diagnostic(SourceUtils.sourceSectionToRange(section),
                                                          "Not covered",

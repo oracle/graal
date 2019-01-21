@@ -8,29 +8,29 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
- * A mutable source section whose equality is depending only on line and column and not also on the
- * content of a {@link Source} object. Used to create a mapping from source section to
- * {@link CoverageData} and to migrate the coverage data when the user modifies code.
+ * A light-weight source section reference whose equality is depending only on line and column and
+ * not also on the content of a {@link Source} object. Used to create a mapping from source section
+ * to {@link CoverageData} and to migrate the coverage data when the user modifies code.
  *
  */
-public class MutableSourceSection {
+public class SourceSectionReference {
     private int startLine; // 1-based
     private int endLine; // 1-based
     private int startColumn;
     private int endColumn;
 
-    private MutableSourceSection() {
+    private SourceSectionReference() {
     }
 
-    public MutableSourceSection(MutableSourceSection section) {
+    public SourceSectionReference(SourceSectionReference section) {
         this.startLine = section.startLine;
         this.endLine = section.endLine;
         this.startColumn = section.startColumn;
         this.endColumn = section.endColumn;
     }
 
-    public static MutableSourceSection from(SourceSection section) {
-        MutableSourceSection mutableSection = new MutableSourceSection();
+    public static SourceSectionReference from(SourceSection section) {
+        SourceSectionReference mutableSection = new SourceSectionReference();
         mutableSection.startLine = section.getStartLine();
         mutableSection.endLine = section.getEndLine();
         mutableSection.startColumn = section.getStartColumn();
@@ -73,11 +73,11 @@ public class MutableSourceSection {
 
     @Override
     public boolean equals(Object obj) {
-        if (!(obj instanceof MutableSourceSection)) {
+        if (!(obj instanceof SourceSectionReference)) {
             return false;
         }
 
-        MutableSourceSection other = (MutableSourceSection) obj;
+        SourceSectionReference other = (SourceSectionReference) obj;
         return startLine == other.startLine && endLine == other.endLine && startColumn == other.startColumn && endColumn == other.endColumn;
     }
 
