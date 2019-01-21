@@ -367,6 +367,7 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
         return (int) FrameUtil.getLongSafe(frame, stackSlots[slot]);
     }
 
+    // Exposed to InstanceOfNode.
     StaticObject peekObject(VirtualFrame frame, int slot) {
         Object result = FrameUtil.getObjectSafe(frame, stackSlots[slot]);
         assert result instanceof StaticObject;
@@ -491,11 +492,11 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
         loop: while (true) {
             int curOpcode;
             try {
-                // bytecodesExecuted.inc();
                 curOpcode = bs.currentBC(curBCI);
+                CompilerAsserts.partialEvaluationConstant(top);
                 CompilerAsserts.partialEvaluationConstant(curBCI);
                 CompilerAsserts.partialEvaluationConstant(curOpcode);
-                CompilerAsserts.partialEvaluationConstant(top);
+
                 // @formatter:off
                 // Checkstyle: stop
                 switch (curOpcode) {
@@ -698,6 +699,8 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
                     case IF_ICMPLE   : // fall through
                     case IF_ACMPEQ   : // fall through
                     case IF_ACMPNE   : // fall through
+
+                    // TODO(peterssen): Order shuffled.
                     case GOTO        : // fall through
                     case GOTO_W      : // fall through
                     case IFNULL      : // fall through
@@ -731,13 +734,9 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
                     // Checkstyle: resume
                     case TABLESWITCH: {
                         int index = peekInt(frame, top - 1);
-
                         BytecodeTableSwitch switchHelper = bs.getBytecodeTableSwitch();
                         int low = switchHelper.lowKey(curBCI);
-                        CompilerAsserts.partialEvaluationConstant(low);
                         int high = switchHelper.highKey(curBCI);
-                        CompilerAsserts.partialEvaluationConstant(high);
-                        CompilerAsserts.partialEvaluationConstant(switchHelper);
                         assert low <= high;
 
                         // Interpreter uses direct lookup.
@@ -748,6 +747,7 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
                             } else {
                                 targetBCI = switchHelper.defaultTarget(curBCI);
                             }
+                            CompilerAsserts.partialEvaluationConstant(targetBCI);
                             top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
                             curBCI = targetBCI;
                             continue loop;
@@ -755,18 +755,18 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
 
                         for (int i = low; i <= high; ++i) {
                             if (i == index) {
-                                CompilerAsserts.partialEvaluationConstant(i);
-                                CompilerAsserts.partialEvaluationConstant(i - low);
-                                CompilerAsserts.partialEvaluationConstant(switchHelper.targetAt(curBCI, i - low));
+                                // Key found.
                                 int targetBCI = switchHelper.targetAt(curBCI, i - low);
+                                CompilerAsserts.partialEvaluationConstant(targetBCI);
                                 top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
                                 curBCI = targetBCI;
                                 continue loop;
                             }
                         }
 
-                        CompilerAsserts.partialEvaluationConstant(switchHelper.defaultTarget(curBCI));
+                        // Key not found.
                         int targetBCI = switchHelper.defaultTarget(curBCI);
+                        CompilerAsserts.partialEvaluationConstant(targetBCI);
                         top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
                         curBCI = targetBCI;
                         continue loop;
@@ -776,24 +776,26 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
                         BytecodeLookupSwitch switchHelper = bs.getBytecodeLookupSwitch();
                         int low = 0;
                         int high = switchHelper.numberOfCases(curBCI) - 1;
-                        CompilerAsserts.partialEvaluationConstant(switchHelper);
                         while (low <= high) {
                             int mid = (low + high) >>> 1;
                             int midVal = switchHelper.keyAt(curBCI, mid);
-
                             if (midVal < key) {
                                 low = mid + 1;
                             } else if (midVal > key) {
                                 high = mid - 1;
                             } else {
-                                int targetBCI = curBCI + switchHelper.offsetAt(curBCI, mid); // key
-                                                                                             // found.
+                                // Key found.
+                                int targetBCI = curBCI + switchHelper.offsetAt(curBCI, mid);
+                                CompilerAsserts.partialEvaluationConstant(targetBCI);
                                 top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
                                 curBCI = targetBCI;
                                 continue loop;
                             }
                         }
-                        int targetBCI = switchHelper.defaultTarget(curBCI); // key not found.
+
+                        // Key not found.
+                        int targetBCI = switchHelper.defaultTarget(curBCI);
+                        CompilerAsserts.partialEvaluationConstant(targetBCI);
                         top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
                         curBCI = targetBCI;
                         continue loop;
@@ -833,8 +835,6 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
 
                     case WIDE                  : throw EspressoError.shouldNotReachHere("BytecodeStream.currentBC() should never return this bytecode.");
                     case MULTIANEWARRAY        : top += allocateMultiArray(frame, top, resolveType(curOpcode, bs.readCPI(curBCI)), bs.readUByte(curBCI + 3)); break;
-
-
 
                     case BREAKPOINT            : throw EspressoError.unimplemented(Bytecodes.nameOf(curOpcode) + " not supported.");
                     case INVOKEDYNAMIC         : throw EspressoError.unimplemented(Bytecodes.nameOf(curOpcode) + " not supported.");
@@ -878,6 +878,7 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
     }
 
     private boolean takeBranch(VirtualFrame frame, int top, int opCode) {
+        assert Bytecodes.isBranch(opCode);
         // @formatter:off
         // Checkstyle: stop
         switch (opCode) {
@@ -900,7 +901,7 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
             case IFNULL    : return StaticObject.isNull(peekObject(frame, top - 1));
             case IFNONNULL : return StaticObject.notNull(peekObject(frame, top - 1));
             default        :
-                throw EspressoError.shouldNotReachHere("non branching bytecode");
+                throw EspressoError.shouldNotReachHere("non-branching bytecode");
         }
         // @formatter:on
         // Checkstyle: resume
@@ -928,6 +929,8 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
         }
         throw EspressoError.shouldNotReachHere();
     }
+
+    // region Operand stack shuffling
 
     private void dup1(VirtualFrame frame, int top) {
         // value1 -> value1, value1
@@ -1014,6 +1017,8 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
         putKindUnsafe1(frame, top + 1, v2, k2);
         putKindUnsafe1(frame, top + 2, v1, k1);
     }
+
+    // endregion Operand stack shuffling
 
     @ExplodeLoop
     private ExceptionHandler resolveExceptionHandlers(int bci, StaticObject ex) {
