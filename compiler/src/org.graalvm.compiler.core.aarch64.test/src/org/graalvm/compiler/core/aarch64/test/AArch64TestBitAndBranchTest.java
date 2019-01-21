@@ -62,7 +62,7 @@ public class AArch64TestBitAndBranchTest extends LIRTest {
     }
 
     public static long testBit42Snippet(long a, long b, long c) {
-        if ((a & (1 << 42)) == 0) {
+        if ((a & (1L << 42)) == 0) {
             return b;
         } else {
             return c;
@@ -71,12 +71,12 @@ public class AArch64TestBitAndBranchTest extends LIRTest {
 
     @Test
     public void testBit42() {
-        test("testBit42Snippet", 1L << 42L, Long.MAX_VALUE, Long.MIN_VALUE);
-        test("testBit42Snippet", ~(1L << 42L), Long.MAX_VALUE, Long.MIN_VALUE);
+        test("testBit42Snippet", 1L << 42, Long.MAX_VALUE, Long.MIN_VALUE);
+        test("testBit42Snippet", ~(1L << 42), Long.MAX_VALUE, Long.MIN_VALUE);
         checkLIR("testBit42Snippet", checkForBitTestAndBranchOp, 1);
     }
 
-    private static final LargeOpSpec largeOpSingleNop = new LargeOpSpec((1 << 14 - 2), 2);
+    private static final LargeOpSpec largeOpSingleNop = new LargeOpSpec((1 << 14 - 2) - 10, 2);
 
     /**
      * Tests the graceful case, where the estimation for
@@ -99,7 +99,7 @@ public class AArch64TestBitAndBranchTest extends LIRTest {
         checkLIR("testBitTestAndBranchSingleSnippet", checkForBitTestAndBranchOp, 1);
     }
 
-    private static final LargeOpSpec largeOpFourNop = new LargeOpSpec((1 << 14 - 2), 8);
+    private static final LargeOpSpec largeOpFourNop = new LargeOpSpec((1 << 14 - 2) - 10, 8);
 
     /**
      * Tests the case, where the estimation for
