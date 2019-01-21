@@ -523,7 +523,8 @@ suite = {
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
         "GRAAL_SERVICEPROVIDER_PROCESSOR",
-        "GRAAL_NODEINFO_PROCESSOR"
+        "GRAAL_NODEINFO_PROCESSOR",
+        "GRAAL_REPLACEMENTS_PROCESSOR",
       ],
       "javaCompliance" : "8+",
       "workingSets" : "Graal,HotSpot,AMD64",

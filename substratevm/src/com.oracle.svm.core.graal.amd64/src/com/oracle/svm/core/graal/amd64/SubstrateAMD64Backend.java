@@ -771,7 +771,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
     }
 
     protected AMD64ArithmeticLIRGenerator createArithmeticLIRGen(RegisterValue nullRegisterValue) {
-        return new AMD64ArithmeticLIRGenerator(nullRegisterValue, null);
+        return new AMD64ArithmeticLIRGenerator(nullRegisterValue);
     }
 
     protected static SubstrateAMD64RegisterConfig getRegisterConfig(LIRGenerationResult lirGenRes) {
