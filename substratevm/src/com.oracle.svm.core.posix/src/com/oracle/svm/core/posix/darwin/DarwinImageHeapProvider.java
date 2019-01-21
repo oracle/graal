@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,42 +22,52 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.os;
+package com.oracle.svm.core.posix.darwin;
 
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_BEGIN;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_END;
 import static com.oracle.svm.core.util.PointerUtils.roundUp;
 
+import com.oracle.svm.core.Isolates;
+import com.oracle.svm.core.MemoryUtil;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.c.function.CEntryPointErrors;
+import com.oracle.svm.core.os.CopyingImageHeapProvider;
+import com.oracle.svm.core.os.ImageHeapProvider;
+import com.oracle.svm.core.os.VirtualMemoryProvider;
+import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
+import com.oracle.svm.core.posix.headers.darwin.DarwinVirtualMemory;
+import com.oracle.svm.core.util.UnsignedUtils;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.Isolates;
-import com.oracle.svm.core.MemoryUtil;
-import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.c.function.CEntryPointErrors;
-import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
-import com.oracle.svm.core.util.UnsignedUtils;
-
 @AutomaticFeature
-@Platforms({Platform.WINDOWS.class})
-class CopyingImageHeapProviderFeature implements Feature {
+@Platforms({Platform.DARWIN.class})
+class DarwinImageHeapProviderFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         if (!ImageSingletons.contains(ImageHeapProvider.class)) {
-            ImageSingletons.add(ImageHeapProvider.class, new CopyingImageHeapProvider());
+            ImageSingletons.add(ImageHeapProvider.class, new DarwinImageHeapProvider());
         }
     }
 }
 
-public class CopyingImageHeapProvider implements ImageHeapProvider {
+
+/**
+ * An optimal image heap provider for Darwin which creates isolate image heaps
+ * that are a copy-on-write clone of the original image heap.
+ */
+public class DarwinImageHeapProvider implements ImageHeapProvider {
     @Override
     @Uninterruptible(reason = "Called during isolate initialization.")
     public int initialize(PointerBase begin, UnsignedWord reservedSize, WordPointer basePointer, WordPointer endPointer) {
@@ -67,12 +77,19 @@ public class CopyingImageHeapProvider implements ImageHeapProvider {
             return CEntryPointErrors.UNSPECIFIED;
         }
 
-        Pointer heap = VirtualMemoryProvider.get().commit(begin, imageHeapSize, Access.READ | Access.WRITE);
-        if (heap.isNull()) {
+        int task = DarwinVirtualMemory.mach_task_self();
+
+        WordPointer targetPointer = StackValue.get(WordPointer.class);
+        if (DarwinVirtualMemory.vm_allocate(task, targetPointer, imageHeapSize, true) != 0) {
             return CEntryPointErrors.MAP_HEAP_FAILED;
         }
 
-        MemoryUtil.copyConjointMemoryAtomic(imageHeapBegin, heap, imageHeapSize);
+        Pointer heap = targetPointer.read();
+
+        // Mach vm_copy performs a COW virtual memory copy
+        if (DarwinVirtualMemory.vm_copy(task, imageHeapBegin, imageHeapSize, heap) != 0) {
+            return CEntryPointErrors.MAP_HEAP_FAILED;
+        }
 
         UnsignedWord pageSize = VirtualMemoryProvider.get().getGranularity();
         UnsignedWord writableBeginPageOffset = UnsignedUtils.roundDown(IMAGE_HEAP_WRITABLE_BEGIN.get().subtract(imageHeapBegin), pageSize);
@@ -100,14 +117,14 @@ public class CopyingImageHeapProvider implements ImageHeapProvider {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public boolean canUnmapInsteadOfTearDown(PointerBase heapBase) {
-        return true;
+        return false;
     }
 
     @Override
     @Uninterruptible(reason = "Called during isolate tear-down.")
     public int tearDown(PointerBase heapBase) {
-        Word size = Isolates.IMAGE_HEAP_END.get().subtract(Isolates.IMAGE_HEAP_BEGIN.get());
-        if (VirtualMemoryProvider.get().free(heapBase, size) != 0) {
+        UnsignedWord size = Isolates.IMAGE_HEAP_END.get().subtract(Isolates.IMAGE_HEAP_BEGIN.get());
+        if (DarwinVirtualMemory.vm_deallocate(DarwinVirtualMemory.mach_task_self(), heapBase, size) != 0) {
             return CEntryPointErrors.MAP_HEAP_FAILED;
         }
         return CEntryPointErrors.NO_ERROR;
