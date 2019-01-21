@@ -306,7 +306,6 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
 
     def launcher_args(self, args):
         launcher_args = [
-            '--jvm.Dgraal.TruffleBackgroundCompilation=false',
             '--jvm.Dgraal.TruffleInliningMaxCallerSize=10000',
             '--jvm.Dgraal.TruffleCompilationExceptionsAreFatal=true',
             '--llvm.libraries=libgmp.so.10'] + args
