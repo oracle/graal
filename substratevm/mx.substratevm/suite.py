@@ -671,6 +671,7 @@ suite = {
                 "com.oracle.svm.jni",
                 "com.oracle.svm.jline",
                 "com.oracle.svm.junit",
+                "com.oracle.svm.jmh",
                 "com.oracle.svm.polyglot",
                 "com.oracle.svm.thirdparty",
             ],
