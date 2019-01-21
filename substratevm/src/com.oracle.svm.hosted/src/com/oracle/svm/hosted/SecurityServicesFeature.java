@@ -34,6 +34,7 @@ import java.security.Provider.Service;
 import java.security.cert.CertificateException;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.function.Function;
 
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.serviceprovider.GraalServices;
@@ -142,6 +143,8 @@ public class SecurityServicesFeature implements Feature {
 
         boolean enableAllSecurityServices = SubstrateOptions.EnableAllSecurityServices.getValue();
 
+        Function<String, Class<?>> consParamClassAccessor = getConsParamClassAccessor(access);
+
         trace("Registering security services...");
         for (Provider provider : Providers.getProviderList().providers()) {
             if (enableAllSecurityServices || isSunProvider(provider)) {
@@ -150,40 +153,13 @@ public class SecurityServicesFeature implements Feature {
                 for (Service service : provider.getServices()) {
                     if (enableAllSecurityServices || isMessageDigest(service) || isSecureRandom(service)) {
                         /* SecureRandom and MessageDigest SUN services are registered by default. */
-                        register(access, service);
+                        register(access, service, consParamClassAccessor);
                     }
                 }
             }
         }
 
         if (enableAllSecurityServices) {
-            try {
-                /* Register the parameter classes that are registered via Provider.knownEngines. */
-                trace("Registering engine constructor parameter classes...");
-
-                /*
-                 * Since the Provider.knownEngines field and the EngineDescription class are tightly
-                 * encapsulated they are accessed via reflection.
-                 */
-                Field knownEnginesField = Provider.class.getDeclaredField("knownEngines");
-                knownEnginesField.setAccessible(true);
-                Class<?> engineDescriptionClass = access.findClassByName("java.security.Provider$EngineDescription");
-                Field constructorParameterClassNameField = engineDescriptionClass.getDeclaredField("constructorParameterClassName");
-                constructorParameterClassNameField.setAccessible(true);
-
-                Map<String, Object> knownEngines = (Map<String, Object>) knownEnginesField.get(null);
-                for (Object engineDescription : knownEngines.values()) {
-                    String constructorParameterClassName = (String) constructorParameterClassNameField.get(engineDescription);
-                    if (constructorParameterClassName != null) {
-                        Class<?> constructorParameterClass = access.findClassByName(constructorParameterClassName);
-                        registerForReflection(constructorParameterClass);
-                        trace("Class registered for reflection: " + constructorParameterClass);
-                    }
-                }
-            } catch (NoSuchFieldException | IllegalAccessException e) {
-                VMError.shouldNotReachHere(e);
-            }
-
             /*
              * Register the default JavaKeyStore, JKS. It is not returned by the
              * provider.getServices() enumeration.
@@ -215,6 +191,44 @@ public class SecurityServicesFeature implements Feature {
         }
     }
 
+    /**
+     * Return a Function which given the serviceType as a String will return the corresponding
+     * constructor parameter Class, or null.
+     */
+    @SuppressWarnings("unchecked")
+    private static Function<String, Class<?>> getConsParamClassAccessor(BeforeAnalysisAccess access) {
+        try {
+            Field knownEnginesField = Provider.class.getDeclaredField("knownEngines");
+            knownEnginesField.setAccessible(true);
+
+            Class<?> engineDescriptionClass = access.findClassByName("java.security.Provider$EngineDescription");
+            Field consParamClassNameField = engineDescriptionClass.getDeclaredField("constructorParameterClassName");
+            consParamClassNameField.setAccessible(true);
+            Map<String, /* EngineDescription */ Object> knownEngines = (Map<String, Object>) knownEnginesField.get(null);
+
+            return (serviceType) -> {
+                try {
+                    /*
+                     * Access the Provider.knownEngines map and extract the EngineDescription
+                     * corresponding to the serviceType. From the EngineDescription object extract
+                     * the value of the constructorParameterClassName field then, if the class name
+                     * is not null, get the corresponding Class<?> object and return it.
+                     */
+                    /* EngineDescription */Object engineDescription = knownEngines.get(serviceType);
+                    String constrParamClassName = (String) consParamClassNameField.get(engineDescription);
+                    if (constrParamClassName != null) {
+                        return access.findClassByName(constrParamClassName);
+                    }
+                } catch (IllegalAccessException e) {
+                    VMError.shouldNotReachHere(e);
+                }
+                return null;
+            };
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+    }
+
     private static void register(Provider provider) {
         registerForReflection(provider.getClass());
 
@@ -236,10 +250,17 @@ public class SecurityServicesFeature implements Feature {
 
     }
 
-    private static void register(BeforeAnalysisAccess access, Service service) {
+    private static void register(BeforeAnalysisAccess access, Service service, Function<String, Class<?>> consParamClassAccessor) {
         Class<?> serviceClass = access.findClassByName(service.getClassName());
         if (serviceClass != null) {
             registerForReflection(serviceClass);
+
+            Class<?> consParamClass = consParamClassAccessor.apply(service.getType());
+            if (consParamClass != null) {
+                registerForReflection(consParamClass);
+                trace("Parameter class registered: " + consParamClass);
+            }
+
             if (isSignature(service) || isCipher(service) || isKeyAgreement(service)) {
                 for (String keyClassName : getSupportedKeyClasses(service)) {
                     Class<?> keyClass = access.findClassByName(keyClassName);
