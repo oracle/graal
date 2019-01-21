@@ -78,10 +78,11 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
     private final ConstantPool constantPool;
     private final ByteBuffer buffer;
     private final WritableByteChannel channel;
+    private final boolean autoFlush;
     final int versionMajor;
     final int versionMinor;
 
-    GraphProtocol(WritableByteChannel channel, int major, int minor) throws IOException {
+    GraphProtocol(WritableByteChannel channel, int major, int minor, boolean autoFlush, boolean writeProlog) throws IOException {
         if (major > 6 || (major == 6 && minor > 0)) {
             throw new IllegalArgumentException("Unrecognized version " + major + "." + minor);
         }
@@ -90,7 +91,11 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
         this.constantPool = new ConstantPool();
         this.buffer = ByteBuffer.allocateDirect(256 * 1024);
         this.channel = channel;
-        writeVersion();
+        this.autoFlush = autoFlush;
+        if (writeProlog) {
+            writeVersion();
+            flushIfNeeded();
+        }
     }
 
     GraphProtocol(GraphProtocol<?, ?, ?, ?, ?, ?, ?, ?, ?, ?> parent) {
@@ -99,6 +104,7 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
         this.constantPool = parent.constantPool;
         this.buffer = parent.buffer;
         this.channel = parent.channel;
+        this.autoFlush = parent.autoFlush;
     }
 
     @SuppressWarnings("all")
@@ -125,10 +131,12 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
         writePoolObject(method);
         writeInt(bci);
         writeProperties(noGraph, properties);
+        flushIfNeeded();
     }
 
     public final void endGroup() throws IOException {
         writeByte(CLOSE_GROUP);
+        flushIfNeeded();
     }
 
     @Override
@@ -278,6 +286,13 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
         writeBytesRaw(MAGIC_BYTES);
         writeByte(versionMajor);
         writeByte(versionMinor);
+    }
+
+    private void flushIfNeeded() throws IOException {
+        if (autoFlush) {
+            flush();
+            constantPool.reset();
+        }
     }
 
     private void flush() throws IOException {
@@ -817,6 +832,11 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
             Character id = nextAvailableId();
             put(obj, id);
             return id;
+        }
+
+        void reset() {
+//            availableIds.clear();
+//            nextId = 0;
         }
     }
 

@@ -46,6 +46,7 @@ import org.graalvm.graphio.GraphOutput;
 
 import jdk.vm.ci.meta.JavaMethod;
 
+
 final class IgvSupport extends SVMObject implements TruffleDebugContext {
 
     private static final String SOURCE_PREFIX = "SOURCE=";
@@ -74,7 +75,7 @@ final class IgvSupport extends SVMObject implements TruffleDebugContext {
         if (sharedChannel == null) {
             sharedChannel = new IgvDumpChannel(HotSpotToSVMCalls.getDumpChannel(getIsolateThreadId(), handle));
         }
-        final GraphOutput<G, M> res = builder.build(sharedChannel);
+        final GraphOutput<G, M> res = builder.autoFlush(true).buildShared(sharedChannel);
         parentOutput = res;
         return res;
     }
