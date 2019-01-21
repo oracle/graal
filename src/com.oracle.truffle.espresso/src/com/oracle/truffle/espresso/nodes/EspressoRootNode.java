@@ -239,6 +239,7 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.bytecode.BytecodeLookupSwitch;
@@ -908,16 +909,21 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
     }
 
     private int checkBackEdge(int curBCI, int targetBCI, int top, int opCode) {
-        top += Bytecodes.stackEffectOf(opCode);
-        if (!zeroStackBackEdges && targetBCI < curBCI) {
-            if (top != 0) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                zeroStackBackEdges = true;
-            } else {
-                return 0;
+        int newTop = top + Bytecodes.stackEffectOf(opCode);
+        if (targetBCI < curBCI) {
+            if (CompilerDirectives.inInterpreter()) {
+                LoopNode.reportLoopCount(this, 1);
+            }
+            if (!zeroStackBackEdges) {
+                if (newTop != 0) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    zeroStackBackEdges = true;
+                } else {
+                    return 0;
+                }
             }
         }
-        return top;
+        return newTop;
     }
 
     private JavaKind peekKind(VirtualFrame frame, int slot) {
