@@ -51,8 +51,7 @@ include "compiler/ci_includes/m7_eighth-c2.hocon"
 include "compiler/ci_includes/gate_tasks.hocon"
 
 # ------------------ SVM ----------------------
-include "substratevm/ci_includes/svm-gate.hocon"
-include "substratevm/ci_includes/svm-gate-tasks.hocon"
+include "substratevm/ci_includes/gate.hocon"
 
 # Maven deploy dry-run
 include "substratevm/ci_includes/deploy.hocon"
