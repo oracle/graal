@@ -108,7 +108,6 @@ public class JNICallTrampolineMethod extends CustomSubstitutionMethod {
     public CompileFunction createCustomCompileFunction() {
         return (debug, method, identifier, reason, config) -> {
             SubstrateBackend backend = config.getBackendForNormalMethod();
-            VMError.guarantee(backend.getTarget().arch instanceof AMD64, "currently only implemented on AMD64");
 
             // Determine register for jmethodID argument
             HostedProviders providers = (HostedProviders) config.getProviders();

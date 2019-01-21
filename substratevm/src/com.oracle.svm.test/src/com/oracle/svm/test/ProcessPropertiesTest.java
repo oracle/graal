@@ -43,9 +43,9 @@ public class ProcessPropertiesTest {
     }
 
     /**
-     * Test ProcessProperties.setLocale(). See <a href=
-     * "http://pubs.opengroup.org/onlinepubs/9699919799/functions/setlocale.html " >setLocale
-     * specification</a> for details.
+     * Test ProcessProperties.setLocale(). See
+     * <a href= "http://pubs.opengroup.org/onlinepubs/9699919799/functions/setlocale.html "
+     * >setLocale specification</a> for details.
      */
     @Test
     public void testSetLocale() {

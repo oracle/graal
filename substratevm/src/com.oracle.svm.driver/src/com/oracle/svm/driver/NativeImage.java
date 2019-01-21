@@ -257,6 +257,8 @@ public class NativeImage {
             String javaVersion = System.getProperty("java.version");
             if (javaVersion.startsWith("1.")) {
                 javaVersion = javaVersion.substring(0, 3);
+            } else if (javaVersion.contains("-")) {
+                javaVersion = javaVersion.split("-")[0];
             } else {
                 javaVersion = javaVersion.split("\\.", 2)[0];
             }

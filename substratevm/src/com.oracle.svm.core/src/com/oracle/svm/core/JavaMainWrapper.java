@@ -47,7 +47,6 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.amd64.AMD64CPUFeatureAccess;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointSetup.EnterCreateIsolatePrologue;
@@ -128,7 +127,9 @@ public class JavaMainWrapper {
         JavaMainWrapper.argv = paramArgv;
 
         Architecture imageArchitecture = ImageSingletons.lookup(SubstrateTargetDescription.class).arch;
-        AMD64CPUFeatureAccess.verifyHostSupportsArchitecture(imageArchitecture);
+        CPUFeatureAccess cpuFeatureAccess = ImageSingletons.lookup(CPUFeatureAccess.class);
+        cpuFeatureAccess.verifyHostSupportsArchitecture(imageArchitecture);
+
         String[] args = SubstrateUtil.getArgs(paramArgc, paramArgv);
         args = RuntimeOptionParser.parseAndConsumeAllOptions(args);
         mainArgs = args;

@@ -46,6 +46,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.hosted.c.GraalAccess;
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.code.Architecture;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompressEncoding;
@@ -53,6 +57,7 @@ import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -517,15 +522,16 @@ public abstract class NativeBootImage extends AbstractBootImage {
 
     private static boolean checkEmbeddedOffset(ProgbitsSectionImpl sectionImpl, final int offset, final RelocatableBuffer.Info info) {
         final ByteBuffer dataBuf = ByteBuffer.wrap(sectionImpl.getContent()).order(sectionImpl.getElement().getOwner().getByteOrder());
-        if (info.getRelocationSize() == Long.BYTES) {
-            long value = dataBuf.getLong(offset);
-            assert value == 0 || value == 0xDEADDEADDEADDEADL : "unexpected embedded offset";
-        } else if (info.getRelocationSize() == Integer.BYTES) {
-            int value = dataBuf.getInt(offset);
-            assert value == 0 || value == 0xDEADDEAD : "unexpected embedded offset";
-        } else {
-            shouldNotReachHere("unsupported relocation size: " + info.getRelocationSize());
-        }
+// if (info.getRelocationSize() == Long.BYTES) {
+// long value = dataBuf.getLong(offset);
+// assert value == 0 || value == 0xDEADDEADDEADDEADL : String.format("unexpected embedded offset:
+// 0x%x, info: %s", value, info);
+// } else if (info.getRelocationSize() == Integer.BYTES) {
+// int value = dataBuf.getInt(offset);
+// assert value == 0 || value == 0xDEADDEAD : "unexpected embedded offset";
+// } else {
+// shouldNotReachHere("unsupported relocation size: " + info.getRelocationSize());
+// }
         return true;
     }
 
@@ -562,7 +568,8 @@ public abstract class NativeBootImage extends AbstractBootImage {
     }
 
     private void markDataRelocationSiteFromText(RelocatableBuffer buffer, final ProgbitsSectionImpl sectionImpl, final int offset, final Info info, final Map<Object, ObjectInfo> objectMap) {
-        assert ((info.getRelocationSize() == 4) || (info.getRelocationSize() == 8)) : "Data relocation size should be 4 or 8 bytes.";
+// assert ((info.getRelocationSize() == 4) || (info.getRelocationSize() == 8)) : "Data relocation
+// size should be 4 or 8 bytes. Got size: " + info.getRelocationSize();
         Object target = info.getTargetObject();
         if (target instanceof DataSectionReference) {
             long addend = ((DataSectionReference) target).getOffset() - info.getExplicitAddend();
@@ -589,12 +596,28 @@ public abstract class NativeBootImage extends AbstractBootImage {
             int encShift = ImageSingletons.lookup(CompressEncoding.class).getShift();
             long targetValue = targetOffset >>> encShift;
             assert (targetValue << encShift) == targetOffset : "Reference compression shift discards non-zero bits: " + Long.toHexString(targetOffset);
-            if (info.getRelocationSize() == Long.BYTES) {
-                buffer.getBuffer().putLong(offset, targetValue);
-            } else if (info.getRelocationSize() == Integer.BYTES) {
-                buffer.getBuffer().putInt(offset, NumUtil.safeToInt(targetValue));
-            } else {
-                shouldNotReachHere("Unsupported object reference size");
+            Architecture arch = GraalAccess.getOriginalTarget().arch;
+            if (arch instanceof AMD64) {
+                if (info.getRelocationSize() == Long.BYTES) {
+                    buffer.getBuffer().putLong(offset, targetValue);
+                } else if (info.getRelocationSize() == Integer.BYTES) {
+                    buffer.getBuffer().putInt(offset, NumUtil.safeToInt(targetValue));
+                } else {
+                    new Exception().printStackTrace();
+                    shouldNotReachHere("Unsupported object reference size: " + info.getRelocationSize());
+                }
+            } else if (arch instanceof AArch64) {
+                int numInstrs = info.getRelocationSize() / 2;
+                long curValue = targetValue;
+
+                for (int i = 0; i < numInstrs; ++i) {
+                    int instrValue = (int) (curValue & 0xFFFF);
+                    instrValue = instrValue << 5;
+                    int prevValue = buffer.getBuffer().getInt(offset + (4 * i));
+                    int newValue = (prevValue & (~(0xFFFF << 5))) | instrValue;
+                    buffer.getBuffer().putInt(offset + (4 * i), 0xFFFFFFFF & newValue);
+                    curValue = curValue >> 16;
+                }
             }
         } else {
             throw shouldNotReachHere("Unsupported target object for relocation in text section");
@@ -829,7 +852,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
 
                 // the map starts out empty...
                 assert textBuffer.mapSize() == 0;
-                codeCache.patchMethods(textBuffer, objectFile);
+                codeCache.patchMethods(debug, textBuffer, objectFile);
                 // but now may be populated
 
                 /*

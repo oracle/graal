@@ -67,7 +67,8 @@ public enum OptionCategory {
      * @deprecated Use {@link OptionCategory#INTERNAL} instead.
      * @since 1.0
      */
-    @Deprecated DEBUG,
+    @Deprecated
+    DEBUG,
 
     /**
      * An option only relevant when debugging a language implementation or an instrument.

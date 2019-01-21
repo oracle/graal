@@ -24,24 +24,32 @@
  */
 package com.oracle.svm.hosted.image;
 
+import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandDataAnnotation;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.objectfile.ObjectFile;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.util.VMError.HostedError;
 import com.oracle.svm.hosted.code.HostedPatcher;
 import com.oracle.svm.hosted.image.NativeBootImage.NativeTextSectionImpl;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.MethodPointer;
 
+import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.DataPatch;
 import jdk.vm.ci.code.site.Infopoint;
@@ -97,7 +105,8 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
      * @param relocs a relocation map
      */
     @Override
-    public void patchMethods(RelocatableBuffer relocs, ObjectFile objectFile) {
+    @SuppressWarnings("try")
+    public void patchMethods(DebugContext debug, RelocatableBuffer relocs, ObjectFile objectFile) {
 
         /*
          * Patch instructions which reference code or data by address.
@@ -154,7 +163,6 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                     // Patch a PC-relative call.
                     // This code handles the case of section-local calls only.
                     int pcDisplacement = callTargetStart - (compStart + call.pcOffset);
-
                     patches.get(call.pcOffset).patch(call.pcOffset, pcDisplacement, compilation.getTargetCode());
                 }
             }
@@ -164,7 +172,15 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                  * Constants are allocated offsets in a separate space, which can be emitted as
                  * read-only (.rodata) section.
                  */
+// System.err.println( "for " + dataPatch.pcOffset + " // " + dataPatch + " // " +
+// System.identityHashCode(dataPatch) + " on " + System.identityHashCode(compilation));
+// System.err.println( "==> " + patches.get(dataPatch.pcOffset));
                 patches.get(dataPatch.pcOffset).relocate(ref, relocs, compStart);
+            }
+            try (DebugContext.Scope ds = debug.scope("After Patching", method.asJavaMethod())) {
+                debug.dump(DebugContext.BASIC_LEVEL, compilation, "After patching");
+            } catch (Throwable e) {
+                throw VMError.shouldNotReachHere(e);
             }
         }
     }

@@ -39,7 +39,6 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
-import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.Value;
 
@@ -53,8 +52,9 @@ public class AArch64Compare {
 
         public CompareOp(Value x, Value y) {
             super(TYPE);
-            assert ((AArch64Kind) x.getPlatformKind()).isInteger() && ((AArch64Kind) y.getPlatformKind()).isInteger();
-            assert x.getPlatformKind() == y.getPlatformKind();
+            // assert ((AArch64Kind) x.getPlatformKind()).isInteger() && ((AArch64Kind)
+            // y.getPlatformKind()).isInteger();
+            // assert x.getPlatformKind() == y.getPlatformKind();
             this.x = x;
             this.y = y;
         }

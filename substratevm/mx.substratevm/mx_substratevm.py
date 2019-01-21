@@ -96,6 +96,7 @@ def add_opens_from_packages(packageNameList):
 graal_compiler_export_packages = [
     'jdk.internal.vm.ci/jdk.vm.ci.runtime',
     'jdk.internal.vm.ci/jdk.vm.ci.code',
+    'jdk.internal.vm.ci/jdk.vm.ci.aarch64',
     'jdk.internal.vm.ci/jdk.vm.ci.amd64',
     'jdk.internal.vm.ci/jdk.vm.ci.meta',
     'jdk.internal.vm.ci/jdk.vm.ci.hotspot',

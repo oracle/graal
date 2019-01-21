@@ -29,11 +29,14 @@ import static com.oracle.svm.core.util.VMError.unimplemented;
 
 import java.util.Collections;
 
+import com.oracle.svm.core.graal.code.aarch64.SubstrateAArch64AddressLowering;
+import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import org.bytedeco.javacpp.LLVM;
 import org.bytedeco.javacpp.LLVM.LLVMBasicBlockRef;
 import org.bytedeco.javacpp.LLVM.LLVMContextRef;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.llvm.LLVMCompilerBackend;
 import org.graalvm.compiler.core.llvm.LLVMGenerationProvider;
@@ -45,6 +48,8 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.Phase;
+import org.graalvm.compiler.phases.common.AddressLoweringByUsePhase;
 import org.graalvm.compiler.phases.common.AddressLoweringPhase;
 import org.graalvm.compiler.phases.util.Providers;
 
@@ -57,6 +62,7 @@ import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.site.InfopointReason;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.nativeimage.ImageSingletons;
 
 public class SubstrateLLVMBackend extends SubstrateBackend implements LLVMGenerationProvider {
     public SubstrateLLVMBackend(Providers providers) {
@@ -64,8 +70,8 @@ public class SubstrateLLVMBackend extends SubstrateBackend implements LLVMGenera
     }
 
     @Override
-    public AddressLoweringPhase.AddressLowering newAddressLowering(CodeCacheProvider codeCache) {
-        return new LLVMAddressLowering();
+    public Phase newAddressLoweringPhase(CodeCacheProvider codeCache) {
+        return new AddressLoweringPhase(new LLVMAddressLowering());
     }
 
     @Override

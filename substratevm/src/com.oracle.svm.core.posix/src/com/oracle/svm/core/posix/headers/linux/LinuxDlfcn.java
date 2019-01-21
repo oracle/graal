@@ -167,7 +167,7 @@ public class LinuxDlfcn extends Dlfcn {
 
         /** Indicates where this directory came from. */
         @CField
-                        /* unsigned */int dls_flags();
+        /* unsigned */int dls_flags();
     }
 
     /**
@@ -182,7 +182,7 @@ public class LinuxDlfcn extends Dlfcn {
 
         /** Number of elements in `dls_serpath'. */
         @CField
-                        /* unsigned */int dls_cnt();
+        /* unsigned */int dls_cnt();
 
         /** Actually longer, dls_cnt elements. */
         @CFieldAddress
