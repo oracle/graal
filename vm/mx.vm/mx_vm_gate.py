@@ -117,7 +117,10 @@ def gate_substratevm(tasks):
                 '-H:DynamicProxyConfigurationFiles=' + truffle_dir + '/src/com.oracle.truffle.api.test/src/com/oracle/truffle/api/test/polyglot/proxys.json',
                 '--'
             ] + tests
-            mx.suite('substratevm').extensions.native_unittest(args)
+
+            native_image_context, svm = graalvm_svm()
+            with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
+                svm._native_unittest(native_image, args)
 
 def gate_sulong(tasks):
     with Task('Run SulongSuite tests as native-image', tasks, tags=[VmGateTasks.sulong]) as t:
