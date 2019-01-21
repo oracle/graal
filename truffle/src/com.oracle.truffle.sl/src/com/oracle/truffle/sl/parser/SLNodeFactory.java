@@ -169,7 +169,6 @@ public class SLNodeFactory {
          * specialized.
          */
         final SLReadArgumentNode readArg = new SLReadArgumentNode(parameterCount);
-        readArg.setSourceSection(nameToken.getStartIndex(), nameToken.getStopIndex() - nameToken.getStartIndex() + 1);
         SLExpressionNode assignment = createAssignment(createStringLiteral(nameToken, false), readArg, parameterCount);
         methodNodes.add(assignment);
         parameterCount++;
