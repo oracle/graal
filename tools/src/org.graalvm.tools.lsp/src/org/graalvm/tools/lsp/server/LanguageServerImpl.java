@@ -136,7 +136,7 @@ public class LanguageServerImpl implements LanguageServer, LanguageClientAware, 
 
     public CompletableFuture<Object> shutdown() {
         info.println("[Graal LSP] Shutting down server...");
-        return CompletableFuture.completedFuture(null);
+        return CompletableFuture.completedFuture(new Object());
     }
 
     public void exit() {

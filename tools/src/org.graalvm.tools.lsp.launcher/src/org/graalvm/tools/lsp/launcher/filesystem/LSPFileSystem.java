@@ -1,4 +1,4 @@
-package org.graalvm.tools.lsp.filesystem;
+package org.graalvm.tools.lsp.launcher.filesystem;
 
 import java.io.IOException;
 import java.net.URI;

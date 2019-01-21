@@ -22,7 +22,7 @@ import org.graalvm.tools.lsp.api.ContextAwareExecutor;
 import org.graalvm.tools.lsp.api.ContextAwareExecutorRegistry;
 import org.graalvm.tools.lsp.api.LanguageServerBootstrapper;
 import org.graalvm.tools.lsp.api.VirtualLanguageServerFileProvider;
-import org.graalvm.tools.lsp.filesystem.LSPFileSystem;
+import org.graalvm.tools.lsp.launcher.filesystem.LSPFileSystem;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
 

@@ -378,7 +378,7 @@ suite = {
         "LSP": {
             "dependencies": ["org.graalvm.tools.lsp"],
             "distDependencies" : [
-                "org.graalvm.tools.lsp.api",
+                "LSP-API",
                 "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_NFI",
                 "LSP4J"
@@ -387,7 +387,7 @@ suite = {
         "LSP-LAUNCHER": {
             "dependencies": ["org.graalvm.tools.lsp.launcher"],
             "distDependencies" : [
-                "org.graalvm.tools.lsp.api",
+                "LSP-API",
                 "sdk:GRAAL_SDK",
                 "sdk:LAUNCHER_COMMON",
             ],
