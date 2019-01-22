@@ -24,13 +24,14 @@
  */
 package com.oracle.svm.core.posix.linux;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.posix.headers.Errno;
-import com.oracle.svm.core.posix.headers.Unistd;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.word.WordFactory;
+
+import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.posix.headers.Errno;
+import com.oracle.svm.core.posix.headers.Unistd;
 
 class ProcFSSupport {
     private static final int ST_ADDR_START = 1;
@@ -44,35 +45,30 @@ class ProcFSSupport {
     private static final int ST_SKIP = 9;
 
     /**
-     * Find a mapping in /proc/self/maps format which corresponds to the
-     * specified address. The buffer is dual-purpose and used to return the
-     * file's path name if requested via the needName parameter. As such the
-     * buffer should be large enough to accommodate a path. If not enough buffer
-     * capacity is available, and needName is true, false will be returned and
-     * the buffer null prefixed to prevent accidental use.
+     * Find a mapping in /proc/self/maps format which corresponds to the specified address. The
+     * buffer is dual-purpose and used to return the file's path name if requested via the needName
+     * parameter. As such the buffer should be large enough to accommodate a path. If not enough
+     * buffer capacity is available, and needName is true, false will be returned and the buffer
+     * null prefixed to prevent accidental use.
      *
-     * If a mapping is not found, or an error has occured, false will be
-     * returned.
+     * If a mapping is not found, or an error has occured, false will be returned.
      *
      * @param fd an FD pointing to /proc/self/maps
-     * @param buffer a buffer for reading operations, and optionally returning
-     *               the path name of the mapping.
+     * @param buffer a buffer for reading operations, and optionally returning the path name of the
+     *            mapping.
      * @param bufferLen the length of the buffer
-     * @param address the address to search for that is within a mapping entry's
-     *                address range
+     * @param address the address to search for that is within a mapping entry's address range
      * @param startAddrPtr the start address range for a found mapping
-     * @param offsetPtr the file offset for the backing file of the found
-     *                  mapping
-     * @param devPtr    the device id of the matching mapping's backing file
-     * @param inodePtr  the inode of the matching mapping's backing file
-     * @param needName  whether the matching path name is desired and should be
-     *                  returned in buffer
+     * @param offsetPtr the file offset for the backing file of the found mapping
+     * @param devPtr the device id of the matching mapping's backing file
+     * @param inodePtr the inode of the matching mapping's backing file
+     * @param needName whether the matching path name is desired and should be returned in buffer
      * @return true if a mapping is found and no errors, false otherwise.
      */
     @Uninterruptible(reason = "Called during isolate initialization.")
     @SuppressWarnings("fallthrough")
     static boolean findMapping(int fd, CCharPointer buffer, int bufferLen, long address, CLongPointer startAddrPtr,
-                               CLongPointer offsetPtr, CIntPointer devPtr, CLongPointer inodePtr, boolean needName) {
+                    CLongPointer offsetPtr, CIntPointer devPtr, CLongPointer inodePtr, boolean needName) {
         int rem = 0;
         int pos = 0;
         int state = ST_ADDR_START;
@@ -164,7 +160,7 @@ class ProcFSSupport {
                     if (b == ' ') {
                         fns = 0;
                         if (!needName) {
-                            buffer.write(0, (byte)0);
+                            buffer.write(0, (byte) 0);
                             break OUT;
                         }
                         state = ST_SPACE;
@@ -181,15 +177,15 @@ class ProcFSSupport {
                         break;
                     }
                     state = ST_FILENAME;
-                    // fall thru
                 }
+                // fallthru
                 case ST_FILENAME: {
                     if (b == '\n') {
                         buffer.write(fns, (byte) 0);
                         break OUT;
                     } else {
                         if (fns < pos - 1) {
-                            buffer.write(fns, (byte)(b & 0xFF));
+                            buffer.write(fns, (byte) (b & 0xFF));
                         }
                         if (++fns >= bufferLen) {
                             // advance out of capacity, garbage
@@ -208,10 +204,18 @@ class ProcFSSupport {
                 }
             }
         }
-        if (startAddrPtr.isNonNull()) startAddrPtr.write(start);
-        if (offsetPtr.isNonNull()) offsetPtr.write(offs);
-        if (devPtr.isNonNull()) devPtr.write(dev);
-        if (inodePtr.isNonNull()) inodePtr.write(inode);
+        if (startAddrPtr.isNonNull()) {
+            startAddrPtr.write(start);
+        }
+        if (offsetPtr.isNonNull()) {
+            offsetPtr.write(offs);
+        }
+        if (devPtr.isNonNull()) {
+            devPtr.write(dev);
+        }
+        if (inodePtr.isNonNull()) {
+            inodePtr.write(inode);
+        }
         return true;
     }
 }

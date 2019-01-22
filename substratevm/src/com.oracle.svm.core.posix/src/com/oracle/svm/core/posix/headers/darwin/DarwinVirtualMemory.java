@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.posix.headers.darwin;
 
-import com.oracle.svm.core.posix.headers.PosixDirectives;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
@@ -32,6 +31,10 @@ import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
+
+import com.oracle.svm.core.posix.headers.PosixDirectives;
+
+//Checkstyle: stop
 
 @CContext(PosixDirectives.class)
 @Platforms(Platform.DARWIN.class)

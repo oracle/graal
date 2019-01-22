@@ -31,24 +31,6 @@ import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_END;
 import static com.oracle.svm.core.posix.linux.ProcFSSupport.findMapping;
 import static com.oracle.svm.core.util.PointerUtils.roundUp;
 
-import com.oracle.svm.core.Isolates;
-import com.oracle.svm.core.MemoryUtil;
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.UnsafeAccess;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.c.CGlobalData;
-import com.oracle.svm.core.c.CGlobalDataFactory;
-import com.oracle.svm.core.c.function.CEntryPointErrors;
-import com.oracle.svm.core.os.CopyingImageHeapProvider;
-import com.oracle.svm.core.os.ImageHeapProvider;
-import com.oracle.svm.core.os.VirtualMemoryProvider;
-import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
-import com.oracle.svm.core.posix.headers.Fcntl;
-import com.oracle.svm.core.posix.headers.LibC;
-import com.oracle.svm.core.posix.headers.Stat;
-import com.oracle.svm.core.posix.headers.Unistd;
-import com.oracle.svm.core.util.UnsignedUtils;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Feature;
@@ -67,6 +49,24 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.Isolates;
+import com.oracle.svm.core.MemoryUtil;
+import com.oracle.svm.core.UnsafeAccess;
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.c.CGlobalData;
+import com.oracle.svm.core.c.CGlobalDataFactory;
+import com.oracle.svm.core.c.function.CEntryPointErrors;
+import com.oracle.svm.core.os.CopyingImageHeapProvider;
+import com.oracle.svm.core.os.ImageHeapProvider;
+import com.oracle.svm.core.os.VirtualMemoryProvider;
+import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
+import com.oracle.svm.core.posix.headers.Fcntl;
+import com.oracle.svm.core.posix.headers.LibC;
+import com.oracle.svm.core.posix.headers.Stat;
+import com.oracle.svm.core.posix.headers.Unistd;
+import com.oracle.svm.core.util.UnsignedUtils;
+
 @AutomaticFeature
 @Platforms({Platform.LINUX.class})
 class LinuxImageHeapProviderFeature implements Feature {
@@ -79,23 +79,21 @@ class LinuxImageHeapProviderFeature implements Feature {
 }
 
 /**
- * An optimal image heap provider for Linux which creates isolate image heaps
- * that retain the copy-on-write, lazy loading and reclamation semantics
- * provided by the original heap's backing resource.
+ * An optimal image heap provider for Linux which creates isolate image heaps that retain the
+ * copy-on-write, lazy loading and reclamation semantics provided by the original heap's backing
+ * resource.
  *
- * This is accomplished by discovering the backing executable or shared object
- * file the kernel has mmapped to the original heap image virtual address, as
- * well as the location in the file storing the original heap. A new memory map
- * is created to a new virtual range pointing to this same location. This allows
- * the kernel to share the same physical pages between multiple heaps that have
- * not been modified, as well as lazily load them only when needed.
+ * This is accomplished by discovering the backing executable or shared object file the kernel has
+ * mmapped to the original heap image virtual address, as well as the location in the file storing
+ * the original heap. A new memory map is created to a new virtual range pointing to this same
+ * location. This allows the kernel to share the same physical pages between multiple heaps that
+ * have not been modified, as well as lazily load them only when needed.
  *
- * The implementation avoids dirtying the pages of the original, and only
- * referencing what is strictly required.
+ * The implementation avoids dirtying the pages of the original, and only referencing what is
+ * strictly required.
  *
- * This provider falls back to the POSIX friendly
- * <code>CopyImageHeapProvider</code> if either the architecture is not
- * supported, or an error occurs during the mapping process.
+ * This provider falls back to the POSIX friendly <code>CopyImageHeapProvider</code> if either the
+ * architecture is not supported, or an error occurs during the mapping process.
  */
 public class LinuxImageHeapProvider extends CopyingImageHeapProvider {
     private static final CGlobalData<CCharPointer> SELF_EXE = CGlobalDataFactory.createCString("/proc/self/exe");
@@ -123,7 +121,7 @@ public class LinuxImageHeapProvider extends CopyingImageHeapProvider {
     }
 
     @Uninterruptible(reason = "Called during isolate initialization.")
-    private int cowInitialize(PointerBase begin, UnsignedWord reservedSize, WordPointer basePointer, WordPointer endPointer) {
+    private static int cowInitialize(PointerBase begin, UnsignedWord reservedSize, WordPointer basePointer, WordPointer endPointer) {
         Word imageHeapBegin = Isolates.IMAGE_HEAP_BEGIN.get();
         Word imageHeapSize = Isolates.IMAGE_HEAP_END.get().subtract(imageHeapBegin);
         if (begin.isNonNull() && reservedSize.belowThan(imageHeapSize)) {
@@ -132,19 +130,19 @@ public class LinuxImageHeapProvider extends CopyingImageHeapProvider {
 
         boolean executable = isExecutable();
 
-        // Reuse the already loaded file descriptor and discovered offset for
-        // all subsequent isolate initializations. To avoid stalling threads we
-        // intentionally allow for racing during first-time initialization. It's
-        // the lesser of evils, since the overhead of proc parsing and required
-        // i/o is nominal, due to its virtual nature.
-        //
-        // However, we ensure this remains temporary and consensus is quickly
-        // reached on a single FD,
+        /*
+         * Reuse the already loaded file descriptor and discovered offset for all subsequent isolate
+         * initializations. To avoid stalling threads we intentionally allow for racing during
+         * first-time initialization. It's the lesser of evils, since the overhead of proc parsing
+         * and required i/o is nominal, due to its virtual nature.
+         *
+         * However, we ensure this is temporary and consensus is quickly reached on a single FD.
+         */
         UnsafeAccess.UNSAFE.loadFence();
-        int fd = (int)OBJECT_FD.get().readLong(0);
+        int fd = (int) OBJECT_FD.get().readLong(0);
 
         if (fd != -1) {
-           return createMapping(begin, basePointer, endPointer, imageHeapBegin, imageHeapSize, fd, FD_OFFSET.get().readLong(0), !executable);
+            return createMapping(begin, basePointer, endPointer, imageHeapBegin, imageHeapSize, fd, FD_OFFSET.get().readLong(0), !executable);
         }
 
         int mapFD = Fcntl.NoTransitions.open(MAPS.get(), Fcntl.O_RDONLY(), 0);
@@ -161,7 +159,7 @@ public class LinuxImageHeapProvider extends CopyingImageHeapProvider {
         boolean found = findMapping(mapFD, buffer, MAX_PATHLEN, imageHeapBegin.rawValue(), startAddr, offset, dev, inode, !executable);
         Unistd.NoTransitions.close(mapFD);
 
-        if (! found) {
+        if (!found) {
             LibC.free(buffer);
             return CEntryPointErrors.MAP_HEAP_FAILED;
         }
@@ -173,24 +171,24 @@ public class LinuxImageHeapProvider extends CopyingImageHeapProvider {
             return CEntryPointErrors.MAP_HEAP_FAILED;
         }
 
-        // Unfortunately, in the case of a shared library, we must open the
-        // library by the registered file name, since we don't have a usable
-        // equivalent of /proc/self/exe, which remains even if the file is
-        // deleted, since it keeps an inode reference active. The kernel does
-        // provide a similar notion in /proc/map_files, but directly opening
-        // those entries intentionally requires CAP_SYS_ADMIN, out of security
-        // concerns (see discussion in https://lkml.org/lkml/2015/5/19/896)
-        //
-        // In practice, this is unlikely to be a problem since the window for an
-        // unlink race is tiny. We immediately read the file in the earliest
-        // stages of start, and we cache the FD after. Once we have the FD we
-        // can still access the mapped file even after it has been deleted.
-        //
-        // As a precaution we verify the file we open matches the inode
-        // associated with the true mapped in original. In the case it does
-        // not we must abort and fall back to the copy strategy. In the case of
-        // native executables, it will always match due to /proc/self/exe.
-        if (! executable) {
+        /*
+         * Unfortunately, in the case of a shared library, we must open the library by the
+         * registered file name, since we don't have a usable equivalent of /proc/self/exe, which
+         * remains even if the file is deleted, since it keeps an inode reference active. The kernel
+         * does provide a similar notion in /proc/map_files, but directly opening those entries
+         * intentionally requires CAP_SYS_ADMIN, out of security concerns (see discussion in
+         * https://lkml.org/lkml/2015/5/19/896)
+         *
+         * In practice, this is unlikely to be a problem since the window for an unlink race is
+         * tiny. We immediately read the file in the earliest stages of start, and we cache the FD
+         * after. Once we have the FD we can still access the mapped file even after it has been
+         * deleted.
+         *
+         * As a precaution we verify the file we open matches the inode associated with the true
+         * mapped in original. In the case it does not we must abort and fall back to the copy
+         * strategy. In the case of native executables, it will always match due to /proc/self/exe.
+         */
+        if (!executable) {
             Stat.stat stat = StackValue.get(Stat.stat.class);
             if (Stat.fstat_no_transition(fd, stat) != 0 && stat.st_ino() != inode.read() && stat.st_dev() != dev.read()) {
                 Unistd.NoTransitions.close(fd);
@@ -205,7 +203,7 @@ public class LinuxImageHeapProvider extends CopyingImageHeapProvider {
             Unistd.NoTransitions.close(fd);
             do {
                 UnsafeAccess.UNSAFE.loadFence();
-                fd = (int)OBJECT_FD.get().readLong(0);
+                fd = (int) OBJECT_FD.get().readLong(0);
             } while (fd == -1);
             newOffset = FD_OFFSET.get().readLong(0);
         } else {
@@ -220,8 +218,7 @@ public class LinuxImageHeapProvider extends CopyingImageHeapProvider {
     }
 
     @Uninterruptible(reason = "Called during isolate initialization.")
-    private int createMapping(PointerBase begin, WordPointer basePointer, WordPointer endPointer, Word imageHeapBegin, Word imageHeapSize, int fd, long offset, boolean patch) {
-
+    private static int createMapping(PointerBase begin, WordPointer basePointer, WordPointer endPointer, Word imageHeapBegin, Word imageHeapSize, int fd, long offset, boolean patch) {
         Pointer heap = VirtualMemoryProvider.get().mapFile(begin, imageHeapSize, WordFactory.unsigned(fd), WordFactory.unsigned(offset), Access.READ | Access.WRITE);
         if (heap.isNull()) {
             return CEntryPointErrors.MAP_HEAP_FAILED;

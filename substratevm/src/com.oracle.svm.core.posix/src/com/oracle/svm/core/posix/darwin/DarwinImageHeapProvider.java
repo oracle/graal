@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,18 +28,6 @@ import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_BEGIN;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_END;
 import static com.oracle.svm.core.util.PointerUtils.roundUp;
 
-import com.oracle.svm.core.Isolates;
-import com.oracle.svm.core.MemoryUtil;
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.c.function.CEntryPointErrors;
-import com.oracle.svm.core.os.CopyingImageHeapProvider;
-import com.oracle.svm.core.os.ImageHeapProvider;
-import com.oracle.svm.core.os.VirtualMemoryProvider;
-import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
-import com.oracle.svm.core.posix.headers.darwin.DarwinVirtualMemory;
-import com.oracle.svm.core.util.UnsignedUtils;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -50,6 +38,16 @@ import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
+
+import com.oracle.svm.core.Isolates;
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.c.function.CEntryPointErrors;
+import com.oracle.svm.core.os.ImageHeapProvider;
+import com.oracle.svm.core.os.VirtualMemoryProvider;
+import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
+import com.oracle.svm.core.posix.headers.darwin.DarwinVirtualMemory;
+import com.oracle.svm.core.util.UnsignedUtils;
 
 @AutomaticFeature
 @Platforms({Platform.DARWIN.class})
@@ -62,10 +60,9 @@ class DarwinImageHeapProviderFeature implements Feature {
     }
 }
 
-
 /**
- * An optimal image heap provider for Darwin which creates isolate image heaps
- * that are a copy-on-write clone of the original image heap.
+ * An optimal image heap provider for Darwin which creates isolate image heaps that are a
+ * copy-on-write clone of the original image heap.
  */
 public class DarwinImageHeapProvider implements ImageHeapProvider {
     @Override
