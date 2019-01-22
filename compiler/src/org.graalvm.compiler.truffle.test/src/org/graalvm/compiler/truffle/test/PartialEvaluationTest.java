@@ -72,6 +72,10 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
         return this.truffleCompiler.createCompilationIdentifier(compilable);
     }
 
+    protected OptimizedCallTarget compileHelper(String methodName, RootNode root) {
+        return compileHelper(methodName, root, new Object[0], true);
+    }
+
     protected OptimizedCallTarget compileHelper(String methodName, RootNode root, Object[] arguments) {
         return compileHelper(methodName, root, arguments, true);
     }

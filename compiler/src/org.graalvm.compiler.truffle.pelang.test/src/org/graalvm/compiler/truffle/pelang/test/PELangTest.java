@@ -22,83 +22,22 @@
  */
 package org.graalvm.compiler.truffle.pelang.test;
 
-import static org.graalvm.compiler.core.common.CompilationRequestIdentifier.asCompilationRequest;
-
-import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
-import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.compiler.truffle.test.PartialEvaluationTest;
 import org.junit.Assert;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.RootNode;
 
-import jdk.vm.ci.code.BailoutException;
-import jdk.vm.ci.meta.SpeculationLog;
-
 public abstract class PELangTest extends PartialEvaluationTest {
 
-    private static final int MAX_FAILS = 10;
-
-    protected OptimizedCallTarget createCallTarget(RootNode rootNode) {
-        return (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(rootNode);
+    protected void assertCallResultEquals(Object expected, RootNode rootNode) {
+        assertCallResultEquals(expected, rootNode, new Object[0]);
     }
 
-    protected void warmupCallTarget(CallTarget callTarget, Object... arguments) {
-        // run call target so that all classes are loaded and initialized
-        callTarget.call(arguments);
-        callTarget.call(arguments);
-        callTarget.call(arguments);
-    }
-
-    protected StructuredGraph partiallyEvaluateAndCompile(OptimizedCallTarget callTarget) {
-        BailoutException lastBailout = null;
-
-        for (int i = 0; i < MAX_FAILS; i++) {
-            try {
-                // do a run and swallow code install exceptions
-                StructuredGraph graph = partiallyEvaluate(callTarget);
-                compileGraph(graph, callTarget);
-                return graph;
-            } catch (BailoutException e) {
-                if (e.isPermanent()) {
-                    throw e;
-                }
-                lastBailout = e;
-            }
-        }
-        throw lastBailout;
-    }
-
-    protected StructuredGraph partiallyEvaluate(OptimizedCallTarget callTarget) {
-        CompilationIdentifier compilationId = truffleCompiler.getCompilationIdentifier(callTarget);
-        OptionValues options = TruffleCompilerOptions.getOptions();
-        TruffleInlining inliningDecision = new TruffleInlining(callTarget, new DefaultInliningPolicy());
-        SpeculationLog speculationLog = callTarget.getSpeculationLog();
-        return truffleCompiler.getPartialEvaluator().createGraph(getDebugContext(options), callTarget, inliningDecision, AllowAssumptions.YES, compilationId, speculationLog, null);
-    }
-
-    protected void compileGraph(StructuredGraph graph, OptimizedCallTarget callTarget) {
-        truffleCompiler.compilePEGraph(graph, callTarget.toString(), null, callTarget, asCompilationRequest(graph.compilationId()), null);
-    }
-
-    protected void assertCallResultEquals(Object expected, CallTarget callTarget) {
-        Assert.assertEquals(expected, callTarget.call());
-    }
-
-    protected void assertCallResultEquals(Object expected, CallTarget callTarget, Object[] argumentValues) {
+    protected void assertCallResultEquals(Object expected, RootNode rootNode, Object[] argumentValues) {
+        OptimizedCallTarget callTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(rootNode);
         Assert.assertEquals(expected, callTarget.call(argumentValues));
-    }
-
-    protected void assertGraphEquals(String methodName, StructuredGraph graph) {
-        StructuredGraph expected = parseForComparison(methodName, graph.getDebug());
-        Assert.assertEquals(getCanonicalGraphString(expected, true, true), getCanonicalGraphString(graph, true, true));
     }
 
 }
