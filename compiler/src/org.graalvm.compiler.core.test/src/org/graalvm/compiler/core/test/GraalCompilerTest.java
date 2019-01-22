@@ -899,11 +899,21 @@ public abstract class GraalCompilerTest extends GraalTest {
         return actual;
     }
 
+    private static final List<Class<?>> C2_OMIT_STACK_TRACE_IN_FAST_THROW_EXCEPTIONS = Arrays.asList(
+                    ArithmeticException.class,
+                    ArrayIndexOutOfBoundsException.class,
+                    ArrayStoreException.class,
+                    ClassCastException.class,
+                    NullPointerException.class);
+
     protected void assertEquals(Result expect, Result actual) {
         if (expect.exception != null) {
             Assert.assertTrue("expected " + expect.exception, actual.exception != null);
             Assert.assertEquals("Exception class", expect.exception.getClass(), actual.exception.getClass());
-            Assert.assertEquals("Exception message", expect.exception.getMessage(), actual.exception.getMessage());
+            // C2 can optimize out the stack trace and message in some cases
+            if (expect.exception.getMessage() != null || !C2_OMIT_STACK_TRACE_IN_FAST_THROW_EXCEPTIONS.contains(expect.exception.getClass())) {
+                Assert.assertEquals("Exception message", expect.exception.getMessage(), actual.exception.getMessage());
+            }
         } else {
             if (actual.exception != null) {
                 throw new AssertionError("expected " + expect.returnValue + " but got an exception", actual.exception);
