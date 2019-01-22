@@ -625,7 +625,8 @@ final class HotSpotToSVMEntryPoints {
             HotSpotTruffleCompilerImpl compiler = SVMObjectHandles.resolve(compilerHandle, HotSpotTruffleCompilerImpl.class);
             TruffleCompilation compilation = SVMObjectHandles.resolve(compilationHandle, TruffleCompilation.class);
             Map<String, Object> options = decodeOptions(env, hsOptions);
-            TruffleDebugContext debugContext = new AutoFlushTruffleDebugContext(compiler.openDebugContext(options, compilation));
+            TruffleDebugContext debugContext = compiler.openDebugContext(options, compilation);
+            debugContext.buildOutput(GraphOutput.newBuilder(VoidGraphStructure.INSTANCE).protocolVersion(6, 0).buffered(false)).close();
             long handle = SVMObjectHandles.create(debugContext);
             return handle;
         } catch (Throwable t) {
@@ -814,56 +815,6 @@ final class HotSpotToSVMEntryPoints {
             HotSpotToSVMScope scope = HotSpotToSVMScope.scopeOrNull();
             String indent = scope == null ? "" : new String(new char[2 + (scope.depth() * 2)]).replace('\0', ' ');
             TTY.printf(indent + format + "%n", args);
-        }
-    }
-
-    private static final class AutoFlushTruffleDebugContext implements TruffleDebugContext {
-
-        private final TruffleDebugContext delegate;
-        private final GraphOutput<Void, ?> output;
-
-        AutoFlushTruffleDebugContext(TruffleDebugContext delegate) throws IOException {
-            this.delegate = delegate;
-            this.output = delegate.buildOutput(GraphOutput.newBuilder(VoidGraphStructure.INSTANCE).protocolVersion(6, 0).autoFlush(true));
-        }
-
-        @Override
-        public Map<Object, Object> getVersionProperties() {
-            return delegate.getVersionProperties();
-        }
-
-        @Override
-        public <G, N, M> GraphOutput<G, M> buildOutput(GraphOutput.Builder<G, N, M> builder) throws IOException {
-            return delegate.buildOutput(builder);
-        }
-
-        @Override
-        public boolean isDumpEnabled() {
-            return delegate.isDumpEnabled();
-        }
-
-        @Override
-        public AutoCloseable scope(String name) {
-            return delegate.scope(name);
-        }
-
-        @Override
-        public AutoCloseable scope(String name, Object context) {
-            return delegate.scope(name, context);
-        }
-
-        @Override
-        public void close() {
-            try {
-                output.close();
-            } finally {
-                delegate.close();
-            }
-        }
-
-        @Override
-        public void closeDebugChannels() {
-            delegate.closeDebugChannels();
         }
     }
 

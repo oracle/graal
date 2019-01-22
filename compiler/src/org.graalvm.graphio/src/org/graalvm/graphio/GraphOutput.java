@@ -121,7 +121,7 @@ public final class GraphOutput<G, M> implements Closeable {
         private GraphBlocks<G, ?, N> blocks = DefaultGraphBlocks.empty();
         private int major = 4;
         private int minor = 0;
-        private boolean autoFlush;
+        private boolean buffered = true;
 
         Builder(GraphStructure<G, N, ?, ?> structure) {
             this.structure = structure;
@@ -143,8 +143,8 @@ public final class GraphOutput<G, M> implements Closeable {
             return this;
         }
 
-        public Builder<G, N, M> autoFlush(boolean autoFlush) {
-            this.autoFlush = autoFlush;
+        public Builder<G, N, M> buffered(boolean buffered) {
+            this.buffered = buffered;
             return this;
         }
 
@@ -210,8 +210,8 @@ public final class GraphOutput<G, M> implements Closeable {
         }
         
         public GraphOutput<G, M> buildShared(WritableByteChannel channel) throws IOException {
-            if (!autoFlush) {
-                throw new IllegalStateException("AutoFlush has to be set.");
+            if (buffered) {
+                throw new IllegalStateException("Cannot create buffered shared GraphOutput.");
             }
             return buildImpl(elementsAndLocations, channel, true);
         }
@@ -239,7 +239,7 @@ public final class GraphOutput<G, M> implements Closeable {
         private <L, P> GraphOutput<G, M> buildImpl(ElementsAndLocations<M, L, P> e, WritableByteChannel channel, boolean shared) throws IOException {
             // @formatter:off
             ProtocolImpl<G, N, ?, ?, ?, M, ?, ?, ?, ?> p = new ProtocolImpl<>(
-                major, minor, autoFlush, !shared, structure, types, blocks,
+                major, minor, buffered, !shared, structure, types, blocks,
                 e == null ? null : e.elements,
                 e == null ? null : e.locations, channel
             );

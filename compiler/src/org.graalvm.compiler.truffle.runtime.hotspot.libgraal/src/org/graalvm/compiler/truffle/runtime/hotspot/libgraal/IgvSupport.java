@@ -75,7 +75,7 @@ final class IgvSupport extends SVMObject implements TruffleDebugContext {
         if (sharedChannel == null) {
             sharedChannel = new IgvDumpChannel(HotSpotToSVMCalls.getDumpChannel(getIsolateThreadId(), handle));
         }
-        final GraphOutput<G, M> res = builder.autoFlush(true).buildShared(sharedChannel);
+        final GraphOutput<G, M> res = builder.buffered(false).buildShared(sharedChannel);
         parentOutput = res;
         return res;
     }
@@ -140,7 +140,6 @@ final class IgvSupport extends SVMObject implements TruffleDebugContext {
 
     @Override
     public void closeDebugChannels() {
-        close();
     }
 
     private static Path findReleaseFile() {
