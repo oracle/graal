@@ -1,0 +1,23 @@
+substrate-setup : {
+  setup : [
+    [cd, ${substrate-suite-root}],
+    [mx, build]
+  ]
+}
+
+# this is a workaround for a pyhocon bug where expansion doens't happen properly
+native-bench-specjbb2015                       : ${bench-specjbb2015}                        ${labsjdk8}   ${substrate-setup} {}
+native-bench-specjvm2008-Single                : ${bench-specjvm2008-Single}                 ${labsjdk8}   ${substrate-setup} {}
+native-bench-dacapo-hwloc                      : ${bench-dacapo-hwloc}                       ${labsjdk8}   ${substrate-setup} {}
+native-bench-dacapo-timing-hwloc               : ${bench-dacapo-timing-hwloc}                ${labsjdk8}   ${substrate-setup} {}
+native-bench-dacapo-move-profiling-hwloc       : ${bench-dacapo-move-profiling-hwloc}        ${labsjdk8}   ${substrate-setup} {}
+native-bench-scala-dacapo-hwloc                : ${bench-scala-dacapo-hwloc}                 ${labsjdk8}   ${substrate-setup} {}
+native-bench-scala-dacapo-timing-hwloc         : ${bench-scala-dacapo-timing-hwloc}          ${labsjdk8}   ${substrate-setup} {}
+native-bench-scala-dacapo-move-profiling-hwloc : ${bench-scala-dacapo-move-profiling-hwloc}  ${labsjdk8}   ${substrate-setup} {}
+native-bench-specjvm2008-Single                : ${bench-specjvm2008-Single}                 ${labsjdk8}   ${substrate-setup} {}
+native-bench-specjvm2008-OneVM                 : ${bench-specjvm2008-OneVM}                  ${labsjdk8}   ${substrate-setup} {}
+native-bench-micros-graal-whitebox             : ${bench-micros-graal-whitebox}              ${labsjdk8}   ${substrate-setup} {}
+native-bench-micros-graal-dist                 : ${bench-micros-graal-dist}                  ${labsjdk8}   ${substrate-setup} {}
+native-bench-dacapo-hwloc                      : ${bench-dacapo-hwloc}                       ${labsjdk8}   ${substrate-setup} {}
+native-bench-scala-dacapo-hwloc                : ${bench-scala-dacapo-hwloc}                 ${labsjdk8}   ${substrate-setup} {}
+native-bench-renaissance-hwloc                 : ${bench-renaissance-hwloc}                  ${labsjdk8}   ${substrate-setup} {}

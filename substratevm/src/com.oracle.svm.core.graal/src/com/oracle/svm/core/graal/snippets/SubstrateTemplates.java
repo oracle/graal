@@ -36,10 +36,10 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.SnippetTemplate.AbstractTemplates;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
+import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.LocationIdentity;
-import org.graalvm.compiler.replacements.Snippets;
 
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
@@ -47,6 +47,7 @@ import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class SubstrateTemplates extends AbstractTemplates {
 
@@ -57,13 +58,23 @@ public class SubstrateTemplates extends AbstractTemplates {
 
     @Override
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected SnippetInfo snippet(Class<? extends Snippets> declaringClass, String methodName, LocationIdentity... privateLocations) {
-        return snippet(declaringClass, methodName, (Object[]) privateLocations);
+    protected SnippetInfo snippet(Class<? extends Snippets> declaringClass, String methodName, ResolvedJavaMethod original, Object receiver, LocationIdentity... privateLocations) {
+        return snippet(declaringClass, methodName, original, receiver, (Object[]) privateLocations);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    protected SnippetInfo snippet(Class<? extends Snippets> declaringClass, String methodName, Object receiver, Object[] privateLocations) {
+        return snippet(declaringClass, methodName, null, receiver, privateLocations);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     protected SnippetInfo snippet(Class<? extends Snippets> declaringClass, String methodName, Object[] privateLocations) {
-        return super.snippet(declaringClass, methodName, toLocationIdentity(providers.getMetaAccess(), privateLocations));
+        return snippet(declaringClass, methodName, null, null, privateLocations);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    protected SnippetInfo snippet(Class<? extends Snippets> declaringClass, String methodName, ResolvedJavaMethod original, Object receiver, Object[] privateLocations) {
+        return super.snippet(declaringClass, methodName, original, receiver, toLocationIdentity(providers.getMetaAccess(), privateLocations));
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

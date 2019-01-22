@@ -196,6 +196,10 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler {
         StructuredGraph graph = createGraph(method, entryBCI, useProfilingInfo, compilationId, options, debug);
         CompilationResult result = new CompilationResult(compilationId);
         return compileHelper(CompilationResultBuilderFactory.Default, result, graph, method, entryBCI, useProfilingInfo, options);
+        // this isn't quite right yet. method substitutions are normally parsed into the
+        // graph
+        // but we need to stitch the snippet graph into the current graph instead. Method
+        // substitutions are currently disabled over in lookupInvocation.
     }
 
     protected OptimisticOptimizations getOptimisticOpts(ProfilingInfo profilingInfo, OptionValues options) {

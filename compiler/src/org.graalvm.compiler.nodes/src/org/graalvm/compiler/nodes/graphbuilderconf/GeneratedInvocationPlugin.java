@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.nodes.graphbuilderconf;
 
+import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
+import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 
@@ -66,6 +68,11 @@ public abstract class GeneratedInvocationPlugin implements InvocationPlugin {
             return true;
         }
 
+        if (IS_IN_NATIVE_IMAGE) {
+            // The reflection here is problematic for SVM.
+            return true;
+        }
+
         MetaAccessProvider metaAccess = b.getMetaAccess();
         ResolvedJavaMethod executeMethod = metaAccess.lookupJavaMethod(getExecuteMethod());
         ResolvedJavaType thisClass = metaAccess.lookupJavaType(getClass());
@@ -73,6 +80,9 @@ public abstract class GeneratedInvocationPlugin implements InvocationPlugin {
         if (b.getMethod().equals(thisExecuteMethod)) {
             // The "execute" method of this plugin is itself being compiled. In (only) this context,
             // the injected argument of the call to the @Fold annotated method will be non-null.
+            return true;
+        }
+        if (IS_BUILDING_NATIVE_IMAGE) {
             return true;
         }
         throw new AssertionError("must pass null to injected argument of " + foldAnnotatedMethod.format("%H.%n(%p)") + ", not " + arg);

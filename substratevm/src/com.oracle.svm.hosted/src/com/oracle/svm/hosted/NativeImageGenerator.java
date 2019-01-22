@@ -73,6 +73,10 @@ import org.graalvm.compiler.debug.DebugDumpScope;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.hotspot.HotSpotGraalCompiler;
+import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
+import org.graalvm.compiler.hotspot.word.HotSpotWordTypes;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -146,6 +150,7 @@ import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptTester;
@@ -256,6 +261,7 @@ import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -794,7 +800,8 @@ public class NativeImageGenerator {
 
                 AnalysisMetaAccess aMetaAccess = new SVMAnalysisMetaAccess(aUniverse, originalMetaAccess);
                 AnalysisConstantReflectionProvider aConstantReflection = new AnalysisConstantReflectionProvider(aUniverse, originalProviders.getConstantReflection());
-                WordTypes aWordTypes = new WordTypes(aMetaAccess, FrameAccess.getWordKind());
+                // Why is this necessary?
+                WordTypes aWordTypes = SubstrateUtil.isBuildingLibgraal() ? new HotSpotWordTypes(aMetaAccess, FrameAccess.getWordKind()) : new WordTypes(aMetaAccess, FrameAccess.getWordKind());
                 HostedSnippetReflectionProvider aSnippetReflection = new HostedSnippetReflectionProvider(svmHost, aWordTypes);
 
                 nativeLibraries = setupNativeLibraries(imageName, aConstantReflection, aMetaAccess, aSnippetReflection, cEnumProcessor);
@@ -1063,8 +1070,28 @@ public class NativeImageGenerator {
         featureHandler.forEachGraalFeature(feature -> feature.registerNodePlugins(analysis ? aMetaAccess : hMetaAccess, plugins, analysis, hosted));
 
         HostedSnippetReflectionProvider hostedSnippetReflection = new HostedSnippetReflectionProvider((SVMHost) aUniverse.hostVM(), new WordTypes(aMetaAccess, FrameAccess.getWordKind()));
-        NodeIntrinsificationProvider nodeIntrinsificationProvider = new NodeIntrinsificationProvider(providers.getMetaAccess(), hostedSnippetReflection, providers.getForeignCalls(),
-                        providers.getWordTypes());
+        HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) HotSpotJVMCIRuntime.runtime().getCompiler();
+
+        NodeIntrinsificationProvider nodeIntrinsificationProvider;
+        if (!SubstrateUtil.isBuildingLibgraal()) {
+            nodeIntrinsificationProvider = new NodeIntrinsificationProvider(providers.getMetaAccess(), hostedSnippetReflection, providers.getForeignCalls(),
+                            providers.getWordTypes());
+
+        } else {
+            nodeIntrinsificationProvider = new NodeIntrinsificationProvider(providers.getMetaAccess(), hostedSnippetReflection,
+                            providers.getForeignCalls(), providers.getWordTypes()) {
+                @Override
+                public <T> T getInjectedArgument(Class<T> type) {
+                    if (type.isAssignableFrom(GraalHotSpotVMConfig.class)) {
+                        return type.cast(compiler.getGraalRuntime().getVMConfig());
+                    }
+                    if (type.isAssignableFrom(HotSpotGraalRuntimeProvider.class)) {
+                        return type.cast(compiler.getGraalRuntime());
+                    }
+                    return super.getInjectedArgument(type);
+                }
+            };
+        }
         for (Class<? extends NodeIntrinsicPluginFactory> factoryClass : loader.findSubclasses(NodeIntrinsicPluginFactory.class)) {
             if (!Modifier.isAbstract(factoryClass.getModifiers()) && !factoryClass.getName().contains("hotspot")) {
                 NodeIntrinsicPluginFactory factory;
@@ -1384,7 +1411,7 @@ public class NativeImageGenerator {
         String lname = name.toLowerCase();
         if (lname.contains("hosted")) {
             bigbang.getUnsupportedFeatures().addMessage(name, method, "Hosted element used at run time: " + name);
-        } else if ((!name.startsWith("jdk.internal")) && (lname.contains("hotspot"))) {
+        } else if (SubstrateUtil.isBuildingLibgraal() && (!name.startsWith("jdk.internal")) && (lname.contains("hotspot"))) {
             bigbang.getUnsupportedFeatures().addMessage(name, method, "HotSpot element used at run time: " + name);
         }
     }

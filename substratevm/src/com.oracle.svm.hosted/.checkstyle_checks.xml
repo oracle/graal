@@ -42,8 +42,8 @@
       <property name="tokens" value="SEMI,POST_DEC,POST_INC"/>
     </module>
     <module name="NoWhitespaceBefore">
-	<property name="tokens" value="DOT"/>
-	<property name="allowLineBreaks" value="true"/>
+      <property name="tokens" value="DOT"/>
+      <property name="allowLineBreaks" value="true"/>
     </module>
     <module name="ParenPad"/>
     <module name="TypecastParenPad">

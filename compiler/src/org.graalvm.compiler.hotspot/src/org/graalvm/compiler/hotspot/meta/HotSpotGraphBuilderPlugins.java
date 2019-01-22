@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.hotspot.meta;
 
+import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.GHASH_PROCESS_BLOCKS;
 import static org.graalvm.compiler.hotspot.meta.HotSpotAOTProfilingPlugin.Options.TieredAOT;
@@ -142,7 +143,9 @@ public class HotSpotGraphBuilderPlugins {
             plugins.appendInlineInvokePlugin(new InlineDuringParsingPlugin());
         }
 
-        if (GeneratePIC.getValue(options)) {
+        // The use of MethodHandles to access HotSpotConstantPool in
+        // HotSpotClassInitializationPlugin is problematic for SVM.
+        if (!IS_IN_NATIVE_IMAGE && GeneratePIC.getValue(options)) {
             plugins.setClassInitializationPlugin(new HotSpotClassInitializationPlugin());
             if (TieredAOT.getValue(options)) {
                 plugins.setProfilingPlugin(new HotSpotAOTProfilingPlugin());

@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.hotspot.meta;
 
+import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static org.graalvm.compiler.core.common.GraalOptions.AlwaysInlineVTableStubs;
 import static org.graalvm.compiler.core.common.GraalOptions.InlineVTableStubs;
 import static org.graalvm.compiler.core.common.GraalOptions.OmitHotExceptionStacktrace;
@@ -686,6 +687,9 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
     }
 
     private void throwCachedException(BytecodeExceptionNode node) {
+        if (IS_IN_NATIVE_IMAGE) {
+            throw new InternalError("Can't throw exception from SVM object");
+        }
         Throwable exception = Exceptions.cachedExceptions.get(node.getExceptionKind());
         assert exception != null;
 

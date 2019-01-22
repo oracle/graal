@@ -40,6 +40,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.services.Services;
 
 /**
  * A {@link BytecodeProvider} that provides bytecode properties of a {@link ResolvedJavaMethod} as
@@ -72,7 +73,11 @@ public final class ClassfileBytecodeProvider implements BytecodeProvider {
         this.metaAccess = metaAccess;
         this.snippetReflection = snippetReflection;
         ClassLoader cl = getClass().getClassLoader();
-        this.loader = cl == null ? ClassLoader.getSystemClassLoader() : cl;
+        if (Services.IS_IN_NATIVE_IMAGE) {
+            this.loader = null;
+        } else {
+            this.loader = cl == null ? ClassLoader.getSystemClassLoader() : cl;
+        }
     }
 
     public ClassfileBytecodeProvider(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, ClassLoader loader) {

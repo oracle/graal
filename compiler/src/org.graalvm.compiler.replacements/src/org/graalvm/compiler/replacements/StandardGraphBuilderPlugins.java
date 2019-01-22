@@ -202,8 +202,10 @@ public class StandardGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 if (receiver.isConstant()) {
                     String s = snippetReflection.asObject(String.class, (JavaConstant) receiver.get().asConstant());
-                    b.addPush(JavaKind.Int, b.add(ConstantNode.forInt(s.hashCode())));
-                    return true;
+                    if (s != null) {
+                        b.addPush(JavaKind.Int, b.add(ConstantNode.forInt(s.hashCode())));
+                        return true;
+                    }
                 }
                 return false;
             }

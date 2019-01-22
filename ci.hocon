@@ -11,7 +11,10 @@ include "truffle/ci.hocon"
 
 #Compiler
 compiler-suite-root = "./compiler"
+substrate-suite-root = "./substratevm"
 logPatterns = ["*.bgv"]
+
+native-graal-config = "native-graal-core"
 
 #Tools
 include "tools/ci.hocon"
@@ -52,6 +55,10 @@ include "compiler/ci_includes/gate_tasks.hocon"
 
 # ------------------ SVM ----------------------
 include "substratevm/ci_includes/gate.hocon"
+include "substratevm/ci_common/native-bench.hocon"
+include "substratevm/ci_common/x52-native.hocon"
+include "substratevm/ci_common/x32-native.hocon"
+include "substratevm/ci_common/x4150-native.hocon"
 
 # Maven deploy dry-run
 include "substratevm/ci_includes/deploy.hocon"

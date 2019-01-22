@@ -541,6 +541,14 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
     for b in bootstrap_tests:
         b.run(tasks, extraVMarguments)
 
+    with Task('Javadoc', tasks, tags=GraalTags.doc) as t:
+        # metadata package was deprecated, exclude it
+        if t: mx.javadoc(['--exclude-packages', 'com.oracle.truffle.dsl.processor.java'], quietForNoPackages=True)
+
+
+def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, libgraal=False):
+    prefix = 'libgraal ' if libgraal else ''
+
     # run selected DaCapo benchmarks
     # DaCapo benchmarks that can run with system assertions enabled
     dacapos_with_sa = {
@@ -552,7 +560,7 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
         'xalan':      1,
     }
     for name, iterations in sorted(dacapos_with_sa.iteritems()):
-        with Task('DaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
+        with Task(prefix + 'DaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
             if t: _gate_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Dgraal.TrackNodeSourcePosition=true', '-esa'])
 
     # DaCapo benchmarks for which system assertions cannot be enabled because of benchmark failures
@@ -563,7 +571,7 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
         'sunflow':    2,
     }
     for name, iterations in sorted(dacapos_without_sa.iteritems()):
-        with Task('DaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
+        with Task(prefix + 'DaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
             if t: _gate_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler'])
 
     # run selected Scala DaCapo benchmarks
@@ -581,7 +589,7 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
         'tmt':        1
     }
     for name, iterations in sorted(scala_dacapos_with_sa.iteritems()):
-        with Task('ScalaDaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
+        with Task(prefix + 'ScalaDaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
             if t: _gate_scala_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Dgraal.TrackNodeSourcePosition=true', '-esa'])
 
     # Scala DaCapo benchmarks for which system assertions cannot be enabled because of benchmark failures
@@ -593,36 +601,34 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
         del scala_dacapos_without_sa['actors']
 
     for name, iterations in sorted(scala_dacapos_without_sa.iteritems()):
-        with Task('ScalaDaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
+        with Task(prefix + 'ScalaDaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
             if t: _gate_scala_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler'])
 
     # ensure -Xbatch still works
-    with Task('DaCapo_pmd:BatchMode', tasks, tags=GraalTags.test) as t:
+    with Task(prefix + 'DaCapo_pmd:BatchMode', tasks, tags=GraalTags.test) as t:
         if t: _gate_dacapo('pmd', 1, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xbatch'])
 
     # ensure benchmark counters still work
     if mx.get_arch() != 'aarch64': # GR-8364 Exclude benchmark counters on AArch64
-        with Task('DaCapo_pmd:BenchmarkCounters', tasks, tags=GraalTags.test) as t:
+        with Task(prefix + 'DaCapo_pmd:BenchmarkCounters', tasks, tags=GraalTags.test) as t:
             if t: _gate_dacapo('pmd', 1, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Dgraal.LIRProfileMoves=true', '-Dgraal.GenericDynamicCounters=true', '-XX:JVMCICounterSize=10'])
 
     # ensure -Xcomp still works
-    with Task('XCompMode:product', tasks, tags=GraalTags.test) as t:
+    with Task(prefix + 'XCompMode:product', tasks, tags=GraalTags.test) as t:
         if t: run_vm(_remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xcomp', '-version'])
 
     if isJDK8:
         # temporarily isolate those test (GR-10990)
         cms = ['cms']
         # ensure CMS still works
-        with Task('DaCapo_pmd:CMS', tasks, tags=cms) as t:
+        with Task(prefix + 'DaCapo_pmd:CMS', tasks, tags=cms) as t:
             if t: _gate_dacapo('pmd', 4, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xmx256M', '-XX:+UseConcMarkSweepGC'], threads=4, force_serial_gc=False, set_start_heap_size=False)
 
         # ensure CMSIncrementalMode still works
-        with Task('DaCapo_pmd:CMSIncrementalMode', tasks, tags=cms) as t:
+        with Task(prefix + 'DaCapo_pmd:CMSIncrementalMode', tasks, tags=cms) as t:
             if t: _gate_dacapo('pmd', 4, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xmx256M', '-XX:+UseConcMarkSweepGC', '-XX:+CMSIncrementalMode'], threads=4, force_serial_gc=False, set_start_heap_size=False)
 
-    with Task('Javadoc', tasks, tags=GraalTags.doc) as t:
-        # metadata package was deprecated, exclude it
-        if t: mx.javadoc(['--exclude-packages', 'com.oracle.truffle.dsl.processor.java'], quietForNoPackages=True)
+
 
 graal_unit_test_runs = [
     UnitTestRun('UnitTests', [], tags=GraalTags.test + GraalTags.coverage),
@@ -662,6 +668,7 @@ graal_bootstrap_tests = [
 
 def _graal_gate_runner(args, tasks):
     compiler_gate_runner(['compiler', 'truffle'], graal_unit_test_runs, graal_bootstrap_tests, tasks, args.extra_vm_argument)
+    compiler_gate_benchmark_runner(tasks, args.extra_vm_argument)
     jvmci_ci_version_gate_runner(tasks)
     mx_jaotc.jaotc_gate_runner(tasks)
 
@@ -1172,7 +1179,6 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJvmciComponent(
     jvmci_jars=['compiler:GRAAL', 'compiler:GRAAL_MANAGEMENT'],
     graal_compiler='graal',
 ))
-
 
 mx.update_commands(_suite, {
     'sl' : [sl, '[SL args|@VM options]'],

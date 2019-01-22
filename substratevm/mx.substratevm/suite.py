@@ -576,6 +576,36 @@ suite = {
                 },
             },
         },
+
+        "libgraal" : {
+            "class" : "NativeImageToolTask",
+            "dependencies": [
+                "SVM_DRIVER",
+                "SVM_HOSTED_NATIVE",
+                "compiler:GRAAL"
+            ],
+            "tool" : "libgraal",
+            "toolArgs" : ['--shared'],
+            "output" : "<lib:jvmcicompiler>",
+            "defaultBuild": False
+        },
+
+        "com.oracle.svm.graal.hotspot.nativelib" : {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.jni",
+                "com.oracle.svm.graal",
+                "compiler:GRAAL"
+            ],
+            "checkstyle" : "com.oracle.svm.hosted",
+            "javaCompliance": "1.8",
+            "annotationProcessors": [
+                "compiler:GRAAL_NODEINFO_PROCESSOR",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
+                "compiler:GRAAL_OPTIONS_PROCESSOR",
+            ],
+        },
     },
 
     "distributions": {
@@ -675,6 +705,19 @@ suite = {
             "description" : "SubstrateVM object file writing library",
             "dependencies": [
                 "com.oracle.objectfile"
+            ],
+        },
+
+        "GRAAL_HOTSPOT_LIBRARY": {
+            "description" : "SubstrateVM HotSpot Graal library support",
+            "dependencies": [
+                "com.oracle.svm.graal.hotspot.nativelib",
+            ],
+            "overlaps" : [
+                "LIBRARY_SUPPORT"
+            ],
+            "distDependencies": [
+                "SVM",
             ],
         },
 
