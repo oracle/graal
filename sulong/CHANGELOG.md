@@ -5,6 +5,10 @@ Removed:
 * Removed deprecated `truffle_*` builtin functions.
 * Dropped binary compatibility to bitcode compiled with very old `polyglot.h` versions (1.0.0-RC2 or older).
 
+Bugfixes:
+
+* Read-only globals are now allocated in read-only memory.
+
 # Version 1.0.0 RC11
 
 Changes:
