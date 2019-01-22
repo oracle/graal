@@ -25,7 +25,6 @@ package org.graalvm.compiler.truffle.benchmark;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
-import org.graalvm.compiler.nodes.Cancellable;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.options.OptionValues;
@@ -34,12 +33,11 @@ import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
-import org.graalvm.compiler.truffle.runtime.CancellableCompileTask;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
@@ -100,13 +98,12 @@ public abstract class PartialEvaluationBenchmark {
     public StructuredGraph createGraph() {
         try (DebugContext.Scope s = debugContext.scope("TruffleCompilation", new TruffleDebugJavaMethod(callTarget))) {
             TruffleInlining truffleInlining = new TruffleInlining(callTarget, new DefaultInliningPolicy());
-            CompilationIdentifier identifier = compiler.getCompilationIdentifier(callTarget);
+            CompilationIdentifier identifier = compiler.createCompilationIdentifier(callTarget);
             SpeculationLog speculationLog = callTarget.getSpeculationLog();
-            Cancellable cancellable = new CancellableCompileTask();
 
             return partialEvaluator.createGraph(
                             debugContext, callTarget, truffleInlining,
-                            AllowAssumptions.YES, identifier, speculationLog, cancellable);
+                            AllowAssumptions.YES, identifier, speculationLog, null);
         } catch (Throwable e) {
             throw debugContext.handle(e);
         }
@@ -115,9 +112,8 @@ public abstract class PartialEvaluationBenchmark {
     @Benchmark
     public void fastPartialEvaluate() {
         TruffleInlining truffleInlining = new TruffleInlining(callTarget, new DefaultInliningPolicy());
-        CompilationIdentifier identifier = compiler.getCompilationIdentifier(callTarget);
+        CompilationIdentifier identifier = compiler.createCompilationIdentifier(callTarget);
         SpeculationLog speculationLog = callTarget.getSpeculationLog();
-        Cancellable cancellable = new CancellableCompileTask();
         Providers providers = partialEvaluator.getProviders();
         PhaseContext phaseContext = new PhaseContext(providers);
         HighTierContext tierContext = new HighTierContext(providers, new PhaseSuite<HighTierContext>(), OptimisticOptimizations.NONE);
@@ -129,7 +125,6 @@ public abstract class PartialEvaluationBenchmark {
                                .method(partialEvaluator.rootForCallTarget(callTarget))
                                .speculationLog(speculationLog)
                                .compilationId(identifier)
-                               .cancellable(cancellable)
                                .build();
         // @formatter:on
 
