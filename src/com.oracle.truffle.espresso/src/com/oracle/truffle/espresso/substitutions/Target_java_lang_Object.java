@@ -20,26 +20,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.nodes;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.bytecode.OperandStack;
-import com.oracle.truffle.espresso.meta.Meta;
+package com.oracle.truffle.espresso.substitutions;
+
+import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public abstract class InvokeNode extends Node {
-    public abstract void invoke(OperandStack stack);
+@EspressoSubstitutions
+public class Target_java_lang_Object {
+    @Substitution(hasReceiver = true)
 
-    // TODO(peterssen): Make this a node?
-    protected static final StaticObject nullCheck(StaticObject value) {
-        if (StaticObject.isNull(value)) {
-            CompilerDirectives.transferToInterpreter();
-            // TODO(peterssen): Profile whether null was hit or not.
-            Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-            throw meta.throwEx(NullPointerException.class);
-        }
-        return value;
+    public static int hashCode(@Type(Object.class) StaticObject self) {
+        return System.identityHashCode(MetaUtil.unwrap(self));
+    }
+
+    @Substitution(hasReceiver = true)
+    public static @Type(Class.class) StaticObject getClass(@Type(Object.class) StaticObject self) {
+        return self.getKlass().mirror();
+    }
+
+    @SuppressWarnings("unused")
+    @Substitution(hasReceiver = true, methodName = "<init>")
+    public static void init(@Type(Object.class) StaticObject self) {
+        /* nop */
     }
 }

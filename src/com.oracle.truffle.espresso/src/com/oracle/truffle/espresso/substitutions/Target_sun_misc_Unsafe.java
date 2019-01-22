@@ -307,6 +307,6 @@ public class Target_sun_misc_Unsafe {
             }
         }
         Meta.Field f = meta(target);
-        return f.getDeclaringClass().rawKlass().getStatics();
+        return f.getDeclaringClass().rawKlass().tryInitializeAndGetStatics();
     }
 }

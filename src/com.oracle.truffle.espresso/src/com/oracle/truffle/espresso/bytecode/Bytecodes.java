@@ -23,11 +23,6 @@
 
 package com.oracle.truffle.espresso.bytecode;
 
-import com.oracle.truffle.api.CompilerDirectives;
-
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.Flags.ASSOCIATIVE;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.Flags.BRANCH;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.Flags.COMMUTATIVE;
@@ -40,6 +35,11 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.Flags.QUICKENED;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.Flags.STOP;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.Flags.STORE;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.Flags.TRAP;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+
+import com.oracle.truffle.api.CompilerDirectives;
 
 /**
  * Definitions of the standard Java bytecodes defined by
@@ -254,13 +254,7 @@ public class Bytecodes {
     public static final int BREAKPOINT           = 202; // 0xCA
 
     // Espresso quickened bytecodes.
-    public static final int QUICK_INVOKEVIRTUAL   = 203; // 0xCB
-    public static final int QUICK_INVOKESPECIAL   = 204; // 0xCC
-    public static final int QUICK_INVOKESTATIC    = 205; // 0xCD
-    public static final int QUICK_INVOKEINTERFACE = 206; // 0xCE
-    public static final int QUICK_INVOKEDYNAMIC   = 207; // 0xCF
-    public static final int QUICK_CHECKCAST       = 208; // 0xD0
-    public static final int QUICK_INSTANCEOF      = 209; // 0xD1
+    public static final int QUICK                = 203; // 0xCB
 
     public static final int ILLEGAL = 255;
     public static final int END = 256;
@@ -566,10 +560,14 @@ public class Bytecodes {
         def(DRETURN             , "dreturn"         , "b"    , -2, TRAP | STOP);
         def(ARETURN             , "areturn"         , "b"    , -1, TRAP | STOP);
         def(RETURN              , "return"          , "b"    ,  0, TRAP | STOP);
-        def(GETSTATIC           , "getstatic"       , "bjj"  ,  1, TRAP | FIELD_READ);
-        def(PUTSTATIC           , "putstatic"       , "bjj"  , -1, TRAP | FIELD_WRITE);
-        def(GETFIELD            , "getfield"        , "bjj"  ,  0, TRAP | FIELD_READ);
-        def(PUTFIELD            , "putfield"        , "bjj"  , -2, TRAP | FIELD_WRITE);
+
+        // The stack effect of put/get bytecodes encodes the the number of slots that are guarantee to be pusehd/popped by a full push/pop operation.
+        // e.g. getField pops the receiver (-1), but the result size depends on the field, so it's not included in the effect.
+        def(GETSTATIC           , "getstatic"       , "bjj"  ,  0, TRAP | FIELD_READ);
+        def(PUTSTATIC           , "putstatic"       , "bjj"  ,  0, TRAP | FIELD_WRITE);
+        def(GETFIELD            , "getfield"        , "bjj"  , -1, TRAP | FIELD_READ);
+        def(PUTFIELD            , "putfield"        , "bjj"  , -1, TRAP | FIELD_WRITE);
+
         def(INVOKEVIRTUAL       , "invokevirtual"   , "bjj"  , -1, TRAP | INVOKE);
         def(INVOKESPECIAL       , "invokespecial"   , "bjj"  , -1, TRAP | INVOKE);
         def(INVOKESTATIC        , "invokestatic"    , "bjj"  ,  0, TRAP | INVOKE);
@@ -591,15 +589,11 @@ public class Bytecodes {
         def(GOTO_W              , "goto_w"          , "boooo",  0, STOP | BRANCH);
         def(JSR_W               , "jsr_w"           , "boooo",  0, STOP | BRANCH);
         def(BREAKPOINT          , "breakpoint"      , "b"    ,  0, TRAP);
-
         // Espresso quickened bytecodes.
-        def(QUICK_INVOKEVIRTUAL   , "qck_invokesvirtual" , "bjj"  ,-1,QUICKENED | TRAP | INVOKE);
-        def(QUICK_INVOKESPECIAL   , "qck_invokespecial"  , "bjj"  ,-1,QUICKENED | TRAP | INVOKE);
-        def(QUICK_INVOKESTATIC    , "qck_invokestatic"   , "bjj"  , 0,QUICKENED | TRAP | INVOKE);
-        def(QUICK_INVOKEINTERFACE , "qck_invokeinterface", "bjja_",-1,QUICKENED | TRAP | INVOKE);
-        def(QUICK_INVOKEDYNAMIC   , "qck_invokedynamic"  , "bjjjj", 0,QUICKENED | TRAP | INVOKE);
-        def(QUICK_CHECKCAST       , "qck_checkcast"      , "bii"  , 0,QUICKENED | TRAP);
-        def(QUICK_INSTANCEOF      , "qck_instanceof"     , "bii"  , 0,QUICKENED | TRAP);
+        // Quickening patches the BCI, replacing it by a QUICK(nodeIndex) bytecode, spawning a child node.
+        // Unlike standard bytecodes, stack effects are determined completely by the node, even if the semantics
+        // of patched bytecode is partially or completely known.
+        def(QUICK               , "quick"           , "bjj"  ,  0, QUICKENED);
     }
     // @formatter:on
     // Checkstyle: resume

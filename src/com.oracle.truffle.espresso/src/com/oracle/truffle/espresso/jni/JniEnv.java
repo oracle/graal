@@ -1206,7 +1206,7 @@ public class JniEnv extends NativeEnv {
     public void SetStaticObjectField(StaticObjectClass clazz, long fieldHandle, Object value) {
         Meta.Field field = meta(fieldIds.getObject(fieldHandle));
         assert field.isStatic();
-        field.set(clazz.getMirror().getStatics(), value);
+        field.set(clazz.getMirror().tryInitializeAndGetStatics(), value);
     }
 
     @JniImpl
@@ -1525,7 +1525,7 @@ public class JniEnv extends NativeEnv {
     }
 
     @JniImpl
-    public int RegisterNative(StaticObject clazz, String name, String signature, @NFIType("POINTER") TruffleObject closure) {
+    public int RegisterNative(@Type(Class.class) StaticObject clazz, String name, String signature, @NFIType("POINTER") TruffleObject closure) {
         String className = meta(((StaticObjectClass) clazz).getMirror()).getInternalName();
         TruffleObject boundNative = NativeLibrary.bind(closure, nfiSignature(signature, true));
         RootNode nativeNode = new VmNativeNode(EspressoLanguage.getCurrentContext().getLanguage(), boundNative, true, null);

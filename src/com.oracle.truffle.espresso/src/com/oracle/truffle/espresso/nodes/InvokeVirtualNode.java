@@ -25,36 +25,36 @@ package com.oracle.truffle.espresso.nodes;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
-import com.oracle.truffle.espresso.bytecode.OperandStack;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.MethodInfo;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
 
-public abstract class InvokeVirtualNode extends InvokeNode {
+public abstract class InvokeVirtualNode extends QuickNode {
 
     final MethodInfo resolutionSeed;
 
     static final int INLINE_CACHE_SIZE_LIMIT = 5;
 
-    protected abstract Object executeVirtual(StaticObject receiver, Object[] arguments);
+    protected abstract Object executeVirtual(StaticObject receiver, Object[] args);
 
     @SuppressWarnings("unused")
     @Specialization(limit = "INLINE_CACHE_SIZE_LIMIT", guards = "receiver.getKlass() == cachedKlass")
-    Object callVirtualDirect(StaticObjectImpl receiver, Object[] arguments,
+    Object callVirtualDirect(StaticObjectImpl receiver, Object[] args,
                     @Cached("receiver.getKlass()") Klass cachedKlass,
                     @Cached("methodLookup(resolutionSeed, receiver)") MethodInfo resolvedMethod,
                     @Cached("create(resolvedMethod.getCallTarget())") DirectCallNode directCallNode) {
-        return directCallNode.call(arguments);
+        return directCallNode.call(args);
     }
 
     @Specialization(replaces = "callVirtualDirect")
     Object callVirtualIndirect(StaticObject receiver, Object[] arguments,
                     @Cached("create()") IndirectCallNode indirectCallNode) {
         // Brute virtual method resolution, walk the whole klass hierarchy.
+        // TODO(peterssen): Implement itable-based lookup.
         MethodInfo targetMethod = methodLookup(resolutionSeed, receiver);
         return indirectCallNode.call(targetMethod.getCallTarget(), arguments);
     }
@@ -66,16 +66,25 @@ public abstract class InvokeVirtualNode extends InvokeNode {
 
     @TruffleBoundary
     static MethodInfo methodLookup(MethodInfo resolutionSeed, StaticObject receiver) {
-        Klass clazz = ((StaticObjectClass) resolutionSeed.getContext().getJNI().GetObjectClass(receiver)).getMirror();
+        // TODO(peterssen): Method lookup is uber-slow and non-spec-compliant.
+        Klass clazz = receiver.getKlass();
         return clazz.findConcreteMethod(resolutionSeed.getName(), resolutionSeed.getSignature());
     }
 
     @Override
-    public final void invoke(OperandStack stack) {
-        // Method signature does not change.
-        StaticObject receiver = nullCheck(stack.peekReceiver(resolutionSeed));
-        Object[] arguments = stack.popArguments(true, resolutionSeed.getSignature());
-        Object result = executeVirtual(receiver, arguments);
-        stack.pushKind(result, resolutionSeed.getSignature().getReturnTypeDescriptor().toKind());
+    public final int invoke(final VirtualFrame frame, int top) {
+        // Method signature does not change across methods.
+        // Can safely use the constant signature from `resolutionSeed` instead of the non-constant
+        // signature from the lookup.
+        // TODO(peterssen): Maybe refrain from exposing the whole root node?.
+        EspressoRootNode root = (EspressoRootNode) getParent();
+        // TODO(peterssen): IsNull Node?.
+        StaticObject receiver = nullCheck(root.peekReceiver(frame, top, resolutionSeed));
+        Object[] args = root.peekArguments(frame, top, true, resolutionSeed.getSignature());
+        assert receiver != null;
+        assert receiver == args[0] : "receiver must be the first argument";
+        Object result = executeVirtual(receiver, args);
+        int resultAt = top - resolutionSeed.getSignature().getNumberOfSlotsForParameters() - 1; // -receiver
+        return (resultAt - top) + root.putKind(frame, resultAt, result, resolutionSeed.getSignature().resultKind());
     }
 }

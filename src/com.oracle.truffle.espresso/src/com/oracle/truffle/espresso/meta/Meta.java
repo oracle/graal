@@ -514,7 +514,7 @@ public final class Meta {
                 public Method.WithInstance apply(MethodInfo mi) {
                     Meta.Method m = meta(mi);
                     assert m.isClassInitializer();
-                    return m.forInstance(klass.getStatics());
+                    return m.forInstance(klass.tryInitializeAndGetStatics());
                 }
             });
         }
@@ -543,7 +543,7 @@ public final class Meta {
         public Method.WithInstance staticMethod(String name, Class<?> returnType, Class<?>... parameterTypes) {
             Meta.Method m = method(name, returnType, parameterTypes);
             assert m.isStatic();
-            return m.forInstance(m.getDeclaringClass().rawKlass().getStatics());
+            return m.forInstance(m.getDeclaringClass().rawKlass().tryInitializeAndGetStatics());
         }
 
         public Meta.Field declaredField(String name) {
@@ -569,7 +569,7 @@ public final class Meta {
 
         public Field.WithInstance staticField(String name) {
             assert klass.isInitialized();
-            return Klass.this.declaredField(name).forInstance(klass.getStatics());
+            return Klass.this.declaredField(name).forInstance(klass.tryInitializeAndGetStatics());
         }
 
         public WithInstance forInstance(StaticObject instance) {
@@ -665,7 +665,7 @@ public final class Meta {
 
         public Meta.Method.WithInstance asStatic() {
             assert isStatic();
-            return forInstance(method.getDeclaringClass().getStatics());
+            return forInstance(method.getDeclaringClass().tryInitializeAndGetStatics());
         }
 
         /**

@@ -59,8 +59,10 @@ import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Class;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_ClassLoader;
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_Object;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Package;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Runtime;
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_System;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_reflect_Array;
 import com.oracle.truffle.espresso.substitutions.Target_java_security_AccessController;
@@ -93,8 +95,10 @@ public class InterpreterToVM {
     public static List<Class<?>> DEFAULTS = Arrays.asList(
                     Target_java_lang_Class.class,
                     Target_java_lang_ClassLoader.class,
+                    Target_java_lang_Object.class,
                     Target_java_lang_Package.class,
                     Target_java_lang_Runtime.class,
+                    Target_java_lang_System.class,
                     Target_java_lang_Thread.class,
                     Target_java_lang_reflect_Array.class,
                     Target_java_security_AccessController.class,
@@ -555,7 +559,8 @@ public class InterpreterToVM {
         return new StaticObjectArray(componentType.getArrayClass(), arr);
     }
 
-    public StaticObject newMultiArray(Klass klass, int[] dimensions) {
+    @CompilerDirectives.TruffleBoundary
+    public StaticObject newMultiArray(Klass klass, int... dimensions) {
         assert dimensions.length > 1;
 
         if (Arrays.stream(dimensions).anyMatch(new IntPredicate() {

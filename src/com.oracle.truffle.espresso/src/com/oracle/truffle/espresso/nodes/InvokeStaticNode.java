@@ -22,11 +22,11 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.espresso.bytecode.OperandStack;
 import com.oracle.truffle.espresso.impl.MethodInfo;
 
-public final class InvokeStaticNode extends InvokeNode {
+public final class InvokeStaticNode extends QuickNode {
     protected final MethodInfo method;
     @Child private DirectCallNode directCallNode;
 
@@ -37,11 +37,13 @@ public final class InvokeStaticNode extends InvokeNode {
     }
 
     @Override
-    public void invoke(OperandStack stack) {
+    public int invoke(final VirtualFrame frame, int top) {
         // TODO(peterssen): Constant fold this check.
         method.getDeclaringClass().initialize();
-        Object[] arguments = stack.popArguments(false, method.getSignature());
-        Object result = directCallNode.call(arguments);
-        stack.pushKind(result, method.getSignature().getReturnTypeDescriptor().toKind());
+        EspressoRootNode root = (EspressoRootNode) getParent();
+        Object[] args = root.peekArguments(frame, top, false, method.getSignature());
+        Object result = directCallNode.call(args);
+        int resultAt = top - method.getSignature().getNumberOfSlotsForParameters(); // no receiver
+        return (resultAt - top) + root.putKind(frame, resultAt, result, method.getSignature().resultKind());
     }
 }

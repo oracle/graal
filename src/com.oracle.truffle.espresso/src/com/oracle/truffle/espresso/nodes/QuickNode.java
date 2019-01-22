@@ -20,14 +20,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.meta;
+package com.oracle.truffle.espresso.nodes;
 
-/**
- * Represents a compile-time constant (boxed) value within the compiler.
- */
-public interface Constant {
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
-    boolean isDefaultForKind();
+public abstract class QuickNode extends Node {
 
-    String toValueString();
+    public static QuickNode[] EMPTY_ARRAY = new QuickNode[0];
+
+    public abstract int invoke(VirtualFrame frame, int top);
+
+    // TODO(peterssen): Make this a node?
+    protected static final StaticObject nullCheck(StaticObject value) {
+        if (StaticObject.isNull(value)) {
+            CompilerDirectives.transferToInterpreter();
+            // TODO(peterssen): Profile whether null was hit or not.
+            Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+            throw meta.throwEx(NullPointerException.class);
+        }
+        return value;
+    }
 }
