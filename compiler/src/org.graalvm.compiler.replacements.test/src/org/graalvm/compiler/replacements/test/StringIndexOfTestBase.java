@@ -62,6 +62,10 @@ public abstract class StringIndexOfTestBase extends GraalCompilerTest {
             tests.add(new Object[]{lipsumUTF16, target + "X"});
             tests.add(new Object[]{lipsumUTF16, target + ((char) 0x10D)});
         }
+        tests.add(new Object[]{
+                        "\u0100\u0101\u0102\u0103\u0104\u0105\u0106\u0107\u00f9\u00fa\u00fb\u00fc\u00fd\u00fe\u00ff\u0108\u0109\u010a\u010b\u010c",
+                        "\u00f9\u00fa\u00fb\u00fc\u00fd\u00fe\u00ff"});
+
         return tests;
     }
 
