@@ -56,11 +56,11 @@ public final class PrimitiveKlass extends Klass {
     }
 
     @Override
-    public ArrayKlass getArrayClass() {
+    protected ArrayKlass createArrayKlass() {
         if (kind == JavaKind.Void) {
             return null;
         }
-        return super.getArrayClass();
+        return super.createArrayKlass();
     }
 
     @Override

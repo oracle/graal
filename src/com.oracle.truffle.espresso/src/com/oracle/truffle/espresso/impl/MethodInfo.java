@@ -60,7 +60,7 @@ public final class MethodInfo implements ModifiersProvider {
 
     public final static MethodInfo[] EMPTY_ARRAY = new MethodInfo[0];
 
-    private final Klass declaringClass;
+    private final ObjectKlass declaringClass;
     private final String name;
     private final SignatureDescriptor signature;
 
@@ -81,7 +81,7 @@ public final class MethodInfo implements ModifiersProvider {
     @CompilerDirectives.CompilationFinal(dimensions = 1) private Klass[] parameterTypes;
     @CompilerDirectives.CompilationFinal(dimensions = 1) private Klass[] checkedExceptions;
 
-    MethodInfo(Klass declaringClass, String name, SignatureDescriptor signature,
+    MethodInfo(ObjectKlass declaringClass, String name, SignatureDescriptor signature,
                     byte[] code, int maxStackSize, int maxLocals, int modifiers,
                     ExceptionHandler[] exceptionHandlers, LineNumberTable lineNumberTable, LocalVariableTable localVariableTable, ExceptionsAttribute exceptionsAttribute) {
         this.declaringClass = declaringClass;
@@ -113,7 +113,7 @@ public final class MethodInfo implements ModifiersProvider {
         return name;
     }
 
-    public Klass getDeclaringClass() {
+    public ObjectKlass getDeclaringClass() {
         return declaringClass;
     }
 
@@ -316,7 +316,7 @@ public final class MethodInfo implements ModifiersProvider {
     }
 
     public static class Builder implements BuilderBase<MethodInfo> {
-        private Klass declaringClass;
+        private ObjectKlass declaringClass;
         private String name;
         private SignatureDescriptor signature;
         private byte[] code;
@@ -328,7 +328,7 @@ public final class MethodInfo implements ModifiersProvider {
         private LocalVariableTable localVariableTable;
         private ExceptionsAttribute exceptions;
 
-        public Builder setDeclaringClass(Klass declaringClass) {
+        public Builder setDeclaringClass(ObjectKlass declaringClass) {
             this.declaringClass = declaringClass;
             return this;
         }
@@ -389,7 +389,7 @@ public final class MethodInfo implements ModifiersProvider {
         }
     }
 
-    private static MethodInfo create(Klass declaringClass, String name, SignatureDescriptor signature, byte[] code, int maxStackSize, int maxLocals,
+    private static MethodInfo create(ObjectKlass declaringClass, String name, SignatureDescriptor signature, byte[] code, int maxStackSize, int maxLocals,
                     int modifiers, ExceptionHandler[] exceptionHandlers, LineNumberTable lineNumberTable, LocalVariableTable localVariableTable, ExceptionsAttribute exceptions) {
         return new MethodInfo(declaringClass, name, signature, code, maxStackSize, maxLocals, modifiers, exceptionHandlers, lineNumberTable, localVariableTable, exceptions);
     }
