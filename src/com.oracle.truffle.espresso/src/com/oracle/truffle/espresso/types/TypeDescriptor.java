@@ -29,8 +29,11 @@ import com.oracle.truffle.espresso.meta.JavaKind;
  */
 public final class TypeDescriptor extends Descriptor {
 
+    private final char firstChar;
+
     TypeDescriptor(String string) {
         super(string);
+        this.firstChar = string.charAt(0);
     }
 
     public static String stringToJava(String string) {
@@ -98,7 +101,7 @@ public final class TypeDescriptor extends Descriptor {
         if (value.length() != 1) {
             return false;
         }
-        switch (value.charAt(0)) {
+        switch (firstChar) {
             case 'B': // byte
             case 'C': // char
             case 'D': // double
@@ -124,9 +127,8 @@ public final class TypeDescriptor extends Descriptor {
      */
     public JavaKind toKind() {
         if (value.length() == 1) {
-            return JavaKind.fromPrimitiveOrVoidTypeChar(value.charAt(0));
+            return JavaKind.fromPrimitiveOrVoidTypeChar(firstChar);
         }
-
         return JavaKind.Object;
     }
 
@@ -150,7 +152,7 @@ public final class TypeDescriptor extends Descriptor {
     }
 
     public boolean isArray() {
-        return value.startsWith("[");
+        return firstChar == '[';
     }
 
     public TypeDescriptor getComponentType() {
