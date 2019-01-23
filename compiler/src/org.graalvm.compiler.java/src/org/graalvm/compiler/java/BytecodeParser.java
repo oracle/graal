@@ -3437,7 +3437,13 @@ public class BytecodeParser implements GraphBuilderContext {
                     this.controlFlowSplit = true;
                     FixedNode noDeoptSuccessor = createTarget(noDeoptBlock, frameState, false, true);
                     DeoptimizeNode deopt = graph.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
-                    FixedNode deoptSuccessor = checkLoopExit(deopt, deoptBlock, frameState).fixed;
+                    /*
+                     * We do not want to `checkLoopExit` here: otherwise the deopt will go to the
+                     * deoptBlock's BCI, skipping the branch in the interpreter, and the profile
+                     * will never see that the branch is taken. This can lead to deopt loops or OSR
+                     * failure.
+                     */
+                    FixedNode deoptSuccessor = BeginNode.begin(deopt);
                     ValueNode ifNode = genIfNode(condition, negated ? deoptSuccessor : noDeoptSuccessor, negated ? noDeoptSuccessor : deoptSuccessor, negated ? 1 - probability : probability);
                     postProcessIfNode(ifNode);
                     append(ifNode);

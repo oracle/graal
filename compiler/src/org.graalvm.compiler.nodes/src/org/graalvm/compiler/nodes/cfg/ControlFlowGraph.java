@@ -27,7 +27,10 @@ package org.graalvm.compiler.nodes.cfg;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.cfg.CFGVerifier;
@@ -49,7 +52,6 @@ import org.graalvm.compiler.nodes.LoopEndNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 
 public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
     /**
@@ -614,12 +616,23 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                         computeLoopBlocks(endBlock, loop, stack, true);
                     }
 
-                    if (graph.getGuardsStage() != GuardsStage.AFTER_FSA) {
+                    // Note that at this point, due to traversal order, child loops of `loop` have
+                    // not been discovered yet.
+                    for (Block b : loop.getBlocks()) {
+                        for (Block sux : b.getSuccessors()) {
+                            if (sux.getLoop() != loop) {
+                                assert sux.getLoopDepth() < loop.getDepth();
+                                loop.getNaturalExits().add(sux);
+                            }
+                        }
+                    }
+
+                    if (!graph.getGuardsStage().areFrameStatesAtDeopts()) {
                         for (LoopExitNode exit : loopBegin.loopExits()) {
                             Block exitBlock = nodeToBlock.get(exit);
                             assert exitBlock.getPredecessorCount() == 1;
                             computeLoopBlocks(exitBlock.getFirstPredecessor(), loop, stack, true);
-                            loop.addExit(exitBlock);
+                            loop.getLoopExits().add(exitBlock);
                         }
 
                         // The following loop can add new blocks to the end of the loop's block
@@ -630,22 +643,28 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                             for (Block sux : b.getSuccessors()) {
                                 if (sux.getLoop() != loop) {
                                     AbstractBeginNode begin = sux.getBeginNode();
-                                    if (!(begin instanceof LoopExitNode && ((LoopExitNode) begin).loopBegin() == loopBegin)) {
+                                    if (!loopBegin.isLoopExit(begin)) {
+                                        assert !(begin instanceof LoopBeginNode);
+                                        assert sux.getLoopDepth() < loop.getDepth();
                                         graph.getDebug().log(DebugContext.VERBOSE_LEVEL, "Unexpected loop exit with %s, including whole branch in the loop", sux);
                                         computeLoopBlocks(sux, loop, stack, false);
                                     }
                                 }
                             }
                         }
+                    } else {
+                        loop.getLoopExits().addAll(loop.getNaturalExits());
                     }
                 }
             }
         }
 
-        /*
-         * Compute the loop exit blocks after FSA.
-         */
-        if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
+        assert checkCfgExits();
+    }
+
+    private boolean checkCfgExits() {
+        if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
+            Map<Loop<Block>, List<Block>> cfgBlocks = new HashMap<>();
             for (Block b : reversePostOrder) {
                 if (b.getLoop() != null) {
                     for (Block succ : b.getSuccessors()) {
@@ -656,7 +675,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                                 // we might exit multiple loops if b.loops is not a loop at depth 0
                                 Loop<Block> curr = b.getLoop();
                                 while (curr != null) {
-                                    curr.addExit(succ);
+                                    cfgBlocks.computeIfAbsent(curr, x -> new ArrayList<>()).add(succ);
                                     curr = curr.getParent();
                                 }
                             } else {
@@ -673,12 +692,12 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                                  * first one and exit all loops at this one
                                  */
                                 if (succ.getLoop().getParent() != b.getLoop()) {
-                                    assert succ.getLoop().getDepth() < b.getLoop().getDepth();
+                                    assert succ.getLoopDepth() < b.getLoopDepth();
                                     // b.loop must not be a transitive parent of succ.loop
                                     assert !Loop.transitiveParentLoop(succ.getLoop(), b.getLoop());
                                     Loop<Block> curr = b.getLoop();
                                     while (curr != null && curr != succ.getLoop()) {
-                                        curr.addExit(succ);
+                                        cfgBlocks.computeIfAbsent(curr, x -> new ArrayList<>()).add(succ);
                                         curr = curr.getParent();
                                     }
                                 }
@@ -687,8 +706,15 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                     }
                 }
             }
+            for (Map.Entry<Loop<Block>, List<Block>> e : cfgBlocks.entrySet()) {
+                ArrayList<Block> firstMethod = e.getKey().getNaturalExits();
+                List<Block> secondMethod = e.getValue();
+                firstMethod.sort(Comparator.comparing(Block::getId));
+                secondMethod.sort(Comparator.comparing(Block::getId));
+                assert secondMethod.equals(firstMethod) : secondMethod + " vs " + firstMethod;
+            }
         }
-
+        return true;
     }
 
     private static void computeLoopBlocks(Block start, Loop<Block> loop, Block[] stack, boolean usePred) {

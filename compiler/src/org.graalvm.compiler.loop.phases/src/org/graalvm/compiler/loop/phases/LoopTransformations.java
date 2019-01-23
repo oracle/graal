@@ -54,7 +54,6 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
-import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.SafepointNode;
@@ -231,10 +230,8 @@ public abstract class LoopTransformations {
         graph.getDebug().log("LoopTransformations.insertPrePostLoops %s", loop);
         LoopFragmentWhole preLoop = loop.whole();
         CountedLoopInfo preCounted = loop.counted();
-        IfNode preLimit = preCounted.getLimitTest();
-        assert preLimit != null;
         LoopBeginNode preLoopBegin = loop.loopBegin();
-        LoopExitNode preLoopExitNode = preLoopBegin.getSingleLoopExit();
+        AbstractBeginNode preLoopExitNode = preCounted.getCountedExit();
         FixedNode continuationNode = preLoopExitNode.next();
 
         // Each duplication is inserted after the original, ergo create the post loop first
@@ -249,9 +246,9 @@ public abstract class LoopTransformations {
         LoopBeginNode postLoopBegin = postLoop.getDuplicatedNode(preLoopBegin);
         postLoopBegin.setPostLoop();
 
-        EndNode postEndNode = getBlockEndAfterLoopExit(postLoopBegin);
+        AbstractBeginNode postLoopExitNode = postLoop.getDuplicatedNode(preLoopExitNode);
+        EndNode postEndNode = getBlockEndAfterLoopExit(postLoopExitNode);
         AbstractMergeNode postMergeNode = postEndNode.merge();
-        LoopExitNode postLoopExitNode = postLoopBegin.getSingleLoopExit();
 
         // Update the main loop phi initialization to carry from the pre loop
         for (PhiNode prePhiNode : preLoopBegin.phis()) {
@@ -259,13 +256,13 @@ public abstract class LoopTransformations {
             mainPhiNode.setValueAt(0, prePhiNode);
         }
 
-        EndNode mainEndNode = getBlockEndAfterLoopExit(mainLoopBegin);
+        AbstractBeginNode mainLoopExitNode = mainLoop.getDuplicatedNode(preLoopExitNode);
+        EndNode mainEndNode = getBlockEndAfterLoopExit(mainLoopExitNode);
         AbstractMergeNode mainMergeNode = mainEndNode.merge();
         AbstractEndNode postEntryNode = postLoopBegin.forwardEnd();
 
         // In the case of no Bounds tests, we just flow right into the main loop
         AbstractBeginNode mainLandingNode = BeginNode.begin(postEntryNode);
-        LoopExitNode mainLoopExitNode = mainLoopBegin.getSingleLoopExit();
         mainLoopExitNode.setNext(mainLandingNode);
         preLoopExitNode.setNext(mainLoopBegin.forwardEnd());
 
@@ -337,8 +334,8 @@ public abstract class LoopTransformations {
     /**
      * Find the end of the block following the LoopExit.
      */
-    private static EndNode getBlockEndAfterLoopExit(LoopBeginNode curLoopBegin) {
-        FixedNode node = curLoopBegin.getSingleLoopExit().next();
+    private static EndNode getBlockEndAfterLoopExit(AbstractBeginNode exit) {
+        FixedNode node = exit.next();
         // Find the last node after the exit blocks starts
         return getBlockEnd(node);
     }
@@ -421,6 +418,9 @@ public abstract class LoopTransformations {
             Math.addExact(stride, stride);
         } catch (ArithmeticException ae) {
             condition.getDebug().log(DebugContext.VERBOSE_LEVEL, "isUnrollableLoop %s doubling the stride overflows %d", loopBegin, stride);
+            return false;
+        }
+        if (!loop.canDuplicateLoop()) {
             return false;
         }
         if (loopBegin.isMainLoop() || loopBegin.isSimpleLoop()) {
