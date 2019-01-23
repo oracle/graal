@@ -62,7 +62,6 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.PendingTransferToInterpreterOffset;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.ReleaseHandle;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.Shutdown;
-import static org.graalvm.compiler.truffle.common.TruffleOutputGroup.GROUP_ID;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.SVMToHotSpotUtil.getJNIClass;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.GetArrayLength;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.GetByteArrayElements;
@@ -132,7 +131,6 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.truffle.common.TruffleCompilation;
 import org.graalvm.compiler.truffle.common.TruffleDebugContext;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
-import org.graalvm.compiler.truffle.common.TruffleOutputGroup;
 import org.graalvm.compiler.truffle.common.VoidGraphStructure;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
 import org.graalvm.compiler.truffle.compiler.TruffleDebugContextImpl;
@@ -284,14 +282,11 @@ final class HotSpotToSVMEntryPoints {
             HotSpotTruffleCompilerImpl compiler = SVMObjectHandles.resolve(compilerHandle, HotSpotTruffleCompilerImpl.class);
             TruffleDebugContext debugContext = SVMObjectHandles.resolve(debugContextHandle, TruffleDebugContext.class);
             TruffleCompilationIdentifier compilation = SVMObjectHandles.resolve(compilationHandle, TruffleCompilationIdentifier.class);
-            HSCompilableTruffleAST compilable = (HSCompilableTruffleAST) compilation.getCompilable();
             Map<String, Object> options = decodeOptions(env, hsOptions);
             TruffleInliningPlan inlining = new HSTruffleInliningPlan(scope, hsInlining);
             TruffleCompilationTask task = hsTask.isNull() ? null : new HSTruffleCompilationTask(scope, hsTask);
             TruffleCompilerListener listener = hsListener.isNull() ? null : new HSTruffleCompilerListener(scope, hsListener);
-            try (TruffleOutputGroup o = TruffleOutputGroup.open(debugContext, compilable, Collections.singletonMap(GROUP_ID, compilation.toString(CompilationIdentifier.Verbosity.ID)))) {
-                compiler.doCompile(debugContext, compilation, options, inlining, task, listener);
-            }
+            compiler.doCompile(debugContext, compilation, options, inlining, task, listener);
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
         }
@@ -626,7 +621,6 @@ final class HotSpotToSVMEntryPoints {
             TruffleCompilation compilation = SVMObjectHandles.resolve(compilationHandle, TruffleCompilation.class);
             Map<String, Object> options = decodeOptions(env, hsOptions);
             TruffleDebugContext debugContext = compiler.openDebugContext(options, compilation);
-            debugContext.buildOutput(GraphOutput.newBuilder(VoidGraphStructure.INSTANCE).protocolVersion(6, 0).buffered(false)).close();
             long handle = SVMObjectHandles.create(debugContext);
             return handle;
         } catch (Throwable t) {
@@ -733,6 +727,7 @@ final class HotSpotToSVMEntryPoints {
     public static long getDumpChannel(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long debugContextHandle) {
         try (HotSpotToSVMScope s = new HotSpotToSVMScope(GetDumpChannel, env)) {
             TruffleDebugContextImpl debugContext = SVMObjectHandles.resolve(debugContextHandle, TruffleDebugContextImpl.class);
+            debugContext.buildOutput(GraphOutput.newBuilder(VoidGraphStructure.INSTANCE).protocolVersion(6, 0).buffered(false)).close();
             WritableByteChannel channel = debugContext.getChannel();
             return SVMObjectHandles.create(channel);
         } catch (Throwable t) {

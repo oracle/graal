@@ -121,6 +121,7 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
             writePoolObject(formatTitle(graph, id, format, args));
         }
         writeGraph(graph, properties);
+        flushIfNeeded();
         flush();
     }
 
@@ -835,6 +836,7 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
         }
 
         void reset() {
+            clear();
             availableIds.clear();
             nextId = 0;
         }
