@@ -35,7 +35,7 @@ public final class ArrayKlass extends Klass {
     private final Klass componentType;
 
     ArrayKlass(Klass componentType) {
-        super("[" + componentType.getName());
+        super("[" + componentType.getName(), JavaKind.Object);
         this.componentType = componentType;
     }
 
@@ -129,11 +129,6 @@ public final class ArrayKlass extends Klass {
     @Override
     public MethodInfo resolveMethod(MethodInfo method, Klass callerType) {
         return null;
-    }
-
-    @Override
-    public JavaKind getJavaKind() {
-        return JavaKind.Object;
     }
 
     @Override

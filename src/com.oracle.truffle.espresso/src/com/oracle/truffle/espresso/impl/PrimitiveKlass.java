@@ -35,7 +35,6 @@ import java.lang.reflect.Modifier;
  * Implementation of {@link Klass} for primitive types.
  */
 public final class PrimitiveKlass extends Klass {
-    private final JavaKind kind;
     private final EspressoContext context;
 
     /**
@@ -44,8 +43,7 @@ public final class PrimitiveKlass extends Klass {
      * @param kind the kind to create the type for
      */
     public PrimitiveKlass(EspressoContext context, JavaKind kind) {
-        super(String.valueOf(kind.getTypeChar()));
-        this.kind = kind;
+        super(String.valueOf(kind.getTypeChar()), kind);
         this.context = context;
         assert kind.isPrimitive() : kind + " not a primitive type";
     }
@@ -138,11 +136,6 @@ public final class PrimitiveKlass extends Klass {
     @Override
     public Klass getHostClass() {
         return null;
-    }
-
-    @Override
-    public JavaKind getJavaKind() {
-        return kind;
     }
 
     @Override

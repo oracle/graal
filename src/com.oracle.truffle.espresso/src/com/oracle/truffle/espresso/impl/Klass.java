@@ -39,6 +39,7 @@ import java.util.function.Predicate;
 
 public abstract class Klass implements ModifiersProvider {
 
+    protected final JavaKind kind;
     public final static Klass[] EMPTY_ARRAY = new Klass[0];
     private final String name;
 
@@ -51,11 +52,14 @@ public abstract class Klass implements ModifiersProvider {
     @CompilerDirectives.CompilationFinal //
     private StaticObjectClass mirrorCache;
 
-    Klass(String name) {
+    Klass(String name, JavaKind kind) {
         this.name = name;
+        this.kind = kind;
     }
 
-    public abstract JavaKind getJavaKind();
+    public final JavaKind getJavaKind() {
+        return kind;
+    }
 
     public abstract boolean isArray();
 
