@@ -42,7 +42,6 @@ import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ObjectHandle;
-import org.graalvm.nativeimage.ObjectHandles;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -67,6 +66,7 @@ import org.graalvm.polyglot.nativeapi.types.CInt8Pointer;
 import org.graalvm.polyglot.nativeapi.types.CUnsignedBytePointer;
 import org.graalvm.polyglot.nativeapi.types.CUnsignedIntPointer;
 import org.graalvm.polyglot.nativeapi.types.CUnsignedShortPointer;
+import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotCallback;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotCallbackInfo;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotContext;
@@ -79,7 +79,6 @@ import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotEngin
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotEnginePointer;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotExtendedErrorInfo;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotExtendedErrorInfoPointer;
-import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotHandle;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotIsolateThread;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotLanguage;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotLanguagePointer;
@@ -96,6 +95,10 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.c.CConst;
 import com.oracle.svm.core.c.CHeader;
 import com.oracle.svm.core.c.CUnsigned;
+import com.oracle.svm.core.handles.ObjectHandlesImpl;
+import com.oracle.svm.core.handles.ThreadLocalHandles;
+import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
+import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 
 @SuppressWarnings("unused")
 @CHeader(value = PolyglotAPIHeader.class)
@@ -107,9 +110,22 @@ public final class PolyglotNativeAPI {
     private static final int MAX_UNSIGNED_SHORT = (1 << 16) - 1;
     private static final long MAX_UNSIGNED_INT = (1L << 32) - 1;
     private static final UnsignedWord POLY_AUTO_LENGTH = WordFactory.unsigned(0xFFFFFFFFFFFFFFFFL);
+    private static final int DEFAULT_FRAME_CAPACITY = 16;
 
     private static ThreadLocal<ErrorInfoHolder> errorInfo = new ThreadLocal<>();
     private static ThreadLocal<CallbackException> exceptionsTL = new ThreadLocal<>();
+    @SuppressWarnings("rawtypes") private static final FastThreadLocalObject<ThreadLocalHandles> handles = FastThreadLocalFactory.createObject(ThreadLocalHandles.class);
+
+    @SuppressWarnings("unchecked")
+    private static ThreadLocalHandles<PolyglotNativeAPITypes.PolyglotHandle> getHandles() {
+        if (handles.get() == null) {
+            handles.set(new ThreadLocalHandles<PolyglotNativeAPITypes.PolyglotHandle>(DEFAULT_FRAME_CAPACITY));
+        }
+        return handles.get();
+    }
+
+    private static final ObjectHandlesImpl objectHandles = new ObjectHandlesImpl(
+                    WordFactory.signed(Long.MIN_VALUE), ThreadLocalHandles.nullHandle().subtract(1), ThreadLocalHandles.nullHandle());
 
     private static class ErrorInfoHolder {
         PolyglotExtendedErrorInfo info;
@@ -176,7 +192,7 @@ public final class PolyglotNativeAPI {
     })
     public static PolyglotStatus poly_create_engine(PolyglotIsolateThread thread, PolyglotEnginePointer result) {
         return withHandledErrors(() -> {
-            ObjectHandle handle = createHandle(Engine.create());
+            PolyglotNativeAPITypes.PolyglotHandle handle = createHandle(Engine.create());
             result.write(handle);
         });
     }
@@ -1422,10 +1438,6 @@ public final class PolyglotNativeAPI {
                     }
                 } finally {
                     PolyglotCallbackInfoInternal info = fetchHandle(cbInfo);
-                    for (ObjectHandle arg : info.arguments) {
-                        destroyHandle(arg);
-                    }
-                    destroyHandle(cbInfo);
                 }
             };
             value.write(createHandle(c.asValue(executable)));
@@ -1471,15 +1483,50 @@ public final class PolyglotNativeAPI {
         return withHandledErrors(() -> exceptionsTL.set(new CallbackException(CTypeConversion.toJavaString(utf8_message))));
     }
 
-    @CEntryPoint(name = "poly_destroy_handle", documentation = {
-                    "Destroys a poly_handle. After this point, the handle must not be used anymore. ",
+    @CEntryPoint(name = "poly_delete_reference", documentation = {
+                    "Deletes a poly_reference. After this point, the reference must not be used anymore.",
+                    "",
+                    " @since 1.0",
+    })
+    public static PolyglotStatus poly_delete_reference(PolyglotIsolateThread thread, PolyglotNativeAPITypes.PolyglotReference reference) {
+        return withHandledErrors(() -> objectHandles.destroy(reference));
+    }
+
+    @CEntryPoint(name = "poly_create_reference", documentation = {
+                    "Creates a poly_reference from a poly_handle. After this point, the reference is alive until poly_delete_reference is called. ",
                     "",
                     "Handles are: poly_engine, poly_engine_builder, poly_context, poly_context_builder, poly_language, poly_value, ",
                     "and poly_callback_info.",
                     " @since 1.0",
     })
-    public static PolyglotStatus poly_destroy_handle(PolyglotIsolateThread thread, PolyglotHandle handle) {
-        return withHandledErrors(() -> destroyHandle(handle));
+    public static PolyglotStatus poly_create_reference(PolyglotIsolateThread thread, PolyglotNativeAPITypes.PolyglotHandle handle, PolyglotNativeAPITypes.PolyglotReferencePointer reference) {
+
+        return withHandledErrors(() -> {
+            ObjectHandle ref = objectHandles.create(getHandles().getObject(handle));
+            reference.write((PolyglotNativeAPITypes.PolyglotReference) ref);
+        });
+    }
+
+    @CEntryPoint(name = "poly_open_handle_scope", documentation = {
+                    "Opens a handle scope. Until the scope is closed, all objects will belong to the newly created scope.",
+                    "",
+                    "Handles are: poly_engine, poly_engine_builder, poly_context, poly_context_builder, poly_language, poly_value, ",
+                    "and poly_callback_info.",
+                    " @since 1.0",
+    })
+    public static PolyglotStatus poly_open_handle_scope(PolyglotIsolateThread thread) {
+        return withHandledErrors(() -> getHandles().pushFrame(DEFAULT_FRAME_CAPACITY));
+    }
+
+    @CEntryPoint(name = "poly_close_handle_scope", documentation = {
+                    "Closes a handle scope. After this point, the handles from the current scope must not be used anymore.",
+                    "",
+                    "Handles are: poly_engine, poly_engine_builder, poly_context, poly_context_builder, poly_language, poly_value, ",
+                    "and poly_callback_info.",
+                    " @since 1.0",
+    })
+    public static PolyglotStatus poly_close_handle_scope(PolyglotIsolateThread thread) {
+        return withHandledErrors(() -> getHandles().popFrame());
     }
 
     private static class PolyglotCallbackInfoInternal {
@@ -1553,16 +1600,25 @@ public final class PolyglotNativeAPI {
         }
     }
 
-    private static ObjectHandle createHandle(Object result) {
-        return ObjectHandles.getGlobal().create(result);
+    private static PolyglotNativeAPITypes.PolyglotHandle createHandle(Object result) {
+        return getHandles().create(result);
     }
 
-    private static <T> T fetchHandle(ObjectHandle object) {
-        return ObjectHandles.getGlobal().get(object);
-    }
+    @SuppressWarnings("unchecked")
+    private static <T> T fetchHandle(PolyglotNativeAPITypes.PolyglotHandle object) {
+        if (object.equal(ThreadLocalHandles.nullHandle())) {
+            return null;
+        }
 
-    private static void destroyHandle(ObjectHandle handle) {
-        ObjectHandles.getGlobal().destroy(handle);
+        if (ThreadLocalHandles.isInRange(object)) {
+            return getHandles().getObject(object);
+        }
+
+        if (objectHandles.isInRange(object)) {
+            return objectHandles.get(object);
+        }
+
+        throw new RuntimeException("Invalid poly_reference or poly_handle.");
     }
 
     public static class CallbackException extends RuntimeException {

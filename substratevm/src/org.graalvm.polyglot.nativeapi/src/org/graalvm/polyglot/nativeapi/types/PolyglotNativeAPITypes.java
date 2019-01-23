@@ -105,13 +105,13 @@ public class PolyglotNativeAPITypes {
 
     @CPointerTo(nameOfCType = "poly_engine")
     @CTypedef(name = "poly_engine")
-    public interface PolyglotEngine extends PointerBase, ObjectHandle {
+    public interface PolyglotEngine extends PointerBase, PolyglotHandle {
     }
 
     @CPointerTo(nameOfCType = "poly_engine")
-    public interface PolyglotEnginePointer extends PointerBase, ObjectHandle {
+    public interface PolyglotEnginePointer extends PointerBase, PolyglotHandle {
 
-        void write(ObjectHandle value);
+        void write(PolyglotHandle value);
 
     }
 
@@ -121,13 +121,24 @@ public class PolyglotNativeAPITypes {
 
     }
 
-    @CPointerTo(nameOfCType = "poly_context")
-    @CTypedef(name = "poly_context")
-    public interface PolyglotContext extends PointerBase, ObjectHandle {
+    @CPointerTo(nameOfCType = "poly_reference")
+    @CTypedef(name = "poly_reference")
+    public interface PolyglotReference extends PointerBase, PolyglotHandle {
+
+    }
+
+    @CPointerTo(nameOfCType = "poly_reference")
+    public interface PolyglotReferencePointer extends PointerBase, PolyglotHandle {
+        void write(PolyglotReference value);
     }
 
     @CPointerTo(nameOfCType = "poly_context")
-    public interface PolyglotContextPointer extends PointerBase, ObjectHandle {
+    @CTypedef(name = "poly_context")
+    public interface PolyglotContext extends PointerBase, PolyglotHandle {
+    }
+
+    @CPointerTo(nameOfCType = "poly_context")
+    public interface PolyglotContextPointer extends PointerBase, PolyglotHandle {
 
         void write(ObjectHandle value);
 
@@ -135,11 +146,11 @@ public class PolyglotNativeAPITypes {
 
     @CPointerTo(nameOfCType = "poly_context_builder")
     @CTypedef(name = "poly_context_builder")
-    public interface PolyglotContextBuilder extends PointerBase, ObjectHandle {
+    public interface PolyglotContextBuilder extends PointerBase, PolyglotHandle {
     }
 
     @CPointerTo(nameOfCType = "poly_context_builder")
-    public interface PolyglotContextBuilderPointer extends PointerBase, ObjectHandle {
+    public interface PolyglotContextBuilderPointer extends PointerBase, PolyglotHandle {
 
         void write(ObjectHandle value);
 
@@ -147,11 +158,11 @@ public class PolyglotNativeAPITypes {
 
     @CPointerTo(nameOfCType = "poly_engine_builder")
     @CTypedef(name = "poly_engine_builder")
-    public interface PolyglotEngineBuilder extends PointerBase, ObjectHandle {
+    public interface PolyglotEngineBuilder extends PointerBase, PolyglotHandle {
     }
 
     @CPointerTo(nameOfCType = "poly_engine_builder")
-    public interface PolyglotEngineBuilderPointer extends PointerBase, ObjectHandle {
+    public interface PolyglotEngineBuilderPointer extends PointerBase, PolyglotHandle {
 
         void write(ObjectHandle value);
 
@@ -159,16 +170,16 @@ public class PolyglotNativeAPITypes {
 
     @CPointerTo(nameOfCType = "poly_value")
     @CTypedef(name = "poly_value")
-    public interface PolyglotValue extends PointerBase, ObjectHandle {
+    public interface PolyglotValue extends PointerBase, PolyglotHandle {
     }
 
     @CPointerTo(nameOfCType = "poly_language")
     @CTypedef(name = "poly_language")
-    public interface PolyglotLanguage extends PointerBase, ObjectHandle {
+    public interface PolyglotLanguage extends PointerBase, PolyglotHandle {
     }
 
     @CPointerTo(nameOfCType = "poly_language")
-    public interface PolyglotLanguagePointer extends PointerBase, ObjectHandle {
+    public interface PolyglotLanguagePointer extends PointerBase, PolyglotHandle {
 
         void write(ObjectHandle value);
 
@@ -176,7 +187,7 @@ public class PolyglotNativeAPITypes {
     }
 
     @CPointerTo(nameOfCType = "poly_value")
-    public interface PolyglotValuePointer extends PointerBase, ObjectHandle {
+    public interface PolyglotValuePointer extends PointerBase, PolyglotHandle {
 
         PolyglotValue read(long index);
 
@@ -187,7 +198,7 @@ public class PolyglotNativeAPITypes {
 
     @CPointerTo(nameOfCType = "poly_callback_info")
     @CTypedef(name = "poly_callback_info")
-    public interface PolyglotCallbackInfo extends ObjectHandle, PointerBase {
+    public interface PolyglotCallbackInfo extends PointerBase, PolyglotHandle {
     }
 
     @CTypedef(name = "poly_callback")

@@ -37,6 +37,8 @@ extern "C" {
  * Returns poly_ok on success, or a poly_generic_failure value on failure.
  * On success, the current thread is attached to the created isolate, and the
  * address of the isolate structure is written to the passed pointer.
+ * Every thread starts with a default handle scope. This scope is released when
+ * the thread is detached.
  */
 poly_status poly_create_isolate(const poly_isolate_params* params, poly_isolate* isolate, poly_thread* thread);
 
