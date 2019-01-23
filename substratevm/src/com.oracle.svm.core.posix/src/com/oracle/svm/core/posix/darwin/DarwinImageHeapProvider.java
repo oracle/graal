@@ -68,20 +68,25 @@ public class DarwinImageHeapProvider implements ImageHeapProvider {
     public int initialize(PointerBase begin, UnsignedWord reservedSize, WordPointer basePointer, WordPointer endPointer) {
         Word imageHeapBegin = Isolates.IMAGE_HEAP_BEGIN.get();
         Word imageHeapSize = Isolates.IMAGE_HEAP_END.get().subtract(imageHeapBegin);
-        if (begin.isNonNull() && reservedSize.belowThan(imageHeapSize)) {
-            return CEntryPointErrors.UNSPECIFIED;
-        }
 
         int task = DarwinVirtualMemory.mach_task_self();
 
-        WordPointer targetPointer = StackValue.get(WordPointer.class);
-        if (DarwinVirtualMemory.vm_allocate(task, targetPointer, imageHeapSize, true) != 0) {
-            return CEntryPointErrors.MAP_HEAP_FAILED;
+        Pointer heap;
+        if (begin.isNonNull()) {
+            if (reservedSize.belowThan(imageHeapSize)) {
+                return CEntryPointErrors.UNSPECIFIED;
+            }
+            // Virtual memory must be committed for vm_copy() below
+            heap = VirtualMemoryProvider.get().commit(begin, imageHeapSize, Access.READ | Access.WRITE);
+        } else {
+            WordPointer targetPointer = StackValue.get(WordPointer.class);
+            if (DarwinVirtualMemory.vm_allocate(task, targetPointer, imageHeapSize, true) != 0) {
+                return CEntryPointErrors.MAP_HEAP_FAILED;
+            }
+            heap = targetPointer.read();
         }
 
-        Pointer heap = targetPointer.read();
-
-        // Mach vm_copy performs a COW virtual memory copy
+        // Mach vm_copy performs a copy-on-write virtual memory copy
         if (DarwinVirtualMemory.vm_copy(task, imageHeapBegin, imageHeapSize, heap) != 0) {
             return CEntryPointErrors.MAP_HEAP_FAILED;
         }
@@ -112,12 +117,13 @@ public class DarwinImageHeapProvider implements ImageHeapProvider {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public boolean canUnmapInsteadOfTearDown(PointerBase heapBase) {
-        return false;
+        return true; // only done when caller also provided the virtual memory for the image heap
     }
 
     @Override
     @Uninterruptible(reason = "Called during isolate tear-down.")
     public int tearDown(PointerBase heapBase) {
+        // Only called when we allocated ourselves with vm_allocate()
         UnsignedWord size = Isolates.IMAGE_HEAP_END.get().subtract(Isolates.IMAGE_HEAP_BEGIN.get());
         if (DarwinVirtualMemory.vm_deallocate(DarwinVirtualMemory.mach_task_self(), heapBase, size) != 0) {
             return CEntryPointErrors.MAP_HEAP_FAILED;
