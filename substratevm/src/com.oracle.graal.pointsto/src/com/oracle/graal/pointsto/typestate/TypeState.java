@@ -1319,49 +1319,58 @@ public abstract class TypeState {
     }
 
     private static TypeState doSubtraction2(BigBang bb, MultiTypeState s1, MultiTypeState s2, boolean resultCanBeNull, int idx1Param, int idx2Param) {
-        int idx1 = idx1Param;
-        int idx2 = idx2Param;
-        UnsafeArrayList<AnalysisObject> resultObjects = new UnsafeArrayList<>(new AnalysisObject[s1.objects.length]);
+        try (UnsafeArrayListClosable<AnalysisObject> tlArrayClosable = getTLArrayList(intersectionArrayListTL, 256)) {
+            UnsafeArrayList<AnalysisObject> resultObjects = tlArrayClosable.list;
 
-        resultObjects.addAll(s1.objects, 0, idx1);
-
-        while (idx1 < s1.objects.length && idx2 < s2.objects.length) {
-            AnalysisObject o1 = s1.objects[idx1];
-            AnalysisObject o2 = s2.objects[idx2];
-
-            /* See comment above for the limitation explanation. */
-            assert o2.isContextInsensitiveObject() : "Current implementation limitation.";
-
-            if (o1.type().getId() < o2.type().getId()) {
-                resultObjects.add(o1);
-                idx1++;
-            } else if (o1.type().getId() > o2.type().getId()) {
-                idx2++;
-            } else {
-                assert o1.type().equals(o2.type());
-                while (idx1 < s1.objects.length && s1.objects[idx1].type().equals(o2.type())) {
-                    /* Walk over the s1 objects of the same type, they are eliminated. */
-                    idx1++;
+            AnalysisObject[] so1 = s1.objects;
+            AnalysisObject[] so2 = s2.objects;
+            int[] types1 = s1.getObjectTypeIds();
+            int[] types2 = s2.getObjectTypeIds();
+            int idx1 = idx1Param;
+            int idx2 = idx2Param;
+            int l1 = so1.length;
+            int l2 = so2.length;
+            int t1 = types1[idx1];
+            int t2 = types2[idx2];
+            while (idx1 < l1 && idx2 < l2) {
+                assert so2[idx2].isContextInsensitiveObject() : "Current implementation limitation.";
+                if (t1 < t2) {
+                    resultObjects.add(so1[idx1]);
+                    t1 = types1[++idx1];
+                } else if (t1 > t2) {
+                    t2 = types2[++idx2];
+                } else if (t1 == t2) {
+                    assert so1[idx1].type().equals(so2[idx2].type());
+                    t1 = types1[++idx1];
                 }
-                idx2++;
             }
-        }
 
-        if (idx1 < s1.objects.length) {
-            resultObjects.addAll(s1.objects, idx1, s1.objects.length);
-        }
+            int remainder = s1.objects.length - idx1;
+            int totalLength = idx1Param + resultObjects.size + remainder;
 
-        if (resultObjects.size() == 0) {
-            return TypeState.forEmpty().forCanBeNull(bb, resultCanBeNull);
-        } else if (TypeStateUtils.holdsSingleTypeState(resultObjects.elementData, resultObjects.size)) {
-            /* Multiple objects of the same type. */
-            AnalysisObject[] objects = resultObjects.copyToArray(new AnalysisObject[resultObjects.size()]);
-            return new SingleTypeState(bb, resultCanBeNull, bb.analysisPolicy().makePoperties(bb, objects), objects);
-        } else {
-            BitSet resultTypesBitSet = TypeStateUtils.andNot(s1.typesBitSet, s2.typesBitSet);
-            /* Don't need to check if the result is close-to-all-instantiated since result <= s1. */
-            AnalysisObject[] objects = resultObjects.copyToArray(new AnalysisObject[resultObjects.size()]);
-            return new MultiTypeState(bb, resultCanBeNull, bb.analysisPolicy().makePoperties(bb, objects), resultTypesBitSet, objects);
+            if (totalLength == 0) {
+                return TypeState.forEmpty().forCanBeNull(bb, resultCanBeNull);
+            } else {
+                AnalysisObject[] objects = new AnalysisObject[totalLength];
+                /* Copy recently touched first */
+                resultObjects.copyToArray(objects, idx1Param);
+                /* leading elements */
+                System.arraycopy(s1.objects, 0, objects, 0, idx1Param);
+                /* trailing elements (remainder) */
+                System.arraycopy(s1.objects, idx1, objects, totalLength - remainder, remainder);
+
+                if (TypeStateUtils.holdsSingleTypeState(objects, totalLength)) {
+                    /* Multiple objects of the same type. */
+                    return new SingleTypeState(bb, resultCanBeNull, bb.analysisPolicy().makePoperties(bb, objects), objects);
+                } else {
+                    BitSet resultTypesBitSet = TypeStateUtils.andNot(s1.typesBitSet, s2.typesBitSet);
+                    /*
+                     * Don't need to check if the result is close-to-all-instantiated since result
+                     * <= s1.
+                     */
+                    return new MultiTypeState(bb, resultCanBeNull, bb.analysisPolicy().makePoperties(bb, objects), resultTypesBitSet, objects);
+                }
+            }
         }
     }
 }
