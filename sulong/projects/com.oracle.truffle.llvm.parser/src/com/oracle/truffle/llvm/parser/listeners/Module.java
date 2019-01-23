@@ -108,7 +108,7 @@ public final class Module implements ParserListener {
             type = ((PointerType) type).getPointeeType();
         }
 
-        final FunctionType functionType = (FunctionType) type;
+        final FunctionType functionType = Types.castToFunction(type);
         final boolean isPrototype = args[FUNCTION_ISPROTOTYPE + recordOffset] != 0;
         final Linkage linkage = Linkage.decode(args[FUNCTION_LINKAGE + recordOffset]);
 
@@ -199,7 +199,7 @@ public final class Module implements ParserListener {
 
     private void createGlobalAliasOld(long[] args) {
         final int recordOffset = useStrTab() ? STRTAB_RECORD_OFFSET : 0;
-        final PointerType type = (PointerType) types.get(args[GLOBALALIAS_TYPE + recordOffset]);
+        final PointerType type = Types.castToPointer(types.get(args[GLOBALALIAS_TYPE + recordOffset]));
         int value = (int) args[GLOBALALIAS_OLD_VALUE + recordOffset];
         long linkage = args[GLOBALALIAS_OLD_LINKAGE + recordOffset];
 

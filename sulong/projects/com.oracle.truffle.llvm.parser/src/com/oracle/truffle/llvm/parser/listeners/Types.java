@@ -316,4 +316,36 @@ public final class Types implements ParserListener, Iterable<Type> {
         CompilerDirectives.transferToInterpreter();
         return "Typetable (size: " + table.length + ", currentIndex: " + size + ")";
     }
+
+    static AggregateType castToAggregate(Type type) {
+        if (type instanceof AggregateType) {
+            return (AggregateType) type;
+        } else {
+            throw new LLVMParserException("Expected AggregateType, but received: " + type);
+        }
+    }
+
+    static FunctionType castToFunction(Type type) {
+        if (type instanceof FunctionType) {
+            return (FunctionType) type;
+        } else {
+            throw new LLVMParserException("Expected FunctionType, but received: " + type);
+        }
+    }
+
+    static PointerType castToPointer(Type type) {
+        if (type instanceof PointerType) {
+            return (PointerType) type;
+        } else {
+            throw new LLVMParserException("Expected PointerType, but received: " + type);
+        }
+    }
+
+    static VectorType castToVector(Type type) {
+        if (type instanceof VectorType) {
+            return (VectorType) type;
+        } else {
+            throw new LLVMParserException("Expected VectorType, but received: " + type);
+        }
+    }
 }

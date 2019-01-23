@@ -315,7 +315,7 @@ public final class Function implements ParserListener {
                 break;
 
             default:
-                throw new LLVMParserException("Unsupported opCode in function block: " + opCode);
+                throw new LLVMParserException("Unsupported opCode in function block: " + ((int) id));
         }
     }
 
@@ -342,7 +342,7 @@ public final class Function implements ParserListener {
 
         FunctionType functionType = null;
         if (((ccInfo >> INVOKE_HASEXPLICITFUNCTIONTYPE_SHIFT) & 1) != 0) {
-            functionType = (FunctionType) types.get(args[i++]);
+            functionType = Types.castToFunction(types.get(args[i++]));
         }
 
         final int target = getIndex(args[i++]);
@@ -355,7 +355,7 @@ public final class Function implements ParserListener {
 
         if (functionType == null) {
             if (calleeType instanceof PointerType) {
-                functionType = (FunctionType) ((PointerType) calleeType).getPointeeType();
+                functionType = Types.castToFunction(((PointerType) calleeType).getPointeeType());
             } else if (calleeType instanceof FunctionType) {
                 functionType = (FunctionType) calleeType;
             } else {
@@ -452,7 +452,7 @@ public final class Function implements ParserListener {
 
         FunctionType functionType = null;
         if (((ccinfo >> CALL_HAS_EXPLICITTYPE_SHIFT) & 1) != 0) {
-            functionType = (FunctionType) types.get(args[i++]);
+            functionType = Types.castToFunction(types.get(args[i++]));
         }
 
         int callee = getIndex(args[i++]);
@@ -467,7 +467,7 @@ public final class Function implements ParserListener {
             if (calleeType instanceof FunctionType) {
                 functionType = (FunctionType) calleeType;
             } else {
-                functionType = (FunctionType) ((PointerType) calleeType).getPointeeType();
+                functionType = Types.castToFunction(Types.castToPointer(calleeType).getPointeeType());
             }
         }
 
@@ -580,7 +580,7 @@ public final class Function implements ParserListener {
         if (i + LOAD_ARGS_EXPECTED_AFTER_TYPE == args.length) {
             opType = types.get(args[i++]);
         } else {
-            opType = ((PointerType) srcType).getPointeeType();
+            opType = Types.castToPointer(srcType).getPointeeType();
         }
 
         final int align = getAlign(args[i++]);
@@ -606,7 +606,7 @@ public final class Function implements ParserListener {
         if (i + LOADATOMIC_ARGS_EXPECTED_AFTER_TYPE == args.length) {
             opType = types.get(args[i++]);
         } else {
-            opType = ((PointerType) srcType).getPointeeType();
+            opType = Types.castToPointer(srcType).getPointeeType();
         }
 
         final int align = getAlign(args[i++]);
@@ -639,7 +639,7 @@ public final class Function implements ParserListener {
         final boolean addExtractValue = i >= args.length - 1;
         final boolean isWeak = addExtractValue || (args[++i] != 0);
 
-        final AggregateType type = findCmpxchgResultType(((PointerType) ptrType).getPointeeType());
+        final AggregateType type = findCmpxchgResultType(Types.castToPointer(ptrType).getPointeeType());
 
         emit(CompareExchangeInstruction.fromSymbols(scope.getSymbols(), type, ptr, cmp, replace, isVolatile, successOrdering, synchronizationScope, failureOrdering, isWeak));
 
@@ -718,7 +718,7 @@ public final class Function implements ParserListener {
         final long atomicOrdering = args[i++];
         final long synchronizationScope = args[i];
 
-        final Type type = ((PointerType) ptrType).getPointeeType();
+        final Type type = Types.castToPointer(ptrType).getPointeeType();
 
         emit(ReadModifyWriteInstruction.fromSymbols(scope.getSymbols(), type, ptr, value, opcode, isVolatile, atomicOrdering, synchronizationScope));
     }
@@ -787,7 +787,7 @@ public final class Function implements ParserListener {
         int opcode = (int) args[i];
 
         Type type = operandType instanceof VectorType
-                        ? new VectorType(PrimitiveType.I1, ((VectorType) operandType).getNumberOfElements())
+                        ? new VectorType(PrimitiveType.I1, Types.castToVector(operandType).getNumberOfElements())
                         : PrimitiveType.I1;
 
         emit(CompareInstruction.fromSymbols(scope.getSymbols(), type, opcode, lhs, rhs));
@@ -805,7 +805,7 @@ public final class Function implements ParserListener {
         }
         int index = getIndex(args[i]);
 
-        final Type elementType = ((VectorType) vectorType).getElementType();
+        final Type elementType = Types.castToVector(vectorType).getElementType();
         emit(ExtractElementInstruction.fromSymbols(scope.getSymbols(), elementType, vector, index));
     }
 
@@ -825,7 +825,7 @@ public final class Function implements ParserListener {
             throw new LLVMParserException("Multiple indices for extractvalue are not yet supported!");
         }
 
-        final Type elementType = ((AggregateType) aggregateType).getElementType(index);
+        final Type elementType = Types.castToAggregate(aggregateType).getElementType(index);
         emit(ExtractValueInstruction.fromSymbols(scope.getSymbols(), elementType, aggregate, index));
     }
 
@@ -967,8 +967,8 @@ public final class Function implements ParserListener {
         int vector2 = getIndex(args[i++]);
         int mask = getIndex(args[i]);
 
-        Type subtype = ((VectorType) vectorType).getElementType();
-        int length = ((VectorType) scope.getValueType(mask)).getNumberOfElements();
+        Type subtype = Types.castToVector(vectorType).getElementType();
+        int length = Types.castToVector(scope.getValueType(mask)).getNumberOfElements();
         Type type = new VectorType(subtype, length);
 
         emit(ShuffleVectorInstruction.fromSymbols(scope.getSymbols(), type, vector1, vector2, mask));
