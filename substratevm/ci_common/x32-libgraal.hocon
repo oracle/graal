@@ -16,7 +16,7 @@ x32_libgraal.default-g1gc : ${x32_libgraal.default} {
 }
 
 builds += [
-  ${x32_libgraal.default}      ${libgraal-bench-renaissance-hwloc}  ${labsjdk8} { name: "bench-substratevm-renaissance-linux-x32" }
+  ${x32_libgraal.default}      ${libgraal-bench-renaissance-hwloc}  ${labsjdk8} { name: "bench-libgraal-renaissance-linux-x32" }
 
-  ${x32_libgraal.default-g1gc} ${libgraal-bench-renaissance-hwloc}  ${labsjdk8} { targets : [weekly, bench], name: "bench-substratevm-renaissance-g1gc-linux-x32" }
+  ${x32_libgraal.default-g1gc} ${libgraal-bench-renaissance-hwloc}  ${labsjdk8} { targets : [weekly, bench], name: "bench-libgraal-renaissance-g1gc-linux-x32" }
 ]

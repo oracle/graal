@@ -20,19 +20,19 @@ x52_libgraal.tmpfs10g-g1gc: ${x52_libgraal.tmpfs10g} {
 }
 
 builds += [
-  ${x52_libgraal.tmpfs10g}      ${libgraal-bench-dacapo-hwloc}                      { name: "bench-substratevm-dacapo-linux-x52" }
-  ${x52_libgraal.tmpfs10g}      ${libgraal-bench-dacapo-timing-hwloc}               { name: "bench-substratevm-dacapo-timing-linux-x52" }
-  ${x52_libgraal.tmpfs10g}      ${libgraal-bench-dacapo-move-profiling-hwloc}       { name: "bench-substratevm-dacapo-move-profiling-linux-x52" }
-  ${x52_libgraal.tmpfs10g}      ${libgraal-bench-scala-dacapo-hwloc}                { name: "bench-substratevm-scala-dacapo-linux-x52" }
-  ${x52_libgraal.tmpfs10g}      ${libgraal-bench-scala-dacapo-timing-hwloc}         { name: "bench-substratevm-scala-dacapo-timing-linux-x52" }
-  ${x52_libgraal.tmpfs10g}      ${libgraal-bench-scala-dacapo-move-profiling-hwloc} { name: "bench-substratevm-scala-dacapo-move-profiling-linux-x52" }
-  ${x52_libgraal.default}       ${libgraal-bench-specjvm2008-Single}                { name: "bench-substratevm-specjvm2008-Single-linux-x52" }
-  ${x52_libgraal.default}       ${libgraal-bench-specjvm2008-OneVM}                 { name: "bench-substratevm-specjvm2008-OneVM-linux-x52" }
-  ${x52_libgraal.default}       ${libgraal-bench-specjbb2015}                       { name: "bench-substratevm-specjbb2015-linux-x52" }
-  ${x52_libgraal.default}       ${libgraal-bench-micros-graal-whitebox}             { name: "bench-substratevm-jmh-micros-graal-whitebox-linux-x52" }
-  ${x52_libgraal.default}       ${libgraal-bench-micros-graal-dist}                 { name: "bench-substratevm-jmh-micros-graal-dist-linux-x52" }
-  ${x52_libgraal.tmpfs10g-g1gc} ${libgraal-bench-dacapo-hwloc}                      { targets : [weekly, bench], name: "bench-substratevm-dacapo-g1gc-linux-x52" }
-  ${x52_libgraal.tmpfs10g-g1gc} ${libgraal-bench-scala-dacapo-hwloc}                { targets : [weekly, bench], name: "bench-substratevm-scala-dacapo-g1gc-linux-x52" }
-  ${x52_libgraal.tmpfs10g-g1gc} ${libgraal-bench-specjvm2008-Single}                { targets : [weekly, bench], name: "bench-substratevm-specjvm2008-g1gc-Single-linux-x52" }
-  ${x52_libgraal.tmpfs10g-g1gc} ${libgraal-bench-specjbb2015}                       { targets : [weekly, bench], name: "bench-substratevm-specjbb2015-g1gc-linux-x52" }
+  ${x52_libgraal.tmpfs10g}      ${libgraal-bench-dacapo-hwloc}                      { name: "bench-libgraal-dacapo-linux-x52" }
+  ${x52_libgraal.tmpfs10g}      ${libgraal-bench-dacapo-timing-hwloc}               { name: "bench-libgraal-dacapo-timing-linux-x52" }
+  ${x52_libgraal.tmpfs10g}      ${libgraal-bench-dacapo-move-profiling-hwloc}       { name: "bench-libgraal-dacapo-move-profiling-linux-x52" }
+  ${x52_libgraal.tmpfs10g}      ${libgraal-bench-scala-dacapo-hwloc}                { name: "bench-libgraal-scala-dacapo-linux-x52" }
+  ${x52_libgraal.tmpfs10g}      ${libgraal-bench-scala-dacapo-timing-hwloc}         { name: "bench-libgraal-scala-dacapo-timing-linux-x52" }
+  ${x52_libgraal.tmpfs10g}      ${libgraal-bench-scala-dacapo-move-profiling-hwloc} { name: "bench-libgraal-scala-dacapo-move-profiling-linux-x52" }
+  ${x52_libgraal.default}       ${libgraal-bench-specjvm2008-Single}                { name: "bench-libgraal-specjvm2008-Single-linux-x52" }
+  ${x52_libgraal.default}       ${libgraal-bench-specjvm2008-OneVM}                 { name: "bench-libgraal-specjvm2008-OneVM-linux-x52" }
+  ${x52_libgraal.default}       ${libgraal-bench-specjbb2015}                       { name: "bench-libgraal-specjbb2015-linux-x52" }
+  ${x52_libgraal.default}       ${libgraal-bench-micros-graal-whitebox}             { name: "bench-libgraal-jmh-micros-graal-whitebox-linux-x52" }
+  ${x52_libgraal.default}       ${libgraal-bench-micros-graal-dist}                 { name: "bench-libgraal-jmh-micros-graal-dist-linux-x52" }
+  ${x52_libgraal.tmpfs10g-g1gc} ${libgraal-bench-dacapo-hwloc}                      { targets : [weekly, bench], name: "bench-libgraal-dacapo-g1gc-linux-x52" }
+  ${x52_libgraal.tmpfs10g-g1gc} ${libgraal-bench-scala-dacapo-hwloc}                { targets : [weekly, bench], name: "bench-libgraal-scala-dacapo-g1gc-linux-x52" }
+  ${x52_libgraal.tmpfs10g-g1gc} ${libgraal-bench-specjvm2008-Single}                { targets : [weekly, bench], name: "bench-libgraal-specjvm2008-g1gc-Single-linux-x52" }
+  ${x52_libgraal.tmpfs10g-g1gc} ${libgraal-bench-specjbb2015}                       { targets : [weekly, bench], name: "bench-libgraal-specjbb2015-g1gc-linux-x52" }
 ]
