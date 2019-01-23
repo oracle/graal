@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -49,6 +49,7 @@ import com.oracle.truffle.llvm.parser.records.Records;
 import com.oracle.truffle.llvm.parser.scanner.Block;
 import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
 import com.oracle.truffle.llvm.parser.text.LLSourceBuilder;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -223,7 +224,7 @@ public final class Module implements ParserListener {
                 return new Constants(types, scope);
 
             case FUNCTION: {
-                throw new IllegalStateException("Functions must be parsed lazily!");
+                throw new LLVMParserException("Function is not parsed lazily!");
             }
 
             case TYPE:
@@ -248,7 +249,7 @@ public final class Module implements ParserListener {
     public void skip(Block block, LLVMScanner.LazyScanner lazyScanner) {
         if (block == Block.FUNCTION) {
             if (functionQueue.isEmpty()) {
-                throw new RuntimeException("Missing Function Prototype in Bitcode File!");
+                throw new LLVMParserException("Missing Function Prototype in Bitcode File!");
             }
             final FunctionDefinition definition = functionQueue.removeFirst();
             final Function parser = new Function(scope, types, definition, mode, paramAttributes);

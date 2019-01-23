@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,6 +34,8 @@ import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.records.Records;
 import com.oracle.truffle.llvm.parser.records.TypesRecord;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
+import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
@@ -271,25 +273,25 @@ public final class Types implements ParserListener, Iterable<Type> {
         @Override
         public void accept(TypeVisitor visitor) {
             CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException("Unresolved Forward-Referenced Type!");
+            throw new LLVMParserException("Unresolved Forward-Referenced Type!");
         }
 
         @Override
         public int getBitSize() {
             CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException("Unresolved Forward-Referenced Type!");
+            throw new LLVMParserException("Unresolved Forward-Referenced Type!");
         }
 
         @Override
         public int getAlignment(DataLayout targetDataLayout) {
             CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException("Unresolved Forward-Referenced Type!");
+            throw new LLVMParserException("Unresolved Forward-Referenced Type!");
         }
 
         @Override
         public int getSize(DataLayout targetDataLayout) {
             CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException("Unresolved Forward-Referenced Type!");
+            throw new LLVMParserException("Unresolved Forward-Referenced Type!");
         }
 
         @Override

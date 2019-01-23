@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,6 +31,8 @@ package com.oracle.truffle.llvm.parser.scanner;
 
 import java.util.Arrays;
 
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
+
 final class RecordBuffer {
 
     private static final int INITIAL_BUFFER_SIZE = 256;
@@ -56,7 +58,7 @@ final class RecordBuffer {
 
     long getId() {
         if (size <= 0) {
-            throw new IllegalStateException("Record Id not set!");
+            throw new LLVMParserException("Record Id not set!");
         }
         return opBuffer[0];
     }

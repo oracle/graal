@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,6 +33,7 @@ import java.nio.ByteBuffer;
 
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.AbstractConstant;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
@@ -58,7 +59,7 @@ public abstract class FloatingPointConstant extends AbstractConstant {
                 return new X86FP80Constant(ByteBuffer.allocate(X86_FP80_BYTES).putLong(bits[0]).putShort((short) bits[1]).array());
 
             default:
-                throw new UnsupportedOperationException("Unsupported Floating Point Type: " + type);
+                throw new LLVMParserException("Unsupported Floating Point Type: " + type);
         }
     }
 

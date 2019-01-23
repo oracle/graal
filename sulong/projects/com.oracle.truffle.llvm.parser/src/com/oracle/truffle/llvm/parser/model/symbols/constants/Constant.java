@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,6 +33,7 @@ import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.AggregateConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.floatingpoint.FloatingPointConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.IntegerConstant;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
@@ -46,7 +47,7 @@ public interface Constant extends SymbolImpl {
             return FloatingPointConstant.create(type, new long[]{datum});
 
         } else {
-            throw new RuntimeException("No datum constant implementation for " + type);
+            throw new LLVMParserException("No datum constant implementation for " + type);
         }
     }
 

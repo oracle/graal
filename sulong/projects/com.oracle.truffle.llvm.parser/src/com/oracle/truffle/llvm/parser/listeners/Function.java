@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -78,6 +78,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidInvokeInstr
 import com.oracle.truffle.llvm.parser.records.FunctionRecord;
 import com.oracle.truffle.llvm.parser.records.Records;
 import com.oracle.truffle.llvm.parser.scanner.Block;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
@@ -314,7 +315,7 @@ public final class Function implements ParserListener {
                 break;
 
             default:
-                throw new UnsupportedOperationException("Unsupported Record: " + record);
+                throw new LLVMParserException("Unsupported opCode in function block: " + opCode);
         }
     }
 
@@ -358,7 +359,7 @@ public final class Function implements ParserListener {
             } else if (calleeType instanceof FunctionType) {
                 functionType = (FunctionType) calleeType;
             } else {
-                throw new AssertionError("Cannot find Type of invoked function: " + calleeType.toString());
+                throw new LLVMParserException("Cannot find Type of invoked function: " + calleeType);
             }
         }
 
@@ -557,7 +558,7 @@ public final class Function implements ParserListener {
         if ((alignRecord & ALLOCA_EXPLICITTYPEMASK) != 0L) {
             type = new PointerType(type);
         } else if (!(type instanceof PointerType)) {
-            throw new AssertionError("Alloca must have PointerType!");
+            throw new LLVMParserException("Alloca with unexpected type: " + type);
         }
         emit(AllocateInstruction.fromSymbols(scope.getSymbols(), type, count, align));
     }
@@ -821,7 +822,7 @@ public final class Function implements ParserListener {
         }
 
         if (i != args.length) {
-            throw new UnsupportedOperationException("Multiple indices are not yet supported!");
+            throw new LLVMParserException("Multiple indices for extractvalue are not yet supported!");
         }
 
         final Type elementType = ((AggregateType) aggregateType).getElementType(index);
@@ -907,7 +908,7 @@ public final class Function implements ParserListener {
         int index = (int) args[i++];
 
         if (args.length != i) {
-            throw new UnsupportedOperationException("Multiple indices are not yet supported!");
+            throw new LLVMParserException("Multiple indices for insertvalue are not yet supported!");
         }
 
         emit(InsertValueInstruction.fromSymbols(scope.getSymbols(), type, aggregate, index, value));
@@ -1029,13 +1030,13 @@ public final class Function implements ParserListener {
                 StructureType structure = (StructureType) elementType;
                 Type indexType = scope.getValueType(indexIndex);
                 if (!(indexType instanceof PrimitiveType)) {
-                    throw new IllegalStateException("Cannot infer structure element from " + indexType);
+                    throw new LLVMParserException("Cannot infer structure element from " + indexType);
                 }
                 Number indexNumber = (Number) ((PrimitiveType) indexType).getConstant();
                 assert ((PrimitiveType) indexType).getPrimitiveKind() == PrimitiveKind.I32;
                 elementType = structure.getElementType(indexNumber.intValue());
             } else {
-                throw new IllegalStateException("Cannot index type: " + elementType);
+                throw new LLVMParserException("Cannot index type: " + elementType);
             }
         }
         return elementType;

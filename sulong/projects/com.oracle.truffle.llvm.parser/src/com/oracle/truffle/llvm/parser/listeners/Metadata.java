@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -69,7 +69,7 @@ import com.oracle.truffle.llvm.parser.metadata.MetadataValueList;
 import com.oracle.truffle.llvm.parser.metadata.ParseUtil;
 import com.oracle.truffle.llvm.parser.model.IRScope;
 import com.oracle.truffle.llvm.parser.records.DwTagRecord;
-import com.oracle.truffle.llvm.parser.records.MetadataRecord;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class Metadata implements ParserListener {
@@ -276,7 +276,7 @@ public final class Metadata implements ParserListener {
 
             default:
                 metadata.add(null);
-                throw new UnsupportedOperationException("Unsupported Metadata Record: " + record);
+                throw new LLVMParserException("Unsupported opCode in metadata block: " + ((int) id));
         }
     }
 

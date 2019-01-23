@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -47,6 +47,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.BigInteger
 import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.IntegerConstant;
 import com.oracle.truffle.llvm.parser.records.ConstantsRecord;
 import com.oracle.truffle.llvm.parser.records.Records;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
@@ -166,7 +167,7 @@ public final class Constants implements ParserListener {
                 return;
 
             default:
-                throw new UnsupportedOperationException("Unsupported Constant Record: " + record);
+                throw new LLVMParserException("Unsupported opCode in constant block: " + ((int) id));
         }
     }
 
