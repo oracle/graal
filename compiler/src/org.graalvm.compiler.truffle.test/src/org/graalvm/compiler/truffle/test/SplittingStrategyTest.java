@@ -24,6 +24,20 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+
+import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
+import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
+import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
+import org.graalvm.polyglot.Context;
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
@@ -34,19 +48,20 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.ReflectionUtils;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
-import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
-import org.graalvm.polyglot.Context;
-import org.junit.Assert;
-import org.junit.Test;
-
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 
 public class SplittingStrategyTest extends AbstractSplittingStrategyTest {
+
+    private static TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope legacySplittingScope;
+
+    @BeforeClass
+    public static void before() {
+        legacySplittingScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleLegacySplitting, true);
+    }
+
+    @AfterClass
+    public static void after() {
+        legacySplittingScope.close();
+    }
 
     private final FallbackSplitInfo fallbackSplitInfo = new FallbackSplitInfo();
 

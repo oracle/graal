@@ -30,44 +30,44 @@ package org.graalvm.compiler.truffle.runtime;
  */
 class RuntimeOptionsCache {
 
-    private static boolean experimentalSplitting;
-    private static boolean experimentalSplittingAllowForcedSplits;
-    private static boolean experimentalSplittingDumpDecisions;
-    private static boolean experimentalSplittingTraceEvents;
+    private static boolean legacySplitting;
     private static boolean splitting;
+    private static boolean splittingAllowForcedSplits;
+    private static boolean splittingDumpDecisions;
+    private static boolean splittingTraceEvents;
     private static boolean traceSplittingSummary;
     private static int splittingMaxCalleeSize;
     private static int splittingMaxPropagationDepth;
 
     static void reinitialize() {
-        experimentalSplitting = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplitting);
-        experimentalSplittingAllowForcedSplits = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplittingAllowForcedSplits);
-        experimentalSplittingDumpDecisions = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplittingDumpDecisions);
-        experimentalSplittingTraceEvents = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplittingTraceEvents);
+        legacySplitting = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleLegacySplitting);
         splitting = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplitting);
+        splittingAllowForcedSplits = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingAllowForcedSplits);
+        splittingDumpDecisions = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingDumpDecisions);
         splittingMaxCalleeSize = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingMaxCalleeSize);
-        splittingMaxPropagationDepth = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplittingMaxPropagationDepth);
+        splittingMaxPropagationDepth = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingMaxPropagationDepth);
+        splittingTraceEvents = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingTraceEvents);
         traceSplittingSummary = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleTraceSplittingSummary);
     }
 
-    static boolean isExperimentalSplittingDumpDecisions() {
-        return experimentalSplittingDumpDecisions;
+    static boolean isSplittingDumpDecisions() {
+        return splittingDumpDecisions;
     }
 
-    static boolean isExperimentalSplitting() {
-        return experimentalSplitting;
+    static boolean isLegacySplitting() {
+        return legacySplitting;
     }
 
-    static boolean isExperimentalSplittingAllowForcedSplits() {
-        return experimentalSplittingAllowForcedSplits;
+    static boolean isSplittingAllowForcedSplits() {
+        return splittingAllowForcedSplits;
     }
 
     static boolean isSplitting() {
         return splitting;
     }
 
-    static boolean isExperimentalSplittingTraceEvents() {
-        return experimentalSplittingTraceEvents;
+    static boolean isSplittingTraceEvents() {
+        return splittingTraceEvents;
     }
 
     static boolean isTraceSplittingSummary() {

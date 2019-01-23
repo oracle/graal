@@ -55,20 +55,20 @@ final class TruffleSplittingStrategy {
                 reporter.totalExecutedNodeCount += call.getCurrentCallTarget().getUninitializedNodeCount();
             }
         }
-        if (RuntimeOptionsCache.isExperimentalSplitting()) {
-            if (shouldSplitDueToPolymorphicSpecializations(call, tvmci)) {
-                final GraalTVMCI.EngineData engineData = tvmci.getEngineData(call.getRootNode());
-                engineData.splitCount += call.getCallTarget().getUninitializedNodeCount();
-                doSplit(call);
+        if (RuntimeOptionsCache.isLegacySplitting()) {
+            if (call.getCallCount() == 2) {
+                final GraalTVMCI.EngineData engineData = getEngineData(call, tvmci);
+                if (legacyShouldSplit(call, engineData)) {
+                    engineData.splitCount += call.getCurrentCallTarget().getUninitializedNodeCount();
+                    doSplit(call);
+                }
             }
             return;
         }
-        if (call.getCallCount() == 2) {
-            final GraalTVMCI.EngineData engineData = getEngineData(call, tvmci);
-            if (shouldSplit(call, engineData)) {
-                engineData.splitCount += call.getCurrentCallTarget().getUninitializedNodeCount();
-                doSplit(call);
-            }
+        if (shouldSplit(call, tvmci)) {
+            final GraalTVMCI.EngineData engineData = tvmci.getEngineData(call.getRootNode());
+            engineData.splitCount += call.getCallTarget().getUninitializedNodeCount();
+            doSplit(call);
         }
     }
 
@@ -88,7 +88,7 @@ final class TruffleSplittingStrategy {
         }
     }
 
-    private static boolean shouldSplitDueToPolymorphicSpecializations(OptimizedDirectCallNode call, GraalTVMCI tvmci) {
+    private static boolean shouldSplit(OptimizedDirectCallNode call, GraalTVMCI tvmci) {
         OptimizedCallTarget callTarget = call.getCurrentCallTarget();
         if (!callTarget.isNeedsSplit()) {
             return false;
@@ -104,7 +104,7 @@ final class TruffleSplittingStrategy {
     }
 
     static void forceSplitting(OptimizedDirectCallNode call, GraalTVMCI tvmci) {
-        if (!RuntimeOptionsCache.isExperimentalSplitting() || RuntimeOptionsCache.isExperimentalSplittingAllowForcedSplits()) {
+        if (RuntimeOptionsCache.isLegacySplitting() || RuntimeOptionsCache.isSplittingAllowForcedSplits()) {
             if (!canSplit(call) || isRecursiveSplit(call, RECURSIVE_SPLIT_DEPTH)) {
                 return;
             }
@@ -130,7 +130,7 @@ final class TruffleSplittingStrategy {
         return true;
     }
 
-    private static boolean shouldSplit(OptimizedDirectCallNode call, GraalTVMCI.EngineData engineData) {
+    private static boolean legacyShouldSplit(OptimizedDirectCallNode call, GraalTVMCI.EngineData engineData) {
         // In general, splitting in multi-tier compilations could be useful,
         // but enabling splitting as-is currently overflows the compiler with too many requests.
         if (SharedTruffleRuntimeOptions.TruffleMultiTier.getValue(getOptions())) {
@@ -260,10 +260,11 @@ final class TruffleSplittingStrategy {
     }
 
     static void newDirectCallNodeCreated(OptimizedDirectCallNode directCallNode) {
-        if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleExperimentalSplitting)) {
-            final OptimizedCallTarget callTarget = directCallNode.getCallTarget();
-            callTarget.addKnownCallNode(directCallNode);
+        if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleLegacySplitting)) {
+            return;
         }
+        final OptimizedCallTarget callTarget = directCallNode.getCallTarget();
+        callTarget.addKnownCallNode(directCallNode);
     }
 
     static class SplitStatisticsReporter extends Thread {

@@ -24,6 +24,12 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
@@ -34,29 +40,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
-import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
 
 public class ExperimentalSplittingStrategyTest extends AbstractSplittingStrategyTest {
-
-    private static TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope experimentalSplittingScope;
-
-    @BeforeClass
-    public static void before() {
-        experimentalSplittingScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleExperimentalSplitting, true);
-    }
-
-    @AfterClass
-    public static void after() {
-        experimentalSplittingScope.close();
-    }
 
     @Before
     public void boostBudget() {
