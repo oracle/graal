@@ -173,7 +173,7 @@ public class Option {
                 .type("Boolean")
                 .category("EXPERT")
                 .def("false")
-                .help("Trace details of experimental splitting events and decisions."),
+                .help("Trace details of splitting events and decisions."),
 
         option("TruffleSplittingDumpDecisions")
             .type("Boolean")
