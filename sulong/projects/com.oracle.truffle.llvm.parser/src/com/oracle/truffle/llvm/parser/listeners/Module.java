@@ -44,7 +44,6 @@ import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalAlias;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
 import com.oracle.truffle.llvm.parser.model.target.TargetTriple;
-import com.oracle.truffle.llvm.parser.records.ModuleRecord;
 import com.oracle.truffle.llvm.parser.records.Records;
 import com.oracle.truffle.llvm.parser.scanner.Block;
 import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
@@ -260,35 +259,54 @@ public final class Module implements ParserListener {
         }
     }
 
+    private static final int MODULE_VERSION = 1;
+    private static final int MODULE_TARGET_TRIPLE = 2;
+    private static final int MODULE_TARGET_DATALAYOUT = 3;
+    // private static final int MODULE_ASM = 4;
+    // private static final int MODULE_SECTION_NAME = 5;
+    // private static final int MODULE_DEPLIB = 6;
+    private static final int MODULE_GLOBAL_VARIABLE = 7;
+    private static final int MODULE_FUNCTION = 8;
+    private static final int MODULE_ALIAS_OLD = 9;
+    // private static final int MODULE_PURGE_VALUES = 10;
+    // private static final int MODULE_GC_NAME = 11;
+    // private static final int MODULE_COMDAT = 12;
+    // private static final int MODULE_VSTOFFSET = 13;
+    private static final int MODULE_ALIAS = 14;
+    // private static final int MODULE_METADATA_VALUES = 15;
+    // private static final int MODULE_SOURCE_FILENAME = 16;
+    // private static final int MODULE_CODE_HASH = 17;
+    // private static final int MODULE_CODE_IFUNC = 18;
+
     @Override
     public void record(long id, long[] args) {
-        final ModuleRecord record = ModuleRecord.decode(id);
-        switch (record) {
-            case VERSION:
+        final int opCode = (int) id;
+        switch (opCode) {
+            case MODULE_VERSION:
                 mode = (int) args[0];
                 break;
 
-            case TARGET_TRIPLE:
+            case MODULE_TARGET_TRIPLE:
                 module.addTargetInformation(new TargetTriple(Records.toString(args)));
                 break;
 
-            case TARGET_DATALAYOUT:
+            case MODULE_TARGET_DATALAYOUT:
                 final TargetDataLayout layout = TargetDataLayout.fromString(Records.toString(args));
                 module.setTargetDataLayout(layout);
                 break;
 
-            case GLOBAL_VARIABLE:
+            case MODULE_GLOBAL_VARIABLE:
                 createGlobalVariable(args);
                 break;
 
-            case FUNCTION:
+            case MODULE_FUNCTION:
                 createFunction(args);
                 break;
 
-            case ALIAS:
+            case MODULE_ALIAS:
                 createGlobalAliasNew(args);
                 break;
-            case ALIAS_OLD:
+            case MODULE_ALIAS_OLD:
                 createGlobalAliasOld(args);
                 break;
 
