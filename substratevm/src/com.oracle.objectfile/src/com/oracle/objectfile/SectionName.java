@@ -93,11 +93,12 @@ public abstract class SectionName {
     // not a typo!
     public static final SectionName APPLE_NAMESPACE = new ProgbitsSectionName("apple_namespac");
     public static final SectionName APPLE_OBJC = new ProgbitsSectionName("apple_objc");
+    public static final SectionName LLVM_STACKMAPS = new ProgbitsSectionName("llvm_stackmaps");
 
     private static final SectionName[] myValues;
 
     static {
-        myValues = new SectionName[]{DATA, RODATA, TEXT, BSS, APPLE_NAMES, APPLE_TYPES, APPLE_NAMESPACE, APPLE_OBJC};
+        myValues = new SectionName[]{DATA, RODATA, TEXT, BSS, APPLE_NAMES, APPLE_TYPES, APPLE_NAMESPACE, APPLE_OBJC, LLVM_STACKMAPS};
     }
 
     private static String getFormatPrefix(ObjectFile.Format f) {

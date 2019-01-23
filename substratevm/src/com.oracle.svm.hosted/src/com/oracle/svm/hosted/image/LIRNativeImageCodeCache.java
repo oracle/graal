@@ -25,35 +25,20 @@
 package com.oracle.svm.hosted.image;
 
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.NavigableMap;
-import java.util.Set;
-import java.util.TreeMap;
 
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.code.CodeInfoEncoder;
-import com.oracle.svm.core.code.CodeInfoQueryResult;
-import com.oracle.svm.core.code.CodeInfoTable;
-import com.oracle.svm.core.code.FrameInfoDecoder;
-import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
 import com.oracle.svm.core.graal.code.InstructionPatcher;
-import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.NativeImageOptions;
-import com.oracle.svm.hosted.code.CompilationInfoSupport;
 import com.oracle.svm.hosted.image.NativeBootImage.NativeTextSectionImpl;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.MethodPointer;
@@ -70,8 +55,6 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
     public static final int CODE_ALIGNMENT = 16;
     private static final byte CODE_FILLER_BYTE = (byte) 0xCC;
 
-    private final NavigableMap<Integer, CompilationResult> compilationsByStart = new TreeMap<>();
-
     private int codeCacheSize;
 
     public LIRNativeImageCodeCache(Map<HostedMethod, CompilationResult> compilations, NativeImageHeap imageHeap) {
@@ -84,28 +67,9 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
         return codeCacheSize;
     }
 
-    public CompilationResult getCompilationAtOffset(int offset) {
-        Entry<Integer, CompilationResult> floor = compilationsByStart.floorEntry(offset);
-        if (floor != null) {
-            return floor.getValue();
-        } else {
-            return null;
-        }
-    }
-
-    @Override
-    public void layout(DebugContext debug) {
-        layoutMethods(debug);
-        layoutConstants();
-    }
-
-    @Override
-    protected void printCompilationResult(HostedMethod method, CompilationResult result) {
-        System.out.format("%8d %5d %s: frame %d\n", method.getCodeAddressOffset(), result.getTargetCodeSize(), method.format("%H.%n(%p)"), result.getTotalFrameSize());
-    }
-
     @SuppressWarnings("try")
-    private void layoutMethods(DebugContext debug) {
+    @Override
+    public void layoutMethods(DebugContext debug, String imageName) {
 
         try (Indent indent = debug.logAndIndent("layout methods")) {
 
@@ -124,89 +88,8 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                 codeCacheSize = NumUtil.roundUp(codeCacheSize + compilation.getTargetCodeSize(), CODE_ALIGNMENT);
             }
 
-            // Build run-time metadata.
-            FrameInfoCustomization frameInfoCustomization = new FrameInfoCustomization();
-            CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(frameInfoCustomization, null);
-            for (Entry<HostedMethod, CompilationResult> entry : compilations.entrySet()) {
-                final HostedMethod method = entry.getKey();
-                final CompilationResult compilation = entry.getValue();
-                codeInfoEncoder.addMethod(method, compilation, method.getCodeAddressOffset());
-            }
-
-            if (NativeImageOptions.PrintMethodHistogram.getValue()) {
-                System.out.println("encoded deopt entry points                 ; " + frameInfoCustomization.numDeoptEntryPoints);
-                System.out.println("encoded during call entry points           ; " + frameInfoCustomization.numDuringCallEntryPoints);
-            }
-
-            ImageCodeInfo imageCodeInfo = CodeInfoTable.getImageCodeCache();
-            codeInfoEncoder.encodeAll();
-            codeInfoEncoder.install(imageCodeInfo);
-            imageCodeInfo.setData(MethodPointer.factory(firstMethod), WordFactory.unsigned(codeCacheSize));
-
-            if (CodeInfoEncoder.Options.CodeInfoEncoderCounters.getValue()) {
-                for (Counter counter : ImageSingletons.lookup(CodeInfoEncoder.Counters.class).group.getCounters()) {
-                    System.out.println(counter.getName() + " ; " + counter.getValue());
-                }
-            }
-
-            if (Options.VerifyDeoptimizationEntryPoints.getValue()) {
-                /*
-                 * Missing deoptimization entry points lead to hard-to-debug transient failures, so
-                 * we want the verification on all the time and not just when assertions are on.
-                 */
-                verifyDeoptEntries(imageCodeInfo);
-            }
-
-            assert verifyMethods(codeInfoEncoder);
+            buildRuntimeMetadata(MethodPointer.factory(firstMethod), WordFactory.unsigned(codeCacheSize));
         }
-    }
-
-    private void verifyDeoptEntries(ImageCodeInfo imageCodeInfo) {
-        boolean hasError = false;
-        List<Entry<AnalysisMethod, Set<Long>>> deoptEntries = new ArrayList<>(CompilationInfoSupport.singleton().getDeoptEntries().entrySet());
-        deoptEntries.sort((e1, e2) -> e1.getKey().format("%H.%n(%p)").compareTo(e2.getKey().format("%H.%n(%p)")));
-
-        for (Entry<AnalysisMethod, Set<Long>> entry : deoptEntries) {
-            HostedMethod method = imageHeap.getUniverse().lookup(entry.getKey());
-            List<Long> encodedBcis = new ArrayList<>(entry.getValue());
-            encodedBcis.sort((v1, v2) -> Long.compare(v1, v2));
-
-            for (long encodedBci : encodedBcis) {
-                hasError |= verifyDeoptEntry(imageCodeInfo, method, encodedBci);
-            }
-        }
-        if (hasError) {
-            VMError.shouldNotReachHere("Verification of deoptimization entry points failed");
-        }
-    }
-
-    private static boolean verifyDeoptEntry(ImageCodeInfo imageCodeInfo, HostedMethod method, long encodedBci) {
-        int deoptOffsetInImage = method.getDeoptOffsetInImage();
-        if (deoptOffsetInImage <= 0) {
-            return error(method, encodedBci, "entry point method not compiled");
-        }
-
-        CodeInfoQueryResult result = new CodeInfoQueryResult();
-        long relativeIP = imageCodeInfo.lookupDeoptimizationEntrypoint(deoptOffsetInImage, encodedBci, result);
-        if (relativeIP < 0) {
-            return error(method, encodedBci, "entry point not found");
-        }
-        if (result.getFrameInfo() == null || !result.getFrameInfo().isDeoptEntry() || result.getFrameInfo().getEncodedBci() != encodedBci) {
-            return error(method, encodedBci, "entry point found, but wrong property");
-        }
-        return false;
-    }
-
-    private static boolean error(HostedMethod method, long encodedBci, String msg) {
-        System.out.println(method.format("%H.%n(%p)") + ", encodedBci " + encodedBci + " (bci " + FrameInfoDecoder.readableBci(encodedBci) + "): " + msg);
-        return true;
-    }
-
-    private boolean verifyMethods(CodeInfoEncoder codeInfoEncoder) {
-        for (Entry<HostedMethod, CompilationResult> entry : compilations.entrySet()) {
-            codeInfoEncoder.verifyMethod(entry.getValue(), entry.getKey().getCodeAddressOffset());
-        }
-        return true;
     }
 
     /**

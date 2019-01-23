@@ -136,7 +136,7 @@ public class CodeInfoEncoder {
 
         /* Register the frame size for all entries that are starting points for the index. */
         long entryIP = CodeInfoDecoder.lookupEntryIP(CodeInfoDecoder.indexGranularity() + compilationOffset);
-        while (entryIP <= CodeInfoDecoder.lookupEntryIP(compilation.getTargetCodeSize() + compilationOffset)) {
+        while (entryIP <= CodeInfoDecoder.lookupEntryIP(compilation.getTargetCodeSize() + compilationOffset - 1)) {
             IPData entry = makeEntry(entryIP);
             entry.frameSizeEncoding = encodeFrameSize(encodedFrameSize, false);
             entryIP += CodeInfoDecoder.indexGranularity();

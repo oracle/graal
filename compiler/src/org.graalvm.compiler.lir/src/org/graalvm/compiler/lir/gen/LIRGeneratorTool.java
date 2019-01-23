@@ -340,9 +340,4 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
     default Value emitReadReturnAddress(Stamp wordStamp, int returnAddressSize) {
         return emitMove(StackSlot.get(getLIRKind(wordStamp), -returnAddressSize, true));
     }
-
-    default void emitThrow(@SuppressWarnings("unused") Value exception) {
-        throw GraalError.unimplemented("Throw is not implemented for this compiler backend");
-    }
-
 }

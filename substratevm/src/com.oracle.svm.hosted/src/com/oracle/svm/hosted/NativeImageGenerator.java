@@ -564,7 +564,8 @@ public class NativeImageGenerator {
                 hUniverse.getMethods().forEach(HostedMethod::clear);
 
                 codeCache = NativeImageCodeCacheFactory.get().newCodeCache(compileQueue, heap);
-                codeCache.layout(debug);
+                codeCache.layoutConstants();
+                codeCache.layoutMethods(debug, imageName);
 
                 AfterCompilationAccessImpl config = new AfterCompilationAccessImpl(featureHandler, loader, aUniverse, hUniverse, hMetaAccess, heap, debug);
                 featureHandler.forEachFeature(feature -> feature.afterCompilation(config));
