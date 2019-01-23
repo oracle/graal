@@ -585,7 +585,6 @@ suite = {
                 "compiler:GRAAL"
             ],
             "tool" : "libgraal",
-            "toolArgs" : ['--shared'],
             "output" : "<lib:jvmcicompiler>",
             "defaultBuild": False
         },
