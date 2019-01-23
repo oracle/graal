@@ -300,7 +300,7 @@ def run_js(vmArgs, jsArgs, nonZeroIsFatal, out, err, cwd):
         mx.abort('Javascript image building for js-benchmarks failed')
     return -1
 
-mx_graal_benchmark.build_jvmci_vm_variants('server', 'native-graal-core',
+mx_graal_benchmark.build_jvmci_vm_variants('server', 'libgraal-graal-core',
                                            ['-server', '-XX:+EnableJVMCI', '-XX:JVMCILibArgs=-Dgraal.CompilerConfiguration=community', '-Djvmci.Compiler=graal',
                                            mx_substratevm.find_libgraal_path, '-XX:+UseJVMCINativeLibrary'],
                                            mx_graal_benchmark._graal_variants, suite=mx.suite('substratevm'), priority=16, hosted=False)
