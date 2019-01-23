@@ -68,13 +68,11 @@ import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 @AutomaticFeature
-@Platforms({Platform.LINUX.class})
+@Platforms(Platform.LINUX.class)
 class LinuxImageHeapProviderFeature implements Feature {
     @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (!ImageSingletons.contains(ImageHeapProvider.class)) {
-            ImageSingletons.add(ImageHeapProvider.class, new LinuxImageHeapProvider());
-        }
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(ImageHeapProvider.class, new LinuxImageHeapProvider());
     }
 }
 

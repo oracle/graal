@@ -28,12 +28,7 @@ import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_BEGIN;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_END;
 import static com.oracle.svm.core.util.PointerUtils.roundUp;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.Feature;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
@@ -45,17 +40,6 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
 import com.oracle.svm.core.util.UnsignedUtils;
-
-@AutomaticFeature
-@Platforms({Platform.WINDOWS.class})
-class CopyingImageHeapProviderFeature implements Feature {
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (!ImageSingletons.contains(ImageHeapProvider.class)) {
-            ImageSingletons.add(ImageHeapProvider.class, new CopyingImageHeapProvider());
-        }
-    }
-}
 
 public class CopyingImageHeapProvider implements ImageHeapProvider {
     @Override
