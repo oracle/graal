@@ -38,6 +38,7 @@ import java.io.SyncFailedException;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.StackValue;
@@ -57,6 +58,7 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jdk.JDK9OrLater;
 import com.oracle.svm.core.posix.headers.Dlfcn;
 import com.oracle.svm.core.posix.headers.Errno;
+import com.oracle.svm.core.posix.headers.Fcntl;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Locale;
 import com.oracle.svm.core.posix.headers.Unistd;
@@ -148,24 +150,54 @@ public class PosixUtils {
         @Substitute //
         @TargetElement(onlyWith = JDK9OrLater.class) //
         @SuppressWarnings({"unused"})
+        /* { Do not re-format commented out C code.  @formatter:off */
+        /* open-jdk11/src/java.base/unix/native/libjava/FileDescriptor_md.c */
+        // 72  JNIEXPORT jboolean JNICALL
+        // 73  Java_java_io_FileDescriptor_getAppend(JNIEnv *env, jclass fdClass, jint fd) {
         private static /* native */ boolean getAppend(int fd) {
-            throw VMError.unsupportedFeature("JDK9OrLater: Target_java_io_FileDescriptor.getAppend");
+            // 74      int flags = fcntl(fd, F_GETFL);
+            int flags = Fcntl.fcntl(fd, Fcntl.F_GETFL());
+            // 75      return ((flags & O_APPEND) == 0) ? JNI_FALSE : JNI_TRUE;
+            return ((flags & Fcntl.O_APPEND()) == 0) ? false : true;
         }
+        /* } Do not re-format commented out C code. @formatter:on */
 
         @Substitute //
         @TargetElement(onlyWith = JDK9OrLater.class) //
         @SuppressWarnings({"unused", "static-method"})
+        /* { Do not re-format commented out C code.  @formatter:off */
+        /* open-jdk11/src/java.base/unix/native/libjava/FileDescriptor_md.c */
+        // 78  // instance method close0 for FileDescriptor
+        // 79  JNIEXPORT void JNICALL
+        // 80  Java_java_io_FileDescriptor_close0(JNIEnv *env, jobject this) {
         private /* native */ void close0() throws IOException {
-            fileClose(KnownIntrinsics.unsafeCast(this, FileDescriptor.class));
+            // 81      fileDescriptorClose(env, this);
+            PosixUtils.fileClose(Util_java_io_FileDescriptor.fromTarget(this));
         }
     }
 
+    static final class Util_java_io_FileDescriptor {
+
+        /** Cast from Target class to Java class. */
+        @SuppressFBWarnings(value = "BC", justification = "Cast from @TargetClass")
+        static java.io.FileDescriptor fromTarget(Target_java_io_FileDescriptor tjifd) {
+            return java.io.FileDescriptor.class.cast(tjifd);
+        }
+
+        /** Cast from Java class to Target class. */
+        @SuppressFBWarnings(value = "BC", justification = "Cast to @TargetClass")
+        static Target_java_io_FileDescriptor toTarget(java.io.FileDescriptor jifd) {
+            return Target_java_io_FileDescriptor.class.cast(jifd);
+        }
+
+    }
+
     public static int getFD(FileDescriptor descriptor) {
-        return KnownIntrinsics.unsafeCast(descriptor, Target_java_io_FileDescriptor.class).fd;
+        return Util_java_io_FileDescriptor.toTarget(descriptor).fd;
     }
 
     static void setFD(FileDescriptor descriptor, int fd) {
-        KnownIntrinsics.unsafeCast(descriptor, Target_java_io_FileDescriptor.class).fd = fd;
+        Util_java_io_FileDescriptor.toTarget(descriptor).fd = fd;
     }
 
     /** Return the error string for the last error, or a default message. */
