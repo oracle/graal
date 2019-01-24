@@ -55,7 +55,6 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
-import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -663,6 +662,44 @@ public final class Runner {
         return type instanceof PointerType;
     }
 
+    ExternalLibrary[] parseDefaultLibraries(List<LLVMParserResult> parserResults) {
+        ArrayDeque<ExternalLibrary> dependencyQueue = new ArrayDeque<>();
+
+        // There could be conflicts between Sulong's default libraries and the ones that are
+        // passed on the command-line. To resolve that, we add ours first but parse them later
+        // on.
+        String[] sulongLibraryNames = context.getContextExtension(SystemContextExtension.class).getSulongDefaultLibraries();
+        ExternalLibrary[] sulongLibraries = new ExternalLibrary[sulongLibraryNames.length];
+        for (int i = 0; i < sulongLibraries.length; i++) {
+            sulongLibraries[i] = context.addInternalLibrary(sulongLibraryNames[i], false);
+        }
+
+        // parse all libraries that were passed on the command-line
+        List<String> externals = SulongEngineOption.getPolyglotOptionExternalLibraries(context.getEnv());
+        for (String external : externals) {
+            // assume that the library is a native one until we parsed it and can say for sure
+            ExternalLibrary lib = context.addExternalLibrary(external, true);
+            if (lib != null) {
+                parse(parserResults, dependencyQueue, lib);
+            }
+        }
+
+        // now parse the default Sulong libraries
+        // TODO (chaeubl): we have an ordering issue here... - the search order for native
+        // code comes last, which is not necessarily correct...
+        LLVMParserResult[] sulongLibraryResults = new LLVMParserResult[sulongLibraries.length];
+        for (int i = 0; i < sulongLibraries.length; i++) {
+            sulongLibraryResults[i] = parse(parserResults, dependencyQueue, sulongLibraries[i]);
+        }
+        while (!dependencyQueue.isEmpty()) {
+            ExternalLibrary lib = dependencyQueue.removeFirst();
+            parse(parserResults, dependencyQueue, lib);
+        }
+
+        combineSulongLibraries(sulongLibraryResults);
+        return sulongLibraries;
+    }
+
     /**
      * @return The sulong default libraries, if any were parsed.
      */
@@ -675,41 +712,8 @@ public final class Runner {
         }
 
         // then, we are parsing the default libraries
-        ExternalLibrary[] sulongLibraries;
-        if (!context.areDefaultLibrariesLoaded()) {
-            context.setDefaultLibrariesLoaded();
-            Env env = context.getEnv();
-
-            // There could be conflicts between Sulong's default libraries and the ones that are
-            // passed on the command-line. To resolve that, we add ours first but parse them later
-            // on.
-            String[] sulongLibraryNames = context.getContextExtension(SystemContextExtension.class).getSulongDefaultLibraries();
-            sulongLibraries = new ExternalLibrary[sulongLibraryNames.length];
-            for (int i = 0; i < sulongLibraries.length; i++) {
-                sulongLibraries[i] = context.addInternalLibrary(sulongLibraryNames[i], false);
-            }
-
-            // parse all libraries that were passed on the command-line
-            List<String> externals = SulongEngineOption.getPolyglotOptionExternalLibraries(env);
-            for (String external : externals) {
-                // assume that the library is a native one until we parsed it and can say for sure
-                ExternalLibrary lib = context.addExternalLibrary(external, true);
-                if (lib != null) {
-                    parse(parserResults, dependencyQueue, lib);
-                }
-            }
-
-            // now parse the default Sulong libraries
-            // TODO (chaeubl): we have an ordering issue here... - the search order for native
-            // code comes last, which is not necessarily correct...
-            LLVMParserResult[] sulongLibraryResults = new LLVMParserResult[sulongLibraries.length];
-            for (int i = 0; i < sulongLibraries.length; i++) {
-                sulongLibraryResults[i] = parse(parserResults, dependencyQueue, sulongLibraries[i]);
-            }
-            combineSulongLibraries(sulongLibraryResults);
-        } else {
-            sulongLibraries = new ExternalLibrary[0];
-        }
+        Sulong language = (Sulong) context.getLanguage();
+        ExternalLibrary[] sulongLibraries = language.getDefaultDependencies(this, parserResults);
 
         // finally we are dealing with all indirect dependencies
         while (!dependencyQueue.isEmpty()) {

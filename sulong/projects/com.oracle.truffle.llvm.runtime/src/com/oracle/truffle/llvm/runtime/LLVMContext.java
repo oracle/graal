@@ -142,7 +142,6 @@ public final class LLVMContext {
 
     private boolean initialized;
     private boolean cleanupNecessary;
-    private boolean defaultLibrariesLoaded;
 
     private final NodeFactory nodeFactory;
 
@@ -171,7 +170,6 @@ public final class LLVMContext {
         this.contextExtensions = activeConfiguration.createContextExtensions(this);
         this.initialized = false;
         this.cleanupNecessary = false;
-        this.defaultLibrariesLoaded = false;
 
         this.dataLayout = new DataLayout();
         this.destructorFunctions = new ArrayList<>();
@@ -236,14 +234,6 @@ public final class LLVMContext {
         // Sulong.createContext() because Truffle is not properly initialized there. So, we need to
         // do it in a delayed way.
         return new InitializeContextNode(this, rootFrame);
-    }
-
-    public boolean areDefaultLibrariesLoaded() {
-        return defaultLibrariesLoaded;
-    }
-
-    public void setDefaultLibrariesLoaded() {
-        defaultLibrariesLoaded = true;
     }
 
     @TruffleBoundary
