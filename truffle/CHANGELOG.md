@@ -2,6 +2,10 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 1.0.0 RC13
+
+* Enabled the experimental monomorphization heuristic as default. Old heuristic still available as legacy, but will be removed soon.
+
 ## Version 1.0.0 RC12
 * Fixed: [Env.asHostException()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#asHostException-java.lang.Throwable-) should throw an `IllegalArgumentException` if the provided value is not a host exception.
 * Changed host exceptions' [getExceptionObject()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleException.html#getExceptionObject--) to return the original host exception object.
