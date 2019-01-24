@@ -41,6 +41,7 @@
 package com.oracle.truffle.tck.tests;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -48,6 +49,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import org.graalvm.polyglot.Context;
@@ -125,6 +127,24 @@ public final class JavaHostLanguageProvider implements LanguageProvider {
                         primitives.get(String.class)}) {
             result.add(createProxyExecutable(context, primitive));
         }
+        result.add(Snippet.newBuilder(
+                        "java.lang.Object",
+                        export(context, new ValueSupplier<>(new Object())),
+                        TypeDescriptor.intersection(TypeDescriptor.HOST_OBJECT, TypeDescriptor.OBJECT)).build());
+        result.add(Snippet.newBuilder(
+                        "java.util.List<Integer>",
+                        export(context, new ValueSupplier<>(new ArrayList<>(Arrays.asList(1, 2)))),
+                        TypeDescriptor.intersection(TypeDescriptor.HOST_OBJECT, TypeDescriptor.OBJECT, TypeDescriptor.array(TypeDescriptor.NUMBER))).build());
+        Function<Object, Object> func = new Function<Object, Object>() {
+            @Override
+            public Object apply(Object t) {
+                return t;
+            }
+        };
+        result.add(Snippet.newBuilder(
+                        "java.util.function.Function<Object,Object>",
+                        export(context, new ValueSupplier<>(func)),
+                        TypeDescriptor.intersection(TypeDescriptor.HOST_OBJECT, TypeDescriptor.OBJECT, TypeDescriptor.executable(TypeDescriptor.ANY, false, TypeDescriptor.ANY))).build());
         return Collections.unmodifiableCollection(result);
     }
 
