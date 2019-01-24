@@ -26,6 +26,7 @@ package com.oracle.svm.core.posix.linux;
 
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_RELOCATABLE_BEGIN;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_RELOCATABLE_END;
+import static com.oracle.svm.core.Isolates.IMAGE_HEAP_RELOCATABLE_FIRST_RELOC_POINTER;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_BEGIN;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_END;
 import static com.oracle.svm.core.posix.headers.LibC.memcpy;
@@ -45,6 +46,7 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.word.ComparableWord;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
@@ -59,7 +61,6 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
-import com.oracle.svm.core.os.CopyingImageHeapProvider;
 import com.oracle.svm.core.os.ImageHeapProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
@@ -96,17 +97,11 @@ class LinuxImageHeapProviderFeature implements Feature {
  * architecture is not supported, or an error occurs during the mapping process.
  */
 public class LinuxImageHeapProvider implements ImageHeapProvider {
-    private static final CGlobalData<CCharPointer> SELF_EXE = CGlobalDataFactory.createCString("/proc/self/exe");
     private static final CGlobalData<CCharPointer> MAPS = CGlobalDataFactory.createCString("/proc/self/maps");
     private static final CGlobalData<Pointer> OBJECT_FD = CGlobalDataFactory.createWord(WordFactory.signed(-1), null);
     private static final CGlobalData<Pointer> FD_OFFSET = CGlobalDataFactory.createWord(WordFactory.signed(-1), null);
 
     private static final int MAX_PATHLEN = 4096;
-
-    @Fold
-    static boolean isExecutable() {
-        return ImageInfo.isExecutable();
-    }
 
     @Override
     @Uninterruptible(reason = "Called during isolate initialization.")
@@ -116,8 +111,6 @@ public class LinuxImageHeapProvider implements ImageHeapProvider {
         if (begin.isNonNull() && reservedSize.belowThan(imageHeapSize)) {
             return CEntryPointErrors.UNSPECIFIED;
         }
-
-        boolean executable = isExecutable();
 
         /*
          * Reuse the already loaded file descriptor and discovered offset for all subsequent isolate
@@ -131,7 +124,7 @@ public class LinuxImageHeapProvider implements ImageHeapProvider {
         int fd = (int) OBJECT_FD.get().readLong(0);
 
         if (fd != -1) {
-            return createMapping(begin, basePointer, endPointer, imageHeapBegin, imageHeapSize, fd, FD_OFFSET.get().readLong(0), !executable);
+            return createMapping(begin, basePointer, endPointer, imageHeapBegin, imageHeapSize, fd, FD_OFFSET.get().readLong(0));
         }
 
         int mapFD = Fcntl.NoTransitions.open(MAPS.get(), Fcntl.O_RDONLY(), 0);
@@ -145,7 +138,7 @@ public class LinuxImageHeapProvider implements ImageHeapProvider {
         final CIntPointer dev = StackValue.get(CIntPointer.class);
         final CLongPointer inode = StackValue.get(CLongPointer.class);
 
-        boolean found = findMapping(mapFD, buffer, MAX_PATHLEN, imageHeapBegin.rawValue(), startAddr, offset, dev, inode, !executable);
+        boolean found = findMapping(mapFD, buffer, MAX_PATHLEN, imageHeapBegin.rawValue(), startAddr, offset, dev, inode, true);
         Unistd.NoTransitions.close(mapFD);
 
         if (!found) {
@@ -153,7 +146,7 @@ public class LinuxImageHeapProvider implements ImageHeapProvider {
             return CEntryPointErrors.MAP_HEAP_FAILED;
         }
 
-        fd = Fcntl.NoTransitions.open(executable ? SELF_EXE.get() : buffer, Fcntl.O_RDONLY(), 0);
+        fd = Fcntl.NoTransitions.open(buffer, Fcntl.O_RDONLY(), 0);
         LibC.free(buffer);
 
         if (fd == -1) {
@@ -177,12 +170,10 @@ public class LinuxImageHeapProvider implements ImageHeapProvider {
          * mapped in original. In the case it does not we must abort and fall back to the copy
          * strategy. In the case of native executables, it will always match due to /proc/self/exe.
          */
-        if (!executable) {
-            Stat.stat stat = StackValue.get(Stat.stat.class);
-            if (Stat.fstat_no_transition(fd, stat) != 0 && stat.st_ino() != inode.read() && stat.st_dev() != dev.read()) {
-                Unistd.NoTransitions.close(fd);
-                return CEntryPointErrors.MAP_HEAP_FAILED;
-            }
+        Stat.stat stat = StackValue.get(Stat.stat.class);
+        if (Stat.fstat_no_transition(fd, stat) != 0 && stat.st_ino() != inode.read() && stat.st_dev() != dev.read()) {
+            Unistd.NoTransitions.close(fd);
+            return CEntryPointErrors.MAP_HEAP_FAILED;
         }
 
         long newOffset = offset.read() + (imageHeapBegin.rawValue() - startAddr.read());
@@ -202,18 +193,22 @@ public class LinuxImageHeapProvider implements ImageHeapProvider {
             UnsafeAccess.UNSAFE.fullFence();
         }
 
-        return createMapping(begin, basePointer, endPointer, imageHeapBegin, imageHeapSize, fd, newOffset, !executable);
+        return createMapping(begin, basePointer, endPointer, imageHeapBegin, imageHeapSize, fd, newOffset);
     }
 
     @Uninterruptible(reason = "Called during isolate initialization.")
-    private static int createMapping(PointerBase begin, WordPointer basePointer, WordPointer endPointer, Word imageHeapBegin, Word imageHeapSize, int fd, long offset, boolean patch) {
+    private static int createMapping(PointerBase begin, WordPointer basePointer, WordPointer endPointer, Word imageHeapBegin, Word imageHeapSize, int fd, long offset) {
         Pointer heap = VirtualMemoryProvider.get().mapFile(begin, imageHeapSize, WordFactory.unsigned(fd), WordFactory.unsigned(offset), Access.READ | Access.WRITE);
         if (heap.isNull()) {
             return CEntryPointErrors.MAP_HEAP_FAILED;
         }
 
         UnsignedWord pageSize = VirtualMemoryProvider.get().getGranularity();
-        if (patch) {
+
+        Pointer firstRelocPointer = IMAGE_HEAP_RELOCATABLE_FIRST_RELOC_POINTER.get();
+        ComparableWord relocatedValue = firstRelocPointer.readWord(0);
+        ComparableWord mappedValue = heap.readWord(firstRelocPointer.subtract(imageHeapBegin));
+        if (relocatedValue.notEqual(mappedValue)) {
             /*
              * Addresses were relocated by dynamic linker, so copy them, but first remap the pages
              * to avoid swapping them in from disk.
