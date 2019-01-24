@@ -126,13 +126,18 @@ class LanguageLauncherConfig(LauncherConfig):
 
 
 class LibraryConfig(AbstractNativeImageConfig):
-    pass
+    def __init__(self, destination, jar_distributions, build_args, links=None, jvm_library=False):
+        """
+        :type jvm_library: bool
+        """
+        super(LibraryConfig, self).__init__(destination, jar_distributions, build_args, links=links)
+        self.jvm_library = jvm_library
 
 
 class GraalVmComponent(object):
     def __init__(self, suite, name, short_name, license_files, third_party_license_files,
                  jar_distributions=None, builder_jar_distributions=None, support_distributions=None,
-                 dir_name=None, launcher_configs=None, provided_executables=None,
+                 dir_name=None, launcher_configs=None, library_configs=None, provided_executables=None,
                  polyglot_lib_build_args=None, polyglot_lib_jar_dependencies=None, polyglot_lib_build_dependencies=None,
                  has_polyglot_lib_entrypoints=False,
                  boot_jars=None, priority=None):
@@ -140,7 +145,7 @@ class GraalVmComponent(object):
         :param suite mx.Suite: the suite this component belongs to
         :type name: str
         :param str short_name: a short, unique name for this component
-        :param str | None dir_name: the directory name in which this component lives. If `None`, the `short_name` is used.
+        :param str | None | False dir_name: the directory name in which this component lives. If `None`, the `short_name` is used. If `False`, files are copied to the root-dir for the component type.
         :type license_files: list[str]
         :type third_party_license_files: list[str]
         :type provided_executables: list[str]
@@ -150,6 +155,7 @@ class GraalVmComponent(object):
         :type has_polyglot_lib_entrypoints: bool
         :type boot_jars: list[str]
         :type launcher_configs: list[LauncherConfig]
+        :type library_configs: list[LibraryConfig]
         :type jar_distributions: list[str]
         :type builder_jar_distributions: list[str]
         :type support_distributions: list[str]
@@ -158,7 +164,7 @@ class GraalVmComponent(object):
         self.suite = suite
         self.name = name
         self.short_name = short_name
-        self.dir_name = dir_name or short_name
+        self.dir_name = dir_name if dir_name is not None else short_name
         self.license_files = license_files
         self.third_party_license_files = third_party_license_files
         self.provided_executables = provided_executables or []
@@ -173,6 +179,7 @@ class GraalVmComponent(object):
         self.priority = priority or 0
         """ priority with a higher value means higher priority """
         self.launcher_configs = launcher_configs or []
+        self.library_configs = library_configs or []
 
         assert isinstance(self.jar_distributions, list)
         assert isinstance(self.builder_jar_distributions, list)
@@ -185,6 +192,7 @@ class GraalVmComponent(object):
         assert isinstance(self.polyglot_lib_build_dependencies, list)
         assert isinstance(self.boot_jars, list)
         assert isinstance(self.launcher_configs, list)
+        assert isinstance(self.library_configs, list)
 
     def __str__(self):
         return "{} ({})".format(self.name, self.dir_name)
@@ -193,20 +201,22 @@ class GraalVmComponent(object):
 class GraalVmTruffleComponent(GraalVmComponent):
     def __init__(self, suite, name, short_name, license_files, third_party_license_files, truffle_jars,
                  builder_jar_distributions=None, support_distributions=None, dir_name=None, launcher_configs=None,
-                 provided_executables=None, polyglot_lib_build_args=None, polyglot_lib_jar_dependencies=None,
-                 polyglot_lib_build_dependencies=None, has_polyglot_lib_entrypoints=False, boot_jars=None,
-                 include_in_polyglot=True, priority=None, post_install_msg=None):
+                 library_configs=None, provided_executables=None, polyglot_lib_build_args=None,
+                 polyglot_lib_jar_dependencies=None, polyglot_lib_build_dependencies=None,
+                 has_polyglot_lib_entrypoints=False, boot_jars=None, include_in_polyglot=True, priority=None,
+                 post_install_msg=None):
         """
         :param truffle_jars list[str]: JAR distributions that should be on the classpath for the language implementation.
         :param bool include_in_polyglot: whether this component is included in `--language:all` or `--tool:all` and should be part of polyglot images.
         :param post_install_msg: Post-installation message to be printed
         :type post_install_msg: str
         """
-        super(GraalVmTruffleComponent, self).__init__(suite, name, short_name, license_files,
-                                                      third_party_license_files, truffle_jars, builder_jar_distributions, support_distributions, dir_name, launcher_configs, provided_executables,
-                                                      polyglot_lib_build_args, polyglot_lib_jar_dependencies, polyglot_lib_build_dependencies,
-                                                      has_polyglot_lib_entrypoints, boot_jars,
-                                                      priority)
+        super(GraalVmTruffleComponent, self).__init__(suite, name, short_name, license_files, third_party_license_files,
+                                                      truffle_jars, builder_jar_distributions, support_distributions,
+                                                      dir_name, launcher_configs, library_configs, provided_executables,
+                                                      polyglot_lib_build_args, polyglot_lib_jar_dependencies,
+                                                      polyglot_lib_build_dependencies, has_polyglot_lib_entrypoints,
+                                                      boot_jars, priority)
         self.include_in_polyglot = include_in_polyglot
         self.post_install_msg = post_install_msg
         assert isinstance(self.include_in_polyglot, bool)
@@ -219,14 +229,22 @@ class GraalVmLanguage(GraalVmTruffleComponent):
 class GraalVmTool(GraalVmTruffleComponent):
     def __init__(self, suite, name, short_name, license_files, third_party_license_files, truffle_jars,
                  builder_jar_distributions=None, support_distributions=None, dir_name=None, launcher_configs=None,
-                 provided_executables=None, polyglot_lib_build_args=None, polyglot_lib_jar_dependencies=None,
-                 polyglot_lib_build_dependencies=None, has_polyglot_lib_entrypoints=False, boot_jars=None,
-                 include_in_polyglot=True, include_by_default=False, priority=None):
-        super(GraalVmTool, self).__init__(suite, name, short_name, license_files, third_party_license_files,
+                 library_configs=None, provided_executables=None, polyglot_lib_build_args=None,
+                 polyglot_lib_jar_dependencies=None, polyglot_lib_build_dependencies=None,
+                 has_polyglot_lib_entrypoints=False, boot_jars=None, include_in_polyglot=True, include_by_default=False,
+                 priority=None):
+        super(GraalVmTool, self).__init__(suite,
+                                          name,
+                                          short_name,
+                                          license_files,
+                                          third_party_license_files,
                                           truffle_jars,
                                           builder_jar_distributions,
-                                          support_distributions, dir_name,
-                                          launcher_configs, provided_executables,
+                                          support_distributions,
+                                          dir_name,
+                                          launcher_configs,
+                                          library_configs,
+                                          provided_executables,
                                           polyglot_lib_build_args,
                                           polyglot_lib_jar_dependencies,
                                           polyglot_lib_build_dependencies,
@@ -246,20 +264,27 @@ class GraalVmJreComponent(GraalVmComponent):
 
 
 class GraalVmJvmciComponent(GraalVmJreComponent):
-    def __init__(self, suite, name, short_name, license_files, third_party_license_files, jvmci_jars, jar_distributions=None, builder_jar_distributions=None, support_distributions=None,
-                 graal_compiler=None, dir_name=None, launcher_configs=None, provided_executables=None, polyglot_lib_build_args=None, polyglot_lib_jar_dependencies=None,
-                 polyglot_lib_build_dependencies=None, has_polyglot_lib_entrypoints=False, boot_jars=None, priority=None):
+    def __init__(self, suite, name, short_name, license_files, third_party_license_files, jvmci_jars,
+                 jar_distributions=None, builder_jar_distributions=None, support_distributions=None,
+                 graal_compiler=None, dir_name=None, launcher_configs=None, library_configs=None,
+                 provided_executables=None, polyglot_lib_build_args=None, polyglot_lib_jar_dependencies=None,
+                 polyglot_lib_build_dependencies=None, has_polyglot_lib_entrypoints=False, boot_jars=None,
+                 priority=None):
         """
         :type jvmci_jars: list[str]
         :type graal_compiler: str
         """
-        super(GraalVmJvmciComponent, self).__init__(suite, name, short_name, license_files,
+        super(GraalVmJvmciComponent, self).__init__(suite,
+                                                    name,
+                                                    short_name,
+                                                    license_files,
                                                     third_party_license_files,
                                                     jar_distributions,
                                                     builder_jar_distributions,
                                                     support_distributions,
                                                     dir_name,
                                                     launcher_configs,
+                                                    library_configs,
                                                     provided_executables,
                                                     polyglot_lib_build_args,
                                                     polyglot_lib_jar_dependencies,

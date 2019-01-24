@@ -1011,6 +1011,33 @@ if os.environ.has_key('NATIVE_IMAGE_TESTING'):
     ))
 
 
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
+    suite=suite,
+    name='LibGraal',
+    short_name='lg',
+    dir_name=False,
+    license_files=[],
+    third_party_license_files=[],
+    jar_distributions=[],
+    builder_jar_distributions=[],
+    support_distributions=[],
+    library_configs=[
+        mx_sdk.LibraryConfig(
+            destination="<lib:jvmcicompiler>",
+            jvm_library=True,
+            jar_distributions=['substratevm:GRAAL_HOTSPOT_LIBRARY'],
+            build_args=[
+                "-H:Features=com.oracle.svm.graal.hotspot.nativelib.HotSpotGraalLibraryFeature",
+                "-H:+MultiThreaded",
+                "-H:-UseServiceLoaderFeature",
+                "-H:+AllowFoldMethods",
+                "-J-Djdk.vm.ci.services.aot=true",
+            ],
+        ),
+    ],
+))
+
+
 @mx.command(suite_name=suite.name, command_name='helloworld', usage_msg='[options]')
 def helloworld(args):
     """
