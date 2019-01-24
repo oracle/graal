@@ -1,5 +1,6 @@
 package org.graalvm.tools.lsp.server.utils;
 
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.util.ArrayList;
@@ -16,6 +17,7 @@ import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.Source.SourceBuilder;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
@@ -174,7 +176,17 @@ public final class TextDocumentSurrogate {
 
     public Source buildSource() {
         try {
-            return Source.newBuilder(languageInfo.getId(), uri.toURL()).name(uri.toString()).cached(false).content(editorText).build();
+            SourceBuilder builder = Source.newBuilder(languageInfo.getId(), uri.toURL()).name(uri.toString()).cached(false);
+            if (editorText != null) {
+                return builder.content(editorText).build();
+            }
+
+            try {
+                // No content defined, need to read content from file
+                return builder.build();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         } catch (MalformedURLException e) {
             throw new RuntimeException(e);
         }
