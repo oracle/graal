@@ -198,7 +198,7 @@ public class LinuxImageHeapProvider implements ImageHeapProvider {
 
     @Uninterruptible(reason = "Called during isolate initialization.")
     private static int createMapping(PointerBase begin, WordPointer basePointer, WordPointer endPointer, Word imageHeapBegin, Word imageHeapSize, int fd, long offset) {
-        Pointer heap = VirtualMemoryProvider.get().mapFile(begin, imageHeapSize, WordFactory.unsigned(fd), WordFactory.unsigned(offset), Access.READ | Access.WRITE);
+        Pointer heap = VirtualMemoryProvider.get().mapFile(begin, imageHeapSize, WordFactory.unsigned(fd), WordFactory.unsigned(offset), Access.READ);
         if (heap.isNull()) {
             return CEntryPointErrors.MAP_HEAP_FAILED;
         }
@@ -229,26 +229,18 @@ public class LinuxImageHeapProvider implements ImageHeapProvider {
             }
         }
 
-        UnsignedWord writableBeginPageOffset = UnsignedUtils.roundDown(IMAGE_HEAP_WRITABLE_BEGIN.get().subtract(imageHeapBegin), pageSize);
-        if (writableBeginPageOffset.aboveThan(0)) {
-            if (VirtualMemoryProvider.get().protect(heap, writableBeginPageOffset, Access.READ) != 0) {
-                return CEntryPointErrors.PROTECT_HEAP_FAILED;
-            }
-        }
-        UnsignedWord writableEndPageOffset = UnsignedUtils.roundUp(IMAGE_HEAP_WRITABLE_END.get().subtract(imageHeapBegin), pageSize);
-        if (writableEndPageOffset.belowThan(imageHeapSize)) {
-            Pointer afterWritableBoundary = heap.add(writableEndPageOffset);
-            Word afterWritableSize = imageHeapSize.subtract(writableEndPageOffset);
-            if (VirtualMemoryProvider.get().protect(afterWritableBoundary, afterWritableSize, Access.READ) != 0) {
-                return CEntryPointErrors.PROTECT_HEAP_FAILED;
-            }
+        // Unprotect writable pages
+        Pointer writableBegin = heap.add(IMAGE_HEAP_WRITABLE_BEGIN.get().subtract(imageHeapBegin));
+        UnsignedWord writableSize = IMAGE_HEAP_WRITABLE_END.get().subtract(IMAGE_HEAP_WRITABLE_BEGIN.get());
+        if (VirtualMemoryProvider.get().protect(writableBegin, writableSize, Access.READ | Access.WRITE) != 0) {
+            VirtualMemoryProvider.get().free(heap, imageHeapSize);
+            return CEntryPointErrors.PROTECT_HEAP_FAILED;
         }
 
         basePointer.write(heap);
         if (endPointer.isNonNull()) {
             endPointer.write(roundUp(heap.add(imageHeapSize), pageSize));
         }
-
         return CEntryPointErrors.NO_ERROR;
     }
 
