@@ -18,7 +18,7 @@ public interface ContextAwareExecutor {
      * @param taskWithResult a task which shall be executed in a Polyglot-Context-entered Thread
      * @return a {@link Future} to await the task's result
      */
-    public <T> Future<T> executeWithDefaultContext(Callable<T> taskWithResult);
+    <T> Future<T> executeWithDefaultContext(Callable<T> taskWithResult);
 
     /**
      * Execute a task in a newly created Polyglot Context. This is useful if the task executes
@@ -47,16 +47,16 @@ public interface ContextAwareExecutor {
      *            called.
      * @return a {@link Future} to await the task's result
      */
-    public <T> Future<T> executeWithNestedContext(Callable<T> taskWithResult, boolean cached);
+    <T> Future<T> executeWithNestedContext(Callable<T> taskWithResult, boolean cached);
 
     /**
      * Explicitly closes and removes all cached nested Context instances.
      */
-    public void resetContextCache();
+    void resetContextCache();
 
     /**
      * Shutdown this executor without waiting for tasks to finish.
      */
-    public void shutdown();
+    void shutdown();
 
 }

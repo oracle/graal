@@ -4,5 +4,5 @@ import org.graalvm.tools.lsp.server.TruffleAdapter;
 
 public interface TruffleAdapterProvider {
 
-    public TruffleAdapter getTruffleAdapter();
+    TruffleAdapter getTruffleAdapter();
 }

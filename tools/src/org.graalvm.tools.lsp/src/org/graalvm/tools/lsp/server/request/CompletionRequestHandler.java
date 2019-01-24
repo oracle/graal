@@ -66,7 +66,7 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
         return node instanceof InstrumentableNode && ((InstrumentableNode) node).isInstrumentable();
     }
 
-    private static enum CompletionKind {
+    private enum CompletionKind {
         UNKOWN,
         OBJECT_PROPERTY,
         GLOBALS_AND_LOCALS

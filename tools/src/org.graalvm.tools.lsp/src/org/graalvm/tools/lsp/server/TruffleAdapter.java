@@ -269,7 +269,7 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
         List<Future<?>> parsingTasks;
         private Map<String, LanguageInfo> mimeTypesAllLang;
 
-        public WorkspaceWalker(Map<String, LanguageInfo> mimeTypesAllLang) {
+        WorkspaceWalker(Map<String, LanguageInfo> mimeTypesAllLang) {
             this.mimeTypesAllLang = mimeTypesAllLang;
             this.parsingTasks = new ArrayList<>();
         }

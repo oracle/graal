@@ -129,12 +129,14 @@ public class GraalLanguageServerLauncher extends AbstractLanguageLauncher {
 
     @Override
     protected void printVersion(Engine engine) {
+        // Checkstyle: stop system..print check
         System.out.println(String.format("%s (GraalVM %s)", getLanguageId(), engine.getVersion()));
+        // Checkstyle: resume system..print check
     }
 
     private static final class ContextAwareExecutorImpl implements ContextAwareExecutor {
         private final Builder contextBuilder;
-        final String WORKER_THREAD_ID = "Context-aware worker";
+        static final String WORKER_THREAD_ID = "Context-aware worker";
         Context lastNestedContext = null;
         /**
          * This implementation uses a single-thread-executor, so that there is only one worker

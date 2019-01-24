@@ -1,6 +1,6 @@
 package org.graalvm.tools.lsp.server.utils;
 
-public class EvaluationResult {
+public final class EvaluationResult {
     private final Object result;
     private final boolean error;
     private final boolean evaluationDone;

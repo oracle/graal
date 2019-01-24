@@ -11,8 +11,8 @@ public interface LanguageServerBootstrapper {
 
     /**
      * Gives the kick-off signal, to start the actual LSP language server.
-     * 
+     *
      * @return a {@link Future} to await the shutdown of the server.
      */
-    public Future<?> startServer();
+    Future<?> startServer();
 }

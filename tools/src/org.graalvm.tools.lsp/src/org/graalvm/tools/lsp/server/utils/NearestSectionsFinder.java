@@ -19,7 +19,7 @@ import com.oracle.truffle.api.source.SourceSection;
 public final class NearestSectionsFinder {
     private static final TruffleLogger LOG = TruffleLogger.getLogger(LSPInstrument.ID, NearestSectionsFinder.class);
 
-    public static enum NodeLocationType {
+    public enum NodeLocationType {
         CONTAINS,
         CONTAINS_END,
         PREVIOUS,

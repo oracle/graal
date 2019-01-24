@@ -80,7 +80,7 @@ import com.google.gson.JsonPrimitive;
  * JSON-RPC requests. It delegates all requests to {@link TruffleAdapter}.
  *
  */
-public class LanguageServerImpl implements LanguageServer, LanguageClientAware, TextDocumentService, WorkspaceService {
+public final class LanguageServerImpl implements LanguageServer, LanguageClientAware, TextDocumentService, WorkspaceService {
     private static final String SHOW_COVERAGE = "show_coverage";
     private static final String ANALYSE_COVERAGE = "analyse_coverage";
     private static final String CLEAR_COVERAGE = "clear_coverage";

@@ -113,6 +113,7 @@ suite = {
                 "truffle:TRUFFLE_NFI",
                 "LSP4J"
             ],
+            "checkstyleVersion" : "8.8",
             "checkstyle": "org.graalvm.tools.lsp",
             "javaCompliance": "1.8",
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR"],

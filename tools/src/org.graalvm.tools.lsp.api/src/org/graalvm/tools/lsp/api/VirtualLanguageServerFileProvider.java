@@ -16,11 +16,11 @@ public interface VirtualLanguageServerFileProvider {
      * @param path A path to a file in the file system.
      * @return The source code of the file as seen/edited by the user in the source code editor.
      */
-    public String getSourceText(Path path);
+    String getSourceText(Path path);
 
     /**
      * @param path A path to a file in the file system.
      * @return true if the file has been marked as "opened" in our LSP server.
      */
-    public boolean isVirtualFile(Path path);
+    boolean isVirtualFile(Path path);
 }
