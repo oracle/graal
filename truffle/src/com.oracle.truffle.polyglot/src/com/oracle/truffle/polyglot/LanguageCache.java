@@ -190,6 +190,10 @@ final class LanguageCache implements Comparable<LanguageCache> {
     }
 
     static Map<String, LanguageCache> languages() {
+        return languages(null);
+    }
+
+    static Map<String, LanguageCache> languages(ClassLoader additionalLoader) {
         if (TruffleOptions.AOT) {
             return nativeImageCache;
         }
@@ -198,7 +202,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
             synchronized (LanguageCache.class) {
                 cache = runtimeCache;
                 if (cache == null) {
-                    runtimeCache = cache = createLanguages(null);
+                    runtimeCache = cache = createLanguages(additionalLoader);
                 }
             }
         }

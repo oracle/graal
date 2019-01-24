@@ -596,17 +596,17 @@ public final class Engine implements AutoCloseable {
                             throw new InternalError(e);
                         }
                     }
-                } else {
-                    // As of JDK9, the JVMCI Services class should only be used for service
-                    // types
-                    // defined by JVMCI. Other services types should use ServiceLoader directly.
-                    Iterator<AbstractPolyglotImpl> providers = ServiceLoader.load(AbstractPolyglotImpl.class).iterator();
-                    if (providers.hasNext()) {
-                        engine = providers.next();
-                        if (providers.hasNext()) {
+                }
 
-                            throw new InternalError(String.format("Multiple %s providers found", AbstractPolyglotImpl.class.getName()));
-                        }
+                // As of JDK9, the JVMCI Services class should only be used for service
+                // types
+                // defined by JVMCI. Other services types should use ServiceLoader directly.
+                Iterator<AbstractPolyglotImpl> providers = ServiceLoader.load(AbstractPolyglotImpl.class).iterator();
+                if (providers.hasNext()) {
+                    engine = providers.next();
+                    if (providers.hasNext()) {
+
+                        throw new InternalError(String.format("Multiple %s providers found", AbstractPolyglotImpl.class.getName()));
                     }
                 }
 
