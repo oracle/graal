@@ -45,13 +45,22 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import org.graalvm.nativeimage.c.function.CFunction.Transition;
+
 /**
  * Annotation for an invocation method defined in a sub-interface of {@link CFunctionPointer}. The
  * method is called with C calling conventions.
- * 
+ *
  * @since 1.0
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD})
 public @interface InvokeCFunctionPointer {
+
+    /**
+     * The Java-to-C thread transition code used when calling the function.
+     *
+     * @since 1.0
+     */
+    Transition transition() default Transition.TO_NATIVE;
 }

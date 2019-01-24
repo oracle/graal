@@ -122,6 +122,30 @@ gate_vm_darwin: ${vm_darwin} {
   targets: [gate]
 }
 
+bench_vm_linux: ${vm_linux} {
+  targets: [bench, post-merge]
+}
+
+bench_vm_darwin: ${vm_darwin} {
+  targets: [bench, post-merge]
+}
+
+bench_daily_vm_linux: ${vm_linux} {
+  targets: [bench, daily]
+}
+
+bench_daily_vm_darwin: ${vm_darwin} {
+  targets: [bench, daily]
+}
+
+deploy_vm_linux: ${vm_linux} {
+  targets: [deploy, post-merge]
+}
+
+deploy_daily_vm_darwin: ${vm_darwin} {
+  targets: [deploy, daily]
+}
+
 deploy_vm_linux: ${vm_linux} {
   targets: [deploy, post-merge]
 }
@@ -145,15 +169,17 @@ builds += [
     ]
     name: gate-vm-style-linux-amd64
   },
-  ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} {
+  ${scan_malware} ${malware_definition_archived} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} {
     run: [
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, build]
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}] ${maven_deploy_vm}
       ${mx_vm_common} [build]
       ${mx_vm_common} ${maven_deploy_vm}
       ${notify-nexus-deploy}
-    ]
-    timelimit: "45:00"
+      [set-export, GRAALVM_HOME, ${mx_vm_common} [graalvm-home]]
+    ] ${scan_malware.run}
+    logs: ${common_vm.logs} ${scan_malware.logs}
+    timelimit: "1:30:00"
     name: deploy-vm-linux-amd64
   },
   ${full_vm_build_darwin} ${darwin-deploy} ${daily_vm_darwin} {

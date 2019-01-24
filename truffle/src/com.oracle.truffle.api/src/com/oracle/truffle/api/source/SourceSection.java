@@ -51,19 +51,17 @@ package com.oracle.truffle.api.source;
  * @see Source#createSection(int)
  * @see Source#createSection(int, int)
  * @see Source#createSection(int, int, int)
+ * @see Source#createSection(int, int, int, int)
  * @see Source#createUnavailableSection()
  * @since 0.8 or earlier
  */
-public final class SourceSection {
+public abstract class SourceSection {
 
-    private final Source source;
-    private final int charIndex;
-    private final int charLength; // -1 indicates unavailable
+    final Source source;
 
-    SourceSection(Source source, int charIndex, int charLength) {
+    SourceSection(Source source) {
+        assert source != null;
         this.source = source;
-        this.charIndex = charIndex;
-        this.charLength = charLength;
     }
 
     /**
@@ -76,19 +74,45 @@ public final class SourceSection {
      * @see Source#createUnavailableSection()
      * @since 0.18
      */
-    public boolean isAvailable() {
-        return charLength != -1;
-    }
+    public abstract boolean isAvailable();
 
     /**
      * Returns whether the source section is in bounds of the {@link #getSource() source}
-     * {@link Source#getCharacters() code}. Please note that calling this method causes the
-     * {@link Source#getCharacters() code} of the {@link #getSource() source} to be loaded if it was
-     * not yet loaded.
+     * {@link Source#getCharacters() code}.
      */
-    boolean isValid() {
-        return isAvailable() ? (charIndex + charLength <= getSource().getCharacters().length()) : false;
-    }
+    abstract boolean isValid();
+
+    /**
+     * Returns <code>true</code> if this section has a line number information, <code>false</code>
+     * otherwise. When <code>true</code>, {@link #getStartLine()} and {@link #getEndLine()} return
+     * valid line numbers, when <code>false</code>, {@link #getStartLine()} and
+     * {@link #getEndLine()} return <code>1</code>.
+     *
+     * @since 1.0
+     */
+    public abstract boolean hasLines();
+
+    /**
+     * Returns <code>true</code> if this section has a column number information, <code>false</code>
+     * otherwise. When <code>true</code>, {@link #hasLines()} is <code>true</code> as well,
+     * {@link #getStartColumn()} and {@link #getEndColumn()} return valid column numbers. When
+     * <code>false</code>, {@link #getStartColumn()} and {@link #getEndColumn()} return
+     * <code>1</code>.
+     *
+     * @since 1.0
+     */
+    public abstract boolean hasColumns();
+
+    /**
+     * Returns <code>true</code> if this section has a character index information,
+     * <code>false</code> otherwise. When <code>true</code>, {@link #getCharIndex()},
+     * {@link #getCharEndIndex()} and {@link #getCharLength()} return valid character indices, when
+     * <code>false</code>, {@link #getCharIndex()}, {@link #getCharEndIndex()} and
+     * {@link #getCharLength()} return <code>0</code>.
+     *
+     * @since 1.0
+     */
+    public abstract boolean hasCharIndex();
 
     /**
      * Representation of the source program that contains this section.
@@ -96,149 +120,100 @@ public final class SourceSection {
      * @return the source object
      * @since 0.8 or earlier
      */
-    public Source getSource() {
+    public final Source getSource() {
         return source;
     }
 
     /**
      * Returns 1-based line number of the first character in this section (inclusive). Returns
-     * <code>1</code> for out of bounds or {@link #isAvailable() unavailable} source sections.
-     * Please note that calling this method causes the {@link Source#getCharacters() code} of the
-     * {@link #getSource() source} to be loaded if it was not yet loaded.
+     * <code>1</code> for out of bounds or {@link #isAvailable() unavailable} source sections, or
+     * source sections not {@link #hasLines() having lines}.
      *
      * @return the starting line number
+     * @see #hasLines()
      * @since 0.8 or earlier
      */
-    public int getStartLine() {
-        if (source == null) {
-            return -1;
-        }
-        if (!isValid()) {
-            return 1;
-        }
-        return source.getLineNumber(getCharIndex());
-    }
+    public abstract int getStartLine();
 
     /**
      * Returns the 1-based column number of the first character in this section (inclusive). Returns
-     * <code>1</code> for out of bounds or {@link #isAvailable() unavailable} source sections.
-     * Please note that calling this method causes the {@link Source#getCharacters() code} of the
-     * {@link #getSource() source} to be loaded if it was not yet loaded.
+     * <code>1</code> for out of bounds or {@link #isAvailable() unavailable} source sections, or
+     * source sections not {@link #hasColumns() having columns}.
      *
      * @return the starting column number
+     * @see #hasColumns()
      * @since 0.8 or earlier
      */
-    public int getStartColumn() {
-        if (source == null) {
-            return -1;
-        }
-        if (!isValid()) {
-            return 1;
-        }
-        return source.getColumnNumber(getCharIndex());
-    }
+    public abstract int getStartColumn();
 
     /**
      * Returns 1-based line number of the last character in this section (inclusive). Returns
-     * <code>1</code> for out of bounds or {@link #isAvailable() unavailable} source sections.
-     * Please note that calling this method causes the {@link Source#getCharacters() code} of the
-     * {@link #getSource() source} to be loaded if it was not yet loaded.
+     * <code>1</code> for out of bounds or {@link #isAvailable() unavailable} source sections, or
+     * source sections not {@link #hasLines() having lines}.
      *
      * @return the starting line number
+     * @see #hasLines()
      * @since 0.8 or earlier
      */
-    public int getEndLine() {
-        if (source == null) {
-            return -1;
-        }
-        if (!isValid()) {
-            return 1;
-        }
-        return source.getLineNumber(getCharIndex() + Math.max(0, getCharLength() - 1));
-    }
+    public abstract int getEndLine();
 
     /**
      * Returns the 1-based column number of the last character in this section (inclusive). Returns
-     * <code>1</code> for out of bounds or {@link #isAvailable() unavailable} source sections.
-     * Please note that calling this method causes the {@link Source#getCharacters() code} of the
-     * {@link #getSource() source} to be loaded if it was not yet loaded.
+     * <code>1</code> for out of bounds or {@link #isAvailable() unavailable} source sections, or
+     * source sections not {@link #hasColumns() having columns}.
      *
      * @return the starting column number
+     * @see #hasColumns()
      * @since 0.8 or earlier
      */
-    public int getEndColumn() {
-        if (source == null) {
-            return -1;
-        }
-        if (!isValid()) {
-            return 1;
-        }
-        return source.getColumnNumber(getCharIndex() + Math.max(0, getCharLength() - 1));
-    }
+    public abstract int getEndColumn();
 
     /**
      * Returns the 0-based index of the first character in this section. Returns <code>0</code> for
-     * {@link #isAvailable() unavailable} source sections. Please note that calling this method does
-     * not cause the {@link Source#getCharacters() code} of the {@link #getSource() source} to be
-     * loaded. The returned index might be out of bounds of the source code if assertions (-ea) are
-     * not enabled.
+     * {@link #isAvailable() unavailable} source sections, or sections not {@link #hasCharIndex()
+     * having character index}. The returned index might be out of bounds of the source code if
+     * assertions (-ea) are not enabled.
      *
      * @return the starting character index
+     * @see #hasCharIndex()
      * @since 0.8 or earlier
      */
-    public int getCharIndex() {
-        return charIndex;
-    }
+    public abstract int getCharIndex();
 
     /**
      * Returns the length of this section in characters. Returns <code>0</code> for
-     * {@link #isAvailable() unavailable} source sections. Please note that calling this method does
-     * not cause the {@link Source#getCharacters() code} of the {@link #getSource() source} to be
-     * loaded. The returned length might be out of bounds of the source code if assertions (-ea) are
-     * not enabled.
+     * {@link #isAvailable() unavailable} source sections, or sections not {@link #hasCharIndex()
+     * having character index}. The returned length might be out of bounds of the source code if
+     * assertions (-ea) are not enabled.
      *
      * @return the number of characters in the section
+     * @see #hasCharIndex()
      * @since 0.8 or earlier
      */
-    public int getCharLength() {
-        if (source == null) {
-            return -1;
-        }
-        return charLength == -1 ? 0 : charLength;
-    }
+    public abstract int getCharLength();
 
     /**
      * Returns the index of the text position immediately following the last character in the
-     * section. Returns <code>0</code> for {@link #isAvailable() unavailable} source sections.
-     * Please note that calling this method does not cause the {@link Source#getCharacters() code}
-     * of the {@link #getSource() source} to be loaded. The returned index might be out of bounds of
-     * the source code if assertions (-ea) are not enabled.
+     * section. Returns <code>0</code> for {@link #isAvailable() unavailable} source sections, or
+     * sections not {@link #hasCharIndex() having character index}. The returned index might be out
+     * of bounds of the source code if assertions (-ea) are not enabled.
      *
      * @return the end position of the section
+     * @see #hasCharIndex()
      * @since 0.8 or earlier
      */
-    public int getCharEndIndex() {
-        if (source == null) {
-            return -1;
-        }
-        return getCharIndex() + getCharLength();
-    }
+    public abstract int getCharEndIndex();
 
     /**
      * Returns the source code fragment described by this section. Returns an empty character
-     * sequence for out of bounds or {@link #isAvailable() unavailable} source sections. Please note
-     * that calling this method causes the {@link Source#getCharacters() code} of the
-     * {@link #getSource() source} to be loaded if it was not yet loaded.
+     * sequence for out of bounds or {@link #isAvailable() unavailable} source sections, or sections
+     * whose source does not {@link Source#hasCharacters() have characters}.
      *
      * @return the code as a CharSequence
+     * @see Source#hasCharacters()
      * @since 0.28
      */
-    public CharSequence getCharacters() {
-        if (!isValid()) {
-            return "";
-        }
-        return source.getCharacters().subSequence(getCharIndex(), getCharEndIndex());
-    }
+    public abstract CharSequence getCharacters();
 
     /**
      * Returns an implementation-defined string representation of this source section to be used for
@@ -248,14 +223,31 @@ public final class SourceSection {
      * @since 0.8 or earlier
      */
     @Override
-    public String toString() {
+    public final String toString() {
         StringBuilder b = new StringBuilder();
         b.append("SourceSection(source=").append(getSource().getName());
         if (isAvailable()) {
-            b.append(", index=").append(getCharIndex());
-            b.append(", length=").append(getCharLength());
+            if (hasLines()) {
+                b.append(" [").append(getStartLine());
+                if (hasColumns()) {
+                    b.append(':').append(getStartColumn());
+                }
+                b.append(" - ").append(getEndLine());
+                if (hasColumns()) {
+                    b.append(':').append(getEndColumn());
+                }
+                b.append("]");
+            }
+            if (hasCharIndex()) {
+                b.append(", index=").append(getCharIndex());
+                b.append(", length=").append(getCharLength());
+            }
             if (isValid()) {
-                b.append(", characters=").append(getCharacters().toString().replaceAll("\\n", "\\\\n"));
+                if (source.hasCharacters()) {
+                    b.append(", characters=").append(getCharacters().toString().replaceAll("\\n", "\\\\n"));
+                } else {
+                    b.append(", characters not known");
+                }
             } else {
                 b.append(", valid=false");
             }
@@ -268,49 +260,10 @@ public final class SourceSection {
 
     /** @since 0.8 or earlier */
     @Override
-    public int hashCode() {
-        if (!isAvailable()) {
-            return System.identityHashCode(this);
-        }
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + charIndex;
-        result = prime * result + charLength;
-        result = prime * result + source.hashCode();
-        return result;
-    }
+    public abstract int hashCode();
 
     /** @since 0.8 or earlier */
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null) {
-            return false;
-        }
-        if (!(obj instanceof SourceSection)) {
-            return false;
-        }
-        SourceSection other = (SourceSection) obj;
-        if (!isAvailable()) {
-            // Unavailable SourceSections are compared by identity
-            return this == obj;
-        }
-        if (charIndex != other.charIndex) {
-            return false;
-        }
-        if (charLength != other.charLength) {
-            return false;
-        }
-        if (source == null) {
-            if (other.source != null) {
-                return false;
-            }
-        } else if (!source.equals(other.source)) {
-            return false;
-        }
-        return true;
-    }
+    public abstract boolean equals(Object obj);
 
 }

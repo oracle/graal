@@ -42,7 +42,7 @@ package com.oracle.truffle.api;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.File;
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -57,10 +57,14 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.AccessMode;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.CopyOption;
+import java.nio.file.DirectoryIteratorException;
 import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileSystemException;
+import java.nio.file.FileVisitOption;
+import java.nio.file.FileVisitResult;
+import java.nio.file.FileVisitor;
 import java.nio.file.InvalidPathException;
 import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
@@ -68,34 +72,29 @@ import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileTime;
+import java.nio.file.attribute.GroupPrincipal;
 import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.UserPrincipal;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.EnumSet;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 
 import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import java.io.Closeable;
-import java.nio.file.DirectoryIteratorException;
-import java.nio.file.FileVisitOption;
-import java.nio.file.FileVisitResult;
-import java.nio.file.FileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.nio.file.attribute.GroupPrincipal;
-import java.nio.file.attribute.UserPrincipal;
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.Iterator;
-import java.util.NoSuchElementException;
 
 /**
  * An abstract representation of a file used by Truffle languages.
@@ -313,7 +312,7 @@ public final class TruffleFile {
     }
 
     /**
-     * Returns the {@link URI} representation of this {@link TruffleFile}.
+     * Returns the absolute {@link URI} representation of this {@link TruffleFile}.
      *
      * @return the absolute {@link URI} representing the {@link TruffleFile}
      * @throws SecurityException if the {@link FileSystem} denied a resolution of an absolute path
@@ -326,6 +325,27 @@ public final class TruffleFile {
             return absolutePath.toUri();
         } catch (SecurityException se) {
             throw se;
+        } catch (Throwable t) {
+            throw wrapHostException(t);
+        }
+    }
+
+    /**
+     * Returns a relative {@link URI} representation of non absolute {@link TruffleFile}. If this
+     * {@link TruffleFile} is relative it returns a relative {@link URI}. For an
+     * {@link #isAbsolute() absolute} {@link TruffleFile} it returns an absolute {@link URI}.
+     *
+     * @return the {@link URI} representing the {@link TruffleFile}
+     * @since 1.0
+     */
+    @TruffleBoundary
+    public URI toRelativeUri() {
+        if (isAbsolute()) {
+            return toUri();
+        }
+        try {
+            String strPath = "/".equals(fileSystem.getSeparator()) ? path.toString() : path.toString().replace(path.getFileSystem().getSeparator(), "/");
+            return new URI(null, null, strPath, null);
         } catch (Throwable t) {
             throw wrapHostException(t);
         }
@@ -1047,7 +1067,7 @@ public final class TruffleFile {
     @TruffleBoundary
     public TruffleFile relativize(TruffleFile other) {
         try {
-            return new TruffleFile(fileSystem, path.relativize(other.path), other.normalizedPath);
+            return new TruffleFile(fileSystem, path.relativize(other.path));
         } catch (IllegalArgumentException e) {
             throw e;
         } catch (Throwable t) {
@@ -1388,7 +1408,8 @@ public final class TruffleFile {
         } else {
             Path root = fileSystem.parsePath("/");
             boolean emptyPath = normalizedPath.getFileName().getNameCount() == 1 && normalizedPath.getFileName().toString().isEmpty();
-            Path absolute = root.resolve(normalizedAbsolute.subpath(0, normalizedAbsolute.getNameCount() - (emptyPath ? 0 : normalizedPath.getNameCount()))).resolve(path);
+            Path absolute = root.equals(normalizedAbsolute) ? root
+                            : root.resolve(normalizedAbsolute.subpath(0, normalizedAbsolute.getNameCount() - (emptyPath ? 0 : normalizedPath.getNameCount()))).resolve(path);
             return new Path[]{absolute, normalizedAbsolute};
         }
     }
@@ -1538,45 +1559,6 @@ public final class TruffleFile {
         }
     }
 
-    @SuppressWarnings("serial")
-    static final class FileAdapter extends File {
-        private final TruffleFile truffleFile;
-
-        FileAdapter(TruffleFile truffleFile) {
-            super(truffleFile.getPath());
-            this.truffleFile = truffleFile;
-        }
-
-        TruffleFile getTruffleFile() {
-            return truffleFile;
-        }
-
-        @Override
-        public String getName() {
-            return truffleFile.getName();
-        }
-
-        @Override
-        public String getPath() {
-            return truffleFile.getPath();
-        }
-
-        @Override
-        public File getAbsoluteFile() {
-            return new FileAdapter(truffleFile.getAbsoluteFile());
-        }
-
-        @Override
-        public File getCanonicalFile() throws IOException {
-            return new FileAdapter(truffleFile.getCanonicalFile());
-        }
-
-        @Override
-        public URI toURI() {
-            return truffleFile.toUri();
-        }
-    }
-
     private static final class TruffleFileDirectoryStream implements DirectoryStream<TruffleFile> {
 
         private final TruffleFile directory;
@@ -1678,7 +1660,10 @@ public final class TruffleFile {
 
         void pop() {
             if (!currentIterator.stack.isEmpty()) {
-                currentIterator.stack.removeLast();
+                try {
+                    currentIterator.stack.removeLast().close();
+                } catch (IOException ignored) {
+                }
             }
         }
 

@@ -549,6 +549,9 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
 
     @SuppressWarnings("deprecation")
     private boolean deoptimizeOnException(ResolvedJavaMethod method) {
+        if (method == null) {
+            return false;
+        }
         CompilerDirectives.TruffleBoundary truffleBoundary = method.getAnnotation(CompilerDirectives.TruffleBoundary.class);
         return truffleBoundary != null && (!truffleBoundary.throwsControlFlowException() && truffleBoundary.transferToInterpreterOnException());
     }

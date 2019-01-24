@@ -75,6 +75,7 @@ import java.util.TreeMap;
 import java.util.logging.Level;
 
 import org.graalvm.nativeimage.RuntimeOptions;
+import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
@@ -405,6 +406,10 @@ public abstract class Launcher {
     protected static void printPolyglotVersions() {
         Engine engine = Engine.create();
         System.out.println("GraalVM Polyglot Engine Version " + engine.getVersion());
+        Path graalVMHome = Engine.findHome();
+        if (graalVMHome != null) {
+            System.out.println("GraalVM Home " + graalVMHome);
+        }
         printLanguages(engine, true);
         printInstruments(engine, true);
     }
@@ -1034,7 +1039,7 @@ public abstract class Launcher {
              * All options are processed, now we can run the startup hooks that can depend on the
              * option values.
              */
-            RuntimeOptions.runStartupHooks();
+            VMRuntime.initialize();
 
             if (vmType == null) {
                 vmType = defaultVmType;

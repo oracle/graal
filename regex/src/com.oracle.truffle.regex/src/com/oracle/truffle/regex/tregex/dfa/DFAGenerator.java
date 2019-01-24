@@ -25,6 +25,15 @@
 
 package com.oracle.truffle.regex.tregex.dfa;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.UnsupportedRegexException;
@@ -56,20 +65,10 @@ import com.oracle.truffle.regex.tregex.nodesplitter.DFANodeSplit;
 import com.oracle.truffle.regex.tregex.nodesplitter.DFANodeSplitBailoutException;
 import com.oracle.truffle.regex.tregex.parser.Counter;
 import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.MathUtil;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
-
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 
 public final class DFAGenerator implements JsonConvertible {
 
@@ -79,6 +78,7 @@ public final class DFAGenerator implements JsonConvertible {
     private final NFA nfa;
     private final TRegexDFAExecutorProperties executorProps;
     private final CompilationBuffer compilationBuffer;
+    private final RegexOptions engineOptions;
 
     private final boolean forward;
     private final boolean trackCaptureGroups;
@@ -97,14 +97,14 @@ public final class DFAGenerator implements JsonConvertible {
     private DFAStateNodeBuilder[] entryStates;
     private final DFACaptureGroupTransitionBuilder initialCGTransition;
     private DFACaptureGroupLazyTransitionNode[] captureGroupTransitions = null;
-    private final List<DFACaptureGroupTransitionBuilder.PartialTransitionDebugInfo> cgPartialTransitions = DebugUtil.DEBUG ? new ArrayList<>() : null;
+    private final List<DFACaptureGroupTransitionBuilder.PartialTransitionDebugInfo> cgPartialTransitions;
     private final DFATransitionCanonicalizer canonicalizer;
 
     private final List<DFAStateTransitionBuilder> expandDFATransitions = new ArrayList<>();
     private List<DFAStateTransitionBuilder[]> expandDFAPruneTraverseCur;
     private List<DFAStateTransitionBuilder[]> expandDFAPruneTraverseNext;
 
-    public DFAGenerator(NFA nfa, TRegexDFAExecutorProperties executorProps, CompilationBuffer compilationBuffer) {
+    public DFAGenerator(NFA nfa, TRegexDFAExecutorProperties executorProps, CompilationBuffer compilationBuffer, RegexOptions engineOptions) {
         this.nfa = nfa;
         this.executorProps = executorProps;
         this.forward = executorProps.isForward();
@@ -112,6 +112,8 @@ public final class DFAGenerator implements JsonConvertible {
         this.pruneUnambiguousPaths = executorProps.isBackward() && nfa.isTraceFinderNFA() && nfa.hasReverseUnAnchoredEntry();
         this.canonicalizer = new DFATransitionCanonicalizer(trackCaptureGroups);
         this.compilationBuffer = compilationBuffer;
+        this.engineOptions = engineOptions;
+        this.cgPartialTransitions = engineOptions.isDumpAutomata() ? new ArrayList<>() : null;
         this.expandDFAPruneTraverseCur = pruneUnambiguousPaths ? new ArrayList<>() : null;
         this.expandDFAPruneTraverseNext = pruneUnambiguousPaths ? new ArrayList<>() : null;
         this.initialCGTransition = trackCaptureGroups ? new DFACaptureGroupTransitionBuilder(null, null, null) : null;
@@ -140,6 +142,10 @@ public final class DFAGenerator implements JsonConvertible {
 
     private RegexOptions getOptions() {
         return nfa.getAst().getOptions();
+    }
+
+    public RegexOptions getEngineOptions() {
+        return engineOptions;
     }
 
     private DFAStateNodeBuilder[] getStateIndexMap() {
@@ -256,7 +262,7 @@ public final class DFAGenerator implements JsonConvertible {
             states = tryMakeReducible(states);
         }
         return new TRegexDFAExecutorNode(executorProps, maxNumberOfNfaStates, states, captureGroupTransitions,
-                        DebugUtil.DEBUG_STEP_EXECUTION ? new TRegexDFAExecutorDebugRecorder(this) : null);
+                        engineOptions.isStepExecution() ? new TRegexDFAExecutorDebugRecorder(this) : null);
     }
 
     private void createInitialStatesForward() {
@@ -497,22 +503,18 @@ public final class DFAGenerator implements JsonConvertible {
                 }
                 estimatedTransitionsCost += matchers[i].estimatedCost();
             }
-            if (matchers.length == 1 && matchers[0] == AnyMatcher.INSTANCE) {
-                matchers = AnyMatcher.INSTANCE_ARRAY;
-            }
 
             // Very conservative heuristic for whether we should use AllTransitionsInOneTreeMatcher.
             // TODO: Potential benefits of this should be further explored.
+            AllTransitionsInOneTreeMatcher allTransitionsInOneTreeMatcher = null;
             boolean useTreeTransitionMatcher = nCheckingTransitions > 1 && MathUtil.log2ceil(nRanges + 2) * 8 < estimatedTransitionsCost;
             if (useTreeTransitionMatcher) {
-                if (getOptions().isRegressionTestMode()) {
-                    // in regression test mode, we compare results of regular matchers and the
+                if (!getOptions().isRegressionTestMode()) {
+                    // in regression test mode, we compare results of regular matchers and
                     // AllTransitionsInOneTreeMatcher
-                    matchers = Arrays.copyOf(matchers, matchers.length + 1);
-                    matchers[matchers.length - 1] = createAllTransitionsInOneTreeMatcher(s);
-                } else {
-                    matchers = new CharMatcher[]{createAllTransitionsInOneTreeMatcher(s)};
+                    matchers = null;
                 }
+                allTransitionsInOneTreeMatcher = createAllTransitionsInOneTreeMatcher(s);
             }
 
             short[] successors = s.getNumberOfSuccessors() > 0 ? new short[s.getNumberOfSuccessors()] : EMPTY_SHORT_ARRAY;
@@ -556,16 +558,16 @@ public final class DFAGenerator implements JsonConvertible {
             }
             DFAStateNode stateNode;
             if (trackCaptureGroups) {
-                stateNode = new CGTrackingDFAStateNode(s.getId(), flags, loopOptimizationNode, successors, matchers, cgTransitions, cgPrecedingTransitions,
+                stateNode = new CGTrackingDFAStateNode(s.getId(), flags, loopOptimizationNode, successors, matchers, allTransitionsInOneTreeMatcher, cgTransitions, cgPrecedingTransitions,
                                 createCGFinalTransition(s.getAnchoredFinalStateTransition()),
                                 createCGFinalTransition(s.getUnAnchoredFinalStateTransition()));
             } else if (nfa.isTraceFinderNFA()) {
                 stateNode = new TraceFinderDFAStateNode(s.getId(), flags, loopOptimizationNode, successors, matchers,
-                                s.getPreCalculatedUnAnchoredResult(), s.getPreCalculatedAnchoredResult());
+                                allTransitionsInOneTreeMatcher, s.getPreCalculatedUnAnchoredResult(), s.getPreCalculatedAnchoredResult());
             } else if (forward) {
-                stateNode = new DFAStateNode(s.getId(), flags, loopOptimizationNode, successors, matchers);
+                stateNode = new DFAStateNode(s.getId(), flags, loopOptimizationNode, successors, matchers, allTransitionsInOneTreeMatcher);
             } else {
-                stateNode = new BackwardDFAStateNode(s.getId(), flags, loopOptimizationNode, successors, matchers);
+                stateNode = new BackwardDFAStateNode(s.getId(), flags, loopOptimizationNode, successors, matchers, allTransitionsInOneTreeMatcher);
             }
             ret[s.getId()] = stateNode;
         }
@@ -665,8 +667,8 @@ public final class DFAGenerator implements JsonConvertible {
         }
     }
 
-    private static boolean debugMode() {
-        return DebugUtil.DEBUG || DebugUtil.DEBUG_STEP_EXECUTION;
+    private boolean debugMode() {
+        return engineOptions.isDumpAutomata() || engineOptions.isStepExecution();
     }
 
     public String getDebugDumpName() {

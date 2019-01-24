@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,7 +38,7 @@ public abstract class ReplacementsTest extends GraalCompilerTest {
      */
     protected final ClassfileBytecodeProvider getSystemClassLoaderBytecodeProvider() {
         ReplacementsImpl d = (ReplacementsImpl) getReplacements();
-        MetaAccessProvider metaAccess = d.providers.getMetaAccess();
+        MetaAccessProvider metaAccess = d.getProviders().getMetaAccess();
         ClassfileBytecodeProvider bytecodeProvider = new ClassfileBytecodeProvider(metaAccess, d.snippetReflection, ClassLoader.getSystemClassLoader());
         return bytecodeProvider;
     }

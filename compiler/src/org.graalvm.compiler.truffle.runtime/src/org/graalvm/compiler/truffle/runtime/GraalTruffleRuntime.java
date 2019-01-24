@@ -116,6 +116,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
+import org.graalvm.compiler.truffle.common.TruffleCompilation;
 import org.graalvm.compiler.truffle.common.TruffleOutputGroup;
 
 /**
@@ -676,7 +677,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     @SuppressWarnings("try")
-    protected void doCompile(TruffleDebugContext debug, String compilationId, OptionValues options, OptimizedCallTarget callTarget, TruffleCompilationTask task) {
+    protected void doCompile(TruffleDebugContext debug, TruffleCompilation compilation, OptionValues options, OptimizedCallTarget callTarget, TruffleCompilationTask task) {
         listeners.onCompilationStarted(callTarget);
         TruffleCompiler compiler = getTruffleCompiler();
         TruffleInlining inlining = createInliningPlan(callTarget, task);
@@ -687,7 +688,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 // Create "AST" and "Call Tree" groups if dumping is enabled.
                 maybeDumpTruffleTree(debug, callTarget, inlining);
                 // Compile the method (puts dumps in "Graal Graphs" group if dumping is enabled).
-                compiler.doCompile(debug, compilationId, optionsMap, callTarget, inlining, task, listeners.isEmpty() ? null : listeners);
+                compiler.doCompile(debug, compilation, optionsMap, inlining, task, listeners.isEmpty() ? null : listeners);
             }
         } catch (RuntimeException | Error e) {
             throw e;
@@ -708,14 +709,15 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     @SuppressWarnings("try")
     protected void doCompile(OptionValues options, OptimizedCallTarget callTarget, TruffleCompilationTask task) {
         TruffleCompiler compiler = getTruffleCompiler();
-        String compilationId = compiler.getCompilationIdentifier(callTarget);
-        final Map<String, Object> optionsMap = TruffleRuntimeOptions.asMap(options);
-        try (TruffleDebugContext debug = compiler.openDebugContext(optionsMap, compilationId, callTarget)) {
-            doCompile(debug, compilationId, options, callTarget, task);
-        } catch (RuntimeException | Error e) {
-            throw e;
-        } catch (Throwable e) {
-            throw new InternalError(e);
+        try (TruffleCompilation compilation = compiler.openCompilation(callTarget)) {
+            final Map<String, Object> optionsMap = TruffleRuntimeOptions.asMap(options);
+            try (TruffleDebugContext debug = compiler.openDebugContext(optionsMap, compilation)) {
+                doCompile(debug, compilation, options, callTarget, task);
+            } catch (RuntimeException | Error e) {
+                throw e;
+            } catch (Throwable e) {
+                throw new InternalError(e);
+            }
         }
     }
 

@@ -83,6 +83,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Scope;
@@ -870,6 +871,21 @@ public class LanguageSPITest {
     }
 
     @Test
+    public void testInitializeCalledWithEngineOptions() {
+        Engine engine = Engine.newBuilder().option(MultiContextLanguage.ID + ".DummyOption", "42").build();
+        Context context = Context.newBuilder().engine(engine).build();
+        context.initialize(MultiContextLanguage.ID);
+        MultiContextLanguage lang = MultiContextLanguage.getInstance(context);
+        assertEquals(1, lang.initializeMultiContextCalled.size());
+        assertEquals(1, lang.initializeMultipleContextsCalled.size());
+        assertEquals(1, (int) lang.initializeMultipleContextsCalled.get(0));
+        assertEquals(2, (int) lang.initializeMultiContextCalled.get(0));
+        assertEquals(1, lang.createContextCalled.size());
+        context.close();
+        engine.close();
+    }
+
+    @Test
     public void testMultiContextExplicitEngineNoCaching() {
         org.graalvm.polyglot.Source source1 = org.graalvm.polyglot.Source.create(MultiContextLanguage.ID, "foo");
         org.graalvm.polyglot.Source source2 = org.graalvm.polyglot.Source.create(MultiContextLanguage.ID, "bar");
@@ -1508,16 +1524,16 @@ public class LanguageSPITest {
         assertValue(bindings, ValueAssert.Trait.MEMBERS);
 
         scope.insertable = true;
-        bindings.putMember("baz", "42");
-        assertEquals("42", scope.values.get("baz"));
-        assertEquals("42", bindings.getMember("baz").asString());
+        bindings.putMember("baz", "val");
+        assertEquals("val", scope.values.get("baz"));
+        assertEquals("val", bindings.getMember("baz").asString());
         assertFails(() -> bindings.putMember("foobar", "42"), UnsupportedOperationException.class);
         assertValue(bindings, ValueAssert.Trait.MEMBERS);
 
         scope.modifiable = true;
-        bindings.putMember("foobar", "42");
-        assertEquals("42", scope.values.get("foobar"));
-        assertEquals("42", bindings.getMember("foobar").asString());
+        bindings.putMember("foobar", "val");
+        assertEquals("val", scope.values.get("foobar"));
+        assertEquals("val", bindings.getMember("foobar").asString());
         assertValue(bindings, ValueAssert.Trait.MEMBERS);
 
         scope.removable = true;
@@ -1565,14 +1581,14 @@ public class LanguageSPITest {
         scopes[2].removable = true;
         scopes[2].values.put("foo", "baz");
         scopes[2].values.put("bar", "baz");
-        scopes[3].values.put("bar", "42");
+        scopes[3].values.put("bar", "val");
         assertEquals("bar", bindings.getMember("foo").asString());
         assertEquals("baz", bindings.getMember("bar").asString());
         ValueAssert.assertFails(() -> bindings.removeMember("foo"), UnsupportedOperationException.class);
         assertTrue(bindings.removeMember("bar"));
         assertNotNull(scopes[2].values.get("foo"));
         assertNull(scopes[2].values.get("bar"));
-        assertEquals("42", bindings.getMember("bar").asString());
+        assertEquals("val", bindings.getMember("bar").asString());
         assertValue(bindings, ValueAssert.Trait.MEMBERS);
 
         c.close();
@@ -1600,9 +1616,9 @@ public class LanguageSPITest {
         assertEquals("bar", polyglotBindings.getMember("foo").asString());
         assertEquals("bar", languageBindings.getMember("foo").asString());
 
-        languageBindings.putMember("baz", "42");
-        assertEquals("42", polyglotBindings.getMember("baz").asString());
-        assertEquals("42", languageBindings.getMember("baz").asString());
+        languageBindings.putMember("baz", "val");
+        assertEquals("val", polyglotBindings.getMember("baz").asString());
+        assertEquals("val", languageBindings.getMember("baz").asString());
 
         assertValue(polyglotBindings);
         assertValue(languageBindings);
@@ -1674,11 +1690,16 @@ public class LanguageSPITest {
                     public Object execute(VirtualFrame frame) {
                         Object bindings = getCurrentContext(ProxyLanguage.class).env.getPolyglotBindings();
                         try {
-                            ForeignAccess.sendWrite(Message.WRITE.createNode(), (TruffleObject) bindings, "exportedValue", "convertOnToString");
+                            boundary((TruffleObject) bindings);
                         } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
                             throw new AssertionError(e);
                         }
                         return bindings;
+                    }
+
+                    @CompilerDirectives.TruffleBoundary
+                    private void boundary(TruffleObject bindings) throws UnknownIdentifierException, UnsupportedTypeException, UnsupportedMessageException {
+                        ForeignAccess.sendWrite(Message.WRITE.createNode(), bindings, "exportedValue", "convertOnToString");
                     }
                 });
             }

@@ -24,23 +24,29 @@
  */
 package com.oracle.svm.jni.nativeapi;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
 
-import org.graalvm.nativeimage.Platform;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.c.CContext;
 
-import com.oracle.svm.core.c.ProjectHeaderFile;
+import com.oracle.svm.core.OS;
 
 public class JNIHeaderDirectives implements CContext.Directives {
-    @Override
-    public boolean isInConfiguration() {
-        /* Necessary until GR-7932 is resolved. */
-        return !Platform.includedIn(Platform.WINDOWS.class);
-    }
+
+    private final Path jdkIncludeDir = GraalServices.Java8OrEarlier
+                    ? Paths.get(System.getProperty("java.home")).getParent().resolve("include")
+                    : Paths.get(System.getProperty("java.home")).resolve("include");
 
     @Override
     public List<String> getHeaderFiles() {
-        return Collections.singletonList(ProjectHeaderFile.resolve("com.oracle.svm.native", "include/jni.h"));
+        return Collections.singletonList("\"" + jdkIncludeDir.resolve("jni.h") + "\"");
+    }
+
+    @Override
+    public List<String> getOptions() {
+        return Collections.singletonList("-I" + jdkIncludeDir.resolve(OS.getCurrent() == OS.WINDOWS ? "win32" : OS.getCurrent().asPackageName()));
     }
 }

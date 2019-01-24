@@ -113,8 +113,8 @@ public class Dirent {
     @CFunction
     public static native DIR opendir(CCharPointer name);
 
-    @CFunction(value = "opendir", transition = CFunction.Transition.NO_TRANSITION)
-    public static native DIR opendir_no_transition(CCharPointer name);
+    @CFunction(value = "fdopendir", transition = CFunction.Transition.NO_TRANSITION)
+    public static native DIR fdopendir_no_transition(int fd);
 
     /** Same as opendir, but open the stream on the file descriptor FD. */
     @CFunction

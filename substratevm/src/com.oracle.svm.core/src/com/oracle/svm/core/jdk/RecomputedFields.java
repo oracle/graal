@@ -136,13 +136,13 @@ final class Target_java_util_concurrent_atomic_AtomicReferenceFieldUpdater_Atomi
     private long offset;
 
     /** the same as tclass, used for checks */
-    @Alias private final Class<?> cclass;
+    @Alias private Class<?> cclass;
 
     /** class holding the field */
-    @Alias private final Class<?> tclass;
+    @Alias private Class<?> tclass;
 
     /** field value type */
-    @Alias private final Class<?> vclass;
+    @Alias private Class<?> vclass;
 
     // simplified version of the original constructor
     @SuppressWarnings("unused")
@@ -184,9 +184,9 @@ final class Target_java_util_concurrent_atomic_AtomicIntegerFieldUpdater_AtomicI
     private long offset;
 
     /** the same as tclass, used for checks */
-    @Alias private final Class<?> cclass;
+    @Alias private Class<?> cclass;
     /** class holding the field */
-    @Alias private final Class<?> tclass;
+    @Alias private Class<?> tclass;
 
     // simplified version of the original constructor
     @SuppressWarnings("unused")
@@ -221,9 +221,9 @@ final class Target_java_util_concurrent_atomic_AtomicLongFieldUpdater_CASUpdater
     private long offset;
 
     /** the same as tclass, used for checks */
-    @Alias private final Class<?> cclass;
+    @Alias private Class<?> cclass;
     /** class holding the field */
-    @Alias private final Class<?> tclass;
+    @Alias private Class<?> tclass;
 
     // simplified version of the original constructor
     @SuppressWarnings("unused")
@@ -259,9 +259,9 @@ final class Target_java_util_concurrent_atomic_AtomicLongFieldUpdater_LockedUpda
     private long offset;
 
     /** the same as tclass, used for checks */
-    @Alias private final Class<?> cclass;
+    @Alias private Class<?> cclass;
     /** class holding the field */
-    @Alias private final Class<?> tclass;
+    @Alias private Class<?> tclass;
 
     // simplified version of the original constructor
     @SuppressWarnings("unused")
@@ -500,11 +500,11 @@ final class Target_java_util_concurrent_ForkJoinPool {
 @SuppressWarnings("static-method")
 final class Target_java_util_concurrent_ForkJoinTask {
     @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
-    private static final Target_java_util_concurrent_ForkJoinTask_ExceptionNode[] exceptionTable;
+    private static Target_java_util_concurrent_ForkJoinTask_ExceptionNode[] exceptionTable;
     @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
-    private static final ReentrantLock exceptionTableLock;
+    private static ReentrantLock exceptionTableLock;
     @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
-    private static final ReferenceQueue<Object> exceptionTableRefQueue;
+    private static ReferenceQueue<Object> exceptionTableRefQueue;
 
     static {
         exceptionTableLock = new ReentrantLock();

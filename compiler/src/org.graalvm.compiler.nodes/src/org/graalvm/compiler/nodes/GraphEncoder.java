@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -112,9 +112,13 @@ import jdk.vm.ci.code.Architecture;
  */
 public class GraphEncoder {
 
-    /** The orderId that always represents {@code null}. */
+    /**
+     * The orderId that always represents {@code null}.
+     */
     public static final int NULL_ORDER_ID = 0;
-    /** The orderId of the {@link StructuredGraph#start() start node} of the encoded graph. */
+    /**
+     * The orderId of the {@link StructuredGraph#start() start node} of the encoded graph.
+     */
     public static final int START_NODE_ORDER_ID = 1;
     /**
      * The orderId of the first actual node after the {@link StructuredGraph#start() start node}.
@@ -170,6 +174,7 @@ public class GraphEncoder {
      * Must be invoked before {@link #finishPrepare()} and {@link #encode}.
      */
     public void prepare(StructuredGraph graph) {
+        objects.addObject(graph.getGuardsStage());
         for (Node node : graph.getNodes()) {
             NodeClass<? extends Node> nodeClass = node.getNodeClass();
             nodeClasses.addObject(nodeClass);
@@ -288,6 +293,7 @@ public class GraphEncoder {
         for (int i = 0; i < nodeCount; i++) {
             writer.putUV(metadataStart - nodeStartOffsets[i]);
         }
+        writeObjectId(graph.getGuardsStage());
 
         /* Check that the decoding of the encode graph is the same as the input. */
         assert verifyEncoding(graph, new EncodedGraph(getEncoding(), metadataStart, getObjects(), getNodeClasses(), graph), architecture);
@@ -440,11 +446,9 @@ public class GraphEncoder {
         StructuredGraph decodedGraph = new StructuredGraph.Builder(originalGraph.getOptions(), debug, AllowAssumptions.YES).
                         method(originalGraph.method()).
                         setIsSubstitution(originalGraph.isSubstitution()).
+                        trackNodeSourcePosition(originalGraph.trackNodeSourcePosition()).
                         build();
         // @formatter:off
-        if (originalGraph.trackNodeSourcePosition()) {
-            decodedGraph.setTrackNodeSourcePosition();
-        }
         GraphDecoder decoder = new GraphDecoder(architecture, decodedGraph);
         decoder.decode(encodedGraph);
 

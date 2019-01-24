@@ -76,6 +76,9 @@ final class SuspendableLocationFinder {
     }
 
     static SourceSection findNearest(Source source, SourceElement[] sourceElements, int line, int column, SuspendAnchor anchor, TruffleInstrument.Env env) {
+        if (!source.hasCharacters()) {
+            return null;
+        }
         int boundLine = line;
         int boundColumn = column;
         int maxLine = source.getLineCount();

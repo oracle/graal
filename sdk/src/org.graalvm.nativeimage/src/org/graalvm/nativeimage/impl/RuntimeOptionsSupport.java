@@ -49,5 +49,4 @@ public interface RuntimeOptionsSupport {
 
     OptionDescriptors getOptions();
 
-    void runStartupHooks();
 }

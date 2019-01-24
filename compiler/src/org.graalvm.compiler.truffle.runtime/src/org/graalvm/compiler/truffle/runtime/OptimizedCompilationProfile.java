@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,7 +39,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 
-public class OptimizedCompilationProfile {
+public final class OptimizedCompilationProfile {
     /**
      * Number of times an installed code for this tree was seen invalidated.
      */
@@ -203,7 +203,7 @@ public class OptimizedCompilationProfile {
         // nothing to profile for inlined calls by default
     }
 
-    final void profileReturnValue(Object result) {
+    void profileReturnValue(Object result) {
         Assumption returnTypeAssumption = profiledReturnTypeAssumption;
         if (CompilerDirectives.inInterpreter() && returnTypeAssumption == null) {
             // we only profile return values in the interpreter as we don't want to deoptimize
@@ -222,7 +222,7 @@ public class OptimizedCompilationProfile {
     }
 
     @SuppressWarnings("unchecked")
-    final <E extends Throwable> E profileExceptionType(E ex) {
+    <E extends Throwable> E profileExceptionType(E ex) {
         Class<?> cachedClass = exceptionType;
         // if cachedClass is null and we are not in the interpreter we don't want to deoptimize
         // This usually happens only if the call target was compiled using compile without ever
@@ -242,7 +242,7 @@ public class OptimizedCompilationProfile {
         return ex;
     }
 
-    final Object[] injectArgumentProfile(Object[] originalArguments) {
+    Object[] injectArgumentProfile(Object[] originalArguments) {
         Assumption argumentTypesAssumption = profiledArgumentTypesAssumption;
         Object[] args = originalArguments;
         if (argumentTypesAssumption != null && argumentTypesAssumption.isValid()) {
@@ -266,7 +266,7 @@ public class OptimizedCompilationProfile {
         return castArguments;
     }
 
-    final Object injectReturnValueProfile(Object result) {
+    Object injectReturnValueProfile(Object result) {
         Class<?> klass = profiledReturnType;
         if (klass != null && CompilerDirectives.inCompiledCode() && profiledReturnTypeAssumption.isValid()) {
             return OptimizedCallTarget.unsafeCast(result, klass, true, true, true);
@@ -274,21 +274,21 @@ public class OptimizedCompilationProfile {
         return result;
     }
 
-    final void reportCompilationFailure() {
+    void reportCompilationFailure() {
         compilationFailed = true;
     }
 
-    final void reportLoopCount(int count) {
+    void reportLoopCount(int count) {
         callAndLoopCount += count;
     }
 
-    final void reportInvalidated() {
+    void reportInvalidated() {
         invalidationCount++;
         int reprofile = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleInvalidationReprofileCount);
         ensureProfiling(reprofile, reprofile);
     }
 
-    final void reportNodeReplaced() {
+    void reportNodeReplaced() {
         // delay compilation until tree is deemed stable enough
         int replaceBackoff = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleReplaceReprofileCount);
         ensureProfiling(1, replaceBackoff);
@@ -299,7 +299,7 @@ public class OptimizedCompilationProfile {
         return callTarget.compile(true);
     }
 
-    final boolean firstTierCall(OptimizedCallTarget callTarget) {
+    boolean firstTierCall(OptimizedCallTarget callTarget) {
         // The increment and the check must be inlined into the compilation unit.
         int totalCallCount = ++callCount;
         if (totalCallCount >= lastTierCompilationCallAndLoopThreshold && !callTarget.isCompiling() && !compilationFailed) {
@@ -309,7 +309,7 @@ public class OptimizedCompilationProfile {
     }
 
     @SuppressWarnings("try")
-    final boolean interpreterCall(OptimizedCallTarget callTarget) {
+    boolean interpreterCall(OptimizedCallTarget callTarget) {
         int intCallCount = ++callCount;
         int intAndLoopCallCount = ++callAndLoopCount;
         if (!callTarget.isCompiling() && !compilationFailed) {

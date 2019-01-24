@@ -48,6 +48,7 @@ import java.util.Collection;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.source.Source.SourceBuilder;
+import java.nio.file.Path;
 
 final class SourceAccessor extends Accessor {
 
@@ -75,16 +76,8 @@ final class SourceAccessor extends Accessor {
         return ACCESSOR.loaders();
     }
 
-    static byte[] readTruffleFile(File file) throws IOException {
-        return ACCESSOR.languageSupport().truffleFileContent(file);
-    }
-
-    static boolean isTruffleFile(File file) {
-        return ACCESSOR.languageSupport().checkTruffleFile(file);
-    }
-
-    static File asFile(TruffleFile file) {
-        return ACCESSOR.languageSupport().asFile(file);
+    static Path getPath(TruffleFile file) {
+        return ACCESSOR.languageSupport().getPath(file);
     }
 
     static final class SourceSupportImpl extends Accessor.SourceSupport {

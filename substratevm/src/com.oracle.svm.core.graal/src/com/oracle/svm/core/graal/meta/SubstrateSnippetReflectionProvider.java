@@ -25,6 +25,7 @@
 package com.oracle.svm.core.graal.meta;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.word.WordTypes;
 
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -35,6 +36,12 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class SubstrateSnippetReflectionProvider implements SnippetReflectionProvider {
+
+    private WordTypes wordTypes;
+
+    public SubstrateSnippetReflectionProvider(WordTypes wordTypes) {
+        this.wordTypes = wordTypes;
+    }
 
     @Override
     public JavaConstant forObject(Object object) {
@@ -48,18 +55,17 @@ public class SubstrateSnippetReflectionProvider implements SnippetReflectionProv
     }
 
     @Override
-    public Object asObject(ResolvedJavaType type, JavaConstant constant) {
-        return KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(type, constant), Object.class);
-    }
-
-    @Override
     public JavaConstant forBoxed(JavaKind kind, Object value) {
         return SubstrateObjectConstant.forBoxedValue(kind, value);
     }
 
     @Override
     public <T> T getInjectedNodeIntrinsicParameter(Class<T> type) {
-        return null;
+        if (type.isAssignableFrom(WordTypes.class)) {
+            return type.cast(wordTypes);
+        } else {
+            return null;
+        }
     }
 
     @Override

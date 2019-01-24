@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,11 +56,11 @@ public final class AssertionNode extends FixedWithNextNode implements Lowerable,
     protected final boolean compileTimeAssertion;
     protected final String message;
 
-    public AssertionNode(boolean compileTimeAssertion, ValueNode condition, String message) {
+    public AssertionNode(boolean compileTimeAssertion, ValueNode condition, String message, Object arg1, Object arg2) {
         super(TYPE, StampFactory.forVoid());
         this.condition = condition;
         this.compileTimeAssertion = compileTimeAssertion;
-        this.message = message;
+        this.message = message + arg1 + arg2;
     }
 
     public ValueNode condition() {
@@ -112,5 +112,14 @@ public final class AssertionNode extends FixedWithNextNode implements Lowerable,
     }
 
     @NodeIntrinsic
-    public static native void assertion(@ConstantNodeParameter boolean compileTimeAssertion, boolean condition, @ConstantNodeParameter String message);
+    public static native void assertion(@ConstantNodeParameter boolean compileTimeAssertion, boolean condition, @ConstantNodeParameter String message, @ConstantNodeParameter Object arg1,
+                    @ConstantNodeParameter Object arg2);
+
+    public static void assertion(@ConstantNodeParameter boolean compileTimeAssertion, boolean condition, @ConstantNodeParameter String message) {
+        assertion(compileTimeAssertion, condition, message, "", "");
+    }
+
+    public static void assertion(@ConstantNodeParameter boolean compileTimeAssertion, boolean condition, @ConstantNodeParameter String message, @ConstantNodeParameter Object arg1) {
+        assertion(compileTimeAssertion, condition, message, arg1, "");
+    }
 }

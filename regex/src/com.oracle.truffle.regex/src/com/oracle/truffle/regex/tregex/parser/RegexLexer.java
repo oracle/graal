@@ -32,7 +32,6 @@ import com.oracle.truffle.regex.chardata.CodePointRange;
 import com.oracle.truffle.regex.chardata.CodePointSet;
 import com.oracle.truffle.regex.chardata.Constants;
 import com.oracle.truffle.regex.chardata.UnicodeCharacterProperties;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 import java.math.BigInteger;
@@ -88,7 +87,7 @@ public final class RegexLexer {
      *            {@link RegexSource#getPattern()}.
      */
     private void setSourceSection(Token t, int startIndex, int endIndex) {
-        if (DebugUtil.DEBUG) {
+        if (options.isDumpAutomata()) {
             // RegexSource#getSource() prepends a slash ('/') to the pattern, so we have to add an
             // offset of 1 here.
             t.setSourceSection(source.getSource().createSection(startIndex + 1, endIndex - startIndex));

@@ -38,9 +38,8 @@ import java.util.Collections;
 /**
  * Truffle Regular Expression Language
  * <p>
- * This language represents classic regular expressions, currently in JavaScript flavor only. By
- * evaluating any source, or by importing the T_REGEX_ENGINE_BUILDER, you get access to the
- * {@link RegexEngineBuilder}. By calling this builder, you can build your custom
+ * This language represents classic regular expressions. By evaluating any source, you get access to
+ * the {@link RegexEngineBuilder}. By calling this builder, you can build your custom
  * {@link RegexEngine} which implements your flavor of regular expressions and uses your fallback
  * compiler for expressions not covered. The {@link RegexEngine} accepts regular expression patterns
  * and flags and compiles them to {@link RegexObject}s, which you can use to match the regular
@@ -48,29 +47,33 @@ import java.util.Collections;
  * <p>
  *
  * <pre>
- * Usage example in JavaScript:
+ * Usage example in pseudocode:
  * {@code
- * var engineBuilder = Polyglot.eval("application/tregex", "");
- * // or var engineBuilder = Polyglot.import("T_REGEX_ENGINE_BUILDER"); after initializing the language
- * var engine = engineBuilder();
- * var pattern = engine("(a|(b))c", "i");
- * var result = pattern.exec("xacy", 0);
- * print(result.isMatch);    // true
- * print(result.input);      // "xacy"
- * print(result.groupCount); // 3
- * print(result.start[0] + ", " + result.end[0]); // "1, 3"
- * print(result.start[1] + ", " + result.end[1]); // "1, 2"
- * print(result.start[2] + ", " + result.end[2]); // "-1, -1"
- * var result2 = pattern.exec("xxx", 0);
- * print(result.isMatch);    // false
- * print(result.input);      // null
- * print(result.groupCount); // 0
- * print(result.start[0] + ", " + result.end[0]); // throws IndexOutOfBoundsException
+ * engineBuilder = <eval any source in the "regex" language>
+ * engine = engineBuilder("Flavor=ECMAScript", optionalFallbackCompiler)
+ *
+ * regex = engine("(a|(b))c", "i")
+ * assert(regex.pattern == "(a|(b))c")
+ * assert(regex.flags.ignoreCase == true)
+ *
+ * result = regex.exec("xacy", 0)
+ * assert(result.isMatch == true)
+ * assert(result.input == "xacy")
+ * assert(result.groupCount == 3)
+ * assert([result.start[0], result.end[0]], [ 1,  3])
+ * assert([result.start[1], result.end[1]], [ 1,  2])
+ * assert([result.start[2], result.end[2]], [-1, -1])
+ *
+ * result2 = regex.exec("xxx", 0)
+ * assert(result2.isMatch == false)
+ * assert(result2.input == null)
+ * assert(result2.groupCount == 0)
+ * assertThrows([result2.start[0], result2.end[0]], IndexOutOfBoundsException)
  * }
  * </pre>
  */
 
-@TruffleLanguage.Registration(name = RegexLanguage.NAME, id = RegexLanguage.ID, characterMimeTypes = RegexLanguage.MIME_TYPE, version = "0.1", internal = true)
+@TruffleLanguage.Registration(name = RegexLanguage.NAME, id = RegexLanguage.ID, characterMimeTypes = RegexLanguage.MIME_TYPE, version = "0.1", contextPolicy = TruffleLanguage.ContextPolicy.SHARED, internal = true, interactive = false)
 @ProvidedTags(StandardTags.RootTag.class)
 public final class RegexLanguage extends TruffleLanguage<Void> {
 

@@ -36,6 +36,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
+import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNodeGen.LLVMObjectToNativeNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
@@ -66,8 +67,8 @@ public abstract class LLVMToNativeNode extends LLVMNode {
             return LLVMNativePointer.create((long) from.getValue());
         } else {
             CompilerDirectives.transferToInterpreter();
-            throw new IllegalAccessError(String.format("Cannot convert a primitive value (type: %s, value: %s) to an LLVMNativePointer).", String.valueOf(from.getValue().getClass()),
-                            String.valueOf(from.getValue())));
+            throw new LLVMPolyglotException(this, "Cannot convert a primitive value (type: %s, value: %s) to an LLVMNativePointer).", String.valueOf(from.getValue().getClass()),
+                            String.valueOf(from.getValue()));
         }
     }
 
@@ -102,7 +103,7 @@ public abstract class LLVMToNativeNode extends LLVMNode {
                 return LLVMNativePointer.create(lib.asPointer(pointer));
             } catch (InteropException e) {
                 CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException("Cannot convert " + pointer + " to LLVMNativePointer", e);
+                throw new LLVMPolyglotException(this, "Cannot convert " + pointer + " to LLVMNativePointer");
             }
         }
 
@@ -114,7 +115,7 @@ public abstract class LLVMToNativeNode extends LLVMNode {
                 return LLVMNativePointer.create(lib.asPointer(n));
             } catch (InteropException e) {
                 CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException("Cannot convert " + pointer + " to LLVMNativePointer", e);
+                throw new LLVMPolyglotException(this, "Cannot convert " + pointer + " to LLVMNativePointer");
             }
         }
     }

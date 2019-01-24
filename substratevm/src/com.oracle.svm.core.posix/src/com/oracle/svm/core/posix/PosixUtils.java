@@ -36,13 +36,10 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.SyncFailedException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
-import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -52,16 +49,12 @@ import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.CompilerCommandPlugin;
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jdk.JDK9OrLater;
-import com.oracle.svm.core.jdk.RuntimeFeature;
-import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.posix.headers.Dlfcn;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.LibC;
@@ -71,45 +64,6 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
 public class PosixUtils {
-
-    @AutomaticFeature
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-    public static class ExposeSetLocaleFeature implements Feature {
-        @Override
-        public List<Class<? extends Feature>> getRequiredFeatures() {
-            return Arrays.asList(RuntimeFeature.class);
-        }
-
-        @Override
-        public void afterRegistration(AfterRegistrationAccess access) {
-            RuntimeSupport.getRuntimeSupport().addCommandPlugin(new SetLocaleCommand());
-            RuntimeSupport.getRuntimeSupport().addCommandPlugin(new GetProcessIDCommand());
-        }
-    }
-
-    private static class SetLocaleCommand implements CompilerCommandPlugin {
-        @Override
-        public String name() {
-            return "com.oracle.svm.core.posix.PosixUtils.setLocale(String, String)String";
-        }
-
-        @Override
-        public Object apply(Object[] args) {
-            return setLocale((String) args[0], (String) args[1]);
-        }
-    }
-
-    private static class GetProcessIDCommand implements CompilerCommandPlugin {
-        @Override
-        public String name() {
-            return "com.oracle.svm.core.posix.PosixUtils.getpid()int";
-        }
-
-        @Override
-        public Object apply(Object[] args) {
-            return getpid();
-        }
-    }
 
     static String setLocale(String category, String locale) {
         int intCategory = getCategory(category);
@@ -202,7 +156,7 @@ public class PosixUtils {
         @TargetElement(onlyWith = JDK9OrLater.class) //
         @SuppressWarnings({"unused", "static-method"})
         private /* native */ void close0() throws IOException {
-            throw VMError.unsupportedFeature("JDK9OrLater: Target_java_io_FileDescriptor.close0");
+            fileClose(KnownIntrinsics.unsafeCast(this, FileDescriptor.class));
         }
     }
 

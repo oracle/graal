@@ -24,10 +24,15 @@
  */
 package com.oracle.svm.core.jdk;
 
+import java.lang.management.ClassLoadingMXBean;
+import java.lang.management.CompilationMXBean;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
+import java.lang.management.MemoryManagerMXBean;
+import java.lang.management.MemoryPoolMXBean;
 import java.lang.management.OperatingSystemMXBean;
+import java.lang.management.PlatformManagedObject;
 import java.lang.management.RuntimeMXBean;
 import java.lang.management.ThreadInfo;
 import java.lang.management.ThreadMXBean;
@@ -40,20 +45,20 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
+import javax.management.MBeanServer;
+import javax.management.MBeanServerConnection;
 import javax.management.ObjectName;
 
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.Feature;
-import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -63,6 +68,7 @@ import sun.management.Util;
 //Checkstyle: resume
 
 @TargetClass(java.lang.management.ManagementFactory.class)
+@SuppressWarnings("unused")
 final class Target_java_lang_management_ManagementFactory {
 
     @Substitute
@@ -77,22 +83,81 @@ final class Target_java_lang_management_ManagementFactory {
 
     @Substitute
     private static RuntimeMXBean getRuntimeMXBean() {
-        return ImageSingletons.lookup(SubstrateRuntimeMXBean.class);
+        return ImageSingletons.lookup(RuntimeMXBean.class);
     }
 
     @Substitute
     private static ThreadMXBean getThreadMXBean() {
-        return ImageSingletons.lookup(SubstrateThreadMXBean.class);
+        return ImageSingletons.lookup(ThreadMXBean.class);
     }
 
     @Substitute
     private static OperatingSystemMXBean getOperatingSystemMXBean() {
-        return ImageSingletons.lookup(SubstrateOperatingSystemMXBean.class);
+        return ImageSingletons.lookup(OperatingSystemMXBean.class);
+    }
+
+    @Substitute
+    private static ClassLoadingMXBean getClassLoadingMXBean() {
+        return ImageSingletons.lookup(ClassLoadingMXBean.class);
+    }
+
+    @Substitute
+    private static CompilationMXBean getCompilationMXBean() {
+        return ImageSingletons.lookup(CompilationMXBean.class);
+    }
+
+    @Substitute
+    private static List<MemoryPoolMXBean> getMemoryPoolMXBeans() {
+        return Collections.emptyList();
+    }
+
+    @Substitute
+    private static List<MemoryManagerMXBean> getMemoryManagerMXBeans() {
+        return Collections.emptyList();
+    }
+
+    @Substitute
+    private static MBeanServer getPlatformMBeanServer() {
+        throw VMError.unsupportedFeature("ManagementFactory");
+    }
+
+    @Substitute
+    private static <T> T newPlatformMXBeanProxy(MBeanServerConnection connection, String mxbeanName, Class<T> mxbeanInterface) throws java.io.IOException {
+        return null;
+    }
+
+    @Substitute
+    private static <T extends PlatformManagedObject> T getPlatformMXBean(Class<T> mxbeanInterface) {
+        return null;
+    }
+
+    @Substitute
+    private static <T extends PlatformManagedObject> List<T> getPlatformMXBeans(Class<T> mxbeanInterface) {
+        return Collections.emptyList();
+    }
+
+    @Substitute
+    private static <T extends PlatformManagedObject> T getPlatformMXBean(MBeanServerConnection connection, Class<T> mxbeanInterface) throws java.io.IOException {
+        return null;
+    }
+
+    @Substitute
+    private static <T extends PlatformManagedObject> List<T> getPlatformMXBeans(MBeanServerConnection connection, Class<T> mxbeanInterface) throws java.io.IOException {
+        return Collections.emptyList();
+    }
+
+    @Substitute
+    private static Set<Class<? extends PlatformManagedObject>> getPlatformManagementInterfaces() {
+        return Collections.emptySet();
     }
 }
 
 @AutomaticFeature
 final class ManagementFactoryFeature implements Feature {
+    @Override
+    public List<Class<? extends Feature>> getRequiredFeatures() {
+        return Collections.singletonList(RuntimeFeature.class);
+    }
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
@@ -101,16 +166,26 @@ final class ManagementFactoryFeature implements Feature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(SubstrateRuntimeMXBean.class, new SubstrateRuntimeMXBean());
-        ImageSingletons.add(SubstrateThreadMXBean.class, new SubstrateThreadMXBean());
-        ImageSingletons.add(SubstrateOperatingSystemMXBean.class, new SubstrateOperatingSystemMXBean());
+        SubstrateRuntimeMXBean runtimeMXBean = new SubstrateRuntimeMXBean();
+        ImageSingletons.add(RuntimeMXBean.class, runtimeMXBean);
+        ImageSingletons.add(ThreadMXBean.class, new SubstrateThreadMXBean());
+        ImageSingletons.add(ClassLoadingMXBean.class, new SubstrateClassLoadingMXBean());
+        ImageSingletons.add(CompilationMXBean.class, new SubstrateCompilationMXBean());
+
+        RuntimeSupport.getRuntimeSupport().addStartupHook(runtimeMXBean.startupHook());
     }
 
     private static Object replace(Object source) {
         if (source instanceof ThreadMXBean) {
-            return ImageSingletons.lookup(SubstrateThreadMXBean.class);
+            return ImageSingletons.lookup(ThreadMXBean.class);
         } else if (source instanceof RuntimeMXBean) {
-            return ImageSingletons.lookup(SubstrateRuntimeMXBean.class);
+            return ImageSingletons.lookup(RuntimeMXBean.class);
+        } else if (source instanceof OperatingSystemMXBean) {
+            return ImageSingletons.lookup(OperatingSystemMXBean.class);
+        } else if (source instanceof ClassLoadingMXBean) {
+            return ImageSingletons.lookup(ClassLoadingMXBean.class);
+        } else if (source instanceof CompilationMXBean) {
+            return ImageSingletons.lookup(CompilationMXBean.class);
         } else if (source instanceof MemoryMXBean) {
             return Heap.getHeap().getMemoryMXBean();
         } else if (source instanceof GarbageCollectorMXBean) {
@@ -153,9 +228,15 @@ final class SubstrateRuntimeMXBean implements RuntimeMXBean {
     SubstrateRuntimeMXBean() {
     }
 
-    /** Set the start time of the VM. */
-    void setStartMillis() {
-        startMillis = System.currentTimeMillis();
+    Runnable startupHook() {
+        return new Runnable() {
+
+            /** Set the start time of the VM. */
+            @Override
+            public void run() {
+                startMillis = System.currentTimeMillis();
+            }
+        };
     }
 
     @Override
@@ -168,7 +249,7 @@ final class SubstrateRuntimeMXBean implements RuntimeMXBean {
 
     @Override
     public ObjectName getObjectName() {
-        throw VMError.unsupportedFeature(MSG);
+        return Util.newObjectName(ManagementFactory.RUNTIME_MXBEAN_NAME);
     }
 
     @SuppressWarnings("deprecation")
@@ -276,30 +357,16 @@ final class SubstrateRuntimeMXBean implements RuntimeMXBean {
     }
 }
 
-@AutomaticFeature
-class RuntimeMXBeanFeature implements Feature {
-
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        RuntimeSupport.getRuntimeSupport().addStartupHook(new Runnable() {
-
-            @Override
-            public void run() {
-                final RuntimeMXBean runtimeMXBean = ManagementFactory.getRuntimeMXBean();
-                if (runtimeMXBean instanceof SubstrateRuntimeMXBean) {
-                    final SubstrateRuntimeMXBean substrateRuntimeMXBean = (SubstrateRuntimeMXBean) runtimeMXBean;
-                    substrateRuntimeMXBean.setStartMillis();
-                }
-            }
-        });
-    }
-}
-
 final class SubstrateThreadMXBean implements com.sun.management.ThreadMXBean {
 
     private static final String MSG = "ThreadMXBean methods";
 
     SubstrateThreadMXBean() {
+    }
+
+    @Override
+    public ObjectName getObjectName() {
+        return Util.newObjectName(ManagementFactory.THREAD_MXBEAN_NAME);
     }
 
     @Override
@@ -345,11 +412,6 @@ final class SubstrateThreadMXBean implements com.sun.management.ThreadMXBean {
     /* All remaining methods are unsupported on Substrate VM. */
 
     @Override
-    public ObjectName getObjectName() {
-        throw VMError.unsupportedFeature(MSG);
-    }
-
-    @Override
     public long[] getAllThreadIds() {
         throw VMError.unsupportedFeature(MSG);
     }
@@ -376,17 +438,16 @@ final class SubstrateThreadMXBean implements com.sun.management.ThreadMXBean {
 
     @Override
     public boolean isThreadContentionMonitoringSupported() {
-        throw VMError.unsupportedFeature(MSG);
+        return false;
     }
 
     @Override
     public boolean isThreadContentionMonitoringEnabled() {
-        throw VMError.unsupportedFeature(MSG);
+        return false;
     }
 
     @Override
     public void setThreadContentionMonitoringEnabled(boolean enable) {
-        throw VMError.unsupportedFeature(MSG);
     }
 
     @Override
@@ -480,79 +541,58 @@ final class SubstrateThreadMXBean implements com.sun.management.ThreadMXBean {
     }
 }
 
-final class SubstrateOperatingSystemMXBean implements com.sun.management.OperatingSystemMXBean {
-    private static final ObjectName objectName = Util.newObjectName(ManagementFactory.OPERATING_SYSTEM_MXBEAN_NAME);
+class SubstrateClassLoadingMXBean implements ClassLoadingMXBean {
 
     @Override
     public ObjectName getObjectName() {
-        return objectName;
+        return Util.newObjectName(ManagementFactory.CLASS_LOADING_MXBEAN_NAME);
+    }
+
+    @Override
+    public long getTotalLoadedClassCount() {
+        return 0;
+    }
+
+    @Override
+    public int getLoadedClassCount() {
+        return 0;
+    }
+
+    @Override
+    public long getUnloadedClassCount() {
+        return 0;
+    }
+
+    @Override
+    public boolean isVerbose() {
+        return false;
+    }
+
+    @Override
+    public void setVerbose(boolean value) {
+    }
+}
+
+class SubstrateCompilationMXBean implements CompilationMXBean {
+
+    @Override
+    public ObjectName getObjectName() {
+        return Util.newObjectName(ManagementFactory.COMPILATION_MXBEAN_NAME);
     }
 
     @Override
     public String getName() {
-        return System.getProperty("os.name");
+        return "Graal";
     }
 
     @Override
-    public String getArch() {
-        return SubstrateUtil.getArchitectureName();
+    public boolean isCompilationTimeMonitoringSupported() {
+        return false;
     }
 
     @Override
-    public String getVersion() {
-        return System.getProperty("os.version");
-    }
-
-    @Override
-    public int getAvailableProcessors() {
-        return Runtime.getRuntime().availableProcessors();
-    }
-
-    @Override
-    public long getTotalPhysicalMemorySize() {
-        return PhysicalMemory.size().rawValue();
-    }
-
-    @Override
-    public double getSystemLoadAverage() {
-        return -1;
-    }
-
-    private static final String MSG = "OperatingSystemMXBean methods";
-
-    @Override
-    public long getCommittedVirtualMemorySize() {
-        throw VMError.unsupportedFeature(MSG);
-    }
-
-    @Override
-    public long getTotalSwapSpaceSize() {
-        throw VMError.unsupportedFeature(MSG);
-    }
-
-    @Override
-    public long getFreeSwapSpaceSize() {
-        throw VMError.unsupportedFeature(MSG);
-    }
-
-    @Override
-    public long getProcessCpuTime() {
-        throw VMError.unsupportedFeature(MSG);
-    }
-
-    @Override
-    public long getFreePhysicalMemorySize() {
-        throw VMError.unsupportedFeature(MSG);
-    }
-
-    @Override
-    public double getSystemCpuLoad() {
-        throw VMError.unsupportedFeature(MSG);
-    }
-
-    @Override
-    public double getProcessCpuLoad() {
-        throw VMError.unsupportedFeature(MSG);
+    public long getTotalCompilationTime() {
+        return 0;
     }
 }
 

@@ -49,7 +49,7 @@ public class UserError {
         }
 
         protected UserException(Iterable<String> messages) {
-            super(String.join("\n", messages));
+            super(String.join(System.lineSeparator(), messages));
             this.messages = messages;
         }
 

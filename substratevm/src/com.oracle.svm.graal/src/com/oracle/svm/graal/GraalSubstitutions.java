@@ -26,7 +26,6 @@ package com.oracle.svm.graal;
 
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Custom;
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.FromAlias;
-import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.NewInstance;
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Reset;
 
 import java.io.PrintStream;
@@ -36,7 +35,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import jdk.vm.ci.meta.MetaAccessProvider;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
@@ -53,10 +51,8 @@ import org.graalvm.compiler.lir.CompositeValue;
 import org.graalvm.compiler.lir.CompositeValueClass;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstructionClass;
-import org.graalvm.compiler.lir.alloc.trace.TraceAllocationPhase;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.lir.phases.LIRPhase;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -79,8 +75,11 @@ import com.oracle.svm.graal.hosted.FieldsOffsetsFeature;
 import com.oracle.svm.graal.hosted.GraalFeature;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+
+// Checkstyle: stop
 
 @TargetClass(value = org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.class, onlyWith = GraalFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_nodes_graphbuilderconf_InvocationPlugins {
@@ -163,7 +162,7 @@ final class Target_org_graalvm_compiler_debug_DebugContext_Immutable {
      * be cleared.
      */
     @Alias @RecomputeFieldValue(kind = Custom, declClass = ClearImmutableCache.class)//
-    private static final Target_org_graalvm_compiler_debug_DebugContext_Immutable[] CACHE = null;
+    private static Target_org_graalvm_compiler_debug_DebugContext_Immutable[] CACHE;
 }
 
 @TargetClass(value = DebugHandlersFactory.class, onlyWith = GraalFeature.IsEnabled.class)
@@ -192,7 +191,7 @@ final class Target_org_graalvm_compiler_debug_DebugContext {
      * holds onto a thread and is only used for assertions.
      */
     @Alias @RecomputeFieldValue(kind = Reset)//
-    private final Target_org_graalvm_compiler_debug_DebugContext_Invariants invariants = null;
+    private Target_org_graalvm_compiler_debug_DebugContext_Invariants invariants;
 
     /**
      * Initialization of {@code TTY.out} causes the pointsto analysis to see
@@ -200,7 +199,7 @@ final class Target_org_graalvm_compiler_debug_DebugContext {
      * must not include HotSpot code, a substitution is required.
      */
     @Alias @RecomputeFieldValue(kind = FromAlias)//
-    public static final PrintStream DEFAULT_LOG_STREAM = Log.logStream();
+    public static PrintStream DEFAULT_LOG_STREAM = Log.logStream();
 
     /**
      * SVM doesn't currently support {@code Throwable.fillInStackTrace()}. This substitution should
@@ -215,7 +214,7 @@ final class Target_org_graalvm_compiler_debug_DebugContext {
 @TargetClass(value = TimeSource.class, onlyWith = GraalFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_debug_TimeSource {
     @Alias @RecomputeFieldValue(kind = FromAlias)//
-    private static final boolean USING_THREAD_CPU_TIME = false;
+    private static boolean USING_THREAD_CPU_TIME = false;
 }
 
 @TargetClass(value = org.graalvm.compiler.debug.TTY.class, onlyWith = GraalFeature.IsEnabled.class)
@@ -239,36 +238,13 @@ final class Target_org_graalvm_compiler_virtual_phases_ea_EffectList {
     }
 }
 
-@TargetClass(value = org.graalvm.compiler.phases.common.inlining.InliningUtil.class, onlyWith = GraalFeature.IsEnabled.class)
-final class Target_org_graalvm_compiler_phases_common_inlining_InliningUtil {
-
-    /**
-     * Creates a macro node.
-     *
-     * @param macroNodeClass The class of the macro node to create
-     * @param invoke The parameter to the constructor
-     */
-    @Substitute
-    private static FixedWithNextNode createMacroNodeInstance(Class<? extends FixedWithNextNode> macroNodeClass, Invoke invoke) {
-        throw VMError.shouldNotReachHere("unknown macro node class: " + macroNodeClass.getName());
-    }
-}
-
 @TargetClass(value = org.graalvm.compiler.debug.KeyRegistry.class, onlyWith = GraalFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_debug_KeyRegistry {
 
-    static class EconomicMapResetter implements RecomputeFieldValue.CustomFieldValueComputer {
-
-        @Override
-        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-            return EconomicMap.create();
-        }
-    }
-
-    @Alias @RecomputeFieldValue(kind = Custom, declClass = EconomicMapResetter.class)//
+    @Alias @RecomputeFieldValue(kind = FromAlias)//
     private static EconomicMap<String, Integer> keyMap = EconomicMap.create();
 
-    @Alias @RecomputeFieldValue(kind = NewInstance, declClass = ArrayList.class)//
+    @Alias @RecomputeFieldValue(kind = FromAlias)//
     private static List<MetricKey> keys = new ArrayList<>();
 }
 
@@ -331,19 +307,6 @@ final class Target_org_graalvm_compiler_lir_phases_LIRPhase {
     @Substitute
     static LIRPhase.LIRPhaseStatistics getLIRPhaseStatistics(Class<?> clazz) {
         LIRPhase.LIRPhaseStatistics result = GraalSupport.get().lirPhaseStatistics.get(clazz);
-        if (result == null) {
-            throw VMError.shouldNotReachHere("Missing statistics for phase class: " + clazz.getName() + "\n");
-        }
-        return result;
-    }
-}
-
-@TargetClass(value = org.graalvm.compiler.lir.alloc.trace.TraceAllocationPhase.class, onlyWith = GraalFeature.IsEnabled.class)
-final class Target_org_graalvm_compiler_lir_alloc_trace_TraceAllocationPhase {
-
-    @Substitute
-    static TraceAllocationPhase.AllocationStatistics getAllocationStatistics(Class<?> clazz) {
-        TraceAllocationPhase.AllocationStatistics result = GraalSupport.get().traceAllocationPhaseStatistics.get(clazz);
         if (result == null) {
             throw VMError.shouldNotReachHere("Missing statistics for phase class: " + clazz.getName() + "\n");
         }
@@ -415,14 +378,14 @@ final class Target_org_graalvm_compiler_lir_CompositeValueClass {
 final class Target_org_graalvm_compiler_printer_NoDeadCodeVerifyHandler {
     @Alias//
     @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ConcurrentHashMap.class)//
-    private static final Map<String, Boolean> discovered = new ConcurrentHashMap<>();
+    private static Map<String, Boolean> discovered;
 }
 
 @TargetClass(value = org.graalvm.compiler.nodes.NamedLocationIdentity.class, innerClass = "DB", onlyWith = GraalFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_nodes_NamedLocationIdentity_DB {
     @Alias//
     @RecomputeFieldValue(kind = FromAlias, declClass = EconomicMap.class)//
-    private static final EconomicSet<String> map = EconomicSet.create(Equivalence.DEFAULT);
+    private static EconomicSet<String> map = EconomicSet.create(Equivalence.DEFAULT);
 }
 
 /** Dummy class to have a class with the file's name. Do not remove. */

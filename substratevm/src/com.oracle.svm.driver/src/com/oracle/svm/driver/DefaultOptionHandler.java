@@ -34,6 +34,8 @@ import java.util.jar.Manifest;
 
 import org.graalvm.compiler.options.OptionType;
 
+import com.oracle.svm.hosted.ImageClassLoader;
+
 class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
     static final String helpText = NativeImage.getResource("/Help.txt");
@@ -75,8 +77,10 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 if (cpArgs == null) {
                     NativeImage.showError(headArg + " requires class path specification");
                 }
-                for (String cp : cpArgs.split(File.pathSeparator)) {
-                    nativeImage.addCustomImageClasspath(Paths.get(cp));
+                for (String cp : cpArgs.split(File.pathSeparator, Integer.MAX_VALUE)) {
+                    /* Conform to `java` command empty cp entry handling. */
+                    String cpEntry = cp.isEmpty() ? "." : cp;
+                    nativeImage.addCustomImageClasspath(cpEntry);
                 }
                 return true;
             case "--configurations-path":
@@ -199,7 +203,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             /* Missing Class-Path Attribute is tolerable */
             if (classPath != null) {
                 for (String cp : classPath.split(" +")) {
-                    Path manifestClassPath = Paths.get(cp);
+                    Path manifestClassPath = ImageClassLoader.stringToClasspath(cp);
                     if (!manifestClassPath.isAbsolute()) {
                         /* Resolve relative manifestClassPath against directory containing jar */
                         manifestClassPath = filePath.getParent().resolve(manifestClassPath);
@@ -207,7 +211,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                     nativeImage.addImageProvidedClasspath(manifestClassPath);
                 }
             }
-            nativeImage.addImageClasspath(filePath);
+            nativeImage.addCustomImageClasspath(filePath);
         } catch (NativeImage.NativeImageError ex) {
             throw ex;
         } catch (Throwable ex) {

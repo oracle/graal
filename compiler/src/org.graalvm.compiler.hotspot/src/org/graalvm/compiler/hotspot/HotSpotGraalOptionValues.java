@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,9 +40,10 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionsParser;
 
 import jdk.vm.ci.common.InitTimer;
+import jdk.vm.ci.common.NativeImageReinitialize;
 
 /**
- * The {@link #HOTSPOT_OPTIONS} value contains the options values initialized in a HotSpot VM. The
+ * The {@link #defaultOptions()} method returns the options values initialized in a HotSpot VM. The
  * values are set via system properties with the {@value #GRAAL_OPTION_PROPERTY_PREFIX} prefix.
  */
 public class HotSpotGraalOptionValues {
@@ -71,7 +72,15 @@ public class HotSpotGraalOptionValues {
         return GRAAL_OPTION_PROPERTY_PREFIX + value.getName() + "=" + value.getValue(options);
     }
 
-    public static final OptionValues HOTSPOT_OPTIONS = initializeOptions();
+    @NativeImageReinitialize private static volatile OptionValues hotspotOptions;
+
+    public static OptionValues defaultOptions() {
+        OptionValues options = hotspotOptions;
+        if (options != null) {
+            return options;
+        }
+        return (hotspotOptions = initializeOptions());
+    }
 
     /**
      * Global options. The values for these options are initialized by parsing the file denoted by

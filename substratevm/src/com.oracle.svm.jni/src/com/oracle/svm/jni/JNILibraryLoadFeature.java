@@ -67,6 +67,9 @@ class JNILibraryInitializer implements LibraryInitializer {
 
     @Override
     public boolean isBuiltinLibrary(String libName) {
+        if (PlatformNativeLibrarySupport.singleton().isBuiltinLibrary(libName)) {
+            return true;
+        }
         String onLoadName = getOnLoadName(libName, true);
         PointerBase onLoad = PlatformNativeLibrarySupport.singleton().findBuiltinSymbol(onLoadName);
         return onLoad.isNonNull();

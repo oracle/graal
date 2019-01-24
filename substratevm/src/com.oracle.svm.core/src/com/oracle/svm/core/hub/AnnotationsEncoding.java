@@ -34,6 +34,9 @@ public final class AnnotationsEncoding {
     public static Annotation[] getAnnotations(Object annotationsEncoding) {
         if (annotationsEncoding == null) {
             return EMPTY_ANNOTATION_ARRAY;
+        } else if (annotationsEncoding instanceof ArrayStoreException) {
+            /* JDK-7183985 was hit at image build time when the annotations were encoded. */
+            throw (ArrayStoreException) annotationsEncoding;
         } else if (annotationsEncoding instanceof Annotation[]) {
             return ((Annotation[]) annotationsEncoding).clone();
         } else {
@@ -45,7 +48,9 @@ public final class AnnotationsEncoding {
     public static <T extends Annotation> T getAnnotation(Object annotationsEncoding, Class<T> annotationClass) {
         Objects.requireNonNull(annotationClass);
 
-        if (annotationsEncoding instanceof Annotation[]) {
+        if (annotationsEncoding instanceof ArrayStoreException) {
+            throw (ArrayStoreException) annotationsEncoding;
+        } else if (annotationsEncoding instanceof Annotation[]) {
             for (Annotation annotation : (Annotation[]) annotationsEncoding) {
                 if (annotationClass.isInstance(annotation)) {
                     return (T) annotation;

@@ -89,8 +89,8 @@ public class AnalysisUniverse implements Universe {
 
     /**
      * True if the analysis has converged and the analysis data is valid. This is similar to
-     * {@sealed} but in contrast to {@sealed}, the analysis data can be set to invalid again, e.g.
-     * if features modify the universe.
+     * {@link #sealed} but in contrast to {@link #sealed}, the analysis data can be set to invalid
+     * again, e.g. if features modify the universe.
      */
     boolean analysisDataValid;
 
@@ -609,5 +609,10 @@ public class AnalysisUniverse implements Universe {
     @Override
     public ResolvedJavaMethod resolveSubstitution(ResolvedJavaMethod method) {
         return substitutions.resolve(method);
+    }
+
+    @Override
+    public AnalysisType objectType() {
+        return objectClass;
     }
 }

@@ -1,11 +1,11 @@
 suite = {
-  "mxversion" : "5.187.0",
+  "mxversion" : "5.195.1",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
   "groupId" : "org.graalvm.compiler",
-  "version" : "1.0.0-rc10",
-  "release" : False,
+  "version" : "1.0.0-rc11",
+  "release" : True,
   "url" : "http://www.graalvm.org/",
   "developer" : {
     "name" : "Truffle and Graal developers",
@@ -111,18 +111,13 @@ suite = {
       "sha1" : "305a772ccbdc0e42dfa233b0ce6762d0dd1de6de",
     },
 
-    "IDEALGRAPHVISUALIZER_DIST" : {
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/idealgraphvisualizer/idealgraphvisualizer-619.zip"],
-      "sha1" : "7fa6906c7898e736396f7143a173c53ca4e2a831",
-    },
-
     "JOL_CLI" : {
       "sha1" : "45dd0cf195b16e70710a8d6d763cda614cf6f31e",
       "maven" : {
         "groupId" : "org.openjdk.jol",
         "artifactId" : "jol-cli",
         "version" : "0.9",
-        "suffix" : "full",
+        "classifier" : "full",
       },
     },
 
@@ -555,9 +550,27 @@ suite = {
         "org.graalvm.compiler.replacements.test",
         "org.graalvm.compiler.hotspot",
       ],
-      "annotationProcessors" : ["GRAAL_NODEINFO_PROCESSOR"],
+      "annotationProcessors" : [
+        "GRAAL_NODEINFO_PROCESSOR",
+        "GRAAL_REPLACEMENTS_PROCESSOR"
+      ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
+      "workingSets" : "Graal,HotSpot,Test",
+    },
+
+    "org.graalvm.compiler.hotspot.jdk9.test" : {
+      "testProject" : True,
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.hotspot.test"
+      ],
+      "checkstyle": "org.graalvm.compiler.graph",
+      "javaCompliance" : "9+",
+      "imports" : [
+        "jdk.internal.misc",
+      ],
       "workingSets" : "Graal,HotSpot,Test",
     },
 
@@ -1824,6 +1837,7 @@ suite = {
         "org.graalvm.compiler.replacements.jdk9_11.test",
         "org.graalvm.compiler.replacements.jdk12.test",
         "org.graalvm.compiler.core.jdk9.test",
+        "org.graalvm.compiler.hotspot.jdk9.test",
       ],
       "distDependencies" : [
         "JVMCI_HOTSPOT",
@@ -2109,6 +2123,6 @@ suite = {
       "dependencies" : ["org.graalvm.micro.benchmarks"],
       "testDistribution" : True,
       "maven": False,
-    },
+    }
   },
 }

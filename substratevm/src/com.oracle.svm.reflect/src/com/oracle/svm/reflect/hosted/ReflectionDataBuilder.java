@@ -44,7 +44,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.graalvm.nativeimage.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.util.UserError;
@@ -117,10 +119,6 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
         Field declaredPublicFieldsField = findField(originalReflectionDataClass, "declaredPublicFields");
         Field declaredPublicMethodsField = findField(originalReflectionDataClass, "declaredPublicMethods");
 
-        Field[] emptyFields = new Field[0];
-        Method[] emptyMethods = new Method[0];
-        Constructor<?>[] emptyConstructors = new Constructor<?>[0];
-
         Set<Class<?>> allClasses = new HashSet<>(reflectionClasses);
         reflectionMethods.stream().map(method -> method.getDeclaringClass()).forEach(clazz -> allClasses.add(clazz));
         reflectionFields.keySet().stream().map(field -> field.getDeclaringClass()).forEach(clazz -> allClasses.add(clazz));
@@ -176,15 +174,15 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
             try {
                 Object originalReflectionData = reflectionDataMethod.invoke(clazz);
                 hub.setReflectionData(new DynamicHub.ReflectionData(
-                                filter(declaredFieldsField.get(originalReflectionData), reflectionFields.keySet(), emptyFields),
-                                filter(publicFieldsField.get(originalReflectionData), reflectionFields.keySet(), emptyFields),
-                                filter(declaredMethodsField.get(originalReflectionData), reflectionMethods, emptyMethods),
-                                filter(publicMethodsField.get(originalReflectionData), reflectionMethods, emptyMethods),
-                                filter(declaredConstructorsField.get(originalReflectionData), reflectionMethods, emptyConstructors),
-                                filter(publicConstructorsField.get(originalReflectionData), reflectionMethods, emptyConstructors),
+                                filterFields(declaredFieldsField.get(originalReflectionData), reflectionFields.keySet(), access.getMetaAccess()),
+                                filterFields(publicFieldsField.get(originalReflectionData), reflectionFields.keySet(), access.getMetaAccess()),
+                                filterMethods(declaredMethodsField.get(originalReflectionData), reflectionMethods, access.getMetaAccess()),
+                                filterMethods(publicMethodsField.get(originalReflectionData), reflectionMethods, access.getMetaAccess()),
+                                filterConstructors(declaredConstructorsField.get(originalReflectionData), reflectionMethods, access.getMetaAccess()),
+                                filterConstructors(publicConstructorsField.get(originalReflectionData), reflectionMethods, access.getMetaAccess()),
                                 nullaryConstructor(declaredConstructorsField.get(originalReflectionData), reflectionMethods),
-                                filter(declaredPublicFieldsField.get(originalReflectionData), reflectionFields.keySet(), emptyFields),
-                                filter(declaredPublicMethodsField.get(originalReflectionData), reflectionMethods, emptyMethods),
+                                filterFields(declaredPublicFieldsField.get(originalReflectionData), reflectionFields.keySet(), access.getMetaAccess()),
+                                filterMethods(declaredPublicMethodsField.get(originalReflectionData), reflectionMethods, access.getMetaAccess()),
                                 enclosingMethodOrConstructor(clazz)));
             } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
                 throw VMError.shouldNotReachHere(ex);
@@ -225,7 +223,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
         if (enclosingMethod == null && enclosingConstructor == null) {
             return null;
         } else if (enclosingMethod != null && enclosingConstructor != null) {
-            throw VMError.shouldNotReachHere("Classs has both an enclosingMethod and an enclosingConstructor: " + clazz + ", " + enclosingMethod + ", " + enclosingConstructor);
+            throw VMError.shouldNotReachHere("Class has both an enclosingMethod and an enclosingConstructor: " + clazz + ", " + enclosingMethod + ", " + enclosingConstructor);
         }
 
         Executable enclosingMethodOrConstructor = enclosingMethod != null ? enclosingMethod : enclosingConstructor;
@@ -237,11 +235,30 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
         }
     }
 
-    private static <T> T[] filter(Object elements, Set<?> filter, T[] prototypeArray) {
-        List<Object> result = new ArrayList<>();
-        for (Object element : (Object[]) elements) {
-            if (filter.contains(element)) {
-                result.add(element);
+    private static Field[] filterFields(Object fields, Set<Field> filter, AnalysisMetaAccess metaAccess) {
+        List<Field> result = new ArrayList<>();
+        for (Field field : (Field[]) fields) {
+            if (filter.contains(field) && !metaAccess.lookupJavaField(field).isAnnotationPresent(Delete.class)) {
+                result.add(field);
+            }
+        }
+        return result.toArray(new Field[0]);
+    }
+
+    private static Constructor<?>[] filterConstructors(Object methods, Set<Executable> filter, AnalysisMetaAccess metaAccess) {
+        return filterMethods(methods, filter, metaAccess, new Constructor<?>[0]);
+    }
+
+    private static Method[] filterMethods(Object methods, Set<Executable> filter, AnalysisMetaAccess metaAccess) {
+        return filterMethods(methods, filter, metaAccess, new Method[0]);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T extends Executable> T[] filterMethods(Object methods, Set<Executable> filter, AnalysisMetaAccess metaAccess, T[] prototypeArray) {
+        List<T> result = new ArrayList<>();
+        for (T method : (T[]) methods) {
+            if (filter.contains(method) && !metaAccess.lookupJavaMethod(method).isAnnotationPresent(Delete.class)) {
+                result.add(method);
             }
         }
         return result.toArray(prototypeArray);

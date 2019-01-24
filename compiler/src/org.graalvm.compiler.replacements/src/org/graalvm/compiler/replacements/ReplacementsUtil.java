@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,11 @@
  */
 package org.graalvm.compiler.replacements;
 
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
+
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.replacements.nodes.AssertionNode;
 
@@ -46,6 +51,18 @@ public final class ReplacementsUtil {
         }
     }
 
+    public static void staticAssert(boolean condition, String message, Object arg1) {
+        if (REPLACEMENTS_ASSERTIONS_ENABLED) {
+            AssertionNode.assertion(true, condition, message, arg1, "");
+        }
+    }
+
+    public static void staticAssert(boolean condition, String message, Object arg1, Object arg2) {
+        if (REPLACEMENTS_ASSERTIONS_ENABLED) {
+            AssertionNode.assertion(true, condition, message, arg1, arg2);
+        }
+    }
+
     /**
      * Asserts that condition evaluates to true at runtime. This is intended to be used within
      * snippets or stubs, and will lead to a VM error if it fails.
@@ -55,4 +72,15 @@ public final class ReplacementsUtil {
             AssertionNode.assertion(false, condition, message);
         }
     }
+
+    @Fold
+    public static int arrayIndexScale(@InjectedParameter MetaAccessProvider metaAccessProvider, JavaKind elementKind) {
+        return metaAccessProvider.getArrayIndexScale(elementKind);
+    }
+
+    @Fold
+    public static int getArrayBaseOffset(@InjectedParameter MetaAccessProvider metaAccessProvider, JavaKind elementKind) {
+        return metaAccessProvider.getArrayBaseOffset(elementKind);
+    }
+
 }

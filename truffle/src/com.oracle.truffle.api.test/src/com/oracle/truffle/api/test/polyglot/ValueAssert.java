@@ -540,7 +540,7 @@ public class ValueAssert {
         fail("expected " + exceptionType.getName() + " but no exception was thrown");
     }
 
-    static void assertFails(Callable<?> callable, Class<? extends Throwable> exceptionType) {
+    public static void assertFails(Callable<?> callable, Class<? extends Throwable> exceptionType) {
         try {
             callable.call();
         } catch (Throwable t) {

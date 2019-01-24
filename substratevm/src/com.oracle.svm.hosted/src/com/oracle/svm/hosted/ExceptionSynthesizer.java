@@ -35,8 +35,8 @@ import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 
-import com.oracle.svm.core.Exceptions;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -52,12 +52,12 @@ public class ExceptionSynthesizer {
 
     static {
         try {
-            throwClassNotFoundExceptionMethod = Exceptions.class.getDeclaredMethod("throwClassNotFoundException", String.class);
-            throwNoSuchFieldExceptionMethod = Exceptions.class.getDeclaredMethod("throwNoSuchFieldException", String.class);
-            throwNoSuchMethodExceptionMethod = Exceptions.class.getDeclaredMethod("throwNoSuchMethodException", String.class);
-            throwNoClassDefFoundErrorMethod = Exceptions.class.getDeclaredMethod("throwNoClassDefFoundError", String.class);
-            throwNoSuchFieldErrorMethod = Exceptions.class.getDeclaredMethod("throwNoSuchFieldError", String.class);
-            throwNoSuchMethodErrorMethod = Exceptions.class.getDeclaredMethod("throwNoSuchMethodError", String.class);
+            throwClassNotFoundExceptionMethod = ImplicitExceptions.class.getDeclaredMethod("throwClassNotFoundException", String.class);
+            throwNoSuchFieldExceptionMethod = ImplicitExceptions.class.getDeclaredMethod("throwNoSuchFieldException", String.class);
+            throwNoSuchMethodExceptionMethod = ImplicitExceptions.class.getDeclaredMethod("throwNoSuchMethodException", String.class);
+            throwNoClassDefFoundErrorMethod = ImplicitExceptions.class.getDeclaredMethod("throwNoClassDefFoundError", String.class);
+            throwNoSuchFieldErrorMethod = ImplicitExceptions.class.getDeclaredMethod("throwNoSuchFieldError", String.class);
+            throwNoSuchMethodErrorMethod = ImplicitExceptions.class.getDeclaredMethod("throwNoSuchMethodError", String.class);
         } catch (NoSuchMethodException ex) {
             throw VMError.shouldNotReachHere(ex);
         }

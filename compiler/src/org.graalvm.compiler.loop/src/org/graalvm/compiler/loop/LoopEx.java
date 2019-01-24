@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -85,6 +85,7 @@ public class LoopEx {
     private CountedLoopInfo counted;
     private LoopsData data;
     private EconomicMap<Node, InductionVariable> ivs;
+    private boolean countedLoopChecked;
 
     LoopEx(Loop<Block> loop, LoopsData data) {
         this.loop = loop;
@@ -143,10 +144,12 @@ public class LoopEx {
     }
 
     public boolean isCounted() {
+        assert countedLoopChecked;
         return counted != null;
     }
 
     public CountedLoopInfo counted() {
+        assert countedLoopChecked;
         return counted;
     }
 
@@ -211,6 +214,10 @@ public class LoopEx {
     }
 
     public boolean detectCounted() {
+        if (countedLoopChecked) {
+            return isCounted();
+        }
+        countedLoopChecked = true;
         LoopBeginNode loopBegin = loopBegin();
         FixedNode next = loopBegin.next();
         while (next instanceof FixedGuardNode || next instanceof ValueAnchorNode || next instanceof FullInfopointNode) {
@@ -301,7 +308,7 @@ public class LoopEx {
                     }
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere(condition.toString());
             }
             counted = new CountedLoopInfo(this, iv, ifNode, limit, oneOff, negated ? ifNode.falseSuccessor() : ifNode.trueSuccessor());
             return true;

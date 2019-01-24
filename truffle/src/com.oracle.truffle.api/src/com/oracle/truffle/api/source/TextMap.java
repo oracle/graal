@@ -233,6 +233,21 @@ final class TextMap {
     }
 
     /**
+     * Converts 1-based line number and 1-based column number to the 0-based offset of the character
+     * position at the line:column.
+     *
+     * @throws IllegalArgumentException if the column is out of range.
+     */
+    public int lineColumnToOffset(int line, int column) {
+        final int lineStartOffset = lineStartOffset(line);
+        if (column > (lineLength(line) + 1)) {
+            throw new IllegalArgumentException("column out of range");
+        }
+        final int charIndex = lineStartOffset + column - 1;
+        return charIndex;
+    }
+
+    /**
      * Is the line number out of range.
      */
     private boolean lineOutOfRange(int line) {

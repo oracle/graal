@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,7 +49,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 
-import jdk.vm.ci.meta.ConstantReflectionProvider;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
@@ -65,6 +64,7 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.core.common.type.TypeReference;
+import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
@@ -142,6 +142,7 @@ import org.graalvm.word.WordBase;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Local;
@@ -170,25 +171,45 @@ public class SnippetTemplate {
     public abstract static class SnippetInfo {
 
         protected final ResolvedJavaMethod method;
-        protected ResolvedJavaMethod original;
+        protected final ResolvedJavaMethod original;
         protected final LocationIdentity[] privateLocations;
+        protected final Object receiver;
+
+        public Object getReceiver() {
+            return receiver;
+        }
+
+        boolean hasReceiver() {
+            assert hasReceiver(method) == (receiver != null) : "Snippet with the receiver must have it set as constant. Snippet: " + this;
+            return hasReceiver(method);
+        }
+
+        static boolean hasReceiver(ResolvedJavaMethod method) {
+            return method.hasReceiver();
+        }
 
         /**
          * Lazily constructed parts of {@link SnippetInfo}.
          */
         static class Lazy {
             Lazy(ResolvedJavaMethod method) {
-                int count = method.getSignature().getParameterCount(false);
+                int count = method.getSignature().getParameterCount(hasReceiver(method));
                 constantParameters = new boolean[count];
                 varargsParameters = new boolean[count];
                 nonNullParameters = new boolean[count];
-                for (int i = 0; i < count; i++) {
-                    constantParameters[i] = method.getParameterAnnotation(ConstantParameter.class, i) != null;
-                    varargsParameters[i] = method.getParameterAnnotation(VarargsParameter.class, i) != null;
-                    nonNullParameters[i] = method.getParameterAnnotation(NonNullParameter.class, i) != null;
+                int offset = hasReceiver(method) ? 1 : 0;
+                for (int i = offset; i < count; i++) {
+                    constantParameters[i] = method.getParameterAnnotation(ConstantParameter.class, i - offset) != null;
+                    varargsParameters[i] = method.getParameterAnnotation(VarargsParameter.class, i - offset) != null;
+                    nonNullParameters[i] = method.getParameterAnnotation(NonNullParameter.class, i - offset) != null;
 
-                    assert !constantParameters[i] || !varargsParameters[i] : "Parameter cannot be annotated with both @" + ConstantParameter.class.getSimpleName() + " and @" +
+                    assert !constantParameters[i - offset] || !varargsParameters[i - offset] : "Parameter cannot be annotated with both @" + ConstantParameter.class.getSimpleName() + " and @" +
                                     VarargsParameter.class.getSimpleName();
+                }
+                if (method.hasReceiver()) {
+                    // Receiver must be constant.
+                    assert !constantParameters[0];
+                    constantParameters[0] = true;
                 }
 
                 // Retrieve the names only when assertions are turned on.
@@ -207,11 +228,16 @@ public class SnippetTemplate {
 
             private boolean initNames(ResolvedJavaMethod method, int parameterCount) {
                 names = new String[parameterCount];
+                int offset = 0;
+                if (method.hasReceiver()) {
+                    names[0] = "this";
+                    offset = 1;
+                }
                 Parameter[] params = method.getParameters();
                 if (params != null) {
-                    for (int i = 0; i < names.length; i++) {
-                        if (params[i].isNamePresent()) {
-                            names[i] = params[i].getName();
+                    for (int i = offset; i < names.length; i++) {
+                        if (params[i - offset].isNamePresent()) {
+                            names[i] = params[i - offset].getName();
                         }
                     }
                 } else {
@@ -244,12 +270,13 @@ public class SnippetTemplate {
 
         protected abstract Lazy lazy();
 
-        protected SnippetInfo(ResolvedJavaMethod method, LocationIdentity[] privateLocations) {
+        protected SnippetInfo(ResolvedJavaMethod method, ResolvedJavaMethod original, LocationIdentity[] privateLocations, Object receiver) {
             this.method = method;
+            this.original = original;
             this.privateLocations = privateLocations;
             instantiationCounter = DebugContext.counter("SnippetInstantiationCount[%s]", method.getName());
             instantiationTimer = DebugContext.timer("SnippetInstantiationTime[%s]", method.getName());
-            assert method.isStatic() : "snippet method must be static: " + method.format("%H.%n");
+            this.receiver = receiver;
         }
 
         public ResolvedJavaMethod getMethod() {
@@ -258,10 +285,6 @@ public class SnippetTemplate {
 
         public int getParameterCount() {
             return lazy().constantParameters.length;
-        }
-
-        public void setOriginalMethod(ResolvedJavaMethod original) {
-            this.original = original;
         }
 
         public boolean isConstantParameter(int paramIdx) {
@@ -293,8 +316,8 @@ public class SnippetTemplate {
     protected static class LazySnippetInfo extends SnippetInfo {
         protected final AtomicReference<Lazy> lazy = new AtomicReference<>(null);
 
-        protected LazySnippetInfo(ResolvedJavaMethod method, LocationIdentity[] privateLocations) {
-            super(method, privateLocations);
+        protected LazySnippetInfo(ResolvedJavaMethod method, ResolvedJavaMethod original, LocationIdentity[] privateLocations, Object receiver) {
+            super(method, original, privateLocations, receiver);
         }
 
         @Override
@@ -309,8 +332,8 @@ public class SnippetTemplate {
     protected static class EagerSnippetInfo extends SnippetInfo {
         protected final Lazy lazy;
 
-        protected EagerSnippetInfo(ResolvedJavaMethod method, LocationIdentity[] privateLocations) {
-            super(method, privateLocations);
+        protected EagerSnippetInfo(ResolvedJavaMethod method, ResolvedJavaMethod original, LocationIdentity[] privateLocations, Object receiver) {
+            super(method, original, privateLocations, receiver);
             lazy = new Lazy(method);
         }
 
@@ -353,6 +376,9 @@ public class SnippetTemplate {
             this.values = new Object[info.getParameterCount()];
             this.constStamps = new Stamp[info.getParameterCount()];
             this.cacheable = true;
+            if (info.hasReceiver()) {
+                addConst("this", info.getReceiver());
+            }
         }
 
         public Arguments add(String name, Object value) {
@@ -392,7 +418,7 @@ public class SnippetTemplate {
 
         private boolean check(String name, boolean constParam, boolean varargsParam) {
             assert nextParamIdx < info.getParameterCount() : "too many parameters: " + name + "  " + this;
-            assert info.getParameterName(nextParamIdx) == null || info.getParameterName(nextParamIdx).equals(name) : "wrong parameter name: " + name + "  " + this;
+            assert info.getParameterName(nextParamIdx) == null || info.getParameterName(nextParamIdx).equals(name) : "wrong parameter name at " + nextParamIdx + " : " + name + "  " + this;
             assert constParam == info.isConstantParameter(nextParamIdx) : "Parameter " + (constParam ? "not " : "") + "annotated with @" + ConstantParameter.class.getSimpleName() + ": " + name +
                             "  " + this;
             assert varargsParam == info.isVarargsParameter(nextParamIdx) : "Parameter " + (varargsParam ? "not " : "") + "annotated with @" + VarargsParameter.class.getSimpleName() + ": " + name +
@@ -614,24 +640,45 @@ public class SnippetTemplate {
             return null;
         }
 
+        public static ResolvedJavaMethod findMethod(MetaAccessProvider metaAccess, Class<?> declaringClass, String methodName) {
+            ResolvedJavaType type = metaAccess.lookupJavaType(declaringClass);
+            ResolvedJavaMethod result = null;
+            for (ResolvedJavaMethod m : type.getDeclaredMethods()) {
+                if (m.getName().equals(methodName)) {
+                    if (!Assertions.assertionsEnabled()) {
+                        return m;
+                    } else {
+                        assert result == null : "multiple definitions found";
+                        result = m;
+                    }
+                }
+            }
+            if (result == null) {
+                throw new GraalError("Could not find method in " + declaringClass + " named " + methodName);
+            }
+            return result;
+        }
+
+        protected SnippetInfo snippet(Class<? extends Snippets> declaringClass, String methodName, LocationIdentity... initialPrivateLocations) {
+            return snippet(declaringClass, methodName, null, null, initialPrivateLocations);
+        }
+
         /**
          * Finds the unique method in {@code declaringClass} named {@code methodName} annotated by
          * {@link Snippet} and returns a {@link SnippetInfo} value describing it. There must be
-         * exactly one snippet method in {@code declaringClass}.
+         * exactly one snippet method in {@code declaringClass} with a given name.
          */
-        protected SnippetInfo snippet(Class<? extends Snippets> declaringClass, String methodName, LocationIdentity... initialPrivateLocations) {
+        protected SnippetInfo snippet(Class<? extends Snippets> declaringClass, String methodName, ResolvedJavaMethod original, Object receiver, LocationIdentity... initialPrivateLocations) {
             assert methodName != null;
-            Method method = findMethod(declaringClass, methodName, null);
-            assert method != null : "did not find @" + Snippet.class.getSimpleName() + " method in " + declaringClass + " named " + methodName;
-            assert method.getAnnotation(Snippet.class) != null : method + " must be annotated with @" + Snippet.class.getSimpleName();
-            assert findMethod(declaringClass, methodName, method) == null : "found more than one method named " + methodName + " in " + declaringClass;
-            ResolvedJavaMethod javaMethod = providers.getMetaAccess().lookupJavaMethod(method);
-            providers.getReplacements().registerSnippet(javaMethod, GraalOptions.TrackNodeSourcePosition.getValue(options));
+            ResolvedJavaMethod javaMethod = findMethod(providers.getMetaAccess(), declaringClass, methodName);
+            assert javaMethod != null : "did not find @" + Snippet.class.getSimpleName() + " method in " + declaringClass + " named " + methodName;
+            assert javaMethod.getAnnotation(Snippet.class) != null : javaMethod + " must be annotated with @" + Snippet.class.getSimpleName();
+            providers.getReplacements().registerSnippet(javaMethod, original, receiver, GraalOptions.TrackNodeSourcePosition.getValue(options));
             LocationIdentity[] privateLocations = GraalOptions.SnippetCounters.getValue(options) ? SnippetCounterNode.addSnippetCounters(initialPrivateLocations) : initialPrivateLocations;
             if (GraalOptions.EagerSnippets.getValue(options)) {
-                return new EagerSnippetInfo(javaMethod, privateLocations);
+                return new EagerSnippetInfo(javaMethod, original, privateLocations, receiver);
             } else {
-                return new LazySnippetInfo(javaMethod, privateLocations);
+                return new LazySnippetInfo(javaMethod, original, privateLocations, receiver);
             }
         }
 
@@ -714,7 +761,8 @@ public class SnippetTemplate {
         this.info = args.info;
 
         Object[] constantArgs = getConstantArgs(args);
-        StructuredGraph snippetGraph = providers.getReplacements().getSnippet(args.info.method, args.info.original, constantArgs, trackNodeSourcePosition, replacee.getNodeSourcePosition());
+        boolean shouldTrackNodeSourcePosition1 = trackNodeSourcePosition || (providers.getCodeCache() != null && providers.getCodeCache().shouldDebugNonSafepoints());
+        StructuredGraph snippetGraph = providers.getReplacements().getSnippet(args.info.method, args.info.original, constantArgs, shouldTrackNodeSourcePosition1, replacee.getNodeSourcePosition());
 
         ResolvedJavaMethod method = snippetGraph.method();
         Signature signature = method.getSignature();
@@ -725,9 +773,6 @@ public class SnippetTemplate {
         final StructuredGraph snippetCopy = new StructuredGraph.Builder(options, debug).name(snippetGraph.name).method(snippetGraph.method()).trackNodeSourcePosition(
                         snippetGraph.trackNodeSourcePosition()).setIsSubstitution(true).build();
         assert !GraalOptions.TrackNodeSourcePosition.getValue(options) || snippetCopy.trackNodeSourcePosition();
-        if (providers.getCodeCache() != null && providers.getCodeCache().shouldDebugNonSafepoints()) {
-            snippetCopy.setTrackNodeSourcePosition();
-        }
         try (DebugContext.Scope scope = debug.scope("SpecializeSnippet", snippetCopy)) {
             if (!snippetGraph.isUnsafeAccessTrackingEnabled()) {
                 snippetCopy.disableUnsafeAccessTracking();
@@ -1008,7 +1053,7 @@ public class SnippetTemplate {
                     LoopEx loop = new LoopsData(snippetCopy).loop(loopBegin);
                     Mark mark = snippetCopy.getMark();
                     LoopTransformations.fullUnroll(loop, phaseContext, new CanonicalizerPhase());
-                    new CanonicalizerPhase().applyIncremental(snippetCopy, phaseContext, mark);
+                    new CanonicalizerPhase().applyIncremental(snippetCopy, phaseContext, mark, false);
                     loop.deleteUnusedNodes();
                 }
                 GraphUtil.removeFixedWithUnusedInputs(explodeLoop);
@@ -1038,8 +1083,8 @@ public class SnippetTemplate {
         return true;
     }
 
-    private static boolean checkConstantArgument(MetaAccessProvider metaAccess, final ResolvedJavaMethod method, Signature signature, int i, String name, Object arg, JavaKind kind) {
-        ResolvedJavaType type = signature.getParameterType(i, method.getDeclaringClass()).resolve(method.getDeclaringClass());
+    private static boolean checkConstantArgument(MetaAccessProvider metaAccess, final ResolvedJavaMethod method, Signature signature, int paramIndex, String name, Object arg, JavaKind kind) {
+        ResolvedJavaType type = signature.getParameterType(paramIndex, method.getDeclaringClass()).resolve(method.getDeclaringClass());
         if (metaAccess.lookupJavaType(WordBase.class).isAssignableFrom(type)) {
             assert arg instanceof JavaConstant : method + ": word constant parameters must be passed boxed in a Constant value: " + arg;
             return true;
@@ -1715,10 +1760,11 @@ public class SnippetTemplate {
     }
 
     private static boolean checkTemplate(MetaAccessProvider metaAccess, Arguments args, ResolvedJavaMethod method, Signature signature) {
-        for (int i = 0; i < args.info.getParameterCount(); i++) {
+        int offset = args.info.hasReceiver() ? 1 : 0;
+        for (int i = offset; i < args.info.getParameterCount(); i++) {
             if (args.info.isConstantParameter(i)) {
-                JavaKind kind = signature.getParameterKind(i);
-                assert checkConstantArgument(metaAccess, method, signature, i, args.info.getParameterName(i), args.values[i], kind);
+                JavaKind kind = signature.getParameterKind(i - offset);
+                assert checkConstantArgument(metaAccess, method, signature, i - offset, args.info.getParameterName(i), args.values[i], kind);
 
             } else if (args.info.isVarargsParameter(i)) {
                 assert args.values[i] instanceof Varargs;

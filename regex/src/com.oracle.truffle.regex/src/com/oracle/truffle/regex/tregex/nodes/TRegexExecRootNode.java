@@ -47,13 +47,14 @@ import com.oracle.truffle.regex.result.SingleResultLazyStart;
 import com.oracle.truffle.regex.result.TraceFinderResult;
 import com.oracle.truffle.regex.tregex.TRegexCompiler;
 import com.oracle.truffle.regex.tregex.nodes.input.InputLengthNode;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
 
 import java.util.Arrays;
 
-public class TRegexExecRootNode extends RegexExecRootNode implements CompiledRegex, RegexProfile.TracksRegexProfile {
+import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_BAILOUT_MESSAGES;
+import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_INTERNAL_ERRORS;
+import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_SWITCH_TO_EAGER;
 
-    private static final DebugUtil.DebugLogger LOG_BAILOUT = new DebugUtil.DebugLogger("TRegex Bailout: ", DebugUtil.LOG_BAILOUT_MESSAGES);
+public class TRegexExecRootNode extends RegexExecRootNode implements CompiledRegex, RegexProfile.TracksRegexProfile {
 
     private static final EagerCaptureGroupRegexSearchNode EAGER_SEARCH_BAILED_OUT = new EagerCaptureGroupRegexSearchNode(null);
 
@@ -85,7 +86,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
             if (eagerCompilation) {
                 compileEagerSearchNode();
             }
-            if (DebugUtil.DEBUG_ALWAYS_EAGER) {
+            if (tRegexCompiler.getOptions().isAlwaysEager()) {
                 switchToEagerSearch(null);
             }
         }
@@ -123,9 +124,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
     private void switchToEagerSearch(RegexProfile profile) {
         compileEagerSearchNode();
         if (eagerSearchNode != EAGER_SEARCH_BAILED_OUT) {
-            if (DebugUtil.LOG_SWITCH_TO_EAGER) {
-                System.out.println("regex " + getSource() + ": switching to eager matching." + (profile == null ? "" : " profile: " + profile));
-            }
+            LOG_SWITCH_TO_EAGER.fine(() -> "regex " + getSource() + ": switching to eager matching." + (profile == null ? "" : " profile: " + profile));
             runRegexSearchNode = insert(eagerSearchNode);
         }
     }
@@ -136,7 +135,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
                 TRegexDFAExecutorNode executorNode = tRegexCompiler.compileEagerDFAExecutor(getSource());
                 eagerSearchNode = new EagerCaptureGroupRegexSearchNode(executorNode);
             } catch (UnsupportedRegexException e) {
-                LOG_BAILOUT.log(e.getMessage() + ": " + source);
+                LOG_BAILOUT_MESSAGES.fine(() -> e.getReason() + ": " + source);
                 eagerSearchNode = EAGER_SEARCH_BAILED_OUT;
             }
         }
@@ -163,12 +162,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
             equal = Arrays.equals(((LazyCaptureGroupsResult) lazyResult).getResult(), ((LazyCaptureGroupsResult) eagerResult).getResult());
         }
         if (!equal) {
-            System.out.println("ERROR:");
-            System.out.println("Regex: " + getSource());
-            System.out.println("Input: " + input);
-            System.out.println("fromIndex: " + fromIndex);
-            System.out.println("Lazy  Result: " + lazyResult);
-            System.out.println("Eager Result: " + eagerResult);
+            LOG_INTERNAL_ERRORS.severe(() -> String.format("Regex: %s\nInput: %s\nfromIndex: %d\nLazy Result: %s\nEager Result: %s", getSource(), input, fromIndex, lazyResult, eagerResult));
         }
         return equal;
     }

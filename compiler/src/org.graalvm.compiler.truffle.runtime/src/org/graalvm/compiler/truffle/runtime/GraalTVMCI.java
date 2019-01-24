@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -148,13 +148,15 @@ final class GraalTVMCI extends TVMCI {
         int splitCount;
     }
 
+    private static final Supplier<EngineData> engineDataConstructor = new Supplier<EngineData>() {
+        @Override
+        public EngineData get() {
+            return new EngineData();
+        }
+    };
+
     EngineData getEngineData(RootNode rootNode) {
-        return getOrCreateRuntimeData(rootNode, new Supplier<EngineData>() {
-            @Override
-            public EngineData get() {
-                return new EngineData();
-            }
-        });
+        return getOrCreateRuntimeData(rootNode, engineDataConstructor);
     }
 
     @Override

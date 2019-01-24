@@ -100,6 +100,8 @@ public final class NodeIntrinsicHandler extends AnnotationHandler {
             }
             if (enclosingElement != null) {
                 nodeClass = (TypeElement) enclosingElement;
+            } else {
+                messager.printMessage(Kind.ERROR, String.format("Cannot find a class enclosing @%s method.", getSimpleName(NODE_INTRINSIC_CLASS_NAME)), element, annotation);
             }
         }
 
@@ -243,20 +245,29 @@ public final class NodeIntrinsicHandler extends AnnotationHandler {
             }
 
             if (method.getParameters().size() < 2) {
+                nonMatches.put(method, "Too few arguments");
                 continue;
             }
 
             VariableElement firstArg = method.getParameters().get(0);
             if (!isTypeCompatible(firstArg.asType(), processor.getType(GRAPH_BUILDER_CONTEXT_CLASS_NAME))) {
+                nonMatches.put(method, "First argument isn't of type GraphBuilderContext");
                 continue;
             }
 
             VariableElement secondArg = method.getParameters().get(1);
             if (!isTypeCompatible(secondArg.asType(), processor.getType(RESOLVED_JAVA_METHOD_CLASS_NAME))) {
+                nonMatches.put(method, "Second argument isn't of type ResolvedJavaMethod");
                 continue;
             }
 
             if (method.getReturnType().getKind() != TypeKind.BOOLEAN) {
+                nonMatches.put(method, "Doesn't return boolean");
+                continue;
+            }
+
+            if (!method.getModifiers().contains(Modifier.STATIC)) {
+                nonMatches.put(method, "Method is non-static");
                 continue;
             }
 

@@ -100,7 +100,7 @@ public class FrameInfoEncoder {
         protected abstract void fillDebugNames(BytecodeFrame bytecodeFrame, FrameInfoQueryResult resultFrameInfo, boolean fillValueNames);
     }
 
-    public static class NamesFromMethod extends Customization {
+    public abstract static class NamesFromMethod extends Customization {
         private final HostedStringDeduplication stringTable = HostedStringDeduplication.singleton();
 
         @Override
@@ -108,19 +108,13 @@ public class FrameInfoEncoder {
             final ResolvedJavaMethod method = bytecodeFrame.getMethod();
 
             final StackTraceElement source = method.asStackTraceElement(bytecodeFrame.getBCI());
+            resultFrameInfo.sourceClass = getDeclaringJavaClass(method);
             /*
-             * Class names must be interned strings according to the Java specification, i.e., some
-             * DynamicHub.name already contains the class name as an interned string. Interning here
-             * avoids duplication.
-             */
-            resultFrameInfo.sourceClassName = method.getDeclaringClass().toClassName().intern();
-            /*
-             * There is no need to have method names and file names as interned strings. But at
-             * least sometimes the StackTraceElement contains interned strings, so we un-intern
-             * these strings and perform our own de-duplication.
+             * There is no need to have method names as interned strings. But at least sometimes the
+             * StackTraceElement contains interned strings, so we un-intern these strings and
+             * perform our own de-duplication.
              */
             resultFrameInfo.sourceMethodName = stringTable.deduplicate(source.getMethodName(), true);
-            resultFrameInfo.sourceFileName = stringTable.deduplicate(source.getFileName(), true);
             resultFrameInfo.sourceLineNumber = source.getLineNumber();
 
             if (fillValueNames) {
@@ -139,6 +133,8 @@ public class FrameInfoEncoder {
                 }
             }
         }
+
+        protected abstract Class<?> getDeclaringJavaClass(ResolvedJavaMethod method);
     }
 
     public static class NamesFromImage extends Customization {
@@ -151,9 +147,8 @@ public class FrameInfoEncoder {
                     final FrameInfoQueryResult targetFrameInfo = targetCodeInfo.getFrameInfo();
                     assert targetFrameInfo != null;
 
-                    resultFrameInfo.sourceClassName = targetFrameInfo.sourceClassName;
+                    resultFrameInfo.sourceClass = targetFrameInfo.sourceClass;
                     resultFrameInfo.sourceMethodName = targetFrameInfo.sourceMethodName;
-                    resultFrameInfo.sourceFileName = targetFrameInfo.sourceFileName;
                     resultFrameInfo.sourceLineNumber = targetFrameInfo.sourceLineNumber;
 
                     if (fillValueNames) {
@@ -180,16 +175,14 @@ public class FrameInfoEncoder {
 
     private final List<FrameData> allDebugInfos;
     private final FrequencyEncoder<JavaConstant> objectConstants;
-    private final FrequencyEncoder<String> sourceClassNames;
+    private final FrequencyEncoder<Class<?>> sourceClasses;
     private final FrequencyEncoder<String> sourceMethodNames;
-    private final FrequencyEncoder<String> sourceFileNames;
     private final FrequencyEncoder<String> names;
 
     protected byte[] frameInfoEncodings;
     protected Object[] frameInfoObjectConstants;
-    protected String[] frameInfoSourceClassNames;
+    protected Class<?>[] frameInfoSourceClasses;
     protected String[] frameInfoSourceMethodNames;
-    protected String[] frameInfoSourceFileNames;
     protected String[] frameInfoNames;
 
     protected FrameInfoEncoder(Customization customization, PinnedAllocator allocator) {
@@ -198,14 +191,12 @@ public class FrameInfoEncoder {
         this.allDebugInfos = new ArrayList<>();
         this.objectConstants = FrequencyEncoder.createEqualityEncoder();
         if (FrameInfoDecoder.encodeDebugNames() || FrameInfoDecoder.encodeSourceReferences()) {
-            this.sourceClassNames = FrequencyEncoder.createEqualityEncoder();
+            this.sourceClasses = FrequencyEncoder.createEqualityEncoder();
             this.sourceMethodNames = FrequencyEncoder.createEqualityEncoder();
-            this.sourceFileNames = FrequencyEncoder.createEqualityEncoder();
             this.names = FrequencyEncoder.createEqualityEncoder();
         } else {
-            this.sourceClassNames = null;
+            this.sourceClasses = null;
             this.sourceMethodNames = null;
-            this.sourceFileNames = null;
             this.names = null;
         }
     }
@@ -233,9 +224,8 @@ public class FrameInfoEncoder {
             }
 
             for (FrameInfoQueryResult cur = data.frame; cur != null; cur = cur.caller) {
-                sourceClassNames.addObject(cur.sourceClassName);
+                sourceClasses.addObject(cur.sourceClass);
                 sourceMethodNames.addObject(cur.sourceMethodName);
-                sourceFileNames.addObject(cur.sourceFileName);
 
                 if (encodeDebugNames) {
                     for (ValueInfo valueInfo : cur.valueInfos) {
@@ -506,9 +496,8 @@ public class FrameInfoEncoder {
 
         final boolean encodeDebugNames = FrameInfoDecoder.encodeDebugNames();
         if (encodeDebugNames || FrameInfoDecoder.encodeSourceReferences()) {
-            frameInfoSourceClassNames = sourceClassNames.encodeAll(newStringArray(sourceClassNames.getLength()));
+            frameInfoSourceClasses = sourceClasses.encodeAll(newClassArray(sourceClasses.getLength()));
             frameInfoSourceMethodNames = sourceMethodNames.encodeAll(newStringArray(sourceMethodNames.getLength()));
-            frameInfoSourceFileNames = sourceFileNames.encodeAll(newStringArray(sourceFileNames.getLength()));
         }
         frameInfoNames = encodeDebugNames ? names.encodeAll(newStringArray(names.getLength())) : null;
 
@@ -532,6 +521,10 @@ public class FrameInfoEncoder {
 
     private String[] newStringArray(int length) {
         return allocator == null ? new String[length] : (String[]) allocator.newArray(String.class, length);
+    }
+
+    private Class<?>[] newClassArray(int length) {
+        return allocator == null ? new Class<?>[length] : (Class<?>[]) allocator.newArray(Class.class, length);
     }
 
     private byte[] newByteArray(int length) {
@@ -577,17 +570,14 @@ public class FrameInfoEncoder {
 
             final boolean encodeDebugNames = needLocalValues && FrameInfoDecoder.encodeDebugNames();
             if (encodeDebugNames || FrameInfoDecoder.encodeSourceReferences()) {
-                final int classIndex = sourceClassNames.getIndex(cur.sourceClassName);
+                final int classIndex = sourceClasses.getIndex(cur.sourceClass);
                 final int methodIndex = sourceMethodNames.getIndex(cur.sourceMethodName);
-                final int fileIndex = sourceFileNames.getIndex(cur.sourceFileName);
 
-                cur.sourceClassNameIndex = classIndex;
+                cur.sourceClassIndex = classIndex;
                 cur.sourceMethodNameIndex = methodIndex;
-                cur.sourceFileNameIndex = fileIndex;
 
                 encodingBuffer.putSV(classIndex);
                 encodingBuffer.putSV(methodIndex);
-                encodingBuffer.putSV(fileIndex);
                 encodingBuffer.putSV(cur.sourceLineNumber);
             }
 
@@ -644,7 +634,7 @@ public class FrameInfoEncoder {
     private boolean verifyEncoding() {
         for (FrameData expectedData : allDebugInfos) {
             FrameInfoQueryResult actualFrame = FrameInfoDecoder.decodeFrameInfo(expectedData.frame.isDeoptEntry, new ReusableTypeReader(frameInfoEncodings, expectedData.indexInEncodings),
-                            frameInfoObjectConstants, frameInfoSourceClassNames, frameInfoSourceMethodNames, frameInfoSourceFileNames, frameInfoNames,
+                            frameInfoObjectConstants, frameInfoSourceClasses, frameInfoSourceMethodNames, frameInfoNames,
                             FrameInfoDecoder.HeapBasedFrameInfoQueryResultAllocator, FrameInfoDecoder.HeapBasedValueInfoAllocator, true);
             FrameInfoVerifier.verifyFrames(expectedData, expectedData.frame, actualFrame);
         }
@@ -676,14 +666,12 @@ class FrameInfoVerifier {
                 assert actualFrame.virtualObjects == actualTopFrame.virtualObjects;
             }
 
-            assert Objects.equals(expectedFrame.sourceClassName, actualFrame.sourceClassName);
+            assert Objects.equals(expectedFrame.sourceClass, actualFrame.sourceClass);
             assert Objects.equals(expectedFrame.sourceMethodName, actualFrame.sourceMethodName);
-            assert Objects.equals(expectedFrame.sourceFileName, actualFrame.sourceFileName);
             assert expectedFrame.sourceLineNumber == actualFrame.sourceLineNumber;
 
-            assert expectedFrame.sourceClassNameIndex == actualFrame.sourceClassNameIndex;
+            assert expectedFrame.sourceClassIndex == actualFrame.sourceClassIndex;
             assert expectedFrame.sourceMethodNameIndex == actualFrame.sourceMethodNameIndex;
-            assert expectedFrame.sourceFileNameIndex == actualFrame.sourceFileNameIndex;
 
             expectedFrame = expectedFrame.caller;
             actualFrame = actualFrame.caller;

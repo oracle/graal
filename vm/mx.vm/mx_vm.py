@@ -176,7 +176,10 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                     exclude_base + '/bin/jvisualvm',
                     exclude_base + '/lib/visualvm',
                     exclude_base + hsdis,
-                ]
+                ] + ([
+                    exclude_base + 'bin/jmc',
+                    exclude_base + 'lib/missioncontrol',
+                ] if mx.get_os() == 'darwin' else [])
             })
 
             # Add vm.properties
@@ -367,7 +370,7 @@ class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, mx.LayoutTARDistr
             config_components_set = set(config_components)
             config_additional_components = sorted(components_set - config_components_set)
             if config_components_set <= components_set and len(config_additional_components) <= len(vm_config_additional_components):
-                vm_config_name = config_name
+                vm_config_name = config_name.replace('-', '_')
                 vm_config_additional_components = config_additional_components
 
         name = (base_name + (('_' + vm_config_name) if vm_config_name else '') + ('_' if vm_config_additional_components else '') + '_'.join(vm_config_additional_components)).upper()
@@ -1218,7 +1221,7 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
         version = _suite.release_version()
 
         name = '_'.join([self.main_comp_dir_name, 'standalone'] + other_comp_names).upper().replace('-', '_')
-        self.base_dir_name = '{comp_name}-{version}-{os}-{arch}'.format(comp_name=self.main_comp_dir_name, version=version, os=get_graalvm_os(), arch=mx.get_arch()).lower().replace('_', '-')
+        self.base_dir_name = '{comp_name}-{version}-{os}-{arch}'.format(comp_name=installable.main_component.suite.name, version=version, os=get_graalvm_os(), arch=mx.get_arch()).lower().replace('_', '-')
         base_dir = './{}/'.format(self.base_dir_name)
         layout = {}
 
@@ -1735,6 +1738,7 @@ mx.add_argument('--snapshot-catalog', action='store', help='Change the default U
 mx.add_argument('--extra-image-builder-argument', action='append', help='Add extra arguments to the image builder.', default=[])
 
 register_vm_config('ce', ['cmp', 'gu', 'gvm', 'ins', 'js', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'tfl', 'libpoly', 'poly', 'vvm'])
+register_vm_config('ce-no_native', ['bjs', 'blli', 'bnative-image', 'bpolyglot', 'cmp', 'gu', 'gvm', 'ins', 'js', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'tfl', 'poly', 'vvm'])
 
 
 def _debug_images():

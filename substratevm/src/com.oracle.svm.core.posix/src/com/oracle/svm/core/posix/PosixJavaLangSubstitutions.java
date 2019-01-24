@@ -60,11 +60,9 @@ import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
-import com.oracle.svm.core.jdk.JDK9OrLater;
 import com.oracle.svm.core.posix.headers.Dirent;
 import com.oracle.svm.core.posix.headers.Dirent.DIR;
 import com.oracle.svm.core.posix.headers.Dirent.dirent;
@@ -209,7 +207,7 @@ final class Target_java_lang_UNIXProcess {
 
     // The reaper thread pool and thread groups (currently) confuse the analysis, so we launch
     // reaper threads individually (with the only difference being that threads are not recycled)
-    @Delete static final Executor processReaperExecutor = null;
+    @Delete static Executor processReaperExecutor;
 
     @Alias int pid;
     @Alias OutputStream stdin;
@@ -409,35 +407,6 @@ final class Target_java_lang_UNIXProcess {
     }
 }
 
-@TargetClass(className = "java.lang.ProcessImpl")
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-final class Target_java_lang_ProcessImpl {
-
-    @Substitute //
-    @TargetElement(onlyWith = JDK9OrLater.class) //
-    @SuppressWarnings({"unused", "static-method"})
-    private /* native */ int forkAndExec(
-                    int mode,
-                    byte[] helperpath,
-                    byte[] prog,
-                    byte[] argBlock,
-                    int argc,
-                    byte[] envBlock,
-                    int envc,
-                    byte[] dir,
-                    int[] fds,
-                    boolean redirectErrorStream)
-                    throws IOException {
-        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ProcessImpl.forkAndExec");
-    }
-
-    @Substitute //
-    @TargetElement(onlyWith = JDK9OrLater.class) //
-    private static /* native */ void init() {
-        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ProcessImpl.init");
-    }
-}
-
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Java_lang_UNIXProcess_Supplement {
 
@@ -509,26 +478,18 @@ final class Java_lang_UNIXProcess_Supplement {
                 return gotoFinally;
             }
 
-            /*
-             * opendir() below allocates a file descriptor. We close failFd+1 so it should become
-             * the descriptor allocated to opendir() and we can avoid closing it together with the
-             * other descriptors.
-             */
-            final int maxFd = failFd + 1;
-            if (UnistdNoTransitions.close(maxFd) < 0) {
-                return gotoFinally;
-            }
-
             if (procFdsPath.isNull()) {
                 // We have no procfs, resort to close file descriptors by trial and error
                 int maxOpenFds = (int) UnistdNoTransitions.sysconf(Unistd._SC_OPEN_MAX());
-                for (int fd = maxFd + 1; fd < maxOpenFds; fd++) {
-                    if (UnistdNoTransitions.close(fd) != 0 && Errno.errno() != Errno.EBADF()) {
-                        return gotoFinally;
-                    }
+                for (int fd = failFd + 1; fd < maxOpenFds; fd++) {
+                    UnistdNoTransitions.close(fd);
                 }
             } else {
-                DIR fddir = Dirent.opendir_no_transition(procFdsPath);
+                int fddirfd = Fcntl.NoTransitions.open(procFdsPath, Fcntl.O_RDONLY(), 0);
+                if (fddirfd < 0) {
+                    return gotoFinally;
+                }
+                DIR fddir = Dirent.fdopendir_no_transition(fddirfd);
                 if (fddir.isNull()) {
                     return gotoFinally;
                 }
@@ -538,7 +499,7 @@ final class Java_lang_UNIXProcess_Supplement {
                 while ((status = Dirent.readdir_r_no_transition(fddir, dirent, direntptr)) == 0 && direntptr.read().isNonNull()) {
                     CCharPointerPointer endptr = StackValue.get(CCharPointerPointer.class);
                     long fd = LibC.strtol(dirent.d_name(), endptr, 10);
-                    if (fd > maxFd && endptr.read().isNonNull() && endptr.read().read() == '\0') {
+                    if (fd > failFd && fd != fddirfd && endptr.read().isNonNull() && endptr.read().read() == '\0') {
                         UnistdNoTransitions.close((int) fd);
                     }
                 }
@@ -721,13 +682,13 @@ final class Target_java_lang_UNIXProcess_ProcessPipeOutputStream {
 @TargetClass(className = "java.lang.ProcessBuilder", innerClass = "NullInputStream")
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_lang_ProcessBuilder_NullInputStream {
-    @Alias static final Target_java_lang_ProcessBuilder_NullInputStream INSTANCE = null;
+    @Alias static Target_java_lang_ProcessBuilder_NullInputStream INSTANCE;
 }
 
 @TargetClass(className = "java.lang.ProcessBuilder", innerClass = "NullOutputStream")
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_lang_ProcessBuilder_NullOutputStream {
-    @Alias static final Target_java_lang_ProcessBuilder_NullOutputStream INSTANCE = null;
+    @Alias static Target_java_lang_ProcessBuilder_NullOutputStream INSTANCE;
 }
 
 @TargetClass(java.lang.System.class)

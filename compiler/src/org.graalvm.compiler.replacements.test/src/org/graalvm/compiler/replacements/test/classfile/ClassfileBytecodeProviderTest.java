@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -168,6 +168,10 @@ public class ClassfileBytecodeProviderTest extends GraalCompilerTest {
                                  */
                                 continue;
                             }
+                            if (isGSON(className)) {
+                                /* uses old class format */
+                                continue;
+                            }
                             try {
                                 checkClass(metaAccess, getSnippetReflection(), className);
                             } catch (ClassNotFoundException e) {
@@ -186,6 +190,10 @@ public class ClassfileBytecodeProviderTest extends GraalCompilerTest {
         return className.startsWith("org.graalvm.nativeimage");
     }
 
+    private static boolean isGSON(String className) {
+        return className.contains("com.google.gson");
+    }
+
     protected void checkClass(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, String className) throws ClassNotFoundException {
         Class<?> c = Class.forName(className, true, getClass().getClassLoader());
         ClassfileBytecodeProvider cbp = new ClassfileBytecodeProvider(metaAccess, snippetReflection);
@@ -197,15 +205,21 @@ public class ClassfileBytecodeProviderTest extends GraalCompilerTest {
     private static void checkMethod(ClassfileBytecodeProvider cbp, MetaAccessProvider metaAccess, Executable executable) {
         ResolvedJavaMethod method = metaAccess.lookupJavaMethod(executable);
         if (method.hasBytecodes()) {
-            ResolvedJavaMethodBytecode expected = new ResolvedJavaMethodBytecode(method);
             Bytecode actual = getBytecode(cbp, method);
-            new BytecodeComparer(expected, actual).compare();
+            if (actual != null) {
+                ResolvedJavaMethodBytecode expected = new ResolvedJavaMethodBytecode(method);
+                new BytecodeComparer(expected, actual).compare();
+            }
         }
     }
 
     protected static Bytecode getBytecode(ClassfileBytecodeProvider cbp, ResolvedJavaMethod method) {
         try {
             return cbp.getBytecode(method);
+        } catch (UnsupportedClassVersionError e) {
+            // This can happen when a library containing old class files
+            // is bundled into a Graal jar (GR-12672).
+            return null;
         } catch (Throwable e) {
             throw new AssertionError(String.format("Error getting bytecode for %s", method.format("%H.%n(%p)")), e);
         }

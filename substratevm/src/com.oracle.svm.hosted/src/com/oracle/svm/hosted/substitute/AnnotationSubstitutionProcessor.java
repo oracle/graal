@@ -73,8 +73,8 @@ import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.annotation.AnnotationSubstitutionType;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
-import jdk.vm.ci.common.NativeImageReinitialize;
 
+import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -147,6 +147,10 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
 
     public boolean isDeleted(ResolvedJavaField field) {
         return deleteAnnotations.get(field) != null;
+    }
+
+    public boolean isDeleted(Class<?> clazz) {
+        return deleteAnnotations.containsKey(metaAccess.lookupJavaType(clazz));
     }
 
     public Optional<ResolvedJavaField> findSubstitution(ResolvedJavaField field) {
@@ -387,12 +391,39 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             guarantee(annotated.isStatic() == original.isStatic(), "Static modifier mismatch: %s, %s", annotated, original);
             guarantee(annotated.getJavaKind() == original.getJavaKind(), "Type mismatch: %s, %s", annotated, original);
 
+            RecomputeFieldValue recomputeAnnotation = lookupAnnotation(annotatedField, RecomputeFieldValue.class);
+            if (Modifier.isStatic(annotatedField.getModifiers()) && (recomputeAnnotation == null || recomputeAnnotation.kind() != RecomputeFieldValue.Kind.FromAlias)) {
+                guarantee(hasDefaultValue(annotatedField), "The value assigned to a static @Alias field is ignored unless @RecomputeFieldValue with kind=FromAlias is used: %s", annotated);
+            }
+            guarantee(!Modifier.isFinal(annotatedField.getModifiers()), "The `final` modifier for the @Alias field is ignored and therefore misleading: %s", annotated);
+
             if (deleteAnnotation != null) {
                 registerAsDeleted(annotated, original, deleteAnnotation);
             } else {
                 ResolvedJavaField alias = fieldValueRecomputation(originalClass, original, annotated, annotatedField);
                 register(fieldSubstitutions, annotated, original, alias);
             }
+        }
+    }
+
+    private static boolean hasDefaultValue(Field annotatedField) {
+        try {
+            annotatedField.setAccessible(true);
+            /*
+             * We use the automatic widening of primitive types to reduce the number of different
+             * types we have to distinguish here.
+             */
+            if (!annotatedField.getType().isPrimitive()) {
+                return annotatedField.get(null) == null;
+            } else if (annotatedField.getType() == float.class || annotatedField.getType() == double.class) {
+                return annotatedField.getDouble(null) == 0D;
+            } else if (annotatedField.getType() == boolean.class) {
+                return annotatedField.getBoolean(null) == false;
+            } else {
+                return annotatedField.getLong(null) == 0L;
+            }
+        } catch (ReflectiveOperationException ex) {
+            throw VMError.shouldNotReachHere(ex);
         }
     }
 
@@ -797,12 +828,14 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             throw UserError.abort("substitution target for " + annotatedBaseClass.getName() +
                             " is not loaded. Use field `onlyWith` in the `TargetClass` annotation to make substitution only active when needed.");
         }
-        if (!target.innerClass().isEmpty()) {
-            Class<?> outerClass = holder;
-            holder = findInnerClass(outerClass, target.innerClass());
-            if (holder == null) {
-                throw UserError.abort("substitution target for " + annotatedBaseClass.getName() + " is invalid as inner class " + target.innerClass() + " in " + outerClass.getName() +
-                                " can not be found. Make sure that the inner class is present.");
+        if (target.innerClass().length > 0) {
+            for (String innerClass : target.innerClass()) {
+                Class<?> prevHolder = holder;
+                holder = findInnerClass(prevHolder, innerClass);
+                if (holder == null) {
+                    throw UserError.abort("substitution target for " + annotatedBaseClass.getName() + " is invalid as inner class " + innerClass + " in " + prevHolder.getName() +
+                                    " can not be found. Make sure that the inner class is present.");
+                }
             }
         }
 

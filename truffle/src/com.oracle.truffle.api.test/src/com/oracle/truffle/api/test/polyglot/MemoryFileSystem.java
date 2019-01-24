@@ -44,6 +44,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.ByteBuffer;
@@ -63,6 +64,9 @@ import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.WatchEvent;
+import java.nio.file.WatchKey;
+import java.nio.file.WatchService;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileTime;
 import java.nio.file.attribute.GroupPrincipal;
@@ -94,19 +98,19 @@ final class MemoryFileSystem implements FileSystem {
     MemoryFileSystem() throws IOException {
         this.inodes = new HashMap<>();
         this.blocks = new HashMap<>();
-        root = Paths.get("/");
+        root = parsePath("/");
         userDir = root;
         createDirectoryImpl();
     }
 
     @Override
     public Path parsePath(String path) {
-        return Paths.get(path);
+        return new MemoryPath(Paths.get(path));
     }
 
     @Override
     public Path parsePath(URI uri) {
-        return Paths.get(uri);
+        return new MemoryPath(Paths.get(uri));
     }
 
     @Override
@@ -365,6 +369,11 @@ final class MemoryFileSystem implements FileSystem {
         }
         dirents.put(fileName, createDirectoryImpl(attrs));
         writeDir(inode, dirents);
+    }
+
+    @Override
+    public String getSeparator() {
+        return ((MemoryPath) root).delegate.getFileSystem().getSeparator();
     }
 
     private static Object[] parse(String attributesSelector) {
@@ -897,6 +906,203 @@ final class MemoryFileSystem implements FileSystem {
             FileInfo build() {
                 return new FileInfo(type, permissions, ctime, mtime, atime);
             }
+        }
+    }
+
+    private static final class MemoryPath implements Path {
+
+        private final Path delegate;
+
+        MemoryPath(Path delegate) {
+            assert delegate != null;
+            this.delegate = delegate;
+        }
+
+        @Override
+        public java.nio.file.FileSystem getFileSystem() {
+            throw new UnsupportedOperationException("Not supported");
+        }
+
+        @Override
+        public WatchKey register(WatchService watcher, WatchEvent.Kind<?>[] events, WatchEvent.Modifier... modifiers) throws IOException {
+            throw new UnsupportedOperationException("Not supported.");
+        }
+
+        @Override
+        public WatchKey register(WatchService watcher, WatchEvent.Kind<?>... events) throws IOException {
+            throw new UnsupportedOperationException("Not supported.");
+        }
+
+        @Override
+        public File toFile() {
+            throw new UnsupportedOperationException("Not supported.");
+        }
+
+        @Override
+        public boolean isAbsolute() {
+            return delegate.isAbsolute();
+        }
+
+        @Override
+        public Path getRoot() {
+            Path delegateRoot = delegate.getRoot();
+            return delegateRoot == null ? null : new MemoryPath(delegateRoot);
+        }
+
+        @Override
+        public Path getFileName() {
+            Path delegateFileName = delegate.getFileName();
+            return delegateFileName == null ? null : new MemoryPath(delegateFileName);
+        }
+
+        @Override
+        public Path getParent() {
+            Path delegateParent = delegate.getParent();
+            return delegateParent == null ? null : new MemoryPath(delegateParent);
+        }
+
+        @Override
+        public int getNameCount() {
+            return delegate.getNameCount();
+        }
+
+        @Override
+        public Path getName(int index) {
+            Path delegateName = delegate.getName(index);
+            return new MemoryPath(delegateName);
+        }
+
+        @Override
+        public Path subpath(int beginIndex, int endIndex) {
+            Path delegateSubpath = delegate.subpath(beginIndex, endIndex);
+            return new MemoryPath(delegateSubpath);
+        }
+
+        @Override
+        public boolean startsWith(Path other) {
+            if (other.getClass() != MemoryPath.class) {
+                throw new IllegalArgumentException("Unsupported path: " + other.getClass().getName());
+            }
+            return delegate.startsWith(((MemoryPath) other).delegate);
+        }
+
+        @Override
+        public boolean startsWith(String other) {
+            return delegate.startsWith(other);
+        }
+
+        @Override
+        public boolean endsWith(Path other) {
+            if (other.getClass() != MemoryPath.class) {
+                throw new IllegalArgumentException("Unsupported path: " + other.getClass().getName());
+            }
+            return delegate.endsWith(((MemoryPath) other).delegate);
+        }
+
+        @Override
+        public boolean endsWith(String other) {
+            return delegate.endsWith(other);
+        }
+
+        @Override
+        public Path normalize() {
+            return new MemoryPath(delegate.normalize());
+        }
+
+        @Override
+        public Path resolve(Path other) {
+            if (other.getClass() != MemoryPath.class) {
+                throw new IllegalArgumentException("Unsupported path: " + other.getClass().getName());
+            }
+            return new MemoryPath(delegate.resolve(((MemoryPath) other).delegate));
+        }
+
+        @Override
+        public Path resolve(String other) {
+            return new MemoryPath(delegate.resolve(other));
+        }
+
+        @Override
+        public Path resolveSibling(Path other) {
+            if (other.getClass() != MemoryPath.class) {
+                throw new IllegalArgumentException("Unsupported path: " + other.getClass().getName());
+            }
+            return new MemoryPath(delegate.resolveSibling(((MemoryPath) other).delegate));
+        }
+
+        @Override
+        public Path resolveSibling(String other) {
+            return new MemoryPath(delegate.resolveSibling(other));
+        }
+
+        @Override
+        public Path relativize(Path other) {
+            if (other.getClass() != MemoryPath.class) {
+                throw new IllegalArgumentException("Unsupported path: " + other.getClass().getName());
+            }
+            return new MemoryPath(delegate.relativize(((MemoryPath) other).delegate));
+        }
+
+        @Override
+        public URI toUri() {
+            return delegate.toUri();
+        }
+
+        @Override
+        public Path toAbsolutePath() {
+            return new MemoryPath(delegate.toAbsolutePath());
+        }
+
+        @Override
+        public Path toRealPath(LinkOption... options) throws IOException {
+            return new MemoryPath(delegate.toRealPath(options));
+        }
+
+        @Override
+        public Iterator<Path> iterator() {
+            return new Iterator<Path>() {
+
+                private final Iterator<Path> delegateIt = delegate.iterator();
+
+                @Override
+                public boolean hasNext() {
+                    return delegateIt.hasNext();
+                }
+
+                @Override
+                public Path next() {
+                    return new MemoryPath(delegateIt.next());
+                }
+            };
+        }
+
+        @Override
+        public int compareTo(Path other) {
+            if (other.getClass() != MemoryPath.class) {
+                throw new IllegalArgumentException("Unsupported path: " + other.getClass().getName());
+            }
+            return delegate.compareTo(((MemoryPath) other).delegate);
+        }
+
+        @Override
+        public String toString() {
+            return delegate.toString();
+        }
+
+        @Override
+        public int hashCode() {
+            return delegate.hashCode();
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            if (other == this) {
+                return true;
+            }
+            if (other == null || other.getClass() != MemoryPath.class) {
+                return false;
+            }
+            return delegate.equals(((MemoryPath) other).delegate);
         }
     }
 }

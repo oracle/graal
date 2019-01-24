@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -196,9 +196,12 @@ public class TruffleGraphBuilderPlugins {
         r.register0("inFirstTier", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                boolean isFirstTier = b.getGraph().getCancellable() instanceof TruffleCompilationTask ? !((TruffleCompilationTask) b.getGraph().getCancellable()).isLastTier() : false;
-                b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(isFirstTier));
-                return true;
+                if (b.getGraph().getCancellable() instanceof TruffleCompilationTask) {
+                    boolean isFirstTier = !((TruffleCompilationTask) b.getGraph().getCancellable()).isLastTier();
+                    b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(isFirstTier));
+                    return true;
+                }
+                return false;
             }
         });
     }

@@ -45,7 +45,6 @@ import java.util.function.Predicate;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
-import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
@@ -70,7 +69,7 @@ import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
-import org.graalvm.compiler.phases.common.ConvertDeoptimizeToGuardPhase;
+import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
 import org.graalvm.compiler.phases.tiers.Suites;
@@ -90,6 +89,7 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.GraalConfiguration;
+import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
@@ -134,10 +134,10 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * The main handler for running Graal in the Substrate VM at run time. This feature (and features it
- * depends on like {@link FieldsOffsetsFeature}) encode Graal graphs for runtime compilation, ensure
- * that all the {@link SubstrateType}, {@link SubstrateMethod}, {@link SubstrateField} are created
- * by the {@link GraalObjectReplacer} and put in the image. Data that is prepared during image
- * generation and used at run time is stored in the {@link GraalSupport}.
+ * depends on like {@link FieldsOffsetsFeature}) encodes Graal graphs for runtime compilation,
+ * ensures that all required {@link SubstrateType}, {@link SubstrateMethod}, {@link SubstrateField}
+ * objects are created by {@link GraalObjectReplacer} and added to the image. Data that is prepared
+ * during image generation and used at run time is stored in {@link GraalSupport}.
  */
 public final class GraalFeature implements Feature {
 
@@ -311,6 +311,8 @@ public final class GraalFeature implements Feature {
 
         objectReplacer = new GraalObjectReplacer(config.getUniverse(), config.getMetaAccess());
         config.registerObjectReplacer(objectReplacer);
+
+        config.registerClassReachabilityListener(GraalSupport::registerPhaseStatistics);
     }
 
     @Override
@@ -321,7 +323,7 @@ public final class GraalFeature implements Feature {
 
         populateMatchRuleRegistry();
 
-        Function<Providers, Backend> backendProvider = GraalSupport.getRuntimeBackendProvider();
+        Function<Providers, SubstrateBackend> backendProvider = GraalSupport.getRuntimeBackendProvider();
 
         Providers originalProviders = GraalAccess.getOriginalProviders();
         runtimeConfigBuilder = new SubstrateRuntimeConfigurationBuilder(RuntimeOptionValues.singleton(), config.getHostVM(), config.getUniverse(), config.getMetaAccess(),
@@ -347,7 +349,9 @@ public final class GraalFeature implements Feature {
         featureHandler.forEachGraalFeature(feature -> feature.registerCodeObserver(runtimeConfig));
         Suites suites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, runtimeConfig.getSnippetReflection(), false);
         LIRSuites lirSuites = NativeImageGenerator.createLIRSuites(featureHandler, runtimeConfig.getProviders(), false);
-        GraalSupport.setRuntimeConfig(runtimeConfig, suites, lirSuites);
+        Suites firstTierSuites = NativeImageGenerator.createFirstTierSuites(featureHandler, runtimeConfig, runtimeConfig.getSnippetReflection(), false);
+        LIRSuites firstTierLirSuites = NativeImageGenerator.createFirstTierLIRSuites(featureHandler, runtimeConfig.getProviders(), false);
+        GraalSupport.setRuntimeConfig(runtimeConfig, suites, lirSuites, firstTierSuites, firstTierLirSuites);
 
         NodeClass<?>[] snippetNodeClasses = ((SubstrateReplacements) runtimeProviders.getReplacements()).getSnippetNodeClasses();
         for (NodeClass<?> nodeClass : snippetNodeClasses) {
@@ -426,8 +430,6 @@ public final class GraalFeature implements Feature {
     @Override
     public void duringAnalysis(DuringAnalysisAccess c) {
         DuringAnalysisAccessImpl config = (DuringAnalysisAccessImpl) c;
-
-        GraalSupport.registerPhaseStatistics(config);
 
         Deque<CallTreeNode> worklist = new ArrayDeque<>();
         worklist.addAll(methods.values());

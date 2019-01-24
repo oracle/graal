@@ -24,15 +24,16 @@
  */
 package com.oracle.truffle.regex.tregex.matchers;
 
-import com.oracle.truffle.regex.tregex.util.MathUtil;
-
 import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.regex.tregex.util.MathUtil;
 
 /**
  * Character range matcher using a left-balanced tree of ranges.
  */
-public final class RangeTreeMatcher extends InvertibleCharMatcher {
+public abstract class RangeTreeMatcher extends InvertibleCharMatcher {
 
     /**
      * Constructs a new {@link RangeTreeMatcher}.
@@ -47,7 +48,7 @@ public final class RangeTreeMatcher extends InvertibleCharMatcher {
     public static RangeTreeMatcher fromRanges(boolean invert, char[] ranges) {
         char[] tree = new char[ranges.length];
         buildTree(tree, 0, ranges, 0, ranges.length / 2);
-        return new RangeTreeMatcher(invert, tree);
+        return RangeTreeMatcherNodeGen.create(invert, tree);
     }
 
     /**
@@ -104,20 +105,21 @@ public final class RangeTreeMatcher extends InvertibleCharMatcher {
 
     @CompilationFinal(dimensions = 1) private final char[] tree;
 
-    private RangeTreeMatcher(boolean invert, char[] tree) {
+    RangeTreeMatcher(boolean invert, char[] tree) {
         super(invert);
         this.tree = tree;
     }
 
-    @Override
-    public boolean matchChar(char c) {
+    @Specialization
+    public boolean match(char c, boolean compactString) {
+        assert !compactString : "this matcher should be avoided via ProfilingCharMatcher on compact strings";
         int i = 0;
         while (i < tree.length) {
             final char lo = tree[i];
             final char hi = tree[i + 1];
             if (lo <= c) {
                 if (hi >= c) {
-                    return true;
+                    return result(true);
                 } else {
                     i = rightChild(i);
                 }
@@ -125,7 +127,7 @@ public final class RangeTreeMatcher extends InvertibleCharMatcher {
                 i = leftChild(i);
             }
         }
-        return false;
+        return result(false);
     }
 
     @Override

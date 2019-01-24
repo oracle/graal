@@ -45,6 +45,12 @@ import static org.graalvm.word.WordFactory.nullPointer;
 class WindowsPhysicalMemory extends PhysicalMemory {
 
     static class WindowsPhysicalMemorySupportImpl implements PhysicalMemorySupport {
+
+        @Override
+        public boolean hasSize() {
+            return true;
+        }
+
         @Override
         public UnsignedWord size() {
             WinBase.MEMORYSTATUSEX memStatusEx = StackValue.get(WinBase.MEMORYSTATUSEX.class);

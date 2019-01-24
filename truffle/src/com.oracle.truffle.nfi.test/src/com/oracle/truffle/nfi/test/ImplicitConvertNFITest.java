@@ -47,6 +47,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -54,7 +55,11 @@ import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.nfi.test.interop.TestCallback;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
 import com.oracle.truffle.tck.TruffleRunner;
@@ -110,6 +115,7 @@ public class ImplicitConvertNFITest extends NFITest {
 
     @Test
     public void testConvert(@Inject(TestConvertNode.class) CallTarget callTarget) {
+        Assume.assumeFalse(isCompileImmediately());
         TruffleObject callback = new TestCallback(1, this::callback);
         Object ret = callTarget.call(callback, value);
 
@@ -126,4 +132,15 @@ public class ImplicitConvertNFITest extends NFITest {
         long retValue = ((Number) ret).longValue();
         Assert.assertEquals("callback return", numericValue * 2, retValue);
     }
+
+    private static boolean isCompileImmediately() {
+        CallTarget target = Truffle.getRuntime().createCallTarget(new RootNode(null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return CompilerDirectives.inCompiledCode();
+            }
+        });
+        return (boolean) target.call();
+    }
+
 }

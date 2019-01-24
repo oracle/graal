@@ -42,18 +42,14 @@ import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.HostedConfiguration;
-import com.oracle.svm.hosted.NativeImageClassLoader;
 import com.oracle.svm.hosted.NativeImageOptions;
-import com.oracle.svm.hosted.c.GraalAccess;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -64,7 +60,6 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance {
     final WordTypes wordTypes;
@@ -98,15 +93,20 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         @Override
-        protected boolean typeIsResolved(JavaType type) {
-            /*
-             * There aren't any UnresolvedJavaType objects during the analysis, all missing types,
-             * i.e., the types that fail to be loaded, are replaced with a ghost interface, i.e., a
-             * marker signifying that the type is missing, which is a ResolvedJavaType.
-             */
-            /* Test the elemental type. */
-            ResolvedJavaType resolvedType = guaranteeResolved(type.getElementalType());
-            return !typeIsMissing(resolvedType);
+        protected void maybeEagerlyResolve(int cpi, int bytecode) {
+            try {
+                super.maybeEagerlyResolve(cpi, bytecode);
+            } catch (UnresolvedElementException e) {
+                if (e.getCause() instanceof NoClassDefFoundError) {
+                    /*
+                     * Ignore NoClassDefFoundError if thrown from eager resolution attempt. This is
+                     * usually followed by a call to ConstantPool.lookupType() which should return
+                     * an UnresolvedJavaType which we know how to deal with.
+                     */
+                } else {
+                    throw e;
+                }
+            }
         }
 
         @Override
@@ -159,57 +159,11 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             handleUnresolvedMethod(javaMethod);
         }
 
-        /** Is the type missing from the classpath? */
-        private static boolean typeIsMissing(ResolvedJavaType type) {
-            return NativeImageClassLoader.classIsMissing(asJavaClass(type));
-        }
-
-        /** Unwrap the original java.lang.Class from a ResolvedJavaType. */
-        private static Class<?> asJavaClass(ResolvedJavaType type) {
-            return OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), type);
-        }
-
-        /**
-         * There shouldn't be any UnresolvedJavaType objects during the analysis, all missing types
-         * are replaced with a ghost interface which is a ResolvedJavaType.
-         */
-        private static ResolvedJavaType guaranteeResolved(JavaType type) {
-            if (type instanceof ResolvedJavaType) {
-                return (ResolvedJavaType) type;
-            }
-            throw VMError.shouldNotReachHere("Unresolved type during parsing: " + type);
-        }
-
         private void handleUnresolvedType(JavaType type) {
-            ResolvedJavaType targetType = guaranteeResolved(type);
-            /* Only a missing type can flow in this method. */
-            VMError.guarantee(typeIsMissing(targetType));
-            handleMissingType(targetType);
-        }
-
-        private void handleUnresolvedField(JavaField field) {
-            ResolvedJavaType declaringClass = guaranteeResolved(field.getDeclaringClass());
-            if (typeIsMissing(declaringClass)) {
-                handleMissingType(declaringClass);
-            } else {
-                handleMissingField(field);
-            }
-        }
-
-        private void handleUnresolvedMethod(JavaMethod javaMethod) {
-            ResolvedJavaType declaringClass = guaranteeResolved(javaMethod.getDeclaringClass());
-            if (typeIsMissing(declaringClass)) {
-                handleMissingType(declaringClass);
-            } else {
-                handleMissingMethod(javaMethod);
-            }
-        }
-
-        /**
-         * If NativeImageOptions.AllowIncompleteClasspath is set defer the error reporting to
-         * runtime, otherwise report the error during image building.
-         */
-        void handleMissingType(ResolvedJavaType type) {
+            /*
+             * If --allow-incomplete-classpath is set defer the error reporting to runtime,
+             * otherwise report the error during image building.
+             */
             if (NativeImageOptions.AllowIncompleteClasspath.getValue()) {
                 ExceptionSynthesizer.throwNoClassDefFoundError(this, type.toJavaName());
             } else {
@@ -217,27 +171,39 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             }
         }
 
-        /**
-         * If NativeImageOptions.AllowIncompleteClasspath is set defer the error reporting to
-         * runtime, otherwise report the error during image building.
-         */
-        private void handleMissingField(JavaField field) {
-            if (NativeImageOptions.AllowIncompleteClasspath.getValue()) {
-                ExceptionSynthesizer.throwNoSuchFieldError(this, field.format("%H.%n"));
+        private void handleUnresolvedField(JavaField field) {
+            JavaType declaringClass = field.getDeclaringClass();
+            if (!typeIsResolved(declaringClass)) {
+                /* The field could not be resolved because its declaring class is missing. */
+                handleUnresolvedType(declaringClass);
             } else {
-                reportUnresolvedElement("field", field.format("%H.%n"));
+                /*
+                 * If --allow-incomplete-classpath is set defer the error reporting to runtime,
+                 * otherwise report the error during image building.
+                 */
+                if (NativeImageOptions.AllowIncompleteClasspath.getValue()) {
+                    ExceptionSynthesizer.throwNoSuchFieldError(this, field.format("%H.%n"));
+                } else {
+                    reportUnresolvedElement("field", field.format("%H.%n"));
+                }
             }
         }
 
-        /**
-         * If NativeImageOptions.AllowIncompleteClasspath is set defer the error reporting to
-         * runtime, otherwise report the error during image building.
-         */
-        private void handleMissingMethod(JavaMethod javaMethod) {
-            if (NativeImageOptions.AllowIncompleteClasspath.getValue()) {
-                ExceptionSynthesizer.throwNoSuchMethodError(this, javaMethod.format("%H.%n(%P)"));
+        private void handleUnresolvedMethod(JavaMethod javaMethod) {
+            JavaType declaringClass = javaMethod.getDeclaringClass();
+            if (!typeIsResolved(declaringClass)) {
+                /* The method could not be resolved because its declaring class is missing. */
+                handleUnresolvedType(declaringClass);
             } else {
-                reportUnresolvedElement("method", javaMethod.format("%H.%n(%P)"));
+                /*
+                 * If --allow-incomplete-classpath is set defer the error reporting to runtime,
+                 * otherwise report the error during image building.
+                 */
+                if (NativeImageOptions.AllowIncompleteClasspath.getValue()) {
+                    ExceptionSynthesizer.throwNoSuchMethodError(this, javaMethod.format("%H.%n(%P)"));
+                } else {
+                    reportUnresolvedElement("method", javaMethod.format("%H.%n(%P)"));
+                }
             }
         }
 
@@ -310,9 +276,9 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 boolean isWordValue = value.getStackKind() == getWordTypes().getWordKind();
 
                 if (isWordTypeExpected && !isWordValue) {
-                    throw UserError.abort("Expected Word but got Object for " + reason + " at " + method.format("%H.%n(%p)") + " in " + method.asStackTraceElement(bci()));
+                    throw UserError.abort("Expected Word but got Object for " + reason + " in " + method.asStackTraceElement(bci()));
                 } else if (!isWordTypeExpected && isWordValue) {
-                    throw UserError.abort("Expected Object but got Word for " + reason + " at " + method.format("%H.%n(%p)") + " in " + method.asStackTraceElement(bci()));
+                    throw UserError.abort("Expected Object but got Word for " + reason + " in " + method.asStackTraceElement(bci()));
                 }
             }
         }

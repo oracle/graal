@@ -53,7 +53,6 @@ import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.CompilationIdentifier.Verbosity;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
-import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.debug.GraalError;
@@ -68,10 +67,12 @@ import org.graalvm.compiler.lir.asm.DataBuilder;
 import org.graalvm.compiler.lir.asm.FrameContext;
 import org.graalvm.compiler.lir.framemap.FrameMap;
 import org.graalvm.compiler.lir.phases.LIRSuites;
+import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.IndirectCallTargetNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.ParameterNode;
@@ -121,6 +122,7 @@ import com.oracle.svm.core.code.FrameInfoEncoder;
 import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
 import com.oracle.svm.core.deopt.DeoptTester;
 import com.oracle.svm.core.graal.GraalConfiguration;
+import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
@@ -652,7 +654,7 @@ public class CompileQueue {
 
     @SuppressWarnings("try")
     private void defaultParseFunction(DebugContext debug, HostedMethod method, CompileReason reason, RuntimeConfiguration config) {
-        if (method.getAnnotation(Fold.class) != null || method.getAnnotation(NodeIntrinsic.class) != null) {
+        if ((!NativeImageOptions.AllowFoldMethods.getValue() && method.getAnnotation(Fold.class) != null) || method.getAnnotation(NodeIntrinsic.class) != null) {
             throw VMError.shouldNotReachHere("Parsing method annotated with @Fold or @NodeIntrinsic: " + method.format("%H.%n(%p)"));
         }
 
@@ -727,19 +729,17 @@ public class CompileQueue {
                     if (!canBeUsedForInlining(invoke)) {
                         invoke.setUseForInlining(false);
                     }
-                    if (invoke.callTarget() instanceof MethodCallTargetNode) {
-                        MethodCallTargetNode targetNode = (MethodCallTargetNode) invoke.callTarget();
-                        HostedMethod invokeTarget = (HostedMethod) targetNode.targetMethod();
-                        if (targetNode.invokeKind().isDirect()) {
-                            if (invokeTarget.wrapped.isImplementationInvoked()) {
-                                handleSpecialization(method, targetNode, invokeTarget, invokeTarget);
-                                ensureParsed(invokeTarget, new DirectCallReason(method, reason));
-                            }
-                        } else {
-                            for (HostedMethod invokeImplementation : invokeTarget.getImplementations()) {
-                                handleSpecialization(method, targetNode, invokeTarget, invokeImplementation);
-                                ensureParsed(invokeImplementation, new VirtualCallReason(method, invokeImplementation, reason));
-                            }
+                    CallTargetNode targetNode = invoke.callTarget();
+                    HostedMethod invokeTarget = (HostedMethod) targetNode.targetMethod();
+                    if (targetNode.invokeKind().isIndirect() || targetNode instanceof IndirectCallTargetNode) {
+                        for (HostedMethod invokeImplementation : invokeTarget.getImplementations()) {
+                            handleSpecialization(method, targetNode, invokeTarget, invokeImplementation);
+                            ensureParsed(invokeImplementation, new VirtualCallReason(method, invokeImplementation, reason));
+                        }
+                    } else {
+                        if (invokeTarget.wrapped.isImplementationInvoked()) {
+                            handleSpecialization(method, targetNode, invokeTarget, invokeTarget);
+                            ensureParsed(invokeTarget, new DirectCallReason(method, reason));
                         }
                     }
                 }
@@ -823,7 +823,7 @@ public class CompileQueue {
         return invoke.useForInlining();
     }
 
-    private static void handleSpecialization(final HostedMethod method, MethodCallTargetNode targetNode, HostedMethod invokeTarget, HostedMethod invokeImplementation) {
+    private static void handleSpecialization(final HostedMethod method, CallTargetNode targetNode, HostedMethod invokeTarget, HostedMethod invokeImplementation) {
         if (method.getAnnotation(Specialize.class) != null && !method.compilationInfo.isDeoptTarget() && invokeTarget.getAnnotation(DeoptTest.class) != null) {
             /*
              * Collect the constant arguments to a method which should be specialized.
@@ -864,6 +864,7 @@ public class CompileQueue {
             }
         }
         executor.execute(task);
+        method.setCompiled();
     }
 
     class HostedCompilationResultBuilderFactory implements CompilationResultBuilderFactory {
@@ -888,7 +889,7 @@ public class CompileQueue {
             System.out.println("Compiling " + method.format("%r %H.%n(%p)") + "  [" + reason + "]");
         }
 
-        Backend backend = config.lookupBackend(method);
+        SubstrateBackend backend = config.lookupBackend(method);
 
         StructuredGraph graph = method.compilationInfo.graph;
         assert graph != null : method;
@@ -912,15 +913,9 @@ public class CompileQueue {
 
             Suites suites = method.compilationInfo.isDeoptTarget() ? deoptTargetSuites : regularSuites;
             LIRSuites lirSuites = method.compilationInfo.isDeoptTarget() ? deoptTargetLIRSuites : regularLIRSuites;
-            CompilationResult result = new CompilationResult(compilationIdentifier, method.format("%H.%n(%p)")) {
-                @Override
-                public void close() {
-                    /*
-                     * Do nothing, we do not want our CompilationResult to be closed because we
-                     * aggregate all data items and machine code in the native image heap.
-                     */
-                }
-            };
+
+            CompilationResult result = backend.newCompilationResult(compilationIdentifier, method.format("%H.%n(%p)"));
+
             try (Indent indent = debug.logAndIndent("compile %s", method)) {
                 GraalCompiler.compileGraph(graph, method, backend.getProviders(), backend, null, optimisticOpts, method.getProfilingInfo(), suites, lirSuites, result,
                                 new HostedCompilationResultBuilderFactory(), false);

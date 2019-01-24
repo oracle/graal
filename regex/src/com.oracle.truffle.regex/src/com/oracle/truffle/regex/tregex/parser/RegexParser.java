@@ -55,12 +55,15 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.DeleteVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.InitIDVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.MarkLookBehindEntriesVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.SetSourceSectionVisitor;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+
+import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_INTERNAL_ERRORS;
 
 public final class RegexParser {
 
@@ -103,6 +106,7 @@ public final class RegexParser {
     private final RegexAST ast;
     private final RegexSource source;
     private final RegexFlags flags;
+    private final RegexOptions options;
     private final RegexLexer lexer;
     private final RegexProperties properties;
     private final Counter.ThresholdCounter groupCount;
@@ -118,28 +122,28 @@ public final class RegexParser {
     public RegexParser(RegexSource source, RegexOptions options) throws RegexSyntaxException {
         this.source = source;
         this.flags = RegexFlags.parseFlags(source.getFlags());
+        this.options = options;
         this.lexer = new RegexLexer(source, flags, options);
         this.ast = new RegexAST(source, flags, options);
         this.properties = ast.getProperties();
         this.groupCount = ast.getGroupCount();
         this.copyVisitor = new CopyVisitor(ast);
         this.deleteVisitor = new DeleteVisitor(ast);
-        this.setSourceSectionVisitor = DebugUtil.DEBUG ? new SetSourceSectionVisitor() : null;
+        this.setSourceSectionVisitor = options.isDumpAutomata() ? new SetSourceSectionVisitor() : null;
     }
 
     private static Group parseRootLess(String pattern) throws RegexSyntaxException {
         try {
             return new RegexParser(new RegexSource(pattern), RegexOptions.DEFAULT).parse(false);
         } catch (Throwable e) {
-            e.printStackTrace();
-            System.out.flush();
+            LOG_INTERNAL_ERRORS.severe(() -> {
+                StringWriter buffer = new StringWriter();
+                PrintWriter writer = new PrintWriter(buffer);
+                e.printStackTrace(writer);
+                return buffer.toString();
+            });
             throw e;
         }
-    }
-
-    @TruffleBoundary
-    public static RegexAST parse(RegexSource source, RegexOptions options) throws RegexSyntaxException {
-        return new RegexParser(source, options).parse();
     }
 
     @TruffleBoundary
@@ -233,7 +237,7 @@ public final class RegexParser {
             setComplexLookAround();
         }
         curSequence = curGroup.addSequence(ast);
-        if (DebugUtil.DEBUG) {
+        if (options.isDumpAutomata()) {
             if (token != null) {
                 SourceSection src = token.getSourceSection();
                 // set source section to empty string, it will be updated by the Sequence object
@@ -460,7 +464,7 @@ public final class RegexParser {
 
     private void substitute(Token token, Group substitution) {
         Group copy = substitution.copy(ast, true);
-        if (DebugUtil.DEBUG) {
+        if (options.isDumpAutomata()) {
             setSourceSectionVisitor.run(copy, token.getSourceSection());
         }
         addTerm(copy);
@@ -471,7 +475,7 @@ public final class RegexParser {
     private Group parse(boolean rootCapture) throws RegexSyntaxException {
         RegexASTRootNode rootParent = ast.createRootNode();
         Group root = createGroup(null, false, rootCapture, rootParent);
-        if (DebugUtil.DEBUG) {
+        if (options.isDumpAutomata()) {
             root.setSourceSectionBegin(ast.getSource().getSource().createSection(0, 1));
             root.setSourceSectionEnd(ast.getSource().getSource().createSection(ast.getSource().getPattern().length() + 1, 1));
         }
@@ -622,7 +626,7 @@ public final class RegexParser {
                 CharacterClass curCC = (CharacterClass) curSequence.getFirstTerm();
                 prevCC.setMatcherBuilder(prevCC.getMatcherBuilder().union(curCC.getMatcherBuilder()));
                 curSequence.removeLastTerm();
-                if (DebugUtil.DEBUG) {
+                if (options.isDumpAutomata()) {
                     // set source section to cover both char classes and the "|" in between
                     SourceSection prevCCSrc = prevCC.getSourceSection();
                     prevCC.setSourceSection(prevCCSrc.getSource().createSection(

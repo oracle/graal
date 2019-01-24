@@ -60,7 +60,7 @@ import org.graalvm.compiler.replacements.GraphKit;
 import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.word.WordBase;
 
-import com.oracle.svm.core.graal.code.amd64.SubstrateCallingConventionType;
+import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.meta.SubstrateLoweringProvider;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -158,12 +158,12 @@ public class SubstrateGraphKit extends GraphKit {
         return ConstantNode.forConstant(StampFactory.forKind(kind), value, getMetaAccess(), getGraph());
     }
 
-    public ValueNode createCFunctionCall(ValueNode targetAddress, ResolvedJavaMethod targetMethod, List<ValueNode> arguments, Signature signature, boolean emitTransition, boolean emitDeoptTarget) {
+    public ValueNode createCFunctionCall(ValueNode targetAddress, List<ValueNode> arguments, Signature signature, boolean emitTransition, boolean emitDeoptTarget) {
         if (emitTransition) {
             append(new CFunctionPrologueNode());
         }
 
-        InvokeNode invoke = createIndirectCall(targetAddress, targetMethod, arguments, signature, SubstrateCallingConventionType.NativeCall);
+        InvokeNode invoke = createIndirectCall(targetAddress, arguments, signature, SubstrateCallingConventionType.NativeCall);
 
         assert !emitDeoptTarget || !emitTransition : "cannot have transition for deoptimization targets";
         if (emitTransition) {
@@ -181,7 +181,7 @@ public class SubstrateGraphKit extends GraphKit {
         return getLoweringProvider().implicitLoadConvert(getGraph(), asKind(signature.getReturnType(null)), invoke);
     }
 
-    public InvokeNode createIndirectCall(ValueNode targetAddress, ResolvedJavaMethod targetMethod, List<ValueNode> arguments, Signature signature, CallingConvention.Type callType) {
+    public InvokeNode createIndirectCall(ValueNode targetAddress, List<ValueNode> arguments, Signature signature, CallingConvention.Type callType) {
         assert arguments.size() == signature.getParameterCount(false);
         frameState.clearStack();
 
@@ -189,7 +189,7 @@ public class SubstrateGraphKit extends GraphKit {
         int bci = bci();
 
         CallTargetNode callTarget = getGraph().add(
-                        new IndirectCallTargetNode(targetAddress, arguments.toArray(new ValueNode[arguments.size()]), StampPair.createSingle(stamp), signature.toParameterTypes(null), targetMethod,
+                        new IndirectCallTargetNode(targetAddress, arguments.toArray(new ValueNode[arguments.size()]), StampPair.createSingle(stamp), signature.toParameterTypes(null), null,
                                         callType, InvokeKind.Static));
         InvokeNode invoke = append(new InvokeNode(callTarget, bci));
 

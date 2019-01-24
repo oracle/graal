@@ -66,6 +66,11 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
 
     class BinutilsCCLinkerInvocation extends CCLinkerInvocation {
 
+        BinutilsCCLinkerInvocation() {
+            additionalPreOptions.add("-z");
+            additionalPreOptions.add("noexecstack");
+        }
+
         @Override
         protected void addOneSymbolAliasOption(List<String> cmd, Entry<String, String> ent) {
             cmd.add("-Wl,--defsym");
@@ -129,7 +134,9 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             switch (kind) {
                 case EXECUTABLE:
                 case STATIC_EXECUTABLE:
-                    cmd.add("/MT");
+                    // cmd.add("/MT");
+                    // Must use /MD in order to link with JDK native libraries build that way
+                    cmd.add("/MD");
                     break;
                 case SHARED_LIBRARY:
                     cmd.add("/MD");
@@ -151,15 +158,28 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
 
             cmd.addAll(inputFilenames);
 
-            // We could add a .drectve section instead of doing this
-            cmd.add("/link /DEFAULTLIB:LIBCMT /DEFAULTLIB:OLDNAMES");
+            cmd.add("/link /INCREMENTAL:NO /NODEFAULTLIB:LIBCMT /NODEFAULTLIB:OLDNAMES");
+
+            // Add clibrary paths to command
+            for (String libraryPath : nativeLibs.getLibraryPaths()) {
+                cmd.add("/LIBPATH:" + libraryPath);
+            }
+
+            for (String library : nativeLibs.getLibraries()) {
+                cmd.add(library + ".lib");
+            }
+
+            // Add required Windows Libraries
+            cmd.add("advapi32.lib");
+            cmd.add("ws2_32.lib");
+            cmd.add("secur32.lib");
+            cmd.add("iphlpapi.lib");
+
             return cmd;
         }
     }
 
     LinkerInvocation getLinkerInvocation(Path outputDirectory, Path tempDirectory, String imageName) {
-        String relocatableFileName = tempDirectory.resolve(imageName + ObjectFile.getFilenameSuffix()).toString();
-
         CCLinkerInvocation inv;
 
         switch (ObjectFile.getNativeFormat()) {
@@ -192,7 +212,9 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             inv.addLinkedLibrary(library);
         }
 
-        inv.addInputFile(relocatableFileName);
+        for (String filename : codeCache.getCCInputFiles(tempDirectory, imageName)) {
+            inv.addInputFile(filename);
+        }
 
         return inv;
     }
