@@ -75,7 +75,7 @@ public final class ClassInitializationInfo {
      * Isolates require that all function pointers to image methods are in immutable classes.
      * {@link ClassInitializationInfo} is mutable, so we use this class as an immutable indirection.
      */
-    static class ClassInitializerFunctionPointerHolder {
+    public static class ClassInitializerFunctionPointerHolder {
         /**
          * We cannot declare the field to have type {@link ClassInitializerFunctionPointer} because
          * during image building the field refers to a wrapper object that cannot implement custom
