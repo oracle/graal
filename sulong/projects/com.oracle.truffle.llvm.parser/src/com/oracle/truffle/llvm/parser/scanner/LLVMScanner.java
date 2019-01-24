@@ -44,6 +44,7 @@ import com.oracle.truffle.llvm.parser.elf.ElfFile;
 import com.oracle.truffle.llvm.parser.elf.ElfSectionHeaderTable.Entry;
 import com.oracle.truffle.llvm.parser.listeners.BCFileRoot;
 import com.oracle.truffle.llvm.parser.listeners.ParserListener;
+import com.oracle.truffle.llvm.parser.macho.MachOFile;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
@@ -125,6 +126,28 @@ public final class LLVMScanner {
             long offset = llvmbc.getOffset();
             long size = llvmbc.getSize();
             bitcode = bytes.subSequence((int) offset, (int) (offset + size));
+        } else if (MachOFile.isMachOMagicNumber(magicWord)) {
+            MachOFile machOFile = MachOFile.create(bytes);
+
+            List<String> libraries = machOFile.getDyLibs();
+            model.addLibraries(libraries);
+
+            bitcode = machOFile.extractBitcode();
+
+//            long wrapperMagic = Integer.toUnsignedLong(bitcode.getInt(bitcode.position()));
+//            if (wrapperMagic == WRAPPER_MAGIC_WORD) {
+//                // the first read did not change position
+//                bitcode.position(bitcode.position() + 4);
+//                // Version
+//                bitcode.getInt();
+//                // Offset32
+//                long offset = bitcode.getInt();
+//                // Size32
+//                long size = bitcode.getInt();
+//                bitcode.position((int) offset);
+//                bitcode.limit((int) (offset + size));
+//                bitcode = bitcode.slice();
+//            }
         } else {
             throw new LLVMParserException("Not a valid input file!");
         }
@@ -138,7 +161,7 @@ public final class LLVMScanner {
         BitStream bs = BitStream.create(bytes);
         try {
             long magicWord = bs.read(0, Integer.SIZE);
-            return magicWord == BC_MAGIC_WORD || magicWord == WRAPPER_MAGIC_WORD || magicWord == ELF_MAGIC_WORD;
+            return magicWord == BC_MAGIC_WORD || magicWord == WRAPPER_MAGIC_WORD || magicWord == ELF_MAGIC_WORD || MachOFile.isMachOMagicNumber(magicWord);
         } catch (Exception e) {
             /*
              * An exception here means we can't read at least 4 bytes from the file. That means it
