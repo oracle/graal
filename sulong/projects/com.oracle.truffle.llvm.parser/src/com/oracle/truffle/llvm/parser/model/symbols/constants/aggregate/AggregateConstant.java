@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,6 +33,7 @@ import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.AbstractConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.Constant;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -59,7 +60,7 @@ public abstract class AggregateConstant extends AbstractConstant {
     @Override
     public void replace(SymbolImpl oldValue, SymbolImpl newValue) {
         if (!(newValue instanceof Constant || newValue instanceof GlobalValueSymbol)) {
-            throw new IllegalStateException("Values can only be replaced by Constants or Globals!");
+            throw new LLVMParserException("Values can only be replaced by Constants or Globals!");
         }
         for (int i = 0; i < elements.length; i++) {
             if (elements[i] == oldValue) {
@@ -93,7 +94,7 @@ public abstract class AggregateConstant extends AbstractConstant {
             elementType = vectorType.getElementType();
             aggregateConstant = new VectorConstant((VectorType) type, data.length);
         } else {
-            throw new RuntimeException("Cannot create constant from data: " + type);
+            throw new LLVMParserException("Cannot create constant from data: " + type);
         }
 
         for (int i = 0; i < data.length; i++) {
@@ -112,7 +113,7 @@ public abstract class AggregateConstant extends AbstractConstant {
         } else if (type instanceof VectorType) {
             aggregateConstant = new VectorConstant((VectorType) type, valueIndices.length);
         } else {
-            throw new RuntimeException("No value constant implementation for " + type);
+            throw new LLVMParserException("Cannot create constant for type: " + type);
         }
 
         for (int elementIndex = 0; elementIndex < valueIndices.length; elementIndex++) {

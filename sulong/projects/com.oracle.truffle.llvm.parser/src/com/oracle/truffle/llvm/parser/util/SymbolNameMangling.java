@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -42,6 +42,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalAlias;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 
 public final class SymbolNameMangling {
@@ -107,7 +108,7 @@ public final class SymbolNameMangling {
                 case "o":
                     return DEMANGLE_MACHO;
                 default:
-                    throw new AssertionError("Unsupported mangling in TargetDataLayout: " + mangling);
+                    throw new LLVMParserException("Unsupported mangling in TargetDataLayout: " + mangling);
             }
         } else {
             return DEFAULT_DEMANGLER;

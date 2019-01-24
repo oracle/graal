@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -75,9 +75,9 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstructio
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidInvokeInstruction;
-import com.oracle.truffle.llvm.parser.records.FunctionRecord;
 import com.oracle.truffle.llvm.parser.records.Records;
 import com.oracle.truffle.llvm.parser.scanner.Block;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
@@ -90,6 +90,53 @@ import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 public final class Function implements ParserListener {
+
+    private static final int INSTRUCTION_DECLAREBLOCKS = 1;
+    private static final int INSTRUCTION_BINOP = 2;
+    private static final int INSTRUCTION_CAST = 3;
+    private static final int INSTRUCTION_GEP_OLD = 4;
+    // private static final int INSTRUCTION_SELECT = 5;
+    private static final int INSTRUCTION_EXTRACTELT = 6;
+    private static final int INSTRUCTION_INSERTELT = 7;
+    private static final int INSTRUCTION_SHUFFLEVEC = 8;
+    // private static final int INSTRUCTION_CMP = 9;
+    private static final int INSTRUCTION_RET = 10;
+    private static final int INSTRUCTION_BR = 11;
+    private static final int INSTRUCTION_SWITCH = 12;
+    private static final int INSTRUCTION_INVOKE = 13;
+    private static final int INSTRUCTION_UNREACHABLE = 15;
+    private static final int INSTRUCTION_PHI = 16;
+    private static final int INSTRUCTION_ALLOCA = 19;
+    private static final int INSTRUCTION_LOAD = 20;
+    // private static final int INSTRUCTION_VAARG = 23;
+    private static final int INSTRUCTION_STORE_OLD = 24;
+    private static final int INSTRUCTION_EXTRACTVAL = 26;
+    private static final int INSTRUCTION_INSERTVAL = 27;
+    private static final int INSTRUCTION_CMP2 = 28;
+    private static final int INSTRUCTION_VSELECT = 29;
+    private static final int INSTRUCTION_INBOUNDS_GEP_OLD = 30;
+    private static final int INSTRUCTION_INDIRECTBR = 31;
+    private static final int INSTRUCTION_DEBUG_LOC_AGAIN = 33;
+    private static final int INSTRUCTION_CALL = 34;
+    private static final int INSTRUCTION_DEBUG_LOC = 35;
+    private static final int INSTRUCTION_FENCE = 36;
+    private static final int INSTRUCTION_CMPXCHG_OLD = 37;
+    private static final int INSTRUCTION_ATOMICRMW = 38;
+    private static final int INSTRUCTION_RESUME = 39;
+    private static final int INSTRUCTION_LANDINGPAD_OLD = 40;
+    private static final int INSTRUCTION_LOADATOMIC = 41;
+    // private static final int INSTRUCTION_STOREATOMIC_OLD = 42;
+    private static final int INSTRUCTION_GEP = 43;
+    private static final int INSTRUCTION_STORE = 44;
+    private static final int INSTRUCTION_STOREATOMIC = 45;
+    private static final int INSTRUCTION_CMPXCHG = 46;
+    private static final int INSTRUCTION_LANDINGPAD = 47;
+    // private static final int INSTRUCTION_CLEANUPRET = 48;
+    // private static final int INSTRUCTION_CATCHRET = 49;
+    // private static final int INSTRUCTION_CATCHPAD = 50;
+    // private static final int INSTRUCTION_CLEANUPPAD = 51;
+    // private static final int INSTRUCTION_CATCHSWITCH = 52;
+    // private static final int INSTRUCTION_OPERAND_BUNDLE = 55;
 
     private final FunctionDefinition function;
 
@@ -157,19 +204,19 @@ public final class Function implements ParserListener {
 
     @Override
     public void record(long id, long[] args) {
-        FunctionRecord record = FunctionRecord.decode(id);
+        final int opCode = (int) id;
 
         // debug locations can occur after terminating instructions, we process them before we
         // replace the old block
-        switch (record) {
-            case DEBUG_LOC:
+        switch (opCode) {
+            case INSTRUCTION_DEBUG_LOC:
                 parseDebugLocation(args); // intentional fallthrough
 
-            case DEBUG_LOC_AGAIN:
+            case INSTRUCTION_DEBUG_LOC_AGAIN:
                 applyDebugLocation();
                 return;
 
-            case DECLAREBLOCKS:
+            case INSTRUCTION_DECLAREBLOCKS:
                 function.allocateBlocks((int) args[0]);
                 return;
 
@@ -182,139 +229,139 @@ public final class Function implements ParserListener {
             isLastBlockTerminated = false;
         }
 
-        switch (record) {
+        switch (opCode) {
 
-            case BINOP:
+            case INSTRUCTION_BINOP:
                 createBinaryOperation(args);
                 break;
 
-            case CAST:
+            case INSTRUCTION_CAST:
                 createCast(args);
                 break;
 
-            case GEP_OLD:
+            case INSTRUCTION_GEP_OLD:
                 createGetElementPointerOld(args, false);
                 break;
 
-            case EXTRACTELT:
+            case INSTRUCTION_EXTRACTELT:
                 createExtractElement(args);
                 break;
 
-            case INSERTELT:
+            case INSTRUCTION_INSERTELT:
                 createInsertElement(args);
                 break;
 
-            case SHUFFLEVEC:
+            case INSTRUCTION_SHUFFLEVEC:
                 createShuffleVector(args);
                 break;
 
-            case RET:
+            case INSTRUCTION_RET:
                 createReturn(args);
                 break;
 
-            case BR:
+            case INSTRUCTION_BR:
                 createBranch(args);
                 break;
 
-            case SWITCH:
+            case INSTRUCTION_SWITCH:
                 createSwitch(args);
                 break;
 
-            case UNREACHABLE:
+            case INSTRUCTION_UNREACHABLE:
                 createUnreachable(args);
                 break;
 
-            case PHI:
+            case INSTRUCTION_PHI:
                 createPhi(args);
                 break;
 
-            case ALLOCA:
+            case INSTRUCTION_ALLOCA:
                 createAlloca(args);
                 break;
 
-            case LOAD:
+            case INSTRUCTION_LOAD:
                 createLoad(args);
                 break;
 
-            case STORE_OLD:
+            case INSTRUCTION_STORE_OLD:
                 createStoreOld(args);
                 break;
 
-            case EXTRACTVAL:
+            case INSTRUCTION_EXTRACTVAL:
                 createExtractValue(args);
                 break;
 
-            case INSERTVAL:
+            case INSTRUCTION_INSERTVAL:
                 createInsertValue(args);
                 break;
 
-            case CMP2:
+            case INSTRUCTION_CMP2:
                 createCompare2(args);
                 break;
 
-            case VSELECT:
+            case INSTRUCTION_VSELECT:
                 createSelect(args);
                 break;
 
-            case INBOUNDS_GEP_OLD:
+            case INSTRUCTION_INBOUNDS_GEP_OLD:
                 createGetElementPointerOld(args, true);
                 break;
 
-            case INDIRECTBR:
+            case INSTRUCTION_INDIRECTBR:
                 createIndirectBranch(args);
                 break;
 
-            case CALL:
+            case INSTRUCTION_CALL:
                 createFunctionCall(args);
                 break;
 
-            case INVOKE:
+            case INSTRUCTION_INVOKE:
                 createInvoke(args);
                 break;
 
-            case LANDINGPAD:
+            case INSTRUCTION_LANDINGPAD:
                 createLandingpad(args);
                 break;
 
-            case LANDINGPAD_OLD:
+            case INSTRUCTION_LANDINGPAD_OLD:
                 createLandingpadOld(args);
                 break;
 
-            case RESUME:
+            case INSTRUCTION_RESUME:
                 createResume(args);
                 break;
 
-            case GEP:
+            case INSTRUCTION_GEP:
                 createGetElementPointer(args);
                 break;
 
-            case STORE:
+            case INSTRUCTION_STORE:
                 createStore(args);
                 break;
 
-            case LOADATOMIC:
+            case INSTRUCTION_LOADATOMIC:
                 createLoadAtomic(args);
                 break;
 
-            case STOREATOMIC:
+            case INSTRUCTION_STOREATOMIC:
                 createAtomicStore(args);
                 break;
 
-            case CMPXCHG_OLD:
-            case CMPXCHG:
-                createCompareExchange(args, record);
+            case INSTRUCTION_CMPXCHG_OLD:
+            case INSTRUCTION_CMPXCHG:
+                createCompareExchange(args, opCode);
                 break;
 
-            case ATOMICRMW:
+            case INSTRUCTION_ATOMICRMW:
                 createAtomicReadModifyWrite(args);
                 break;
 
-            case FENCE:
+            case INSTRUCTION_FENCE:
                 createFence(args);
                 break;
 
             default:
-                throw new UnsupportedOperationException("Unsupported Record: " + record);
+                throw new LLVMParserException("Unsupported opCode in function block: " + opCode);
         }
     }
 
@@ -341,7 +388,7 @@ public final class Function implements ParserListener {
 
         FunctionType functionType = null;
         if (((ccInfo >> INVOKE_HASEXPLICITFUNCTIONTYPE_SHIFT) & 1) != 0) {
-            functionType = (FunctionType) types.get(args[i++]);
+            functionType = Types.castToFunction(types.get(args[i++]));
         }
 
         final int target = getIndex(args[i++]);
@@ -354,11 +401,11 @@ public final class Function implements ParserListener {
 
         if (functionType == null) {
             if (calleeType instanceof PointerType) {
-                functionType = (FunctionType) ((PointerType) calleeType).getPointeeType();
+                functionType = Types.castToFunction(((PointerType) calleeType).getPointeeType());
             } else if (calleeType instanceof FunctionType) {
                 functionType = (FunctionType) calleeType;
             } else {
-                throw new AssertionError("Cannot find Type of invoked function: " + calleeType.toString());
+                throw new LLVMParserException("Cannot find Type of invoked function: " + calleeType);
             }
         }
 
@@ -451,7 +498,7 @@ public final class Function implements ParserListener {
 
         FunctionType functionType = null;
         if (((ccinfo >> CALL_HAS_EXPLICITTYPE_SHIFT) & 1) != 0) {
-            functionType = (FunctionType) types.get(args[i++]);
+            functionType = Types.castToFunction(types.get(args[i++]));
         }
 
         int callee = getIndex(args[i++]);
@@ -466,7 +513,7 @@ public final class Function implements ParserListener {
             if (calleeType instanceof FunctionType) {
                 functionType = (FunctionType) calleeType;
             } else {
-                functionType = (FunctionType) ((PointerType) calleeType).getPointeeType();
+                functionType = Types.castToFunction(Types.castToPointer(calleeType).getPointeeType());
             }
         }
 
@@ -557,7 +604,7 @@ public final class Function implements ParserListener {
         if ((alignRecord & ALLOCA_EXPLICITTYPEMASK) != 0L) {
             type = new PointerType(type);
         } else if (!(type instanceof PointerType)) {
-            throw new AssertionError("Alloca must have PointerType!");
+            throw new LLVMParserException("Alloca with unexpected type: " + type);
         }
         emit(AllocateInstruction.fromSymbols(scope.getSymbols(), type, count, align));
     }
@@ -579,7 +626,7 @@ public final class Function implements ParserListener {
         if (i + LOAD_ARGS_EXPECTED_AFTER_TYPE == args.length) {
             opType = types.get(args[i++]);
         } else {
-            opType = ((PointerType) srcType).getPointeeType();
+            opType = Types.castToPointer(srcType).getPointeeType();
         }
 
         final int align = getAlign(args[i++]);
@@ -605,7 +652,7 @@ public final class Function implements ParserListener {
         if (i + LOADATOMIC_ARGS_EXPECTED_AFTER_TYPE == args.length) {
             opType = types.get(args[i++]);
         } else {
-            opType = ((PointerType) srcType).getPointeeType();
+            opType = Types.castToPointer(srcType).getPointeeType();
         }
 
         final int align = getAlign(args[i++]);
@@ -616,7 +663,7 @@ public final class Function implements ParserListener {
         emit(LoadInstruction.fromSymbols(scope.getSymbols(), opType, src, align, isVolatile, atomicOrdering, synchronizationScope));
     }
 
-    private void createCompareExchange(long[] args, FunctionRecord record) {
+    private void createCompareExchange(long[] args, int record) {
         int i = 0;
 
         final Type ptrType;
@@ -627,7 +674,7 @@ public final class Function implements ParserListener {
             ptrType = scope.getValueType(ptr);
         }
         final int cmp = getIndex(args[++i]);
-        if (record == FunctionRecord.CMPXCHG && scope.isValueForwardRef(cmp)) {
+        if (record == INSTRUCTION_CMPXCHG && scope.isValueForwardRef(cmp)) {
             ++i; // type of cmp
         }
         final int replace = getIndex(args[++i]);
@@ -638,7 +685,7 @@ public final class Function implements ParserListener {
         final boolean addExtractValue = i >= args.length - 1;
         final boolean isWeak = addExtractValue || (args[++i] != 0);
 
-        final AggregateType type = findCmpxchgResultType(((PointerType) ptrType).getPointeeType());
+        final AggregateType type = findCmpxchgResultType(Types.castToPointer(ptrType).getPointeeType());
 
         emit(CompareExchangeInstruction.fromSymbols(scope.getSymbols(), type, ptr, cmp, replace, isVolatile, successOrdering, synchronizationScope, failureOrdering, isWeak));
 
@@ -658,7 +705,7 @@ public final class Function implements ParserListener {
         // cmpxchg is the only instruction that does not directly reference its return type in the
         // type table
         for (Type t : types) {
-            if (t != null && t instanceof StructureType) {
+            if (t instanceof StructureType) {
                 final Type[] elts = ((StructureType) t).getElementTypes();
                 if (elts.length == CMPXCHG_TYPE_LENGTH && elementType == elts[CMPXCHG_TYPE_ELEMENTTYPE] && PrimitiveType.I1 == elts[CMPXCHG_TYPE_BOOLTYPE]) {
                     return (AggregateType) t;
@@ -717,7 +764,7 @@ public final class Function implements ParserListener {
         final long atomicOrdering = args[i++];
         final long synchronizationScope = args[i];
 
-        final Type type = ((PointerType) ptrType).getPointeeType();
+        final Type type = Types.castToPointer(ptrType).getPointeeType();
 
         emit(ReadModifyWriteInstruction.fromSymbols(scope.getSymbols(), type, ptr, value, opcode, isVolatile, atomicOrdering, synchronizationScope));
     }
@@ -786,7 +833,7 @@ public final class Function implements ParserListener {
         int opcode = (int) args[i];
 
         Type type = operandType instanceof VectorType
-                        ? new VectorType(PrimitiveType.I1, ((VectorType) operandType).getNumberOfElements())
+                        ? new VectorType(PrimitiveType.I1, Types.castToVector(operandType).getNumberOfElements())
                         : PrimitiveType.I1;
 
         emit(CompareInstruction.fromSymbols(scope.getSymbols(), type, opcode, lhs, rhs));
@@ -804,7 +851,7 @@ public final class Function implements ParserListener {
         }
         int index = getIndex(args[i]);
 
-        final Type elementType = ((VectorType) vectorType).getElementType();
+        final Type elementType = Types.castToVector(vectorType).getElementType();
         emit(ExtractElementInstruction.fromSymbols(scope.getSymbols(), elementType, vector, index));
     }
 
@@ -821,10 +868,10 @@ public final class Function implements ParserListener {
         }
 
         if (i != args.length) {
-            throw new UnsupportedOperationException("Multiple indices are not yet supported!");
+            throw new LLVMParserException("Multiple indices for extractvalue are not yet supported!");
         }
 
-        final Type elementType = ((AggregateType) aggregateType).getElementType(index);
+        final Type elementType = Types.castToAggregate(aggregateType).getElementType(index);
         emit(ExtractValueInstruction.fromSymbols(scope.getSymbols(), elementType, aggregate, index));
     }
 
@@ -907,7 +954,7 @@ public final class Function implements ParserListener {
         int index = (int) args[i++];
 
         if (args.length != i) {
-            throw new UnsupportedOperationException("Multiple indices are not yet supported!");
+            throw new LLVMParserException("Multiple indices for insertvalue are not yet supported!");
         }
 
         emit(InsertValueInstruction.fromSymbols(scope.getSymbols(), type, aggregate, index, value));
@@ -966,8 +1013,8 @@ public final class Function implements ParserListener {
         int vector2 = getIndex(args[i++]);
         int mask = getIndex(args[i]);
 
-        Type subtype = ((VectorType) vectorType).getElementType();
-        int length = ((VectorType) scope.getValueType(mask)).getNumberOfElements();
+        Type subtype = Types.castToVector(vectorType).getElementType();
+        int length = Types.castToVector(scope.getValueType(mask)).getNumberOfElements();
         Type type = new VectorType(subtype, length);
 
         emit(ShuffleVectorInstruction.fromSymbols(scope.getSymbols(), type, vector1, vector2, mask));
@@ -1029,13 +1076,13 @@ public final class Function implements ParserListener {
                 StructureType structure = (StructureType) elementType;
                 Type indexType = scope.getValueType(indexIndex);
                 if (!(indexType instanceof PrimitiveType)) {
-                    throw new IllegalStateException("Cannot infer structure element from " + indexType);
+                    throw new LLVMParserException("Cannot infer structure element from " + indexType);
                 }
                 Number indexNumber = (Number) ((PrimitiveType) indexType).getConstant();
                 assert ((PrimitiveType) indexType).getPrimitiveKind() == PrimitiveKind.I32;
                 elementType = structure.getElementType(indexNumber.intValue());
             } else {
-                throw new IllegalStateException("Cannot index type: " + elementType);
+                throw new LLVMParserException("Cannot index type: " + elementType);
             }
         }
         return elementType;
