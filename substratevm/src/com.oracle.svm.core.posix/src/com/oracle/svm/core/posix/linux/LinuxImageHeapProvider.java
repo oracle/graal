@@ -28,8 +28,10 @@ import static com.oracle.svm.core.Isolates.IMAGE_HEAP_RELOCATABLE_BEGIN;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_RELOCATABLE_END;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_BEGIN;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_END;
+import static com.oracle.svm.core.posix.headers.LibC.memcpy;
 import static com.oracle.svm.core.posix.linux.ProcFSSupport.findMapping;
 import static com.oracle.svm.core.util.PointerUtils.roundUp;
+import static com.oracle.svm.core.util.UnsignedUtils.isAMultiple;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.word.Word;
@@ -98,7 +100,6 @@ public class LinuxImageHeapProvider extends CopyingImageHeapProvider {
     private static final CGlobalData<CCharPointer> MAPS = CGlobalDataFactory.createCString("/proc/self/maps");
     private static final CGlobalData<Pointer> OBJECT_FD = CGlobalDataFactory.createWord(WordFactory.signed(-1), null);
     private static final CGlobalData<Pointer> FD_OFFSET = CGlobalDataFactory.createWord(WordFactory.signed(-1), null);
-    private static final CGlobalData<Pointer> SVM_BASE = CGlobalDataFactory.createWord(WordFactory.signed(-1), null);
 
     private static final int MAX_PATHLEN = 4096;
 
@@ -205,7 +206,6 @@ public class LinuxImageHeapProvider extends CopyingImageHeapProvider {
             } while (fd == -1);
             newOffset = FD_OFFSET.get().readLong(0);
         } else {
-            SVM_BASE.get().writeLong(0, startAddr.read() - offset.read());
             OBJECT_FD.get().writeLong(0, fd);
             // Ensure we have a Store-Load barrier to match up with loads
             // so that we get volatile access semantics
@@ -223,19 +223,25 @@ public class LinuxImageHeapProvider extends CopyingImageHeapProvider {
         }
 
         UnsignedWord pageSize = VirtualMemoryProvider.get().getGranularity();
-
         if (patch) {
-            // Create an overlapping anonymous area replacing the relocatable
-            // section of heap, and overwrite with the already relocated original
-            UnsignedWord relocationOffset = UnsignedUtils.roundDown(IMAGE_HEAP_RELOCATABLE_BEGIN.get().subtract(imageHeapBegin), pageSize);
-            UnsignedWord relocationEndOffset = UnsignedUtils.roundUp(IMAGE_HEAP_RELOCATABLE_END.get().subtract(imageHeapBegin), pageSize);
-            UnsignedWord size = relocationEndOffset.subtract(relocationOffset);
-
-            Pointer from = imageHeapBegin.add(relocationOffset);
-            Pointer to = heap.add(relocationOffset);
-
-            VirtualMemoryProvider.get().commit(to, size, Access.READ | Access.WRITE);
-            MemoryUtil.copyConjointMemoryAtomic(from, to, size);
+            /*
+             * Addresses were relocated by dynamic linker, so copy them, but first remap the pages
+             * to avoid swapping them in from disk.
+             */
+            Pointer relocsBegin = heap.add(IMAGE_HEAP_RELOCATABLE_BEGIN.get().subtract(imageHeapBegin));
+            UnsignedWord relocsSize = IMAGE_HEAP_RELOCATABLE_END.get().subtract(IMAGE_HEAP_RELOCATABLE_BEGIN.get());
+            if (!isAMultiple(relocsSize, pageSize)) {
+                return CEntryPointErrors.MAP_HEAP_FAILED;
+            }
+            if (VirtualMemoryProvider.get().commit(relocsBegin, relocsSize, Access.READ | Access.WRITE).isNull()) {
+                VirtualMemoryProvider.get().free(heap, imageHeapSize);
+                return CEntryPointErrors.MAP_HEAP_FAILED;
+            }
+            memcpy(relocsBegin, IMAGE_HEAP_RELOCATABLE_BEGIN.get(), relocsSize);
+            if (VirtualMemoryProvider.get().protect(relocsBegin, relocsSize, Access.READ) != 0) {
+                VirtualMemoryProvider.get().free(heap, imageHeapSize);
+                return CEntryPointErrors.PROTECT_HEAP_FAILED;
+            }
         }
 
         UnsignedWord writableBeginPageOffset = UnsignedUtils.roundDown(IMAGE_HEAP_WRITABLE_BEGIN.get().subtract(imageHeapBegin), pageSize);
@@ -259,10 +265,5 @@ public class LinuxImageHeapProvider extends CopyingImageHeapProvider {
         }
 
         return CEntryPointErrors.NO_ERROR;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.")
-    private static <T extends PointerBase> T nullPointer() {
-        return WordFactory.nullPointer();
     }
 }
