@@ -82,10 +82,12 @@ suite = {
       }
     },
 
-    "LIBFFI" : {
+    "LIBFFI_SOURCES" : {
+      "resource" : True,
+      "version" : "3.2.1",
       "urls" : [
-        "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/libffi-3.2.1.tar.gz",
-        "ftp://sourceware.org/pub/libffi/libffi-3.2.1.tar.gz",
+        "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/libffi-{version}.tar.gz",
+        "ftp://sourceware.org/pub/libffi/libffi-{version}.tar.gz",
       ],
       "sha1" : "280c265b789e041c02e5c97815793dfc283fb1e6",
     },
@@ -572,6 +574,25 @@ suite = {
       "workingSets" : "Truffle",
     },
 
+    "libffi" : {
+      "class" : "LibffiBuilderProject",
+      "buildDependencies" : [
+        "LIBFFI_SOURCES",
+      ],
+      "os_arch" : {
+        "windows" : {
+          "<others>" : {
+            "ignore" : "windows is not supported",
+          },
+        },
+        "<others>" : {
+          "<others>" : {
+            "ignore" : False,
+          },
+        },
+      },
+    },
+
     "com.oracle.truffle.nfi.native" : {
       "subDir" : "src",
       "native" : True,
@@ -584,10 +605,11 @@ suite = {
       ],
       "buildDependencies" : [
         "com.oracle.truffle.nfi",
+        "LIBFFI_DIST"
       ],
       "buildEnv" : {
         "CPPFLAGS" : "-I<jnigen:com.oracle.truffle.nfi>",
-        "LIBFFI_SRC" : "<path:LIBFFI>",
+        "LIBFFI_DIST" : "<path:LIBFFI_DIST>",
         "LIBTRUFFLENFI" : "<lib:trufflenfi>",
         "OS" : "<os>",
       },
@@ -680,6 +702,14 @@ suite = {
   "distributions" : {
 
     # ------------- Distributions -------------
+
+    "LIBFFI_DIST" : {
+      "native" : True,
+      "platformDependent" : True,
+      "layout" : {
+        "./" : "dependency:libffi/*"
+      }
+    },
 
     "TRUFFLE_API" : {
       # This distribution defines a module.

@@ -57,10 +57,10 @@ ifneq (${OS},windows)
 default: bin/${LIBTRUFFLENFI}
 
 OBJECTFILES=${OBJECTS:%.o=bin/%.o}
-CPPFLAGS+=-I${VPATH}/include "-I${JAVA_HOME}/include" "-I${JAVA_HOME}/include/${OS}" -Ilibffi-build/include -DOS_${OS}
+CPPFLAGS+=-I${VPATH}/include "-I${JAVA_HOME}/include" "-I${JAVA_HOME}/include/${OS}" -I${LIBFFI_DIST}/include -DOS_${OS}
 CFLAGS=-g -fPIC
 LDFLAGS=-g -ldl
-LIBFFI_LIB=libffi-build/.libs/libffi.a
+LIBFFI_LIB=${LIBFFI_DIST}/libffi.a
 
 ifeq (${OS},solaris)
 CFLAGS+=-m64 -pthread
@@ -74,27 +74,10 @@ bin/${LIBTRUFFLENFI}: ${OBJECTFILES} ${LIBFFI_LIB}
 	@echo LINK $@
 	$(QUIETLY) gcc -shared ${LDFLAGS} $+ -o $@
 
-bin/%.o: src/%.c bin/%.d libffi-build/include/ffi.h
+bin/%.o: src/%.c bin/%.d ${LIBFFI_DIST}/include/ffi.h
 	@echo CC $@
 	$(QUIETLY) gcc -c -Wall -Werror ${CFLAGS} ${CPPFLAGS} ${DEPFLAGS} -o $@ $<
 	$(QUIETLY) mv -f bin/$*.Td bin/$*.d && touch $@
-
-${LIBFFI_LIB}: libffi-build/Makefile
-	$(QUIETLY) echo MAKE libffi
-	$(QUIETLY) $(MAKE) -C libffi-build > libffi.build.log
-
-# on the Mac /bin/sh is bash which will produce output if CDPATH is set which causes
-# this command to fail, so clear it out before running the command.
-libffi-build/Makefile: libffi-3.2.1/configure
-	$(QUIETLY) echo CONFIGURE libffi
-	$(QUIETLY) mkdir -p libffi-build
-	$(QUIETLY) unset CDPATH CPPFLAGS && cd libffi-build && CFLAGS="${CFLAGS}" ../libffi-3.2.1/configure --enable-static > ../libffi.configure.log
-
-libffi-build/include/ffi.h: libffi-build/Makefile
-
-libffi-3.2.1/configure: ${LIBFFI_SRC}
-	$(QUIETLY) tar xzf ${LIBFFI_SRC}
-	$(QUIETLY) touch $@
 
 bin/%.d: ;
 .PRECIOUS: bin/%.d
