@@ -589,7 +589,7 @@ suite = {
             "defaultBuild": False
         },
 
-        "com.oracle.svm.graal.hotspot.nativelib" : {
+        "com.oracle.svm.graal.hotspot.libgraal" : {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
@@ -710,7 +710,7 @@ suite = {
         "GRAAL_HOTSPOT_LIBRARY": {
             "description" : "SubstrateVM HotSpot Graal library support",
             "dependencies": [
-                "com.oracle.svm.graal.hotspot.nativelib",
+                "com.oracle.svm.graal.hotspot.libgraal",
             ],
             "overlaps" : [
                 "LIBRARY_SUPPORT"
