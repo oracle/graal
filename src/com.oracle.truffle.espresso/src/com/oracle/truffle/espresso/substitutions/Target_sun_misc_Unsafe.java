@@ -123,7 +123,11 @@ public class Target_sun_misc_Unsafe {
             throw EspressoError.shouldNotReachHere("the field offset is not normalized");
         }
         Meta.Klass klass = meta(holder.getKlass());
-        FieldInfo field = klass.rawKlass().getInstanceFields(true)[index];
+
+        FieldInfo field = (holder.getKlass().tryInitializeAndGetStatics() == holder)
+                ? klass.rawKlass().getStaticFields()[index]
+                : klass.rawKlass().getInstanceFields(true)[index];
+
         assert field.getSlot() == index;
         return meta(field);
     }
@@ -297,7 +301,21 @@ public class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true)
-    public static Object staticFieldBase(@Type(Field.class) StaticObject field) {
+    public static long staticFieldOffset(@SuppressWarnings("unused") @Type(Unsafe.class) StaticObject self, @Type(Field.class) StaticObject field) {
+        StaticObject curField = field;
+        FieldInfo target = null;
+        while (target == null) {
+            target = (FieldInfo) ((StaticObjectImpl) curField).getHiddenField(Target_java_lang_Class.HIDDEN_FIELD_KEY);
+            if (target == null) {
+                curField = (StaticObject) meta(curField).declaredField("root").get();
+            }
+        }
+        Meta.Field f = meta(target);
+        return f.getSlot() + SAFETY_FIELD_OFFSET;
+    }
+
+    @Substitution(hasReceiver = true)
+    public static Object staticFieldBase(@SuppressWarnings("unused") @Type(Unsafe.class) StaticObject self, @Type(Field.class) StaticObject field) {
         StaticObject curField = field;
         FieldInfo target = null;
         while (target == null) {
