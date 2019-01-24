@@ -95,7 +95,7 @@ class LinuxImageHeapProviderFeature implements Feature {
  * This provider falls back to the POSIX friendly <code>CopyImageHeapProvider</code> if either the
  * architecture is not supported, or an error occurs during the mapping process.
  */
-public class LinuxImageHeapProvider extends CopyingImageHeapProvider {
+public class LinuxImageHeapProvider implements ImageHeapProvider {
     private static final CGlobalData<CCharPointer> SELF_EXE = CGlobalDataFactory.createCString("/proc/self/exe");
     private static final CGlobalData<CCharPointer> MAPS = CGlobalDataFactory.createCString("/proc/self/maps");
     private static final CGlobalData<Pointer> OBJECT_FD = CGlobalDataFactory.createWord(WordFactory.signed(-1), null);
@@ -111,16 +111,6 @@ public class LinuxImageHeapProvider extends CopyingImageHeapProvider {
     @Override
     @Uninterruptible(reason = "Called during isolate initialization.")
     public int initialize(PointerBase begin, UnsignedWord reservedSize, WordPointer basePointer, WordPointer endPointer) {
-        int result = cowInitialize(begin, reservedSize, basePointer, endPointer);
-        if (result != CEntryPointErrors.NO_ERROR) {
-            return super.initialize(begin, reservedSize, basePointer, endPointer);
-        }
-
-        return result;
-    }
-
-    @Uninterruptible(reason = "Called during isolate initialization.")
-    private static int cowInitialize(PointerBase begin, UnsignedWord reservedSize, WordPointer basePointer, WordPointer endPointer) {
         Word imageHeapBegin = Isolates.IMAGE_HEAP_BEGIN.get();
         Word imageHeapSize = Isolates.IMAGE_HEAP_END.get().subtract(imageHeapBegin);
         if (begin.isNonNull() && reservedSize.belowThan(imageHeapSize)) {
@@ -264,6 +254,22 @@ public class LinuxImageHeapProvider extends CopyingImageHeapProvider {
             endPointer.write(roundUp(heap.add(imageHeapSize), pageSize));
         }
 
+        return CEntryPointErrors.NO_ERROR;
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.")
+    public boolean canUnmapInsteadOfTearDown(PointerBase heapBase) {
+        return true;
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called during isolate tear-down.")
+    public int tearDown(PointerBase heapBase) {
+        Word size = Isolates.IMAGE_HEAP_END.get().subtract(Isolates.IMAGE_HEAP_BEGIN.get());
+        if (VirtualMemoryProvider.get().free(heapBase, size) != 0) {
+            return CEntryPointErrors.MAP_HEAP_FAILED;
+        }
         return CEntryPointErrors.NO_ERROR;
     }
 }
