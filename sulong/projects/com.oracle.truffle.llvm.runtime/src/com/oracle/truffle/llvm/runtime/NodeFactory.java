@@ -45,7 +45,7 @@ import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.interop.export.InteropNodeFactory;
-import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateStructNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
@@ -234,7 +234,7 @@ public interface NodeFactory extends InteropNodeFactory {
 
     LLVMMemSetNode createMemSet();
 
-    LLVMAllocateStructNode createAllocateGlobalsBlock(StructureType structType);
+    LLVMAllocateNode createAllocateGlobalsBlock(StructureType structType);
 
     LLVMMemoryOpNode createProtectGlobalsBlock();
 

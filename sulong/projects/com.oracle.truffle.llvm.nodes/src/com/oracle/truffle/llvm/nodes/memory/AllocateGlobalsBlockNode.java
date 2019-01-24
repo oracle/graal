@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,32 +36,37 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+import com.oracle.truffle.llvm.runtime.types.StructureType;
 
-public final class NativeProtectStructNode extends LLVMNode implements LLVMMemoryOpNode {
+public final class AllocateGlobalsBlockNode extends LLVMNode implements LLVMAllocateNode {
+
+    private final long size;
 
     @Child Node execute;
     @Child LLVMToNativeNode toNative;
 
-    private final TruffleObject protectReadonlyGlobalsBlock;
+    private final TruffleObject allocateGlobalsBlock;
 
-    public NativeProtectStructNode(LLVMContext context) {
+    public AllocateGlobalsBlockNode(LLVMContext context, StructureType type) {
+        this.size = context.getByteSize(type);
         this.execute = Message.EXECUTE.createNode();
         this.toNative = LLVMToNativeNode.createToNativeWithTarget();
 
         NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
-        this.protectReadonlyGlobalsBlock = nfiContextExtension.getNativeFunction(context, "@__sulong_protect_readonly_globals_block", "(POINTER):VOID");
+        this.allocateGlobalsBlock = nfiContextExtension.getNativeFunction(context, "@__sulong_allocate_globals_block", "(UINT64):POINTER");
     }
 
     @Override
-    public void execute(LLVMPointer ptr) {
+    public LLVMPointer executeWithTarget() {
         try {
-            ForeignAccess.sendExecute(execute, protectReadonlyGlobalsBlock, ptr);
+            Object ret = ForeignAccess.sendExecute(execute, allocateGlobalsBlock, size);
+            return toNative.executeWithTarget(ret);
         } catch (InteropException ex) {
-            assert false; // should never happen, but probably also safe to ignore
+            throw new OutOfMemoryError("could not allocate globals block");
         }
     }
 }
