@@ -29,15 +29,18 @@ import static com.oracle.svm.core.Isolates.IMAGE_HEAP_RELOCATABLE_END;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_RELOCATABLE_FIRST_RELOC_POINTER;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_BEGIN;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_END;
+import static com.oracle.svm.core.posix.headers.Fcntl.NoTransitions.open;
+import static com.oracle.svm.core.posix.headers.LibC.free;
+import static com.oracle.svm.core.posix.headers.LibC.malloc;
 import static com.oracle.svm.core.posix.headers.LibC.memcpy;
+import static com.oracle.svm.core.posix.headers.Stat.fstat_no_transition;
+import static com.oracle.svm.core.posix.headers.Unistd.NoTransitions.close;
 import static com.oracle.svm.core.posix.linux.ProcFSSupport.findMapping;
 import static com.oracle.svm.core.util.PointerUtils.roundUp;
 import static com.oracle.svm.core.util.UnsignedUtils.isAMultiple;
 
-import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Feature;
-import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -65,10 +68,7 @@ import com.oracle.svm.core.os.ImageHeapProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
 import com.oracle.svm.core.posix.headers.Fcntl;
-import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Stat;
-import com.oracle.svm.core.posix.headers.Unistd;
-import com.oracle.svm.core.util.UnsignedUtils;
 
 @AutomaticFeature
 @Platforms(Platform.LINUX.class)
@@ -127,27 +127,27 @@ public class LinuxImageHeapProvider implements ImageHeapProvider {
             return createMapping(begin, basePointer, endPointer, imageHeapBegin, imageHeapSize, fd, FD_OFFSET.get().readLong(0));
         }
 
-        int mapFD = Fcntl.NoTransitions.open(MAPS.get(), Fcntl.O_RDONLY(), 0);
+        int mapFD = open(MAPS.get(), Fcntl.O_RDONLY(), 0);
         if (mapFD == -1) {
             return CEntryPointErrors.MAP_HEAP_FAILED;
         }
 
-        final CCharPointer buffer = LibC.malloc(WordFactory.unsigned(MAX_PATHLEN));
+        final CCharPointer buffer = malloc(WordFactory.unsigned(MAX_PATHLEN));
         final CLongPointer startAddr = StackValue.get(CLongPointer.class);
         final CLongPointer offset = StackValue.get(CLongPointer.class);
         final CIntPointer dev = StackValue.get(CIntPointer.class);
         final CLongPointer inode = StackValue.get(CLongPointer.class);
 
         boolean found = findMapping(mapFD, buffer, MAX_PATHLEN, imageHeapBegin.rawValue(), startAddr, offset, dev, inode, true);
-        Unistd.NoTransitions.close(mapFD);
+        close(mapFD);
 
         if (!found) {
-            LibC.free(buffer);
+            free(buffer);
             return CEntryPointErrors.MAP_HEAP_FAILED;
         }
 
-        fd = Fcntl.NoTransitions.open(buffer, Fcntl.O_RDONLY(), 0);
-        LibC.free(buffer);
+        fd = open(buffer, Fcntl.O_RDONLY(), 0);
+        free(buffer);
 
         if (fd == -1) {
             return CEntryPointErrors.MAP_HEAP_FAILED;
@@ -171,8 +171,8 @@ public class LinuxImageHeapProvider implements ImageHeapProvider {
          * strategy. In the case of native executables, it will always match due to /proc/self/exe.
          */
         Stat.stat stat = StackValue.get(Stat.stat.class);
-        if (Stat.fstat_no_transition(fd, stat) != 0 && stat.st_ino() != inode.read() && stat.st_dev() != dev.read()) {
-            Unistd.NoTransitions.close(fd);
+        if (fstat_no_transition(fd, stat) != 0 && stat.st_ino() != inode.read() && stat.st_dev() != dev.read()) {
+            close(fd);
             return CEntryPointErrors.MAP_HEAP_FAILED;
         }
 
@@ -180,7 +180,7 @@ public class LinuxImageHeapProvider implements ImageHeapProvider {
 
         if (!FD_OFFSET.get().logicCompareAndSwapLong(0, -1, newOffset, LocationIdentity.ANY_LOCATION)) {
             // Another thread won, busy-wait until we can use it's descriptor
-            Unistd.NoTransitions.close(fd);
+            close(fd);
             do {
                 UnsafeAccess.UNSAFE.loadFence();
                 fd = (int) OBJECT_FD.get().readLong(0);
