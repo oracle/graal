@@ -212,6 +212,7 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
 
         ValueNode exception = graphKit.createJavaCallWithExceptionAndUnwind(InvokeKind.Static, createFailedCast, expectedNode, actual);
         graphKit.append(new UnwindNode(exception));
+        graphKit.mergeUnwinds();
     }
 
     private static ValueNode createCheckcast(HostedGraphKit graphKit, ValueNode value, ResolvedJavaType type, boolean nonNull) {
@@ -269,6 +270,7 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
         graphKit.createJavaCallWithExceptionAndUnwind(InvokeKind.Special, cons, ite, exception);
 
         graphKit.append(new UnwindNode(ite));
+        graphKit.mergeUnwinds();
     }
 
     private static void throwIllegalArgumentException(HostedGraphKit graphKit, String message) {
@@ -288,6 +290,7 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
         graphKit.createJavaCallWithExceptionAndUnwind(InvokeKind.Special, cons, ite, msgNode, cause);
 
         graphKit.append(new UnwindNode(ite));
+        graphKit.mergeUnwinds();
     }
 
     private static boolean canImplicitCast(JavaKind from, JavaKind to) {
