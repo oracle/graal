@@ -126,6 +126,7 @@ public class TruffleAdapter implements VirtualLanguageServerFileProvider, Contex
                     if (langInfo.isInternal()) {
                         continue;
                     }
+                    LOG.log(Level.FINEST, "Retrieving completion trigger characters for {0}", langInfo.getId());
                     langId2CompletionTriggerCharacters.put(langInfo.getId(), env.getCompletionTriggerCharacters(langInfo));
                 }
                 return langId2CompletionTriggerCharacters;
