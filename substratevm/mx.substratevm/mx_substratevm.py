@@ -1055,6 +1055,7 @@ def maven_plugin_install(args):
     mx.log('\n'.join(success_message))
 
 
+@mx.command(suite.name, 'maven-plugin-test')
 def maven_plugin_test(args):
     # Create native-image-maven-plugin-test pom with correct version info from template
     proj_dir = join(suite.dir, 'src', 'native-image-maven-plugin-test')
