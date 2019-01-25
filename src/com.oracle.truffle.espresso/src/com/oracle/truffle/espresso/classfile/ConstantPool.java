@@ -1,36 +1,4 @@
-/*
- * Copyright (c) 2007, 2012, Oracle and/or its affiliates. All rights reserved.
- * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
- *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
- *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
- *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
- *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
- */
 package com.oracle.truffle.espresso.classfile;
-
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.types.TypeDescriptor;
-
-import java.util.Arrays;
-import java.util.Formatter;
-import java.util.List;
 
 import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.CLASS;
 import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.DOUBLE;
@@ -45,9 +13,19 @@ import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.NAME_AND_TY
 import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.STRING;
 import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.UTF8;
 
-public final class ConstantPool {
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Formatter;
+import java.util.List;
 
-    public enum Tag {
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.impl.ByteString;
+import com.oracle.truffle.espresso.impl.ByteString.Constant;
+
+public abstract class ConstantPool {
+
+    enum Tag {
         INVALID(0),
         UTF8(1),
         INTEGER(3),
@@ -67,17 +45,14 @@ public final class ConstantPool {
         MODULE(19),
         PACKAGE(20);
 
-        public final byte value;
+        private final byte value;
 
-        /**
-         * @param value
-         */
-        private Tag(int value) {
+        Tag(int value) {
             assert (byte) value == value;
             this.value = (byte) value;
         }
 
-        public int getValue() {
+        public final int getValue() {
             return value;
         }
 
@@ -106,24 +81,224 @@ public final class ConstantPool {
             // @formatter:on
         }
 
-        public static final List<Tag> VALUES = Arrays.asList(values());
+        public final static List<Tag> VALUES = Collections.unmodifiableList(Arrays.asList(values()));
     }
 
-    @CompilationFinal(dimensions = 1) private final PoolConstant[] constants;
+    public abstract int length();
 
-    private final EspressoContext context;
+    public abstract PoolConstant at(int index, String description);
 
-    public EspressoContext getContext() {
-        return context;
+    public final PoolConstant at(int index) {
+        return at(index, null);
     }
 
-    private final StaticObject classLoader;
+    static ClassFormatError unexpectedEntry(int index, ConstantPool.Tag tag, String description, ConstantPool.Tag... expected) {
+        CompilerDirectives.transferToInterpreter();
+        throw verifyError("Constant pool entry" + (description == null ? "" : " for " + description) + " at " + index + " is a " + tag + ", expected " + Arrays.toString(expected));
+    }
+
+    public final ClassFormatError unexpectedEntry(int index, String description, ConstantPool.Tag... expected) {
+        CompilerDirectives.transferToInterpreter();
+        throw unexpectedEntry(index, tagAt(index), description, expected);
+    }
+
+    static VerifyError verifyError(String message) {
+        CompilerDirectives.transferToInterpreter();
+        throw new VerifyError(message);
+    }
+
+    /**
+     * Gets the tag at a given index. If {@code index == 0} or there is no valid entry at
+     * {@code index} (e.g. it denotes the slot following a double or long entry), then
+     * {@link ConstantPool.Tag#INVALID} is returned.
+     */
+    public final Tag tagAt(int index) {
+        return at(index).tag();
+    }
+
+    public final int intAt(int index) {
+        return intAt(index, null);
+    }
+
+    public final int intAt(int index, String description) {
+        try {
+            final IntegerConstant constant = (IntegerConstant) at(index);
+            return constant.value();
+        } catch (ClassCastException e) {
+            throw unexpectedEntry(index, description, INTEGER);
+        }
+    }
+
+    public final long longAt(int index) {
+        return longAt(index, null);
+    }
+
+    public final long longAt(int index, String description) {
+        try {
+            final LongConstant constant = (LongConstant) at(index);
+            return constant.value();
+        } catch (ClassCastException e) {
+            throw unexpectedEntry(index, description, LONG);
+        }
+    }
+
+    public final float floatAt(int index) {
+        return floatAt(index, null);
+    }
+
+    public final float floatAt(int index, String description) {
+        try {
+            final FloatConstant constant = (FloatConstant) at(index);
+            return constant.value();
+        } catch (ClassCastException e) {
+            throw unexpectedEntry(index, description, FLOAT);
+        }
+    }
+
+    public final double doubleAt(int index) {
+        return doubleAt(index, null);
+    }
+
+    public final double doubleAt(int index, String description) {
+        try {
+            final DoubleConstant constant = (DoubleConstant) at(index);
+            return constant.value();
+        } catch (ClassCastException e) {
+            throw unexpectedEntry(index, description, DOUBLE);
+        }
+    }
+
+    public final <T> ByteString<T> utf8At(int index) {
+        return utf8At(index, null);
+    }
+
+    @SuppressWarnings("unchecked")
+    public final <T> ByteString<T> utf8At(int index, String description) {
+        try {
+            final Utf8Constant constant = (Utf8Constant) at(index);
+            return (ByteString<T>) constant.value();
+        } catch (ClassCastException e) {
+            throw unexpectedEntry(index, description, UTF8);
+        }
+    }
+
+    public final ByteString<Constant> stringAt(int index) {
+        return stringAt(index, null);
+    }
+
+    public final ByteString<Constant> stringAt(int index, String description) {
+        try {
+            final StringConstant constant = (StringConstant) at(index);
+            return constant.getConstant(this);
+        } catch (ClassCastException e) {
+            throw unexpectedEntry(index, description, STRING);
+        }
+    }
+
+
+    // region unresolved constants
+
+    public final NameAndTypeConstant nameAndTypeAt(int index) {
+        return nameAndTypeAt(index, null);
+    }
+
+    public final NameAndTypeConstant nameAndTypeAt(int index, String description) {
+        try {
+            return (NameAndTypeConstant) at(index);
+        } catch (ClassCastException e) {
+            throw unexpectedEntry(index, description, NAME_AND_TYPE);
+        }
+    }
+
+    public final ClassConstant classAt(int index) {
+        return classAt(index, null);
+    }
+
+    public final ClassConstant classAt(int index, String description) {
+        try {
+            return (ClassConstant) at(index);
+        } catch (ClassCastException e) {
+            throw unexpectedEntry(index, description, CLASS);
+        }
+    }
+
+    public final MemberRefConstant memberAt(int index) {
+        return memberAt(index, null);
+    }
+
+    public final MemberRefConstant memberAt(int index, String description) {
+        try {
+            return (MemberRefConstant) at(index);
+        } catch (ClassCastException e) {
+            throw unexpectedEntry(index, description, METHOD_REF, INTERFACE_METHOD_REF, FIELD_REF);
+        }
+    }
+
+    public final MethodRefConstant methodAt(int index) {
+        try {
+            return (MethodRefConstant) at(index);
+        } catch (ClassCastException e) {
+            throw unexpectedEntry(index, null, METHOD_REF, INTERFACE_METHOD_REF);
+        }
+    }
+
+    public final ClassMethodRefConstant classMethodAt(int index) {
+        try {
+            return (ClassMethodRefConstant) at(index);
+        } catch (ClassCastException e) {
+            throw unexpectedEntry(index, null, METHOD_REF);
+        }
+    }
+
+    public final InterfaceMethodRefConstant interfaceMethodAt(int index) {
+        try {
+            return (InterfaceMethodRefConstant) at(index);
+        } catch (ClassCastException e) {
+            throw unexpectedEntry(index, null, INTERFACE_METHOD_REF);
+        }
+    }
+
+    public final FieldRefConstant fieldAt(int index) {
+        try {
+            return (FieldRefConstant) at(index);
+        } catch (ClassCastException e) {
+            throw unexpectedEntry(index, null, FIELD_REF);
+        }
+    }
+
+    public final StringConstant stringConstantAt(int index) {
+        try {
+            return (StringConstant) at(index);
+        } catch (ClassCastException e) {
+            throw unexpectedEntry(index, null, STRING);
+        }
+    }
+
+    public final InvokeDynamicConstant indyAt(int index) {
+        try {
+            return (InvokeDynamicConstant) at(index);
+        } catch (ClassCastException e) {
+            throw unexpectedEntry(index, null, INVOKEDYNAMIC);
+        }
+    }
+
+    // endregion unresolved constants
+
+
+    @Override
+    public String toString() {
+        Formatter buf = new Formatter();
+        for (int i = 0; i < length(); i++) {
+            PoolConstant c = at(i);
+            buf.format("#%d = %-15s // %s%n", i, c.tag(), c.toString(this));
+        }
+        return buf.toString();
+    }
 
     /**
      * Creates a constant pool from a class file.
      */
-    public ConstantPool(EspressoContext context, StaticObject classLoader, ClassfileStream stream, ClassfileParser parser) {
-        this.context = context;
+    public static ConstantPool parse(ClassfileStream stream, ClassfileParser parser) {
         final int length = stream.readU2();
         if (length < 1) {
             throw stream.classFormatError("Invalid constant pool size (" + length + ")");
@@ -131,8 +306,6 @@ public final class ConstantPool {
 
         final PoolConstant[] entries = new PoolConstant[length];
         entries[0] = InvalidConstant.VALUE;
-
-        this.classLoader = classLoader;
 
         int i = 1;
         while (i < length) {
@@ -148,7 +321,7 @@ public final class ConstantPool {
                     break;
                 }
                 case STRING: {
-                    entries[i] = new StringConstant(stream.readU2());
+                    entries[i] = new StringConstant.Index(stream.readU2());
                     break;
                 }
                 case FIELD_REF: {
@@ -172,13 +345,7 @@ public final class ConstantPool {
                 case NAME_AND_TYPE: {
                     int nameIndex = stream.readU2();
                     int typeIndex = stream.readU2();
-                    if (nameIndex < i && typeIndex < i) {
-                        Utf8Constant name = (Utf8Constant) entries[nameIndex];
-                        Utf8Constant type = (Utf8Constant) entries[typeIndex];
-                        entries[i] = new NameAndTypeConstant.Resolved(name, type);
-                    } else {
-                        entries[i] = new NameAndTypeConstant.Indexes(nameIndex, typeIndex);
-                    }
+                    entries[i] = new NameAndTypeConstant.Indexes(nameIndex, typeIndex);
                     break;
                 }
                 case INTEGER: {
@@ -210,7 +377,7 @@ public final class ConstantPool {
                     break;
                 }
                 case UTF8: {
-                    entries[i] = context.getSymbolTable().make(stream.readString());
+                    entries[i] = EspressoLanguage.getSymbolTable().make(stream.readUTF());
                     break;
                 }
                 case METHODHANDLE: {
@@ -249,228 +416,7 @@ public final class ConstantPool {
             }
             i++;
         }
-        constants = entries;
-    }
 
-    public StaticObject getClassLoader() {
-        return classLoader;
+        return new ConstantPoolImpl(entries);
     }
-
-    public PoolConstant at(int index) {
-        return at(index, null);
-    }
-
-    public PoolConstant at(int index, String description) {
-        try {
-            return constants[index];
-        } catch (IndexOutOfBoundsException exception) {
-            throw verifyError("Constant pool index (" + index + ")" + (description == null ? "" : " for " + description) + " is out of range");
-        }
-    }
-
-    /**
-     * Updates the constant entry at a given index.
-     */
-    PoolConstant updateAt(int index, PoolConstant constant) {
-        CompilerAsserts.neverPartOfCompilation();
-        assert constant.tag() == constants[index].tag() : "cannot replace a " + constants[index].tag() + " with a " + constant.tag();
-        constants[index] = constant;
-        return constant;
-    }
-
-    /**
-     * Gets the tag at a given index. If {@code index == 0} or there is no valid entry at
-     * {@code index} (e.g. it denotes the slot following a double or long entry), then
-     * {@link Tag#INVALID} is returned.
-     */
-    public Tag tagAt(int index) {
-        try {
-            return constants[index].tag();
-        } catch (IndexOutOfBoundsException exception) {
-            throw verifyError("Constant pool index " + index + " is out of range");
-        }
-    }
-
-    static ClassFormatError unexpectedEntry(int index, Tag tag, String description, Tag... expected) {
-        throw verifyError("Constant pool entry" + (description == null ? "" : " for " + description) + " at " + index + " is a " + tag + ", expected " + Arrays.toString(expected));
-    }
-
-    private ClassFormatError unexpectedEntry(int index, String description, Tag... expected) {
-        throw unexpectedEntry(index, tagAt(index), description, expected);
-    }
-
-    static VerifyError verifyError(String message) {
-        throw new VerifyError(message);
-    }
-
-    public int intAt(int index) {
-        return intAt(index, null);
-    }
-
-    public int intAt(int index, String description) {
-        try {
-            final IntegerConstant constant = (IntegerConstant) at(index);
-            return constant.value();
-        } catch (ClassCastException e) {
-            throw unexpectedEntry(index, description, INTEGER);
-        }
-    }
-
-    public long longAt(int index) {
-        return longAt(index, null);
-    }
-
-    public long longAt(int index, String description) {
-        try {
-            final LongConstant constant = (LongConstant) at(index);
-            return constant.value();
-        } catch (ClassCastException e) {
-            throw unexpectedEntry(index, description, LONG);
-        }
-    }
-
-    public float floatAt(int index) {
-        return floatAt(index, null);
-    }
-
-    public float floatAt(int index, String description) {
-        try {
-            final FloatConstant constant = (FloatConstant) at(index);
-            return constant.value();
-        } catch (ClassCastException e) {
-            throw unexpectedEntry(index, description, FLOAT);
-        }
-    }
-
-    public double doubleAt(int index) {
-        return doubleAt(index, null);
-    }
-
-    public double doubleAt(int index, String description) {
-        try {
-            final DoubleConstant constant = (DoubleConstant) at(index);
-            return constant.value();
-        } catch (ClassCastException e) {
-            throw unexpectedEntry(index, description, DOUBLE);
-        }
-    }
-
-    public NameAndTypeConstant nameAndTypeAt(int index) {
-        return nameAndTypeAt(index, null);
-    }
-
-    public NameAndTypeConstant nameAndTypeAt(int index, String description) {
-        try {
-            return (NameAndTypeConstant) at(index);
-        } catch (ClassCastException e) {
-            throw unexpectedEntry(index, description, NAME_AND_TYPE);
-        }
-    }
-
-    public Utf8Constant utf8At(int index, String description) {
-        return utf8ConstantAt(index, description);
-    }
-
-    public Utf8Constant utf8At(int index) {
-        return utf8ConstantAt(index, null);
-    }
-
-    public ClassConstant classAt(int index) {
-        return classAt(index, null);
-    }
-
-    public ClassConstant classAt(int index, String description) {
-        try {
-            return (ClassConstant) at(index);
-        } catch (ClassCastException e) {
-            throw unexpectedEntry(index, description, CLASS);
-        }
-    }
-
-    public MemberRefConstant memberAt(int index) {
-        return memberAt(index, null);
-    }
-
-    public MemberRefConstant memberAt(int index, String description) {
-        try {
-            return (MemberRefConstant) at(index);
-        } catch (ClassCastException e) {
-            throw unexpectedEntry(index, description, METHOD_REF, INTERFACE_METHOD_REF, FIELD_REF);
-        }
-    }
-
-    public MethodRefConstant methodAt(int index) {
-        try {
-            return (MethodRefConstant) at(index);
-        } catch (ClassCastException e) {
-            throw unexpectedEntry(index, null, METHOD_REF, INTERFACE_METHOD_REF);
-        }
-    }
-
-    public ClassMethodRefConstant classMethodAt(int index) {
-        try {
-            return (ClassMethodRefConstant) at(index);
-        } catch (ClassCastException e) {
-            throw unexpectedEntry(index, null, METHOD_REF);
-        }
-    }
-
-    public InterfaceMethodRefConstant interfaceMethodAt(int index) {
-        try {
-            return (InterfaceMethodRefConstant) at(index);
-        } catch (ClassCastException e) {
-            throw unexpectedEntry(index, null, INTERFACE_METHOD_REF);
-        }
-    }
-
-    public FieldRefConstant fieldAt(int index) {
-        try {
-            return (FieldRefConstant) at(index);
-        } catch (ClassCastException e) {
-            throw unexpectedEntry(index, null, FIELD_REF);
-        }
-    }
-
-    public Utf8Constant utf8ConstantAt(int index, String description) {
-        try {
-            return (Utf8Constant) at(index);
-        } catch (ClassCastException e) {
-            throw unexpectedEntry(index, description, UTF8);
-        }
-    }
-
-    public StringConstant stringConstantAt(int index) {
-        try {
-            return (StringConstant) at(index);
-        } catch (ClassCastException e) {
-            throw unexpectedEntry(index, null, STRING);
-        }
-    }
-
-    public InvokeDynamicConstant indyAt(int index) {
-        try {
-            return (InvokeDynamicConstant) at(index);
-        } catch (ClassCastException e) {
-            throw unexpectedEntry(index, null, INVOKEDYNAMIC);
-        }
-    }
-
-    @Override
-    public String toString() {
-        Formatter buf = new Formatter();
-        for (int i = 0; i < constants.length; i++) {
-            PoolConstant c = constants[i];
-            buf.format("#%d = %-15s // %s%n", i, c.tag(), c.toString(this, i));
-        }
-        return buf.toString();
-    }
-
-    public TypeDescriptor makeTypeDescriptor(String value) {
-        return context.getLanguage().getTypeDescriptors().make(value);
-    }
-
-    public int length() {
-        return constants.length;
-    }
-
 }

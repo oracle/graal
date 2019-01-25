@@ -22,68 +22,61 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
-import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.impl.MethodInfo;
-import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.types.SignatureDescriptor;
-import com.oracle.truffle.espresso.types.TypeDescriptor;
 
 public interface InterfaceMethodRefConstant extends MethodRefConstant {
 
+    @Override
     default Tag tag() {
         return Tag.INTERFACE_METHOD_REF;
     }
 
-    static final class Resolved extends MethodRefConstant.Resolved implements InterfaceMethodRefConstant {
-        public Resolved(MethodInfo method) {
-            super(method);
-        }
-    }
+// static final class Resolved extends MethodRefConstant.Resolved implements
+// InterfaceMethodRefConstant {
+// public Resolved(MethodInfo method) {
+// super(method);
+// }
+// }
 
-    static final class Unresolved extends MethodRefConstant.Unresolved implements InterfaceMethodRefConstant {
+// static final class Unresolved extends MethodRefConstant.Unresolved implements
+// InterfaceMethodRefConstant {
+//
+// public Unresolved(TypeDescriptor declaringClass, String name, SignatureDescriptor signature) {
+// super(declaringClass, name, signature);
+// }
+//
+// private MethodInfo lookupMethod(Klass declaringInterface, String name, SignatureDescriptor
+// signature) {
+// MethodInfo m = declaringInterface.findMethod(name, signature);
+// if (m != null) {
+// return m;
+// }
+// for (Klass i : declaringInterface.getInterfaces()) {
+// m = lookupMethod(i, name, signature);
+// if (m != null) {
+// return m;
+// }
+// }
+// return null;
+// }
+//
+// @Override
+// public MethodInfo resolve(ConstantPool pool, int index) {
+// CompilerDirectives.transferToInterpreterAndInvalidate();
+// Klass declaringInterface = pool.getContext().getRegistries().resolve(getDeclaringClass(pool, -1),
+// pool.getClassLoader());
+// assert declaringInterface.isInterface();
+// String name = getName(pool, index);
+// SignatureDescriptor signature = getSignature(pool, index);
+// MethodInfo m = lookupMethod(declaringInterface, name, signature);
+// if (m != null) {
+// return m;
+// }
+// throw EspressoError.shouldNotReachHere(declaringInterface.toString() + "." + name + signature);
+// }
+// }
 
-        public Unresolved(TypeDescriptor declaringClass, String name, SignatureDescriptor signature) {
-            super(declaringClass, name, signature);
-        }
-
-        private MethodInfo lookupMethod(Klass declaringInterface, String name, SignatureDescriptor signature) {
-            MethodInfo m = declaringInterface.findMethod(name, signature);
-            if (m != null) {
-                return m;
-            }
-            for (Klass i : declaringInterface.getInterfaces()) {
-                m = lookupMethod(i, name, signature);
-                if (m != null) {
-                    return m;
-                }
-            }
-            return null;
-        }
-
-        @Override
-        public MethodInfo resolve(ConstantPool pool, int index) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            Klass declaringInterface = pool.getContext().getRegistries().resolve(getDeclaringClass(pool, -1), pool.getClassLoader());
-            assert declaringInterface.isInterface();
-            String name = getName(pool, index);
-            SignatureDescriptor signature = getSignature(pool, index);
-            MethodInfo m = lookupMethod(declaringInterface, name, signature);
-            if (m != null) {
-                return m;
-            }
-            throw EspressoError.shouldNotReachHere(declaringInterface.toString() + "." + name + signature);
-        }
-    }
-
-    static final class Indexes extends MethodRefConstant.Indexes implements InterfaceMethodRefConstant {
-
-        @Override
-        protected MemberRefConstant createUnresolved(ConstantPool pool, TypeDescriptor declaringClass, String name, String type) {
-            return new InterfaceMethodRefConstant.Unresolved(declaringClass, name, pool.getContext().getSignatureDescriptors().make(type));
-        }
-
+    final class Indexes extends MethodRefConstant.Indexes implements InterfaceMethodRefConstant {
         Indexes(int classIndex, int nameAndTypeIndex) {
             super(classIndex, nameAndTypeIndex);
         }

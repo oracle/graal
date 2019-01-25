@@ -23,36 +23,83 @@
 
 package com.oracle.truffle.espresso.impl;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import java.util.Arrays;
+import java.util.function.Predicate;
+
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.descriptors.SignatureDescriptor;
+import com.oracle.truffle.espresso.impl.ByteString.Name;
+import com.oracle.truffle.espresso.impl.ByteString.Type;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
-import com.oracle.truffle.espresso.types.SignatureDescriptor;
-import com.oracle.truffle.espresso.types.TypeDescriptor;
-
-import java.util.Arrays;
-import java.util.function.Predicate;
 
 public abstract class Klass implements ModifiersProvider {
 
-    protected final JavaKind kind;
-    public final static Klass[] EMPTY_ARRAY = new Klass[0];
-    private final String name;
+    private final LinkedKlass linkedKlass; // Shared structural metadata.
+    // (copy) Constant pool, it's a spawn-off ConstantPool with the superKlass and the
+    // superinterfaces resolved.
 
-    @CompilerDirectives.CompilationFinal //
+    // All further resolutions will overwrite this copy.
+    private final ConstantPool pool;
+
+    // Espresso superklass.
+    private final Klass superKlass;
+
+    @CompilationFinal(dimensions = 1) //
+    private final Klass[] superInterfaces;
+
+    public ConstantPool getConstantPool() {
+        return pool;
+    }
+
+    public Klass getSuperKlass() {
+        return superKlass;
+    }
+
+    public Klass[] getSuperInterfaces() {
+        return superInterfaces;
+    }
+
+    public Klass(LinkedKlass linkedKlass, ConstantPool pool, Klass superKlass, Klass[] superInterfaces) {
+        this.linkedKlass = linkedKlass;
+        this.pool = pool;
+        this.superKlass = superKlass;
+        this.superInterfaces = superInterfaces;
+    }
+
+    public ClassLoader getDefiningClassLoader() {
+        return pool.getClassLoader();
+    }
+
+    public int getFlags() {
+        return linkedKlass.getFlags();
+    }
+
+    public final ByteString<Name> getName() {
+        return getConstantPool().utf8At(linkedKlass.parserKlass.nameIndex);
+    }
+
+    protected final JavaKind kind;
+
+    public final static Klass[] EMPTY_ARRAY = new Klass[0];
+
+    private final ByteString<Name> name;
+
+    @CompilationFinal //
     private StaticObject statics;
 
-    @CompilerDirectives.CompilationFinal //
+    @CompilationFinal //
     private ArrayKlass arrayClass;
 
-    @CompilerDirectives.CompilationFinal //
+    @CompilationFinal //
     private StaticObjectClass mirrorCache;
 
-    Klass(String name, JavaKind kind) {
+    Klass(ByteString<Name> name, JavaKind kind) {
         this.name = name;
         this.kind = kind;
     }
@@ -63,7 +110,7 @@ public abstract class Klass implements ModifiersProvider {
 
     public abstract boolean isArray();
 
-    public String getName() {
+    public ByteString getName() {
         return name;
     }
 
@@ -318,7 +365,7 @@ public abstract class Klass implements ModifiersProvider {
     /**
      * Returns the {@code <clinit>} method for this class if there is one.
      */
-    public MethodInfo getClassInitializer() {
+    public Method getClassInitializer() {
         return Arrays.stream(getDeclaredMethods()).filter(new Predicate<MethodInfo>() {
             @Override
             public boolean test(MethodInfo m) {
@@ -373,12 +420,13 @@ public abstract class Klass implements ModifiersProvider {
         return null;
     }
 
-    public TypeDescriptor getTypeDescriptor() {
-        return getContext().getTypeDescriptors().make(getName());
+    public ByteString<Type> getType() {
+        return linkedKlass.getType();
     }
 
     @Override
     public String toString() {
-        return getTypeDescriptor().toJavaName();
+        return getType().toJavaName();
     }
+
 }

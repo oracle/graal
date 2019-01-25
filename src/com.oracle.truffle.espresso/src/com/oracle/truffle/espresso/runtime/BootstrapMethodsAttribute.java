@@ -1,6 +1,9 @@
 package com.oracle.truffle.espresso.runtime;
 
-public class BootstrapMethodsAttribute extends AttributeInfo {
+import com.oracle.truffle.espresso.impl.ByteString;
+import com.oracle.truffle.espresso.impl.ByteString.Name;
+
+public class BootstrapMethodsAttribute extends Attribute {
 
     public Entry[] getEntries() {
         return entries;
@@ -22,7 +25,7 @@ public class BootstrapMethodsAttribute extends AttributeInfo {
 
     private final Entry[] entries;
 
-    public BootstrapMethodsAttribute(String name, Entry[] entries) {
+    public BootstrapMethodsAttribute(ByteString<Name> name, Entry[] entries) {
         super(name, null);
         this.entries = entries;
     }

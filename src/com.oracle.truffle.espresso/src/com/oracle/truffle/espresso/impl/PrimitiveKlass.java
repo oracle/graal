@@ -23,7 +23,7 @@
 
 package com.oracle.truffle.espresso.impl;
 
-import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.SharedConstantPool;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -174,7 +174,7 @@ public final class PrimitiveKlass extends Klass {
     }
 
     @Override
-    public ConstantPool getConstantPool() {
+    public SharedConstantPool getConstantPool() {
         return null;
     }
 

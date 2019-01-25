@@ -27,7 +27,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.espresso.classfile.SymbolTable;
+import com.oracle.truffle.espresso.runtime.SymbolTable;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -35,8 +35,8 @@ import com.oracle.truffle.espresso.nodes.MainLauncherRootNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
-import com.oracle.truffle.espresso.types.SignatureDescriptors;
-import com.oracle.truffle.espresso.types.TypeDescriptors;
+import com.oracle.truffle.espresso.descriptors.SignatureDescriptors;
+import com.oracle.truffle.espresso.descriptors.TypeDescriptors;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
@@ -55,7 +55,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     public static final String ESPRESSO_SOURCE_FILE_KEY = "EspressoSourceFile";
 
-    private final SymbolTable symbols = new SymbolTable();
+    private static final SymbolTable symbols = new SymbolTable();
 
     private final TypeDescriptors typeDescriptors = new TypeDescriptors();
     private final SignatureDescriptors signatureDescriptors = new SignatureDescriptors(typeDescriptors);

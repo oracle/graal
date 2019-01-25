@@ -20,92 +20,73 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.types;
-
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.espresso.meta.JavaKind;
-import com.oracle.truffle.espresso.meta.MetaUtil;
+package com.oracle.truffle.espresso.descriptors;
 
 import java.util.EnumMap;
+
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.espresso.impl.ByteString;
+import com.oracle.truffle.espresso.impl.ByteString.Interned;
+import com.oracle.truffle.espresso.impl.ByteString.Signature;
+import com.oracle.truffle.espresso.impl.ByteString.Type;
+import com.oracle.truffle.espresso.meta.JavaKind;
 
 /**
  * Manages creation and parsing of type descriptors ("field descriptors" in the JVMS).
  *
  * @see "https://docs.oracle.com/javase/specs/jvms/se10/html/jvms-4.html#jvms-4.3.2"
  */
-public final class TypeDescriptors extends DescriptorCache<TypeDescriptor> {
-    @Override
-    protected TypeDescriptor create(String key) {
-        return new TypeDescriptor(key);
-    }
-
-    private static final EnumMap<JavaKind, TypeDescriptor> primitives = new EnumMap<>(JavaKind.class);
-
-    static {
-        for (JavaKind kind : JavaKind.values()) {
-            if (kind.isPrimitive()) {
-                String key = String.valueOf(kind.getTypeChar());
-                TypeDescriptor descriptor = new TypeDescriptor(key);
-                primitives.put(kind, descriptor);
-            }
-        }
-    }
-
-    private TypeDescriptor builtin(Class<?> c) {
-        String name = MetaUtil.toInternalName(c.getName());
-        TypeDescriptor type = new TypeDescriptor(name);
-        cache.put(name, type);
-        return type;
-    }
-
-    public final TypeDescriptor OBJECT = builtin(Object.class);
-    public final TypeDescriptor CLASS = builtin(Class.class);
-    public final TypeDescriptor THROWABLE = builtin(Throwable.class);
-    public final TypeDescriptor STRING = builtin(String.class);
-
-    // Exceptions
-    public final TypeDescriptor OUT_OF_MEMORY_ERROR = builtin(java.lang.OutOfMemoryError.class);
-    public final TypeDescriptor NULL_POINTER_EXCEPTION = builtin(java.lang.NullPointerException.class);
-    public final TypeDescriptor CLASS_CAST_EXCEPTION = builtin(java.lang.ClassCastException.class);
-    public final TypeDescriptor ARRAY_STORE_EXCEPTION = builtin(java.lang.ArrayStoreException.class);
-    public final TypeDescriptor ARITHMETIC_EXCEPTION = builtin(java.lang.ArithmeticException.class);
-    public final TypeDescriptor STACK_OVERFLOW_ERROR = builtin(java.lang.StackOverflowError.class);
-    public final TypeDescriptor ILLEGAL_MONITOR_STATE_EXCEPTION = builtin(java.lang.IllegalMonitorStateException.class);
-    public final TypeDescriptor ILLEGAL_ARGUMENT_EXCEPTION = builtin(java.lang.IllegalArgumentException.class);
+public final class TypeDescriptors extends DescriptorCache<Type, ByteString<Type>, ByteString<Type>> {
 
     @Override
-    public synchronized TypeDescriptor lookup(String key) {
-        if (key.length() == 1) {
-            JavaKind kind = JavaKind.fromPrimitiveOrVoidTypeChar(key.charAt(0));
-            TypeDescriptor value = primitives.get(kind);
-            if (value != null) {
-                return value;
-            }
-        }
-        return super.lookup(key);
+    protected ByteString<Type> create(ByteString<Type> key) {
+        return new ByteString<Type>(key);
     }
 
-    public static TypeDescriptor forPrimitive(JavaKind kind) {
-        assert kind.isPrimitive();
-        return primitives.get(kind);
-    }
+    //    private static final EnumMap<JavaKind, ByteString<Type>> primitives = new EnumMap<>(JavaKind.class);
+//
+//    static {
+//        for (JavaKind kind : JavaKind.values()) {
+//            if (kind.isPrimitive()) {
+//                String key = String.valueOf(kind.getTypeChar());
+//                TypeDescriptor descriptor = new TypeDescriptor(key);
+//                primitives.put(kind, descriptor);
+//            }
+//        }
+//    }
+
+//    @Override
+//    public synchronized TypeDescriptor lookup(String key) {
+//        if (key.length() == 1) {
+//            JavaKind kind = JavaKind.fromPrimitiveOrVoidTypeChar(key.charAt(0));
+//            TypeDescriptor value = primitives.get(kind);
+//            if (value != null) {
+//                return value;
+//            }
+//        }
+//        return super.lookup(key);
+//    }
+//
+//    public static ByteString<Type> forPrimitive(JavaKind kind) {
+//        assert kind.isPrimitive();
+//        return primitives.get(kind);
+//    }
 
     /**
      * Parses a valid Java type descriptor.
      *
-     * @param string the string from which to create a Java type descriptor
+     * @param signature the string from which to create a Java type descriptor
      * @param beginIndex the index within the string from which to start parsing
      * @param slashes specifies if package components in {@code string} are separated by {@code '/'}
      *            or {@code '.'}
      * @throws ClassFormatError if the type descriptor is not valid
      */
-    public TypeDescriptor parse(String string, int beginIndex, boolean slashes) throws ClassFormatError {
-        int endIndex = skipValidTypeDescriptor(string, beginIndex, slashes);
-        char ch = string.charAt(beginIndex);
+    public ByteString<Type> parse(ByteString<Signature> signature, int beginIndex, boolean slashes) throws ClassFormatError {
+        int endIndex = skipValidTypeDescriptor(signature, beginIndex, slashes);
         if (endIndex == beginIndex + 1) {
-            return forPrimitive(JavaKind.fromPrimitiveOrVoidTypeChar(ch));
+            return forPrimitive(JavaKind.fromPrimitiveOrVoidTypeChar((char) signature.byteAt(beginIndex)));
         }
-        return make(string.substring(beginIndex, endIndex));
+        return make(signature.substring(beginIndex, endIndex));
     }
 
     /**
@@ -163,19 +144,16 @@ public final class TypeDescriptors extends DescriptorCache<TypeDescriptor> {
      * return a descriptor for an array of the component type; if the number of dimensions is 2, it
      * will return a descriptor for an array of an array of the component type, etc.
      *
-     * @param descriptor the type descriptor for the component type of the array
+     * @param type the type descriptor for the component type of the array
      * @param dimensions the number of array dimensions
      * @return the canonical type descriptor for the specified component type and dimensions
      */
-    public TypeDescriptor getArrayDescriptorForDescriptor(TypeDescriptor descriptor, int dimensions) {
+    public ByteString<Type> getArrayDescriptorForDescriptor(ByteString<Type> type, int dimensions) {
         assert dimensions > 0;
-        String value = descriptor.toString();
-        if (descriptor.getArrayDimensions() + dimensions > 255) {
+        if (TypeDescriptor.getArrayDimensions(type) + dimensions > 255) {
             throw new ClassFormatError("Array type with more than 255 dimensions");
         }
-        for (int i = 0; i < dimensions; ++i) {
-            value = "[" + value;
-        }
+        // prepend dimensions '[' to descriptor
         return make(value);
     }
 
@@ -195,5 +173,4 @@ public final class TypeDescriptors extends DescriptorCache<TypeDescriptor> {
         }
         return index;
     }
-
 }

@@ -69,11 +69,11 @@ public interface MethodHandleConstant extends PoolConstant {
     int getRefIndex();
 
     @Override
-    default String toString(ConstantPool pool, int thisIndex) {
-        return getRefKind() + " " + pool.at(getRefIndex()).toString(pool, getRefIndex());
+    default String toString(ConstantPool pool) {
+        return getRefKind() + " " + pool.at(getRefIndex()).toString(pool);
     }
 
-    static final class Index implements MethodHandleConstant {
+    final class Index implements MethodHandleConstant {
 
         private final byte refKind;
         private final char refIndex;

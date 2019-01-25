@@ -23,7 +23,9 @@
 package com.oracle.truffle.espresso.classfile;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
-import com.oracle.truffle.espresso.types.SignatureDescriptor;
+import com.oracle.truffle.espresso.impl.ByteString;
+import com.oracle.truffle.espresso.impl.ByteString.Name;
+import com.oracle.truffle.espresso.impl.ByteString.Signature;
 
 public interface InvokeDynamicConstant extends BootstrapMethodConstant {
 
@@ -31,22 +33,9 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
         return Tag.INVOKEDYNAMIC;
     }
 
-    static final class Unresolved extends BootstrapMethodConstant.Unresolved implements InvokeDynamicConstant {
-
-        public Unresolved(int bootstrapMethodAttrIndex, Utf8Constant name, SignatureDescriptor signature) {
-            super(bootstrapMethodAttrIndex, name, signature);
-        }
-    }
-
-    public static final class Indexes extends BootstrapMethodConstant.Indexes implements InvokeDynamicConstant {
-
+    final class Indexes extends BootstrapMethodConstant.Indexes implements InvokeDynamicConstant {
         Indexes(int bootstrapMethodAttrIndex, int nameAndTypeIndex) {
             super(bootstrapMethodAttrIndex, nameAndTypeIndex);
-        }
-
-        @Override
-        protected BootstrapMethodConstant createUnresolved(int bsmAttrIndex, Utf8Constant name, SignatureDescriptor signature) {
-            return new InvokeDynamicConstant.Unresolved(bsmAttrIndex, name, signature);
         }
     }
 }

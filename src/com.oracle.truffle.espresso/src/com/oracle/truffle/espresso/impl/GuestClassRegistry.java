@@ -23,11 +23,12 @@
 
 package com.oracle.truffle.espresso.impl;
 
+import com.oracle.truffle.espresso.impl.ByteString.Type;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
-import com.oracle.truffle.espresso.types.TypeDescriptor;
+import com.oracle.truffle.espresso.descriptors.TypeDescriptor;
 
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -49,7 +50,7 @@ public class GuestClassRegistry implements ClassRegistry {
      * supporting fast, non-blocking lookup. There's no need for deletion as class unloading removes
      * a whole class registry and all its contained classes.
      */
-    private final ConcurrentHashMap<TypeDescriptor, Klass> classes = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<ByteString<Type>, Klass> classes = new ConcurrentHashMap<>();
 
     /**
      * The class loader associated with this registry.
@@ -62,9 +63,17 @@ public class GuestClassRegistry implements ClassRegistry {
     }
 
     @Override
-    public Klass resolve(TypeDescriptor type) {
-        if (type.isArray()) {
-            return resolve(type.getComponentType()).getArrayClass();
+    public Klass resolve(ByteString<Type> type) {
+        if (TypeDescriptor.isArray(type)) {
+            Klass klass = resolve(TypeDescriptor.getElementalType(type));
+            if (klass == null) {
+                return null;
+            }
+            int dims = TypeDescriptor.getArrayDimensions(type);
+            for (int i = 0; i < dims; ++i) {
+                klass = klass.getArrayClass();
+            }
+            return klass;
         }
         assert StaticObject.notNull(classLoader);
         // TODO(peterssen): Should the class be resolved?
@@ -77,19 +86,23 @@ public class GuestClassRegistry implements ClassRegistry {
     }
 
     @Override
-    public Klass findLoadedClass(TypeDescriptor type) {
-        if (type.isArray()) {
-            Klass klass = findLoadedClass(type.getComponentType());
+    public Klass findLoadedKlass(ByteString<Type> type) {
+        if (TypeDescriptor.isArray(type)) {
+            Klass klass = findLoadedKlass(TypeDescriptor.getElementalType(type));
             if (klass == null) {
                 return null;
             }
-            return klass.getArrayClass();
+            int dims = TypeDescriptor.getArrayDimensions(type);
+            for (int i = 0; i < dims; ++i) {
+                klass = klass.getArrayClass();
+            }
+            return klass;
         }
         return classes.get(type);
     }
 
     @Override
-    public Klass defineKlass(TypeDescriptor type, Klass klass) {
+    public Klass defineKlass(ByteString<Type> type, Klass klass) {
         assert !classes.containsKey(type);
         Klass prevKlass = classes.putIfAbsent(type, klass);
         if (prevKlass != null) {

@@ -42,7 +42,7 @@ public final class LongConstant implements PoolConstant {
     }
 
     @Override
-    public String toString(ConstantPool pool, int thisIndex) {
+    public String toString(ConstantPool pool) {
         return String.valueOf(value);
     }
 }

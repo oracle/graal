@@ -22,8 +22,10 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.espresso.types.TypeDescriptor;
+import com.oracle.truffle.espresso.impl.ByteString;
+import com.oracle.truffle.espresso.impl.ByteString.Descriptor;
+import com.oracle.truffle.espresso.impl.ByteString.Name;
+import com.oracle.truffle.espresso.impl.ByteString.Type;
 
 /**
  * Interface denoting a field or method entry in a constant pool.
@@ -34,7 +36,7 @@ public interface MemberRefConstant extends PoolConstant {
      * Gets the class in which this method or field is declared. Note that the actual holder after
      * resolution may be a super class of the class described by the one returned by this method.
      */
-    TypeDescriptor getDeclaringClass(ConstantPool pool, int thisIndex);
+    ByteString<Type> getDeclaringClass(ConstantPool pool);
 
     /**
      * Gets the name of this field or method.
@@ -42,27 +44,22 @@ public interface MemberRefConstant extends PoolConstant {
      * @param pool the constant pool that maybe be required to convert a constant pool index to a
      *            name
      */
-    String getName(ConstantPool pool, int thisIndex);
+    ByteString<Name> getName(ConstantPool pool);
 
-    static abstract class Unresolved implements MemberRefConstant {
-        private final TypeDescriptor declaringClass;
-        private final String name;
+    /**
+     * Gets the descriptor (type or signature) of this field or method.
+     *
+     * @param pool the constant pool that maybe be required to convert a constant pool index to a
+     *            name
+     */
+    ByteString<? extends Descriptor> getDescriptor(ConstantPool pool);
 
-        public Unresolved(TypeDescriptor declaringClass, String name) {
-            this.declaringClass = declaringClass;
-            this.name = name;
-        }
-
-        public final TypeDescriptor getDeclaringClass(ConstantPool pool, int thisIndex) {
-            return declaringClass;
-        }
-
-        public final String getName(ConstantPool pool, int thisIndex) {
-            return name;
-        }
+    @Override
+    default String toString(ConstantPool pool) {
+        return getDeclaringClass(pool) + "." + getName(pool) + getDescriptor(pool);
     }
 
-    static abstract class Indexes implements MemberRefConstant {
+    abstract class Indexes implements MemberRefConstant {
 
         private final char classIndex;
         private final char nameAndTypeIndex;
@@ -72,24 +69,19 @@ public interface MemberRefConstant extends PoolConstant {
             this.nameAndTypeIndex = PoolConstant.u2(nameAndTypeIndex);
         }
 
-        protected abstract MemberRefConstant createUnresolved(ConstantPool pool, TypeDescriptor declaringClass, String name, String type);
-
-        protected MemberRefConstant replace(ConstantPool pool, int thisIndex) {
-            TypeDescriptor declaringClass = pool.classAt(classIndex).getTypeDescriptor(pool, classIndex);
-            NameAndTypeConstant nat = pool.nameAndTypeAt(nameAndTypeIndex);
-            Utf8Constant name = nat.getName(pool, nameAndTypeIndex);
-            Utf8Constant type = nat.getType(pool, nameAndTypeIndex);
-            return (MemberRefConstant) pool.updateAt(thisIndex, createUnresolved(pool, declaringClass, name.getValue(), type.getValue()));
+        @Override
+        public ByteString<Type> getDeclaringClass(ConstantPool pool) {
+            return pool.classAt(classIndex).getType(pool);
         }
 
-        public final TypeDescriptor getDeclaringClass(ConstantPool pool, int thisIndex) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            return replace(pool, thisIndex).getDeclaringClass(pool, thisIndex);
+        @Override
+        public ByteString<Name> getName(ConstantPool pool) {
+            return pool.nameAndTypeAt(nameAndTypeIndex).getName(pool);
         }
 
-        public String getName(ConstantPool pool, int thisIndex) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            return replace(pool, thisIndex).getName(pool, thisIndex);
+        @Override
+        public ByteString<? extends Descriptor> getDescriptor(ConstantPool pool) {
+            return pool.nameAndTypeAt(nameAndTypeIndex).getDescriptor(pool);
         }
     }
 }

@@ -22,46 +22,35 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
+import static com.oracle.truffle.espresso.impl.ByteString.Signature;
+
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
-import com.oracle.truffle.espresso.types.SignatureDescriptor;
+import com.oracle.truffle.espresso.impl.ByteString;
 
 public interface MethodTypeConstant extends PoolConstant {
+
     default Tag tag() {
         return Tag.METHODTYPE;
     }
 
-    SignatureDescriptor getSignature(ConstantPool pool, int thisIndex);
+    ByteString<Signature> getSignature(ConstantPool pool);
 
-    default String toString(ConstantPool pool, int thisIndex) {
-        return getSignature(pool, thisIndex).toString();
+    @Override
+    default String toString(ConstantPool pool) {
+        return getSignature(pool).toString();
     }
 
-    public static final class Resolved implements MethodTypeConstant {
-
-        private final SignatureDescriptor signature;
-
-        Resolved(SignatureDescriptor signature) {
-            this.signature = signature;
-        }
-
-        public SignatureDescriptor getSignature(ConstantPool pool, int thisIndex) {
-            return signature;
-        }
-    }
-
-    static final class Index implements MethodTypeConstant {
-
+    final class Index implements MethodTypeConstant {
         private final char descriptorIndex;
 
         Index(int descriptorIndex) {
             this.descriptorIndex = PoolConstant.u2(descriptorIndex);
         }
 
-        public SignatureDescriptor getSignature(ConstantPool pool, int thisIndex) {
-            String descriptor = pool.utf8At(descriptorIndex).toString();
-            Resolved constant = new Resolved(pool.getContext().getLanguage().getSignatureDescriptors().make(descriptor));
-            pool.updateAt(thisIndex, constant);
-            return constant.signature;
+        @Override
+        public ByteString<Signature> getSignature(ConstantPool pool) {
+            // TODO(peterssen): Assert valid signature.
+            return pool.utf8At(descriptorIndex);
         }
     }
 }

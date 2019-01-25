@@ -25,7 +25,7 @@ package com.oracle.truffle.espresso.substitutions;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ClassConstant;
-import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.SharedConstantPool;
 import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
 import com.oracle.truffle.espresso.impl.FieldInfo;
@@ -35,15 +35,15 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
-import com.oracle.truffle.espresso.runtime.AttributeInfo;
+import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
-import com.oracle.truffle.espresso.types.TypeDescriptor;
-import com.oracle.truffle.espresso.types.TypeDescriptors;
+import com.oracle.truffle.espresso.descriptors.TypeDescriptor;
+import com.oracle.truffle.espresso.descriptors.TypeDescriptors;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 import java.lang.reflect.Constructor;
@@ -386,7 +386,7 @@ public class Target_java_lang_Class {
             return null;
         }
 
-        ConstantPool pool = klass.getConstantPool();
+        SharedConstantPool pool = klass.getConstantPool();
 
         boolean found = false;
         Klass outerKlass = null;
@@ -459,9 +459,9 @@ public class Target_java_lang_Class {
     public static @Type(byte[].class) StaticObject getRawAnnotations(StaticObjectClass self) {
         Klass klass = self.getMirror();
         if (klass instanceof ObjectKlass) {
-            AttributeInfo annotations = ((ObjectKlass) klass).getRuntimeVisibleAnnotations();
+            Attribute annotations = ((ObjectKlass) klass).getRuntimeVisibleAnnotations();
             if (annotations != null) {
-                return StaticObjectArray.wrap(annotations.getRawInfo());
+                return StaticObjectArray.wrap(annotations.getData());
             }
         }
         return StaticObject.NULL;

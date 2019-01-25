@@ -31,7 +31,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.Utils;
-import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.SharedConstantPool;
 import com.oracle.truffle.espresso.classfile.ExceptionsAttribute;
 import com.oracle.truffle.espresso.jni.Mangle;
 import com.oracle.truffle.espresso.jni.NativeLibrary;
@@ -48,7 +48,7 @@ import com.oracle.truffle.espresso.nodes.JniNativeNode;
 import com.oracle.truffle.espresso.nodes.NativeRootNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.types.SignatureDescriptor;
+import com.oracle.truffle.espresso.descriptors.SignatureDescriptor;
 import com.oracle.truffle.espresso.vm.VM;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
 
@@ -133,7 +133,7 @@ public final class MethodInfo implements ModifiersProvider {
         return exceptionHandlers;
     }
 
-    public ConstantPool getConstantPool() {
+    public SharedConstantPool getConstantPool() {
         return declaringClass.getConstantPool();
     }
 
@@ -304,11 +304,11 @@ public final class MethodInfo implements ModifiersProvider {
     }
 
     public StaticObject getClassLoader() {
-        ConstantPool pool = getConstantPool();
+        SharedConstantPool pool = getConstantPool();
         if (pool == null) {
             return null;
         }
-        return pool.getClassLoader();
+        return pool.getDefiningClassLoader();
     }
 
     public boolean isIntrinsified() {
@@ -317,8 +317,8 @@ public final class MethodInfo implements ModifiersProvider {
 
     public static class Builder implements BuilderBase<MethodInfo> {
         private ObjectKlass declaringClass;
-        private String name;
-        private SignatureDescriptor signature;
+        private int nameIndex;
+        private int signatureIndex;
         private byte[] code;
         private int maxStackSize;
         private int maxLocals;
@@ -333,13 +333,13 @@ public final class MethodInfo implements ModifiersProvider {
             return this;
         }
 
-        public Builder setName(String name) {
-            this.name = name;
+        public Builder setNameIndex(int nameIndex) {
+            this.nameIndex = nameIndex;
             return this;
         }
 
-        public Builder setSignature(SignatureDescriptor signature) {
-            this.signature = signature;
+        public Builder setSignatureIndex(int signatureIndex) {
+            this.signatureIndex = signatureIndex;
             return this;
         }
 
@@ -379,8 +379,8 @@ public final class MethodInfo implements ModifiersProvider {
         }
 
         @Override
-        public MethodInfo build() {
-            return MethodInfo.create(declaringClass, name, signature, code, maxStackSize, maxLocals, modifiers, exceptionHandlers, lineNumberTable, localVariableTable, exceptions);
+        public ParserMethod build() {
+            return ParserMethod.create(nameIndex, signatureIndex, code, maxStackSize, maxLocals, modifiers, exceptionHandlers, lineNumberTable, localVariableTable, exceptions);
         }
 
         public Builder setCheckedExceptions(ExceptionsAttribute exceptions) {

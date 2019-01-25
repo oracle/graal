@@ -20,13 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.types;
+package com.oracle.truffle.espresso.descriptors;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.espresso.meta.JavaKind;
+import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import com.oracle.truffle.espresso.impl.ByteString;
+import com.oracle.truffle.espresso.impl.ByteString.Descriptor;
+import com.oracle.truffle.espresso.impl.ByteString.Signature;
+import com.oracle.truffle.espresso.impl.ByteString.Type;
+import com.oracle.truffle.espresso.meta.JavaKind;
 
 /**
  * Represents a method signature provided by the runtime.
@@ -34,23 +39,21 @@ import java.util.List;
  * @see <a href="http://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.3.3">Method
  *      Descriptors</a>
  */
-public final class SignatureDescriptor extends Descriptor {
+public abstract class SignatureDescriptor {
 
-    SignatureDescriptor(TypeDescriptors typeDescriptors, String value) {
-        super(value);
-        components = parse(typeDescriptors, value, 0);
-        int n = 0;
-        for (int i = 0; i != components.length; ++i) {
-            n += components[i].toKind().getSlotCount();
-        }
-        numberOfSlots = n;
+    private SignatureDescriptor() {
+        /* no instances */
     }
 
-    /**
-     * The parameter types in this signature followed by the return type.
-     */
-    @CompilerDirectives.CompilationFinal(dimensions = 1) private final TypeDescriptor[] components;
-    private final int numberOfSlots;
+//    SignatureDescriptor(TypeDescriptors typeDescriptors, String value) {
+//        super(value);
+//        components = parse(typeDescriptors, value, 0);
+//        int n = 0;
+//        for (int i = 0; i != components.length; ++i) {
+//            n += components[i].toKind().getSlotCount();
+//        }
+//        numberOfSlots = n;
+//    }
 
     /**
      * Parses a signature descriptor string into its parameter and return type components.
@@ -58,26 +61,27 @@ public final class SignatureDescriptor extends Descriptor {
      * @return the parsed parameter types followed by the return type.
      * @throws ClassFormatError if {@code string} is not well formed
      */
-    public static TypeDescriptor[] parse(TypeDescriptors typeDescriptors, String string, int startIndex) throws ClassFormatError {
-        if ((startIndex > string.length() - 3) || string.charAt(startIndex) != '(') {
-            throw new ClassFormatError("Invalid method signature: " + string);
+    public static ByteString<Type>[] parse(TypeDescriptors typeDescriptors, ByteString<Signature> signature, int startIndex) throws ClassFormatError {
+        if ((startIndex > signature.length() - 3) || signature.byteAt(startIndex) != '(') {
+            throw new ClassFormatError("Invalid method signature: " + signature);
         }
-        final List<TypeDescriptor> buf = new ArrayList<>();
+
+        final List<ByteString<Type>> buf = new ArrayList<>();
         int i = startIndex + 1;
-        while (string.charAt(i) != ')') {
-            final TypeDescriptor descriptor = typeDescriptors.parse(string, i, true);
+        while (signature.byteAt(i) != ')') {
+            final ByteString<Type> descriptor = typeDescriptors.parse(signature, i, true);
             buf.add(descriptor);
             i = i + descriptor.toString().length();
-            if (i >= string.length()) {
+            if (i >= signature.length()) {
                 throw new ClassFormatError("Invalid method signature: " + string);
             }
         }
         i++;
-        final TypeDescriptor descriptor = typeDescriptors.parse(string, i, true);
+        final ByteString<Type> descriptor = typeDescriptors.parse(string, i, true);
         if (i + descriptor.toString().length() != string.length()) {
             throw new ClassFormatError("Invalid method signature: " + string);
         }
-        final TypeDescriptor[] descriptors = buf.toArray(new TypeDescriptor[buf.size() + 1]);
+        final ByteString<Type>[] descriptors = buf.toArray(new ByteString<Type>[buf.size() + 1]);
         descriptors[buf.size()] = descriptor;
         return descriptors;
     }
@@ -104,15 +108,21 @@ public final class SignatureDescriptor extends Descriptor {
         return TypeDescriptors.skipValidTypeDescriptor(value, i, true);
     }
 
+    @SuppressWarnings("unchecked")
+    public static ByteString<Signature> check(ByteString<? extends Descriptor> descriptor) {
+        assert isValid((ByteString<Signature>) descriptor);
+        return (ByteString<Signature>) descriptor;
+    }
+
     public JavaKind resultKind() {
-        return getReturnTypeDescriptor().toKind();
+        return TypeDescriptor.getJavaKind(getReturnType());
     }
 
     /**
      * Gets the type descriptor of the return type in this signature object.
      */
-    public TypeDescriptor getReturnTypeDescriptor() {
-        return components[components.length - 1];
+    public static ByteString<Type> getReturnType(ByteString<Type>[] signature) {
+        return signature[signature.length - 1];
     }
 
     /**
@@ -128,26 +138,31 @@ public final class SignatureDescriptor extends Descriptor {
      * and double parameters use two slots, all other parameters use one slot.
      */
     public int getNumberOfSlotsForParameters() {
-        return numberOfSlots - components[components.length - 1].toKind().getSlotCount();
+        return numberOfSlots - resultKind().getSlotCount();
     }
 
     public int getParameterCount(boolean receiver) {
         return components.length - 1 + (receiver ? 1 : 0);
     }
 
-    @Override
-    public void verify() {
-        int endIndex = skipValidSignature(value, 0);
-        if (endIndex != value.length()) {
-            throw new ClassFormatError("Invalid method descriptor " + value);
+    public static boolean isValid(ByteString<Signature> signature) {
+        int endIndex = skipValidSignature(signature, 0);
+        return endIndex == signature.length();
+    }
+
+    public static ByteString<Signature> verify(ByteString<Signature> signature) {
+        int endIndex = skipValidSignature(signature, 0);
+        if (endIndex != signature.length()) {
+            throw new ClassFormatError("Invalid signature descriptor " + signature);
         }
+        return signature;
     }
 
-    public JavaKind getParameterKind(int paramIndex) {
-        return components[paramIndex].toKind();
+    public static JavaKind getParameterKind(ByteString<Type>[] signature, int paramIndex) {
+        return TypeDescriptor.getJavaKind(signature[paramIndex]);
     }
 
-    public TypeDescriptor getParameterType(int paramIndex) {
-        return components[paramIndex];
+    public ByteString<Type> getParameterType(ByteString<Type>[] signature, int paramIndex) {
+        return signature[paramIndex];
     }
 }

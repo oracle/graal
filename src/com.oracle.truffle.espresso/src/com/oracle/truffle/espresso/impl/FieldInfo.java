@@ -26,8 +26,8 @@ package com.oracle.truffle.espresso.impl;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
-import com.oracle.truffle.espresso.runtime.AttributeInfo;
-import com.oracle.truffle.espresso.types.TypeDescriptor;
+import com.oracle.truffle.espresso.runtime.Attribute;
+import com.oracle.truffle.espresso.descriptors.TypeDescriptor;
 
 import java.lang.reflect.Modifier;
 
@@ -43,7 +43,7 @@ public class FieldInfo implements ModifiersProvider {
     private final String name;
     private final int offset;
     private final short slot;
-    private AttributeInfo runtimeVisibleAnnotations;
+    private Attribute runtimeVisibleAnnotations;
 
     @CompilerDirectives.CompilationFinal private Klass type;
 
@@ -52,7 +52,7 @@ public class FieldInfo implements ModifiersProvider {
      */
     private final int modifiers;
 
-    FieldInfo(Klass holder, String name, TypeDescriptor typeDescriptor, long offset, int modifiers, int slot, AttributeInfo runtimeVisibleAnnotations) {
+    FieldInfo(Klass holder, String name, TypeDescriptor typeDescriptor, long offset, int modifiers, int slot, Attribute runtimeVisibleAnnotations) {
         this.holder = holder;
         this.name = name;
         this.typeDescriptor = typeDescriptor;
@@ -115,7 +115,7 @@ public class FieldInfo implements ModifiersProvider {
         return modifiers;
     }
 
-    public AttributeInfo getRuntimeVisibleAnnotations() {
+    public Attribute getRuntimeVisibleAnnotations() {
         return runtimeVisibleAnnotations;
     }
 
@@ -126,7 +126,7 @@ public class FieldInfo implements ModifiersProvider {
         private long offset;
         private int modifiers;
         private int slot;
-        private AttributeInfo runtimeVisibleAnnotations;
+        private Attribute runtimeVisibleAnnotations;
 
         public Builder setDeclaringClass(Klass declaringClass) {
             this.declaringClass = declaringClass;
@@ -158,7 +158,7 @@ public class FieldInfo implements ModifiersProvider {
             return this;
         }
 
-        public Builder setRuntimeVisibleAnnotations(AttributeInfo runtimeVisibleAnnotations) {
+        public Builder setRuntimeVisibleAnnotations(Attribute runtimeVisibleAnnotations) {
             this.runtimeVisibleAnnotations = runtimeVisibleAnnotations;
             return this;
         }

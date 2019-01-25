@@ -23,12 +23,12 @@
 
 package com.oracle.truffle.espresso.impl;
 
-import com.oracle.truffle.espresso.types.TypeDescriptor;
+import com.oracle.truffle.espresso.impl.ByteString.Type;
 
 public interface ClassRegistry {
-    Klass resolve(TypeDescriptor type);
+    Klass resolve(ByteString<Type> type);
 
-    Klass findLoadedClass(TypeDescriptor type);
+    Klass findLoadedKlass(ByteString<Type> type);
 
-    Klass defineKlass(TypeDescriptor type, Klass klass);
+    Klass defineKlass(ByteString<Type> type, Klass klass);
 }

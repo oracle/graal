@@ -60,7 +60,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
-import com.oracle.truffle.espresso.types.TypeDescriptor;
+import com.oracle.truffle.espresso.descriptors.TypeDescriptor;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
 import org.graalvm.options.OptionValues;
 

@@ -32,7 +32,7 @@ import com.oracle.truffle.espresso.runtime.ClasspathFile;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
-import com.oracle.truffle.espresso.types.TypeDescriptor;
+import com.oracle.truffle.espresso.descriptors.TypeDescriptor;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
@@ -59,13 +59,13 @@ public class ClassRegistries {
             return null;
         }
         if (StaticObject.isNull(classLoader)) {
-            return bootClassRegistry.findLoadedClass(type);
+            return bootClassRegistry.findLoadedKlass(type);
         }
         ClassRegistry registry = registries.get(classLoader);
         if (registry == null) {
             return null;
         }
-        return registry.findLoadedClass(type);
+        return registry.findLoadedKlass(type);
     }
 
     @CompilerDirectives.TruffleBoundary

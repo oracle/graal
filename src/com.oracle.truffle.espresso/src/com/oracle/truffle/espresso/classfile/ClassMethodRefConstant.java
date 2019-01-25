@@ -22,42 +22,40 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
-import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.impl.MethodInfo;
-import com.oracle.truffle.espresso.types.SignatureDescriptor;
-import com.oracle.truffle.espresso.types.TypeDescriptor;
 
 public interface ClassMethodRefConstant extends MethodRefConstant {
 
+    @Override
     default Tag tag() {
         return Tag.METHOD_REF;
     }
 
-    static final class Resolved extends MethodRefConstant.Resolved implements ClassMethodRefConstant {
-        public Resolved(MethodInfo method) {
-            super(method);
-        }
-    }
+// static final class Resolved extends MethodRefConstant.Resolved implements ClassMethodRefConstant
+// {
+// public Resolved(MethodInfo method) {
+// super(method);
+// }
+// }
 
-    static final class Unresolved extends MethodRefConstant.Unresolved implements ClassMethodRefConstant {
+// static final class Unresolved extends MethodRefConstant.Unresolved implements
+// ClassMethodRefConstant {
+//
+// public Unresolved(TypeDescriptor declaringClass, String name, SignatureDescriptor signature) {
+// super(declaringClass, name, signature);
+// }
+//
+// public MethodInfo resolve(ConstantPool pool, int index) {
+// CompilerDirectives.transferToInterpreterAndInvalidate();
+// Klass declaringClass = pool.getContext().getRegistries().resolve(getDeclaringClass(pool, -1),
+// pool.getClassLoader());
+// MethodInfo m = declaringClass.findMethod(getName(pool, -1), getSignature(pool, -1));
+// pool.updateAt(index, new ClassMethodRefConstant.Resolved(m));
+// return m;
+// }
+// }
 
-        public Unresolved(TypeDescriptor declaringClass, String name, SignatureDescriptor signature) {
-            super(declaringClass, name, signature);
-        }
-
-        public MethodInfo resolve(ConstantPool pool, int index) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            Klass declaringClass = pool.getContext().getRegistries().resolve(getDeclaringClass(pool, -1), pool.getClassLoader());
-            MethodInfo m = declaringClass.findMethod(getName(pool, -1), getSignature(pool, -1));
-            pool.updateAt(index, new ClassMethodRefConstant.Resolved(m));
-            return m;
-        }
-    }
-
-    static final class Indexes extends MethodRefConstant.Indexes implements ClassMethodRefConstant {
-
+    final class Indexes extends MethodRefConstant.Indexes implements ClassMethodRefConstant {
         Indexes(int classIndex, int nameAndTypeIndex) {
             super(classIndex, nameAndTypeIndex);
         }

@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.espresso.meta;
 
-import com.oracle.truffle.espresso.types.TypeDescriptor;
+import com.oracle.truffle.espresso.descriptors.TypeDescriptor;
 
 /**
  * Describes the type and bytecode index range in which a local variable is live.

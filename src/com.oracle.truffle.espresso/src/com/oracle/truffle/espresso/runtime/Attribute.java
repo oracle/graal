@@ -20,34 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.types;
+package com.oracle.truffle.espresso.runtime;
 
-import com.oracle.truffle.espresso.meta.MetaUtil;
+import com.oracle.truffle.espresso.impl.ByteString;
+import com.oracle.truffle.espresso.impl.ByteString.Name;
 
-public final class SignatureDescriptors extends DescriptorCache<SignatureDescriptor> {
-
-    private final TypeDescriptors typeDescriptors;
-
-    public SignatureDescriptors(TypeDescriptors typeDescriptors) {
-        this.typeDescriptors = typeDescriptors;
+public class Attribute {
+    private final ByteString<Name> name;
+    private final byte[] data;
+    public ByteString getName() {
+        return name;
     }
-
-    public TypeDescriptors getTypeDescriptors() {
-        return typeDescriptors;
+    public byte[] getData() {
+        return data;
     }
-
-    @Override
-    protected SignatureDescriptor create(String key) {
-        return new SignatureDescriptor(typeDescriptors, key);
-    }
-
-    public SignatureDescriptor create(Class<?> returnType, Class<?>... parameterTypes) {
-        StringBuilder sb = new StringBuilder("(");
-        for (Class<?> param : parameterTypes) {
-            sb.append(MetaUtil.toInternalName(param.getName()));
-        }
-        sb.append(")");
-        sb.append(MetaUtil.toInternalName(returnType.getName()));
-        return new SignatureDescriptor(typeDescriptors, sb.toString());
+    public Attribute(ByteString<Name> name, byte[] data) {
+        this.name = name;
+        this.data = data;
     }
 }

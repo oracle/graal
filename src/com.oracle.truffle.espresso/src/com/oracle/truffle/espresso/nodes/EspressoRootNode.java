@@ -247,7 +247,7 @@ import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.BytecodeTableSwitch;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.ClassConstant;
-import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.SharedConstantPool;
 import com.oracle.truffle.espresso.classfile.DoubleConstant;
 import com.oracle.truffle.espresso.classfile.FloatConstant;
 import com.oracle.truffle.espresso.classfile.IntegerConstant;
@@ -266,7 +266,7 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.ReturnAddress;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
-import com.oracle.truffle.espresso.types.SignatureDescriptor;
+import com.oracle.truffle.espresso.descriptors.SignatureDescriptor;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 /**
@@ -1058,7 +1058,7 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
 
     private void putPoolConstant(final VirtualFrame frame, int top, char cpi, int opcode) {
         assert opcode == LDC || opcode == LDC_W || opcode == LDC2_W;
-        ConstantPool pool = getConstantPool();
+        SharedConstantPool pool = getConstantPool();
         PoolConstant constant = pool.at(cpi);
         if (constant instanceof IntegerConstant) {
             assert opcode == LDC || opcode == LDC_W;
@@ -1085,7 +1085,7 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
         }
     }
 
-    private ConstantPool getConstantPool() {
+    private SharedConstantPool getConstantPool() {
         return this.method.getConstantPool();
     }
 
@@ -1160,21 +1160,21 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
 
     private Klass resolveType(@SuppressWarnings("unused") int opcode, char cpi) {
         // TODO(peterssen): Check opcode.
-        ConstantPool pool = getConstantPool();
+        SharedConstantPool pool = getConstantPool();
         return pool.classAt(cpi).resolve(pool, cpi);
     }
 
     private MethodInfo resolveMethod(int opcode, char cpi) {
         CompilerAsserts.partialEvaluationConstant(cpi);
         CompilerAsserts.partialEvaluationConstant(opcode);
-        ConstantPool pool = getConstantPool();
+        SharedConstantPool pool = getConstantPool();
         MethodInfo methodInfo = pool.methodAt(cpi).resolve(pool, cpi);
         return methodInfo;
     }
 
     private FieldInfo resolveField(@SuppressWarnings("unused") int opcode, char cpi) {
         // TODO(peterssen): Check opcode.
-        ConstantPool pool = getConstantPool();
+        SharedConstantPool pool = getConstantPool();
         return pool.fieldAt(cpi).resolve(pool, cpi);
     }
 

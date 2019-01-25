@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,23 +20,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.classfile;
+package com.oracle.truffle.espresso.descriptors;
 
-import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
-import com.oracle.truffle.espresso.descriptors.SignatureDescriptor;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.espresso.impl.ByteString;
-import com.oracle.truffle.espresso.impl.ByteString.Name;
-import com.oracle.truffle.espresso.impl.ByteString.Signature;
+import com.oracle.truffle.espresso.impl.ByteString.Descriptor;
+import com.oracle.truffle.espresso.impl.ByteString.Interned;
 
-public interface DynamicConstant extends BootstrapMethodConstant {
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.function.Function;
 
-    default Tag tag() {
-        return Tag.DYNAMIC;
+public abstract class DescriptorCache<Inner extends Descriptor, Key extends ByteString<? extends Inner>, Value> {
+
+    protected final ConcurrentHashMap<Key, Value> cache = new ConcurrentHashMap<>();
+
+    public Value lookup(Key key) {
+        CompilerAsserts.neverPartOfCompilation();
+        return cache.get(key);
     }
 
-    final class Indexes extends BootstrapMethodConstant.Indexes implements DynamicConstant {
-        Indexes(int bootstrapMethodAttrIndex, int nameAndTypeIndex) {
-            super(bootstrapMethodAttrIndex, nameAndTypeIndex);
-        }
+    public Value make(Key key) {
+        CompilerAsserts.neverPartOfCompilation();
+        // TODO(peterssen): Purge lambda.
+        return cache.computeIfAbsent(key, DescriptorCache.this::create);
     }
+
+    protected abstract Value create(Key key);
 }

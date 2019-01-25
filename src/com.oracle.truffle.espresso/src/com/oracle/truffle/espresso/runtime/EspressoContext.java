@@ -27,8 +27,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.classfile.StringTable;
-import com.oracle.truffle.espresso.classfile.SymbolTable;
 import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.jni.JniEnv;
@@ -36,8 +34,8 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
-import com.oracle.truffle.espresso.types.SignatureDescriptors;
-import com.oracle.truffle.espresso.types.TypeDescriptors;
+import com.oracle.truffle.espresso.descriptors.SignatureDescriptors;
+import com.oracle.truffle.espresso.descriptors.TypeDescriptors;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
 
@@ -238,9 +236,10 @@ public class EspressoContext {
         this.mainThread = mainThread;
     }
 
-    public SymbolTable getSymbolTable() {
-        return getLanguage().getSymbolTable();
-    }
+//
+//    public SymbolTable getSymbolTable() {
+//        return getLanguage().getSymbolTable();
+//    }
 
     public TypeDescriptors getTypeDescriptors() {
         return getLanguage().getTypeDescriptors();

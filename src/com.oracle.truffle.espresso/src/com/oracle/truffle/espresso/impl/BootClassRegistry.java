@@ -29,7 +29,7 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.types.TypeDescriptor;
+import com.oracle.truffle.espresso.descriptors.TypeDescriptor;
 
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -107,9 +107,9 @@ public class BootClassRegistry implements ClassRegistry {
     }
 
     @Override
-    public Klass findLoadedClass(TypeDescriptor type) {
+    public Klass findLoadedKlass(TypeDescriptor type) {
         if (type.isArray()) {
-            Klass klass = findLoadedClass(type.getComponentType());
+            Klass klass = findLoadedKlass(type.getComponentType());
             if (klass == null) {
                 return null;
             }

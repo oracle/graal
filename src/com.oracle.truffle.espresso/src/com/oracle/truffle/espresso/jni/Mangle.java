@@ -24,8 +24,8 @@
 package com.oracle.truffle.espresso.jni;
 
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.types.SignatureDescriptor;
-import com.oracle.truffle.espresso.types.TypeDescriptor;
+import com.oracle.truffle.espresso.descriptors.SignatureDescriptor;
+import com.oracle.truffle.espresso.descriptors.TypeDescriptor;
 
 /**
  * A utility for mangling Java method name and signatures into C function names. Support is also

@@ -42,7 +42,7 @@ public final class DoubleConstant implements PoolConstant {
     }
 
     @Override
-    public String toString(ConstantPool pool, int thisIndex) {
+    public String toString(ConstantPool pool) {
         return String.valueOf(value);
     }
 }

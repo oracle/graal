@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
+import com.oracle.truffle.espresso.impl.ByteString;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
 
 import java.io.ByteArrayInputStream;
@@ -33,7 +34,7 @@ import java.io.IOException;
  * Operations for sequentially scanning data items in a class file. Any IO exceptions that occur
  * during scanning are converted to {@link ClassFormatError}s.
  */
-public class ClassfileStream {
+public final class ClassfileStream {
 
     private final int length;
     private final ByteArrayInputStream bstream;
@@ -157,9 +158,22 @@ public class ClassfileStream {
         }
     }
 
-    public String readString() {
+//    public String readString() {
+//        try {
+//            return stream.readUTF();
+//        } catch (EOFException eofException) {
+//            throw eofError();
+//        } catch (IOException ioException) {
+//            throw ioError(ioException);
+//        }
+//    }
+
+    public ByteString readUTF() {
         try {
-            return stream.readUTF();
+            int utflen = stream.readUnsignedShort();
+            byte[] bytes = new byte[utflen];
+            stream.readFully(bytes);
+            return new ByteString(bytes);
         } catch (EOFException eofException) {
             throw eofError();
         } catch (IOException ioException) {

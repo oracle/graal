@@ -20,44 +20,46 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.classfile;
+package com.oracle.truffle.espresso.runtime;
 
-import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.StaticObject;
-import org.graalvm.collections.EconomicMap;
+import java.util.concurrent.ConcurrentHashMap;
 
-import java.lang.ref.WeakReference;
+import com.oracle.truffle.espresso.impl.ByteString;
+import com.oracle.truffle.espresso.impl.ByteString.Constant;
+import com.oracle.truffle.espresso.jni.Utf8;
+import com.oracle.truffle.espresso.meta.EspressoError;
 
 /**
  * Used to implement String interning.
  */
-public final class StringTable {
+public final class StringTable { // ByteString<Constant> => StaticObject
 
-    private final EspressoContext context;
+    private final EspressoContext context; // per context
 
-    private final EconomicMap<String, WeakReference<StaticObject>> interned = EconomicMap.create();
+    // private final EconomicMap<ByteString<Constant>, WeakReference<StaticObject>> interned =
+    // EconomicMap.create();
+    private final ConcurrentHashMap<ByteString<Constant>, StaticObject> cache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<StaticObject, StaticObject> interned = new ConcurrentHashMap<>();
 
     public StringTable(EspressoContext context) {
         this.context = context;
     }
 
-    public synchronized StaticObject intern(String value) {
-        WeakReference<StaticObject> ref = interned.get(value);
-        StaticObject unique = ref != null ? ref.get() : null;
-        if (unique == null) {
-            unique = createStringObject(value);
-            interned.put(value, new WeakReference<>(unique));
-        }
-        return unique;
+    public StaticObject intern(ByteString<Constant> value) {
+        // Weak values?
+        return cache.computeIfAbsent(value, StringTable.this::createStringObject);
     }
 
     private StaticObject createStringObject(String value) {
         return context.getMeta().toGuest(value);
     }
 
-    public synchronized StaticObject intern(StaticObject stringObject) {
-        String s = Meta.toHostString(stringObject);
-        return intern(s);
+    private StaticObject createStringObject(ByteString<Constant> value) {
+        return createStringObject(Utf8.toJavaString(value.value));
+    }
+
+    public StaticObject intern(StaticObject stringObject) {
+        // Guest-level interning
+        throw EspressoError.unimplemented();
     }
 }

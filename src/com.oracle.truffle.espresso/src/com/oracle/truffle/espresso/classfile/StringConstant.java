@@ -22,50 +22,34 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.impl.ByteString;
+import com.oracle.truffle.espresso.impl.ByteString.Constant;
 
-public final class StringConstant implements PoolConstant {
-
-    @CompilerDirectives.CompilationFinal() private volatile StaticObject internedString;
+public interface StringConstant extends PoolConstant {
 
     @Override
-    public Tag tag() {
+    default Tag tag() {
         return Tag.STRING;
     }
 
     @Override
-    public String toString(ConstantPool pool, int thisIndex) {
-        return getValue(pool);
+    default String toString(ConstantPool pool) {
+        return getConstant(pool).toString();
     }
 
-    private final int utf8Index;
+    ByteString<Constant> getConstant(ConstantPool pool);
 
-    public StringConstant(int utf8Index) {
-        this.utf8Index = utf8Index;
-    }
+    final class Index implements StringConstant {
+        private final int utf8Index;
 
-    public Utf8Constant getSymbol(ConstantPool pool) {
-        return pool.utf8At(utf8Index);
-    }
-
-    public String getValue(ConstantPool pool) {
-        return pool.utf8At(utf8Index).toString();
-    }
-
-    public StaticObject intern(ConstantPool pool) {
-        StaticObject result = internedString;
-        if (result == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            synchronized (this) {
-                result = internedString;
-                if (result == null) {
-                    result = pool.getContext().getStrings().intern(getValue(pool));
-                    internedString = result;
-                }
-            }
+        @Override
+        public ByteString<Constant> getConstant(ConstantPool pool) {
+            return pool.utf8At(utf8Index);
         }
-        return result;
+
+        Index(int utf8Index) {
+            this.utf8Index = utf8Index;
+        }
     }
 }

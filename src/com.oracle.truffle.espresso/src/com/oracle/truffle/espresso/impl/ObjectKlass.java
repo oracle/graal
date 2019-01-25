@@ -32,13 +32,13 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.SharedConstantPool;
 import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.AttributeInfo;
+import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
@@ -54,7 +54,7 @@ public final class ObjectKlass extends Klass {
     private final FieldInfo[] declaredFields;
     private final int accessFlags;
     private final EnclosingMethodAttribute enclosingMethod;
-    private final ConstantPool pool;
+    private final SharedConstantPool pool;
 
     @CompilerDirectives.CompilationFinal private StaticObject statics;
 
@@ -66,7 +66,7 @@ public final class ObjectKlass extends Klass {
 
     private final InnerClassesAttribute innerClasses;
 
-    private final AttributeInfo runtimeVisibleAnnotations;
+    private final Attribute runtimeVisibleAnnotations;
 
     private final int instanceFieldSlots;
 
@@ -85,12 +85,12 @@ public final class ObjectKlass extends Klass {
     public static final int INITIALIZED = 3;
 
     public ObjectKlass(String klassName, Klass superclass, Klass[] interfaces,
-                    MethodInfo.Builder[] declaredMethodsBuilders,
-                    FieldInfo.Builder[] declaredFieldBuilders,
-                    int accessFlags,
-                    EnclosingMethodAttribute enclosingMethod,
-                    InnerClassesAttribute innerClasses,
-                    ConstantPool pool, AttributeInfo runtimeVisibleAnnotations) {
+                       MethodInfo.Builder[] declaredMethodsBuilders,
+                       FieldInfo.Builder[] declaredFieldBuilders,
+                       int accessFlags,
+                       EnclosingMethodAttribute enclosingMethod,
+                       InnerClassesAttribute innerClasses,
+                       SharedConstantPool pool, Attribute runtimeVisibleAnnotations) {
         super(klassName, JavaKind.Object);
         this.superclass = superclass;
         this.interfaces = interfaces;
@@ -143,7 +143,7 @@ public final class ObjectKlass extends Klass {
     }
 
     @Override
-    public ConstantPool getConstantPool() {
+    public SharedConstantPool getConstantPool() {
         return pool;
     }
 
@@ -364,7 +364,7 @@ public final class ObjectKlass extends Klass {
         return (ObjectKlass) getSuperclass();
     }
 
-    public AttributeInfo getRuntimeVisibleAnnotations() {
+    public Attribute getRuntimeVisibleAnnotations() {
         return runtimeVisibleAnnotations;
     }
 }

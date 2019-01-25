@@ -20,21 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.types;
+package com.oracle.truffle.espresso.descriptors;
 
+import com.oracle.truffle.espresso.impl.ByteString;
+import com.oracle.truffle.espresso.impl.ByteString.Type;
 import com.oracle.truffle.espresso.meta.JavaKind;
 
 /**
  * A string description of a Java runtime type, e.g. a field's type, see #4.3.2.
  */
-public final class TypeDescriptor extends Descriptor {
+public final class TypeDescriptor {
 
-    private final char firstChar;
-
-    TypeDescriptor(String string) {
-        super(string);
-        this.firstChar = string.charAt(0);
-    }
+    private TypeDescriptor() {}
 
     public static String stringToJava(String string) {
         switch (string.charAt(0)) {
@@ -97,11 +94,11 @@ public final class TypeDescriptor extends Descriptor {
 
     }
 
-    public boolean isPrimitive() {
-        if (value.length() != 1) {
+    public static boolean isPrimitive(ByteString<Type> type) {
+        if (type.length() != 1) {
             return false;
         }
-        switch (firstChar) {
+        switch (type.byteAt(0)) {
             case 'B': // byte
             case 'C': // char
             case 'D': // double
@@ -112,22 +109,23 @@ public final class TypeDescriptor extends Descriptor {
             case 'V': // void
             case 'Z': // boolean
                 return true;
+            default:
+                return false;
         }
-        return false;
     }
 
-    public String toJavaName() {
-        return stringToJava(toString());
-    }
+//    public String toJavaName() {
+//        return stringToJava(toString());
+//    }
 
     /**
      * Gets the kind denoted by this type descriptor.
      *
      * @return the kind denoted by this type descriptor
      */
-    public JavaKind toKind() {
-        if (value.length() == 1) {
-            return JavaKind.fromPrimitiveOrVoidTypeChar(firstChar);
+    public static JavaKind getJavaKind(ByteString<Type> type) {
+        if (type.length() == 1) {
+            return JavaKind.fromPrimitiveOrVoidTypeChar((char) type.byteAt(0));
         }
         return JavaKind.Object;
     }
@@ -135,34 +133,36 @@ public final class TypeDescriptor extends Descriptor {
     /**
      * Gets the number of array dimensions in this type descriptor.
      */
-    public int getArrayDimensions() {
-        int dimensions = 0;
-        while (value.charAt(dimensions) == '[') {
-            dimensions++;
+    public static int getArrayDimensions(ByteString<Type> type) {
+        int dims = 0;
+        while (dims < type.length() && type.byteAt(dims) == '[') {
+            dims++;
         }
-        return dimensions;
+        return dims;
     }
 
-    @Override
-    public void verify() {
+    public static void verify(ByteString<Type> value) {
         int endIndex = TypeDescriptors.skipValidTypeDescriptor(value, 0, true);
         if (endIndex != value.length()) {
             throw new ClassFormatError("Invalid type descriptor " + value);
         }
     }
 
-    public boolean isArray() {
-        return firstChar == '[';
+    public static boolean isArray(ByteString<Type> type) {
+        return type.byteAt(0) == '[';
     }
 
-    public TypeDescriptor getComponentType() {
-        if (value.startsWith("[")) {
-            return new TypeDescriptor(value.substring(1));
+    public static ByteString<Type> getComponentType(ByteString<Type> type) {
+        if (type.byteAt(0) == '[') {
+            return type.substring(1);
         }
         return null;
     }
 
-    public TypeDescriptor getElementalType() {
-        return new TypeDescriptor(value.substring(getArrayDimensions()));
+    public static ByteString<Type> getElementalType(ByteString<Type> type) {
+        if (isArray(type)) {
+            return type.substring(getArrayDimensions(type));
+        }
+        return type;
     }
 }

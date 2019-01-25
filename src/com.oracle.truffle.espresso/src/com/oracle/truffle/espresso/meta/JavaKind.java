@@ -225,26 +225,18 @@ public enum JavaKind {
      */
     public static JavaKind fromPrimitiveOrVoidTypeChar(char ch) {
         switch (ch) {
-            case 'Z':
-                return Boolean;
-            case 'C':
-                return Char;
-            case 'F':
-                return Float;
-            case 'D':
-                return Double;
-            case 'B':
-                return Byte;
-            case 'S':
-                return Short;
-            case 'I':
-                return Int;
-            case 'J':
-                return Long;
-            case 'V':
-                return Void;
+            case 'Z': return Boolean;
+            case 'C': return Char;
+            case 'F': return Float;
+            case 'D': return Double;
+            case 'B': return Byte;
+            case 'S': return Short;
+            case 'I': return Int;
+            case 'J': return Long;
+            case 'V': return Void;
+            default:
+                throw new IllegalArgumentException("unknown primitive or void type character: " + ch);
         }
-        throw new IllegalArgumentException("unknown primitive or void type character: " + ch);
     }
 
     /**
@@ -436,7 +428,7 @@ public enum JavaKind {
                         return "String:\"" + s + '"';
                     }
                 } else if (value instanceof Klass) {
-                    return "JavaType:" + ((Klass) value).getName();
+                    return "JavaType:" + ((Klass) value).getName().toString();
                 } else if (value instanceof Enum) {
                     return MetaUtil.getSimpleName(value.getClass(), true) + ":" + ((Enum<?>) value).name();
                 } else if (value instanceof FormatWithToString) {

@@ -23,13 +23,13 @@
 
 package com.oracle.truffle.espresso.impl;
 
+import java.lang.reflect.Modifier;
+
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-
-import java.lang.reflect.Modifier;
 
 public final class ArrayKlass extends Klass {
     private final Klass componentType;
@@ -172,22 +172,22 @@ public final class ArrayKlass extends Klass {
     }
 
     @Override
-    public MethodInfo[] getDeclaredConstructors() {
+    public Method[] getDeclaredConstructors() {
         return MethodInfo.EMPTY_ARRAY;
     }
 
     @Override
-    public MethodInfo[] getDeclaredMethods() {
-        return MethodInfo.EMPTY_ARRAY;
+    public Method[] getDeclaredMethods() {
+        return Method.EMPTY_ARRAY;
     }
 
     @Override
-    public FieldInfo[] getDeclaredFields() {
-        return FieldInfo.EMPTY_ARRAY;
+    public Field[] getDeclaredFields() {
+        return Field.EMPTY_ARRAY;
     }
 
     @Override
-    public MethodInfo getClassInitializer() {
+    public Method getClassInitializer() {
         return null;
     }
 

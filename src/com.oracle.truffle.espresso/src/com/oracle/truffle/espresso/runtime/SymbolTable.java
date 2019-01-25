@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,31 +20,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.types;
+package com.oracle.truffle.espresso.runtime;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.espresso.classfile.Utf8Constant;
+import com.oracle.truffle.espresso.impl.ByteString;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Equivalence;
 
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
 
-public abstract class DescriptorCache<T extends Descriptor> {
+/**
+ * Symbol cache.
+ */
+public final class SymbolTable {
+    /**
+     * Searching and adding entries to this map is only performed by {@linkplain #make(ByteString) one
+     * method} which is ~~synchronized~~ thread-safe.
+     */
+    // private final EconomicMap<ByteString, Utf8Constant> symbols = EconomicMap.create(Equivalence.DEFAULT);
+    private final ConcurrentHashMap<ByteString<?>, Utf8Constant> symbols = new ConcurrentHashMap<>();
 
-    protected final ConcurrentHashMap<String, T> cache = new ConcurrentHashMap<>();
-
-    public T lookup(String key) {
+    public Utf8Constant lookup(ByteString<?> key) {
         CompilerAsserts.neverPartOfCompilation();
-        return cache.get(key);
+        return symbols.get(key);
     }
 
-    public T make(String key) {
+    public Utf8Constant make(ByteString key) {
         CompilerAsserts.neverPartOfCompilation();
-        return cache.computeIfAbsent(key, new Function<String, T>() {
-            @Override
-            public T apply(String key1) {
-                return DescriptorCache.this.create(key1);
-            }
-        });
+        // TODO(peterssen): Purge lambda.
+        return symbols.computeIfAbsent(key, Utf8Constant::new);
     }
-
-    protected abstract T create(String key);
 }
