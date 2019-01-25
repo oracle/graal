@@ -38,19 +38,16 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public final class FreeGlobalsBlockNode extends LLVMNode implements LLVMMemoryOpNode {
+public final class FreeReadOnlyGlobalsBlockNode extends LLVMNode implements LLVMMemoryOpNode {
 
     @Child Node execute;
-    @Child LLVMToNativeNode toNative;
 
     private final TruffleObject freeGlobalsBlock;
 
-    public FreeGlobalsBlockNode(LLVMContext context) {
+    public FreeReadOnlyGlobalsBlockNode(LLVMContext context) {
         this.execute = Message.EXECUTE.createNode();
-        this.toNative = LLVMToNativeNode.createToNativeWithTarget();
 
         NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
         this.freeGlobalsBlock = nfiContextExtension.getNativeFunction(context, "@__sulong_free_globals_block", "(POINTER):VOID");
