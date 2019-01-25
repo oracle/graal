@@ -1027,6 +1027,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
             jvm_library=True,
             jar_distributions=['substratevm:GRAAL_HOTSPOT_LIBRARY'],
             build_args=[
+                "-H:JNIConfigurationResources=com/oracle/svm/graal/hotspot/nativelib/HotSpotGraalLibrary.json",
                 "-H:Features=com.oracle.svm.graal.hotspot.nativelib.HotSpotGraalLibraryFeature",
                 "-H:+MultiThreaded",
                 "-H:-UseServiceLoaderFeature",
