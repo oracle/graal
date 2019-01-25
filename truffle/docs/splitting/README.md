@@ -1,8 +1,8 @@
 # Monomorphization
 
-Truffle has an approach to monomorphization (also known as splitting). For more
-information about the benefits of monomorphization, consider reading
-["Monomorphization use cases"](MonomorphizationUseCases.md).
+Truffle has an automatic approach to monomorphization (also known as
+splitting). For more information about the benefits of monomorphization,
+consider reading ["Monomorphization use cases"](MonomorphizationUseCases.md).
 
 It is controlled by the `TruffleSplitting` flag and is on by default.
 Adding `-Dgraal.TruffleSplitting=false` to your command line will disable it.
@@ -12,5 +12,5 @@ the decisions.  To find out more about how to use the new approach in your
 language implementation please refer to ["Reporting
 Polymorphism"](ReportingPolymorphism.md).
 
-For more details on how the new apporach works consider reading
+For more details on how the new approach works consider reading
 ["Splitting"](Splitting.md)
