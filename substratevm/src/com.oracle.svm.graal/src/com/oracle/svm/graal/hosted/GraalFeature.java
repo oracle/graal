@@ -168,7 +168,7 @@ public final class GraalFeature implements Feature {
      * library for HotSpot (non-pure) or Graal as a compiler used only for a runtime in the same
      * image (pure).
      */
-    public static final class IsPureSVMEnabled implements BooleanSupplier {
+    public static final class IsEnabledAndNotLibgraal implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
             return ImageSingletons.contains(GraalFeature.class) && !SubstrateUtil.isBuildingLibgraal();
