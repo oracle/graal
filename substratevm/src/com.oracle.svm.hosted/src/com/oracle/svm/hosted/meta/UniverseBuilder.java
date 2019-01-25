@@ -596,12 +596,12 @@ public class UniverseBuilder {
      * heap. Moreover, all of them except for String *must* be read-only because they contain
      * relocatable pointers.
      */
-    private static final Class<?>[] IMMUTABLE_TYPES = new Class<?>[]{
+    private static final Set<Class<?>> IMMUTABLE_TYPES = new HashSet<>(Arrays.asList(
                     String.class,
                     DynamicHub.class,
                     CEntryPointLiteral.class,
                     BoxedRelocatedPointer.class,
-                    ClassInitializerFunctionPointerHolder.class};
+                    ClassInitializerFunctionPointerHolder.class));
 
     private void collectMonitorFieldInfo(BigBang bb) {
         if (!SubstrateOptions.MultiThreaded.getValue()) {
@@ -628,6 +628,10 @@ public class UniverseBuilder {
                 hostedInstanceClass.setNeedMonitorField();
             }
         }
+    }
+
+    public static boolean isKnownImmutableType(Class<?> clazz) {
+        return IMMUTABLE_TYPES.contains(clazz);
     }
 
     @SuppressWarnings("try")

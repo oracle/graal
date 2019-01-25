@@ -79,6 +79,7 @@ import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.MaterializedConstantFields;
 import com.oracle.svm.hosted.meta.MethodPointer;
+import com.oracle.svm.hosted.meta.UniverseBuilder;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -355,7 +356,7 @@ public final class NativeImageHeap {
         final DynamicHub hub = type.getHub();
         final ObjectInfo info;
 
-        boolean immutable = immutableFromParent || isImmutable(object);
+        boolean immutable = immutableFromParent || isKnownImmutable(object);
         boolean written = false;
         boolean references = false;
         boolean relocatable = false; /* always false when !spawnIsolates() */
@@ -458,19 +459,14 @@ public final class NativeImageHeap {
     }
 
     /** Determine if an object in the host heap will be immutable in the native image heap. */
-    private boolean isImmutable(final Object obj) {
+    private boolean isKnownImmutable(final Object obj) {
         if (obj instanceof String) {
             // Strings need to have their hash code set or they are not immutable.
             // If the hash is 0, then it will be recomputed again (and again)
             // so the String is not immutable.
             return obj.hashCode() != 0;
-        } else if (obj instanceof DynamicHub) {
-            return true;
-        } else if (knownImmutableObjects.contains(obj)) {
-            return true;
-        } else {
-            return false;
         }
+        return UniverseBuilder.isKnownImmutableType(obj.getClass()) || knownImmutableObjects.contains(obj);
     }
 
     /** Add an object to the model of the native image heap. */
@@ -488,15 +484,15 @@ public final class NativeImageHeap {
             return writableReference;
         }
 
+        if (relocatable && !isKnownImmutable(object)) {
+            VMError.shouldNotReachHere("Object with relocatable pointers must be explicitly immutable: " + object);
+        }
         if (immutable) {
             if (relocatable) {
                 return readOnlyRelocatable;
             }
             return references ? readOnlyReference : readOnlyPrimitive;
         } else {
-            if (relocatable) {
-                VMError.shouldNotReachHere("Object with relocatable pointers must be immutable: " + object);
-            }
             return references ? writableReference : writablePrimitive;
         }
     }
