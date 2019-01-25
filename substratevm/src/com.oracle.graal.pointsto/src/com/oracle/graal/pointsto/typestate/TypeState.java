@@ -34,6 +34,7 @@ import java.util.stream.StreamSupport;
 
 import org.graalvm.compiler.nodes.ValueNode;
 
+import com.oracle.graal.pointsto.AnalysisPolicy;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
@@ -758,38 +759,43 @@ public abstract class TypeState {
     private static ThreadLocal<UnsafeArrayListClosable<AnalysisObject>> doUnion2ObjectsTL = new ThreadLocal<>();
 
     private static TypeState doUnion2(BigBang bb, MultiTypeState s1, MultiTypeState s2, boolean resultCanBeNull, int startId1, int startId2) {
-        int idx1 = startId1;
-        int idx2 = startId2;
         try (UnsafeArrayListClosable<AnalysisObject> resultObjectsClosable = getTLArrayList(doUnion2TL, s1.objects.length + s2.objects.length)) {
             UnsafeArrayList<AnalysisObject> resultObjects = resultObjectsClosable.list;
-
             /* Add the beginning of the s1 list that we already walked above. */
             AnalysisObject[] objects = s1.objects;
-            resultObjects.addAll(objects, 0, idx1);
+            resultObjects.addAll(objects, 0, startId1);
+
+            int idx1 = startId1;
+            int idx2 = startId2;
 
             /* Create the union of the overlapping sections of the s1 and s2. */
             try (UnsafeArrayListClosable<AnalysisObject> tlUnionObjectsClosable = getTLArrayList(doUnion2ObjectsTL, s1.objects.length + s2.objects.length)) {
                 UnsafeArrayList<AnalysisObject> unionObjects = tlUnionObjectsClosable.list;
-                while (idx1 < s1.objects.length && idx2 < s2.objects.length) {
-                    AnalysisObject o1 = s1.objects[idx1];
-                    AnalysisObject o2 = s2.objects[idx2];
 
-                    if (bb.analysisPolicy().isSummaryObject(o1) && o1.type().equals(o2.type())) {
+                AnalysisObject[] so1 = s1.objects;
+                AnalysisObject[] so2 = s2.objects;
+                AnalysisPolicy analysisPolicy = bb.analysisPolicy();
+                while (idx1 < so1.length && idx2 < so2.length) {
+                    AnalysisObject o1 = so1[idx1];
+                    AnalysisObject o2 = so2[idx2];
+                    int t1 = o1.getTypeId();
+                    int t2 = o2.getTypeId();
+                    if (analysisPolicy.isSummaryObject(o1) && t1 == t2) {
                         unionObjects.add(o1);
-                        idx1++;
                         /* Skip over s2 objects of this type while marking them as merged. */
-                        while (idx2 < s2.objects.length && s2.objects[idx2].type().equals(o1.type())) {
-                            bb.analysisPolicy().noteMerge(bb, s2.objects[idx2]);
+                        while (idx2 < so2.length && t1 == so2[idx2].getTypeId()) {
+                            analysisPolicy.noteMerge(bb, so2[idx2]);
                             idx2++;
                         }
-                    } else if (bb.analysisPolicy().isSummaryObject(o2) && o1.type().equals(o2.type())) {
+                        idx1++;
+                    } else if (analysisPolicy.isSummaryObject(o2) && t1 == t2) {
                         unionObjects.add(o2);
-                        idx2++;
                         /* Skip over s1 objects of this type while marking them as merged. */
-                        while (idx1 < s1.objects.length && s1.objects[idx1].type().equals(o2.type())) {
-                            bb.analysisPolicy().noteMerge(bb, s1.objects[idx1]);
+                        while (idx1 < so1.length && so1[idx1].getTypeId() == t2) {
+                            analysisPolicy.noteMerge(bb, so1[idx1]);
                             idx1++;
                         }
+                        idx2++;
                     } else if (o1.getId() < o2.getId()) {
                         unionObjects.add(o1);
                         idx1++;

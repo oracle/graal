@@ -132,6 +132,10 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
         return resultId;
     }
 
+    public int getTypeId() {
+        return (int) (id >> 32);
+    }
+
     public AnalysisType type() {
         return this.type;
     }
