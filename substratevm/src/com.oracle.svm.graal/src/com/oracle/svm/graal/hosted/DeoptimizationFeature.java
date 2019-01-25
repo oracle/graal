@@ -127,7 +127,7 @@ public final class DeoptimizationFeature implements GraalFeature {
     @Override
     public void beforeCompilation(BeforeCompilationAccess a) {
         CompilationAccessImpl config = (CompilationAccessImpl) a;
-
+        config.registerAsImmutable(ImageSingletons.lookup(DeoptimizationSupport.class));
         HostedMetaAccess metaAccess = config.getMetaAccess();
         DeoptimizationSupport.setDeoptStubPointer(MethodPointer.factory(metaAccess.lookupJavaMethod(deoptStubMethod)));
     }
