@@ -28,6 +28,7 @@ import java.util.ArrayDeque;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.Iterator;
+import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.debug.GraalError;
@@ -56,6 +57,7 @@ import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.ValueProxyNode;
 import org.graalvm.compiler.nodes.VirtualState;
 import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.java.MonitorEnterNode;
 import org.graalvm.compiler.nodes.spi.NodeWithState;
 import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
@@ -144,7 +146,21 @@ public abstract class LoopFragment {
 
     protected abstract void beforeDuplication();
 
-    protected abstract void finishDuplication();
+    protected void finishDuplication() {
+        LoopEx originalLoopEx = original().loop();
+        List<Block> cfgLoopExits = originalLoopEx.loop().getLoopExits();
+        ControlFlowGraph cfg = originalLoopEx.loopsData().getCFG();
+        for (LoopExitNode exit : originalLoopEx.loopBegin().loopExits().snapshot()) {
+            // TODO replace this linear search and the one from LoopEx.nodesInLoopBranch with a
+            // binary search
+            if (!cfgLoopExits.contains(cfg.blockFor(exit))) {
+                // this LoopExitNode is too low, we need to remove it otherwise it will be below
+                // merged exits
+                exit.removeExit();
+            }
+        }
+
+    }
 
     protected void patchNodes(final DuplicationReplacement dataFix) {
         if (isDuplicate() && !nodesReady) {
@@ -376,42 +392,6 @@ public abstract class LoopFragment {
                     @Override
                     public AbstractBeginNode next() {
                         return it.next().getBeginNode();
-                    }
-
-                    @Override
-                    public boolean hasNext() {
-                        return it.hasNext();
-                    }
-                };
-            }
-
-        };
-    }
-
-    public static NodeIterable<AbstractBeginNode> toHirExits(final Iterable<Block> blocks) {
-        return new NodeIterable<AbstractBeginNode>() {
-
-            @Override
-            public Iterator<AbstractBeginNode> iterator() {
-                final Iterator<Block> it = blocks.iterator();
-                return new Iterator<AbstractBeginNode>() {
-
-                    @Override
-                    public void remove() {
-                        throw new UnsupportedOperationException();
-                    }
-
-                    /**
-                     * Return the true LoopExitNode for this loop or the BeginNode for the block.
-                     */
-                    @Override
-                    public AbstractBeginNode next() {
-                        Block next = it.next();
-                        LoopExitNode exit = next.getLoopExit();
-                        if (exit != null) {
-                            return exit;
-                        }
-                        return next.getBeginNode();
                     }
 
                     @Override
