@@ -145,6 +145,11 @@ public final class JavaHostLanguageProvider implements LanguageProvider {
                         "java.util.function.Function<Object,Object>",
                         export(context, new ValueSupplier<>(func)),
                         TypeDescriptor.intersection(TypeDescriptor.HOST_OBJECT, TypeDescriptor.OBJECT, TypeDescriptor.executable(TypeDescriptor.ANY, false, TypeDescriptor.ANY))).build());
+        result.add(Snippet.newBuilder(
+                        "java.lang.Class<java.lang.Object>",
+                        export(context, new ValueSupplier<>(Object.class)),
+                        TypeDescriptor.intersection(TypeDescriptor.HOST_OBJECT, TypeDescriptor.OBJECT,
+                                        TypeDescriptor.instantiable(TypeDescriptor.intersection(TypeDescriptor.HOST_OBJECT, TypeDescriptor.OBJECT), false))).build());
         return Collections.unmodifiableCollection(result);
     }
 
