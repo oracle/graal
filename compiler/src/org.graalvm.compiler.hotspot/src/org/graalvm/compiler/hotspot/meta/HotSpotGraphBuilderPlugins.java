@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.hotspot.meta;
 
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.GHASH_PROCESS_BLOCKS;
 import static org.graalvm.compiler.hotspot.meta.HotSpotAOTProfilingPlugin.Options.TieredAOT;
@@ -49,12 +48,12 @@ import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.nodes.CurrentJavaThreadNode;
 import org.graalvm.compiler.hotspot.replacements.AESCryptSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.BigIntegerSubstitutions;
-import org.graalvm.compiler.hotspot.replacements.CounterModeSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.CRC32CSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.CRC32Substitutions;
 import org.graalvm.compiler.hotspot.replacements.CallSiteTargetNode;
 import org.graalvm.compiler.hotspot.replacements.CipherBlockChainingSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.ClassGetHubNode;
+import org.graalvm.compiler.hotspot.replacements.CounterModeSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.HotSpotArraySubstitutions;
 import org.graalvm.compiler.hotspot.replacements.HotSpotClassSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.IdentityHashCodeNode;
@@ -145,7 +144,7 @@ public class HotSpotGraphBuilderPlugins {
 
         // The use of MethodHandles to access HotSpotConstantPool in
         // HotSpotClassInitializationPlugin is problematic for SVM.
-        if (!IS_IN_NATIVE_IMAGE && GeneratePIC.getValue(options)) {
+        if (GeneratePIC.getValue(options)) {
             plugins.setClassInitializationPlugin(new HotSpotClassInitializationPlugin());
             if (TieredAOT.getValue(options)) {
                 plugins.setProfilingPlugin(new HotSpotAOTProfilingPlugin());
