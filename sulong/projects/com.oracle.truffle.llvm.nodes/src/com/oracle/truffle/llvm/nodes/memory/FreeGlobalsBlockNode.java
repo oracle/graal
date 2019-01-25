@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,12 +27,41 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.memory;
+package com.oracle.truffle.llvm.nodes.memory;
 
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.NFIContextExtension;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public abstract class LLVMAllocateStringNode extends LLVMNode {
+public final class FreeGlobalsBlockNode extends LLVMNode implements LLVMMemoryOpNode {
 
-    public abstract Object executeWithTarget(String string);
+    @Child Node execute;
+    @Child LLVMToNativeNode toNative;
 
+    private final TruffleObject freeGlobalsBlock;
+
+    public FreeGlobalsBlockNode(LLVMContext context) {
+        this.execute = Message.EXECUTE.createNode();
+        this.toNative = LLVMToNativeNode.createToNativeWithTarget();
+
+        NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
+        this.freeGlobalsBlock = nfiContextExtension.getNativeFunction(context, "@__sulong_free_globals_block", "(POINTER):VOID");
+    }
+
+    @Override
+    public void execute(LLVMPointer ptr) {
+        try {
+            ForeignAccess.sendExecute(execute, freeGlobalsBlock, ptr);
+        } catch (InteropException ex) {
+            assert false; // should never happen, but probably also safe to ignore
+        }
+    }
 }

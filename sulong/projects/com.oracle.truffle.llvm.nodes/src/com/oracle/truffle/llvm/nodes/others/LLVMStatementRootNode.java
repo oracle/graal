@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,11 +27,42 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.memory;
+package com.oracle.truffle.llvm.nodes.others;
 
-import com.oracle.truffle.api.nodes.NodeInterface;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
-public interface LLVMAllocateStructNode extends NodeInterface {
-    LLVMPointer executeWithTarget();
+public class LLVMStatementRootNode extends RootNode {
+
+    @Child LLVMStatementNode statement;
+
+    public LLVMStatementRootNode(LLVMLanguage language, LLVMStatementNode statement, FrameDescriptor descriptor) {
+        super(language, descriptor);
+        this.statement = statement;
+    }
+
+    @CompilationFinal private FrameSlot stackPointerSlot;
+
+    private FrameSlot getStackPointerSlot() {
+        if (stackPointerSlot == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            stackPointerSlot = getRootNode().getFrameDescriptor().findFrameSlot(LLVMStack.FRAME_ID);
+            assert stackPointerSlot != null;
+        }
+        return stackPointerSlot;
+    }
+
+    @Override
+    public Object execute(VirtualFrame frame) {
+        frame.setObject(getStackPointerSlot(), frame.getArguments()[0]);
+        statement.execute(frame);
+        return null;
+    }
 }
