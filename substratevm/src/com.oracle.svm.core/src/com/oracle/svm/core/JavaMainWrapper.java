@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -59,7 +59,6 @@ import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.code.TargetDescription;
 
 public class JavaMainWrapper {
 
@@ -127,7 +126,8 @@ public class JavaMainWrapper {
 
         JavaMainWrapper.argc = paramArgc;
         JavaMainWrapper.argv = paramArgv;
-        Architecture imageArchitecture = ImageSingletons.lookup(TargetDescription.class).arch;
+
+        Architecture imageArchitecture = ImageSingletons.lookup(SubstrateTargetDescription.class).arch;
         AMD64CPUFeatureAccess.verifyHostSupportsArchitecture(imageArchitecture);
         String[] args = SubstrateUtil.getArgs(paramArgc, paramArgv);
         args = RuntimeOptionParser.parseAndConsumeAllOptions(args);

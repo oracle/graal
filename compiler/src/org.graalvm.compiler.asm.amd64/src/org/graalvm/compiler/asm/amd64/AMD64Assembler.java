@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -683,7 +683,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             emitImmediate(asm, size, imm);
             int nextInsnPos = asm.position();
             if (annotateImm && asm.codePatchingAnnotationConsumer != null) {
-                asm.codePatchingAnnotationConsumer.accept(new ImmediateOperandAnnotation(insnPos, immPos, nextInsnPos - immPos, nextInsnPos));
+                asm.codePatchingAnnotationConsumer.accept(new OperandDataAnnotation(insnPos, immPos, nextInsnPos - immPos, nextInsnPos));
             }
         }
 
@@ -700,7 +700,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             emitImmediate(asm, size, imm);
             int nextInsnPos = asm.position();
             if (annotateImm && asm.codePatchingAnnotationConsumer != null) {
-                asm.codePatchingAnnotationConsumer.accept(new ImmediateOperandAnnotation(insnPos, immPos, nextInsnPos - immPos, nextInsnPos));
+                asm.codePatchingAnnotationConsumer.accept(new OperandDataAnnotation(insnPos, immPos, nextInsnPos - immPos, nextInsnPos));
             }
         }
     }
@@ -2023,7 +2023,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         emitInt(imm32);
         int nextInsnPos = position();
         if (annotateImm && codePatchingAnnotationConsumer != null) {
-            codePatchingAnnotationConsumer.accept(new ImmediateOperandAnnotation(insnPos, immPos, nextInsnPos - immPos, nextInsnPos));
+            codePatchingAnnotationConsumer.accept(new OperandDataAnnotation(insnPos, immPos, nextInsnPos - immPos, nextInsnPos));
         }
     }
 
@@ -3109,7 +3109,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         emitLong(imm64);
         int nextInsnPos = position();
         if (annotateImm && codePatchingAnnotationConsumer != null) {
-            codePatchingAnnotationConsumer.accept(new ImmediateOperandAnnotation(insnPos, immPos, nextInsnPos - immPos, nextInsnPos));
+            codePatchingAnnotationConsumer.accept(new OperandDataAnnotation(insnPos, immPos, nextInsnPos - immPos, nextInsnPos));
         }
     }
 

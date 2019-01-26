@@ -200,13 +200,12 @@ suite = {
             ],
             "workingSets": "SVM",
         },
-
         "com.oracle.svm.hosted": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.objectfile",
-                "com.oracle.svm.core.graal.amd64",
+                "com.oracle.svm.core.graal",
                 "com.oracle.graal.pointsto",
             ],
             "javaCompliance": "8+",
@@ -592,6 +591,7 @@ suite = {
                 "com.oracle.svm.hosted",
                 "com.oracle.svm.truffle.nfi",
                 "com.oracle.svm.core",
+                "com.oracle.svm.core.graal.amd64",
                 "com.oracle.svm.core.jdk8",
                 "com.oracle.svm.core.jdk9",
                 "com.oracle.svm.core.posix",

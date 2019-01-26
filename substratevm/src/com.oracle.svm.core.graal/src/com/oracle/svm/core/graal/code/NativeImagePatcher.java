@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,26 +22,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.config;
+package com.oracle.svm.core.graal.code;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.SubstrateTargetDescription;
+import com.oracle.svm.core.annotate.Uninterruptible;
 
 /**
- * Accessors for important configuration objects that are always accessible via the
- * {@link ImageSingletons}.
+ * Patcher used during native image runtime.
  */
-public final class ConfigurationValues {
+public interface NativeImagePatcher {
+    /**
+     * Patch the code buffer.
+     */
+    void patch(int codePos, int relative, byte[] code);
 
-    @Fold
-    public static SubstrateTargetDescription getTarget() {
-        return ImageSingletons.lookup(SubstrateTargetDescription.class);
-    }
+    /**
+     * Patch a VMConstant in the native-image.
+     */
+    @Uninterruptible(reason = "The patcher is intended to work with raw pointers")
+    void patchData(Pointer pointer, Object object);
 
-    @Fold
-    public static ObjectLayout getObjectLayout() {
-        return ImageSingletons.lookup(ObjectLayout.class);
-    }
+    /**
+     * Return the position where the patch is applied. This offset is used in the reference map.
+     */
+    int getPosition();
 }

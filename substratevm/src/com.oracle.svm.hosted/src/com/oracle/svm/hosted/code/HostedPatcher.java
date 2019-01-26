@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,26 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.config;
+package com.oracle.svm.hosted.code;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.nativeimage.ImageSingletons;
+import com.oracle.svm.hosted.image.RelocatableBuffer;
 
-import com.oracle.svm.core.SubstrateTargetDescription;
+import jdk.vm.ci.code.site.Reference;
 
 /**
- * Accessors for important configuration objects that are always accessible via the
- * {@link ImageSingletons}.
+ * Patcher used when building native images (Hosted mode).
  */
-public final class ConfigurationValues {
+public interface HostedPatcher {
+    /**
+     * Create relocation for the binary file.
+     */
+    void relocate(Reference ref, RelocatableBuffer relocs, int compStart);
 
-    @Fold
-    public static SubstrateTargetDescription getTarget() {
-        return ImageSingletons.lookup(SubstrateTargetDescription.class);
-    }
-
-    @Fold
-    public static ObjectLayout getObjectLayout() {
-        return ImageSingletons.lookup(ObjectLayout.class);
-    }
+    /**
+     * Patch the code buffer.
+     */
+    void patch(int codePos, int relative, byte[] code);
 }

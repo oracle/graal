@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -63,6 +63,7 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
+import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.phases.CommunityCompilerConfiguration;
@@ -83,8 +84,8 @@ import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.PhaseSuite;
-import org.graalvm.compiler.phases.common.AddressLoweringPhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeoptimizationGroupingPhase;
 import org.graalvm.compiler.phases.common.ExpandLogicPhase;
@@ -144,20 +145,22 @@ import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptTester;
 import com.oracle.svm.core.graal.GraalConfiguration;
+import com.oracle.svm.core.graal.code.SubstrateAddressLoweringPhaseFactory;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.jdk.ArraycopySnippets;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.meta.SubstrateLoweringProvider;
+import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
 import com.oracle.svm.core.graal.meta.SubstrateSnippetReflectionProvider;
 import com.oracle.svm.core.graal.meta.SubstrateStampProvider;
-import com.oracle.svm.core.graal.meta.SubstrateTargetDescription;
 import com.oracle.svm.core.graal.phases.CollectDeoptimizationSourcePositionsPhase;
 import com.oracle.svm.core.graal.phases.DeadStoreRemovalPhase;
 import com.oracle.svm.core.graal.phases.MethodSafepointInsertionPhase;
@@ -357,7 +360,7 @@ public class NativeImageGenerator {
         return false;
     }
 
-    public static TargetDescription createTarget(Platform platform) {
+    public static SubstrateTargetDescription createTarget(Platform platform) {
         if (includedIn(platform, Platform.AMD64.class)) {
             Architecture architecture;
             if (NativeImageOptions.NativeArchitecture.getValue()) {
@@ -374,7 +377,8 @@ public class NativeImageGenerator {
             }
             assert architecture instanceof AMD64 : "SVM supports only AMD64 architectures.";
             boolean inlineObjects = SubstrateOptions.SpawnIsolates.getValue();
-            return new SubstrateTargetDescription(architecture, true, 16, 0, inlineObjects);
+            int deoptScratchSpace = 2 * 8; // Space for two 64-bit registers: rax and xmm0
+            return new SubstrateTargetDescription(architecture, true, 16, 0, inlineObjects, deoptScratchSpace);
         } else {
             throw UserError.abort("Architecture specified by platform is not supported: " + platform.getClass().getTypeName());
         }
@@ -483,7 +487,6 @@ public class NativeImageGenerator {
         OptionValues options = HostedOptionValues.singleton();
         SnippetReflectionProvider originalSnippetReflection = GraalAccess.getOriginalSnippetReflection();
         try (DebugContext debug = DebugContext.create(options, new GraalDebugHandlersFactory(originalSnippetReflection))) {
-
             setupNativeImage(imageName, options, entryPoints, javaMainSupport, harnessSubstitutions, analysisExecutor, originalSnippetReflection, debug);
 
             boolean returnAfterAnalysis = runPointsToAnalysis(imageName, options, debug);
@@ -755,9 +758,9 @@ public class NativeImageGenerator {
         try (Indent ignored = debug.logAndIndent("setup native-image builder")) {
             try (StopTimer ignored1 = new Timer(imageName, "setup").start()) {
                 Platform platform = defaultPlatform(loader.getClassLoader());
-                TargetDescription target = createTarget(platform);
+                SubstrateTargetDescription target = createTarget(platform);
                 ImageSingletons.add(Platform.class, platform);
-                ImageSingletons.add(TargetDescription.class, target);
+                ImageSingletons.add(SubstrateTargetDescription.class, target);
 
                 if (javaMainSupport != null) {
                     ImageSingletons.add(JavaMainSupport.class, javaMainSupport);
@@ -1215,11 +1218,15 @@ public class NativeImageGenerator {
 
         lowTier.addBeforeLast(new OptimizeExceptionCallsPhase());
 
-        AddressLoweringPhase.AddressLowering addressLowering = backend.newAddressLowering(runtimeCallProviders.getCodeCache());
+        SubstrateAddressLoweringPhaseFactory addressLoweringFactory = ImageSingletons.lookup(SubstrateAddressLoweringPhaseFactory.class);
+        CompressEncoding compressEncoding = ImageSingletons.lookup(CompressEncoding.class);
+        SubstrateRegisterConfig registerConfig = (SubstrateRegisterConfig) runtimeCallProviders.getCodeCache().getRegisterConfig();
+
+        Phase addressLoweringPhase = addressLoweringFactory.newAddressLowering(compressEncoding, registerConfig);
         if (firstTier) {
-            lowTier.findPhase(ExpandLogicPhase.class).add(new AddressLoweringPhase(addressLowering));
+            lowTier.findPhase(ExpandLogicPhase.class).add(addressLoweringPhase);
         } else {
-            lowTier.findPhase(FixReadsPhase.class).add(new AddressLoweringPhase(addressLowering));
+            lowTier.findPhase(FixReadsPhase.class).add(addressLoweringPhase);
         }
 
         if (SubstrateOptions.MultiThreaded.getValue()) {

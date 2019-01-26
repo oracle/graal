@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,26 +22,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.config;
+package com.oracle.svm.core.graal.code;
 
-import org.graalvm.compiler.api.replacements.Fold;
+import java.util.function.Consumer;
+
+import org.graalvm.compiler.asm.Assembler.CodeAnnotation;
+import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.SubstrateTargetDescription;
+public abstract class PatchConsumerFactory {
 
-/**
- * Accessors for important configuration objects that are always accessible via the
- * {@link ImageSingletons}.
- */
-public final class ConfigurationValues {
-
-    @Fold
-    public static SubstrateTargetDescription getTarget() {
-        return ImageSingletons.lookup(SubstrateTargetDescription.class);
+    public abstract static class HostedPatchConsumerFactory extends PatchConsumerFactory {
+        public static HostedPatchConsumerFactory factory() {
+            return ImageSingletons.lookup(HostedPatchConsumerFactory.class);
+        }
     }
 
-    @Fold
-    public static ObjectLayout getObjectLayout() {
-        return ImageSingletons.lookup(ObjectLayout.class);
+    public abstract static class NativePatchConsumerFactory extends PatchConsumerFactory {
+        public static NativePatchConsumerFactory factory() {
+            return ImageSingletons.lookup(NativePatchConsumerFactory.class);
+        }
     }
+
+    public abstract Consumer<CodeAnnotation> newConsumer(CompilationResult compilationResult);
 }

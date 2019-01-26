@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,7 +47,6 @@ import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.type.DataPointerConstant;
-import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeSourcePosition;
@@ -196,14 +195,6 @@ public class CompilationResultBuilder {
         this.debug = debug;
         assert frameContext != null;
         this.dataCache = dataCache;
-
-        if (dataBuilder.needDetailedPatchingInformation() || Assertions.assertionsEnabled()) {
-            /*
-             * Always enabled in debug mode, even when the VM does not request detailed information,
-             * to increase test coverage.
-             */
-            asm.setCodePatchingAnnotationConsumer(assemblerCodeAnnotation -> compilationResult.addAnnotation(new AssemblerAnnotation(assemblerCodeAnnotation)));
-        }
     }
 
     public void setTotalFrameSize(int frameSize) {
