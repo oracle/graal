@@ -39,25 +39,25 @@
 # SOFTWARE.
 #
 import os
-from os.path import exists
 import re
-import zipfile
-from collections import OrderedDict
-from argparse import ArgumentParser, RawDescriptionHelpFormatter
 import tempfile
+import zipfile
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
+from collections import OrderedDict
+from os.path import exists
+from urlparse import urljoin
 
 import mx
-
-from mx_unittest import unittest
-from mx_sigtest import sigtest
-from mx_jackpot import jackpot
-from mx_gate import Task
-from mx_javamodules import as_java_module, get_java_module_info
-from urlparse import urljoin
-import mx_gate
-import mx_unittest
 import mx_benchmark
+import mx_gate
+import mx_native
 import mx_sdk
+import mx_unittest
+from mx_gate import Task
+from mx_jackpot import jackpot
+from mx_javamodules import as_java_module, get_java_module_info
+from mx_sigtest import sigtest
+from mx_unittest import unittest
 
 _suite = mx.suite('truffle')
 
@@ -581,7 +581,27 @@ class LibffiBuilderProject(mx.AbstractNativeProject):
         super(LibffiBuilderProject, self).__init__(suite, name, subDir, srcDirs, deps, workingSets, d, **kwargs)
 
         self.out_dir = self.get_output_root()
-        if mx.get_os() != 'windows':
+        if mx.get_os() == 'windows':
+            self.delegate = mx_native.DefaultNativeProject(suite, name, subDir, [], [], None,
+                                                           mx.join(self.out_dir, 'libffi-3.2.1'),
+                                                           None,
+                                                           'static_lib',
+                                                           cflags=['-MD'])
+            self.delegate._source = dict(tree=['include',
+                                               'src',
+                                               mx.join('src', 'x86')],
+                                         files={'.h': [mx.join('include', 'ffi.h'),
+                                                       mx.join('include', 'ffitarget.h'),
+                                                       mx.join('src', 'fficonfig.h'),
+                                                       mx.join('src', 'ffi_common.h')],
+                                                '.c': [mx.join('src', 'closures.c'),
+                                                       mx.join('src', 'java_raw_api.c'),
+                                                       mx.join('src', 'prep_cif.c'),
+                                                       mx.join('src', 'raw_api.c'),
+                                                       mx.join('src', 'types.c'),
+                                                       mx.join('src', 'x86', 'ffi.c')],
+                                                '.S': [mx.join('src', 'x86', 'win64.S')]})
+        else:
             class LibtoolNativeProject(mx.NativeProject):
                 def getArchivableResults(self, use_relpath=True, single=False):
                     for file_path, archive_path in super(LibtoolNativeProject, self).getArchivableResults(use_relpath):
@@ -673,7 +693,7 @@ class LibffiBuildTask(mx.AbstractNativeBuildTask):
         for patch in self.subject.patches:
             mx.run(git_apply + [patch], cwd=self.subject.suite.vc_dir)
 
-        self.delegate.logBuild(reason=None)
+        self.delegate.logBuild()
         self.delegate.build()
 
     def clean(self, forBuild=False):
