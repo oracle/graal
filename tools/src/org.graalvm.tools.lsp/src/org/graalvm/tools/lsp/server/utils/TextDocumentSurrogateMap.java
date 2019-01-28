@@ -31,14 +31,14 @@ public class TextDocumentSurrogateMap {
 
     public TextDocumentSurrogate getOrCreateSurrogate(URI uri, LanguageInfo languageInfo) {
         return uri2TextDocumentSurrogate.computeIfAbsent(uri,
-                        (_uri) -> new TextDocumentSurrogate(_uri, languageInfo, getCompletionTriggerCharacters(languageInfo.getId())));
+                        (anUri) -> new TextDocumentSurrogate(anUri, languageInfo, getCompletionTriggerCharacters(languageInfo.getId())));
     }
 
     public TextDocumentSurrogate getOrCreateSurrogate(URI uri, Supplier<LanguageInfo> languageInfoSupplier) {
         return uri2TextDocumentSurrogate.computeIfAbsent(uri,
-                        (_uri) -> {
+                        (anUri) -> {
                             LanguageInfo languageInfo = languageInfoSupplier.get();
-                            return new TextDocumentSurrogate(_uri, languageInfo, getCompletionTriggerCharacters(languageInfo.getId()));
+                            return new TextDocumentSurrogate(anUri, languageInfo, getCompletionTriggerCharacters(languageInfo.getId()));
                         });
     }
 
