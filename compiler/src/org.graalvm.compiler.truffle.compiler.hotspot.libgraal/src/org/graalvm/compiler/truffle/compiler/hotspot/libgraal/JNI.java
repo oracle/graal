@@ -473,7 +473,10 @@ final class JNI {
             Path javaHome = Paths.get(System.getProperty("java.home"));
             Path includeFolder = javaHome.resolve("include");
             if (!Files.exists(includeFolder)) {
-                javaHome = javaHome.getParent();
+                Path parent = javaHome.getParent();
+                if (parent != null) {
+                    javaHome = parent;
+                }
             }
             includeFolder = javaHome.resolve("include");
             if (!Files.exists(includeFolder)) {

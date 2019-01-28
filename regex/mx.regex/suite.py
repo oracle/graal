@@ -51,6 +51,7 @@ suite = {
       "checkstyleVersion" : "8.8",
       "javaCompliance" : "8+",
       "workingSets" : "Truffle,Regex",
+      "spotbugsIgnoresGenerated" : True,
     },
 
     "com.oracle.truffle.regex.test" : {

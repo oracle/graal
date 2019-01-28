@@ -108,8 +108,13 @@ public final class ResourcesFeature implements Feature {
     @SuppressWarnings("try")
     private void scanDirectory(DebugContext debugContext, File f, String relativePath, Pattern... patterns) throws IOException {
         if (f.isDirectory()) {
-            for (File ch : f.listFiles()) {
-                scanDirectory(debugContext, ch, relativePath.isEmpty() ? ch.getName() : relativePath + "/" + ch.getName(), patterns);
+            File[] files = f.listFiles();
+            if (files == null) {
+                throw UserError.abort("Cannot scan directory " + f);
+            } else {
+                for (File ch : files) {
+                    scanDirectory(debugContext, ch, relativePath.isEmpty() ? ch.getName() : relativePath + "/" + ch.getName(), patterns);
+                }
             }
         } else {
             if (matches(patterns, relativePath)) {

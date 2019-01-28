@@ -79,7 +79,7 @@ public class DirectoryStorage implements ComponentStorage {
     private static final String PATH_REPLACED_FILES = "replaced-files.properties"; // NOI18N
 
     /**
-     * 
+     *
      */
     private static final String BUNDLE_REQUIRED_PREFIX = BundleConstants.BUNDLE_REQUIRED + "-"; // NOI18N
 
@@ -160,7 +160,7 @@ public class DirectoryStorage implements ComponentStorage {
 
     /**
      * Loads list of components.
-     * 
+     *
      * @return component IDs
      * @throws IOException
      */
@@ -176,13 +176,17 @@ public class DirectoryStorage implements ComponentStorage {
                 return Files.isRegularFile(child.toPath()) && child.getName().endsWith(COMPONENT_FILE_SUFFIX);
             }
         });
-        Set<String> result = new HashSet<>();
-        for (File f : files) {
-            String s = registryPath.relativize(f.toPath()).toString();
-            int e = s.length() - COMPONENT_FILE_SUFFIX.length();
-            result.add(s.substring(0, e));
+        if (files != null) {
+            Set<String> result = new HashSet<>();
+            for (File f : files) {
+                String s = registryPath.relativize(f.toPath()).toString();
+                int e = s.length() - COMPONENT_FILE_SUFFIX.length();
+                result.add(s.substring(0, e));
+            }
+            return result;
+        } else {
+            throw new IllegalArgumentException("File listing of " + d + " returned null.");
         }
-        return result;
     }
 
     @SuppressWarnings("unchecked")
@@ -236,7 +240,7 @@ public class DirectoryStorage implements ComponentStorage {
 
     /**
      * Loads component files into its metadata.
-     * 
+     *
      * @param ci the component metadata
      * @return initialized ComponentInfo
      * @throws IOException on I/O errors
@@ -320,7 +324,7 @@ public class DirectoryStorage implements ComponentStorage {
 
     /**
      * Deletes component's files.
-     * 
+     *
      * @param id component id
      * @throws IOException
      */
@@ -334,7 +338,7 @@ public class DirectoryStorage implements ComponentStorage {
 
     /**
      * Will persist component's metadata.
-     * 
+     *
      * @param info
      * @throws IOException on failure
      */

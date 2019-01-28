@@ -262,9 +262,7 @@ final class SourceImpl extends Source {
         }
 
         private static boolean compareBytes(ByteSequence bytes, ByteSequence other) {
-            if (bytes == null) {
-                return false;
-            } else if (bytes.length() != other.length()) {
+            if (bytes == null || bytes.length() != other.length()) {
                 return false;
             } else {
                 // trusted class
@@ -273,12 +271,9 @@ final class SourceImpl extends Source {
         }
 
         private static boolean compareCharacters(CharSequence characters, CharSequence other) {
-            if (characters == null) {
-                return false;
-            } else if (characters.length() != other.length()) {
+            if (characters == null || characters.length() != other.length()) {
                 return false;
             } else {
-                assert other != null;
                 return Objects.equals(characters.toString(), other.toString());
             }
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -138,7 +138,11 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
         @Specialization
         protected boolean doOp(LLVMNativePointer address, boolean value,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getAndOpI1(address, value, (a, b) -> !(a & b));
+            return memory.getAndOpI1(address, value, (a, b) -> {
+                boolean boolA = a.booleanValue();
+                boolean boolB = b.booleanValue();
+                return !(boolA & boolB);
+            });
         }
 
         @Specialization

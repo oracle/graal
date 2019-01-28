@@ -807,8 +807,9 @@ public final class DebugContext implements AutoCloseable {
                 return true;
             }
             return !currentScope.isTopLevel();
+        } else {
+            return false;
         }
-        return immutable.scopesEnabled && currentScope == null;
     }
 
     class DisabledScope implements DebugContext.Scope {

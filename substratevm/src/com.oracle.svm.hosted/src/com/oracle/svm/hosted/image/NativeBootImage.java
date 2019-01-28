@@ -122,7 +122,10 @@ public abstract class NativeBootImage extends AbstractBootImage {
 
     protected final void write(Path outputFile) {
         try {
-            Files.createDirectories(outputFile.normalize().getParent());
+            Path outFileParent = outputFile.normalize().getParent();
+            if (outFileParent != null) {
+                Files.createDirectories(outFileParent);
+            }
             FileChannel channel = FileChannel.open(outputFile, StandardOpenOption.WRITE, StandardOpenOption.READ, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE);
             objectFile.write(channel);
         } catch (Exception ex) {
@@ -190,9 +193,13 @@ public abstract class NativeBootImage extends AbstractBootImage {
         }
 
         writer.appendln("#endif");
-
-        String fileName = outDir.getFileName().resolve(header.name() + dynamicSuffix).toString();
-        writer.writeFile(fileName, false);
+        Path fileNamePath = outDir.getFileName();
+        if (fileNamePath == null) {
+            throw UserError.abort("Cannot determine header file name for directory " + outDir);
+        } else {
+            String fileName = fileNamePath.resolve(header.name() + dynamicSuffix).toString();
+            writer.writeFile(fileName, false);
+        }
     }
 
     /**
