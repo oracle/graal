@@ -40,6 +40,8 @@ public final class MachOFile {
 
     private static final String INTERMEDIATE_SEGMENT = "";
     private static final String BITCODE_SECTION = "__bitcode";
+    private static final String LLVM_SEGMENT = "__LLVM";
+    private static final String BUNDLE_SECTION = "__bundle";
     private static final String WLLVM_SEGMENT = "__WLLVM";
     private static final String WLLVM_BITCODE_SECTION = "__llvm_bc";
 
@@ -83,33 +85,14 @@ public final class MachOFile {
     }
 
     public ByteSequence extractBitcode() {
-
-        ByteSequence bc = null;
-
         switch (header.getFileType()) {
             case MH_OBJECT:
-                bc = extractBitcodeFromObject();
-                break;
+                return getSectionData(INTERMEDIATE_SEGMENT, BITCODE_SECTION);
             case MH_EXECUTE:
-                if (loadCommandTable.getSegment(WLLVM_SEGMENT) == null) {
-                    throw new RuntimeException("Executable has to be built with WLLVM!");
-                }
-                bc = extractBitcodeFromWLLVMExecute();
-                break;
+                return getSectionData(LLVM_SEGMENT, BUNDLE_SECTION);
             default:
                 throw new RuntimeException("Mach-O file type not supported!");
         }
-
-        //bc.order(ByteOrder.LITTLE_ENDIAN);
-        return bc;
-    }
-
-    private ByteSequence extractBitcodeFromObject() {
-        return getSectionData(INTERMEDIATE_SEGMENT, BITCODE_SECTION);
-    }
-
-    private ByteSequence extractBitcodeFromWLLVMExecute() {
-        return getSectionData(WLLVM_SEGMENT, WLLVM_BITCODE_SECTION);
     }
 
     public ByteSequence getSectionData(String segment, String section) {
