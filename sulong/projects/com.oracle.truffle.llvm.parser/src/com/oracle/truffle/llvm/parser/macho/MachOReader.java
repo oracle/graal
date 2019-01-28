@@ -29,30 +29,15 @@
  */
 package com.oracle.truffle.llvm.parser.macho;
 
+import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
 import org.graalvm.polyglot.io.ByteSequence;
 
 public final class MachOReader {
 
-    private static final long MH_MAGIC = 0xFEEDFACEL;
-    private static final long MH_CIGAM = 0xCEFAEDFEL;
-    private static final long MH_MAGIC_64 = 0xFEEDFACFL;
-    private static final long MH_CIGAM_64 = 0xCFFAEDFEL;
-
-    private static final String INTERMEDIATE_SEGMENT = "";
-    private static final String BITCODE_SECTION = "__bitcode";
-    private static final String WLLVM_SEGMENT = "__WLLVM";
-    private static final String WLLVM_BITCODE_SECTION = "__llvm_bc";
-
-    private static final int MH_OBJECT = 0x1; /* relocatable object file */
-    private static final int MH_EXECUTE = 0x2; /* demand paged executable file */
-    // currently unused types:
-    @SuppressWarnings("unused") private static final int MH_FVMLIB = 0x3;
-    @SuppressWarnings("unused") private static final int MH_CORE = 0x4;
-    @SuppressWarnings("unused") private static final int MH_PRELOAD = 0x5;
-    @SuppressWarnings("unused") private static final int MH_DYLIB = 0x6;
-    @SuppressWarnings("unused") private static final int MH_DYLINKER = 0x7;
-    @SuppressWarnings("unused") private static final int MH_BUNDLE = 0x8;
-    @SuppressWarnings("unused") private static final int MH_DYLIB_STUB = 0x9;
+    private static final long MH_MAGIC = LLVMScanner.Magic.MH_MAGIC.magic;
+    private static final long MH_CIGAM = LLVMScanner.Magic.MH_CIGAM.magic;
+    private static final long MH_MAGIC_64 = LLVMScanner.Magic.MH_MAGIC_64.magic;
+    private static final long MH_CIGAM_64 = LLVMScanner.Magic.MH_CIGAM_64.magic;
 
     private final ByteSequence byteSequence;
     private final boolean bigEndian;
