@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -164,7 +164,7 @@ final class LLScanner {
             map.registerFunction(functionName, function);
 
         } else {
-            throw new AssertionError(getErrorMessage("function", line));
+            throw new LLVMParserException(getErrorMessage("function", line));
         }
     }
 
@@ -189,7 +189,7 @@ final class LLScanner {
         if (id != null) {
             function.add(id, currentLine);
         } else {
-            throw new AssertionError(getErrorMessage("instruction", line));
+            throw new LLVMParserException(getErrorMessage("instruction", line));
         }
     }
 
@@ -208,7 +208,7 @@ final class LLScanner {
             globalName = LLVMIdentifier.toGlobalIdentifier(globalName);
             map.registerGlobal(globalName);
         } else {
-            throw new AssertionError(getErrorMessage("global", line));
+            throw new LLVMParserException(getErrorMessage("global", line));
         }
     }
 

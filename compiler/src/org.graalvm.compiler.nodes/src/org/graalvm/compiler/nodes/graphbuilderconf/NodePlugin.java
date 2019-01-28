@@ -24,6 +24,9 @@
  */
 package org.graalvm.compiler.nodes.graphbuilderconf;
 
+import org.graalvm.compiler.graph.Node.ValueNumberable;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 
@@ -207,6 +210,26 @@ public interface NodePlugin extends GraphBuilderPlugin {
      */
     default boolean handleNewMultiArray(GraphBuilderContext b, ResolvedJavaType type, ValueNode[] dimensions) {
         return false;
+    }
+
+    /**
+     * Allows this plugin to add nodes after the exception object has been loaded in the dispatch
+     * sequence. Note that a {@link StructuredGraph} is provided to this call instead of a
+     * {@link GraphBuilderContext} so that the caller has a guarantee that its current control flow
+     * insertion point is not changed by this call. This means nodes must be added to the graph with
+     * the appropriate method (e.g., {@link StructuredGraph#unique} for {@link ValueNumberable}
+     * nodes) and fixed nodes must be manually {@linkplain FixedWithNextNode#setNext added} as
+     * successors of {@code afterExceptionLoaded}.
+     *
+     * The reason for this constraint is that when this plugin runs, it's inserting instructions
+     * into a different block than the one currently being parsed.
+     *
+     * @param graph the graph being parsed
+     * @param afterExceptionLoaded the last fixed node after loading the exception
+     * @return the last fixed node after instrumentation
+     */
+    default FixedWithNextNode instrumentExceptionDispatch(StructuredGraph graph, FixedWithNextNode afterExceptionLoaded) {
+        return afterExceptionLoaded;
     }
 
     /**

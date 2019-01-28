@@ -46,7 +46,7 @@ public class ContextSensitiveAnalysisObject extends AnalysisObject {
 
     public ContextSensitiveAnalysisObject(AnalysisUniverse universe, AnalysisType type, AnalysisObjectKind kind) {
         super(universe, type, kind);
-        assert PointstoOptions.AllocationSiteSensitiveHeap.getValue(universe.getHostVM().options());
+        assert PointstoOptions.AllocationSiteSensitiveHeap.getValue(universe.hostVM().options());
     }
 
     /** The object has been in contact with an context insensitive object in an union operation. */

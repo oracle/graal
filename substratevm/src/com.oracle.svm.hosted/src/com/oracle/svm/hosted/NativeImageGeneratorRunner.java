@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.hosted;
 
-import static com.oracle.svm.hosted.NativeImageGenerator.defaultPlatform;
-import static com.oracle.svm.hosted.server.NativeImageBuildServer.IMAGE_CLASSPATH_PREFIX;
-
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Method;
@@ -75,15 +72,19 @@ import jdk.vm.ci.amd64.AMD64;
 
 public class NativeImageGeneratorRunner implements ImageBuildTask {
 
+    public static final String IMAGE_CLASSPATH_PREFIX = "-imagecp";
+    public static final String WATCHPID_PREFIX = "-watchpid";
+
     private volatile NativeImageGenerator generator;
 
     public static void main(String[] args) {
         ArrayList<String> arguments = new ArrayList<>(Arrays.asList(args));
         final String[] classpath = extractImageClassPath(arguments);
         int watchPID = extractWatchPID(arguments);
+        TimerTask timerTask = null;
         if (watchPID >= 0) {
-            VMError.guarantee(OS.getCurrent().hasProcFS, "-watchpid <pid> requires system with /proc");
-            TimerTask timerTask = new TimerTask() {
+            VMError.guarantee(OS.getCurrent().hasProcFS, WATCHPID_PREFIX + " <pid> requires system with /proc");
+            timerTask = new TimerTask() {
                 @Override
                 public void run() {
                     try (Stream<String> stream = Files.lines(Paths.get("/proc/" + watchPID + "/comm"))) {
@@ -99,9 +100,15 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             timer.scheduleAtFixedRate(timerTask, 0, 1000);
 
         }
-        NativeImageClassLoader nativeImageClassLoader = installNativeImageClassLoader(classpath);
-
-        int exitStatus = new NativeImageGeneratorRunner().build(arguments.toArray(new String[arguments.size()]), classpath, nativeImageClassLoader);
+        int exitStatus = 1;
+        try {
+            NativeImageClassLoader nativeImageClassLoader = installNativeImageClassLoader(classpath);
+            exitStatus = new NativeImageGeneratorRunner().build(arguments.toArray(new String[arguments.size()]), classpath, nativeImageClassLoader);
+        } finally {
+            if (timerTask != null) {
+                timerTask.cancel();
+            }
+        }
         System.exit(exitStatus == 0 ? 0 : 1);
     }
 
@@ -114,26 +121,25 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
     }
 
     public static String[] extractImageClassPath(List<String> arguments) {
-        int cpIndex = arguments.indexOf(IMAGE_CLASSPATH_PREFIX);
-        if (cpIndex == -1) {
-            throw UserError.abort("Classpath must be provided as an argument after '" + IMAGE_CLASSPATH_PREFIX + "'.");
+        int cpArgIndex = arguments.indexOf(IMAGE_CLASSPATH_PREFIX);
+        String msgTail = " '" + IMAGE_CLASSPATH_PREFIX + " <image classpath>' argument.";
+        if (cpArgIndex == -1) {
+            throw UserError.abort("Missing" + msgTail);
         }
-        if (cpIndex + 1 >= arguments.size()) {
-            throw UserError.abort("Classpath must be provided after the '" + IMAGE_CLASSPATH_PREFIX + "' argument.\n");
+        arguments.remove(cpArgIndex);
+        try {
+            String imageClasspath = arguments.remove(cpArgIndex);
+            return imageClasspath.split(File.pathSeparator, Integer.MAX_VALUE);
+        } catch (IndexOutOfBoundsException e) {
+            throw UserError.abort("Missing <image classpath> for" + msgTail);
         }
-
-        String[] classpath = arguments.get(cpIndex + 1).split(File.pathSeparator);
-        arguments.remove(cpIndex);
-        arguments.remove(cpIndex);
-        return classpath;
     }
 
     public static int extractWatchPID(List<String> arguments) {
-        String watchpidArg = "-watchpid";
-        int cpIndex = arguments.indexOf(watchpidArg);
+        int cpIndex = arguments.indexOf(WATCHPID_PREFIX);
         if (cpIndex >= 0) {
             if (cpIndex + 1 >= arguments.size()) {
-                throw UserError.abort("ProcessID must be provided after the '" + watchpidArg + "' argument.\n");
+                throw UserError.abort("ProcessID must be provided after the '" + WATCHPID_PREFIX + "' argument.\n");
             }
             arguments.remove(cpIndex);
             String pidStr = arguments.get(cpIndex);
@@ -178,11 +184,12 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
         Timer totalTimer = new Timer("[total]", false);
         ForkJoinPool analysisExecutor = null;
         ForkJoinPool compilationExecutor = null;
+        OptionValues parsedHostedOptions = null;
         try (StopTimer ignored = totalTimer.start()) {
             ImageClassLoader imageClassLoader;
             Timer classlistTimer = new Timer("classlist", false);
             try (StopTimer ignored1 = classlistTimer.start()) {
-                imageClassLoader = ImageClassLoader.create(defaultPlatform(classLoader), classpath, classLoader);
+                imageClassLoader = ImageClassLoader.create(NativeImageGenerator.defaultPlatform(classLoader), classpath, classLoader);
             }
 
             HostedOptionParser optionParser = new HostedOptionParser(imageClassLoader);
@@ -195,7 +202,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
              * We do not have the VMConfiguration and the HostedOptionValues set up yet, so we need
              * to pass the OptionValues explicitly when accessing options.
              */
-            OptionValues parsedHostedOptions = new OptionValues(optionParser.getHostedValues());
+            parsedHostedOptions = new OptionValues(optionParser.getHostedValues());
             DebugContext debug = DebugContext.create(parsedHostedOptions, new GraalDebugHandlersFactory(GraalAccess.getOriginalSnippetReflection()));
 
             String imageName = NativeImageOptions.Name.getValue(parsedHostedOptions);
@@ -287,19 +294,19 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             e.getReason().ifPresent(NativeImageGeneratorRunner::info);
             return 0;
         } catch (UserException e) {
-            reportUserError(e);
+            reportUserError(e, parsedHostedOptions);
             return -1;
         } catch (AnalysisError e) {
-            reportUserError(e);
+            reportUserError(e, parsedHostedOptions);
             return -1;
         } catch (ParallelExecutionException pee) {
             boolean hasUserError = false;
             for (Throwable exception : pee.getExceptions()) {
                 if (exception instanceof UserException) {
-                    reportUserError(exception);
+                    reportUserError(exception, parsedHostedOptions);
                     hasUserError = true;
                 } else if (exception instanceof AnalysisError) {
-                    reportUserError(exception);
+                    reportUserError(exception, parsedHostedOptions);
                     hasUserError = true;
                 }
             }
@@ -350,7 +357,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
      * @param e error to be reported.
      */
     private static void reportFatalError(Throwable e) {
-        System.err.print("fatal error: ");
+        System.err.print("Fatal error: ");
         e.printStackTrace();
     }
 
@@ -360,15 +367,16 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
      * @param msg error message that is printed.
      */
     public static void reportUserError(String msg) {
-        System.err.println("error: " + msg);
+        System.err.println("Error: " + msg);
     }
 
     /**
      * Function for reporting all fatal errors in SVM.
      *
      * @param e error message that is printed.
+     * @param parsedHostedOptions
      */
-    public static void reportUserError(Throwable e) {
+    public static void reportUserError(Throwable e, OptionValues parsedHostedOptions) {
         if (e instanceof UserException) {
             UserException ue = (UserException) e;
             for (String message : ue.getMessages()) {
@@ -377,8 +385,11 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
         } else {
             reportUserError(e.getMessage());
         }
-        if (NativeImageOptions.ReportExceptionStackTraces.getValue()) {
+        if (parsedHostedOptions != null && NativeImageOptions.ReportExceptionStackTraces.getValue(parsedHostedOptions)) {
             e.printStackTrace();
+        } else {
+            reportUserError("Use " + SubstrateOptionsParser.commandArgument(NativeImageOptions.ReportExceptionStackTraces, "+") +
+                            " to print stacktrace of underlying exception");
         }
     }
 
@@ -388,7 +399,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
      * @param msg error message that is printed.
      */
     private static void info(String msg) {
-        System.out.println("info: " + msg);
+        System.out.println("Info: " + msg);
     }
 
     @Override

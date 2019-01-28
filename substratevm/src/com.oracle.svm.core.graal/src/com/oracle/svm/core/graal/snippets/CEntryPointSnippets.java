@@ -32,7 +32,6 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.util.Map;
 
-import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
@@ -78,11 +77,13 @@ import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
+import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.Safepoint;
 import com.oracle.svm.core.thread.VMThreads;
@@ -144,7 +145,6 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @Uninterruptible(reason = "Called by an uninterruptible method.")
     public static void setHeapBase(PointerBase heapBase) {
-        assert SpawnIsolates.getValue();
         writeCurrentVMHeapBase(hasHeapBase() ? heapBase : WordFactory.nullPointer());
     }
 
@@ -225,11 +225,14 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             IsolateThread thread = VMThreads.singleton().findIsolateThreadforCurrentOSThread();
             if (VMThreads.isNullThread(thread)) { // not attached
                 thread = VMThreads.singleton().allocateIsolateThread(vmThreadSize);
+                StackOverflowCheck.singleton().initialize(thread);
                 VMThreads.singleton().attachThread(thread);
                 // Store thread and isolate in thread-local variables.
                 VMThreads.IsolateTL.set(thread, isolate);
             }
             writeCurrentVMThread(thread);
+        } else {
+            StackOverflowCheck.singleton().initialize(WordFactory.nullPointer());
         }
         return CEntryPointErrors.NO_ERROR;
     }
@@ -396,7 +399,6 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     @Snippet
     public static int returnFromJavaToCSnippet() {
         if (MultiThreaded.getValue()) {
-            assert VMThreads.StatusSupport.isStatusJava() : "Should be coming from Java to native.";
             VMThreads.StatusSupport.setStatusNative();
         }
         return CEntryPointErrors.NO_ERROR;

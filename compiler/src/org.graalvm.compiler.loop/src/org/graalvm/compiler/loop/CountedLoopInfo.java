@@ -174,7 +174,7 @@ public class CountedLoopInfo {
     }
 
     public boolean isExactTripCount() {
-        return loop.loopBegin().loopExits().count() == 1;
+        return loop.loop().getNaturalExits().size() == 1;
     }
 
     public ValueNode exactTripCountNode() {
@@ -215,6 +215,15 @@ public class CountedLoopInfo {
 
     public AbstractBeginNode getBody() {
         return body;
+    }
+
+    public AbstractBeginNode getCountedExit() {
+        if (getLimitTest().trueSuccessor() == getBody()) {
+            return getLimitTest().falseSuccessor();
+        } else {
+            assert getLimitTest().falseSuccessor() == getBody();
+            return getLimitTest().trueSuccessor();
+        }
     }
 
     public Direction getDirection() {

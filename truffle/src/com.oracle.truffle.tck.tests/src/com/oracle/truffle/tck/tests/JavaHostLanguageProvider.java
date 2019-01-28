@@ -79,11 +79,7 @@ public final class JavaHostLanguageProvider implements LanguageProvider {
         primitives.put(Byte.class, Primitive.create("byte", Byte.MIN_VALUE, TypeDescriptor.NUMBER));
         primitives.put(Short.class, Primitive.create("short", Short.MIN_VALUE, TypeDescriptor.NUMBER));
         primitives.put(Character.class, Primitive.create("char", ' ', TypeDescriptor.STRING));
-        primitives.put(Integer.class, Primitive.create("int", Integer.MAX_VALUE, TypeDescriptor.NUMBER));   // Integer.MIN_VALUE
-                                                                                                            // is
-                                                                                                            // NA
-                                                                                                            // for
-                                                                                                            // fast-r
+        primitives.put(Integer.class, Primitive.create("int", Integer.MIN_VALUE, TypeDescriptor.NUMBER));
         primitives.put(Long.class, Primitive.create("long", Long.MIN_VALUE, TypeDescriptor.NUMBER));
         primitives.put(Float.class, Primitive.create("float", Float.MAX_VALUE, TypeDescriptor.NUMBER));
         primitives.put(Double.class, Primitive.create("double", Double.MAX_VALUE, TypeDescriptor.NUMBER));

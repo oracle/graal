@@ -32,6 +32,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.windows.headers.LibC;
 
 @TargetClass(java.lang.System.class)
 @Platforms(Platform.WINDOWS.class)
@@ -61,9 +62,9 @@ final class Target_java_lang_System {
 @Platforms(Platform.WINDOWS.class)
 final class Target_java_lang_Shutdown {
 
-    @SuppressWarnings("unused")
     @Substitute
     static void halt0(int status) {
+        LibC.exit(status);
     }
 }
 

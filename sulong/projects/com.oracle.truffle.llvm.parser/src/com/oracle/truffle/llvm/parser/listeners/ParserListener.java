@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.parser.listeners;
 
 import com.oracle.truffle.llvm.parser.scanner.Block;
 import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 
 public interface ParserListener {
 
@@ -39,7 +40,7 @@ public interface ParserListener {
     }
 
     default void skip(Block block, @SuppressWarnings("unused") LLVMScanner.LazyScanner lazyScanner) {
-        throw new AssertionError("Block not supported for lazy parsing: " + block);
+        throw new LLVMParserException("Block not supported for lazy parsing: " + block);
     }
 
     default void exit() {

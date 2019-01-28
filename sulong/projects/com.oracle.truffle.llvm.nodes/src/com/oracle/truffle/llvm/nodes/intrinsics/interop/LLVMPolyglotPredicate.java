@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -53,6 +53,78 @@ public abstract class LLVMPolyglotPredicate extends LLVMIntrinsic {
         protected boolean doIntrinsic(LLVMManagedPointer value) {
             TruffleObject foreign = asForeign.execute(value);
             return foreign != null && ForeignAccess.sendIsInstantiable(foreignIsInstantiable, foreign);
+        }
+
+        @Fallback
+        public Object fallback(@SuppressWarnings("unused") Object value) {
+            return false;
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMPolyglotCanExecute extends LLVMIntrinsic {
+
+        @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.createOptional();
+        @Child private Node foreignIsExecutable = Message.IS_EXECUTABLE.createNode();
+
+        @Specialization
+        protected boolean doIntrinsic(LLVMManagedPointer value) {
+            TruffleObject foreign = asForeign.execute(value);
+            return foreign != null && ForeignAccess.sendIsExecutable(foreignIsExecutable, foreign);
+        }
+
+        @Fallback
+        public Object fallback(@SuppressWarnings("unused") Object value) {
+            return false;
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMPolyglotIsNull extends LLVMIntrinsic {
+
+        @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.createOptional();
+        @Child private Node foreignIsNull = Message.IS_NULL.createNode();
+
+        @Specialization
+        protected boolean doIntrinsic(LLVMManagedPointer value) {
+            TruffleObject foreign = asForeign.execute(value);
+            return foreign != null && ForeignAccess.sendIsNull(foreignIsNull, foreign);
+        }
+
+        @Fallback
+        public Object fallback(@SuppressWarnings("unused") Object value) {
+            return false;
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMPolyglotHasArrayElements extends LLVMIntrinsic {
+
+        @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.createOptional();
+        @Child private Node foreignHasSize = Message.HAS_SIZE.createNode();
+
+        @Specialization
+        protected boolean doIntrinsic(LLVMManagedPointer value) {
+            TruffleObject foreign = asForeign.execute(value);
+            return foreign != null && ForeignAccess.sendHasSize(foreignHasSize, foreign);
+        }
+
+        @Fallback
+        public Object fallback(@SuppressWarnings("unused") Object value) {
+            return false;
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMPolyglotHasMembers extends LLVMIntrinsic {
+
+        @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.createOptional();
+        @Child private Node foreignHasKeys = Message.HAS_KEYS.createNode();
+
+        @Specialization
+        protected boolean doIntrinsic(LLVMManagedPointer value) {
+            TruffleObject foreign = asForeign.execute(value);
+            return foreign != null && ForeignAccess.sendHasKeys(foreignHasKeys, foreign);
         }
 
         @Fallback

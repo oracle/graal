@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -55,6 +55,7 @@ import com.oracle.truffle.llvm.pipe.CaptureOutput;
 import com.oracle.truffle.llvm.test.options.TestOptions;
 import com.oracle.truffle.llvm.test.util.ProcessUtil;
 import com.oracle.truffle.llvm.test.util.ProcessUtil.ProcessResult;
+import org.junit.Assume;
 
 public abstract class BaseSuiteHarness extends BaseTestHarness {
 
@@ -131,18 +132,19 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
     public void test() throws IOException {
         Path referenceBinary;
         ProcessResult referenceResult;
-        try (Stream<Path> walk = Files.walk(getTestDirectory())) {
+        try (Stream<Path> walk = Files.list(getTestDirectory())) {
             List<Path> files = walk.filter(isExecutable).collect(Collectors.toList());
-            if (files.isEmpty()) {
-                // some tests do not compile with certain versions of clang
-                return;
-            }
+
+            // some tests do not compile with certain versions of clang
+            Assume.assumeFalse("reference binary missing", files.isEmpty());
+
             referenceBinary = files.get(0);
             referenceResult = runReference(referenceBinary);
         }
 
-        try (Stream<Path> walk = Files.walk(getTestDirectory())) {
+        try (Stream<Path> walk = Files.list(getTestDirectory())) {
             List<Path> testCandidates = walk.filter(isFile).filter(getIsSulongFilter()).collect(Collectors.toList());
+            Assert.assertFalse("candidate list empty", testCandidates.isEmpty());
             for (Path candidate : testCandidates) {
                 runCandidate(referenceBinary, referenceResult, candidate);
             }

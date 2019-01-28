@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -62,6 +62,7 @@ import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObjectBuilder;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMFrameValueAccess;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
@@ -304,7 +305,7 @@ final class LLVMRuntimeDebugInformation {
         if (partIndex < 0 && variable.hasFragments()) {
             partIndex = variable.getFragmentIndex(0, (int) variable.getSymbol().getType().getSize());
             if (partIndex < 0) {
-                throw new IllegalStateException("Cannot find index of value fragment!");
+                throw new LLVMParserException("Cannot find index of value fragment!");
             }
 
             clearParts = new int[variable.getFragments().size() - 1];

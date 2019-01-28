@@ -51,6 +51,7 @@ import com.oracle.svm.core.jdk.JDKUtils;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
+import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.VMError;
@@ -65,7 +66,6 @@ public class SnippetRuntime {
     public static final SubstrateForeignCallDescriptor UNRESOLVED = findForeignCall(SnippetRuntime.class, "unresolved", true, LocationIdentity.any());
 
     public static final SubstrateForeignCallDescriptor UNWIND_EXCEPTION = findForeignCall(SnippetRuntime.class, "unwindException", true, LocationIdentity.any());
-    public static final SubstrateForeignCallDescriptor REPORT_UNHANDLED_EXCEPTION_RAW = findForeignCall(SnippetRuntime.class, "reportUnhandledExceptionRaw", true, LocationIdentity.any());
 
     /* Implementation of runtime calls defined in a VM-independent way by Graal. */
     public static final SubstrateForeignCallDescriptor REGISTER_FINALIZER = findForeignCall(SnippetRuntime.class, "registerFinalizer", true);
@@ -88,12 +88,8 @@ public class SnippetRuntime {
     public static final SubstrateForeignCallDescriptor ARITHMETIC_TAN = findForeignCall(UnaryOperation.TAN.foreignCallDescriptor.getName(), Math.class, "tan", true);
     public static final SubstrateForeignCallDescriptor ARITHMETIC_LOG = findForeignCall(UnaryOperation.LOG.foreignCallDescriptor.getName(), Math.class, "log", true);
     public static final SubstrateForeignCallDescriptor ARITHMETIC_LOG10 = findForeignCall(UnaryOperation.LOG10.foreignCallDescriptor.getName(), Math.class, "log10", true);
-    /*
-     * Graal-defined math functions where we do not have optimized code sequences: StrictMath is the
-     * always-available fall-back.
-     */
-    public static final SubstrateForeignCallDescriptor ARITHMETIC_EXP = findForeignCall(UnaryOperation.EXP.foreignCallDescriptor.getName(), StrictMath.class, "exp", true);
-    public static final SubstrateForeignCallDescriptor ARITHMETIC_POW = findForeignCall(BinaryOperation.POW.foreignCallDescriptor.getName(), StrictMath.class, "pow", true);
+    public static final SubstrateForeignCallDescriptor ARITHMETIC_EXP = findForeignCall(UnaryOperation.EXP.foreignCallDescriptor.getName(), Math.class, "exp", true);
+    public static final SubstrateForeignCallDescriptor ARITHMETIC_POW = findForeignCall(BinaryOperation.POW.foreignCallDescriptor.getName(), Math.class, "pow", true);
 
     /*
      * These methods are intrinsified as nodes at first, but can then lowered back to a call. Ensure
@@ -218,6 +214,8 @@ public class SnippetRuntime {
             Throwable exception = currentException.get();
             currentException.set(null);
 
+            StackOverflowCheck.singleton().protectYellowZone();
+
             KnownIntrinsics.farReturn(exception, sp, continueIP);
             /*
              * The intrinsic performs a jump to the specified instruction pointer, so this code is
@@ -245,6 +243,8 @@ public class SnippetRuntime {
     @Uninterruptible(reason = "Set currentException atomically with regard to the safepoint mechanism", calleeMustBe = false)
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when unwinding the stack.")
     private static void unwindException(Throwable exception, Pointer callerSP, CodePointer callerIP) {
+        StackOverflowCheck.singleton().makeYellowZoneAvailable();
+
         if (currentException.get() != null) {
             /*
              * Exception unwinding cannot be called recursively. The most likely reason to end up
@@ -273,8 +273,6 @@ public class SnippetRuntime {
         reportUnhandledExceptionRaw(exception);
     }
 
-    /** Foreign call: {@link #REPORT_UNHANDLED_EXCEPTION_RAW}. */
-    @SubstrateForeignCallTarget
     private static void reportUnhandledExceptionRaw(Throwable exception) {
         Log.log().string(exception.getClass().getName());
         String detail = JDKUtils.getRawMessage(exception);

@@ -164,7 +164,7 @@ public interface FileSystem {
     /**
      * Resolves given path to an absolute path.
      *
-     * @param path the path to resolve
+     * @param path the path to resolve, may be a non normalized path
      * @return an absolute {@link Path}
      * @throws SecurityException if this {@link FileSystem} denied the operation
      * @since 1.0
@@ -174,7 +174,7 @@ public interface FileSystem {
     /**
      * Returns the real (canonical) path of an existing file.
      *
-     * @param path the path to resolve
+     * @param path the path to resolve, may be a non normalized path
      * @param linkOptions options determining how the symbolic links should be handled
      * @return an absolute canonical path
      * @throws IOException in case of IO error

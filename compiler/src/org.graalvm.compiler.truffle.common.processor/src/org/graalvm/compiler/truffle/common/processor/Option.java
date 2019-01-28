@@ -169,6 +169,12 @@ public class Option {
             .def("false")
             .help("Used for debugging the splitting implementation. Prints splitting summary directly to stdout on shutdown"),
 
+        option("TruffleExperimentalSplittingTraceEvents")
+                .type("Boolean")
+                .category("EXPERT")
+                .def("false")
+                .help("Trace details of experimental splitting events and decisions."),
+
         option("TruffleExperimentalSplittingDumpDecisions")
             .type("Boolean")
             .category("EXPERT")

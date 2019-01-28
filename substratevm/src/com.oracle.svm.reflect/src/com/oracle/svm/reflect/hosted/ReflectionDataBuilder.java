@@ -58,10 +58,38 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
     private boolean modified;
     private boolean sealed;
 
+    private final DynamicHub.ReflectionData arrayReflectionData;
     private Set<Class<?>> reflectionClasses = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private Set<Executable> reflectionMethods = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private Map<Field, Boolean> reflectionFields = new ConcurrentHashMap<>();
     private Set<Field> analyzedFinalFields = Collections.newSetFromMap(new ConcurrentHashMap<>());
+
+    public ReflectionDataBuilder() {
+        arrayReflectionData = getArrayReflectionData();
+    }
+
+    private static DynamicHub.ReflectionData getArrayReflectionData() {
+        Method[] publicArrayMethods;
+        try {
+            Method getPublicMethodsMethod = findMethod(Class.class, "privateGetPublicMethods");
+            publicArrayMethods = (Method[]) getPublicMethodsMethod.invoke(Object[].class);
+        } catch (ReflectiveOperationException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+
+        // array classes only have methods inherited from Object
+        return new DynamicHub.ReflectionData(
+                        new Field[0],
+                        new Field[0],
+                        new Method[0],
+                        publicArrayMethods,
+                        new Constructor<?>[0],
+                        new Constructor<?>[0],
+                        null,
+                        new Field[0],
+                        new Method[0],
+                        null);
+    }
 
     @Override
     public void register(Class<?>... classes) {
@@ -140,6 +168,9 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
                  * to the set of processed classes so that the ReflectionData is initialized below.
                  */
                 allClasses.add(originalClass);
+            } else if (originalClass != null && originalClass.isArray()) {
+                // Always register reflection data for array classes
+                allClasses.add(originalClass);
             }
         }
 
@@ -164,26 +195,48 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
              * Ensure all internal fields of the original Class.ReflectionData object are
              * initialized. Calling the public methods triggers lazy initialization of the fields.
              */
-            clazz.getDeclaredFields();
-            clazz.getFields();
-            clazz.getDeclaredMethods();
-            clazz.getMethods();
-            clazz.getDeclaredConstructors();
-            clazz.getConstructors();
+            try {
+                clazz.getDeclaredFields();
+                clazz.getFields();
+                clazz.getDeclaredMethods();
+                clazz.getMethods();
+                clazz.getDeclaredConstructors();
+                clazz.getConstructors();
+            } catch (NoClassDefFoundError e) {
+                /*
+                 * If any of the methods or fields reference missing types in their signatures a
+                 * NoClassDefFoundError is thrown. Skip registering reflection metadata for this
+                 * class.
+                 */
+                // Checkstyle: stop
+                System.out.println("WARNING: Could not register reflection metadata for " + clazz.getTypeName() +
+                                ". Reason: " + e.getClass().getTypeName() + ": " + e.getMessage() + ".");
+                // Checkstyle: resume
+                continue;
+            }
 
             try {
                 Object originalReflectionData = reflectionDataMethod.invoke(clazz);
-                hub.setReflectionData(new DynamicHub.ReflectionData(
-                                filterFields(declaredFieldsField.get(originalReflectionData), reflectionFields.keySet(), access.getMetaAccess()),
-                                filterFields(publicFieldsField.get(originalReflectionData), reflectionFields.keySet(), access.getMetaAccess()),
-                                filterMethods(declaredMethodsField.get(originalReflectionData), reflectionMethods, access.getMetaAccess()),
-                                filterMethods(publicMethodsField.get(originalReflectionData), reflectionMethods, access.getMetaAccess()),
-                                filterConstructors(declaredConstructorsField.get(originalReflectionData), reflectionMethods, access.getMetaAccess()),
-                                filterConstructors(publicConstructorsField.get(originalReflectionData), reflectionMethods, access.getMetaAccess()),
-                                nullaryConstructor(declaredConstructorsField.get(originalReflectionData), reflectionMethods),
-                                filterFields(declaredPublicFieldsField.get(originalReflectionData), reflectionFields.keySet(), access.getMetaAccess()),
-                                filterMethods(declaredPublicMethodsField.get(originalReflectionData), reflectionMethods, access.getMetaAccess()),
-                                enclosingMethodOrConstructor(clazz)));
+                DynamicHub.ReflectionData reflectionData;
+
+                if (type.isArray()) {
+                    // Always register reflection data for array classes
+                    reflectionData = arrayReflectionData;
+                } else {
+                    reflectionData = new DynamicHub.ReflectionData(
+                                    filterFields(declaredFieldsField.get(originalReflectionData), reflectionFields.keySet(), access.getMetaAccess()),
+                                    filterFields(publicFieldsField.get(originalReflectionData), reflectionFields.keySet(), access.getMetaAccess()),
+                                    filterMethods(declaredMethodsField.get(originalReflectionData), reflectionMethods, access.getMetaAccess()),
+                                    filterMethods(publicMethodsField.get(originalReflectionData), reflectionMethods, access.getMetaAccess()),
+                                    filterConstructors(declaredConstructorsField.get(originalReflectionData), reflectionMethods, access.getMetaAccess()),
+                                    filterConstructors(publicConstructorsField.get(originalReflectionData), reflectionMethods, access.getMetaAccess()),
+                                    nullaryConstructor(declaredConstructorsField.get(originalReflectionData), reflectionMethods),
+                                    filterFields(declaredPublicFieldsField.get(originalReflectionData), reflectionFields.keySet(), access.getMetaAccess()),
+                                    filterMethods(declaredPublicMethodsField.get(originalReflectionData), reflectionMethods, access.getMetaAccess()),
+                                    enclosingMethodOrConstructor(clazz));
+                }
+
+                hub.setReflectionData(reflectionData);
             } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
                 throw VMError.shouldNotReachHere(ex);
             }

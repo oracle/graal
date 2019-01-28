@@ -256,7 +256,7 @@ public final class TruffleFile {
     @TruffleBoundary
     public boolean isSymbolicLink() {
         try {
-            return getAttributeImpl("isSymbolicLink", Boolean.class);
+            return getAttributeImpl("isSymbolicLink", Boolean.class, LinkOption.NOFOLLOW_LINKS);
         } catch (IOException ioe) {
             return false;
         } catch (SecurityException se) {
@@ -1402,16 +1402,9 @@ public final class TruffleFile {
     }
 
     private Path[] toAbsolutePathImpl() {
-        Path normalizedAbsolute = fileSystem.toAbsolutePath(normalizedPath);
-        if (isNormalized()) {
-            return new Path[]{normalizedAbsolute, normalizedAbsolute};
-        } else {
-            Path root = fileSystem.parsePath("/");
-            boolean emptyPath = normalizedPath.getFileName().getNameCount() == 1 && normalizedPath.getFileName().toString().isEmpty();
-            Path absolute = root.equals(normalizedAbsolute) ? root
-                            : root.resolve(normalizedAbsolute.subpath(0, normalizedAbsolute.getNameCount() - (emptyPath ? 0 : normalizedPath.getNameCount()))).resolve(path);
-            return new Path[]{absolute, normalizedAbsolute};
-        }
+        Path absolute = fileSystem.toAbsolutePath(path);
+        Path normalizedAbsolute = fileSystem.toAbsolutePath(normalizedPath).normalize();
+        return new Path[]{absolute, normalizedAbsolute};
     }
 
     private boolean checkAccess(AccessMode... modes) {

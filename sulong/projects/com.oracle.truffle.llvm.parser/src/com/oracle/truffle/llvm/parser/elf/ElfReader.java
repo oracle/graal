@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.elf;
 
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import org.graalvm.polyglot.io.ByteSequence;
 
 public final class ElfReader {
@@ -133,7 +134,7 @@ public final class ElfReader {
 
     private static void checkIndentByte(ByteSequence ident, int ind, int val) {
         if (ident.byteAt(ind) != val) {
-            throw new IllegalArgumentException("Invalid ELF file!");
+            throw new LLVMParserException("Invalid ELF file!");
         }
     }
 }

@@ -40,9 +40,11 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.SubstrateOptionsParser.BooleanOptionFormat;
 import com.oracle.svm.core.option.SubstrateOptionsParser.OptionParseResult;
+import com.oracle.svm.core.properties.RuntimePropertyParser;
 
 /**
  * Option parser to be used by an application that runs on Substrate VM. The list of options that
@@ -56,12 +58,28 @@ public final class RuntimeOptionParser {
     /**
      * The suggested prefix for all VM options available in an application based on Substrate VM.
      */
-    public static final String DEFAULT_OPTION_PREFIX = "-XX:";
+    private static final String DEFAULT_OPTION_PREFIX = "-XX:";
 
     /**
      * The prefix for Graal style options available in an application based on Substrate VM.
      */
-    public static final String GRAAL_OPTION_PREFIX = "-Dgraal.";
+    private static final String GRAAL_OPTION_PREFIX = "-Dgraal.";
+
+    /**
+     * Parse and consume all standard options and system properties supported by Substrate VM. The
+     * returned array contains all arguments that were not consumed, i.e., were not recognized as
+     * options.
+     */
+    public static String[] parseAndConsumeAllOptions(String[] initialArgs) {
+        String[] args = initialArgs;
+        if (SubstrateOptions.ParseRuntimeOptions.getValue()) {
+            args = RuntimeOptionParser.singleton().parse(args, DEFAULT_OPTION_PREFIX, BooleanOptionFormat.PLUS_MINUS, true);
+            args = RuntimeOptionParser.singleton().parse(args, GRAAL_OPTION_PREFIX, BooleanOptionFormat.NAME_VALUE, true);
+            args = XOptions.singleton().parse(args);
+            args = RuntimePropertyParser.parse(args);
+        }
+        return args;
+    }
 
     /**
      * All reachable options.

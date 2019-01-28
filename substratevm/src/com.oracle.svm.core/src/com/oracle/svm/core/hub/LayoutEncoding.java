@@ -105,7 +105,6 @@ public class LayoutEncoding {
     }
 
     public static UnsignedWord getInstanceSize(int encoding) {
-        assert isInstance(encoding);
         return WordFactory.unsigned(encoding);
     }
 
@@ -124,19 +123,16 @@ public class LayoutEncoding {
     }
 
     private static int getAlignmentMask(int encoding) {
-        assert isArray(encoding);
         return (encoding >> ALIGNMENT_MASK_SHIFT) & ALIGNMENT_MASK_MASK;
     }
 
     // May be inlined because it does not deal in Pointers.
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getArrayBaseOffset(int encoding) {
-        assert isArray(encoding);
         return WordFactory.unsigned((encoding >> ARRAY_BASE_SHIFT) & ARRAY_BASE_MASK);
     }
 
     public static int getArrayIndexShift(int encoding) {
-        assert isArray(encoding);
         return (encoding >> ARRAY_INDEX_SHIFT_SHIFT) & ARRAY_INDEX_SHIFT_MASK;
     }
 

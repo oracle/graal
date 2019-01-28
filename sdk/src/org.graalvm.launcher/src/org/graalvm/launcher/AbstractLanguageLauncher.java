@@ -149,7 +149,12 @@ public abstract class AbstractLanguageLauncher extends Launcher {
      *
      * Arguments that are translated to polyglot options should be removed from the list. Other
      * arguments should not be removed.
-     * 
+     *
+     * The {@code preprocessArguments} implementations can use {@link Engine} to inspect the the
+     * installed {@link Engine#getLanguages() guest languages} and {@link Engine#getInstruments()
+     * instruments}. But creating a {@link Context} or inspecting {@link Engine#getOptions() engine
+     * options} is forbidden.
+     *
      * @param arguments the command line arguments that were passed to the launcher.
      * @param polyglotOptions a map where polyglot options can be set. These will be uses when
      *            creating the {@link org.graalvm.polyglot.Engine Engine}.

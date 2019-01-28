@@ -89,6 +89,9 @@ public class WrappedConstantPool implements ConstantPool {
             Throwable cause = ex;
             if (ex instanceof InvocationTargetException && ex.getCause() != null) {
                 cause = ex.getCause();
+                if (cause instanceof BootstrapMethodError && cause.getCause() != null) {
+                    cause = cause.getCause();
+                }
             } else if (ex instanceof ExceptionInInitializerError && ex.getCause() != null) {
                 cause = ex.getCause();
             }

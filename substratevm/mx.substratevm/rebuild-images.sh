@@ -128,6 +128,7 @@ function polyglot() {
         "-H:Features=org.graalvm.launcher.PolyglotLauncherFeature"
         "-Dorg.graalvm.launcher.relative.home=jre/bin/polyglot"
         "-H:Name=polyglot"
+        "--tool:truffle"
     )
     set_path "${graalvm_home}/jre/bin"
     cmd_line+=(
@@ -147,6 +148,7 @@ function libpolyglot() {
     cmd_line+=(
         "-cp"
         "${cp}"
+        "--tool:truffle"
         "-Dgraalvm.libpolyglot=true"
         "-H:Features=org.graalvm.polyglot.nativeapi.PolyglotNativeAPIFeature"
         "-Dorg.graalvm.polyglot.nativeapi.libraryPath=${graalvm_home}/jre/lib/polyglot"

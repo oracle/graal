@@ -1,8 +1,8 @@
 suite = {
     "mxversion": "5.196.3",
     "name": "substratevm",
-    "version" : "1.0.0-rc11",
-    "release" : True,
+    "version" : "1.0.0-rc12",
+    "release" : False,
     "url" : "https://github.com/oracle/graal/tree/master/substratevm",
 
     "developer" : {
@@ -74,6 +74,23 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": ["com.oracle.svm.core"],
+            "imports" : [
+                "jdk.internal.misc",
+                "jdk.internal.perf",
+            ],
+            "javaCompliance": "9+",
+            "multiReleaseJarVersion": "9",
+            "checkstyle": "com.oracle.svm.core",
+            "workingSets": "SVM",
+        },
+
+        "com.oracle.svm.core.jdk9.posix": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.core.jdk9",
+                "com.oracle.svm.core.posix"
+                ],
             "imports" : [
                 "jdk.internal.misc",
                 "jdk.internal.perf",
@@ -183,13 +200,12 @@ suite = {
             ],
             "workingSets": "SVM",
         },
-
         "com.oracle.svm.hosted": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.objectfile",
-                "com.oracle.svm.core.graal.amd64",
+                "com.oracle.svm.core.graal",
                 "com.oracle.graal.pointsto",
             ],
             "javaCompliance": "8+",
@@ -459,12 +475,13 @@ suite = {
                 "include/svm_libffi.h",
             ],
             "buildEnv": {
-                "LIBFFI_SRC": "<path:truffle:LIBFFI>",
+                "LIBFFI_DIST": "<path:truffle:LIBFFI_DIST>",
                 "TRUFFLE_NFI": "<path:truffle:TRUFFLE_NFI_NATIVE>",
                 "ARCH": "<arch>",
                 "OS": "<os>"
             },
             "buildDependencies": [
+                "truffle:LIBFFI_DIST",
                 "truffle:TRUFFLE_NFI_NATIVE",
             ],
         },
@@ -574,9 +591,11 @@ suite = {
                 "com.oracle.svm.hosted",
                 "com.oracle.svm.truffle.nfi",
                 "com.oracle.svm.core",
+                "com.oracle.svm.core.graal.amd64",
                 "com.oracle.svm.core.jdk8",
                 "com.oracle.svm.core.jdk9",
                 "com.oracle.svm.core.posix",
+                "com.oracle.svm.core.jdk9.posix",
                 "com.oracle.svm.core.windows",
                 "com.oracle.svm.core.genscavenge",
             ],

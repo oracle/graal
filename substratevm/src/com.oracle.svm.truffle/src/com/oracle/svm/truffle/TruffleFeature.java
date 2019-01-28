@@ -90,7 +90,6 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
@@ -568,7 +567,6 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
 
         blacklistAllMethods(metaAccess, AssertionError.class);
         blacklistAllMethods(metaAccess, BigInteger.class);
-        blacklistAllMethods(metaAccess, BigInteger.class);
         blacklistAllMethods(metaAccess, BigDecimal.class);
         blacklistAllMethods(metaAccess, Comparable.class);
         blacklistAllMethods(metaAccess, Comparator.class);
@@ -767,29 +765,4 @@ final class Target_com_oracle_truffle_polyglot_PolyglotContextImpl {
 
 @TargetClass(className = "com.oracle.truffle.polyglot.PolyglotContextImpl$SingleContextState", onlyWith = TruffleFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_polyglot_PolyglotContextImpl_SingleContextState {
-}
-
-/*
- * Java interoperability cannot be supported on Substrate VM. Ensure that the nodes are not used by
- * marking the node classes as deleted.
- */
-
-@Delete
-@TargetClass(className = "com.oracle.truffle.polyglot.HostFunction", onlyWith = TruffleFeature.IsEnabled.class)
-final class Target_com_oracle_truffle_api_interop_java_JavaFunctionObject {
-}
-
-@Delete
-@TargetClass(className = "com.oracle.truffle.polyglot.HostInteropReflect", onlyWith = TruffleFeature.IsEnabled.class)
-final class Target_com_oracle_truffle_api_interop_java_JavaInteropReflect {
-}
-
-@Delete
-@TargetClass(className = "com.oracle.truffle.polyglot.FunctionProxyHandler", onlyWith = TruffleFeature.IsEnabled.class)
-final class Target_com_oracle_truffle_api_interop_java_FunctionProxyHandler {
-}
-
-@Delete
-@TargetClass(className = "com.oracle.truffle.polyglot.ObjectProxyHandler", onlyWith = TruffleFeature.IsEnabled.class)
-final class Target_com_oracle_truffle_api_interop_java_ObjectProxyHandler {
 }

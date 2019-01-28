@@ -1,0 +1,10 @@
+[
+    ["com.oracle.truffle.api.test.polyglot.ValueHostInteropTest$XYPlus"],
+    ["java.util.function.Function"],
+    ["com.oracle.truffle.api.test.polyglot.ValueAssert$IsFunctionalInterfaceVarArgs"],
+    ["com.oracle.truffle.api.test.polyglot.ValueHostInteropTest$FunctionalWithDefaults"],
+    ["com.oracle.truffle.api.test.polyglot.ValueHostInteropTest$FunctionalWithObjectMethodOverrides"],
+    ["com.oracle.truffle.api.test.polyglot.ValueAssert$EmptyInterface"],
+    ["com.oracle.truffle.api.test.polyglot.ValueAssert$NonFunctionalInterface"],
+    ["com.oracle.truffle.api.test.polyglot.ValueHostConversionTest$TestExceptionFrames3"]
+]

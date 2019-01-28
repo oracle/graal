@@ -46,6 +46,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.analysis.Inflation;
 
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -66,8 +67,7 @@ import jdk.vm.ci.meta.Signature;
  */
 public class HostedUniverse implements Universe {
 
-    protected final BigBang bb;
-    protected final SVMHost svmHost;
+    protected final Inflation bb;
 
     protected final Map<AnalysisType, HostedType> types = new HashMap<>();
     protected final Map<AnalysisField, HostedField> fields = new HashMap<>();
@@ -87,9 +87,8 @@ public class HostedUniverse implements Universe {
      */
     protected int numInterfaceBits;
 
-    public HostedUniverse(BigBang bb, SVMHost svmHost) {
+    public HostedUniverse(Inflation bb) {
         this.bb = bb;
-        this.svmHost = svmHost;
     }
 
     public HostedType getType(JavaKind kind) {
@@ -119,7 +118,7 @@ public class HostedUniverse implements Universe {
 
     @Override
     public SVMHost hostVM() {
-        return svmHost;
+        return bb.getHostVM();
     }
 
     @Override

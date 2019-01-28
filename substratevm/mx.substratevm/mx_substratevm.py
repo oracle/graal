@@ -64,7 +64,7 @@ GRAAL_COMPILER_FLAGS_BASE = [
 ]
 
 GRAAL_COMPILER_FLAGS_MAP = dict()
-GRAAL_COMPILER_FLAGS_MAP['1.8'] = ['-d64', '-noverify', '-XX:-UseJVMCIClassLoader']
+GRAAL_COMPILER_FLAGS_MAP['1.8'] = ['-d64', '-XX:-UseJVMCIClassLoader']
 GRAAL_COMPILER_FLAGS_MAP['11'] = []
 # Disable the check for JDK-8 graal version.
 GRAAL_COMPILER_FLAGS_MAP['11'] += ['-Dsubstratevm.IgnoreGraalVersionCheck=true']
@@ -188,8 +188,10 @@ def svmbuild_dir(suite=None):
 def suite_native_image_root(suite=None):
     if not suite:
         suite = svm_suite()
-    llvm = all([mx.distribution(dist).exists() for dist in llvmDistributions])
-    root_dir = join(svmbuild_dir(suite), ('llvm-' if llvm else '') + 'native-image-root-' + str(svm_java_compliance()))
+    root_basename = 'native-image-root-' + str(svm_java_compliance())
+    if llvmDistributions and all([mx.distribution(dist).exists() for dist in llvmDistributions]):
+        root_basename = 'llvm-' + root_basename
+    root_dir = join(svmbuild_dir(suite), root_basename)
     rev_file_name = join(root_dir, 'rev')
     rev_value = suite.vc.parent(suite.vc_dir)
     def write_rev_file():
@@ -406,12 +408,6 @@ def layout_native_image_root(native_image_root):
     clibraries_dest = join(native_image_root, join(svm_subdir, 'clibraries'))
     for clibrary_path in clibrary_paths():
         copy_tree(clibrary_path, clibraries_dest)
-    lib_suffix = '.lib' if mx.get_os() == 'windows' else '.a'
-    jdk_lib_subdir = ['jre', 'lib'] if svm_java80() else ['lib']
-    jdk_lib_dir = join(jdk_config.home, *jdk_lib_subdir)
-    jdk_libs = [join(jdk_lib_dir, lib) for lib in os.listdir(jdk_lib_dir) if lib.endswith(lib_suffix)]
-    for src_lib in jdk_libs:
-        symlink_or_copy(src_lib, join(clibraries_dest, platform_name()))
 
 def truffle_language_ensure(language_flag, version=None, native_image_root=None, early_exit=False, extract=True):
     """
@@ -754,7 +750,7 @@ def _helloworld(native_image, javac_command, path, args):
 
     native_image(["-H:Path=" + path, '-cp', path, 'HelloWorld'] + args)
 
-    expected_output = [output + '\n']
+    expected_output = [output + os.linesep]
     actual_output = []
     def _collector(x):
         actual_output.append(x)
@@ -862,6 +858,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
         "substratevm:POLYGLOT_NATIVE_API_HEADERS",
     ],
     polyglot_lib_build_args=[
+        "--tool:truffle",
         "-H:Features=org.graalvm.polyglot.nativeapi.PolyglotNativeAPIFeature",
         "-Dorg.graalvm.polyglot.nativeapi.libraryPath=<path:POLYGLOT_NATIVE_API_HEADERS>",
         "-Dorg.graalvm.polyglot.nativeapi.nativeLibraryPath=<path:POLYGLOT_NATIVE_API_SUPPORT>",
@@ -902,7 +899,7 @@ def helloworld(args):
     all_args = ['--output-path', '--javac-command']
     masked_args = [_mask(arg, all_args) for arg in args]
     parser.add_argument(all_args[0], metavar='<output-path>', nargs=1, help='Path of the generated image', default=[svmbuild_dir(suite)])
-    parser.add_argument(all_args[1], metavar='<javac-command>', help='A javac command to be used', default='javac')
+    parser.add_argument(all_args[1], metavar='<javac-command>', help='A javac command to be used', default=mx.get_jdk().javac)
     parser.add_argument('image_args', nargs='*', default=[])
     parsed = parser.parse_args(masked_args)
     javac_command = unmask(parsed.javac_command.split())
@@ -1058,6 +1055,7 @@ def maven_plugin_install(args):
     mx.log('\n'.join(success_message))
 
 
+@mx.command(suite.name, 'maven-plugin-test')
 def maven_plugin_test(args):
     # Create native-image-maven-plugin-test pom with correct version info from template
     proj_dir = join(suite.dir, 'src', 'native-image-maven-plugin-test')

@@ -1107,7 +1107,11 @@ public class BytecodeParser implements GraphBuilderContext {
         deopt.updateNodeSourcePosition(() -> createBytecodePosition());
     }
 
+    /**
+     * @return the entry point to exception dispatch
+     */
     private AbstractBeginNode handleException(ValueNode exceptionObject, int bci, boolean deoptimizeOnly) {
+        FixedWithNextNode currentLastInstr = lastInstr;
         assert bci == BytecodeFrame.BEFORE_BCI || bci == bci() : "invalid bci";
         debug.log("Creating exception dispatch edges at %d, exception object=%s, exception seen=%s", bci, exceptionObject, (profilingInfo == null ? "" : profilingInfo.getExceptionSeen(bci)));
 
@@ -1127,18 +1131,25 @@ public class BytecodeParser implements GraphBuilderContext {
             dispatchState.setRethrowException(true);
         }
         this.controlFlowSplit = true;
-        FixedWithNextNode finishedDispatch = finishInstruction(dispatchBegin, dispatchState);
+        FixedWithNextNode afterExceptionLoaded = finishInstruction(dispatchBegin, dispatchState);
 
         if (deoptimizeOnly) {
             DeoptimizeNode deoptimizeNode = graph.add(new DeoptimizeNode(DeoptimizationAction.None, DeoptimizationReason.TransferToInterpreter));
-            dispatchBegin.setNext(BeginNode.begin(deoptimizeNode));
+            afterExceptionLoaded.setNext(BeginNode.begin(deoptimizeNode));
         } else {
-            createHandleExceptionTarget(finishedDispatch, bci, dispatchState);
+            createHandleExceptionTarget(afterExceptionLoaded, bci, dispatchState);
         }
+        assert currentLastInstr == lastInstr;
         return dispatchBegin;
     }
 
-    protected void createHandleExceptionTarget(FixedWithNextNode finishedDispatch, int bci, FrameStateBuilder dispatchState) {
+    protected void createHandleExceptionTarget(FixedWithNextNode afterExceptionLoaded, int bci, FrameStateBuilder dispatchState) {
+        FixedWithNextNode afterInstrumentation = afterExceptionLoaded;
+        for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
+            afterInstrumentation = plugin.instrumentExceptionDispatch(graph, afterInstrumentation);
+            assert afterInstrumentation.next() == null : "exception dispatch instrumentation will be linked to dispatch block";
+        }
+
         BciBlock dispatchBlock = currentBlock.exceptionDispatchBlock();
         /*
          * The exception dispatch block is always for the last bytecode of a block, so if we are not
@@ -1150,7 +1161,7 @@ public class BytecodeParser implements GraphBuilderContext {
         }
 
         FixedNode target = createTarget(dispatchBlock, dispatchState);
-        finishedDispatch.setNext(target);
+        afterInstrumentation.setNext(target);
     }
 
     protected ValueNode genLoadIndexed(ValueNode array, ValueNode index, GuardingNode boundsCheck, JavaKind kind) {
@@ -3426,7 +3437,13 @@ public class BytecodeParser implements GraphBuilderContext {
                     this.controlFlowSplit = true;
                     FixedNode noDeoptSuccessor = createTarget(noDeoptBlock, frameState, false, true);
                     DeoptimizeNode deopt = graph.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
-                    FixedNode deoptSuccessor = checkLoopExit(deopt, deoptBlock, frameState).fixed;
+                    /*
+                     * We do not want to `checkLoopExit` here: otherwise the deopt will go to the
+                     * deoptBlock's BCI, skipping the branch in the interpreter, and the profile
+                     * will never see that the branch is taken. This can lead to deopt loops or OSR
+                     * failure.
+                     */
+                    FixedNode deoptSuccessor = BeginNode.begin(deopt);
                     ValueNode ifNode = genIfNode(condition, negated ? deoptSuccessor : noDeoptSuccessor, negated ? noDeoptSuccessor : deoptSuccessor, negated ? 1 - probability : probability);
                     postProcessIfNode(ifNode);
                     append(ifNode);
@@ -4240,13 +4257,10 @@ public class BytecodeParser implements GraphBuilderContext {
             return;
         }
 
-        ResolvedJavaType[] skippedExceptionTypes = this.graphBuilderConfig.getSkippedExceptionTypes();
-        if (skippedExceptionTypes != null) {
-            for (ResolvedJavaType exceptionType : skippedExceptionTypes) {
-                if (exceptionType.isAssignableFrom(resolvedType)) {
-                    append(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, RuntimeConstraint));
-                    return;
-                }
+        for (ResolvedJavaType exceptionType : this.graphBuilderConfig.getSkippedExceptionTypes()) {
+            if (exceptionType.isAssignableFrom(resolvedType)) {
+                append(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, RuntimeConstraint));
+                return;
             }
         }
 
@@ -4539,9 +4553,13 @@ public class BytecodeParser implements GraphBuilderContext {
          * Javac does not allow use of "$assertionsDisabled" for a field name but Eclipse does, in
          * which case a suffix is added to the generated field.
          */
-        if ((parsingIntrinsic() || graphBuilderConfig.omitAssertions()) && resolvedField.isSynthetic() && resolvedField.getName().startsWith("$assertionsDisabled")) {
-            frameState.push(field.getJavaKind(), ConstantNode.forBoolean(true, graph));
-            return;
+        if (resolvedField.isSynthetic() && resolvedField.getName().startsWith("$assertionsDisabled")) {
+            if (parsingIntrinsic()) {
+                throw new GraalError("Cannot use an assertion within the context of an intrinsic.");
+            } else if (graphBuilderConfig.omitAssertions()) {
+                frameState.push(field.getJavaKind(), ConstantNode.forBoolean(true, graph));
+                return;
+            }
         }
 
         ResolvedJavaType holder = resolvedField.getDeclaringClass();

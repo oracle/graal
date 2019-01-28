@@ -44,9 +44,9 @@ ifneq (${OS},windows)
 
 default: ${TARGET}/libffi.a ${HEADERFILES}
 
-${TARGET}/libffi.a: libffi-build/.libs/libffi.a
+${TARGET}/libffi.a: ${LIBFFI_DIST}/libffi.a
 	$(QUIETLY) mkdir -p ${TARGET}
-	$(QUIETLY) cp libffi-build/.libs/libffi.a $@
+	$(QUIETLY) cp $< $@
 	$(QUIETLY) touch $@
 
 ${TARGET}/include/trufflenfi.h: ${TRUFFLE_NFI}/include/trufflenfi.h
@@ -59,26 +59,9 @@ ${TARGET}/include/svm_libffi.h: include/svm_libffi.h
 	$(QUIETLY) cp $< $@
 	$(QUIETLY) touch $@
 
-${TARGET}/include/%.h: libffi-build/include/%.h
+${TARGET}/include/%.h: ${LIBFFI_DIST}/include/%.h
 	$(QUIETLY) mkdir -p ${TARGET}/include
 	$(QUIETLY) cp $< $@
-	$(QUIETLY) touch $@
-
-libffi-build/include/ffi.h libffi-build/include/ffitarget.h: libffi-build/.libs/libffi.a
-
-libffi-build/.libs/libffi.a: libffi-build/Makefile
-	$(QUIETLY) echo MAKE svm-libffi
-	$(QUIETLY) $(MAKE) -C libffi-build > libffi.build.log
-
-# on the Mac /bin/sh is bash which will produce output if CDPATH is set which causes
-# this command to fail, so clear it out before running the command.
-libffi-build/Makefile: libffi-3.2.1/configure
-	$(QUIETLY) echo CONFIGURE svm-libffi
-	$(QUIETLY) mkdir -p libffi-build
-	$(QUIETLY) unset CDPATH && cd libffi-build && CFLAGS="${CFLAGS}" ../libffi-3.2.1/configure --enable-static >../libffi.configure.log
-
-libffi-3.2.1/configure: ${LIBFFI_SRC}
-	$(QUIETLY) tar xzf ${LIBFFI_SRC}
 	$(QUIETLY) touch $@
 
 else

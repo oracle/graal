@@ -247,12 +247,7 @@ public class GCImpl implements GC {
         visitWatchersBefore();
 
         /* Collect. */
-        try {
-            collectImpl(cause);
-        } catch (Throwable t) {
-            /* Exceptions during collections are fatal. */
-            throw VMError.shouldNotReachHere(t);
-        }
+        collectImpl(cause);
 
         /* Check if out of memory. */
         final OutOfMemoryError result = checkIfOutOfMemory();
@@ -505,7 +500,7 @@ public class GCImpl implements GC {
 
     @Fold
     static boolean runtimeAssertions() {
-        return SubstrateOptions.RuntimeAssertions.getValue() && SubstrateOptions.getRuntimeAssertionsFilter().test(GCImpl.class.getName());
+        return SubstrateOptions.getRuntimeAssertionsForClass(GCImpl.class.getName());
     }
 
     @Override
@@ -1626,7 +1621,15 @@ public class GCImpl implements GC {
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while collecting")
         public void operate() {
-            result = HeapImpl.getHeapImpl().getGCImpl().collectOperation(cause, requestingEpoch);
+            try {
+                result = HeapImpl.getHeapImpl().getGCImpl().collectOperation(cause, requestingEpoch);
+            } catch (Throwable t) {
+                /*
+                 * Exceptions during collections are fatal. The heap is likely in an inconsistent
+                 * state.
+                 */
+                throw VMError.shouldNotReachHere(t);
+            }
         }
 
         OutOfMemoryError getResult() {

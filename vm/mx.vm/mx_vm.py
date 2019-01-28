@@ -1382,7 +1382,8 @@ def get_polyglot_launcher_project():
                     "build_args": [
                         "-H:-ParseRuntimeOptions",
                         "-H:Features=org.graalvm.launcher.PolyglotLauncherFeature",
-                        "--language:all"
+                        "--language:all",
+                        "--tool:truffle"
                     ],
                     "jar_distributions": [
                         "sdk:LAUNCHER_COMMON",

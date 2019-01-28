@@ -90,9 +90,6 @@ class HostLanguage extends TruffleLanguage<HostContext> {
         @TruffleBoundary
         Class<?> findClass(String className) {
             checkHostAccessAllowed();
-            if (TruffleOptions.AOT) {
-                throw new HostLanguageException(String.format("The host class %s is not accessible in native mode.", className));
-            }
 
             Class<?> loadedClass = classCache.get(className);
             if (loadedClass == null) {
@@ -201,9 +198,6 @@ class HostLanguage extends TruffleLanguage<HostContext> {
     }
 
     private static boolean isHostFunction(Object object) {
-        if (TruffleOptions.AOT) {
-            return false;
-        }
         return HostFunction.isInstance(object);
     }
 
@@ -314,9 +308,6 @@ class HostLanguage extends TruffleLanguage<HostContext> {
                     throw PolyglotImpl.wrapHostException(context.internalContext, t);
                 }
             } else if (isHostFunction(value)) {
-                if (TruffleOptions.AOT) {
-                    return "";
-                }
                 return ((HostFunction) value).getDescription();
             } else {
                 return "Foreign Object";

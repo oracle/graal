@@ -81,11 +81,10 @@ import com.oracle.svm.hosted.server.SubstrateServerMessage.ServerCommand;
  */
 public final class NativeImageBuildServer {
 
-    public static final String IMAGE_CLASSPATH_PREFIX = "-imagecp";
     public static final String PORT_LOG_MESSAGE_PREFIX = "Started image build server on port: ";
-    private static final String TASK_PREFIX = "-task=";
-    static final String PORT_PREFIX = "-port=";
-    private static final String LOG_PREFIX = "-logFile=";
+    public static final String TASK_PREFIX = "-task=";
+    public static final String PORT_PREFIX = "-port=";
+    public static final String LOG_PREFIX = "-logFile=";
     private static final int TIMEOUT_MINUTES = 240;
     private static final String GRAALVM_VERSION_PROPERTY = "org.graalvm.version";
     private static final int SERVER_THREAD_POOL_SIZE = 4;

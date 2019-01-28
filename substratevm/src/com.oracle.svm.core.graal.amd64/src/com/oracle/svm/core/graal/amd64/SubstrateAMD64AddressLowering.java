@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,17 +24,46 @@
  */
 package com.oracle.svm.core.graal.amd64;
 
+import static com.oracle.svm.core.SubstrateOptions.CompilerBackend;
+
 import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
 import org.graalvm.compiler.core.amd64.AMD64AddressNode;
 import org.graalvm.compiler.core.amd64.AMD64CompressAddressLowering;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.nodes.CompressionNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.phases.Phase;
+import org.graalvm.compiler.phases.common.AddressLoweringPhase;
+import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.graal.code.SubstrateAddressLoweringPhaseFactory;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 
 import jdk.vm.ci.code.Register;
+
+@AutomaticFeature
+class SubstrateAMD64AddressLoweringPhaseFeature implements Feature {
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return Platform.includedIn(Platform.AMD64.class) && CompilerBackend.getValue().equals("lir");
+    }
+
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(SubstrateAddressLoweringPhaseFactory.class, new SubstrateAddressLoweringPhaseFactory() {
+
+            @Override
+            public Phase newAddressLowering(CompressEncoding compressEncoding, SubstrateRegisterConfig registerConfig) {
+                SubstrateAMD64AddressLowering addressLowering = new SubstrateAMD64AddressLowering(compressEncoding, registerConfig);
+                return new AddressLoweringPhase(addressLowering);
+            }
+        });
+    }
+}
 
 public class SubstrateAMD64AddressLowering extends AMD64CompressAddressLowering {
     private final long heapBase;

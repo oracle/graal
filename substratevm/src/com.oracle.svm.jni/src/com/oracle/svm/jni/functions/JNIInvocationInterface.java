@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.jni.functions;
 
-import static com.oracle.svm.core.option.RuntimeOptionParser.DEFAULT_OPTION_PREFIX;
-import static com.oracle.svm.core.option.SubstrateOptionsParser.BooleanOptionFormat.PLUS_MINUS;
 import static com.oracle.svm.jni.nativeapi.JNIVersion.JNI_VERSION_1_1;
 import static com.oracle.svm.jni.nativeapi.JNIVersion.JNI_VERSION_1_2;
 import static com.oracle.svm.jni.nativeapi.JNIVersion.JNI_VERSION_1_4;
@@ -60,7 +58,6 @@ import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue
 import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveTearDownIsolateEpilogue;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.option.RuntimeOptionParser;
-import com.oracle.svm.core.properties.RuntimePropertyParser;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.util.Utf8;
 import com.oracle.svm.jni.JNIJavaVMList;
@@ -139,9 +136,7 @@ final class JNIInvocationInterface {
                         options.add(CTypeConversion.toJavaString(option.getOptionString()));
                     }
                 }
-                String[] optionArray = options.toArray(new String[0]);
-                optionArray = RuntimeOptionParser.singleton().parse(optionArray, DEFAULT_OPTION_PREFIX, PLUS_MINUS, true);
-                RuntimePropertyParser.parse(optionArray);
+                RuntimeOptionParser.parseAndConsumeAllOptions(options.toArray(new String[0]));
             }
             JNIJavaVM javavm = JNIFunctionTables.singleton().getGlobalJavaVM();
             JNIJavaVMList.addJavaVM(javavm);

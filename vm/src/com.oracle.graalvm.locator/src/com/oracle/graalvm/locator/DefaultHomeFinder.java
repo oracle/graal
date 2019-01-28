@@ -36,6 +36,7 @@ import java.util.AbstractMap;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Properties;
 
 import org.graalvm.nativeimage.ImageInfo;
@@ -51,6 +52,8 @@ public final class DefaultHomeFinder extends HomeFinder {
     private static final Path FORCE_GRAAL_HOME;
     private static final Path GRAAL_HOME_RELATIVE_PATH;
     private static final Path LANGUAGE_HOME_RELATIVE_PATH;
+    private static final Map<String, Path> LANGUAGE_RELATIVE_HOMES = new HashMap<>();
+
     static {
         String forcedHome = System.getProperty("org.graalvm.launcher.home");
         String relativeHome = System.getProperty("org.graalvm.launcher.relative.home");
@@ -71,6 +74,23 @@ public final class DefaultHomeFinder extends HomeFinder {
             LANGUAGE_HOME_RELATIVE_PATH = null;
         }
         assert !(GRAAL_HOME_RELATIVE_PATH != null && LANGUAGE_HOME_RELATIVE_PATH != null) : "Can not set both org.graalvm.launcher.relative.home and org.graalvm.launcher.relative.language.home";
+
+        // Save relative paths from the launcher's directory to other language homes of the form:
+        // org.graalvm.launcher.relative.LANGUAGE_ID.home
+        for (Object property : System.getProperties().keySet()) {
+            if (property instanceof String) {
+                String name = ((String) property);
+                if (name.startsWith("org.graalvm.launcher.relative.") && name.endsWith(".home")) {
+                    String after = name.substring("org.graalvm.launcher.relative.".length());
+                    if (after.length() > ".home".length()) {
+                        String languageId = after.substring(0, after.length() - ".home".length());
+                        if (!languageId.equals("language")) {
+                            LANGUAGE_RELATIVE_HOMES.put(languageId, Paths.get(System.getProperty(name)));
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private static final String ALT_GRAALVM_VERSION_PROPERTY = "graalvm.version";
@@ -108,6 +128,9 @@ public final class DefaultHomeFinder extends HomeFinder {
                 System.err.println("FORCE_GRAAL_HOME: " + FORCE_GRAAL_HOME);
                 System.err.println("LANGUAGE_HOME_RELATIVE_PATH: " + LANGUAGE_HOME_RELATIVE_PATH);
                 System.err.println("GRAAL_HOME_RELATIVE_PATH: " + GRAAL_HOME_RELATIVE_PATH);
+                for (Entry<String, Path> entry : LANGUAGE_RELATIVE_HOMES.entrySet()) {
+                    System.err.println("relative home of " + entry.getKey() + " from the launcher language home: " + entry.getValue());
+                }
             }
             if (FORCE_GRAAL_HOME != null) {
                 if (isVerbose()) {
@@ -207,7 +230,7 @@ public final class DefaultHomeFinder extends HomeFinder {
             Map.Entry<String, Path> launcherLang = launcherLanguageHome;
             launcherLanguageHome = null;
             if (home == null) {
-                res = launcherLang != null ? Collections.singletonMap(launcherLang.getKey(), launcherLang.getValue()) : Collections.emptyMap();
+                res = launcherLang != null ? Collections.unmodifiableMap(collectStandaloneHomes(launcherLang)) : Collections.emptyMap();
             } else {
                 res = Collections.unmodifiableMap(collectHomes(home.resolve(Paths.get("jre", "languages"))));
             }
@@ -251,6 +274,32 @@ public final class DefaultHomeFinder extends HomeFinder {
                 throw new RuntimeException(ioe);
             }
         }
+        return res;
+    }
+
+    private Map<String, Path> collectStandaloneHomes(Map.Entry<String, Path> launcherLang) {
+        Map<String, Path> res = new HashMap<>();
+        res.put(launcherLang.getKey(), launcherLang.getValue());
+
+        Path executableOrObjFile = getCurrentExecutablePath();
+        if (executableOrObjFile == null) {
+            executableOrObjFile = getCurrentObjectFilePath();
+        }
+        if (executableOrObjFile != null) {
+            Path launcherDir = executableOrObjFile.getParent();
+
+            for (Entry<String, Path> entry : LANGUAGE_RELATIVE_HOMES.entrySet()) {
+                Path langHome = launcherDir.resolve(entry.getValue()).normalize();
+                String langId = entry.getKey();
+                if (!langId.equals(launcherLang.getKey())) {
+                    res.put(langId, langHome);
+                    if (isVerbose()) {
+                        System.err.println("Resolved the " + langId + " home as " + langHome);
+                    }
+                }
+            }
+        }
+
         return res;
     }
 
@@ -318,13 +367,16 @@ public final class DefaultHomeFinder extends HomeFinder {
     private static Path getGraalVMHomeFromLanguageHome(Path languageHome) {
         // jre/<languages_or_tools>/<comp_id>
         Path languagesOrTools = languageHome.getParent();
-        String languagesOrToolsString = languagesOrTools.getFileName().toString();
-        if (!languagesOrToolsString.equals("languages") && !languagesOrToolsString.equals("tools")) {
+        String languagesOrToolsString = languagesOrTools != null ? getFileName(languagesOrTools) : null;
+        if (!"languages".equals(languagesOrToolsString) && !"tools".equals(languagesOrToolsString)) {
             return null;
         }
         Path jreOrJdk = languagesOrTools.getParent();
+        if (jreOrJdk == null) {
+            return null;
+        }
         Path home;
-        if (jreOrJdk.getFileName().toString().equals("jre")) {
+        if ("jre".equals(getFileName(jreOrJdk))) {
             home = jreOrJdk.getParent();
         } else {
             home = jreOrJdk;
@@ -340,12 +392,12 @@ public final class DefaultHomeFinder extends HomeFinder {
      */
     private static Path getGraalVmHomeFallBack(Path executable) {
         Path bin = executable.getParent();
-        if (!bin.getFileName().toString().equals("bin")) {
+        if (!"bin".equals(getFileName(bin))) {
             return null;
         }
         Path jreOrJdk = bin.getParent();
         Path home;
-        if (jreOrJdk != null && jreOrJdk.getFileName().toString().equals("jre")) {
+        if (jreOrJdk != null && "jre".equals(getFileName(jreOrJdk))) {
             home = jreOrJdk.getParent();
         } else if (jreOrJdk != null) {
             if (isJdkHome(jreOrJdk)) {
@@ -353,9 +405,9 @@ public final class DefaultHomeFinder extends HomeFinder {
             } else {
                 // maybe we are in the language home?
                 Path languages = jreOrJdk.getParent();
-                if (languages != null && languages.getFileName().toString().equals("languages")) {
+                if (languages != null && "languages".equals(getFileName(languages))) {
                     Path jre = languages.getParent();
-                    if (jre != null && jre.getFileName().toString().equals("jre")) {
+                    if (jre != null && "jre".equals(getFileName(jre))) {
                         home = jre.getParent();
                     } else {
                         home = null;
@@ -382,17 +434,17 @@ public final class DefaultHomeFinder extends HomeFinder {
     private static Path getGraalVmHomeLibPolyglotFallBack(Path objectFile) {
         // <home>/jre/lib/polyglot/libpolyglot.so
         Path parent = objectFile.getParent();
-        if (parent == null || !parent.getFileName().toString().equals("polyglot")) {
+        if (parent == null || !"polyglot".equals(getFileName(parent))) {
             return null;
         }
         parent = parent.getParent();
-        if (parent == null || !parent.getFileName().toString().equals("lib")) {
+        if (parent == null || !"lib".equals(getFileName(parent))) {
             return null;
         }
         Path home = null;
         Path jreOrJdk = parent.getParent();
         if (jreOrJdk != null) {
-            if (jreOrJdk.getFileName().toString().equals("jre")) {
+            if ("jre".equals(getFileName(jreOrJdk))) {
                 home = jreOrJdk.getParent();
             } else {
                 home = jreOrJdk;
@@ -427,15 +479,18 @@ public final class DefaultHomeFinder extends HomeFinder {
         return result;
     }
 
-    @SuppressWarnings("deprecation")
     private static Path getCurrentObjectFilePath() {
         String path = ProcessProperties.getObjectFile(VmLocatorSymbol.SYMBOL);
         return path == null ? null : Paths.get(path);
     }
 
-    @SuppressWarnings("deprecation")
     private static Path getCurrentExecutablePath() {
         return Paths.get(ProcessProperties.getExecutableName());
+    }
+
+    private static String getFileName(Path path) {
+        Path fileName = path.getFileName();
+        return fileName == null ? null : fileName.toString();
     }
 
     private boolean isVerbose() {

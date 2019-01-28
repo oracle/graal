@@ -59,6 +59,7 @@ final class PolyglotLanguageInstance {
     final Map<Object, Object> hostInteropCodeCache;
 
     private volatile OptionValuesImpl firstOptionValues;
+    private volatile boolean needsInitializeMultiContext;
 
     PolyglotLanguageInstance(PolyglotLanguage language) {
         this.language = language;
@@ -67,6 +68,8 @@ final class PolyglotLanguageInstance {
             LANGUAGE.initializeLanguage(spi, language.info, language);
             if (!language.engine.singleContext.isValid()) {
                 initializeMultiContext();
+            } else {
+                needsInitializeMultiContext = !language.engine.boundEngine;
             }
         } catch (Exception e) {
             throw new IllegalStateException(String.format("Error initializing language '%s' using class '%s'.", language.cache.getId(), language.cache.getClassName()), e);
@@ -89,6 +92,15 @@ final class PolyglotLanguageInstance {
         assert Thread.holdsLock(language.engine);
         if (this.firstOptionValues == null) {
             this.firstOptionValues = optionValues;
+        }
+    }
+
+    void ensureMultiContextInitialized() {
+        assert Thread.holdsLock(language.engine);
+        if (needsInitializeMultiContext) {
+            needsInitializeMultiContext = false;
+            language.engine.initializeMultiContext(null);
+            initializeMultiContext();
         }
     }
 

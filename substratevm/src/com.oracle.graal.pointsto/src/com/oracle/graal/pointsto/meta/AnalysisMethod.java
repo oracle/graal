@@ -94,7 +94,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider {
         this.wrapped = wrapped;
         this.id = universe.nextMethodId.getAndIncrement();
 
-        if (PointstoOptions.TrackAccessChain.getValue(universe.getHostVM().options())) {
+        if (PointstoOptions.TrackAccessChain.getValue(universe.hostVM().options())) {
             startTrackInvocations();
         }
 
@@ -126,7 +126,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider {
         }
         localVariableTable = newLocalVariableTable;
 
-        typeFlow = new MethodTypeFlow(universe.getHostVM().options(), this);
+        typeFlow = new MethodTypeFlow(universe.hostVM().options(), this);
 
         if (getName().startsWith("$SWITCH_TABLE$")) {
             /*

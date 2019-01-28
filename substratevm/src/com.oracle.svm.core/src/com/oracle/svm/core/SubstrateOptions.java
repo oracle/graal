@@ -80,16 +80,20 @@ public class SubstrateOptions {
     @Option(help = "Path passed to the linker as the -rpath (list of comma-separated directories)")//
     public static final HostedOptionKey<String[]> LinkerRPath = new HostedOptionKey<>(null);
 
+    @Option(help = "Directory of the image file to be generated", type = OptionType.User)//
+    public static final HostedOptionKey<String> Path = new HostedOptionKey<>(Paths.get(".").toAbsolutePath().normalize().resolve("svmbuild").toString());
+
     @APIOption(name = "-ea", customHelp = "enable assertions in the generated image")//
     @APIOption(name = "-da", kind = APIOption.APIOptionKind.Negated, customHelp = "disable assertions in the generated image")//
     @Option(help = "Enable or disable Java assert statements at run time", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> RuntimeAssertions = new HostedOptionKey<>(false);
 
-    @Option(help = "Directory of the image file to be generated", type = OptionType.User)//
-    public static final HostedOptionKey<String> Path = new HostedOptionKey<>(Paths.get(".").toAbsolutePath().normalize().resolve("svmbuild").toString());
+    public static boolean getRuntimeAssertionsForClass(String name) {
+        return RuntimeAssertions.getValue() && getRuntimeAssertionsFilter().test(name);
+    }
 
     @Fold
-    public static FoldedPredicate getRuntimeAssertionsFilter() {
+    static Predicate<String> getRuntimeAssertionsFilter() {
         return makeFilter(RuntimeAssertionsFilter.getValue());
     }
 
@@ -218,7 +222,7 @@ public class SubstrateOptions {
     @Option(help = "Provide method names for stack traces.")//
     public static final HostedOptionKey<Boolean> StackTrace = new HostedOptionKey<>(true);
 
-    @Option(help = "Use runtime-option parsing in JavaMainWrapper")//
+    @Option(help = "Parse and consume standard options and system properties from the command line arguments when the VM is created.")//
     public static final HostedOptionKey<Boolean> ParseRuntimeOptions = new HostedOptionKey<>(true);
 
     @Option(help = "Only use Java assert statements for classes that are matching the comma-separated list of package prefixes.")//
@@ -248,35 +252,19 @@ public class SubstrateOptions {
     @Option(help = "Backend used by the compiler", type = OptionType.User)//
     public static final HostedOptionKey<String> CompilerBackend = new HostedOptionKey<>("lir");
 
-    public static FoldedPredicate makeFilter(String[] definedFilters) {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static Predicate<String> makeFilter(String[] definedFilters) {
         if (definedFilters != null) {
             List<String> wildCardList = OptionUtils.flatten(",", definedFilters);
-            return new FoldedPredicate((String javaName) -> {
+            return javaName -> {
                 for (String wildCard : wildCardList) {
                     if (javaName.startsWith(wildCard)) {
                         return true;
                     }
                 }
                 return false;
-            });
+            };
         }
-        return new FoldedPredicate((String javaName) -> true);
-    }
-
-    public static class FoldedPredicate implements Predicate<String> {
-
-        @Platforms(Platform.HOSTED_ONLY.class)//
-        private final Predicate<String> wrapped;
-
-        @Platforms(Platform.HOSTED_ONLY.class)
-        public FoldedPredicate(Predicate<String> wrapped) {
-            this.wrapped = wrapped;
-        }
-
-        @Fold
-        @Override
-        public boolean test(String t) {
-            return wrapped.test(t);
-        }
+        return javaName -> true;
     }
 }

@@ -76,6 +76,7 @@ import com.oracle.svm.driver.MacroOption.MacroOptionKind;
 import com.oracle.svm.driver.MacroOption.Registry;
 import com.oracle.svm.graal.hosted.GraalFeature;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.hosted.NativeImageGeneratorRunner;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.image.AbstractBootImage.NativeImageKind;
 import com.oracle.svm.hosted.substitute.DeclarativeSubstitutionProcessor;
@@ -179,6 +180,7 @@ public class NativeImage {
     private final Map<String, String> propertyFileSubstitutionValues = new HashMap<>();
 
     private boolean verbose = Boolean.valueOf(System.getenv("VERBOSE_GRAALVM_LAUNCHERS"));
+    private boolean jarOptionMode = false;
     private boolean dryRun = false;
     private String queryOption = null;
 
@@ -797,7 +799,7 @@ public class NativeImage {
                 }
             }
 
-            if (buildExecutable) {
+            if (buildExecutable && !jarOptionMode) {
                 /* Main-class from customImageBuilderArgs counts as explicitMainClass */
                 boolean explicitMainClass = customImageBuilderArgs.stream().anyMatch(arg -> arg.startsWith(oHClass));
 
@@ -833,6 +835,11 @@ public class NativeImage {
                     /* extraImageArgs library name overrules previous specification */
                     replaceArg(imageBuilderArgs, oHName, extraImageArgs.remove(0));
                 }
+            }
+
+            if (!extraImageArgs.isEmpty()) {
+                String prefix = "Unknown argument" + (extraImageArgs.size() == 1 ? ": " : "s: ");
+                showError(extraImageArgs.stream().collect(Collectors.joining(", ", prefix, "")));
             }
         }
 
@@ -879,6 +886,14 @@ public class NativeImage {
         buildImage(imageBuilderJavaArgs, imageBuilderBootClasspath, imageBuilderClasspath, imageBuilderArgs, finalImageClasspath);
     }
 
+    protected static List<String> createImageBuilderArgs(LinkedHashSet<String> imageArgs, LinkedHashSet<Path> imagecp) {
+        List<String> result = new ArrayList<>();
+        result.add(NativeImageGeneratorRunner.IMAGE_CLASSPATH_PREFIX);
+        result.add(imagecp.stream().map(ImageClassLoader::classpathToString).collect(Collectors.joining(File.pathSeparator)));
+        result.addAll(imageArgs);
+        return result;
+    }
+
     protected void buildImage(List<String> javaArgs, LinkedHashSet<Path> bcp, LinkedHashSet<Path> cp, LinkedHashSet<String> imageArgs, LinkedHashSet<Path> imagecp) {
         /* Construct ProcessBuilder command from final arguments */
         ProcessBuilder pb = new ProcessBuilder();
@@ -895,10 +910,9 @@ public class NativeImage {
              * GR-8254: Ensure image-building VM shuts down even if native-image dies unexpected
              * (e.g. using CTRL-C in Gradle daemon mode)
              */
-            command.addAll(Arrays.asList("-watchpid", "" + ProcessProperties.getProcessID()));
+            command.addAll(Arrays.asList(NativeImageGeneratorRunner.WATCHPID_PREFIX, "" + ProcessProperties.getProcessID()));
         }
-        command.addAll(imageArgs);
-        command.addAll(Arrays.asList("-imagecp", imagecp.stream().map(ImageClassLoader::classpathToString).collect(Collectors.joining(File.pathSeparator))));
+        command.addAll(createImageBuilderArgs(imageArgs, imagecp));
 
         showVerboseMessage(isVerbose() || dryRun, "Executing [");
         showVerboseMessage(isVerbose() || dryRun, command.stream().collect(Collectors.joining(" \\\n")));
@@ -1056,6 +1070,10 @@ public class NativeImage {
 
     void setVerbose(boolean val) {
         verbose = val;
+    }
+
+    void setJarOptionMode(boolean val) {
+        jarOptionMode = val;
     }
 
     boolean isVerbose() {

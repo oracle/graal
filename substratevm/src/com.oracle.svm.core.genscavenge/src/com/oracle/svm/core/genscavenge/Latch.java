@@ -25,6 +25,8 @@
 
 package com.oracle.svm.core.genscavenge;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
+
 /**
  * An AutoCloseable boolean.
  *
@@ -68,6 +70,7 @@ public class Latch implements AutoCloseable {
     }
 
     /** Get the state. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean getState() {
         return state;
     }

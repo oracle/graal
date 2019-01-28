@@ -77,13 +77,22 @@ public final class ProcessProperties {
     }
 
     /**
+     * Wait for process termination and return its exit status.
+     *
+     * @since 1.0
+     */
+    public static int waitForProcessExit(long processID) {
+        return ImageSingletons.lookup(ProcessPropertiesSupport.class).waitForProcessExit(processID);
+    }
+
+    /**
      * Kills the process. Whether the process represented by the given Process ID is normally
      * terminated or not is implementation dependent.
      *
      * @since 1.0
      */
-    public static void destroy(long processID) {
-        ImageSingletons.lookup(ProcessPropertiesSupport.class).destroy(processID);
+    public static boolean destroy(long processID) {
+        return ImageSingletons.lookup(ProcessPropertiesSupport.class).destroy(processID);
     }
 
     /**
@@ -93,8 +102,8 @@ public final class ProcessProperties {
      *
      * @since 1.0
      */
-    public static void destroyForcibly(long processID) {
-        ImageSingletons.lookup(ProcessPropertiesSupport.class).destroyForcibly(processID);
+    public static boolean destroyForcibly(long processID) {
+        return ImageSingletons.lookup(ProcessPropertiesSupport.class).destroyForcibly(processID);
     }
 
     /**

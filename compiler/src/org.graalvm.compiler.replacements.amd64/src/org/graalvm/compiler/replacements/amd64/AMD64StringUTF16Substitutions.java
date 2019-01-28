@@ -172,14 +172,14 @@ public class AMD64StringUTF16Substitutions {
         int totalOffset = fromIndex;
         if (targetCount == 1) {
             Pointer sourcePointer = charOffsetPointer(source, totalOffset);
-            int indexOfResult = AMD64ArrayIndexOf.indexOf1Char(sourcePointer, sourceCount - fromIndex, (char) target[0]);
+            int indexOfResult = AMD64ArrayIndexOf.indexOf1Char(sourcePointer, sourceCount - fromIndex, (char) Byte.toUnsignedInt(target[0]));
             if (indexOfResult >= 0) {
                 return indexOfResult + totalOffset;
             }
             return indexOfResult;
         } else if (targetCount == 2) {
             Pointer sourcePointer = charOffsetPointer(source, totalOffset);
-            int indexOfResult = AMD64ArrayIndexOf.indexOfTwoConsecutiveChars(sourcePointer, sourceCount - fromIndex, (char) target[0], (char) target[1]);
+            int indexOfResult = AMD64ArrayIndexOf.indexOfTwoConsecutiveChars(sourcePointer, sourceCount - fromIndex, (char) Byte.toUnsignedInt(target[0]), (char) Byte.toUnsignedInt(target[1]));
             if (indexOfResult >= 0) {
                 return indexOfResult + totalOffset;
             }
@@ -188,7 +188,7 @@ public class AMD64StringUTF16Substitutions {
             int haystackLength = sourceCount - (fromIndex + (targetCount - 2));
             while (haystackLength > 0) {
                 Pointer sourcePointer = charOffsetPointer(source, totalOffset);
-                int indexOfResult = AMD64ArrayIndexOf.indexOfTwoConsecutiveChars(sourcePointer, haystackLength, (char) target[0], (char) target[1]);
+                int indexOfResult = AMD64ArrayIndexOf.indexOfTwoConsecutiveChars(sourcePointer, haystackLength, (char) Byte.toUnsignedInt(target[0]), (char) Byte.toUnsignedInt(target[1]));
                 if (indexOfResult < 0) {
                     return -1;
                 }

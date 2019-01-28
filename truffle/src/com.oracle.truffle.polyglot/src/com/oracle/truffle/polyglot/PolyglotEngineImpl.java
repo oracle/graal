@@ -221,10 +221,6 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         this.engineOptionValues.putAll(originalEngineOptions);
         this.compilerOptionValues.putAll(originalCompilerOptions);
 
-        if (!boundEngine) {
-            initializeMultiContext(null);
-        }
-
         for (PolyglotLanguage language : languagesOptions.keySet()) {
             language.getOptionValues().putAll(languagesOptions.get(language));
         }
@@ -309,6 +305,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     synchronized void initializeMultiContext(PolyglotContextImpl existingContext) {
         if (singleContext.isValid()) {
             singleContext.invalidate("More than one context introduced.");
+            PolyglotContextImpl.invalidateStaticContextAssumption();
             if (existingContext != null) {
                 for (PolyglotLanguageContext context : existingContext.contexts) {
                     if (context.isInitialized()) {
@@ -483,7 +480,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         Map<String, PolyglotLanguage> polyglotLanguages = new LinkedHashMap<>();
         Map<String, LanguageCache> cachedLanguages = new HashMap<>();
         List<LanguageCache> sortedLanguages = new ArrayList<>();
-        for (LanguageCache lang : LanguageCache.languages().values()) {
+        for (LanguageCache lang : LanguageCache.languages(contextClassLoader).values()) {
             String id = lang.getId();
             if (!cachedLanguages.containsKey(id)) {
                 sortedLanguages.add(lang);

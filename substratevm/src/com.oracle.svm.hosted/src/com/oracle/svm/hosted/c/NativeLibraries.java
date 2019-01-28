@@ -24,9 +24,12 @@
  */
 package com.oracle.svm.hosted.c;
 
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -35,7 +38,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.CContext.Directives;
 import org.graalvm.nativeimage.c.constant.CConstant;
@@ -43,9 +45,6 @@ import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.struct.RawStructure;
-import org.graalvm.nativeimage.c.struct.SizeOf;
-import org.graalvm.nativeimage.impl.CConstantValueSupport;
-import org.graalvm.nativeimage.impl.SizeOfSupport;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
@@ -53,14 +52,12 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.infrastructure.WrappedElement;
+import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.c.info.ConstantInfo;
 import com.oracle.svm.hosted.c.info.ElementInfo;
-import com.oracle.svm.hosted.c.info.SizableInfo;
-import com.oracle.svm.hosted.c.info.StructInfo;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -95,108 +92,27 @@ public final class NativeLibraries {
 
     private final CAnnotationProcessorCache cache;
 
-    static final class SizeOfSupportImpl implements SizeOfSupport {
-        private final NativeLibraries nativeLibraries;
-
-        SizeOfSupportImpl(NativeLibraries nativeLibraries) {
-            this.nativeLibraries = nativeLibraries;
-        }
-
-        @Override
-        public int sizeof(Class<? extends PointerBase> clazz) {
-            ResolvedJavaType type = nativeLibraries.metaAccess.lookupJavaType(clazz);
-            ElementInfo typeInfo = nativeLibraries.findElementInfo(type);
-            if (typeInfo instanceof StructInfo && ((StructInfo) typeInfo).isIncomplete()) {
-                throw UserError.abort("Class parameter " + type.toJavaName(true) + " of call to " + SizeOf.class.getSimpleName() + " is an incomplete structure, so no size is available");
-            } else if (typeInfo instanceof SizableInfo) {
-                return ((SizableInfo) typeInfo).getSizeInfo().getProperty();
-            } else {
-                throw UserError.abort("Class parameter " + type.toJavaName(true) + " of call to " + SizeOf.class.getSimpleName() + " is not an annotated C interface type");
-            }
-        }
-    }
-
-    static final class CConstantValueSupportImpl implements CConstantValueSupport {
-        private final NativeLibraries nativeLibraries;
-
-        CConstantValueSupportImpl(NativeLibraries nativeLibraries) {
-            this.nativeLibraries = nativeLibraries;
-        }
-
-        @Override
-        public <T> T getCConstantValue(Class<?> declaringClass, String methodName, Class<T> returnType) {
-            ResolvedJavaMethod method;
-            try {
-                method = nativeLibraries.metaAccess.lookupJavaMethod(declaringClass.getMethod(methodName));
-            } catch (NoSuchMethodException | SecurityException e) {
-                throw VMError.shouldNotReachHere("Method not found: " + declaringClass.getName() + "." + methodName);
-            }
-            if (method.getAnnotation(CConstant.class) == null) {
-                throw VMError.shouldNotReachHere("Method " + declaringClass.getName() + "." + methodName + " is not annotated with @" + CConstant.class.getSimpleName());
-            }
-
-            ConstantInfo constantInfo = (ConstantInfo) nativeLibraries.findElementInfo(method);
-            Object value = constantInfo.getValueInfo().getProperty();
-            switch (constantInfo.getKind()) {
-                case INTEGER:
-                case POINTER:
-                    Long longValue = (Long) value;
-                    if (returnType == Boolean.class) {
-                        return returnType.cast(Boolean.valueOf(longValue.longValue() != 0));
-                    } else if (returnType == Integer.class) {
-                        return returnType.cast(Integer.valueOf((int) longValue.longValue()));
-                    } else if (returnType == Long.class) {
-                        return returnType.cast(value);
-                    }
-                    break;
-
-                case FLOAT:
-                    if (returnType == Double.class) {
-                        return returnType.cast(value);
-                    }
-                    break;
-
-                case STRING:
-                    if (returnType == String.class) {
-                        return returnType.cast(value);
-                    }
-                    break;
-
-                case BYTEARRAY:
-                    if (returnType == byte[].class) {
-                        return returnType.cast(value);
-                    }
-                    break;
-            }
-
-            throw VMError.shouldNotReachHere("Unexpected returnType: " + returnType.getName());
-        }
-    }
-
     public NativeLibraries(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, TargetDescription target) {
         this.metaAccess = metaAccess;
         this.constantReflection = constantReflection;
         this.snippetReflection = snippetReflection;
         this.target = target;
 
-        this.elementToInfo = new HashMap<>();
-        this.errors = new ArrayList<>();
-        this.compilationUnitToContext = new HashMap<>();
+        elementToInfo = new HashMap<>();
+        errors = new ArrayList<>();
+        compilationUnitToContext = new HashMap<>();
 
-        this.wordBaseType = metaAccess.lookupJavaType(WordBase.class);
-        this.signedType = metaAccess.lookupJavaType(SignedWord.class);
-        this.unsignedType = metaAccess.lookupJavaType(UnsignedWord.class);
-        this.pointerBaseType = metaAccess.lookupJavaType(PointerBase.class);
-        this.stringType = metaAccess.lookupJavaType(String.class);
-        this.byteArrayType = metaAccess.lookupJavaType(byte[].class);
-        this.enumType = metaAccess.lookupJavaType(Enum.class);
-        this.locationIdentityType = metaAccess.lookupJavaType(LocationIdentity.class);
+        wordBaseType = metaAccess.lookupJavaType(WordBase.class);
+        signedType = metaAccess.lookupJavaType(SignedWord.class);
+        unsignedType = metaAccess.lookupJavaType(UnsignedWord.class);
+        pointerBaseType = metaAccess.lookupJavaType(PointerBase.class);
+        stringType = metaAccess.lookupJavaType(String.class);
+        byteArrayType = metaAccess.lookupJavaType(byte[].class);
+        enumType = metaAccess.lookupJavaType(Enum.class);
+        locationIdentityType = metaAccess.lookupJavaType(LocationIdentity.class);
 
-        this.libraries = new ArrayList<>();
-        this.libraryPaths = new ArrayList<>();
-
-        ImageSingletons.add(SizeOfSupport.class, new SizeOfSupportImpl(this));
-        ImageSingletons.add(CConstantValueSupport.class, new CConstantValueSupportImpl(this));
+        libraries = new ArrayList<>();
+        libraryPaths = initCLibraryPath();
 
         this.cache = new CAnnotationProcessorCache();
     }
@@ -211,6 +127,50 @@ public final class NativeLibraries {
 
     public TargetDescription getTarget() {
         return target;
+    }
+
+    private static List<String> initCLibraryPath() {
+        List<String> libraryPaths = new ArrayList<>();
+
+        Path staticLibsDir = null;
+
+        /* Probe for static JDK libraries in JDK lib directory */
+        try {
+            Path jdkLibDir = Paths.get(System.getProperty("java.home")).resolve("lib").toRealPath();
+            if (Files.isDirectory(jdkLibDir)) {
+                if (Files.list(jdkLibDir).filter(path -> {
+                    if (Files.isDirectory(path)) {
+                        return false;
+                    }
+                    String libName = path.getFileName().toString();
+                    String libPrefix = OS.getCurrent() == OS.WINDOWS ? "" : "lib";
+                    String libSuffix = OS.getCurrent() == OS.WINDOWS ? ".lib" : ".a";
+                    if (!(libName.startsWith(libPrefix) && libName.endsWith(libSuffix))) {
+                        return false;
+                    }
+                    String lib = libName.substring(libPrefix.length(), libName.length() - libSuffix.length());
+                    return PlatformNativeLibrarySupport.defaultBuiltInLibraries.contains(lib);
+                }).count() == PlatformNativeLibrarySupport.defaultBuiltInLibraries.size()) {
+                    staticLibsDir = jdkLibDir;
+                }
+            }
+        } catch (Exception e) {
+            /* Fallthrough to next strategy */
+        }
+
+        if (staticLibsDir == null) {
+            /* TODO: Implement other strategies to get static JDK libraries (download + caching) */
+        }
+
+        if (staticLibsDir != null) {
+            libraryPaths.add(staticLibsDir.toString());
+        } else {
+            UserError.guarantee(OS.getCurrent() != OS.WINDOWS,
+                            "Building images for " + OS.getCurrent().className +
+                                            " requires static JDK libraries." +
+                                            "\nUse JDK from https://github.com/graalvm/openjdk8-jvmci-builder/releases");
+        }
+        return libraryPaths;
     }
 
     public void addError(String msg, Object... context) {
@@ -287,7 +247,7 @@ public final class NativeLibraries {
         return result;
     }
 
-    private static Object unwrap(Object e) {
+    private static Object unwrap(AnnotatedElement e) {
         Object element = e;
         assert element instanceof ResolvedJavaType || element instanceof ResolvedJavaMethod;
         while (element instanceof WrappedElement) {
@@ -297,17 +257,17 @@ public final class NativeLibraries {
         return element;
     }
 
-    public void registerElementInfo(Object e, ElementInfo elementInfo) {
+    public void registerElementInfo(AnnotatedElement e, ElementInfo elementInfo) {
         Object element = unwrap(e);
         assert !elementToInfo.containsKey(element);
         elementToInfo.put(element, elementInfo);
     }
 
-    public ElementInfo findElementInfo(Object e) {
-        Object element = unwrap(e);
-        ElementInfo result = elementToInfo.get(element);
-        if (result == null && element instanceof ResolvedJavaType && ((ResolvedJavaType) element).getInterfaces().length == 1) {
-            result = findElementInfo(((ResolvedJavaType) element).getInterfaces()[0]);
+    public ElementInfo findElementInfo(AnnotatedElement element) {
+        Object element1 = unwrap(element);
+        ElementInfo result = elementToInfo.get(element1);
+        if (result == null && element1 instanceof ResolvedJavaType && ((ResolvedJavaType) element1).getInterfaces().length == 1) {
+            result = findElementInfo(((ResolvedJavaType) element1).getInterfaces()[0]);
         }
         return result;
     }

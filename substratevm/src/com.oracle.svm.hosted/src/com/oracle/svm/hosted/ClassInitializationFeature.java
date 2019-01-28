@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted;
 
-import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -50,11 +49,14 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.MethodPointer;
 
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -106,6 +108,7 @@ public final class ClassInitializationFeature implements Feature, RuntimeClassIn
      * errors without immediately aborting image building.
      */
     private UnsupportedFeatures unsupportedFeatures;
+    private MetaAccessProvider metaAccess;
 
     public static ClassInitializationFeature singleton() {
         return (ClassInitializationFeature) ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
@@ -151,9 +154,21 @@ public final class ClassInitializationFeature implements Feature, RuntimeClassIn
         return type instanceof HostedType ? ((HostedType) type).getWrapped() : (AnalysisType) type;
     }
 
+    private static ResolvedJavaType toWrappedType(ResolvedJavaType type) {
+        if (type instanceof AnalysisType) {
+            return ((AnalysisType) type).getWrappedWithoutResolve();
+        } else if (type instanceof HostedType) {
+            return ((HostedType) type).getWrapped().getWrappedWithoutResolve();
+        } else {
+            return type;
+        }
+    }
+
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(RuntimeClassInitializationSupport.class, this);
+
+        metaAccess = ((AfterRegistrationAccessImpl) access).getMetaAccess();
 
         processOption(access, Options.DelayClassInitialization, this::delayClassInitialization);
         processOption(access, Options.RerunClassInitialization, this::rerunClassInitialization);
@@ -244,7 +259,11 @@ public final class ClassInitializationFeature implements Feature, RuntimeClassIn
         ClassInitializationInfo info;
         if (shouldInitializeAtRuntime(type)) {
             AnalysisMethod classInitializer = type.getClassInitializer();
-            if (classInitializer != null) {
+            /*
+             * If classInitializer.getCode() returns null then the type failed to initialize due to
+             * verification issues triggered by missing types.
+             */
+            if (classInitializer != null && classInitializer.getCode() != null) {
                 access.registerAsCompiled(classInitializer);
             }
             info = new ClassInitializationInfo(MethodPointer.factory(classInitializer));
@@ -270,15 +289,15 @@ public final class ClassInitializationFeature implements Feature, RuntimeClassIn
     }
 
     private static boolean declaresDefaultMethods(ResolvedJavaType type) {
-        return declaresDefaultMethods(toAnalysisType(type).getJavaClass());
-    }
-
-    private static boolean declaresDefaultMethods(Class<?> clazz) {
-        if (!clazz.isInterface()) {
+        if (!type.isInterface()) {
             /* Only interfaces can declare default methods. */
             return false;
         }
-        for (Method method : clazz.getDeclaredMethods()) {
+        /*
+         * We call getDeclaredMethods() directly on the wrapped type. We avoid calling it on the
+         * AnalysisType because it resolves all the methods in the AnalysisUniverse.
+         */
+        for (ResolvedJavaMethod method : toWrappedType(type).getDeclaredMethods()) {
             if (method.isDefault()) {
                 assert !Modifier.isStatic(method.getModifiers()) : "Default method that is static?";
                 return true;
@@ -324,7 +343,7 @@ public final class ClassInitializationFeature implements Feature, RuntimeClassIn
     private InitKind processInterfaces(Class<?> clazz, boolean memoizeEager) {
         InitKind result = InitKind.EAGER;
         for (Class<?> iface : clazz.getInterfaces()) {
-            if (declaresDefaultMethods(iface)) {
+            if (declaresDefaultMethods(metaAccess.lookupJavaType(iface))) {
                 /*
                  * An interface that declares default methods is initialized when a class
                  * implementing it is initialized. So we need to inherit the InitKind from such an

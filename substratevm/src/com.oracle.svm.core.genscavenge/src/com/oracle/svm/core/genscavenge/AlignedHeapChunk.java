@@ -269,8 +269,6 @@ public class AlignedHeapChunk extends HeapChunk {
     /** Return the offset of an object within the objects part of a chunk. */
     private static UnsignedWord getObjectOffset(AlignedHeader that, Pointer objectPointer) {
         final Pointer objectsStart = getObjectsStart(that);
-        assert objectsStart.belowOrEqual(objectPointer);
-        assert objectPointer.belowOrEqual(that.getEnd());
         return objectPointer.subtract(objectsStart);
     }
 
