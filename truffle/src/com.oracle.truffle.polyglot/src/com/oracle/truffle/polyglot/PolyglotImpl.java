@@ -1081,7 +1081,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         @Override
         public Object convertPrimitive(Object value, Class<?> requestedType) {
-            return ToHostNode.convertLossLess(value, requestedType, InteropLibrary.resolve().getUncachedDispatch());
+            return ToHostNode.convertLossLess(value, requestedType, InteropLibrary.dispatch().getUncached());
         }
     }
 }

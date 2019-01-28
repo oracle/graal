@@ -67,7 +67,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.library.DynamicDispatchLibrary;
 import com.oracle.truffle.api.library.Library;
-import com.oracle.truffle.api.library.ResolvedExports;
+import com.oracle.truffle.api.library.LibraryExport;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.NodeCost;
@@ -107,7 +107,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
 
         CodeTreeBuilder statics = genClass.add(new CodeExecutableElement(modifiers(STATIC), null, "<cinit>")).createBuilder();
         statics.startStatement();
-        statics.startStaticCall(context.getType(ResolvedExports.class), "register");
+        statics.startStaticCall(context.getType(LibraryExport.class), "register");
         statics.typeLiteral(exports.getTemplateType().asType());
 
         genClass.add(GeneratorUtils.createConstructorUsingFields(modifiers(PRIVATE), genClass));
@@ -147,7 +147,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         final DeclaredType libraryBaseType = (DeclaredType) libraryBaseTypeElement.asType();
         final TypeMirror exportReceiverType = library.getReceiverClass();
 
-        TypeMirror baseType = new CodeTypeMirror.DeclaredCodeTypeMirror(context.getTypeElement(ResolvedExports.class),
+        TypeMirror baseType = new CodeTypeMirror.DeclaredCodeTypeMirror(context.getTypeElement(LibraryExport.class),
                         Arrays.asList(libraryBaseType));
         CodeTypeElement exportsClass = createClass(library, null, modifiers(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL), className, baseType);
 
@@ -163,7 +163,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             builder.startNew(uncachedClass.asType()).end();
         }
 
-        CodeExecutableElement createUncached = CodeExecutableElement.clone(ElementUtils.findExecutableElement(context.getDeclaredType(ResolvedExports.class), "createUncached"));
+        CodeExecutableElement createUncached = CodeExecutableElement.clone(ElementUtils.findExecutableElement(context.getDeclaredType(LibraryExport.class), "createUncached"));
         createUncached.setReturnType(libraryBaseType);
         createUncached.getModifiers().remove(Modifier.ABSTRACT);
         createUncached.renameArguments("receiver");
@@ -196,7 +196,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             builder.startNew(cacheClass.asType()).end();
         }
 
-        CodeExecutableElement createCached = CodeExecutableElement.clone(ElementUtils.findExecutableElement(context.getDeclaredType(ResolvedExports.class), "createCached"));
+        CodeExecutableElement createCached = CodeExecutableElement.clone(ElementUtils.findExecutableElement(context.getDeclaredType(LibraryExport.class), "createCached"));
         createCached.setReturnType(libraryBaseType);
         createCached.getModifiers().remove(Modifier.ABSTRACT);
         createCached.renameArguments("receiver");
@@ -440,7 +440,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         }
         builder.string(" || ");
         builder.staticReference(dispatchLibraryConstant).string(
-                        ".getUncachedDispatch().dispatch(receiver) == null : ").doubleQuote(
+                        ".getUncached().dispatch(receiver) == null : ").doubleQuote(
                                         "Invalid library export '" + libraryExports.getTemplateType().getQualifiedName().toString() +
                                                         "'. Exported receiver with dynamic dispatch found but not expected.");
         builder.end();

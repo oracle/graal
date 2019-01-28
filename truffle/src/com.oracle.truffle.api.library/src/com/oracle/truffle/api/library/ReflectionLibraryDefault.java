@@ -63,7 +63,7 @@ final class ReflectionLibraryDefault {
         @Specialization(replaces = "doSendCached")
         @TruffleBoundary
         static Object doSendGeneric(Object receiver, Message message, Object[] args) throws Exception {
-            ResolvedLibrary<?> lib = message.getResolvedLibrary();
+            LibraryFactory<?> lib = message.getResolvedLibrary();
             return lib.genericDispatch(lib.getUncached(receiver), receiver, message, args, 0);
         }
     }

@@ -54,7 +54,7 @@ import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary.Abstract;
 import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
 import com.oracle.truffle.api.library.Library;
-import com.oracle.truffle.api.library.ResolvedLibrary;
+import com.oracle.truffle.api.library.LibraryFactory;
 
 /**
  * Subclasses of this class represent guest language interoperability libraries. This class is only
@@ -390,17 +390,17 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
-     * Returns the resolved language interoperability library that allows to instantiate libraries
-     * and inspect its messages. Short-cut for {@link ResolvedLibrary#resolve(Class)
-     * ResolvedLibrary.resolve(InteropLibrary.class)}.
-     *
-     * @see ResolvedLibrary#resolve(Class)
+     * Returns the dispatch factory for the interop library. Short-cut for
+     * {@link LibraryFactory#resolve(Class) ResolvedLibrary.resolve(InteropLibrary.class)}. Using this
+     * method instead of the generic method is more efficient.
+     * 
+     * @see LibraryFactory#resolve(Class)
      */
-    public static ResolvedLibrary<InteropLibrary> resolve() {
+    public static LibraryFactory<InteropLibrary> dispatch() {
         return INTEROP_LIBRARY;
     }
 
-    static final ResolvedLibrary<InteropLibrary> INTEROP_LIBRARY = ResolvedLibrary.resolve(InteropLibrary.class);
+    static final LibraryFactory<InteropLibrary> INTEROP_LIBRARY = LibraryFactory.resolve(InteropLibrary.class);
 
     static class Asserts extends InteropLibrary {
 
@@ -775,7 +775,7 @@ public abstract class InteropLibrary extends Library {
 
         private static boolean assertMemberKeys(Object receiver, Object result, boolean internal) {
             assert result != null : violationPost(receiver, result);
-            InteropLibrary uncached = InteropLibrary.resolve().getUncached(result);
+            InteropLibrary uncached = InteropLibrary.dispatch().getUncached(result);
             assert uncached.hasArrayElements(result) : violationPost(receiver, result);
             long arraySize;
             try {
@@ -793,9 +793,9 @@ public abstract class InteropLibrary extends Library {
                     assert false : violationPost(receiver, result);
                     return true;
                 }
-                assert InteropLibrary.resolve().getUncachedDispatch().isString(element) : violationPost(receiver, element);
+                assert InteropLibrary.dispatch().getUncached().isString(element) : violationPost(receiver, element);
                 try {
-                    InteropLibrary.resolve().getUncachedDispatch().asString(element);
+                    InteropLibrary.dispatch().getUncached().asString(element);
                 } catch (UnsupportedMessageException e) {
                     assert false : violationInvariant(result, i);
                 }

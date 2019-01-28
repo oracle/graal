@@ -344,7 +344,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
 
     private static Object read(Object o, String key) {
         try {
-            return InteropLibrary.resolve().getUncachedDispatch().readMember(o, key);
+            return InteropLibrary.dispatch().getUncached().readMember(o, key);
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
             throw new AssertionError(e);
         }
@@ -352,7 +352,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
 
     private static void write(Object o, String key, Object value) {
         try {
-            InteropLibrary.resolve().getUncachedDispatch().writeMember(o, key, value);
+            InteropLibrary.dispatch().getUncached().writeMember(o, key, value);
         } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException e) {
             throw new AssertionError(e);
         }
@@ -360,7 +360,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
 
     private static Object newInstance(Object o, Object... args) {
         try {
-            return InteropLibrary.resolve().getUncachedDispatch().instantiate(o, args);
+            return InteropLibrary.dispatch().getUncached().instantiate(o, args);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw new AssertionError(e);
         }
@@ -368,7 +368,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
 
     private static Object execute(Object o, Object... args) {
         try {
-            return InteropLibrary.resolve().getUncachedDispatch().execute(o, args);
+            return InteropLibrary.dispatch().getUncached().execute(o, args);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw new AssertionError(e);
         }

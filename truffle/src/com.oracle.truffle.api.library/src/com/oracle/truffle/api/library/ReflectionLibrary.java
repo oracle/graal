@@ -51,7 +51,7 @@ public abstract class ReflectionLibrary extends Library {
 
     public abstract Object send(Object receiver, Message message, Object... args) throws Exception;
 
-    public static ResolvedLibrary<ReflectionLibrary> resolve() {
+    public static LibraryFactory<ReflectionLibrary> resolve() {
         return Lazy.RESOLVED_LIBRARY;
     }
 
@@ -65,7 +65,7 @@ public abstract class ReflectionLibrary extends Library {
             /* No instances */
         }
 
-        static final ResolvedLibrary<ReflectionLibrary> RESOLVED_LIBRARY = ResolvedLibrary.resolve(ReflectionLibrary.class);
+        static final LibraryFactory<ReflectionLibrary> RESOLVED_LIBRARY = LibraryFactory.resolve(ReflectionLibrary.class);
 
     }
 

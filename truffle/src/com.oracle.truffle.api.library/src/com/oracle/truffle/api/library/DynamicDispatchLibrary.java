@@ -58,7 +58,7 @@ public abstract class DynamicDispatchLibrary extends Library {
         return null;
     }
 
-    public static ResolvedLibrary<DynamicDispatchLibrary> resolve() {
+    public static LibraryFactory<DynamicDispatchLibrary> resolve() {
         return Lazy.RESOLVED_LIBRARY;
     }
 
@@ -70,11 +70,14 @@ public abstract class DynamicDispatchLibrary extends Library {
      * @param receiver
      * @return
      */
+    /*
+     * This message is known by the annotation processor directly.
+     */
     public abstract Object cast(Object receiver);
 
     /*
      * This indirection is needed to avoid cyclic class initialization. The enclosing class needs to
-     * be loaded before ResolvedLibrary.resolve can be used.
+     * be loaded before Dispatch.resolve can be used.
      */
     static final class Lazy {
 
@@ -82,7 +85,7 @@ public abstract class DynamicDispatchLibrary extends Library {
             /* No instances */
         }
 
-        static final ResolvedLibrary<DynamicDispatchLibrary> RESOLVED_LIBRARY = ResolvedLibrary.resolve(DynamicDispatchLibrary.class);
+        static final LibraryFactory<DynamicDispatchLibrary> RESOLVED_LIBRARY = LibraryFactory.resolve(DynamicDispatchLibrary.class);
 
     }
 }

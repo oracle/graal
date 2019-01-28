@@ -42,6 +42,15 @@ package com.oracle.truffle.api.library;
 
 import com.oracle.truffle.api.nodes.Node;
 
+/**
+ * Libraries.
+ *
+ * <h3>Specifying library messages</h3>
+ * <h3>Exporting library messages</h3>
+ * <h3>Dynamic Dispatch</h3>
+ * <h3>Reflection</h3>
+ *
+ */
 public abstract class Library extends Node {
 
     protected Library() {
@@ -52,15 +61,28 @@ public abstract class Library extends Node {
      * given receiver. If a library method/message is called if the library returns
      * <code>false</code> for accepts then an {@link AssertionError} is thrown if assertion errors
      * are enabled, otherwise a {@link NullPointerException} or {@link ClassCastException} may be
-     * thrown by the method.
+     * thrown by the method. The accepts message may be invoked or implemented reflectively.
      * <p>
-     * {@link Libraries#createCachedDispatch(Class, int) Cached} or
-     * {@link Libraries#getUncachedDispatch(Class) uncached} and dispatched always return return
-     * <code>true</code> for accepts for any value. Other receiver initialized libraries only accept
-     * the value it was created with, other observed values need to invoke {@link #accepts(Object)}
-     * to ensure they are supported. If they are not supported then a new library library needs to
-     * be created or fetched.
+     * A library that was created using a receiver value i.e. a cached library only guarantees to
+     * accept the value it was constructed with. The method may return <code>false</code> for other
+     * receiver types. Such libraries need to verify acceptance before calling a library method with
+     * a receiver. If receiver values are not accepted then a new library library needs to be
+     * created or fetched. Dispatched versions of libraries always return <code>true</code> for any
+     * value as they take care of dispatching to any receiver type.
+     * <p>
+     * Code for calling the accepts method can e generated using the {@link CachedLibrary} of
+     * Truffle DSL. It recommended to not directly call accepts but let the DSL take care of this
+     * step.
+     * <p>
+     * The accepts message may be be exported by a library. When exported by a library it can only
+     * be further restricted. The minimum restriction the exact receiver type of the exported
+     * receiver type. An implementation of accepts may just return <code>true</code> to provide such
+     * behavior.
      *
+     * @see LibraryFactory#createCached(Object) to create cached libraries with a receiver value
+     * @see LibraryFactory#createCached(Object) to create cached and dispatched libraries
+     * @see LibraryFactory#getUncached(Object) to get the uncached library from a receiver value.
+     * @see LibraryFactory#getUncached() to get the uncached and dispatched library .
      * @since 1.0
      */
     public abstract boolean accepts(Object receiver);

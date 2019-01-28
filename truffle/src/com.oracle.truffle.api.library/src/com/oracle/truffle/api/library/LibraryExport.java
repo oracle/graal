@@ -43,13 +43,13 @@ package com.oracle.truffle.api.library;
 /**
  * Base class for generated export classes.
  */
-public abstract class ResolvedExports<T extends Library> {
+public abstract class LibraryExport<T extends Library> {
 
     private final Class<?> receiverClass;
     private final Class<? extends T> library;
     private final boolean defaultExport;
 
-    protected ResolvedExports(Class<? extends T> library, Class<?> receiverClass, boolean defaultExport) {
+    protected LibraryExport(Class<? extends T> library, Class<?> receiverClass, boolean defaultExport) {
         this.library = library;
         this.receiverClass = receiverClass;
         this.defaultExport = defaultExport;
@@ -76,7 +76,7 @@ public abstract class ResolvedExports<T extends Library> {
         return "ResolvedExports[" + library.getName() + "]";
     }
 
-    public static <T extends Library> void register(Class<?> receiverClass, ResolvedExports<?>... libs) {
+    public static <T extends Library> void register(Class<?> receiverClass, LibraryExport<?>... libs) {
         ResolvedDispatch.register(receiverClass, libs);
     }
 

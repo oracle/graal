@@ -53,13 +53,13 @@ import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeUtil;
 
 @GeneratedBy(DynamicDispatchLibrary.class)
-final class DynamicDispatchLibraryGen extends ResolvedLibrary<DynamicDispatchLibrary> {
+final class DynamicDispatchLibraryGen extends LibraryFactory<DynamicDispatchLibrary> {
 
     private static final DynamicDispatchLibraryGen INSTANCE = new DynamicDispatchLibraryGen();
 
     static {
-        ResolvedLibrary.register(DynamicDispatchLibrary.class, INSTANCE);
-        ResolvedExports.register(DynamicDispatchLibrary.class, new Default());
+        LibraryFactory.register(DynamicDispatchLibrary.class, INSTANCE);
+        LibraryExport.register(DynamicDispatchLibrary.class, new Default());
     }
 
     private DynamicDispatchLibraryGen() {
@@ -98,7 +98,7 @@ final class DynamicDispatchLibraryGen extends ResolvedLibrary<DynamicDispatchLib
     }
 
     @GeneratedBy(DynamicDispatchLibrary.class)
-    private static final class Default extends ResolvedExports<DynamicDispatchLibrary> {
+    private static final class Default extends LibraryExport<DynamicDispatchLibrary> {
 
         private Default() {
             super(DynamicDispatchLibrary.class, Object.class, false);

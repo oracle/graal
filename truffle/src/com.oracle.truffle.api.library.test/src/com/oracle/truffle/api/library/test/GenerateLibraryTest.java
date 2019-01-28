@@ -464,4 +464,74 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
 
     }
 
+    // test that final methods are ignored
+    @GenerateLibrary
+    public abstract static class AbstractErrorLibrary7 extends Library {
+        public String call(Object receiver, String arg) {
+            return "default";
+        }
+
+        @SuppressWarnings("static-method")
+        public final String call(Object receiver) {
+            return "default";
+        }
+
+    }
+
+    // test that private methods are ignored
+    @GenerateLibrary
+    public abstract static class AbstractErrorLibrary8 extends Library {
+        public String call(Object receiver, String arg) {
+            return "default";
+        }
+
+        @SuppressWarnings("static-method")
+        private String call(Object receiver) {
+            return "default";
+        }
+
+    }
+
+    // test that package-protected duplicate method leads to error
+    @GenerateLibrary
+    public abstract static class AbstractErrorLibrary9 extends Library {
+        @ExpectError("Library message must have a unique name. Two methods with the same name found.If this method is not intended to be a library message then add the private or final modifier to ignore it.")
+        public String call(Object receiver, String arg) {
+            return "default";
+        }
+
+        @SuppressWarnings("static-method")
+        String call(Object receiver) {
+            return "default";
+        }
+
+    }
+
+    // test that protected duplicate method leads to error
+    @GenerateLibrary
+    public abstract static class AbstractErrorLibrary10 extends Library {
+        @ExpectError("Library message must have a unique name. Two methods with the same name found.If this method is not intended to be a library message then add the private or final modifier to ignore it.")
+        public String call(Object receiver, String arg) {
+            return "default";
+        }
+
+        @SuppressWarnings("static-method")
+        protected String call(Object receiver) {
+            return "default";
+        }
+
+    }
+
+    // test that protected duplicate method leads to error
+    @GenerateLibrary
+    public abstract static class AbstractErrorLibrary11 extends Library {
+
+        @SuppressWarnings("static-method")
+        @ExpectError("Library messages must be public.")
+        protected String call(Object receiver) {
+            return "default";
+        }
+
+    }
+
 }

@@ -54,32 +54,32 @@ import com.oracle.truffle.api.TruffleOptions;
 final class ResolvedDispatch {
 
     private static final ConcurrentHashMap<Class<?>, ResolvedDispatch> CACHE = new ConcurrentHashMap<>();
-    private static final ConcurrentHashMap<Class<?>, ResolvedExports<?>[]> REGISTRY = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<Class<?>, LibraryExport<?>[]> REGISTRY = new ConcurrentHashMap<>();
 
     // the root of every receiver class chain.
     private static final ResolvedDispatch OBJECT_RECEIVER = new ResolvedDispatch(null, Object.class);
     private final ResolvedDispatch parent;
     private final Class<?> dispatchClass;
-    private final Map<Class<?>, ResolvedExports<?>> libraries;
+    private final Map<Class<?>, LibraryExport<?>> libraries;
 
     @SuppressWarnings({"hiding", "unchecked"})
-    private ResolvedDispatch(ResolvedDispatch parent, Class<?> dispatchClass, ResolvedExports<?>... libs) {
+    private ResolvedDispatch(ResolvedDispatch parent, Class<?> dispatchClass, LibraryExport<?>... libs) {
         this.parent = parent;
         this.dispatchClass = dispatchClass;
-        Map<Class<?>, ResolvedExports<?>> libraries = new LinkedHashMap<>();
-        for (ResolvedExports<?> lib : libs) {
+        Map<Class<?>, LibraryExport<?>> libraries = new LinkedHashMap<>();
+        for (LibraryExport<?> lib : libs) {
             libraries.put(lib.getLibrary(), lib);
         }
         this.libraries = libraries;
     }
 
     @SuppressWarnings("unchecked")
-    <T extends Library> ResolvedExports<T> getLibrary(Class<T> libraryClass) {
-        ResolvedExports<?> lib = libraries.get(libraryClass);
+    <T extends Library> LibraryExport<T> getLibrary(Class<T> libraryClass) {
+        LibraryExport<?> lib = libraries.get(libraryClass);
         if (lib == null && parent != null) {
             lib = parent.getLibrary(libraryClass);
         }
-        return (ResolvedExports<T>) lib;
+        return (LibraryExport<T>) lib;
     }
 
     @TruffleBoundary
@@ -91,8 +91,8 @@ final class ResolvedDispatch {
         return type;
     }
 
-    static <T extends Library> void register(Class<?> receiverClass, ResolvedExports<?>... libs) {
-        ResolvedExports<?>[] prevLibs = REGISTRY.put(receiverClass, libs);
+    static <T extends Library> void register(Class<?> receiverClass, LibraryExport<?>... libs) {
+        LibraryExport<?>[] prevLibs = REGISTRY.put(receiverClass, libs);
         if (prevLibs != null) {
             throw new IllegalStateException("Receiver " + receiverClass + " is already registered.");
         }
@@ -104,7 +104,7 @@ final class ResolvedDispatch {
 
     @Override
     public String toString() {
-        return "ResolvedReceiver[" + dispatchClass.getName() + "]";
+        return "ResolvedDispatch[" + dispatchClass.getName() + "]";
     }
 
     Set<Class<?>> getLibraries() {
@@ -121,7 +121,7 @@ final class ResolvedDispatch {
         }
         ResolvedDispatch parent = resolveClass(dispatchClass.getSuperclass());
         ResolvedDispatch resolved;
-        ResolvedExports<?>[] libs = REGISTRY.get(dispatchClass);
+        LibraryExport<?>[] libs = REGISTRY.get(dispatchClass);
         if (libs == null && hasExports(dispatchClass)) {
             /*
              * We can omit loading classes in AOT mode as they are resolved eagerly using the

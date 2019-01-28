@@ -592,9 +592,9 @@ public class ContextAPITest {
                     }
 
                     @TruffleBoundary
-                    private Object boundary() throws UnknownIdentifierException, UnsupportedMessageException, UnsupportedTypeException, ArityException {
-                        TruffleObject o = (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), (TruffleObject) ProxyLanguage.getCurrentContext().env.getPolyglotBindings(), "test");
-                        return ForeignAccess.sendExecute(Message.EXECUTE.createNode(), o);
+                    private Object boundary() throws UnsupportedMessageException, UnsupportedTypeException, ArityException, UnknownIdentifierException {
+                        Object o = InteropLibrary.dispatch().getUncached().readMember(ProxyLanguage.getCurrentContext().env.getPolyglotBindings(), "test");
+                        return InteropLibrary.dispatch().getUncached().execute(o);
                     }
                 });
             }

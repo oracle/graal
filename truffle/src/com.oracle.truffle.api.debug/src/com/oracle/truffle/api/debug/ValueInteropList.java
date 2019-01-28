@@ -52,7 +52,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
  */
 final class ValueInteropList extends AbstractList<DebugValue> {
 
-    static final InteropLibrary INTEROP = InteropLibrary.resolve().getUncachedDispatch();
+    static final InteropLibrary INTEROP = InteropLibrary.dispatch().getUncached();
 
     private final DebuggerSession session;
     private final LanguageInfo language;

@@ -121,7 +121,7 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.Library;
-import com.oracle.truffle.api.library.ResolvedLibrary;
+import com.oracle.truffle.api.library.LibraryFactory;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.Node.Children;
@@ -1931,13 +1931,13 @@ public final class NodeParser extends AbstractParser<NodeData> {
                         continue;
                     }
                     TypeMirror libraryType = context.getType(Library.class);
-                    DSLExpressionResolver cachedResolver = importStatics(resolver, context.getType(ResolvedLibrary.class));
+                    DSLExpressionResolver cachedResolver = importStatics(resolver, context.getType(LibraryFactory.class));
                     TypeMirror usedLibraryType = parameter.getType();
 
                     DSLExpression resolveCall = new DSLExpression.Call(null, "resolve", Arrays.asList(new DSLExpression.ClassLiteral(usedLibraryType)));
-                    DSLExpression defaultExpression = new DSLExpression.Call(resolveCall, "createCachedDispatch",
+                    DSLExpression defaultExpression = new DSLExpression.Call(resolveCall, "createCachedLimit",
                                     Arrays.asList(limitExpression));
-                    DSLExpression uncachedExpression = new DSLExpression.Call(resolveCall, "getUncachedDispatch",
+                    DSLExpression uncachedExpression = new DSLExpression.Call(resolveCall, "getUncached",
                                     Arrays.asList());
 
                     library.setDefaultExpression(resolveCachedExpression(cachedResolver, library, libraryType, defaultExpression, null));
@@ -2067,7 +2067,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
             TypeMirror usedLibraryType = parameterType;
             DSLExpression resolveCall = new DSLExpression.Call(null, "resolve", Arrays.asList(new DSLExpression.ClassLiteral(usedLibraryType)));
-            DSLExpressionResolver cachedResolver = importStatics(resolver, context.getType(ResolvedLibrary.class));
+            DSLExpressionResolver cachedResolver = importStatics(resolver, context.getType(LibraryFactory.class));
 
             DSLExpression defaultExpression = new DSLExpression.Call(resolveCall, "createCached",
                             Arrays.asList(receiverExpression));

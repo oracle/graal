@@ -87,7 +87,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.library.ResolvedLibrary;
+import com.oracle.truffle.api.library.LibraryFactory;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
@@ -99,7 +99,7 @@ import com.oracle.truffle.tck.DebuggerTester;
  */
 public class SLInstrumentTest {
 
-    static final InteropLibrary INTEROP = ResolvedLibrary.resolve(InteropLibrary.class).getUncachedDispatch();
+    static final InteropLibrary INTEROP = LibraryFactory.resolve(InteropLibrary.class).getUncached();
 
     @Test
     public void testLexicalScopes() throws Exception {

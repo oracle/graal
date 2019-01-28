@@ -45,7 +45,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
-import com.oracle.truffle.api.library.ResolvedLibrary;
+import com.oracle.truffle.api.library.LibraryFactory;
 
 public class UseCases {
 
@@ -77,7 +77,7 @@ public class UseCases {
         Object key = null;
         Object value = null;
 
-        ResolvedLibrary.resolve(DynamicObjectLibrary.class).createCached(receiver);
+        LibraryFactory.resolve(DynamicObjectLibrary.class).createCached(receiver);
 
         if ((lib.accepts(receiver))) {
             lib.put(receiver, key, value, JSObject.SET_PROPERTY);

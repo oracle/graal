@@ -368,7 +368,7 @@ public class ValueLanguageTest extends AbstractDebugTest {
             if (value instanceof String) {
                 return "L" + id + ":" + value.toString();
             }
-            if (InteropLibrary.resolve().getUncachedDispatch().isNull(value)) {
+            if (InteropLibrary.dispatch().getUncached().isNull(value)) {
                 return "null";
             }
             PropertiesMapObject pmo = (PropertiesMapObject) value;
@@ -415,7 +415,7 @@ public class ValueLanguageTest extends AbstractDebugTest {
             if (value instanceof String) {
                 return "L" + id + ": String";
             }
-            if (InteropLibrary.resolve().getUncachedDispatch().isNull(value)) {
+            if (InteropLibrary.dispatch().getUncached().isNull(value)) {
                 return "Null";
             }
             PropertiesMapObject pmo = (PropertiesMapObject) value;
@@ -474,7 +474,7 @@ public class ValueLanguageTest extends AbstractDebugTest {
             private final String name;
             protected final Object value;
             protected final ContextReference<Context> contextReference;
-            @Child private InteropLibrary interop = InteropLibrary.resolve().createCachedDispatch(5);
+            @Child private InteropLibrary interop = InteropLibrary.dispatch().createCachedLimit(5);
             @CompilerDirectives.CompilationFinal protected FrameSlot slot;
 
             VarNode(String name, Object value, SourceSection sourceSection, ContextReference<Context> contextReference) {
@@ -540,7 +540,7 @@ public class ValueLanguageTest extends AbstractDebugTest {
 
             private final String var;
             private final String prop;
-            @Child private InteropLibrary interop = InteropLibrary.resolve().createCachedDispatch(5);
+            @Child private InteropLibrary interop = InteropLibrary.dispatch().createCachedLimit(5);
 
             PropNode(String var, String prop, Object value, SourceSection sourceSection, ContextReference<Context> contextReference) {
                 super(null, value, sourceSection, contextReference);

@@ -227,4 +227,43 @@ public class LibraryAssertionsTest extends AbstractLibraryTest {
 
     }
 
+    @GenerateLibrary(assertions = ArrayAssertions.class)
+    public abstract static class ArrayLibrary extends Library {
+
+        public boolean isArray(Object receiver) {
+            return false;
+        }
+
+        public int read(Object receiver, int index) {
+            throw new UnsupportedOperationException();
+        }
+    }
+
+    static class ArrayAssertions extends ArrayLibrary {
+
+        @Child private ArrayLibrary delegate;
+
+        ArrayAssertions(ArrayLibrary delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public boolean isArray(Object receiver) {
+            return delegate.isArray(receiver);
+        }
+
+        @Override
+        public int read(Object receiver, int index) {
+            int result = super.read(receiver, index);
+            assert delegate.isArray(receiver) : "if read was successful the receiver must be of type array";
+            return result;
+        }
+
+        @Override
+        public boolean accepts(Object receiver) {
+            return delegate.accepts(receiver);
+        }
+
+    }
+
 }

@@ -52,12 +52,12 @@ import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeUtil;
 
 @GeneratedBy(ReflectionLibrary.class)
-final class ReflectionLibraryGen extends ResolvedLibrary<ReflectionLibrary> {
+final class ReflectionLibraryGen extends LibraryFactory<ReflectionLibrary> {
 
     private static final ReflectionLibraryGen INSTANCE = new ReflectionLibraryGen();
 
     static {
-        ResolvedLibrary.register(ReflectionLibrary.class, INSTANCE);
+        LibraryFactory.register(ReflectionLibrary.class, INSTANCE);
     }
 
     private ReflectionLibraryGen() {

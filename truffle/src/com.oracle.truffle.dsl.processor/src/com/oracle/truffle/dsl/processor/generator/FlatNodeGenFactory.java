@@ -108,7 +108,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Introspection;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
-import com.oracle.truffle.api.library.ResolvedLibrary;
+import com.oracle.truffle.api.library.LibraryFactory;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.Node.Child;
@@ -255,7 +255,7 @@ public class FlatNodeGenFactory {
         this.executeAndSpecializeType = createExecuteAndSpecializeType();
         this.needsLocking = exclude.computeStateLength() != 0 || reachableSpecializations.stream().anyMatch((s) -> !s.getCaches().isEmpty());
         this.libraryConstants = libraryConstants;
-        substitutions.put(ElementUtils.findExecutableElement(context.getDeclaredType(ResolvedLibrary.class), "resolve"),
+        substitutions.put(ElementUtils.findExecutableElement(context.getDeclaredType(LibraryFactory.class), "resolve"),
                         (binary) -> substituteLibraryCall(binary));
     }
 
@@ -982,7 +982,7 @@ public class FlatNodeGenFactory {
         CodeVariableElement var;
         do {
             String useConstantName = constantName = constantName + "_";
-            TypeElement resolvedLibrary = ProcessorContext.getInstance().getTypeElement(ResolvedLibrary.class);
+            TypeElement resolvedLibrary = ProcessorContext.getInstance().getTypeElement(LibraryFactory.class);
             DeclaredCodeTypeMirror constantType = new DeclaredCodeTypeMirror(resolvedLibrary, Arrays.asList(libraryType.asType()));
             var = constants.computeIfAbsent(constantName, (c) -> {
                 CodeVariableElement newVar = new CodeVariableElement(modifiers(PRIVATE, STATIC, FINAL), constantType, useConstantName);

@@ -1702,11 +1702,16 @@ public class LanguageSPITest {
                     public Object execute(VirtualFrame frame) {
                         Object bindings = getCurrentContext(ProxyLanguage.class).env.getPolyglotBindings();
                         try {
-                            InteropLibrary.resolve().getUncachedDispatch().writeMember(bindings, "exportedValue", "convertOnToString");
+                            boundary(bindings);
                         } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
                             throw new AssertionError(e);
                         }
                         return bindings;
+                    }
+
+                    @CompilerDirectives.TruffleBoundary
+                    private void boundary(Object bindings) throws UnknownIdentifierException, UnsupportedTypeException, UnsupportedMessageException {
+                        InteropLibrary.dispatch().getUncached().writeMember(bindings, "exportedValue", "convertOnToString");
                     }
                 });
             }

@@ -76,7 +76,7 @@ public abstract class Message {
     private final Class<?> returnType;
     private final Class<? extends Library> libraryClass;
     private final List<Class<?>> parameterTypes;
-    @CompilationFinal ResolvedLibrary<Library> library;
+    @CompilationFinal LibraryFactory<Library> library;
 
     @SuppressWarnings("unchecked")
     protected Message(Class<? extends Library> libraryClass, String messageName, Class<?> returnType, Class<?>... parameterTypes) {
@@ -173,7 +173,7 @@ public abstract class Message {
         return libraryClass;
     }
 
-    final ResolvedLibrary<?> getResolvedLibrary() {
+    final LibraryFactory<?> getResolvedLibrary() {
         return library;
     }
 
@@ -239,10 +239,9 @@ public abstract class Message {
      *
      * @param libraryName the name of the library this message is contained in.
      * @param messageName the simple name of this message.
-     * @since {@link #exists(String, String)} To verify the existence of a message.
      */
     public static Message resolve(String libraryName, String messageName) {
-        return ResolvedLibrary.resolveMessage(libraryName, messageName, true);
+        return LibraryFactory.resolveMessage(libraryName, messageName, true);
     }
 
     /**
@@ -254,10 +253,9 @@ public abstract class Message {
      *
      * @param libraryClass the class of the library this message is contained in.
      * @param messageName the simple name of this message.
-     * @since {@link #exists(String, String)} To verify the existence of a message.
      */
     public static Message resolve(Class<? extends Library> libraryClass, String messageName) {
-        return ResolvedLibrary.resolveMessage(libraryClass, messageName, true);
+        return LibraryFactory.resolveMessage(libraryClass, messageName, true);
     }
 
 }

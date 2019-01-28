@@ -57,7 +57,7 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.Library;
-import com.oracle.truffle.api.library.ResolvedLibrary;
+import com.oracle.truffle.api.library.LibraryFactory;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -80,16 +80,16 @@ public abstract class InteropLibraryBaseTest {
     public /* NOT private */ TestRun run;
 
     protected final <T extends Library> T createLibrary(Class<T> library, Object receiver) {
-        ResolvedLibrary<T> lib = ResolvedLibrary.resolve(library);
+        LibraryFactory<T> lib = LibraryFactory.resolve(library);
         switch (run) {
             case CACHED:
                 return adopt(lib.createCached(receiver));
             case UNCACHED:
                 return lib.getUncached(receiver);
             case DISPATCHED_CACHED:
-                return adopt(lib.createCachedDispatch(2));
+                return adopt(lib.createCachedLimit(2));
             case DISPATCHED_UNCACHED:
-                return lib.getUncachedDispatch();
+                return lib.getUncached();
         }
 
         throw new AssertionError();

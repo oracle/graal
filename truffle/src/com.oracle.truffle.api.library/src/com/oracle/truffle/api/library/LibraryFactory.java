@@ -52,26 +52,21 @@ import com.oracle.truffle.api.dsl.GeneratedBy;
 import com.oracle.truffle.api.nodes.NodeUtil;
 
 /**
- * Represents a resolved library. Library classes may be resolved using {@link #resolve(Class)}.
- * Resolving a library class into a constant is useful if performance is a critical requirement,
- * otherwise it is recommended to use the static methods in {@link Library} instead.
+ * Represents a library factory that allows to create library instances useful for dispatch.
+ * Dispatch factory for a library class can be resolved using {@link #resolve(Class)}.
  * <p>
  * This class also serves as base class for generated library classes. It is only sub classable to
  * allow generated code to implement it. Do not implement this class manually.
  *
- * @see Library#createCached(Class)
- * @see Library#createCachedDispatch(Class, int)
- * @see Library#getUncached(Class, Object)
- * @see Library#getUncachedDispatch(Class)
  * @since 1.0
  */
-public abstract class ResolvedLibrary<T extends Library> {
+public abstract class LibraryFactory<T extends Library> {
 
-    private static final ConcurrentHashMap<Class<? extends Library>, ResolvedLibrary<?>> LIBRARIES = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<Class<? extends Library>, LibraryFactory<?>> LIBRARIES = new ConcurrentHashMap<>();
 
     private final Class<T> libraryClass;
     private final List<Message> messages;
-    private final ConcurrentHashMap<Class<?>, ResolvedExports<T>> exportCache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Class<?>, LibraryExport<T>> exportCache = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Class<?>, T> uncachedCache = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Class<?>, T> cachedCache = new ConcurrentHashMap<>();
     private final ProxyExports proxyExports = new ProxyExports();
@@ -81,7 +76,7 @@ public abstract class ResolvedLibrary<T extends Library> {
     final DynamicDispatchLibrary dispatchLibrary;
 
     @SuppressWarnings("unchecked")
-    protected ResolvedLibrary(Class<T> libraryClass, List<Message> messages, T uncachedDispatch) {
+    protected LibraryFactory(Class<T> libraryClass, List<Message> messages, T uncachedDispatch) {
         assert this.getClass().getName().endsWith("Gen");
         assert this.getClass().getAnnotation(GeneratedBy.class) != null;
         assert this.getClass().getAnnotation(GeneratedBy.class).value() == libraryClass;
@@ -90,7 +85,7 @@ public abstract class ResolvedLibrary<T extends Library> {
         Map<String, Message> messagesMap = new LinkedHashMap<>();
         for (Message message : getMessages()) {
             assert message.library == null;
-            message.library = (ResolvedLibrary<Library>) this;
+            message.library = (LibraryFactory<Library>) this;
             messagesMap.put(message.getSimpleName(), message);
         }
         this.nameToMessages = messagesMap;
@@ -98,7 +93,7 @@ public abstract class ResolvedLibrary<T extends Library> {
         if (libraryClass == DynamicDispatchLibrary.class) {
             this.dispatchLibrary = null;
         } else {
-            this.dispatchLibrary = ResolvedLibrary.resolve(DynamicDispatchLibrary.class).getUncachedDispatch();
+            this.dispatchLibrary = LibraryFactory.resolve(DynamicDispatchLibrary.class).getUncached();
         }
     }
 
@@ -111,24 +106,23 @@ public abstract class ResolvedLibrary<T extends Library> {
     }
 
     /**
-     * Returns an uncached and dispatched version of this library.
+     * Returns an uncached and internally dispatched variant of this library. The value of this
+     * method can safely be cached in static constants.
      *
-     * @see Library#getUncachedDispatch(Class) for further details.
      * @since 1.0
      */
-    public final T getUncachedDispatch() {
+    public final T getUncached() {
         return uncachedDispatch;
     }
 
     /**
-     * Returns an cached and dispatched version of this library.
+     * Create a new cached dispatch of the library.
      *
-     * @see Library#createCachedDispatch(Class, int) for further details.
      * @since 1.0
      */
-    public final T createCachedDispatch(int limit) {
+    public final T createCachedLimit(int limit) {
         if (limit <= 0) {
-            return getUncachedDispatch();
+            return getUncached();
         } else {
             return createCachedDispatchImpl(limit);
         }
@@ -151,7 +145,7 @@ public abstract class ResolvedLibrary<T extends Library> {
             assert validateExport(receiver, dispatchClass, cached);
             return cached;
         }
-        ResolvedExports<T> exports = lookupExport(receiver, dispatchClass);
+        LibraryExport<T> exports = lookupExport(receiver, dispatchClass);
         cached = exports.createCached(receiver);
         assert (cached = createAssertions(cached)) != null;
         if (!NodeUtil.isAdoptable(cached)) {
@@ -159,14 +153,6 @@ public abstract class ResolvedLibrary<T extends Library> {
             cachedCache.putIfAbsent(dispatchClass, cached);
         }
         return cached;
-    }
-
-    private boolean validateExport(Object receiver, Class<?> dispatchClass, T library) {
-        validateExport(receiver, dispatchClass, lookupExport(receiver, dispatchClass));
-
-        // this last check should only be a sanity check and not trigger in practice
-        assert library.accepts(receiver) : library.getClass().getName();
-        return true;
     }
 
     /**
@@ -188,6 +174,14 @@ public abstract class ResolvedLibrary<T extends Library> {
         assert (uncached = createAssertions(uncached)) != null;
         uncachedCache.putIfAbsent(dispatchClass, uncached);
         return uncached;
+    }
+
+    private boolean validateExport(Object receiver, Class<?> dispatchClass, T library) {
+        validateExport(receiver, dispatchClass, lookupExport(receiver, dispatchClass));
+
+        // this last check should only be a sanity check and not trigger in practice
+        assert library.accepts(receiver) : library.getClass().getName();
+        return true;
     }
 
     private Class<?> dispatch(Object receiver) {
@@ -246,8 +240,8 @@ public abstract class ResolvedLibrary<T extends Library> {
      */
     protected abstract Object genericDispatch(Library library, Object receiver, Message message, Object[] arguments, int parameterOffset) throws Exception;
 
-    final ResolvedExports<T> lookupExport(Object receiver, Class<?> dispatchedClass) {
-        ResolvedExports<T> lib = this.exportCache.get(dispatchedClass);
+    final LibraryExport<T> lookupExport(Object receiver, Class<?> dispatchedClass) {
+        LibraryExport<T> lib = this.exportCache.get(dispatchedClass);
         if (lib != null) {
             return lib;
         }
@@ -268,11 +262,11 @@ public abstract class ResolvedLibrary<T extends Library> {
             validateExport(receiver, dispatchedClass, lib);
         }
 
-        ResolvedExports<T> concurrent = this.exportCache.putIfAbsent(dispatchedClass, lib);
+        LibraryExport<T> concurrent = this.exportCache.putIfAbsent(dispatchedClass, lib);
         return concurrent != null ? concurrent : lib;
     }
 
-    private void validateExport(Object receiver, Class<?> dispatchedClass, ResolvedExports<T> exports) throws AssertionError {
+    private void validateExport(Object receiver, Class<?> dispatchedClass, LibraryExport<T> exports) throws AssertionError {
         if (!exports.getReceiverClass().isInstance(receiver)) {
             throw new AssertionError(
                             String.format("Receiver class %s was dynamically dispatched to incompatible exports %s. Expected receiver class %s.",
@@ -290,14 +284,14 @@ public abstract class ResolvedLibrary<T extends Library> {
      * @see Library
      * @since 1.0
      */
-    public static <T extends Library> ResolvedLibrary<T> resolve(Class<T> library) {
+    public static <T extends Library> LibraryFactory<T> resolve(Class<T> library) {
         Objects.requireNonNull(library);
         return resolveImpl(library, true);
     }
 
     @SuppressWarnings("unchecked")
-    private static <T extends Library> ResolvedLibrary<T> resolveImpl(Class<T> library, boolean fail) {
-        ResolvedLibrary<?> lib = LIBRARIES.get(library);
+    private static <T extends Library> LibraryFactory<T> resolveImpl(Class<T> library, boolean fail) {
+        LibraryFactory<?> lib = LIBRARIES.get(library);
         if (lib == null) {
             if (!TruffleOptions.AOT) {
                 loadGeneratedClass(library);
@@ -313,10 +307,10 @@ public abstract class ResolvedLibrary<T extends Library> {
                 return null;
             }
         }
-        return (ResolvedLibrary<T>) lib;
+        return (LibraryFactory<T>) lib;
     }
 
-    static ResolvedLibrary<?> loadGeneratedClass(Class<?> libraryClass) {
+    static LibraryFactory<?> loadGeneratedClass(Class<?> libraryClass) {
         if (Library.class.isAssignableFrom(libraryClass)) {
             String generatedClassName = libraryClass.getPackage().getName() + "." + libraryClass.getSimpleName() + "Gen";
             Class<?> loadedClass;
@@ -325,10 +319,10 @@ public abstract class ResolvedLibrary<T extends Library> {
             } catch (ClassNotFoundException e) {
                 return null;
             }
-            ResolvedLibrary<?> lib = LIBRARIES.get(libraryClass);
+            LibraryFactory<?> lib = LIBRARIES.get(libraryClass);
             if (lib == null) {
                 // maybe still initializing?
-                boolean isLibrary = ResolvedLibrary.class.isAssignableFrom(loadedClass);
+                boolean isLibrary = LibraryFactory.class.isAssignableFrom(loadedClass);
                 if (isLibrary) {
                     throw new AssertionError("Recursive initialization detected. Library cannot use itself in a static initializer.");
                 }
@@ -339,7 +333,7 @@ public abstract class ResolvedLibrary<T extends Library> {
     }
 
     @SuppressWarnings("unchecked")
-    static ResolvedLibrary<?> resolveLibraryByName(String name, boolean fail) {
+    static LibraryFactory<?> resolveLibraryByName(String name, boolean fail) {
         try {
             return resolveImpl((Class<? extends Library>) Class.forName(name), fail);
         } catch (ClassNotFoundException e) {
@@ -349,7 +343,7 @@ public abstract class ResolvedLibrary<T extends Library> {
 
     static Message resolveMessage(Class<? extends Library> library, String message, boolean fail) {
         Objects.requireNonNull(message);
-        ResolvedLibrary<?> lib = resolveImpl(library, fail);
+        LibraryFactory<?> lib = resolveImpl(library, fail);
         if (lib == null) {
             assert !fail;
             return null;
@@ -357,7 +351,7 @@ public abstract class ResolvedLibrary<T extends Library> {
         return resolveLibraryMessage(lib, message, fail);
     }
 
-    private static Message resolveLibraryMessage(ResolvedLibrary<?> lib, String message, boolean fail) {
+    private static Message resolveLibraryMessage(LibraryFactory<?> lib, String message, boolean fail) {
         Message foundMessage = lib.nameToMessages.get(message);
         if (fail && foundMessage == null) {
             throw new IllegalArgumentException(String.format("Unknown message '%s' for library '%s' specified.", message, lib.getLibraryClass().getName()));
@@ -367,7 +361,7 @@ public abstract class ResolvedLibrary<T extends Library> {
 
     static Message resolveMessage(String library, String message, boolean fail) {
         Objects.requireNonNull(message);
-        ResolvedLibrary<?> lib = resolveLibraryByName(library, fail);
+        LibraryFactory<?> lib = resolveLibraryByName(library, fail);
         if (lib == null) {
             if (fail) {
                 throw new IllegalArgumentException(String.format("Unknown library '%s' specified.", library));
@@ -378,8 +372,8 @@ public abstract class ResolvedLibrary<T extends Library> {
         }
     }
 
-    protected static <T extends Library> void register(Class<T> libraryClass, ResolvedLibrary<T> library) {
-        ResolvedLibrary<?> lib = LIBRARIES.putIfAbsent(libraryClass, library);
+    protected static <T extends Library> void register(Class<T> libraryClass, LibraryFactory<T> library) {
+        LibraryFactory<?> lib = LIBRARIES.putIfAbsent(libraryClass, library);
         if (lib != null) {
             throw new AssertionError("Reflection cannot be installed for a library twice.");
         }
@@ -390,9 +384,9 @@ public abstract class ResolvedLibrary<T extends Library> {
         return "ResolvedLibrary [libraryClass=" + libraryClass.getName() + "]";
     }
 
-    private static final ResolvedLibrary<ReflectionLibrary> REFLECTION_LIBRARY = ResolvedLibrary.resolve(ReflectionLibrary.class);
+    private static final LibraryFactory<ReflectionLibrary> REFLECTION_LIBRARY = LibraryFactory.resolve(ReflectionLibrary.class);
 
-    final class ProxyExports extends ResolvedExports<T> {
+    final class ProxyExports extends LibraryExport<T> {
         protected ProxyExports() {
             super(libraryClass, Object.class, true);
         }
