@@ -27,13 +27,13 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.macho;
+package com.oracle.truffle.llvm.parser.filereader;
 
 import org.graalvm.polyglot.io.ByteSequence;
 
-public final class Reader {
+public class Reader {
 
-    private final ByteSequence byteSequence;
+    protected final ByteSequence byteSequence;
     private final boolean littleEndian;
 
     private int position;
@@ -44,20 +44,20 @@ public final class Reader {
         this.littleEndian = littleEndian;
     }
 
-    public byte getByte() {
+    public final byte getByte() {
         return byteSequence.byteAt(position++);
     }
 
-    public int position() {
+    public final int position() {
         return position;
     }
 
-    public void position(int newPosition) {
+    public final void position(int newPosition) {
         assert position <= newPosition;
         position = newPosition;
     }
 
-    public short getShort() {
+    public final short getShort() {
         int ret = getByte() & 0xff;
         ret = (ret << 8) | (getByte() & 0xff);
 
@@ -67,7 +67,7 @@ public final class Reader {
         return (short) ret;
     }
 
-    public int getInt() {
+    public final int getInt() {
         int ret = getByte() & 0xff;
         ret = (ret << 8) | (getByte() & 0xff);
         ret = (ret << 8) | (getByte() & 0xff);
@@ -79,7 +79,7 @@ public final class Reader {
         return ret;
     }
 
-    public long getLong() {
+    public final long getLong() {
         long ret = getByte() & 0xff;
         ret = (ret << 8) | (getByte() & 0xff);
         ret = (ret << 8) | (getByte() & 0xff);
@@ -95,11 +95,11 @@ public final class Reader {
         return ret;
     }
 
-    public byte getByte(int pos) {
+    public final byte getByte(int pos) {
         return byteSequence.byteAt(pos++);
     }
 
-    public int getInt(int pos) {
+    public final int getInt(int pos) {
         int ret = getByte(pos) & 0xff;
         ret = (ret << 8) | (getByte(pos + 1) & 0xff);
         ret = (ret << 8) | (getByte(pos + 2) & 0xff);
@@ -111,11 +111,11 @@ public final class Reader {
         return ret;
     }
 
-    public ByteSequence slice() {
+    public final ByteSequence slice() {
         return byteSequence.subSequence(position, byteSequence.length());
     }
 
-    public void get(byte[] compressedData) {
+    public final void get(byte[] compressedData) {
         int length = compressedData.length;
         for (int writeIdx = 0; writeIdx < length; writeIdx++) {
             compressedData[writeIdx] = getByte();

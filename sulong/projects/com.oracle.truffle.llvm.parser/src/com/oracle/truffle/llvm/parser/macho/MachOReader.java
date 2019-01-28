@@ -29,42 +29,40 @@
  */
 package com.oracle.truffle.llvm.parser.macho;
 
+import com.oracle.truffle.llvm.parser.filereader.Reader;
 import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
 import org.graalvm.polyglot.io.ByteSequence;
 
-public final class MachOReader {
+public final class MachOReader extends Reader {
 
     private static final long MH_MAGIC = LLVMScanner.Magic.MH_MAGIC.magic;
     private static final long MH_CIGAM = LLVMScanner.Magic.MH_CIGAM.magic;
     private static final long MH_MAGIC_64 = LLVMScanner.Magic.MH_MAGIC_64.magic;
     private static final long MH_CIGAM_64 = LLVMScanner.Magic.MH_CIGAM_64.magic;
 
-    private final ByteSequence byteSequence;
-    private final boolean bigEndian;
     private final boolean is64Bit;
 
-    private int position;
+    private MachOReader(ByteSequence buffer, boolean littleEndian, boolean is64Bit) {
+        super(buffer, littleEndian);
+        this.is64Bit = is64Bit;
+    }
 
-    private MachOReader(ByteSequence buffer) {
-        this.byteSequence = buffer;
-        this.position = 0;
+    public static MachOFile create(ByteSequence buffer) {
+        int position = 0;
 
-        int ret = byteSequence.byteAt(position++) & 0xff;
-        ret = (ret << 8) | (byteSequence.byteAt(position++) & 0xff);
-        ret = (ret << 8) | (byteSequence.byteAt(position++) & 0xff);
-        ret = (ret << 8) | (byteSequence.byteAt(position++) & 0xff);
+        int ret = buffer.byteAt(position++) & 0xff;
+        ret = (ret << 8) | (buffer.byteAt(position++) & 0xff);
+        ret = (ret << 8) | (buffer.byteAt(position++) & 0xff);
+        ret = (ret << 8) | (buffer.byteAt(position++) & 0xff);
         long magic = Integer.toUnsignedLong(ret);
 
         if (!MachOFile.isMachOMagicNumber(magic)) {
             throw new IllegalArgumentException("Invalid Mach-O file!");
         }
 
-        is64Bit = isMachO64MagicNumber(magic);
-        bigEndian = !isReversedByteOrder(magic);
-    }
-
-    public static MachOFile create(ByteSequence buffer) {
-        MachOReader reader = new MachOReader(buffer);
+        boolean is64Bit = isMachO64MagicNumber(magic);
+        MachOReader reader = new MachOReader(buffer, isReversedByteOrder(magic), is64Bit);
+        reader.setPosition(position);
         MachOHeader header = MachOHeader.create(reader);
         MachOLoadCommandTable loadCommandTable = MachOLoadCommandTable.create(header, reader);
         return new MachOFile(header, loadCommandTable, reader.byteSequence);
@@ -72,60 +70,6 @@ public final class MachOReader {
 
     public boolean is64Bit() {
         return is64Bit;
-    }
-
-    public byte getByte() {
-        return byteSequence.byteAt(position++);
-    }
-
-    public int position() {
-        return position;
-    }
-
-    public void position(int newPosition) {
-        assert position <= newPosition;
-        position = newPosition;
-    }
-
-    public short getShort() {
-        int ret = getByte() & 0xff;
-        ret = (ret << 8) | (getByte() & 0xff);
-
-        if (bigEndian) {
-            return (short) ret;
-        } else {
-            return Short.reverseBytes((short) ret);
-        }
-    }
-
-    public int getInt() {
-        int ret = getByte() & 0xff;
-        ret = (ret << 8) | (getByte() & 0xff);
-        ret = (ret << 8) | (getByte() & 0xff);
-        ret = (ret << 8) | (getByte() & 0xff);
-
-        if (bigEndian) {
-            return ret;
-        } else {
-            return Integer.reverseBytes(ret);
-        }
-    }
-
-    public long getLong() {
-        long ret = getByte() & 0xff;
-        ret = (ret << 8) | (getByte() & 0xff);
-        ret = (ret << 8) | (getByte() & 0xff);
-        ret = (ret << 8) | (getByte() & 0xff);
-        ret = (ret << 8) | (getByte() & 0xff);
-        ret = (ret << 8) | (getByte() & 0xff);
-        ret = (ret << 8) | (getByte() & 0xff);
-        ret = (ret << 8) | (getByte() & 0xff);
-
-        if (bigEndian) {
-            return ret;
-        } else {
-            return Long.reverseBytes(ret);
-        }
     }
 
     private static boolean isMachO64MagicNumber(long magic) {
@@ -136,20 +80,4 @@ public final class MachOReader {
         return magic == MH_CIGAM || magic == MH_CIGAM_64;
     }
 
-    public byte getByte(int pos) {
-        return byteSequence.byteAt(pos++);
-    }
-
-    public int getInt(int pos) {
-        int ret = getByte(pos) & 0xff;
-        ret = (ret << 8) | (getByte(pos + 1) & 0xff);
-        ret = (ret << 8) | (getByte(pos + 2) & 0xff);
-        ret = (ret << 8) | (getByte(pos + 3) & 0xff);
-
-        if (bigEndian) {
-            return ret;
-        } else {
-            return Integer.reverseBytes(ret);
-        }
-    }
 }

@@ -39,6 +39,7 @@ import java.util.zip.Inflater;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
+import com.oracle.truffle.llvm.parser.filereader.Reader;
 import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.w3c.dom.Document;
