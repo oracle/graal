@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,11 +31,11 @@ package com.oracle.truffle.llvm.parser.macho;
 
 import com.oracle.truffle.llvm.parser.filereader.Reader;
 import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import org.graalvm.polyglot.io.ByteSequence;
 
 public final class MachOReader extends Reader {
 
-    private static final long MH_MAGIC = LLVMScanner.Magic.MH_MAGIC.magic;
     private static final long MH_CIGAM = LLVMScanner.Magic.MH_CIGAM.magic;
     private static final long MH_MAGIC_64 = LLVMScanner.Magic.MH_MAGIC_64.magic;
     private static final long MH_CIGAM_64 = LLVMScanner.Magic.MH_CIGAM_64.magic;
@@ -57,7 +57,7 @@ public final class MachOReader extends Reader {
         long magic = Integer.toUnsignedLong(ret);
 
         if (!MachOFile.isMachOMagicNumber(magic)) {
-            throw new IllegalArgumentException("Invalid Mach-O file!");
+            throw new LLVMParserException("Invalid Mach-O file!");
         }
 
         boolean is64Bit = isMachO64MagicNumber(magic);

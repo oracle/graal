@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,6 +34,7 @@ import java.util.List;
 
 import com.oracle.truffle.llvm.parser.macho.MachOSegmentCommand.MachOSection;
 import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import org.graalvm.polyglot.io.ByteSequence;
 
 public final class MachOFile {
@@ -91,7 +92,7 @@ public final class MachOFile {
             case MH_EXECUTE:
                 return getSectionData(LLVM_SEGMENT, BUNDLE_SECTION);
             default:
-                throw new RuntimeException("Mach-O file type not supported!");
+                throw new LLVMParserException("Mach-O file type not supported!");
         }
     }
 
@@ -99,13 +100,13 @@ public final class MachOFile {
         MachOSegmentCommand seg = loadCommandTable.getSegment(segment);
 
         if (seg == null) {
-            throw new RuntimeException("Mach-O file does not contain a " + segment + " segment!");
+            throw new LLVMParserException("Mach-O file does not contain a " + segment + " segment!");
         }
 
         MachOSection sect = seg.getSection(section);
 
         if (sect == null) {
-            throw new RuntimeException("Mach-O file does not contain a " + section + " section!");
+            throw new LLVMParserException("Mach-O file does not contain a " + section + " section!");
         }
 
         int offset = sect.getOffset();

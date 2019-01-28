@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -40,7 +40,7 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
 import com.oracle.truffle.llvm.parser.filereader.Reader;
-import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
@@ -48,8 +48,6 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
 public final class Xar {
-
-    private static final long XAR_MAGIC = LLVMScanner.Magic.XAR_MAGIC.magic;
 
     private final XarHeader header;
     private final XarTOC toc;
@@ -91,13 +89,13 @@ public final class Xar {
         for (XarFile file : files) {
             if (file.fileType.equals("LTO")) {
                 if (embeddedBitcode != null) {
-                    throw new RuntimeException("More than one Bitcode file in embedded archive!");
+                    throw new LLVMParserException("More than one Bitcode file in embedded archive!");
                 }
                 embeddedBitcode = file;
             }
         }
         if (embeddedBitcode == null) {
-            throw new RuntimeException("No Bitcode file in embedded archive!");
+            throw new LLVMParserException("No Bitcode file in embedded archive!");
         }
         return heap.subSequence((int) embeddedBitcode.offset, (int) (embeddedBitcode.offset + embeddedBitcode.size));
     }
@@ -195,19 +193,19 @@ public final class Xar {
                 }
             }
             if (name == null) {
-                throw new RuntimeException("Missing name tag!");
+                throw new LLVMParserException("Missing name tag!");
             }
             if (fileType == null) {
-                throw new RuntimeException("Missing file-type tag!");
+                throw new LLVMParserException("Missing file-type tag!");
             }
             if (size < 0) {
-                throw new RuntimeException("Missing size tag!");
+                throw new LLVMParserException("Missing size tag!");
             }
             if (length < 0) {
-                throw new RuntimeException("Missing length tag!");
+                throw new LLVMParserException("Missing length tag!");
             }
             if (length != size) {
-                throw new RuntimeException("Length does not match size. (compressed files not supported)");
+                throw new LLVMParserException("Length does not match size. (compressed files not supported)");
             }
             return new XarFile(name, fileType, offset, size);
         }
@@ -244,7 +242,7 @@ public final class Xar {
             try {
                 decompresser.inflate(uncompressedData);
             } catch (DataFormatException e) {
-                throw new RuntimeException("DataFormatException when decompressing xar table of contents!");
+                throw new LLVMParserException("DataFormatException when decompressing xar table of contents!");
             }
             decompresser.end();
 
@@ -252,7 +250,7 @@ public final class Xar {
                 Document xmlTOC = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(new ByteArrayInputStream(uncompressedData));
                 return new XarTOC(xmlTOC);
             } catch (SAXException | IOException | ParserConfigurationException e1) {
-                throw new RuntimeException("Could not parse xar table of contents xml!");
+                throw new LLVMParserException("Could not parse xar table of contents xml!");
             }
 
         }
