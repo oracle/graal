@@ -57,6 +57,7 @@ import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.util.DirectAnnotationAccess;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Hybrid;
@@ -693,7 +694,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute
     @Override
     public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return AnnotationsEncoding.getAnnotation(annotationsEncoding, annotationClass);
+        return AnnotationsEncoding.decodeAnnotation(annotationsEncoding, annotationClass);
     }
 
     @Substitute
@@ -705,7 +706,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute
     @Override
     public Annotation[] getAnnotations() {
-        return AnnotationsEncoding.getAnnotations(annotationsEncoding);
+        return AnnotationsEncoding.decodeAnnotations(annotationsEncoding);
     }
 
     @Substitute
@@ -722,7 +723,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
          */
         T[] result = getDeclaredAnnotationsByType(annotationClass);
 
-        if (result.length == 0 && annotationClass.getAnnotation(Inherited.class) != null) {
+        if (result.length == 0 && DirectAnnotationAccess.isAnnotationPresent(annotationClass, Inherited.class)) {
             DynamicHub superClass = (DynamicHub) this.getSuperclass();
             if (superClass != null) {
                 /* Determine if the annotation is associated with the superclass. */
@@ -769,7 +770,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     public <T extends Annotation> T getDeclaredAnnotation(Class<T> annotationClass) {
         Objects.requireNonNull(annotationClass);
 
-        T annotation = AnnotationsEncoding.getAnnotation(annotationsEncoding, annotationClass);
+        T annotation = AnnotationsEncoding.decodeAnnotation(annotationsEncoding, annotationClass);
         /*
          * superclass has the same annotation instance as the base class => annotation comes from
          * the super class

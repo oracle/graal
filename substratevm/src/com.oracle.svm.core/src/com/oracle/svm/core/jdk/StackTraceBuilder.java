@@ -27,14 +27,15 @@ package com.oracle.svm.core.jdk;
 import java.util.ArrayList;
 
 import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.util.DirectAnnotationAccess;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.code.IsolateEnterStub;
-import com.oracle.svm.core.code.IsolateLeaveStub;
 import com.oracle.svm.core.JavaMainWrapper;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
+import com.oracle.svm.core.code.IsolateEnterStub;
+import com.oracle.svm.core.code.IsolateLeaveStub;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.stack.StackFrameVisitor;
@@ -84,7 +85,7 @@ public class StackTraceBuilder implements StackFrameVisitor {
                  * exiting to C code.
                  */
                 return true;
-            } else if (clazz.getAnnotation(IgnoreForGetCallerClass.class) != null) {
+            } else if (DirectAnnotationAccess.isAnnotationPresent(clazz, IgnoreForGetCallerClass.class)) {
                 /*
                  * Always ignore the frame. It is a synthetic frame for reflective method invocation
                  * or lambda invocation.

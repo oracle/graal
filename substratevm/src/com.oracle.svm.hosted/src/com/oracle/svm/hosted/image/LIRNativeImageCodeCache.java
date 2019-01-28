@@ -135,7 +135,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
 
             // Build an index of PatchingAnnoations
             Map<Integer, HostedPatcher> patches = new HashMap<>();
-            for (CodeAnnotation codeAnnotation : compilation.getAnnotations()) {
+            for (CodeAnnotation codeAnnotation : compilation.getCodeAnnotations()) {
                 if (codeAnnotation instanceof HostedPatcher) {
                     patches.put(codeAnnotation.position, (HostedPatcher) codeAnnotation);
                 }
