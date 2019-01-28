@@ -29,20 +29,14 @@
  */
 package com.oracle.truffle.llvm.parser.macho;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.truffle.llvm.parser.macho.MachOSegmentCommand.MachOSection;
+import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
 import org.graalvm.polyglot.io.ByteSequence;
 
 public final class MachOFile {
-
-    private static final long MH_MAGIC = 0xFEEDFACEL;
-    private static final long MH_CIGAM = 0xCEFAEDFEL;
-    private static final long MH_MAGIC_64 = 0xFEEDFACFL;
-    private static final long MH_CIGAM_64 = 0xCFFAEDFEL;
 
     private static final String INTERMEDIATE_SEGMENT = "";
     private static final String BITCODE_SECTION = "__bitcode";
@@ -146,11 +140,11 @@ public final class MachOFile {
     }
 
     public static boolean isMachO32MagicNumber(long magic) {
-        return magic == MH_MAGIC || magic == MH_CIGAM;
+        return magic == LLVMScanner.Magic.MH_MAGIC.magic || magic == LLVMScanner.Magic.MH_CIGAM.magic;
     }
 
     public static boolean isMachO64MagicNumber(long magic) {
-        return magic == MH_MAGIC_64 || magic == MH_CIGAM_64;
+        return magic == LLVMScanner.Magic.MH_MAGIC_64.magic || magic == LLVMScanner.Magic.MH_CIGAM_64.magic;
     }
 
 }
