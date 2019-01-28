@@ -58,7 +58,8 @@ public final class StandardTags {
         /* No instances */
     }
 
-    @SuppressWarnings({"rawtypes"}) static final Class[] ALL_TAGS = new Class[]{StatementTag.class, CallTag.class, RootTag.class, RootBodyTag.class, ExpressionTag.class, TryBlockTag.class};
+    @SuppressWarnings({"rawtypes"}) static final Class[] ALL_TAGS = new Class[]{StatementTag.class, CallTag.class, RootTag.class, RootBodyTag.class, ExpressionTag.class, TryBlockTag.class,
+                    DeclarationTag.class, ReadVariableTag.class, WriteVariableTag.class};
 
     /**
      * Marks program locations that represent a statement of a language.
@@ -239,6 +240,98 @@ public final class StandardTags {
         public static final String CATCHES = "catches";
 
         private TryBlockTag() {
+            /* No instances */
+        }
+
+    }
+
+    /**
+     * Marks program locations to be considered as named declarations of the language elements.
+     * Common examples for declarations are:
+     * <ul>
+     * <li>Namespace declaration
+     * <li>Class declaration
+     * <li>Method declaration
+     * <li>Variable declaration
+     * </ul>
+     * Use case descriptions:
+     * <ul>
+     * <li><b>Language Server Protocol:</b> Marks declarations of language elements to support the
+     * <i>hover</i>, <i>symbols</i> and <i>workspaceSymbols</i> requests.</li>
+     *
+     * To determine the name of the declared language element, it is required that a node tagged
+     * with {@link DeclarationTag} also provides a {@link InstrumentableNode#getNodeObject() node
+     * object} that has a <code>name</code> property. Optionally, it can also have a
+     * <code>kind</code> and <code>container</code>. <code>kind</code> is the type of the language
+     * element, for example "variable", "function", "class" or "package". <code>container</code> is
+     * the name of the namespace in which the language element is declared, for example a class name
+     * of a method declaration. Furthermore, nodes tagged with {@link DeclarationTag} have to
+     * provide a {@link Node#getSourceSection() source section}.
+     */
+    @Tag.Identifier("DECLARATION")
+    public static final class DeclarationTag extends Tag {
+
+        public static final String NAME = "name";
+        public static final String KIND = "kind";
+        public static final String CONTAINER = "container";
+
+        private DeclarationTag() {
+            /* No instances */
+        }
+
+    }
+
+    /**
+     * Marks program locations to be considered as reads of variables of the languages.
+     * <p>
+     * Use case descriptions:
+     * <ul>
+     * <li><b>Language Server Protocol:</b> Marks every read of a variable to support the
+     * <i>documentHighlight</i>, <i>hover</i>, <i>definition</i> and <i>references</i>
+     * requests.</li>
+     * </ul>
+     * To determine the name of the variable, it is required that a node tagged with
+     * {@link ReadVariableTag} also provides a {@link InstrumentableNode#getNodeObject() node
+     * object} that has a <code>name</code> property. Furthermore, nodes tagged with
+     * {@link ReadVariableTag} have to provide a {@link Node#getSourceSection() source section}.
+     */
+    @Tag.Identifier("READ_VARIABLE")
+    public static final class ReadVariableTag extends Tag {
+
+        /**
+         * Name of the variable.
+         */
+        public static final String NAME = "name";
+
+        private ReadVariableTag() {
+            /* No instances */
+        }
+
+    }
+
+    /**
+     * Marks program locations to be considered as writes of variables of the languages.
+     * <p>
+     * Use case descriptions:
+     * <ul>
+     * <li><b>Language Server Protocol:</b> Marks every write of a variable to support the
+     * <i>documentHighlight</i>, <i>hover</i>, <i>definition</i> and <i>references</i>
+     * requests.</li>
+     * </ul>
+     * To determine the name of the variable, it is required that a node tagged with
+     * {@link WriteVariableTag} also provides a {@link InstrumentableNode#getNodeObject() node
+     * object} that has a <code>name</code> property. Furthermore, nodes tagged with
+     * {@link WriteVariableTag} have to provide a {@link Node#getSourceSection() source section}.
+     */
+    @Tag.Identifier("WRITE_VARIABLE")
+    public static final class WriteVariableTag extends Tag {
+
+        /**
+         * Name of the variable.
+         */
+        public static final String NAME = "name";
+
+        private WriteVariableTag() {
             /* No instances */
         }
 

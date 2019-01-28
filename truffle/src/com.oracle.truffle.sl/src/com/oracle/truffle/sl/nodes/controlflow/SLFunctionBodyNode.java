@@ -41,11 +41,14 @@
 package com.oracle.truffle.sl.nodes.controlflow;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.StandardTags.DeclarationTag;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLRootNode;
 import com.oracle.truffle.sl.nodes.SLStatementNode;
+import com.oracle.truffle.sl.nodes.interop.NodeObjectDescriptor;
 import com.oracle.truffle.sl.runtime.SLNull;
 
 /**
@@ -97,5 +100,21 @@ public final class SLFunctionBodyNode extends SLExpressionNode {
         nullTaken.enter();
         /* Return the default null value. */
         return SLNull.SINGLETON;
+    }
+
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        return tag == DeclarationTag.class || super.hasTag(tag);
+    }
+
+    @Override
+    public NodeObjectDescriptor getNodeObject() {
+        NodeObjectDescriptor descriptor = new NodeObjectDescriptor();
+        String functionName = getRootNode().getName();
+        if (functionName != null) {
+            descriptor.addProperty(DeclarationTag.NAME, functionName);
+            descriptor.addProperty(DeclarationTag.KIND, "function");
+        }
+        return descriptor;
     }
 }

@@ -1072,6 +1072,40 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
+     * Get a list of completion trigger characters of this language. A completion trigger character
+     * is a String which might for example auto-activate a code completion system of a source code
+     * editor.
+     *
+     * @param languageInfo a language
+     * @return a list of completion trigger characters of that language, can be empty.
+     */
+    protected List<String> getCompletionTriggerCharacters() {
+        return Collections.emptyList();
+    }
+
+    /**
+     * Get a list of signature help trigger characters of this language. A signature help trigger
+     * character is a String which might for example auto-activate visual support in a source code
+     * editor for completing the signature of a callable.
+     *
+     * @return a list of signature help trigger characters of that language, can be empty.
+     */
+    protected List<String> getSignatureHelpTriggerCharacters() {
+        return Collections.emptyList();
+    }
+
+    /**
+     * Try to box a primitive value into a language-specific TruffleObject of this language.
+     *
+     * @param primitive a primitive value
+     * @return a TruffleObject representing the primitive or <code>null</code> if the primitive
+     *         cannot be boxed into a language-specific TruffleObject.
+     */
+    protected Object boxPrimitive(@SuppressWarnings("unused") Object primitive) {
+        return null;
+    }
+
+    /**
      * Find a hierarchy of top-most scopes of the language, if any. The scopes should be returned
      * from the inner-most to the outer-most scope order. The language may return an empty iterable
      * to indicate no scopes. The returned scope objects may be cached by the caller per language
@@ -2556,6 +2590,18 @@ public abstract class TruffleLanguage<C> {
         Iterable<Scope> findLocalScopes(Node node, Frame frame) {
             assert node != null;
             return getSpi().findLocalScopes(context, node, frame);
+        }
+
+        List<String> getCompletionTriggerCharacters() {
+            return getSpi().getCompletionTriggerCharacters();
+        }
+
+        List<String> getSignatureHelpTriggerCharacters() {
+            return getSpi().getSignatureHelpTriggerCharacters();
+        }
+
+        Object boxPrimitive(Object primitive) {
+            return getSpi().boxPrimitive(primitive);
         }
 
         Iterable<Scope> findTopScopes() {

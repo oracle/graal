@@ -46,6 +46,7 @@ import java.io.OutputStream;
 import java.net.URI;
 import java.nio.charset.Charset;
 import java.nio.file.FileSystemNotFoundException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashSet;
@@ -69,7 +70,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import java.nio.file.Path;
 
 final class LanguageAccessor extends Accessor {
 
@@ -317,6 +317,21 @@ final class LanguageAccessor extends Accessor {
         @Override
         public Iterable<Scope> findLocalScopes(TruffleLanguage.Env env, Node node, Frame frame) {
             return env.findLocalScopes(node, frame);
+        }
+
+        @Override
+        public List<String> getCompletionTriggerCharacters(TruffleLanguage.Env env) {
+            return env.getCompletionTriggerCharacters();
+        }
+
+        @Override
+        public List<String> getSignatureHelpTriggerCharacters(TruffleLanguage.Env env) {
+            return env.getSignatureHelpTriggerCharacters();
+        }
+
+        @Override
+        public Object boxPrimitive(TruffleLanguage.Env env, Object primitive) {
+            return env.boxPrimitive(primitive);
         }
 
         @Override

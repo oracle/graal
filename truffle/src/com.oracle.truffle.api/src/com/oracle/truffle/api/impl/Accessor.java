@@ -481,6 +481,12 @@ public abstract class Accessor {
 
         public abstract Iterable<Scope> findLocalScopes(Env env, Node node, Frame frame);
 
+        public abstract List<String> getCompletionTriggerCharacters(Env env);
+
+        public abstract List<String> getSignatureHelpTriggerCharacters(Env env);
+
+        public abstract Object boxPrimitive(Env env, Object primitive);
+
         public abstract Iterable<Scope> findTopScopes(Env env);
 
         public abstract Env patchEnvContext(Env env, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options, String[] applicationArguments,
