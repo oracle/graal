@@ -45,6 +45,7 @@ import com.oracle.truffle.llvm.parser.elf.ElfSectionHeaderTable.Entry;
 import com.oracle.truffle.llvm.parser.listeners.BCFileRoot;
 import com.oracle.truffle.llvm.parser.listeners.ParserListener;
 import com.oracle.truffle.llvm.parser.macho.MachOFile;
+import com.oracle.truffle.llvm.parser.macho.Xar;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
@@ -64,6 +65,7 @@ public final class LLVMScanner {
         MH_CIGAM(0xCEFAEDFEL),
         MH_MAGIC_64(0xFEEDFACFL),
         MH_CIGAM_64(0xCFFAEDFEL),
+        XAR_MAGIC(0x21726178L),
         UNKNOWN(0);
 
         public final long magic;
@@ -88,8 +90,8 @@ public final class LLVMScanner {
                 return get(Integer.toUnsignedLong((int) b.read(0, Integer.SIZE)));
             } catch (Exception e) {
                 /*
-                 * An exception here means we can't read at least 4 bytes from the file. That means it
-                 * is definitely not a bitcode or ELF file.
+                 * An exception here means we can't read at least 4 bytes from the file. That means
+                 * it is definitely not a bitcode or ELF file.
                  */
                 return UNKNOWN;
             }
@@ -183,6 +185,9 @@ public final class LLVMScanner {
                 model.addLibraries(libraries);
 
                 return parseBitcode(machOFile.extractBitcode(), model);
+            case XAR_MAGIC:
+                Xar xarFile = Xar.create(bytes);
+                return parseBitcode(xarFile.extractBitcode(), model);
             default:
                 return null;
         }
