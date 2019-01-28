@@ -120,12 +120,6 @@ public @interface GenerateLibrary {
 
     @Retention(RetentionPolicy.CLASS)
     @Target({ElementType.METHOD})
-    public @interface Ignore {
-
-    }
-
-    @Retention(RetentionPolicy.CLASS)
-    @Target({ElementType.METHOD})
     public @interface Abstract {
 
         String[] ifExported() default {};

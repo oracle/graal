@@ -53,7 +53,6 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary.Abstract;
 import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
-import com.oracle.truffle.api.library.GenerateLibrary.Ignore;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.test.CachedLibraryTest.SimpleDispatchedNode;
 import com.oracle.truffle.api.nodes.Node;
@@ -208,13 +207,13 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
     }
 
     @GenerateLibrary
-    @ExpectError("Declared library classes must extend the type com.oracle.truffle.api.library.Library.")
+    @ExpectError("Declared library classes must exactly extend the type com.oracle.truffle.api.library.Library.")
     public static class ErrorLibrary1 {
 
     }
 
     @GenerateLibrary
-    @ExpectError("Declared library classes must extend the type com.oracle.truffle.api.library.Library.")
+    @ExpectError("Declared library classes must exactly extend the type com.oracle.truffle.api.library.Library.")
     public static class ErrorLibrary2 extends Node {
     }
 
@@ -222,7 +221,7 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
     public abstract static class ErrorLibrary3 extends Library {
 
         @ExpectError("Not enough arguments specified for a library message. The first argument of a library method must be of type Object. Add a receiver argument with type Object resolve " +
-                        "this.If this method is not intended to be a library message annotate it with @GenerateLibrary.Ignore.")
+                        "this.If this method is not intended to be a library message then add the private or final modifier to ignore it.")
         public void foobar() {
         }
 
@@ -234,19 +233,9 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
         public void bar(String a) {
         }
 
-        @ExpectError("Invalid first argument type Integer specified. The first argument of a library method must be of the same type for all methods. If this method is not intended to be a " +
-                        "library message annotate it with @GenerateLibrary.Ignore.")
+        @ExpectError("Invalid first argument type Integer specified. The first argument of a library method must be of the same type for all methods. " +
+                        "If this method is not intended to be a library message then add the private or final modifier to ignore it.")
         public void baz(Integer a) {
-        }
-
-    }
-
-    @GenerateLibrary
-    @ExpectError("The library does not export any messages. Use public instance methods to declare library messages.")
-    public abstract static class ErrorLibrary5 extends Library {
-
-        @Ignore
-        public void foobar() {
         }
 
     }
@@ -460,6 +449,17 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
         @Abstract(ifExported = "asType")
         public Object asType(Object receiver) {
             return receiver;
+        }
+
+    }
+
+    @GenerateLibrary
+    @ExpectError("Declared library classes must exactly extend the type com.oracle.truffle.api.library.Library.")
+    public abstract static class AbstractErrorLibrary6 extends SampleLibrary {
+
+        @Override
+        public String call(Object receiver) {
+            return "default";
         }
 
     }
