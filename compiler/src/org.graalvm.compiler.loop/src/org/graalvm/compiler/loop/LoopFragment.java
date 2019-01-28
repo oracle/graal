@@ -28,7 +28,6 @@ import java.util.ArrayDeque;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.Iterator;
-import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.debug.GraalError;
@@ -148,12 +147,9 @@ public abstract class LoopFragment {
 
     protected void finishDuplication() {
         LoopEx originalLoopEx = original().loop();
-        List<Block> cfgLoopExits = originalLoopEx.loop().getLoopExits();
         ControlFlowGraph cfg = originalLoopEx.loopsData().getCFG();
         for (LoopExitNode exit : originalLoopEx.loopBegin().loopExits().snapshot()) {
-            // TODO replace this linear search and the one from LoopEx.nodesInLoopBranch with a
-            // binary search
-            if (!cfgLoopExits.contains(cfg.blockFor(exit))) {
+            if (!originalLoopEx.loop().isLoopExit(cfg.blockFor(exit))) {
                 // this LoopExitNode is too low, we need to remove it otherwise it will be below
                 // merged exits
                 exit.removeExit();
