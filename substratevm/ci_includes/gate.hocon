@@ -38,7 +38,7 @@ builds += [
       PATH : "$MVN_HOME;$PATH"  # workaround until GR-10735 is resolved
     }
     run: [
-      ${svm-cmd-gate} ["build,maven"]
+      ${svm-cmd-gate} ["build,helloworld,maven"]
     ]
   }
 ]
