@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.options;
 
-import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
 import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 
 import java.util.ArrayList;
@@ -65,17 +64,7 @@ public class OptionsParser {
              */
             loader = ClassLoader.getSystemClassLoader();
         }
-        Iterable<OptionDescriptors> result = ServiceLoader.load(OptionDescriptors.class, loader);
-        if (IS_BUILDING_NATIVE_IMAGE) {
-            ArrayList<OptionDescriptors> optionDescriptors = new ArrayList<>();
-            for (OptionDescriptors descriptors : result) {
-                if (!descriptors.getClass().getName().contains(".svm.hosted.snippets.")) {
-                    optionDescriptors.add(descriptors);
-                }
-            }
-            OptionsParser.cachedOptionDescriptors = optionDescriptors;
-        }
-        return result;
+        return ServiceLoader.load(OptionDescriptors.class, loader);
     }
 
     /**
