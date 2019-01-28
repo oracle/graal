@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.api.library;
 
-import com.oracle.truffle.api.library.GenerateLibrary.Ignore;
+import com.oracle.truffle.api.library.GenerateLibrary.Abstract;
 
 /**
  * Base library if the receiver export needs to be dispatched.
@@ -53,6 +53,7 @@ public abstract class DynamicDispatchLibrary extends Library {
      * receiver. Returns <code>null</code> to indicate that the default dispatch of the library
      * should be used.
      */
+    @Abstract
     public Class<?> dispatch(@SuppressWarnings("unused") Object receiver) {
         return null;
     }
@@ -69,7 +70,6 @@ public abstract class DynamicDispatchLibrary extends Library {
      * @param receiver
      * @return
      */
-    @Ignore
     public abstract Object cast(Object receiver);
 
     /*
