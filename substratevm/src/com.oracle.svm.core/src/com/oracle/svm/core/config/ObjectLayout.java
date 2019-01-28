@@ -26,6 +26,7 @@ package com.oracle.svm.core.config;
 
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.c.constant.CEnum;
+import org.graalvm.util.GuardedAnnotationAccess;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.SubstrateTargetDescription;
@@ -182,7 +183,7 @@ public class ObjectLayout {
         if (metaAccess.lookupJavaType(WordBase.class).isAssignableFrom(type)) {
             return target.wordJavaKind;
         }
-        if (isEntryPoint && type.getAnnotation(CEnum.class) != null) {
+        if (isEntryPoint && GuardedAnnotationAccess.isAnnotationPresent(type, CEnum.class)) {
             return JavaKind.Int;
         }
         return type.getJavaKind();

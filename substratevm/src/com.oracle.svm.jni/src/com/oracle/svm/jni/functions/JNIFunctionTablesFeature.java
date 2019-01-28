@@ -34,6 +34,7 @@ import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
+import org.graalvm.util.GuardedAnnotationAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -112,7 +113,7 @@ public class JNIFunctionTablesFeature implements Feature {
         Stream<AnalysisMethod> unimplementedMethods = Stream.of((AnalysisMethod) getSingleMethod(metaAccess, UnimplementedWithJNIEnvArgument.class),
                         (AnalysisMethod) getSingleMethod(metaAccess, UnimplementedWithJavaVMArgument.class));
         Stream.concat(analysisMethods, unimplementedMethods).forEach(method -> {
-            CEntryPoint annotation = method.getAnnotation(CEntryPoint.class);
+            CEntryPoint annotation = GuardedAnnotationAccess.getAnnotation(method, CEntryPoint.class);
             assert annotation != null : "only entry points allowed in class";
             CEntryPointCallStubSupport.singleton().registerStubForMethod(method, () -> CEntryPointData.create(method));
         });

@@ -63,6 +63,7 @@ import org.graalvm.compiler.nodes.java.StoreFieldNode;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
+import org.graalvm.util.GuardedAnnotationAccess;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.jdk.IgnoreForGetCallerClass;
@@ -371,11 +372,11 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
     }
 
     private static boolean isDeletedField(ResolvedJavaField field) {
-        return field.isAnnotationPresent(Delete.class);
+        return GuardedAnnotationAccess.isAnnotationPresent(field, Delete.class);
     }
 
     private static void handleDeletedField(HostedGraphKit graphKit, HostedProviders providers, ResolvedJavaField field, JavaKind returnKind) {
-        Delete deleteAnnotation = field.getAnnotation(Delete.class);
+        Delete deleteAnnotation = GuardedAnnotationAccess.getAnnotation(field, Delete.class);
         String msg = AnnotationSubstitutionProcessor.deleteErrorMessage(field, deleteAnnotation.value(), false);
         ValueNode msgNode = ConstantNode.forConstant(SubstrateObjectConstant.forObject(msg), providers.getMetaAccess(), graphKit.getGraph());
         ResolvedJavaMethod reportErrorMethod = providers.getMetaAccess().lookupJavaMethod(DeletedMethod.reportErrorMethod);

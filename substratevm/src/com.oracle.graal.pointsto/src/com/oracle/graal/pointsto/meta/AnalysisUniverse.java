@@ -43,11 +43,11 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.util.GuardedAnnotationAccess;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.AnalysisPolicy;
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.api.AnnotationAccess;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
@@ -630,7 +630,7 @@ public class AnalysisUniverse implements Universe {
     }
 
     public boolean platformSupported(AnnotatedElement element) {
-        Platforms platformsAnnotation = AnnotationAccess.getAnnotation(element, Platforms.class);
+        Platforms platformsAnnotation = GuardedAnnotationAccess.getAnnotation(element, Platforms.class);
         if (platform == null || platformsAnnotation == null) {
             return true;
         }
