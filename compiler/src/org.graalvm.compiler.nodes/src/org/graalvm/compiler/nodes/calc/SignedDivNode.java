@@ -134,7 +134,7 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
             }
             return shift;
         }
-        return canonicalizeDivConstant(forX, c, view);
+        return canonicalizeSignedDivConstant(forX, c, view);
     }
 
     @Override

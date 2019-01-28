@@ -106,7 +106,7 @@ public class SignedRemNode extends IntegerDivRemNode implements LIRLowerable {
                     }
                 }
             } else if (!CodeUtil.isPowerOf2(constY)) {
-                ValueNode value = canonicalizeDivConstant(forX, forY.asJavaConstant().asLong(), view);
+                ValueNode value = canonicalizeSignedDivConstant(forX, forY.asJavaConstant().asLong(), view);
                 if (value != null) {
                     return SubNode.create(forX, new MulNode(value, forY), view);
                 }
