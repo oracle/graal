@@ -470,6 +470,7 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
                 }
             }
         } catch (UnsupportedMessageException | UnsupportedTypeException e) {
+            // GET_DOCUMENTATION message is not supported
         } catch (InteropException e) {
             e.printStackTrace(err);
         }
@@ -496,6 +497,7 @@ public class CompletionRequestHandler extends AbstractRequestHandler {
                 }
             }
         } catch (UnsupportedMessageException | UnsupportedTypeException e) {
+            // GET_SIGNATURE message is not supported
         } catch (InteropException e) {
             e.printStackTrace(err);
         }
