@@ -46,7 +46,6 @@ import org.graalvm.graphio.GraphOutput;
 
 import jdk.vm.ci.meta.JavaMethod;
 
-
 final class IgvSupport extends SVMObject implements TruffleDebugContext {
 
     private static final String SOURCE_PREFIX = "SOURCE=";
@@ -208,22 +207,17 @@ final class IgvSupport extends SVMObject implements TruffleDebugContext {
 
         @Override
         public int write(ByteBuffer src) throws IOException {
-            byte[] buffer;
-            int start;
-            int length;
             if (src.hasArray()) {
-                buffer = src.array();
-                start = src.position();
-                length = src.limit() - start;
-            } else {
-                // Todo: Pass ByteBuffer and use JNI GetDirectBufferAddress to access it
-                start = src.position();
-                length = src.limit() - start;
-                buffer = new byte[length];
-                src.get(buffer, 0, length);
-                start = 0;
+                throw new IllegalArgumentException("Only direct ByteBuffer is supported.");
             }
-            return HotSpotToSVMCalls.dumpChannelWrite(getIsolateThreadId(), handle, buffer, start, length);
+            int capacity = src.capacity();
+            int pos = src.position();
+            int limit = src.limit();
+            int written = HotSpotToSVMCalls.dumpChannelWrite(getIsolateThreadId(), handle, src, capacity, pos, limit);
+            if (written > 0) {
+                src.position(pos + written);
+            }
+            return written;
         }
 
         @Override

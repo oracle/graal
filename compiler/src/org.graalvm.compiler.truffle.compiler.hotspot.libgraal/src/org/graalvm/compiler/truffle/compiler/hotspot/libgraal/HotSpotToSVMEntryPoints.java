@@ -135,6 +135,8 @@ import org.graalvm.compiler.truffle.common.VoidGraphStructure;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
 import org.graalvm.compiler.truffle.compiler.TruffleDebugContextImpl;
 import org.graalvm.graphio.GraphOutput;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.nativeimage.c.type.VoidPointer;
 
 /**
  * Entry points in SVM for {@linkplain HotSpotToSVM calls} from HotSpot.
@@ -751,20 +753,15 @@ final class HotSpotToSVMEntryPoints {
     @HotSpotToSVM(DumpChannelWrite)
     @CEntryPoint(name = "Java_org_graalvm_compiler_truffle_runtime_hotspot_libgraal_HotSpotToSVMCalls_dumpChannelWrite")
     @SuppressWarnings("try")
-    public static int dumpChannelWrite(JNIEnv env, JClass hsClass, @CEntryPoint.IsolateThreadContext long isolateThreadId, long channelHandle, JByteArray buffer, int start, int length) {
+    public static int dumpChannelWrite(JNIEnv env, JClass hsClass, @CEntryPoint.IsolateThreadContext long isolateThreadId, long channelHandle, JObject hsSource, int capacity, int position,
+                    int limit) {
         try (HotSpotToSVMScope s = new HotSpotToSVMScope(DumpChannelWrite, env)) {
             WritableByteChannel channel = SVMObjectHandles.resolve(channelHandle, WritableByteChannel.class);
-            CCharPointer cbuffer = JNIUtil.GetByteArrayElements(env, buffer, WordFactory.nullPointer());
-            try {
-                byte[] arr = new byte[length];
-                for (int si = start, di = 0; di < length;) {
-                    arr[di++] = cbuffer.read(si++);
-                }
-                ByteBuffer source = ByteBuffer.wrap(arr);
-                return channel.write(source);
-            } finally {
-                JNIUtil.ReleaseByteArrayElements(env, buffer, cbuffer, JArray.MODE_RELEASE);
-            }
+            VoidPointer baseAddr = JNIUtil.GetDirectBufferAddress(env, hsSource);
+            ByteBuffer source = CTypeConversion.asByteBuffer(baseAddr, capacity);
+            source.position(position);
+            source.limit(limit);
+            return channel.write(source);
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
             return -1;

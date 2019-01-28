@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 
+import java.nio.ByteBuffer;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.AttachThread;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.CleanReferences;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.CloseCompilation;
@@ -190,5 +191,5 @@ final class HotSpotToSVMCalls {
     static native boolean isDumpChannelOpen(long isolateThreadId, long channelHandle);
 
     @HotSpotToSVM(DumpChannelWrite)
-    static native int dumpChannelWrite(long isolateThreadId, long channelHandle, byte[] buffer, int start, int length);
+    static native int dumpChannelWrite(long isolateThreadId, long channelHandle, ByteBuffer buffer, int capacity, int position, int limit);
 }
