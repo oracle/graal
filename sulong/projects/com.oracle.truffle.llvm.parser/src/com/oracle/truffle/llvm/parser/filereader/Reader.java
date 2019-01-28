@@ -48,13 +48,17 @@ public class Reader {
         return byteSequence.byteAt(position++);
     }
 
-    public final int position() {
+    public final int getPosition() {
         return position;
     }
 
-    public final void position(int newPosition) {
+    public final void setPosition(int newPosition) {
         assert position <= newPosition;
         position = newPosition;
+    }
+
+    public void skip(int bytes) {
+        this.position += bytes;
     }
 
     public final short getShort() {

@@ -72,8 +72,8 @@ public final class MachOLoadCommandTable {
     private static MachOLoadCommand parseLoadCommand(MachOReader buffer) {
         MachOLoadCommand cmd = null;
 
-        int cmdID = buffer.getInt(buffer.position());
-        int cmdSize = buffer.getInt(buffer.position() + MachOLoadCommand.CMD_ID_SIZE);
+        int cmdID = buffer.getInt(buffer.getPosition());
+        int cmdSize = buffer.getInt(buffer.getPosition() + MachOLoadCommand.CMD_ID_SIZE);
 
         switch (cmdID) {
             case MachOLoadCommand.LC_SEGMENT:
@@ -85,7 +85,7 @@ public final class MachOLoadCommandTable {
                 break;
             default:
                 cmd = new MachOLoadCommand(cmdID, cmdSize);
-                buffer.position(buffer.position() + cmdSize);
+                buffer.setPosition(buffer.getPosition() + cmdSize);
         }
 
         return cmd;

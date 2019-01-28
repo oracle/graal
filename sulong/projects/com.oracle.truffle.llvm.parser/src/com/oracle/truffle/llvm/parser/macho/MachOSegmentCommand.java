@@ -29,8 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.macho;
 
-import java.nio.ByteBuffer;
-
 public final class MachOSegmentCommand extends MachOLoadCommand {
     public static final int SEGNAME_SIZE = 16;
     public static final int SECTNAME_SIZE = 16;
@@ -123,7 +121,7 @@ public final class MachOSegmentCommand extends MachOLoadCommand {
     }
 
     private static MachOSegmentCommand readSegmentCmd64(MachOReader buffer) {
-        int cmdOffset = buffer.position();
+        int cmdOffset = buffer.getPosition();
 
         int cmd = buffer.getInt();
         int cmdSize = buffer.getInt();
@@ -146,7 +144,7 @@ public final class MachOSegmentCommand extends MachOLoadCommand {
     }
 
     private static MachOSegmentCommand readSegmentCmd32(MachOReader buffer) {
-        int cmdOffset = buffer.position();
+        int cmdOffset = buffer.getPosition();
 
         int cmd = buffer.getInt();
         int cmdSize = buffer.getInt();
@@ -268,7 +266,7 @@ public final class MachOSegmentCommand extends MachOLoadCommand {
         }
 
         private static MachOSection readSection32(MachOReader buffer) {
-            int cmdOffset = buffer.position();
+            int cmdOffset = buffer.getPosition();
 
             String sectName = getString(buffer, MachOSegmentCommand.SECTNAME_SIZE);
             String segName = getString(buffer, MachOSegmentCommand.SEGNAME_SIZE);
@@ -286,7 +284,7 @@ public final class MachOSegmentCommand extends MachOLoadCommand {
         }
 
         private static MachOSection readSection64(MachOReader buffer) {
-            int cmdOffset = buffer.position();
+            int cmdOffset = buffer.getPosition();
 
             String sectName = getString(buffer, MachOSegmentCommand.SECTNAME_SIZE);
             String segName = getString(buffer, MachOSegmentCommand.SEGNAME_SIZE);

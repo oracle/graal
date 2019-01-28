@@ -29,8 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.macho;
 
-import java.nio.ByteBuffer;
-
 public final class MachODylibCommand extends MachOLoadCommand {
 
     private final String name;
@@ -63,7 +61,7 @@ public final class MachODylibCommand extends MachOLoadCommand {
     }
 
     public static MachODylibCommand create(MachOReader buffer) {
-        int pos = buffer.position();
+        int pos = buffer.getPosition();
 
         int cmd = buffer.getInt();
         int cmdSize = buffer.getInt();
@@ -72,9 +70,9 @@ public final class MachODylibCommand extends MachOLoadCommand {
         int currentVersion = buffer.getInt();
         int compatibilityVersion = buffer.getInt();
 
-        buffer.position(pos + offset);
+        buffer.setPosition(pos + offset);
         String name = getString(buffer, cmdSize - offset);
-        buffer.position(pos + cmdSize);
+        buffer.setPosition(pos + cmdSize);
 
         return new MachODylibCommand(cmd, cmdSize, name, timestamp, currentVersion, compatibilityVersion);
     }
