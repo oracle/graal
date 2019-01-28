@@ -95,7 +95,13 @@ public final class LLVMScanner {
         }
 
         final ModelModule model = new ModelModule();
+        ByteSequence bitcode = parseBitcode(bytes, model);
+        parseBitcodeBlock(bitcode, model, bcSource, context);
 
+        return model;
+    }
+
+    private static ByteSequence parseBitcode(ByteSequence bytes, ModelModule model) {
         BitStream b = BitStream.create(bytes);
         ByteSequence bitcode;
         // 0: magic word
@@ -132,25 +138,11 @@ public final class LLVMScanner {
             List<String> libraries = machOFile.getDyLibs();
             model.addLibraries(libraries);
 
-            bitcode = machOFile.extractBitcode();
-            BitStream bs = BitStream.create(bitcode);
-
-            long wrapperMagic = Integer.toUnsignedLong((int) bs.read(0, Integer.SIZE));
-            if (wrapperMagic == WRAPPER_MAGIC_WORD) {
-                // 32: version
-                // 64: offset32
-                long offset = bs.read(64, Integer.SIZE);
-                // 96: size32
-                long size = bs.read(96, Integer.SIZE);
-                bitcode = bitcode.subSequence((int) offset, (int) (offset + size));
-            }
+            bitcode = parseBitcode(machOFile.extractBitcode(), model);
         } else {
             throw new LLVMParserException("Not a valid input file!");
         }
-
-        parseBitcodeBlock(bitcode, model, bcSource, context);
-
-        return model;
+        return bitcode;
     }
 
     private static boolean isSupportedFile(ByteSequence bytes) {
