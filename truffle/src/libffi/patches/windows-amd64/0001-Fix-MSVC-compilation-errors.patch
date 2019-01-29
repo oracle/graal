@@ -1,0 +1,84 @@
+From 03aabd49c0c833bdfa64f8e4d3dee7ce301c764e Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Aleksandar=20Pejovi=C4=87?= <aleksandar.pejovic@oracle.com>
+Date: Fri, 25 Jan 2019 03:32:55 +0100
+Subject: [PATCH 1/3] Fix MSVC compilation errors
+
+---
+ src/x86/ffi.c       | 6 ++++--
+ src/x86/ffitarget.h | 2 ++
+ src/x86/win64.S     | 4 ++--
+ 3 files changed, 8 insertions(+), 4 deletions(-)
+
+diff --git a/src/x86/ffi.c b/src/x86/ffi.c
+index 006c95d..eb510d9 100644
+--- a/src/x86/ffi.c
++++ b/src/x86/ffi.c
+@@ -99,11 +99,12 @@ unsigned int ffi_prep_args(char *stack, extended_cif *ecif)
+        i != 0;
+        i--, p_arg += dir, p_argv += dir)
+     {
++      size_t z;
+       /* Align if necessary */
+       if ((sizeof(void*) - 1) & (size_t) argp)
+         argp = (char *) ALIGN(argp, sizeof(void*));
+ 
+-      size_t z = (*p_arg)->size;
++      z = (*p_arg)->size;
+ 
+ #ifdef X86_WIN64
+       if (z > FFI_SIZEOF_ARG
+@@ -599,11 +600,12 @@ ffi_prep_incoming_args(char *stack, void **rvalue, void **avalue,
+        i != 0;
+        i--, p_arg += dir, p_argv += dir)
+     {
++      size_t z;
+       /* Align if necessary */
+       if ((sizeof(void*) - 1) & (size_t) argp)
+         argp = (char *) ALIGN(argp, sizeof(void*));
+ 
+-      size_t z = (*p_arg)->size;
++      z = (*p_arg)->size;
+ 
+ #ifdef X86_WIN64
+       if (z > FFI_SIZEOF_ARG
+diff --git a/src/x86/ffitarget.h b/src/x86/ffitarget.h
+index a236677..ff0f718 100644
+--- a/src/x86/ffitarget.h
++++ b/src/x86/ffitarget.h
+@@ -50,7 +50,9 @@
+ #endif
+ 
+ #define FFI_TARGET_SPECIFIC_STACK_SPACE_ALLOCATION
++#ifndef _MSC_VER
+ #define FFI_TARGET_HAS_COMPLEX_TYPE
++#endif
+ 
+ /* ---- Generic type definitions ----------------------------------------- */
+ 
+diff --git a/src/x86/win64.S b/src/x86/win64.S
+index 687f97c..bfdfa72 100644
+--- a/src/x86/win64.S
++++ b/src/x86/win64.S
+@@ -170,7 +170,7 @@ ret_uint16$:
+ 	mov	rcx, QWORD PTR RVALUE[rbp]
+ 	movzx   rax, ax
+ 	mov	QWORD PTR [rcx], rax
+-	jmp	SHORT ret_void$
++	jmp ret_void$
+ 
+ ret_sint16$:
+  	cmp	DWORD PTR CIF_FLAGS[rbp], FFI_TYPE_SINT16
+@@ -179,7 +179,7 @@ ret_sint16$:
+ 	mov	rcx, QWORD PTR RVALUE[rbp]
+ 	movsx   rax, ax
+ 	mov	QWORD PTR [rcx], rax
+-	jmp	SHORT ret_void$
++	jmp ret_void$
+ 
+ ret_uint32$:
+  	cmp	DWORD PTR CIF_FLAGS[rbp], FFI_TYPE_UINT32
+
+base-commit: 20562ac0427c3578250d04c6e34fb0127d4551cf
+-- 
+2.17.0.windows.1
+
