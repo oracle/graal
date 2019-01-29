@@ -119,8 +119,9 @@ public final class DebugException extends RuntimeException {
      *
      * @since 1.0
      */
+    @SuppressWarnings("sync-override")
     @Override
-    public synchronized Throwable fillInStackTrace() {
+    public Throwable fillInStackTrace() {
         return this;
     }
 

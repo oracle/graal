@@ -69,8 +69,8 @@ public class SLException extends RuntimeException implements TruffleException {
 
     @SuppressWarnings("sync-override")
     @Override
-    public Throwable fillInStackTrace() {
-        return null;
+    public final Throwable fillInStackTrace() {
+        return this;
     }
 
     public Node getLocation() {

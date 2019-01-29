@@ -330,8 +330,9 @@ public final class InspectorExecutionContext {
             throw new NoSuspendedThreadException("<Resuming...>");
         }
 
+        @SuppressWarnings("sync-override")
         @Override
-        public synchronized Throwable fillInStackTrace() {
+        public Throwable fillInStackTrace() {
             return this;
         }
     }
