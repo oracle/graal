@@ -45,16 +45,13 @@ import org.graalvm.nativeimage.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.core.annotate.Delete;
-import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
-import com.oracle.svm.hosted.substitute.DeletedElementException;
+import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 
 public class ReflectionDataBuilder implements RuntimeReflectionSupport {
 
@@ -306,13 +303,8 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
     private static Field[] filterFields(Object fields, Set<Field> filter, AnalysisMetaAccess metaAccess) {
         List<Field> result = new ArrayList<>();
         for (Field field : (Field[]) fields) {
-            if (filter.contains(field)) {
-                try {
-                    if (!metaAccess.lookupJavaField(field).isAnnotationPresent(Delete.class)) {
-                        result.add(field);
-                    }
-                } catch (DeletedElementException ignored) { // filter
-                }
+            if (filter.contains(field) && !SubstitutionReflectivityFilter.shouldExclude(field, metaAccess)) {
+                result.add(field);
             }
         }
         return result.toArray(new Field[0]);
@@ -330,26 +322,8 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
     private static <T extends Executable> T[] filterMethods(Object methods, Set<Executable> filter, AnalysisMetaAccess metaAccess, T[] prototypeArray) {
         List<T> result = new ArrayList<>();
         for (T method : (T[]) methods) {
-            if (filter.contains(method)) {
-                try {
-                    AnalysisMethod aMethod = metaAccess.lookupJavaMethod(method);
-                    if (aMethod.isAnnotationPresent(Delete.class)) {
-                        // Deleted method, accesses would fail at runtime: do not expose.
-                    } else if (aMethod.isSynthetic() && aMethod.getDeclaringClass().isAnnotationPresent(TargetClass.class)) {
-                        /*
-                         * Synthetic methods are usually methods injected by javac to provide access
-                         * to private fields or methods (access$NNN). In substitution classes, the
-                         * referenced members might have been deleted, so we do not expose their
-                         * synthetic methods for reflection. We could accurately determine affected
-                         * methods by their graphs, but these methods should not be relied on
-                         * anyway.
-                         */
-                    } else {
-                        result.add(method);
-                    }
-                } catch (DeletedElementException ignored) {
-                    // Deleted method, reachability would break the image build: drop.
-                }
+            if (filter.contains(method) && !SubstitutionReflectivityFilter.shouldExclude(method, metaAccess)) {
+                result.add(method);
             }
         }
         return result.toArray(prototypeArray);
@@ -358,13 +332,8 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
     private static Class<?>[] filterClasses(Object classes, Set<Class<?>> filter, AnalysisMetaAccess metaAccess) {
         List<Class<?>> result = new ArrayList<>();
         for (Class<?> clazz : (Class<?>[]) classes) {
-            if (filter.contains(clazz)) {
-                try {
-                    if (!metaAccess.lookupJavaType(clazz).isAnnotationPresent(Delete.class)) {
-                        result.add(clazz);
-                    }
-                } catch (DeletedElementException ignored) { // filter
-                }
+            if (filter.contains(clazz) && !SubstitutionReflectivityFilter.shouldExclude(clazz, metaAccess)) {
+                result.add(clazz);
             }
         }
         return result.toArray(new Class<?>[0]);
