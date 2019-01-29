@@ -25,7 +25,10 @@
 
 package org.graalvm.compiler.core.common.cfg;
 
+import static org.graalvm.compiler.core.common.cfg.AbstractBlockBase.BLOCK_ID_COMPARATOR;
+
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public abstract class Loop<T extends AbstractBlockBase<T>> {
@@ -141,6 +144,11 @@ public abstract class Loop<T extends AbstractBlockBase<T>> {
         return exits;
     }
 
+    public boolean isLoopExit(T block) {
+        assert isSorted(exits);
+        return Collections.binarySearch(exits, block, BLOCK_ID_COMPARATOR) >= 0;
+    }
+
     /**
      * Returns the natural exit points: these are the earliest block that are guaranteed to never
      * reach a back-edge.
@@ -151,6 +159,22 @@ public abstract class Loop<T extends AbstractBlockBase<T>> {
      */
     public ArrayList<T> getNaturalExits() {
         return naturalExits;
+    }
+
+    public boolean isNaturalExit(T block) {
+        assert isSorted(naturalExits);
+        return Collections.binarySearch(naturalExits, block, BLOCK_ID_COMPARATOR) >= 0;
+    }
+
+    private static <T extends AbstractBlockBase<T>> boolean isSorted(List<T> list) {
+        int lastId = Integer.MIN_VALUE;
+        for (AbstractBlockBase<?> block : list) {
+            if (block.getId() < lastId) {
+                return false;
+            }
+            lastId = block.getId();
+        }
+        return true;
     }
 
     /**
@@ -175,5 +199,10 @@ public abstract class Loop<T extends AbstractBlockBase<T>> {
     @Override
     public int hashCode() {
         return index + depth * 31;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return super.equals(obj);
     }
 }

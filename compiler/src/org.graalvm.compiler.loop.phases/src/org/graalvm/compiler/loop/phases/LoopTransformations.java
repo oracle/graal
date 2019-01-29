@@ -232,7 +232,9 @@ public abstract class LoopTransformations {
         CountedLoopInfo preCounted = loop.counted();
         LoopBeginNode preLoopBegin = loop.loopBegin();
         AbstractBeginNode preLoopExitNode = preCounted.getCountedExit();
-        FixedNode continuationNode = preLoopExitNode.next();
+
+        assert preLoop.nodes().contains(preLoopBegin);
+        assert preLoop.nodes().contains(preLoopExitNode);
 
         // Each duplication is inserted after the original, ergo create the post loop first
         LoopFragmentWhole mainLoop = preLoop.duplicate();
@@ -260,6 +262,9 @@ public abstract class LoopTransformations {
         EndNode mainEndNode = getBlockEndAfterLoopExit(mainLoopExitNode);
         AbstractMergeNode mainMergeNode = mainEndNode.merge();
         AbstractEndNode postEntryNode = postLoopBegin.forwardEnd();
+
+        // Exits have been merged, find the continuation below the merge
+        FixedNode continuationNode = mainMergeNode.next();
 
         // In the case of no Bounds tests, we just flow right into the main loop
         AbstractBeginNode mainLandingNode = BeginNode.begin(postEntryNode);
