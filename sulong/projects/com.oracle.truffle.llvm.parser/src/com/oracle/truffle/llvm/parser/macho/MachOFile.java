@@ -43,16 +43,15 @@ public final class MachOFile {
     private static final String BITCODE_SECTION = "__bitcode";
     private static final String LLVM_SEGMENT = "__LLVM";
     private static final String BUNDLE_SECTION = "__bundle";
-    private static final String WLLVM_SEGMENT = "__WLLVM";
-    private static final String WLLVM_BITCODE_SECTION = "__llvm_bc";
 
     private static final int MH_OBJECT = 0x1; /* relocatable object file */
     private static final int MH_EXECUTE = 0x2; /* demand paged executable file */
+    private static final int MH_DYLIB = 0x6; /* dynamically bound shared library */
+
     // currently unused types:
     @SuppressWarnings("unused") private static final int MH_FVMLIB = 0x3;
     @SuppressWarnings("unused") private static final int MH_CORE = 0x4;
     @SuppressWarnings("unused") private static final int MH_PRELOAD = 0x5;
-    @SuppressWarnings("unused") private static final int MH_DYLIB = 0x6;
     @SuppressWarnings("unused") private static final int MH_DYLINKER = 0x7;
     @SuppressWarnings("unused") private static final int MH_BUNDLE = 0x8;
     @SuppressWarnings("unused") private static final int MH_DYLIB_STUB = 0x9;
@@ -89,6 +88,7 @@ public final class MachOFile {
         switch (header.getFileType()) {
             case MH_OBJECT:
                 return getSectionData(INTERMEDIATE_SEGMENT, BITCODE_SECTION);
+            case MH_DYLIB:
             case MH_EXECUTE:
                 return getSectionData(LLVM_SEGMENT, BUNDLE_SECTION);
             default:
