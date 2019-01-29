@@ -195,8 +195,8 @@ public final class InspectServerSession implements MessageEndpoint {
             case "Debugger.getPossibleBreakpoints":
                 json = cmd.getParams().getJSONObject();
                 resultParams = debugger.getPossibleBreakpoints(
-                                Location.create(json.getJSONObject("start")),
-                                Location.create(json.getJSONObject("end")),
+                                Location.create(json.optJSONObject("start")),
+                                Location.create(json.optJSONObject("end")),
                                 json.optBoolean("restrictToFunction"));
                 break;
             case "Debugger.getScriptSource":
