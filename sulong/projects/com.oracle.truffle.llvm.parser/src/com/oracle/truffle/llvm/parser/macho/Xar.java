@@ -36,34 +36,29 @@ import java.util.List;
 import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
-import javax.xml.parsers.ParserConfigurationException;
-
 import com.oracle.truffle.llvm.parser.filereader.ObjectFileReader;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import org.graalvm.polyglot.io.ByteSequence;
-import org.w3c.dom.Document;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
+import org.xml.sax.Attributes;
+import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
+import org.xml.sax.XMLReader;
+import org.xml.sax.helpers.DefaultHandler;
 
 public final class Xar {
 
     private final XarHeader header;
-    private final XarTOC toc;
+    private final List<XarFile> files;
     private final ByteSequence heap;
 
-    public Xar(XarHeader header, XarTOC toc, ByteSequence heap) {
+    public Xar(XarHeader header, List<XarFile> files, ByteSequence heap) {
         this.header = header;
-        this.toc = toc;
+        this.files = files;
         this.heap = heap;
     }
 
     public XarHeader getHeader() {
         return header;
-    }
-
-    public XarTOC getToc() {
-        return toc;
     }
 
     public ByteSequence getHeap() {
@@ -76,14 +71,13 @@ public final class Xar {
         data.getInt();
 
         XarHeader header = XarHeader.create(data);
-        XarTOC toc = XarTOC.create(data, header);
+        List<XarFile> files = TocParser.parse(data, header);
         ByteSequence heap = data.slice();
 
-        return new Xar(header, toc, heap);
+        return new Xar(header, files, heap);
     }
 
     public ByteSequence extractBitcode() {
-        List<XarFile> files = getToc().getFiles();
         XarFile embeddedBitcode = null;
         for (XarFile file : files) {
             if (file.fileType.equals("LTO")) {
@@ -158,39 +152,16 @@ public final class Xar {
             this.fileType = fileType;
             this.name = name;
         }
+    }
 
-        private static XarFile create(Node node) {
-            String name = null;
-            String fileType = null;
-            long offset = -1;
-            long size = -1;
-            long length = -1;
+    private static final class XarFileBuilder {
+        private String name = null;
+        private String fileType = null;
+        private long offset = -1;
+        private long size = -1;
+        private long length = -1;
 
-            for (Node child = node.getChildNodes().item(0); child != null; child = child.getNextSibling()) {
-                switch (child.getNodeName()) {
-                    case "name":
-                        name = child.getTextContent();
-                        break;
-                    case "file-type":
-                        fileType = child.getTextContent();
-                        break;
-                    case "data":
-                        for (Node dataNode = child.getChildNodes().item(0); dataNode != null; dataNode = dataNode.getNextSibling()) {
-                            switch (dataNode.getNodeName()) {
-                                case "offset":
-                                    offset = Long.parseUnsignedLong(dataNode.getTextContent());
-                                    break;
-                                case "length":
-                                    length = Long.parseUnsignedLong(dataNode.getTextContent());
-                                    break;
-                                case "size":
-                                    size = Long.parseUnsignedLong(dataNode.getTextContent());
-                                    break;
-                            }
-                        }
-                        break;
-                }
-            }
+        private XarFile create() {
             if (name == null) {
                 throw new LLVMParserException("Missing name tag!");
             }
@@ -210,26 +181,61 @@ public final class Xar {
         }
     }
 
-    private static final class XarTOC {
+    private static final class TocParser extends DefaultHandler {
+        private XarFileBuilder fileBuilder = null;
+        private String lastTag;
+        private List<XarFile> files = new ArrayList<>();
+
+        @Override
+        public void startElement(String namespaceURI, String localName, String qName, Attributes atts) throws SAXException {
+            if (qName.equals("file")) {
+                if (fileBuilder != null) {
+                    throw new LLVMParserException("Only flat xar archives are supported!");
+                }
+                fileBuilder = new XarFileBuilder();
+            } else if (fileBuilder != null) {
+                lastTag = qName;
+            }
+        }
+
+        @Override
+        public void characters(char[] ch, int start, int length) throws SAXException {
+            if (fileBuilder != null && lastTag != null) {
+                switch (lastTag) {
+                    case "name":
+                        fileBuilder.name = new String(ch, start, length);
+                        break;
+                    case "file-type":
+                        fileBuilder.fileType = new String(ch, start, length);
+                        break;
+                    case "offset":
+                        fileBuilder.offset = Long.parseUnsignedLong(new String(ch, start, length));
+                        break;
+                    case "length":
+                        fileBuilder.length = Long.parseUnsignedLong(new String(ch, start, length));
+                        break;
+                    case "size":
+                        fileBuilder.size = Long.parseUnsignedLong(new String(ch, start, length));
+                        break;
+                }
+            }
+        }
+
+        @Override
+        public void endElement(String namespaceURI, String localName, String qName) throws SAXException {
+            if (qName.equals("file")) {
+                if (fileBuilder != null) {
+                    files.add(fileBuilder.create());
+                }
+                fileBuilder = null;
+            }
+            lastTag = null;
+        }
 
         // uses fully qualified name to prevent mx to add "require javax.xml" when compiling on JDK9
-        private static final javax.xml.parsers.DocumentBuilderFactory DOCUMENT_BUILDER_FACTORY = javax.xml.parsers.DocumentBuilderFactory.newInstance();
-        private final Document tableOfContents;
+        private static final javax.xml.parsers.SAXParserFactory PARSER_FACTORY = javax.xml.parsers.SAXParserFactory.newInstance();
 
-        private XarTOC(Document toc) {
-            this.tableOfContents = toc;
-        }
-
-        public List<XarFile> getFiles() {
-            NodeList files = tableOfContents.getElementsByTagName("file");
-            List<XarFile> xarFiles = new ArrayList<>();
-            for (int i = 0; i < files.getLength(); i++) {
-                xarFiles.add(XarFile.create(files.item(i)));
-            }
-            return xarFiles;
-        }
-
-        public static XarTOC create(ObjectFileReader data, XarHeader header) {
+        private static List<XarFile> parse(ObjectFileReader data, XarHeader header) {
             int comprSize = (int) header.getTocComprSize();
             int uncomprSize = (int) header.getTocUncomprSize();
 
@@ -248,12 +254,17 @@ public final class Xar {
             decompresser.end();
 
             try {
-                Document xmlTOC = DOCUMENT_BUILDER_FACTORY.newDocumentBuilder().parse(new ByteArrayInputStream(uncompressedData));
-                return new XarTOC(xmlTOC);
-            } catch (SAXException | IOException | ParserConfigurationException e1) {
+                javax.xml.parsers.SAXParserFactory spf = PARSER_FACTORY;
+                spf.setNamespaceAware(false);
+                javax.xml.parsers.SAXParser saxParser = spf.newSAXParser();
+                XMLReader xmlReader = saxParser.getXMLReader();
+                TocParser parser = new TocParser();
+                xmlReader.setContentHandler(parser);
+                xmlReader.parse(new InputSource(new ByteArrayInputStream(uncompressedData)));
+                return parser.files;
+            } catch (SAXException | IOException | javax.xml.parsers.ParserConfigurationException e1) {
                 throw new LLVMParserException("Could not parse xar table of contents xml!");
             }
-
         }
     }
 }
