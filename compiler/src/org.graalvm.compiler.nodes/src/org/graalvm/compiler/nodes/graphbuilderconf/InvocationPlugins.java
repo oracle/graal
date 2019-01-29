@@ -1024,7 +1024,7 @@ public class InvocationPlugins {
             InvocationPlugin plugin = parent.lookupInvocation(method);
             if (plugin != null) {
                 if (IS_IN_NATIVE_IMAGE && plugin instanceof MethodSubstitutionPlugin) {
-                    // Disable method substitutions for now
+                    // Disable method substitutions until GR-13607
                     return null;
                 }
                 return plugin;
@@ -1032,7 +1032,7 @@ public class InvocationPlugins {
         }
         InvocationPlugin invocationPlugin = get(method);
         if (IS_IN_NATIVE_IMAGE && invocationPlugin instanceof MethodSubstitutionPlugin) {
-            // Disable method substitutions for now
+            // Disable method substitutions until GR-13607
             return null;
         }
         return invocationPlugin;
