@@ -25,7 +25,6 @@
 package org.graalvm.compiler.truffle.compiler;
 
 import java.io.IOException;
-import java.nio.channels.WritableByteChannel;
 import java.util.Map;
 
 import org.graalvm.compiler.debug.DebugContext;
@@ -81,9 +80,5 @@ public class TruffleDebugContextImpl implements TruffleDebugContext {
     @Override
     public void closeDebugChannels() {
         debugContext.closeDumpHandlers(false);
-    }
-
-    public WritableByteChannel getChannel() {
-        return debugContext.getChannel();
     }
 }

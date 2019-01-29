@@ -44,24 +44,19 @@ import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.OptionsEncoder;
 import org.graalvm.graphio.GraphOutput;
 
-import jdk.vm.ci.meta.JavaMethod;
-
 final class IgvSupport extends SVMObject implements TruffleDebugContext {
 
     private static final String SOURCE_PREFIX = "SOURCE=";
     private static volatile Map<Object, Object> versionProperties;
 
     private final SVMHotSpotTruffleCompiler owner;
-    private final Description description;
     private GraphOutput<?, ?> parentOutput;
     private IgvDumpChannel sharedChannel;
 
-    private IgvSupport(SVMHotSpotTruffleCompiler owner, long handle, Description description) {
+    private IgvSupport(SVMHotSpotTruffleCompiler owner, long handle) {
         super(handle);
         Objects.requireNonNull(owner, "Owner must be non null.");
-        Objects.requireNonNull(description, "Description must be non null.");
         this.owner = owner;
-        this.description = description;
     }
 
     @Override
@@ -74,7 +69,7 @@ final class IgvSupport extends SVMObject implements TruffleDebugContext {
         if (sharedChannel == null) {
             sharedChannel = new IgvDumpChannel(HotSpotToSVMCalls.getDumpChannel(getIsolateThreadId(), handle));
         }
-        final GraphOutput<G, M> res = builder.buffered(false).buildShared(sharedChannel);
+        final GraphOutput<G, M> res = builder.embedded(true).build(sharedChannel);
         parentOutput = res;
         return res;
     }
@@ -163,40 +158,8 @@ final class IgvSupport extends SVMObject implements TruffleDebugContext {
     }
 
     static IgvSupport create(SVMHotSpotTruffleCompiler compiler, Map<String, Object> options, SVMTruffleCompilation compilation) {
-        Description description = compilation == null ? Description.NO_DESCRIPTION : new Description(compilation);
         byte[] encodedOptions = OptionsEncoder.encode(options);
-        return new IgvSupport(compiler, HotSpotToSVMCalls.openDebugContext(getIsolateThreadId(), compiler.handle, compilation == null ? 0 : compilation.handle, encodedOptions), description);
-    }
-
-    private static final class Description {
-        static final Description NO_DESCRIPTION = new Description("NO_DESCRIPTION");
-        private final SVMTruffleCompilation compilation;
-        private final String identifier;
-
-        Description(final SVMTruffleCompilation compilation) {
-            Objects.requireNonNull(compilation, "Compilation must be non null.");
-            this.compilation = compilation;
-            this.identifier = null;
-        }
-
-        private Description(final String identifier) {
-            Objects.requireNonNull(identifier, "Identifier must be non null.");
-            this.compilation = null;
-            this.identifier = identifier;
-        }
-
-        String getId() {
-            return compilation != null ? compilation.getId() : identifier;
-        }
-
-        String getLabel() {
-            CompilableTruffleAST compilable = compilation == null ? null : compilation.getCompilable();
-            if (compilable instanceof JavaMethod) {
-                JavaMethod method = (JavaMethod) compilable;
-                return method.format("%h.%n(%p)%r");
-            }
-            return String.valueOf(compilable);
-        }
+        return new IgvSupport(compiler, HotSpotToSVMCalls.openDebugContext(getIsolateThreadId(), compiler.handle, compilation == null ? 0 : compilation.handle, encodedOptions));
     }
 
     private static final class IgvDumpChannel extends SVMObject implements WritableByteChannel {
@@ -227,6 +190,7 @@ final class IgvSupport extends SVMObject implements TruffleDebugContext {
 
         @Override
         public void close() throws IOException {
+            HotSpotToSVMCalls.dumpChannelClose(getIsolateThreadId(), handle);
         }
     }
 

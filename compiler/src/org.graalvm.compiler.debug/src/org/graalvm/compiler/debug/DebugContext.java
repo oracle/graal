@@ -44,7 +44,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.nio.channels.WritableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -124,19 +123,13 @@ public final class DebugContext implements AutoCloseable {
         if (parentOutput != null) {
             return builder.build(parentOutput);
         } else {
-            final GraphOutput<G, M> output = builder.build(getChannel());
+            if (sharedChannel == null) {
+                sharedChannel = new IgvDumpChannel(() -> getDumpPath(".bgv", false), immutable.options);
+            }
+            final GraphOutput<G, M> output = builder.build(sharedChannel);
             parentOutput = output;
             return output;
         }
-    }
-
-    public WritableByteChannel getChannel() {
-        boolean created = false;
-        if (sharedChannel == null) {
-            sharedChannel = new IgvDumpChannel(() -> getDumpPath(".bgv", false), immutable.options);
-            created = true;
-        }
-        return sharedChannel;
     }
 
     /**

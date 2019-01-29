@@ -28,6 +28,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
 import java.util.Collections;
 import java.util.Map;
@@ -38,7 +39,7 @@ import java.util.Map;
  * @param <G> the type of graph this instance handles
  * @param <M> the type of methods this instance handles
  */
-public final class GraphOutput<G, M> implements Closeable {
+public final class GraphOutput<G, M> implements Closeable, WritableByteChannel {
     private final GraphProtocol<G, ?, ?, ?, ?, M, ?, ?, ?, ?> printer;
 
     private GraphOutput(GraphProtocol<G, ?, ?, ?, ?, M, ?, ?, ?, ?> p) {
@@ -107,6 +108,30 @@ public final class GraphOutput<G, M> implements Closeable {
     }
 
     /**
+     * Checks if the {@link GraphOutput} is open.
+     *
+     * @return true if the {@link GraphOutput} is open.
+     * @since 1.0
+     */
+    @Override
+    public boolean isOpen() {
+        return printer.isOpen();
+    }
+
+    /**
+     * Writes raw bytes into {@link GraphOutput}.
+     *
+     * @param src the bytes to write
+     * @return the number of bytes written, possibly zero
+     * @throws IOException in case of IO error
+     * @since 1.0
+     */
+    @Override
+    public int write(ByteBuffer src) throws IOException {
+        return printer.write(src);
+    }
+
+    /**
      * Builder to configure and create an instance of {@link GraphOutput}.
      *
      * @param <G> the type of the (root element of) graph
@@ -121,7 +146,7 @@ public final class GraphOutput<G, M> implements Closeable {
         private GraphBlocks<G, ?, N> blocks = DefaultGraphBlocks.empty();
         private int major = 4;
         private int minor = 0;
-        private boolean buffered = true;
+        private boolean embeddedGraphOutput;
 
         Builder(GraphStructure<G, N, ?, ?> structure) {
             this.structure = structure;
@@ -143,8 +168,19 @@ public final class GraphOutput<G, M> implements Closeable {
             return this;
         }
 
-        public Builder<G, N, M> buffered(boolean buffered) {
-            this.buffered = buffered;
+        /**
+         * Sets {@link GraphOutput} as embedded. The embedded {@link GraphOutput} shares
+         * {@link WritableByteChannel channel} with another already open non parent
+         * {@link GraphOutput}. The embedded {@link GraphOutput} flushes data after each
+         * {@link GraphOutput#print print}, {@link GraphOutput#beginGroup beginGroup} and
+         * {@link GraphOutput#endGroup endGroup} call.
+         *
+         * @param embedded if {@code true} the builder creates an embedded {@link GraphOutput}
+         * @return this builder
+         * @since 1.0
+         */
+        public Builder<G, N, M> embedded(boolean embedded) {
+            this.embeddedGraphOutput = embedded;
             return this;
         }
 
@@ -206,14 +242,7 @@ public final class GraphOutput<G, M> implements Closeable {
          * @throws IOException if something goes wrong when writing to the channel
          */
         public GraphOutput<G, M> build(WritableByteChannel channel) throws IOException {
-            return buildImpl(elementsAndLocations, channel, false);
-        }
-        
-        public GraphOutput<G, M> buildShared(WritableByteChannel channel) throws IOException {
-            if (buffered) {
-                throw new IllegalStateException("Cannot create buffered shared GraphOutput.");
-            }
-            return buildImpl(elementsAndLocations, channel, true);
+            return buildImpl(elementsAndLocations, channel);
         }
 
         /**
@@ -236,10 +265,10 @@ public final class GraphOutput<G, M> implements Closeable {
             return buildImpl(elementsAndLocations, parent);
         }
 
-        private <L, P> GraphOutput<G, M> buildImpl(ElementsAndLocations<M, L, P> e, WritableByteChannel channel, boolean shared) throws IOException {
+        private <L, P> GraphOutput<G, M> buildImpl(ElementsAndLocations<M, L, P> e, WritableByteChannel channel) throws IOException {
             // @formatter:off
             ProtocolImpl<G, N, ?, ?, ?, M, ?, ?, ?, ?> p = new ProtocolImpl<>(
-                major, minor, buffered, !shared, structure, types, blocks,
+                major, minor, embeddedGraphOutput, structure, types, blocks,
                 e == null ? null : e.elements,
                 e == null ? null : e.locations, channel
             );

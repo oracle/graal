@@ -32,6 +32,7 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.CloseDebugContextScope;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.CreateSpeculationLog;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.DoCompile;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.DumpChannelClose;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.DumpChannelWrite;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.GetCompilerConfigurationFactoryName;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.GetCompilerConfigurationName;
@@ -725,13 +726,12 @@ final class HotSpotToSVMEntryPoints {
 
     @HotSpotToSVM(GetDumpChannel)
     @CEntryPoint(name = "Java_org_graalvm_compiler_truffle_runtime_hotspot_libgraal_HotSpotToSVMCalls_getDumpChannel")
-    @SuppressWarnings("try")
+    @SuppressWarnings({"unused", "try"})
     public static long getDumpChannel(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long debugContextHandle) {
         try (HotSpotToSVMScope s = new HotSpotToSVMScope(GetDumpChannel, env)) {
             TruffleDebugContextImpl debugContext = SVMObjectHandles.resolve(debugContextHandle, TruffleDebugContextImpl.class);
-            debugContext.buildOutput(GraphOutput.newBuilder(VoidGraphStructure.INSTANCE).protocolVersion(6, 0).buffered(false)).close();
-            WritableByteChannel channel = debugContext.getChannel();
-            return SVMObjectHandles.create(channel);
+            GraphOutput<Void, ?> graphOutput = debugContext.buildOutput(GraphOutput.newBuilder(VoidGraphStructure.INSTANCE).protocolVersion(6, 0).embedded(true));
+            return SVMObjectHandles.create(graphOutput);
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
             return 0;
@@ -740,7 +740,7 @@ final class HotSpotToSVMEntryPoints {
 
     @HotSpotToSVM(IsDumpChannelOpen)
     @CEntryPoint(name = "Java_org_graalvm_compiler_truffle_runtime_hotspot_libgraal_HotSpotToSVMCalls_isDumpChannelOpen")
-    @SuppressWarnings("try")
+    @SuppressWarnings({"unused", "try"})
     public static boolean isDumpChannelOpen(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long channelHandle) {
         try (HotSpotToSVMScope s = new HotSpotToSVMScope(IsDumpChannelOpen, env)) {
             return SVMObjectHandles.resolve(channelHandle, WritableByteChannel.class).isOpen();
@@ -752,7 +752,7 @@ final class HotSpotToSVMEntryPoints {
 
     @HotSpotToSVM(DumpChannelWrite)
     @CEntryPoint(name = "Java_org_graalvm_compiler_truffle_runtime_hotspot_libgraal_HotSpotToSVMCalls_dumpChannelWrite")
-    @SuppressWarnings("try")
+    @SuppressWarnings({"unused", "try"})
     public static int dumpChannelWrite(JNIEnv env, JClass hsClass, @CEntryPoint.IsolateThreadContext long isolateThreadId, long channelHandle, JObject hsSource, int capacity, int position,
                     int limit) {
         try (HotSpotToSVMScope s = new HotSpotToSVMScope(DumpChannelWrite, env)) {
@@ -765,6 +765,17 @@ final class HotSpotToSVMEntryPoints {
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
             return -1;
+        }
+    }
+
+    @HotSpotToSVM(DumpChannelClose)
+    @CEntryPoint(name = "Java_org_graalvm_compiler_truffle_runtime_hotspot_libgraal_HotSpotToSVMCalls_dumpChannelClose")
+    @SuppressWarnings({"unused", "try"})
+    public static void dumpChannelClose(JNIEnv env, JClass hsClass, @CEntryPoint.IsolateThreadContext long isolateThreadId, long channelHandle) {
+        try (HotSpotToSVMScope s = new HotSpotToSVMScope(IsDumpChannelOpen, env)) {
+            SVMObjectHandles.resolve(channelHandle, WritableByteChannel.class).close();
+        } catch (Throwable t) {
+            JNIExceptionWrapper.throwInHotSpot(env, t);
         }
     }
 

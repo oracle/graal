@@ -78,11 +78,12 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
     private final ConstantPool constantPool;
     private final ByteBuffer buffer;
     private final WritableByteChannel channel;
-    private final boolean buffered;
+    private final boolean embedded;
     final int versionMajor;
     final int versionMinor;
+    private boolean printing;
 
-    GraphProtocol(WritableByteChannel channel, int major, int minor, boolean buffered, boolean writeProlog) throws IOException {
+    GraphProtocol(WritableByteChannel channel, int major, int minor, boolean embedded) throws IOException {
         if (major > 6 || (major == 6 && minor > 0)) {
             throw new IllegalArgumentException("Unrecognized version " + major + "." + minor);
         }
@@ -91,10 +92,10 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
         this.constantPool = new ConstantPool();
         this.buffer = ByteBuffer.allocateDirect(256 * 1024);
         this.channel = channel;
-        this.buffered = buffered;
-        if (writeProlog) {
+        this.embedded = embedded;
+        if (!embedded) {
             writeVersion();
-            flushIfNeeded();
+            flushEmbedded();
         }
     }
 
@@ -104,40 +105,67 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
         this.constantPool = parent.constantPool;
         this.buffer = parent.buffer;
         this.channel = parent.channel;
-        this.buffered = parent.buffered;
+        this.embedded = parent.embedded;
     }
 
     @SuppressWarnings("all")
     public final void print(Graph graph, Map<? extends Object, ? extends Object> properties, int id, String format, Object... args) throws IOException {
-        writeByte(BEGIN_GRAPH);
-        if (versionMajor >= 3) {
-            writeInt(id);
-            writeString(format);
-            writeInt(args.length);
-            for (Object a : args) {
-                writePropertyObject(graph, a);
+        printing = true;
+        try {
+            writeByte(BEGIN_GRAPH);
+            if (versionMajor >= 3) {
+                writeInt(id);
+                writeString(format);
+                writeInt(args.length);
+                for (Object a : args) {
+                    writePropertyObject(graph, a);
+                }
+            } else {
+                writePoolObject(formatTitle(graph, id, format, args));
             }
-        } else {
-            writePoolObject(formatTitle(graph, id, format, args));
+            writeGraph(graph, properties);
+            flushEmbedded();
+            flush();
+        } finally {
+            printing = false;
         }
-        writeGraph(graph, properties);
-        flushIfNeeded();
-        flush();
     }
 
     public final void beginGroup(Graph noGraph, String name, String shortName, ResolvedJavaMethod method, int bci, Map<? extends Object, ? extends Object> properties) throws IOException {
-        writeByte(BEGIN_GROUP);
-        writePoolObject(name);
-        writePoolObject(shortName);
-        writePoolObject(method);
-        writeInt(bci);
-        writeProperties(noGraph, properties);
-        flushIfNeeded();
+        printing = true;
+        try {
+            writeByte(BEGIN_GROUP);
+            writePoolObject(name);
+            writePoolObject(shortName);
+            writePoolObject(method);
+            writeInt(bci);
+            writeProperties(noGraph, properties);
+            flushEmbedded();
+        } finally {
+            printing = false;
+        }
     }
 
     public final void endGroup() throws IOException {
-        writeByte(CLOSE_GROUP);
-        flushIfNeeded();
+        printing = true;
+        try {
+            writeByte(CLOSE_GROUP);
+            flushEmbedded();
+        } finally {
+            printing = false;
+        }
+    }
+
+    final int write(ByteBuffer src) throws IOException {
+        if (printing) {
+            throw new IllegalStateException("Trying to write during graph print.");
+        }
+        constantPool.reset();
+        return writeBytesRaw(src);
+    }
+
+    final boolean isOpen() {
+        return channel.isOpen();
     }
 
     @Override
@@ -289,8 +317,8 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
         writeByte(versionMinor);
     }
 
-    private void flushIfNeeded() throws IOException {
-        if (!buffered) {
+    private void flushEmbedded() throws IOException {
+        if (embedded) {
             flush();
             constantPool.reset();
         }
@@ -372,6 +400,23 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
             buffer.put(b, bytesWritten, toWrite);
             bytesWritten += toWrite;
         }
+    }
+
+    private int writeBytesRaw(ByteBuffer b) throws IOException {
+        int limit = b.limit();
+        int written = 0;
+        while (b.position() < limit) {
+            int toWrite = Math.min(limit - b.position(), buffer.capacity());
+            ensureAvailable(toWrite);
+            b.limit(b.position() + toWrite);
+            try {
+                buffer.put(b);
+                written += toWrite;
+            } finally {
+                b.limit(limit);
+            }
+        }
+        return written;
     }
 
     private void writeInts(int[] b) throws IOException {

@@ -32,6 +32,7 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.CloseDebugContextScope;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.CreateSpeculationLog;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.DoCompile;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.DumpChannelClose;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.DumpChannelWrite;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.GetCompilerConfigurationFactoryName;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.GetCompilerConfigurationName;
@@ -192,4 +193,7 @@ final class HotSpotToSVMCalls {
 
     @HotSpotToSVM(DumpChannelWrite)
     static native int dumpChannelWrite(long isolateThreadId, long channelHandle, ByteBuffer buffer, int capacity, int position, int limit);
+
+    @HotSpotToSVM(DumpChannelClose)
+    static native void dumpChannelClose(long isolateThreadId, long channelHandle);
 }
