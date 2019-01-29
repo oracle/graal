@@ -147,27 +147,27 @@ public final class Xar {
         }
     }
 
-    public static final class XarFile {
-        private final String name;
+    private static final class XarFile {
+        @SuppressWarnings("unused") private final String name;
         private final String fileType;
         private final long offset;
         private final long size;
 
-        public XarFile(String name, String fileType, long offset, long size) {
+        XarFile(String name, String fileType, long offset, long size) {
             this.size = size;
             this.offset = offset;
             this.fileType = fileType;
             this.name = name;
         }
 
-        static XarFile create(Node node) {
+        private static XarFile create(Node node) {
             String name = null;
             String fileType = null;
             long offset = -1;
             long size = -1;
             long length = -1;
 
-            for (Node child = node.getChildNodes().item(0); child != null; child = child.getNextSibling()){
+            for (Node child = node.getChildNodes().item(0); child != null; child = child.getNextSibling()) {
                 switch (child.getNodeName()) {
                     case "name":
                         name = child.getTextContent();
@@ -211,8 +211,10 @@ public final class Xar {
         }
     }
 
-    public static final class XarTOC {
+    private static final class XarTOC {
 
+        // uses fully qualified name to prevent mx to add "require javax.xml" when compiling on JDK9
+        private static final javax.xml.parsers.DocumentBuilderFactory DOCUMENT_BUILDER_FACTORY = javax.xml.parsers.DocumentBuilderFactory.newInstance();
         private final Document tableOfContents;
 
         private XarTOC(Document toc) {
@@ -247,7 +249,7 @@ public final class Xar {
             decompresser.end();
 
             try {
-                Document xmlTOC = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(new ByteArrayInputStream(uncompressedData));
+                Document xmlTOC = DOCUMENT_BUILDER_FACTORY.newDocumentBuilder().parse(new ByteArrayInputStream(uncompressedData));
                 return new XarTOC(xmlTOC);
             } catch (SAXException | IOException | ParserConfigurationException e1) {
                 throw new LLVMParserException("Could not parse xar table of contents xml!");

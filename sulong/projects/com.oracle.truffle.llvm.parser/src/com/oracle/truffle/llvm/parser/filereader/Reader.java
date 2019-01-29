@@ -53,7 +53,6 @@ public class Reader {
     }
 
     public final void setPosition(int newPosition) {
-        assert position <= newPosition;
         position = newPosition;
     }
 
