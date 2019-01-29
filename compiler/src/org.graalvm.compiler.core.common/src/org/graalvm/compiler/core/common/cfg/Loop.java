@@ -200,4 +200,9 @@ public abstract class Loop<T extends AbstractBlockBase<T>> {
     public int hashCode() {
         return index + depth * 31;
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        return super.equals(obj);
+    }
 }
