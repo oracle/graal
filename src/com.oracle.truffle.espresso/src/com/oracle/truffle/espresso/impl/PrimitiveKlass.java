@@ -23,7 +23,10 @@
 
 package com.oracle.truffle.espresso.impl;
 
+import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.SharedConstantPool;
+import com.oracle.truffle.espresso.descriptors.TypeDescriptor;
+import com.oracle.truffle.espresso.descriptors.TypeDescriptors;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -43,19 +46,19 @@ public final class PrimitiveKlass extends Klass {
      * @param kind the kind to create the type for
      */
     public PrimitiveKlass(EspressoContext context, JavaKind kind) {
-        super(String.valueOf(kind.getTypeChar()), kind);
+        super(null /* linkedKlass for primitives */, null, ObjectKlass.EMPTY_ARRAY);
         this.context = context;
         assert kind.isPrimitive() : kind + " not a primitive type";
     }
 
     @Override
-    public int getModifiers() {
+    public final int getModifiers() {
         return Modifier.ABSTRACT | Modifier.FINAL | Modifier.PUBLIC;
     }
 
     @Override
     protected ArrayKlass createArrayKlass() {
-        if (kind == JavaKind.Void) {
+        if (getJavaKind() == JavaKind.Void) {
             return null;
         }
         return super.createArrayKlass();
@@ -72,38 +75,8 @@ public final class PrimitiveKlass extends Klass {
     }
 
     @Override
-    public Klass getSuperclass() {
-        return null;
-    }
-
-    @Override
-    public Klass[] getInterfaces() {
-        return Klass.EMPTY_ARRAY;
-    }
-
-    @Override
-    public Klass findLeastCommonAncestor(Klass otherType) {
-        return null;
-    }
-
-    @Override
-    public boolean hasFinalizer() {
-        return false;
-    }
-
-    @Override
-    public boolean isArray() {
-        return false;
-    }
-
-    @Override
     public StaticObject getClassLoader() {
         return StaticObject.NULL; // BCL
-    }
-
-    @Override
-    public boolean isPrimitive() {
-        return true;
     }
 
     @Override
@@ -112,17 +85,7 @@ public final class PrimitiveKlass extends Klass {
     }
 
     @Override
-    public boolean isLinked() {
-        return true;
-    }
-
-    @Override
     public boolean isInstanceClass() {
-        return false;
-    }
-
-    @Override
-    public boolean isInterface() {
         return false;
     }
 
@@ -139,28 +102,13 @@ public final class PrimitiveKlass extends Klass {
     }
 
     @Override
-    public boolean isJavaLangObject() {
-        return false;
+    public Field[] getInstanceFields(boolean includeSuperclasses) {
+        return Field.EMPTY_ARRAY;
     }
 
     @Override
-    public MethodInfo resolveMethod(MethodInfo method, Klass callerType) {
-        return null;
-    }
-
-    @Override
-    public String toString() {
-        return "PrimitiveKlass<" + kind + ">";
-    }
-
-    @Override
-    public FieldInfo[] getInstanceFields(boolean includeSuperclasses) {
-        return FieldInfo.EMPTY_ARRAY;
-    }
-
-    @Override
-    public FieldInfo[] getStaticFields() {
-        return FieldInfo.EMPTY_ARRAY;
+    public Field[] getStaticFields() {
+        return Field.EMPTY_ARRAY;
     }
 
     @Override
@@ -169,12 +117,12 @@ public final class PrimitiveKlass extends Klass {
     }
 
     @Override
-    public FieldInfo findInstanceFieldWithOffset(long offset, JavaKind expectedType) {
+    public Field findInstanceFieldWithOffset(long offset, JavaKind expectedType) {
         return null;
     }
 
     @Override
-    public SharedConstantPool getConstantPool() {
+    public ConstantPool getConstantPool() {
         return null;
     }
 
@@ -204,22 +152,27 @@ public final class PrimitiveKlass extends Klass {
     }
 
     @Override
-    public MethodInfo[] getDeclaredConstructors() {
-        return MethodInfo.EMPTY_ARRAY;
+    public Method[] getDeclaredConstructors() {
+        return Method.EMPTY_ARRAY;
     }
 
     @Override
-    public MethodInfo[] getDeclaredMethods() {
-        return MethodInfo.EMPTY_ARRAY;
+    public Method[] getDeclaredMethods() {
+        return Method.EMPTY_ARRAY;
     }
 
     @Override
-    public FieldInfo[] getDeclaredFields() {
-        return FieldInfo.EMPTY_ARRAY;
+    public Field[] getDeclaredFields() {
+        return Field.EMPTY_ARRAY;
     }
 
     @Override
-    public MethodInfo getClassInitializer() {
+    public Method getClassInitializer() {
         return null;
+    }
+
+    @Override
+    public String toString() {
+        return "PrimitiveKlass<" + getJavaKind() + ">";
     }
 }

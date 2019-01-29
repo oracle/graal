@@ -23,6 +23,9 @@
 
 package com.oracle.truffle.espresso.jni;
 
+import com.oracle.truffle.espresso.impl.ByteString;
+import com.oracle.truffle.espresso.impl.ByteString.Type;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.descriptors.SignatureDescriptor;
 import com.oracle.truffle.espresso.descriptors.TypeDescriptor;
@@ -74,8 +77,8 @@ public final class Mangle {
      * @param withSignature if true, the method's signature is included in the mangled name
      * @return the mangled C function name for {@code method}
      */
-    public static String mangleMethod(Meta.Method method, boolean withSignature) {
-        return mangleMethod(method.getDeclaringClass().rawKlass().getTypeDescriptor(), method.getName(), withSignature ? method.rawMethod().getSignature() : null, false);
+    public static String mangleMethod(Method method, boolean withSignature) {
+        return mangleMethod(method.getDeclaringKlass().getType(), method.getName(), withSignature ? method.getRawSignature() : null, false);
     }
 
     /**
@@ -98,7 +101,7 @@ public final class Mangle {
      *            above
      * @return the symbol for the C function as described above
      */
-    public static String mangleMethod(TypeDescriptor declaringClass, String name, SignatureDescriptor signature, boolean splitSuffix) {
+    public static String mangleMethod(ByteString<Type> declaringClass, String name, SignatureDescriptor signature, boolean splitSuffix) {
         final StringBuilder result = new StringBuilder(100);
         final String declaringClassName = declaringClass.toJavaName();
         result.append("Java_").append(mangle(declaringClassName)).append('_').append(mangle(name));

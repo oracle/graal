@@ -23,15 +23,16 @@
 
 package com.oracle.truffle.espresso.impl;
 
+import java.util.concurrent.ConcurrentHashMap;
+
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
+import com.oracle.truffle.espresso.descriptors.TypeDescriptor;
+import com.oracle.truffle.espresso.impl.ByteString.Type;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.descriptors.TypeDescriptor;
-
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * A {@link GuestClassRegistry} maps class names to resolved {@link Klass} instances. Each class
@@ -49,7 +50,7 @@ public class BootClassRegistry implements ClassRegistry {
      * supporting fast, non-blocking lookup. There's no need for deletion as class unloading removes
      * a whole class registry and all its contained classes.
      */
-    private final ConcurrentHashMap<TypeDescriptor, Klass> classes = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<ByteString<Type>, Klass> classes = new ConcurrentHashMap<>();
 
     public BootClassRegistry(EspressoContext context) {
         this.context = context;
@@ -62,44 +63,40 @@ public class BootClassRegistry implements ClassRegistry {
     }
 
     @Override
-    public Klass resolve(TypeDescriptor type) {
-        if (type.isArray()) {
-            Klass k = resolve(type.getComponentType());
-            if (k == null) {
+    public Klass resolve(ByteString<Type> type) {
+        if (TypeDescriptor.isArray(type)) {
+            ByteString<Type> elemental = TypeDescriptor.getElementalType(type);
+            Klass klass = resolve(elemental);
+            if (klass == null) {
                 return null;
             }
-            return k.getArrayClass();
+            return klass.getArrayClass(TypeDescriptor.getArrayDimensions(type));
         }
 
         // TODO(peterssen): Make boot class registry thread-safe. Class loading is not a
         // trivial operation, it loads super classes as well, which discards computeIfAbsent.
+
         Klass klass = classes.get(type);
+        if (klass != null) {
+            return klass;
+        }
 
-        if (klass == null) {
-            Klass hostClass = null;
-            String className = TypeDescriptor.slashified(type.toJavaName());
+        Klass hostClass = null;
+        // String className = TypeDescriptor.slashified(type.toJavaName());
 
-            if (type.isPrimitive()) {
-                throw EspressoError.shouldNotReachHere("Primitives must be in the registry");
-            }
+        EspressoError.guarantee(!TypeDescriptor.isPrimitive(type), "Primitives must be in the registry");
 
-            if (type.isArray()) {
-                int dim = type.getArrayDimensions();
-                Klass arrType = resolve(type.getElementalType());
-                for (int i = 0; i < dim; ++i) {
-                    arrType = arrType.getArrayClass();
-                }
-                return arrType;
-            }
-            ClasspathFile classpathFile = context.getBootClasspath().readClassFile(className);
-            if (classpathFile == null) {
-                return null;
-            }
-            ClassfileParser parser = new ClassfileParser(StaticObject.NULL, classpathFile, className, hostClass, context);
-            klass = parser.parseClass();
-            Klass loadedFirst = classes.putIfAbsent(type, klass);
-            if (loadedFirst != null) {
-                klass = loadedFirst;
+        ClasspathFile classpathFile = context.getBootClasspath().readClassFile(type);
+        if (classpathFile == null) {
+            return null;
+        }
+
+        // TODO(peterssen): Parsing does not trigger any additional loading, so this doesn't deadlock the BCL.
+        synchronized (this) {
+            klass = classes.get(type);
+            if (klass == null) {
+                klass = ClassfileParser.parse(StaticObject.NULL, classpathFile, className, hostClass, context);
+                classes.putIfAbsent(type, klass);
             }
         }
 
@@ -107,19 +104,20 @@ public class BootClassRegistry implements ClassRegistry {
     }
 
     @Override
-    public Klass findLoadedKlass(TypeDescriptor type) {
-        if (type.isArray()) {
-            Klass klass = findLoadedKlass(type.getComponentType());
+    public Klass findLoadedKlass(ByteString<Type> type) {
+        if (TypeDescriptor.isArray(type)) {
+            ByteString<Type> elemental = TypeDescriptor.getElementalType(type);
+            Klass klass = findLoadedKlass(elemental);
             if (klass == null) {
                 return null;
             }
-            return klass.getArrayClass();
+            return klass.getArrayClass(TypeDescriptor.getArrayDimensions(type));
         }
         return classes.get(type);
     }
 
     @Override
-    public Klass defineKlass(TypeDescriptor type, Klass klass) {
+    public Klass defineKlass(ByteString<Type> type, Klass klass) {
         assert !classes.containsKey(type);
         Klass prevKlass = classes.putIfAbsent(type, klass);
         if (prevKlass != null) {

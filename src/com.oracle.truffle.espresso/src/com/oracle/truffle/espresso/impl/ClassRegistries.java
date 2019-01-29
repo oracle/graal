@@ -23,19 +23,19 @@
 
 package com.oracle.truffle.espresso.impl;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
+import com.oracle.truffle.espresso.impl.ByteString.Type;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectClass;
-import com.oracle.truffle.espresso.descriptors.TypeDescriptor;
-
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
 
 public class ClassRegistries {
 
@@ -49,7 +49,7 @@ public class ClassRegistries {
         this.bootClassRegistry = new BootClassRegistry(context);
     }
 
-    public Klass findLoadedClass(TypeDescriptor type, StaticObject classLoader) {
+    public Klass findLoadedClass(ByteString<Type> type, StaticObject classLoader) {
         assert classLoader != null;
         if (type.isArray()) {
             Klass pepe = findLoadedClass(type.getComponentType(), classLoader);
@@ -68,13 +68,13 @@ public class ClassRegistries {
         return registry.findLoadedKlass(type);
     }
 
-    @CompilerDirectives.TruffleBoundary
-    public Klass resolveWithBootClassLoader(TypeDescriptor type) {
+    @TruffleBoundary
+    public Klass resolveWithBootClassLoader(ByteString<Type> type) {
         return resolve(type, StaticObject.NULL);
     }
 
-    @CompilerDirectives.TruffleBoundary
-    public Klass resolve(TypeDescriptor type, StaticObject classLoader) {
+    @TruffleBoundary
+    public Klass resolve(ByteString<Type> type, StaticObject classLoader) {
         assert classLoader != null;
         Klass k = findLoadedClass(type, classLoader);
         if (k != null) {
@@ -93,18 +93,7 @@ public class ClassRegistries {
         }
     }
 
-    public Klass defineKlass(String name, byte[] bytes, StaticObject classLoader) {
+    public Klass defineKlass(ByteString<Type> type, byte[] bytes, StaticObject classLoader) {
         assert classLoader != null;
-        ClasspathFile cpf = new ClasspathFile(bytes, null, name);
-        ClassfileParser parser = new ClassfileParser(classLoader, new ClassfileStream(bytes, 0, bytes.length, cpf), name, null, EspressoLanguage.getCurrentContext());
-
-        // TODO(peterssen): Propagate errors to the guest.
-        // Class parsing should be moved to ClassRegistry.
-        StaticObjectClass klass = (StaticObjectClass) parser.parseClass().mirror();
-
-        ClassRegistry registry = StaticObject.isNull(classLoader) ? bootClassRegistry : registries.get(classLoader);
-        TypeDescriptor descriptor = context.getTypeDescriptors().make(MetaUtil.toInternalName(name));
-        registry.defineKlass(descriptor, klass.getMirror());
-        return klass.getMirror();
     }
 }

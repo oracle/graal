@@ -22,19 +22,26 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.impl.ByteString;
 import com.oracle.truffle.espresso.impl.ByteString.Name;
 
 public class Attribute {
+
     private final ByteString<Name> name;
+
+    @CompilationFinal(dimensions = 1) //
     private final byte[] data;
+
     public ByteString getName() {
         return name;
     }
+
     public byte[] getData() {
         return data;
     }
-    public Attribute(ByteString<Name> name, byte[] data) {
+
+    public Attribute(ByteString<Name> name, final byte[] data) {
         this.name = name;
         this.data = data;
     }

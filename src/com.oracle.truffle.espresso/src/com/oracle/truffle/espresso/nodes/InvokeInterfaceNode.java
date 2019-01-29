@@ -84,7 +84,7 @@ public abstract class InvokeInterfaceNode extends QuickNode {
         assert receiver != null;
         assert receiver == args[0] : "receiver must be the first argument";
         Object result = executeVirtual(receiver, args);
-        int resultAt = top - resolutionSeed.getSignature().getNumberOfSlotsForParameters() - 1; // -receiver
+        int resultAt = top - resolutionSeed.getSignature().slotsForParameters() - 1; // -receiver
         return (resultAt - top) + root.putKind(frame, resultAt, result, resolutionSeed.getSignature().resultKind());
     }
 }

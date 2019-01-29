@@ -42,7 +42,7 @@ public final class InvokeSpecialNode extends QuickNode {
         nullCheck(root.peekReceiver(frame, top, method));
         Object[] args = root.peekArguments(frame, top, true, method.getSignature());
         Object result = directCallNode.call(args);
-        int resultAt = top - method.getSignature().getNumberOfSlotsForParameters() - 1; // -receiver
+        int resultAt = top - method.getSignature().slotsForParameters() - 1; // -receiver
         return (resultAt - top) + root.putKind(frame, resultAt, result, method.getSignature().resultKind());
     }
 }

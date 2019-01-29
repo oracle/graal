@@ -37,6 +37,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso.impl.ByteString;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.MethodInfo;
 import com.oracle.truffle.espresso.substitutions.SuppressFBWarnings;
@@ -558,9 +559,11 @@ public class VM extends NativeEnv {
         return meta.toGuest(jcpool.getMirror().getConstantPool().utf8At(index).getValue());
     }
 
+    static final String pepe = "pepe".getBytes().toString();
+
     @VmImpl
     @JniImpl
-    public @Type(Class.class) StaticObject JVM_DefineClass(String name, @Type(ClassLoader.class) StaticObject loader, long bufPtr, int len,
+    public @Type(typeName = pepe) StaticObject JVM_DefineClass(String name, @Type(ClassLoader.class) StaticObject loader, long bufPtr, int len,
                     @SuppressWarnings("unused") @Type(ProtectionDomain.class) Object pd) {
         // TODO(peterssen): The protection domain is unused.
         ByteBuffer buf = JniEnv.directByteBuffer(bufPtr, len, JavaKind.Byte);

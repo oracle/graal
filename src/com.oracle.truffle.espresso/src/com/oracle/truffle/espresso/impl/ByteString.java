@@ -23,8 +23,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
  */
 public final class ByteString<T> {
 
-    // @Stable
-    @CompilationFinal(dimensions = 1) //
+    @Stable @CompilationFinal(dimensions = 1) //
     private final byte[] value;
 
     private int hash;
@@ -35,6 +34,10 @@ public final class ByteString<T> {
 
     public ByteString<T> substring(int from, int to) {
         return new ByteString<>(Arrays.copyOfRange(value, from, to));
+    }
+
+    public static void copyBytes(ByteString<?> src, int srcPos, byte[] dest, int destPos, int length) {
+        System.arraycopy(src.value, srcPos, dest, destPos, length);
     }
 
     public static class ModifiedUTF8 {
@@ -58,7 +61,7 @@ public final class ByteString<T> {
     public static class Signature extends Descriptor {
     }
 
-    public int byteAt(int index) {
+    public byte byteAt(int index) {
         return value[index];
     }
 
@@ -99,5 +102,16 @@ public final class ByteString<T> {
 
     public int length() {
         return value.length;
+    }
+
+    public static <T> ByteString<T> singleASCII(char ch) {
+        if (ch > 127) {
+            throw new IllegalArgumentException("non-ASCII char");
+        }
+        return new ByteString<>(new byte[]{(byte) ch});
+    }
+
+    public static <T> ByteString<T> fromJavaString(String string) {
+        return Utf8.fromJavaString(string);
     }
 }

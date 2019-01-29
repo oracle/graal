@@ -1499,7 +1499,7 @@ public class JniEnv extends NativeEnv {
 
     private static String nfiSignature(String signature, boolean isJni) {
         SignatureDescriptor descriptor = EspressoLanguage.getCurrentContext().getSignatureDescriptors().make(signature);
-        int argCount = descriptor.getParameterCount(false);
+        int argCount = descriptor.parameterCount(false);
         StringBuilder sb = new StringBuilder("(");
 
         boolean first = true;
@@ -1511,7 +1511,7 @@ public class JniEnv extends NativeEnv {
             first = false;
         }
         for (int i = 0; i < argCount; ++i) {
-            JavaKind kind = descriptor.getParameterKind(i);
+            JavaKind kind = descriptor.parameterKind(i);
             if (!first) {
                 sb.append(", ");
             } else {

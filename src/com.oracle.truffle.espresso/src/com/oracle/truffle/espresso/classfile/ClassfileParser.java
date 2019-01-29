@@ -23,6 +23,12 @@
 
 package com.oracle.truffle.espresso.classfile;
 
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_ABSTRACT;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_INTERFACE;
+import static com.oracle.truffle.espresso.classfile.Constants.JVM_RECOGNIZED_CLASS_MODIFIERS;
+
+import java.util.Objects;
+
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.impl.ByteString;
 import com.oracle.truffle.espresso.impl.ByteString.Name;
@@ -36,14 +42,6 @@ import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.BootstrapMethodsAttribute;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.descriptors.TypeDescriptor;
-
-import java.util.Objects;
-
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_ABSTRACT;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_INTERFACE;
-import static com.oracle.truffle.espresso.classfile.Constants.JVM_RECOGNIZED_CLASS_MODIFIERS;
 
 public final class ClassfileParser {
 
@@ -79,19 +77,17 @@ public final class ClassfileParser {
     private int minorVersion;
     private int majorVersion;
 
-    private ConstantPool pool;
-
     private int maxBootstrapMethodAttrIndex;
     private Tag badConstantSeen;
 
-//    /**
-//     * The host class for an anonymous class.
-//     */
-//    private final Klass hostClass;
+// /**
+// * The host class for an anonymous class.
+// */
+// private final Klass hostClass;
 
     private ByteString<Type> typeDescriptor;
 
-    public ClassfileParser(ClasspathFile classpathFile, String requestedClassName, Klass hostClass, EspressoContext context) {
+    private ClassfileParser(ClasspathFile classpathFile, String requestedClassName, Klass hostClass, EspressoContext context) {
         this.requestedClassName = requestedClassName;
         this.className = requestedClassName;
         this.hostClass = hostClass;
@@ -100,8 +96,7 @@ public final class ClassfileParser {
         this.stream = new ClassfileStream(classfile);
     }
 
-    public ClassfileParser(StaticObject classLoader, ClassfileStream stream, String requestedClassName, Klass hostClass, EspressoContext context) {
-        assert classLoader != null;
+    private ClassfileParser(ClassfileStream stream, String requestedClassName, Klass hostClass, EspressoContext context) {
         this.requestedClassName = requestedClassName;
         this.className = requestedClassName;
         this.hostClass = hostClass;
@@ -139,6 +134,14 @@ public final class ClassfileParser {
         }
     }
 
+    public static ParserKlass parse(ClassfileStream stream, String requestedClassName, Klass hostClass, EspressoContext context) {
+        return new ClassfileParser(stream, requestedClassName, hostClass, context).parseClass();
+    }
+
+    public static ParserKlass parse(ClasspathFile classpathFile, String requestedClassName, Klass hostClass, EspressoContext context) {
+        return parse(new ClassfileStream(classpathFile), requestedClassName, hostClass, context);
+    }
+
     public ParserKlass parseClass() {
         // magic
         int magic = stream.readS4();
@@ -152,7 +155,7 @@ public final class ClassfileParser {
             throw new UnsupportedClassVersionError("Unsupported class file version: " + majorVersion + "." + minorVersion);
         }
 
-        this.pool = ConstantPool.parse(stream, this);
+        final ConstantPool pool = ConstantPool.parse(context.getLanguage(), stream, this);
 
         // JVM_ACC_MODULE is defined in JDK-9 and later.
         int accessFlags;
@@ -186,7 +189,7 @@ public final class ClassfileParser {
 
         // Update className which could be null previously
         // to reflect the name in the constant pool
-        className = TypeDescriptor.slashified(typeDescriptor.toJavaName());
+        // className = TypeDescriptor.slashified(typeDescriptor.toJavaName());
 
         // Checks if name in class file matches requested name
         if (requestedClassName != null && !requestedClassName.equals(className)) {
@@ -238,22 +241,24 @@ public final class ClassfileParser {
     private Attribute parseAttribute() {
         int nameIndex = stream.readU2();
         ByteString<Name> name = pool.utf8At(nameIndex);
-        switch (name) {
-            case "Code":
-                return parseCodeAttribute(name);
-            case "EnclosingMethod":
-                return parseEnclosingMethodAttribute(name);
-            case "InnerClasses":
-                return parseInnerClasses(name);
-            case "Exceptions":
-                return parseExceptions(name);
-            case "BootstrapMethods":
-                return parseBootstrapMethods(name);
-            default:
-                int length = stream.readS4();
-                byte[] info = stream.readByteArray(length);
-                return new Attribute(name, info);
+        if (CodeAttribute.NAME.equals(name)) {
+            return parseCodeAttribute(name);
         }
+        if (EnclosingMethodAttribute.NAME.equals(name)) {
+            return parseEnclosingMethodAttribute(name);
+        }
+        if (InnerClassesAttribute.NAME.equals(name)) {
+            return parseInnerClasses(name);
+        }
+        if (ExceptionsAttribute.NAME.equals(name)) {
+            return parseExceptions(name);
+        }
+        if (BootstrapMethodsAttribute.NAME.equals(name)) {
+            return parseBootstrapMethods(name);
+        }
+        int length = stream.readS4();
+        byte[] info = stream.readByteArray(length);
+        return new Attribute(name, info);
     }
 
     private ExceptionsAttribute parseExceptions(ByteString<Name> name) {

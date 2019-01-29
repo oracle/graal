@@ -1,15 +1,30 @@
 package com.oracle.truffle.espresso.impl;
 
-import com.oracle.truffle.api.object.Location;
-import com.oracle.truffle.espresso.impl.ParserField;
+import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.impl.ByteString.Name;
+import com.oracle.truffle.espresso.impl.ByteString.Type;
 
-public class LinkedField {
+public final class LinkedField {
     private final ParserField parserField;
+    private final LinkedKlass holderLinkedKlass;
 
-    int slot;
-    Location location;
+    protected ConstantPool getConstantPool() {
+        return holderLinkedKlass.getConstantPool();
+    }
 
-    public LinkedField(ParserField parserField) {
+    int slot; // already computed here
+    // Location location;
+
+    public LinkedField(ParserField parserField, LinkedKlass holderLinkedKlass) {
         this.parserField = parserField;
+        this.holderLinkedKlass = holderLinkedKlass;
+    }
+
+    public ByteString<Type> getType() {
+        return getConstantPool().utf8At(parserField.getTypeIndex(), "type");
+    }
+
+    public ByteString<Name> getName() {
+        return getConstantPool().utf8At(parserField.getNameIndex(), "name");
     }
 }

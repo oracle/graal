@@ -25,10 +25,14 @@ package com.oracle.truffle.espresso.classfile;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.impl.ByteString;
+import com.oracle.truffle.espresso.impl.ByteString.Name;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.runtime.Attribute;
 
-public class CodeAttribute extends Attribute {
+public final class CodeAttribute extends Attribute {
+
+    public static final ByteString<Name> NAME = ByteString.fromJavaString("Code");
+
     private final int maxStack;
     private final int maxLocals;
 
@@ -38,7 +42,7 @@ public class CodeAttribute extends Attribute {
     private final ExceptionHandler[] exceptionHandlerEntries;
     private final Attribute[] attributes;
 
-    public CodeAttribute(ByteString name, int maxStack, int maxLocals, byte[] code, ExceptionHandler[] exceptionHandlerEntries, Attribute[] attributes) {
+    public CodeAttribute(ByteString<Name> name, int maxStack, int maxLocals, byte[] code, ExceptionHandler[] exceptionHandlerEntries, Attribute[] attributes) {
         super(name, null);
         this.maxStack = maxStack;
         this.maxLocals = maxLocals;

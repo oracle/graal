@@ -22,23 +22,20 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
+import java.util.concurrent.ConcurrentHashMap;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.espresso.classfile.Utf8Constant;
 import com.oracle.truffle.espresso.impl.ByteString;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.Equivalence;
-
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Symbol cache.
  */
 public final class SymbolTable {
     /**
-     * Searching and adding entries to this map is only performed by {@linkplain #make(ByteString) one
-     * method} which is ~~synchronized~~ thread-safe.
+     * Searching and adding entries to this map is only performed by {@linkplain #make(ByteString)
+     * one method} which is ~~synchronized~~ thread-safe.
      */
-    // private final EconomicMap<ByteString, Utf8Constant> symbols = EconomicMap.create(Equivalence.DEFAULT);
     private final ConcurrentHashMap<ByteString<?>, Utf8Constant> symbols = new ConcurrentHashMap<>();
 
     public Utf8Constant lookup(ByteString<?> key) {
@@ -46,9 +43,9 @@ public final class SymbolTable {
         return symbols.get(key);
     }
 
-    public Utf8Constant make(ByteString key) {
+    public Utf8Constant make(ByteString<?> symbol) {
         CompilerAsserts.neverPartOfCompilation();
         // TODO(peterssen): Purge lambda.
-        return symbols.computeIfAbsent(key, Utf8Constant::new);
+        return symbols.computeIfAbsent(symbol, Utf8Constant::new);
     }
 }

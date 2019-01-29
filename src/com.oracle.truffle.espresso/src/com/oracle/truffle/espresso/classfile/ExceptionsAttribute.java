@@ -6,6 +6,8 @@ import com.oracle.truffle.espresso.runtime.Attribute;
 
 public final class ExceptionsAttribute extends Attribute {
 
+    public static final ByteString<Name> NAME = ByteString.fromJavaString("Exceptions");
+
     private final int[] checkedExceptionsCPI;
 
     public ExceptionsAttribute(ByteString<Name> name, int[] checkedExceptionsCPI) {

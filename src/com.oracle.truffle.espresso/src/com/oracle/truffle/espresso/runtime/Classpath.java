@@ -22,6 +22,9 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
+import com.oracle.truffle.espresso.impl.ByteString;
+import com.oracle.truffle.espresso.impl.ByteString.Type;
+
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -397,6 +400,20 @@ public class Classpath {
      */
     public ClasspathFile readClassFile(String className) {
         return readFile(className, ".class");
+    }
+
+    /**
+     * Searches for a class file denoted by a given class name on this classpath and returns its
+     * contents in a byte array if found. Any IO exception that occurs when reading is silently
+     * ignored.
+     *
+     * @param type a fully qualified class name (e.g. "java.lang.Class")
+     * @return the contents of the file available on the classpath whose name is computed as
+     *         {@code className.replace('.', '/')}. If no such file is available on this class path
+     *         or if reading the file produces an IO exception, then null is returned.
+     */
+    public ClasspathFile readClassFile(ByteString<Type> type) {
+        return readFile(type.toString(), ".class");
     }
 
     /**

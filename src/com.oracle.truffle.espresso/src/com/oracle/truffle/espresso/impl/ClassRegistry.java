@@ -27,8 +27,6 @@ import com.oracle.truffle.espresso.impl.ByteString.Type;
 
 public interface ClassRegistry {
     Klass resolve(ByteString<Type> type);
-
     Klass findLoadedKlass(ByteString<Type> type);
-
     Klass defineKlass(ByteString<Type> type, Klass klass);
 }

@@ -428,7 +428,7 @@ public enum JavaKind {
                         return "String:\"" + s + '"';
                     }
                 } else if (value instanceof Klass) {
-                    return "JavaType:" + ((Klass) value).getName().toString();
+                    return "JavaType:" + ((Klass) value).getName();
                 } else if (value instanceof Enum) {
                     return MetaUtil.getSimpleName(value.getClass(), true) + ":" + ((Enum<?>) value).name();
                 } else if (value instanceof FormatWithToString) {

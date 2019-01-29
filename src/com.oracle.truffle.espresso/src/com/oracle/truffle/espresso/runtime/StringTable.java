@@ -26,8 +26,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.espresso.impl.ByteString;
 import com.oracle.truffle.espresso.impl.ByteString.Constant;
-import com.oracle.truffle.espresso.jni.Utf8;
-import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.substitutions.Type;
 
 /**
  * Used to implement String interning.
@@ -36,10 +36,8 @@ public final class StringTable { // ByteString<Constant> => StaticObject
 
     private final EspressoContext context; // per context
 
-    // private final EconomicMap<ByteString<Constant>, WeakReference<StaticObject>> interned =
-    // EconomicMap.create();
-    private final ConcurrentHashMap<ByteString<Constant>, StaticObject> cache = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<StaticObject, StaticObject> interned = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<ByteString<Constant>, String> cache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, StaticObject> interned = new ConcurrentHashMap<>();
 
     public StringTable(EspressoContext context) {
         this.context = context;
@@ -47,19 +45,21 @@ public final class StringTable { // ByteString<Constant> => StaticObject
 
     public StaticObject intern(ByteString<Constant> value) {
         // Weak values?
-        return cache.computeIfAbsent(value, StringTable.this::createStringObject);
+        return interned.computeIfAbsent(
+                        cache.computeIfAbsent(value, StringTable::createStringFromByteString),
+                        this::createStringObjectFromString);
     }
 
-    private StaticObject createStringObject(String value) {
+    private StaticObject createStringObjectFromString(String value) {
         return context.getMeta().toGuest(value);
     }
 
-    private StaticObject createStringObject(ByteString<Constant> value) {
-        return createStringObject(Utf8.toJavaString(value.value));
+    private static String createStringFromByteString(ByteString<Constant> value) {
+        return value.toString();
     }
 
-    public StaticObject intern(StaticObject stringObject) {
-        // Guest-level interning
-        throw EspressoError.unimplemented();
+    public StaticObject intern(@Type(String.class) StaticObject stringObject) {
+        String hostString = Meta.toHostString(stringObject);
+        return interned.computeIfAbsent(hostString, k -> stringObject);
     }
 }

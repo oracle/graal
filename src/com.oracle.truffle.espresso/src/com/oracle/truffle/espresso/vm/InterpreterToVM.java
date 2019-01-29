@@ -27,9 +27,6 @@ import static com.oracle.truffle.espresso.meta.Meta.meta;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -39,12 +36,13 @@ import java.util.function.IntFunction;
 import java.util.function.IntPredicate;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
-import com.oracle.truffle.espresso.impl.FieldInfo;
+import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.impl.MethodInfo;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
@@ -82,7 +80,7 @@ public class InterpreterToVM {
 
     static {
         try {
-            Field f = Unsafe.class.getDeclaredField("theUnsafe");
+            java.lang.reflect.Field f = Unsafe.class.getDeclaredField("theUnsafe");
             f.setAccessible(true);
             hostUnsafe = (Unsafe) f.get(null);
         } catch (NoSuchFieldException | IllegalAccessException e) {
@@ -120,19 +118,19 @@ public class InterpreterToVM {
     }
 
     public StaticObject intern(StaticObject obj) {
-        assert obj.getKlass().getTypeDescriptor().equals(obj.getKlass().getContext().getTypeDescriptors().STRING);
+        assert obj.getKlass().equals(obj.getKlass().getContext().getMeta().STRING);
         return obj.getKlass().getContext().getStrings().intern(obj);
     }
 
-    private static MethodKey getMethodKey(MethodInfo method) {
+    private static MethodKey getMethodKey(Method method) {
         return new MethodKey(
                         method.getDeclaringClass().getName(),
                         method.getName(),
                         method.getSignature().toString());
     }
 
-    @CompilerDirectives.TruffleBoundary
-    public RootNode getSubstitution(MethodInfo method) {
+    @TruffleBoundary
+    public RootNode getSubstitution(Method method) {
         assert method != null;
         return substitutions.get(getMethodKey(method));
     }
@@ -224,7 +222,7 @@ public class InterpreterToVM {
         } else {
             throw EspressoError.shouldNotReachHere("Substitutions class must be decorated with @" + EspressoSubstitutions.class.getName());
         }
-        for (Method method : clazz.getDeclaredMethods()) {
+        for (java.lang.reflect.Method method : clazz.getDeclaredMethods()) {
             Substitution substitution = method.getAnnotation(Substitution.class);
             if (substitution == null) {
                 continue;
@@ -232,9 +230,9 @@ public class InterpreterToVM {
 
             RootNode rootNode = createRootNodeForMethod(language, method);
             StringBuilder signature = new StringBuilder("(");
-            Parameter[] parameters = method.getParameters();
+            java.lang.reflect.Parameter[] parameters = method.getParameters();
             for (int i = substitution.hasReceiver() ? 1 : 0; i < parameters.length; i++) {
-                Parameter parameter = parameters[i];
+                java.lang.reflect.Parameter parameter = parameters[i];
                 String parameterTypeName;
                 Type annotatedType = parameter.getAnnotatedType().getAnnotation(Type.class);
                 if (annotatedType != null) {
@@ -459,91 +457,91 @@ public class InterpreterToVM {
     }
     // endregion
 
-    public boolean getFieldBoolean(StaticObject obj, FieldInfo field) {
+    public boolean getFieldBoolean(StaticObject obj, Field field) {
         return (boolean) ((StaticObjectImpl) obj).getField(field);
     }
 
-    public int getFieldInt(StaticObject obj, FieldInfo field) {
+    public int getFieldInt(StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Int;
         return (int) ((StaticObjectImpl) obj).getField(field);
     }
 
-    public long getFieldLong(StaticObject obj, FieldInfo field) {
+    public long getFieldLong(StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Long;
         return (long) ((StaticObjectImpl) obj).getField(field);
     }
 
-    public byte getFieldByte(StaticObject obj, FieldInfo field) {
+    public byte getFieldByte(StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Byte;
         return (byte) ((StaticObjectImpl) obj).getField(field);
     }
 
-    public short getFieldShort(StaticObject obj, FieldInfo field) {
+    public short getFieldShort(StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Short;
         return (short) ((StaticObjectImpl) obj).getField(field);
     }
 
-    public float getFieldFloat(StaticObject obj, FieldInfo field) {
+    public float getFieldFloat(StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Float;
         return (float) ((StaticObjectImpl) obj).getField(field);
     }
 
-    public double getFieldDouble(StaticObject obj, FieldInfo field) {
+    public double getFieldDouble(StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Double;
         return (double) ((StaticObjectImpl) obj).getField(field);
     }
 
-    public StaticObject getFieldObject(StaticObject obj, FieldInfo field) {
+    public StaticObject getFieldObject(StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Object;
         return (StaticObject) ((StaticObjectImpl) obj).getField(field);
     }
 
-    public char getFieldChar(StaticObject obj, FieldInfo field) {
+    public char getFieldChar(StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Char;
         return (char) ((StaticObjectImpl) obj).getField(field);
     }
 
-    public void setFieldBoolean(boolean value, StaticObject obj, FieldInfo field) {
+    public void setFieldBoolean(boolean value, StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Boolean;
         ((StaticObjectImpl) obj).setField(field, value);
     }
 
-    public void setFieldByte(byte value, StaticObject obj, FieldInfo field) {
+    public void setFieldByte(byte value, StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Byte;
         ((StaticObjectImpl) obj).setField(field, value);
     }
 
-    public void setFieldChar(char value, StaticObject obj, FieldInfo field) {
+    public void setFieldChar(char value, StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Char;
         ((StaticObjectImpl) obj).setField(field, value);
     }
 
-    public void setFieldShort(short value, StaticObject obj, FieldInfo field) {
+    public void setFieldShort(short value, StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Short;
         ((StaticObjectImpl) obj).setField(field, value);
     }
 
-    public void setFieldInt(int value, StaticObject obj, FieldInfo field) {
+    public void setFieldInt(int value, StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Int;
         ((StaticObjectImpl) obj).setField(field, value);
     }
 
-    public void setFieldLong(long value, StaticObject obj, FieldInfo field) {
+    public void setFieldLong(long value, StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Long;
         ((StaticObjectImpl) obj).setField(field, value);
     }
 
-    public void setFieldFloat(float value, StaticObject obj, FieldInfo field) {
+    public void setFieldFloat(float value, StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Float;
         ((StaticObjectImpl) obj).setField(field, value);
     }
 
-    public void setFieldDouble(double value, StaticObject obj, FieldInfo field) {
+    public void setFieldDouble(double value, StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Double;
         ((StaticObjectImpl) obj).setField(field, value);
     }
 
-    public void setFieldObject(StaticObject value, StaticObject obj, FieldInfo field) {
+    public void setFieldObject(StaticObject value, StaticObject obj, Field field) {
         assert field.getKind() == JavaKind.Object;
         ((StaticObjectImpl) obj).setField(field, value);
     }
@@ -559,7 +557,7 @@ public class InterpreterToVM {
         return new StaticObjectArray(componentType.getArrayClass(), arr);
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public StaticObject newMultiArray(Klass klass, int... dimensions) {
         assert dimensions.length > 1;
 
@@ -607,27 +605,21 @@ public class InterpreterToVM {
         if (length < 0) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(NegativeArraySizeException.class);
         }
+        // @formatter:off
+        // Checkstyle: stop
         switch (jvmPrimitiveType) {
-            case 4:
-                return StaticObjectArray.wrap(new boolean[length]);
-            case 5:
-                return StaticObjectArray.wrap(new char[length]);
-            case 6:
-                return StaticObjectArray.wrap(new float[length]);
-            case 7:
-                return StaticObjectArray.wrap(new double[length]);
-            case 8:
-                return StaticObjectArray.wrap(new byte[length]);
-            case 9:
-                return StaticObjectArray.wrap(new short[length]);
-            case 10:
-                return StaticObjectArray.wrap(new int[length]);
-            case 11:
-                return StaticObjectArray.wrap(new long[length]);
-            default:
-                CompilerDirectives.transferToInterpreter();
-                throw EspressoError.shouldNotReachHere();
+            case 4  : return StaticObjectArray.wrap(new boolean[length]);
+            case 5  : return StaticObjectArray.wrap(new char[length]);
+            case 6  : return StaticObjectArray.wrap(new float[length]);
+            case 7  : return StaticObjectArray.wrap(new double[length]);
+            case 8  : return StaticObjectArray.wrap(new byte[length]);
+            case 9  : return StaticObjectArray.wrap(new short[length]);
+            case 10 : return StaticObjectArray.wrap(new int[length]);
+            case 11 : return StaticObjectArray.wrap(new long[length]);
+            default : throw EspressoError.shouldNotReachHere();
         }
+        // @formatter:on
+        // Checkstyle: resume
     }
 
     /**
@@ -639,12 +631,12 @@ public class InterpreterToVM {
      * Cloneable >1 Object[] - java.io.Serializable >1 Object[] - If P is a primitive type, then:
      * Object >1 P[] Cloneable >1 P[] java.io.Serializable >1 P[]
      */
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public boolean instanceOf(StaticObject instance, Klass typeToCheck) {
         if (StaticObject.isNull(instance)) {
             return false;
         }
-        return meta(typeToCheck).isAssignableFrom(meta(instance.getKlass()));
+        return typeToCheck.isAssignableFrom(instance.getKlass());
     }
 
     public StaticObject checkCast(StaticObject instance, Klass klass) {

@@ -32,6 +32,8 @@ import java.util.List;
 
 public final class InnerClassesAttribute extends Attribute {
 
+    public static final ByteString<Name> NAME = ByteString.fromJavaString("InnerClasses");
+
     public static class Entry {
         public final int innerClassIndex;
         public final int outerClassIndex;

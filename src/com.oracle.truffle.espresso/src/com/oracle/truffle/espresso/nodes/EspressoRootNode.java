@@ -233,6 +233,8 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -254,8 +256,10 @@ import com.oracle.truffle.espresso.classfile.IntegerConstant;
 import com.oracle.truffle.espresso.classfile.LongConstant;
 import com.oracle.truffle.espresso.classfile.PoolConstant;
 import com.oracle.truffle.espresso.classfile.StringConstant;
+import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.FieldInfo;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.MethodInfo;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
@@ -279,11 +283,14 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
 
     @Children private QuickNode[] nodes = QuickNode.EMPTY_ARRAY;
 
-    private final MethodInfo method;
+    private final Method method;
     private final InterpreterToVM vm;
 
-    @CompilerDirectives.CompilationFinal(dimensions = 1) private final FrameSlot[] locals;
-    @CompilerDirectives.CompilationFinal(dimensions = 1) private final FrameSlot[] stackSlots;
+    @CompilationFinal(dimensions = 1) //
+    private final FrameSlot[] locals;
+
+    @CompilationFinal(dimensions = 1) //
+    private final FrameSlot[] stackSlots;
 
     private final BytecodeStream bs;
 
@@ -295,8 +302,8 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
                         " " + getMethod().getSignature().toString();
     }
 
-    @CompilerDirectives.TruffleBoundary
-    public EspressoRootNode(TruffleLanguage<EspressoContext> language, MethodInfo method, InterpreterToVM vm) {
+    @TruffleBoundary
+    public EspressoRootNode(TruffleLanguage<EspressoContext> language, Method method, InterpreterToVM vm) {
         super(language, initFrameDescriptor(method.getMaxLocals() + method.getMaxStackSize()));
         CompilerAsserts.neverPartOfCompilation();
         this.method = method;
@@ -307,7 +314,7 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
         this.stackSlots = Arrays.copyOfRange(slots, method.getMaxLocals(), method.getMaxLocals() + method.getMaxStackSize());
     }
 
-    public MethodInfo getMethod() {
+    public Method getMethod() {
         return method;
     }
 
@@ -322,7 +329,7 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
     @ExplodeLoop
     private void initArguments(final VirtualFrame frame) {
         boolean hasReceiver = !getMethod().isStatic();
-        int argCount = method.getSignature().getParameterCount(false);
+        int argCount = method.getSignature().parameterCount(false);
 
         CompilerAsserts.partialEvaluationConstant(argCount);
         CompilerAsserts.partialEvaluationConstant(locals.length);
@@ -343,7 +350,7 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
             n += JavaKind.Object.getSlotCount();
         }
         for (int i = 0; i < argCount; ++i) {
-            JavaKind expectedkind = method.getSignature().getParameterKind(i);
+            JavaKind expectedkind = method.getSignature().parameterKind(i);
             // @formatter:off
             // Checkstyle: stop
             switch (expectedkind) {
@@ -480,7 +487,7 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
 
     // region Local accessors
 
-    @CompilerDirectives.CompilationFinal private boolean zeroStackBackEdges = false;
+    @CompilationFinal private boolean zeroStackBackEdges = false;
 
     @Override
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
@@ -1182,7 +1189,7 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
 
     // region Instance/array allocation
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private StaticObjectArray allocateArray(Klass componentType, int length) {
         assert !componentType.isPrimitive();
         return vm.newArray(componentType, length);
@@ -1406,7 +1413,7 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
      *   curBCI = bs.next(curBCI);
      * </pre>
      */
-    private int getField(final VirtualFrame frame, int top, FieldInfo field, int opcode) {
+    private int getField(final VirtualFrame frame, int top, Field field, int opcode) {
         assert opcode == GETFIELD || opcode == GETSTATIC;
         assert field.isStatic() == (opcode == GETSTATIC);
         CompilerAsserts.partialEvaluationConstant(field);
@@ -1443,13 +1450,13 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
     }
 
     @Override
-    public Meta.Method getOriginalMethod() {
-        return meta(method);
+    public Method getOriginalMethod() {
+        return method;
     }
 
     @ExplodeLoop
     public Object[] peekArguments(VirtualFrame frame, int top, boolean hasReceiver, SignatureDescriptor signature) {
-        int argCount = signature.getParameterCount(false);
+        int argCount = signature.parameterCount(false);
 
         int extraParam = hasReceiver ? 1 : 0;
         final Object[] args = new Object[argCount + extraParam];
@@ -1460,7 +1467,7 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
 
         int argAt = top - 1;
         for (int i = argCount - 1; i >= 0; --i) {
-            JavaKind kind = signature.getParameterKind(i);
+            JavaKind kind = signature.parameterKind(i);
             // @formatter:off
             // Checkstyle: stop
             switch (kind) {
@@ -1528,9 +1535,9 @@ public final class EspressoRootNode extends RootNode implements LinkedNode {
         // Checkstyle: resume
     }
 
-    public StaticObject peekReceiver(final VirtualFrame frame, int top, MethodInfo m) {
+    public StaticObject peekReceiver(final VirtualFrame frame, int top, Method m) {
         assert !m.isStatic();
-        int skipSlots = m.getSignature().getNumberOfSlotsForParameters();
+        int skipSlots = m.getSignature().slotsForParameters();
         return peekObject(frame, top - skipSlots - 1);
     }
 }

@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
@@ -34,6 +35,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
@@ -42,16 +44,18 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.object.DebugCounter;
 
+import static com.oracle.truffle.api.nodes.Node.*;
+
 public abstract class NativeRootNode extends RootNode implements LinkedNode {
 
     private final TruffleObject boundNative;
 
-    @CompilerDirectives.CompilationFinal //
-    private Meta.Method originalMethod;
+    @CompilationFinal //
+    private Method originalMethod;
 
-    @Node.Child Node execute = Message.EXECUTE.createNode();
+    @Child Node execute = Message.EXECUTE.createNode();
 
-    @Node.Child Node isNullNode = Message.IS_NULL.createNode();
+    @Child Node isNullNode = Message.IS_NULL.createNode();
 
     public final static DebugCounter nativeCalls = DebugCounter.create("Native calls");
 
@@ -59,7 +63,7 @@ public abstract class NativeRootNode extends RootNode implements LinkedNode {
         this(language, boundNative, null);
     }
 
-    public NativeRootNode(TruffleLanguage<?> language, TruffleObject boundNative, Meta.Method originalMethod) {
+    public NativeRootNode(TruffleLanguage<?> language, TruffleObject boundNative, Method originalMethod) {
         super(language);
         this.boundNative = boundNative;
         this.originalMethod = originalMethod;
@@ -155,11 +159,11 @@ public abstract class NativeRootNode extends RootNode implements LinkedNode {
     }
 
     @Override
-    public Meta.Method getOriginalMethod() {
+    public Method getOriginalMethod() {
         return originalMethod;
     }
 
-    public void setOriginalMethod(Meta.Method originalMethod) {
+    public void setOriginalMethod(Method originalMethod) {
         this.originalMethod = originalMethod;
     }
 

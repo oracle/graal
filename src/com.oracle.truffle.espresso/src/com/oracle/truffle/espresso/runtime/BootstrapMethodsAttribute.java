@@ -5,6 +5,8 @@ import com.oracle.truffle.espresso.impl.ByteString.Name;
 
 public class BootstrapMethodsAttribute extends Attribute {
 
+    public static final ByteString<Name> NAME = ByteString.fromJavaString("BootstrapMethods");
+
     public Entry[] getEntries() {
         return entries;
     }

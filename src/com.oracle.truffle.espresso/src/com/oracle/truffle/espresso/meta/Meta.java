@@ -22,34 +22,20 @@
  */
 package com.oracle.truffle.espresso.meta;
 
-import static java.util.stream.Collectors.collectingAndThen;
-import static java.util.stream.Collectors.toList;
-
 import java.io.Serializable;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.IntFunction;
 import java.util.function.Predicate;
-import java.util.stream.Stream;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.impl.FieldInfo;
-import com.oracle.truffle.espresso.impl.MethodInfo;
-import com.oracle.truffle.espresso.substitutions.Type;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.espresso.impl.Field;
+import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObjectArray;
-import com.oracle.truffle.espresso.runtime.StaticObjectImpl;
-import com.oracle.truffle.espresso.descriptors.SignatureDescriptor;
-import com.oracle.truffle.espresso.vm.InterpreterToVM;
+import com.oracle.truffle.espresso.substitutions.Type;
 
 /**
  * Introspection API to access the guest world from the host. Provides seamless conversions from
@@ -57,7 +43,7 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
  */
 public final class Meta {
 
-    final EspressoContext context;
+    private final EspressoContext context;
 
     public Meta(EspressoContext context) {
         this.context = context;
@@ -90,27 +76,6 @@ public final class Meta {
 
         CLONEABLE = knownKlass(Cloneable.class);
         SERIALIZABLE = knownKlass(Serializable.class);
-    }
-
-    public static Klass.WithInstance meta(StaticObject obj) {
-        assert StaticObject.notNull(obj);
-        return meta(obj.getKlass()).forInstance(obj);
-    }
-
-    public Meta.Klass meta(java.lang.Class<?> clazz) {
-        return knownKlass(clazz);
-    }
-
-    public static Meta.Method meta(MethodInfo method) {
-        return new Meta.Method(method);
-    }
-
-    public static Meta.Field meta(FieldInfo field) {
-        return new Meta.Field(field);
-    }
-
-    public static Meta.Klass meta(com.oracle.truffle.espresso.impl.Klass klass) {
-        return new Meta.Klass(klass);
     }
 
     public final Klass OBJECT;
@@ -157,7 +122,7 @@ public final class Meta {
         return ex;
     }
 
-    public static StaticObject initEx(Meta.Klass clazz, String message) {
+    public static StaticObject initEx(Klass clazz, String message) {
         StaticObject ex = clazz.allocateInstance();
         meta(ex).method("<init>", void.class, String.class).invoke(message);
         return ex;
@@ -187,27 +152,27 @@ public final class Meta {
         throw new EspressoException(initEx(clazz, cause));
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public Klass throwableKlass(java.lang.Class<?> exceptionClass) {
         assert isKnownClass(exceptionClass);
         assert Throwable.class.isAssignableFrom(exceptionClass);
         return knownKlass(exceptionClass);
     }
 
-    @CompilerDirectives.TruffleBoundary
-    public Meta.Klass knownKlass(java.lang.Class<?> hostClass) {
+    @TruffleBoundary
+    public Klass knownKlass(java.lang.Class<?> hostClass) {
         assert isKnownClass(hostClass);
         // Resolve classes using BCL.
-        return meta(context.getRegistries().resolve(context.getTypeDescriptors().make(MetaUtil.toInternalName(hostClass.getName())), StaticObject.NULL));
+        return context.getRegistries().resolveWithBootClassLoader(context.getTypeDescriptors().make(MetaUtil.toInternalName(hostClass.getName())));
     }
 
-    @CompilerDirectives.TruffleBoundary
-    public Meta.Klass loadKlass(String className, StaticObject classLoader) {
+    @TruffleBoundary
+    public Klass loadKlass(String className, StaticObject classLoader) {
         assert classLoader != null : "use StaticObject.NULL for BCL";
-        return meta(context.getRegistries().resolve(context.getTypeDescriptors().make(MetaUtil.toInternalName(className)), classLoader));
+        return context.getRegistries().resolve(context.getTypeDescriptors().make(MetaUtil.toInternalName(className)), classLoader));
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public static String toHostString(StaticObject str) {
         if (StaticObject.isNull(str)) {
             return null;
@@ -216,12 +181,12 @@ public final class Meta {
         return createString(value);
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public StaticObject toGuest(String str) {
         return toGuest(this, str);
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public static StaticObject toGuest(Meta meta, String str) {
         if (str == null) {
             return StaticObject.NULL;
@@ -299,628 +264,12 @@ public final class Meta {
             if (guestObject instanceof StaticObjectArray) {
                 return ((StaticObjectArray) guestObject).unwrap();
             }
-            if (guestObject.getKlass() == STRING.klass) {
+            if (guestObject.getKlass() == STRING) {
                 return toHostString(guestObject);
             }
         }
         return object;
     }
-
-    public static class Klass implements ModifiersProvider {
-        private final com.oracle.truffle.espresso.impl.Klass klass;
-
-        Klass(com.oracle.truffle.espresso.impl.Klass klass) {
-            this.klass = klass;
-        }
-
-        public void safeInitialize() {
-            try {
-                klass.initialize();
-            } catch (EspressoException e) {
-                throw EspressoLanguage.getCurrentContext().getMeta().throwEx(ExceptionInInitializerError.class, e.getException());
-            }
-        }
-
-        public Meta.Klass getComponentType() {
-            return isArray() ? meta(klass.getComponentType()) : null;
-        }
-
-        public JavaKind kind() {
-            return klass.getJavaKind();
-        }
-
-        public Meta getMeta() {
-            return klass.getContext().getMeta();
-        }
-
-        public Meta.Klass getSuperclass() {
-            com.oracle.truffle.espresso.impl.Klass superclass = klass.getSuperclass();
-            return superclass != null ? meta(superclass) : null;
-        }
-
-        public Meta.Method[] methods(boolean includeInherited) {
-            return methodStream(includeInherited).toArray(new IntFunction<Method[]>() {
-                @Override
-                public Method[] apply(int value) {
-                    return new Method[value];
-                }
-            });
-        }
-
-        private Stream<Meta.Method> methodStream(boolean includeInherited) {
-            Stream<Meta.Method> methods = Arrays.stream(klass.getDeclaredMethods()).map(new Function<MethodInfo, Method>() {
-                @Override
-                public Method apply(MethodInfo method) {
-                    return meta(method);
-                }
-            });
-            if (includeInherited && getSuperclass() != null) {
-                methods = Stream.concat(methods, getSuperclass().methodStream(includeInherited));
-            }
-            return methods;
-        }
-
-        public Meta.Klass getSupertype() {
-            if (isArray()) {
-                Meta.Klass componentType = getComponentType();
-                if (this.rawKlass() == getMeta().OBJECT.array().rawKlass() || componentType.isPrimitive()) {
-                    return getMeta().OBJECT;
-                }
-                return componentType.getSupertype().array();
-            }
-            if (isInterface()) {
-                return getMeta().OBJECT;
-            }
-            return getSuperclass();
-        }
-
-        /**
-         * Determines if this type is either the same as, or is a superclass or superinterface of,
-         * the type represented by the specified parameter. This method is identical to
-         * {@link Class#isAssignableFrom(Class)} in terms of the value return for this type.
-         */
-        @CompilerDirectives.TruffleBoundary
-        public boolean isAssignableFrom(Meta.Klass other) {
-            if (this.rawKlass() == other.rawKlass()) {
-                return true;
-            }
-            if (this.isPrimitive() || other.isPrimitive()) {
-                // Reference equality is enough within the same context.
-                return this == other;
-            }
-            if (this.isArray() && other.isArray()) {
-                return getComponentType().isAssignableFrom(other.getComponentType());
-            }
-            if (isInterface()) {
-                return other.getInterfacesStream(true).anyMatch(new Predicate<Klass>() {
-                    @Override
-                    public boolean test(Klass i) {
-                        return i.rawKlass() == Klass.this.rawKlass();
-                    }
-                });
-            }
-            return other.getSupertypesStream(true).anyMatch(new Predicate<Klass>() {
-                @Override
-                public boolean test(Klass k) {
-                    return k.rawKlass() == Klass.this.rawKlass();
-                }
-            });
-        }
-
-        @CompilerDirectives.TruffleBoundary
-        private boolean isPrimaryType() {
-            assert !isPrimitive();
-            if (isArray())
-                return getElementalType().isPrimaryType();
-            return !isInterface();
-        }
-
-        @CompilerDirectives.TruffleBoundary
-        public Meta.Klass getElementalType() {
-            if (!isArray()) {
-                return null;
-            }
-            return meta(klass.getElementalType());
-        }
-
-        @CompilerDirectives.TruffleBoundary
-        private Stream<Meta.Klass> getSupertypesStream(boolean includeOwn) {
-            Meta.Klass supertype = getSupertype();
-            Stream<Meta.Klass> supertypes;
-            if (supertype != null) {
-                supertypes = supertype.getSupertypesStream(true);
-            } else {
-                supertypes = Stream.empty();
-            }
-            if (includeOwn) {
-                return Stream.concat(Stream.of(this), supertypes);
-            }
-            return supertypes;
-        }
-
-        @CompilerDirectives.TruffleBoundary
-        private Stream<Meta.Klass> getInterfacesStream(boolean includeInherited) {
-            Stream<Meta.Klass> interfaces = Stream.of(klass.getInterfaces()).map(new Function<com.oracle.truffle.espresso.impl.Klass, Klass>() {
-                @Override
-                public Klass apply(com.oracle.truffle.espresso.impl.Klass klass1) {
-                    return meta(klass1);
-                }
-            });
-            Meta.Klass superclass = getSuperclass();
-            if (includeInherited && superclass != null) {
-                interfaces = Stream.concat(interfaces, superclass.getInterfacesStream(includeInherited));
-            }
-            if (includeInherited) {
-                interfaces = interfaces.flatMap(new Function<Klass, Stream<? extends Klass>>() {
-                    @Override
-                    public Stream<? extends Klass> apply(Klass i) {
-                        return Stream.concat(Stream.of(i), i.getInterfacesStream(includeInherited));
-                    }
-                });
-            }
-            return interfaces;
-        }
-
-        public List<Klass> getInterfaces(boolean includeSuperclasses) {
-            return getInterfacesStream(includeSuperclasses).collect(collectingAndThen(toList(), new Function<List<Klass>, List<Klass>>() {
-                @Override
-                public List<Klass> apply(List<Klass> list) {
-                    return Collections.unmodifiableList(list);
-                }
-            }));
-        }
-
-        @CompilerDirectives.TruffleBoundary
-        public StaticObject allocateInstance() {
-            assert !klass.isArray();
-            return klass.getContext().getInterpreterToVM().newObject(klass);
-        }
-
-        public String getName() {
-            return MetaUtil.internalNameToJava(klass.getName(), true, true);
-        }
-
-        public String getInternalName() {
-            return klass.getName();
-        }
-
-        public boolean isArray() {
-            return klass.isArray();
-        }
-
-        public boolean isPrimitive() {
-            return klass.isPrimitive();
-        }
-
-        @CompilerDirectives.TruffleBoundary
-        public Object allocateArray(int length) {
-            return klass.getContext().getInterpreterToVM().newArray(klass, length);
-        }
-
-        @CompilerDirectives.TruffleBoundary
-        public Object allocateArray(int length, IntFunction<StaticObject> generator) {
-            // TODO(peterssen): Store check is missing.
-            StaticObject[] array = new StaticObject[length];
-            for (int i = 0; i < array.length; ++i) {
-                array[i] = generator.apply(i);
-            }
-            return new StaticObjectArray(klass.getArrayClass(), array);
-        }
-
-        public Optional<Method.WithInstance> getClassInitializer() {
-            MethodInfo clinit = klass.findDeclaredMethod("<clinit>", void.class);
-            return Optional.ofNullable(clinit).map(new Function<MethodInfo, Method.WithInstance>() {
-                @Override
-                public Method.WithInstance apply(MethodInfo mi) {
-                    Meta.Method m = meta(mi);
-                    assert m.isClassInitializer();
-                    return m.forInstance(klass.tryInitializeAndGetStatics());
-                }
-            });
-        }
-
-        @CompilerDirectives.TruffleBoundary
-        public Meta.Method method(String name, Class<?> returnType, Class<?>... parameterTypes) {
-            SignatureDescriptor target = klass.getContext().getSignatureDescriptors().create(returnType, parameterTypes);
-            MethodInfo found = Arrays.stream(klass.getDeclaredMethods()).filter(new Predicate<MethodInfo>() {
-                @Override
-                public boolean test(MethodInfo m) {
-                    return m.getName().equals(name) && m.getSignature().equals(target);
-                }
-            }).findFirst().orElse(null);
-            if (found == null) {
-                if (getSuperclass() != null) {
-                    return getSuperclass().method(name, returnType, parameterTypes);
-                }
-            }
-            return found == null ? null : new Meta.Method(found);
-        }
-
-        public com.oracle.truffle.espresso.impl.Klass rawKlass() {
-            return klass;
-        }
-
-        public Method.WithInstance staticMethod(String name, Class<?> returnType, Class<?>... parameterTypes) {
-            Meta.Method m = method(name, returnType, parameterTypes);
-            assert m.isStatic();
-            return m.forInstance(m.getDeclaringClass().rawKlass().tryInitializeAndGetStatics());
-        }
-
-        public Meta.Field declaredField(String name) {
-            // TODO(peterssen): Improve lookup performance.
-            for (FieldInfo f : klass.getDeclaredFields()) {
-                if (name.equals(f.getName())) {
-                    return new Meta.Field(f);
-                }
-            }
-            return null;
-        }
-
-        public Meta.Field field(String name) {
-            // TODO(peterssen): Improve lookup performance.
-            Field f = declaredField(name);
-            if (f == null) {
-                if (getSuperclass() != null) {
-                    return getSuperclass().field(name);
-                }
-            }
-            return f;
-        }
-
-        public Field.WithInstance staticField(String name) {
-            assert klass.isInitialized();
-            return Klass.this.declaredField(name).forInstance(klass.tryInitializeAndGetStatics());
-        }
-
-        public WithInstance forInstance(StaticObject instance) {
-            return new WithInstance(instance);
-        }
-
-        public WithInstance metaNew() {
-            return forInstance(allocateInstance());
-        }
-
-        @Override
-        public int getModifiers() {
-            return klass.getModifiers();
-        }
-
-        public class WithInstance {
-            private final StaticObject instance;
-
-            WithInstance(StaticObject obj) {
-                assert StaticObject.notNull(obj);
-                this.instance = obj;
-            }
-
-            public Field.WithInstance declaredField(String name) {
-                return Klass.this.declaredField(name).forInstance(instance);
-            }
-
-            public Field.WithInstance field(String name) {
-                return Klass.this.field(name).forInstance(instance);
-            }
-
-            public WithInstance fields(Field.SetField... setters) {
-                for (Field.SetField setter : setters) {
-                    setter.action.accept(declaredField(setter.name));
-                }
-                return this;
-            }
-
-            public Method.WithInstance method(String name, Class<?> returnType, Class<?>... parameterTypes) {
-                return Klass.this.method(name, returnType, parameterTypes).forInstance(instance);
-            }
-
-            public StaticObject getInstance() {
-                return instance;
-            }
-
-            public String guestToString() {
-                return toHostString((StaticObject) method("toString", String.class).invokeDirect());
-            }
-
-            public Meta getMeta() {
-                return instance.getKlass().getContext().getMeta();
-            }
-        }
-
-        public Klass array() {
-            return new Klass(klass.getArrayClass());
-        }
-    }
-
-    public static class Method implements ModifiersProvider {
-        private final MethodInfo method;
-
-        Method(MethodInfo method) {
-            assert method != null;
-            this.method = method;
-        }
-
-        public Meta.Klass[] getParameterTypes() {
-            com.oracle.truffle.espresso.impl.Klass[] params = method.getParameterTypes();
-            Meta.Klass[] metaParams = new Meta.Klass[params.length];
-            for (int i = 0; i < params.length; i++) {
-                metaParams[i] = meta(params[i]);
-            }
-            return metaParams;
-        }
-
-        public int getParameterCount() {
-            return method.getParameterCount();
-        }
-
-        public Meta.Klass getReturnType() {
-            return meta(method.getReturnType());
-        }
-
-        public Meta.Klass getDeclaringClass() {
-            return meta(method.getDeclaringClass());
-        }
-
-        public MethodInfo rawMethod() {
-            return method;
-        }
-
-        public Meta.Method.WithInstance asStatic() {
-            assert isStatic();
-            return forInstance(method.getDeclaringClass().tryInitializeAndGetStatics());
-        }
-
-        /**
-         * Invoke guest method, parameters and return value are converted to host world. Primitives,
-         * primitive arrays are shared, and are passed verbatim, conversions are provided for String
-         * and StaticObject.NULL/null. There's no parameter casting based on the method's signature,
-         * widening nor narrowing.
-         */
-        @CompilerDirectives.TruffleBoundary
-        public Object invoke(Object self, Object... args) {
-            assert args.length == method.getSignature().getParameterCount(false);
-            assert !isStatic() || ((StaticObjectImpl) self).isStatic();
-            Meta meta = method.getContext().getMeta();
-
-            final Object[] filteredArgs;
-            if (isStatic()) {
-                filteredArgs = new Object[args.length];
-                for (int i = 0; i < filteredArgs.length; ++i) {
-                    filteredArgs[i] = meta.toGuestBoxed(args[i]);
-                }
-            } else {
-                filteredArgs = new Object[args.length + 1];
-                filteredArgs[0] = meta.toGuestBoxed(self);
-                for (int i = 1; i < filteredArgs.length; ++i) {
-                    filteredArgs[i] = meta.toGuestBoxed(args[i - 1]);
-                }
-            }
-            return meta.toHostBoxed(method.getCallTarget().call(filteredArgs));
-        }
-
-        /**
-         * Invoke a guest method without parameter/return type conversion. There's no parameter
-         * casting based on the method's signature, widening nor narrowing.
-         */
-        @CompilerDirectives.TruffleBoundary
-        public Object invokeDirect(Object self, Object... args) {
-            if (isStatic()) {
-                assert args.length == method.getSignature().getParameterCount(false);
-                return method.getCallTarget().call(args);
-            } else {
-                assert args.length + 1 /* self */ == method.getSignature().getParameterCount(!method.isStatic());
-                Object[] fullArgs = new Object[args.length + 1];
-                System.arraycopy(args, 0, fullArgs, 1, args.length);
-                fullArgs[0] = self;
-                return method.getCallTarget().call(fullArgs);
-            }
-        }
-
-        public String getName() {
-            return method.getName();
-        }
-
-        public boolean isClassInitializer() {
-            assert method.getSignature().resultKind() == JavaKind.Void;
-            assert isStatic();
-            assert method.getSignature().getParameterCount(false) == 0;
-            return "<clinit>".equals(getName());
-        }
-
-        public boolean isConstructor() {
-            return method.isConstructor();
-        }
-
-        public Meta.Method.WithInstance forInstance(StaticObject obj) {
-            return new WithInstance(obj);
-        }
-
-        @Override
-        public int getModifiers() {
-            return method.getModifiers();
-        }
-
-        public class WithInstance {
-            private final StaticObject instance;
-
-            WithInstance(StaticObject obj) {
-                assert !isStatic() || ((StaticObjectImpl) obj).isStatic();
-                assert StaticObject.notNull(obj);
-                instance = obj;
-            }
-
-            public Object invoke(Object... args) {
-                return Method.this.invoke(instance, args);
-            }
-
-            public Object invokeDirect(Object... args) {
-                return Method.this.invokeDirect(instance, args);
-            }
-        }
-    }
-
-    public static class Field implements ModifiersProvider {
-        private final FieldInfo field;
-
-        @Override
-        public String toString() {
-            return "field " + field.getName() + " : " + field.getType().getName();
-        }
-
-        public static SetField set(String name, Object value) {
-            assert value != null;
-            return new SetField(name, value);
-        }
-
-        public static SetField setNull(String name) {
-            return set(name, StaticObject.NULL);
-        }
-
-        public FieldInfo rawField() {
-            return field;
-        }
-
-        @Override
-        public int getModifiers() {
-            return field.getModifiers();
-        }
-
-        public int getSlot() {
-            return field.getSlot();
-        }
-
-        public static class SetField extends FieldAction {
-            public SetField(String name, Object value) {
-                super(name, new Consumer<WithInstance>() {
-                    @Override
-                    public void accept(WithInstance f) {
-                        f.set(value);
-                    }
-                });
-                assert value != null;
-            }
-        }
-
-        public String getName() {
-            return field.getName();
-        }
-
-        public Meta.Klass getDeclaringClass() {
-            return new Meta.Klass(field.getDeclaringClass());
-        }
-
-        public static class FieldAction {
-            final String name;
-            final Consumer<WithInstance> action;
-
-            public FieldAction(String name, Consumer<WithInstance> action) {
-                this.name = name;
-                this.action = action;
-            }
-        }
-
-        public Meta.Klass getType() {
-            return meta(field.getType());
-        }
-
-        Field(FieldInfo field) {
-            this.field = field;
-        }
-
-        public Object get(StaticObject self) {
-            InterpreterToVM vm = field.getDeclaringClass().getContext().getInterpreterToVM();
-            switch (field.getKind()) {
-                case Boolean:
-                    return vm.getFieldBoolean(self, field);
-                case Byte:
-                    return vm.getFieldByte(self, field);
-                case Short:
-                    return vm.getFieldShort(self, field);
-                case Char:
-                    return vm.getFieldChar(self, field);
-                case Int:
-                    return vm.getFieldInt(self, field);
-                case Float:
-                    return vm.getFieldFloat(self, field);
-                case Long:
-                    return vm.getFieldLong(self, field);
-                case Double:
-                    return vm.getFieldDouble(self, field);
-                case Object:
-                    return vm.getFieldObject(self, field);
-                default:
-                    throw EspressoError.shouldNotReachHere();
-            }
-        }
-
-        public void setNull(StaticObject self) {
-            set(self, StaticObject.NULL);
-        }
-
-        public void set(StaticObject self, Object value) {
-            InterpreterToVM vm = field.getDeclaringClass().getContext().getInterpreterToVM();
-            switch (field.getKind()) {
-                case Boolean:
-                    vm.setFieldBoolean((boolean) value, self, field);
-                    break;
-                case Byte:
-                    vm.setFieldByte((byte) value, self, field);
-                    break;
-                case Short:
-                    vm.setFieldShort((short) value, self, field);
-                    break;
-                case Char:
-                    vm.setFieldChar((char) value, self, field);
-                    break;
-                case Int:
-                    vm.setFieldInt((int) value, self, field);
-                    break;
-                case Float:
-                    vm.setFieldFloat((float) value, self, field);
-                    break;
-                case Long:
-                    vm.setFieldLong((long) value, self, field);
-                    break;
-                case Double:
-                    vm.setFieldDouble((double) value, self, field);
-                    break;
-                case Object:
-                    vm.setFieldObject((StaticObject) value, self, field);
-                    break;
-                default:
-                    throw EspressoError.shouldNotReachHere();
-            }
-        }
-
-        public Meta.Field.WithInstance forInstance(StaticObject obj) {
-            return new WithInstance(obj);
-        }
-
-        public class WithInstance {
-            private final StaticObject instance;
-
-            WithInstance(StaticObject obj) {
-                assert obj != null;
-                assert obj != StaticObject.NULL;
-                instance = obj;
-            }
-
-            public Meta.Field getField() {
-                return Field.this;
-            }
-
-            public Object get() {
-                return Field.this.get(this.instance);
-            }
-
-            public void setNull() {
-                Field.this.set(instance, StaticObject.NULL);
-            }
-
-            public void set(Object value) {
-                Field.this.set(instance, value);
-            }
-        }
-    }
-
     // region Low level host String access
 
     private static java.lang.reflect.Field STRING_VALUE;

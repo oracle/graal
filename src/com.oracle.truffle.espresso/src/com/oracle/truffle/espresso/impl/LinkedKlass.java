@@ -1,9 +1,10 @@
 package com.oracle.truffle.espresso.impl;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.object.Shape;
-
 import java.util.Arrays;
+
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.impl.ByteString.Type;
 
 // Structural shareable klass (superklass in superinterfaces resolved and linked)
 // contains shape, field locations.
@@ -15,17 +16,16 @@ public final class LinkedKlass {
     // Linked structural references.
     private final LinkedKlass superKlass;
 
-    @CompilerDirectives.CompilationFinal(dimensions = 1)
+    @CompilationFinal(dimensions = 1) //
     private final LinkedKlass[] interfaces;
 
-    @CompilerDirectives.CompilationFinal(dimensions = 1)
+    @CompilationFinal(dimensions = 1) //
     private final LinkedMethod[] methods; // v-table computed
 
-    @CompilerDirectives.CompilationFinal(dimensions = 1)
+    @CompilationFinal(dimensions = 1) //
     private final LinkedField[] fields; // field offsets and locations computed
 
-
-    Shape shape;
+    // Shape shape;
 
     public LinkedKlass(ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces, LinkedMethod[] methods, LinkedField[] fields) {
         this.parserKlass = parserKlass;
@@ -37,15 +37,20 @@ public final class LinkedKlass {
 
     public boolean equals(LinkedKlass other) {
         return parserKlass == other.parserKlass &&
-                superKlass == other.superKlass &&
-                /* reference equals */ Arrays.equals(interfaces, other.interfaces);
+                        superKlass == other.superKlass &&
+                        /* reference equals */ Arrays.equals(interfaces, other.interfaces);
     }
 
-    public int getFlags() {
+    int getFlags() {
         return parserKlass.getFlags();
     }
 
-    public int getName() {
-        // return parserKlass.getConstantPool();
+    ConstantPool getConstantPool() {
+        return parserKlass.getConstantPool();
+    }
+
+    ByteString<Type> getType() {
+        ConstantPool pool = getConstantPool();
+        return pool.classAt(parserKlass.getThisKlassIndex(), "this").getType(pool);
     }
 }

@@ -33,66 +33,66 @@ public final class TypeDescriptor {
 
     private TypeDescriptor() {}
 
-    public static String stringToJava(String string) {
-        switch (string.charAt(0)) {
-            // @formatter: off
-            case 'L':
-                return dottified(string.substring(1, string.length() - 1));
-            case '[':
-                return stringToJava(string.substring(1)) + "[]";
-            case 'B':
-                return "byte";
-            case 'C':
-                return "char";
-            case 'D':
-                return "double";
-            case 'F':
-                return "float";
-            case 'I':
-                return "int";
-            case 'J':
-                return "long";
-            case 'S':
-                return "short";
-            case 'V':
-                return "void";
-            case 'Z':
-                return "boolean";
-            default:
-                throw new InternalError("invalid type descriptor: " + "\"" + string + "\"");
-                // @formatter: on
-        }
-    }
+//    public static String stringToJava(String string) {
+//        switch (string.charAt(0)) {
+//            // @formatter: off
+//            case 'L':
+//                return dottified(string.substring(1, string.length() - 1));
+//            case '[':
+//                return stringToJava(string.substring(1)) + "[]";
+//            case 'B':
+//                return "byte";
+//            case 'C':
+//                return "char";
+//            case 'D':
+//                return "double";
+//            case 'F':
+//                return "float";
+//            case 'I':
+//                return "int";
+//            case 'J':
+//                return "long";
+//            case 'S':
+//                return "short";
+//            case 'V':
+//                return "void";
+//            case 'Z':
+//                return "boolean";
+//            default:
+//                throw new InternalError("invalid type descriptor: " + "\"" + string + "\"");
+//                // @formatter: on
+//        }
+//    }
 
-    public static String fromJavaName(String javaName) {
-        if (javaName.endsWith("[]")) {
-            return "[" + fromJavaName(javaName.substring(0, javaName.length() - 2));
-        }
-        switch (javaName) {
-            case "byte":
-                return "B";
-            case "char":
-                return "C";
-            case "double":
-                return "D";
-            case "float":
-                return "F";
-            case "int":
-                return "I";
-            case "long":
-                return "J";
-            case "short":
-                return "S";
-            case "void":
-                return "V";
-            case "boolean":
-                return "Z";
-            default:
-                // Reference descriptor.
-                return "L" + slashified(javaName) + ";";
-        }
-
-    }
+//    public static String fromJavaName(String javaName) {
+//        if (javaName.endsWith("[]")) {
+//            return "[" + fromJavaName(javaName.substring(0, javaName.length() - 2));
+//        }
+//        switch (javaName) {
+//            case "byte":
+//                return "B";
+//            case "char":
+//                return "C";
+//            case "double":
+//                return "D";
+//            case "float":
+//                return "F";
+//            case "int":
+//                return "I";
+//            case "long":
+//                return "J";
+//            case "short":
+//                return "S";
+//            case "void":
+//                return "V";
+//            case "boolean":
+//                return "Z";
+//            default:
+//                // Reference descriptor.
+//                return "L" + slashified(javaName) + ";";
+//        }
+//
+//    }
 
     public static boolean isPrimitive(ByteString<Type> type) {
         if (type.length() != 1) {

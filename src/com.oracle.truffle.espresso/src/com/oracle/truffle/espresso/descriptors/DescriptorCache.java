@@ -31,7 +31,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.function.Function;
 
-public abstract class DescriptorCache<Inner extends Descriptor, Key extends ByteString<? extends Inner>, Value> {
+public abstract class DescriptorCache<Key extends ByteString<? extends Descriptor>, Value> {
 
     protected final ConcurrentHashMap<Key, Value> cache = new ConcurrentHashMap<>();
 

@@ -22,19 +22,17 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import java.util.HashMap;
+import java.util.Map;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.impl.FieldInfo;
+import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
-
-import java.util.HashMap;
-import java.util.Map;
-
-import static com.oracle.truffle.espresso.meta.Meta.meta;
 
 public class StaticObjectImpl extends StaticObject {
     private Map<String, Object> hiddenFields;
@@ -66,35 +64,35 @@ public class StaticObjectImpl extends StaticObject {
         // assert !isStatic || klass.isInitialized();
         this.hiddenFields = null;
         this.fields = isStatic ? new Object[klass.getStaticFieldSlots()] : new Object[klass.getInstanceFieldSlots()];
-        FieldInfo[] allFields = isStatic ? klass.getStaticFields() : klass.getInstanceFields(true);
-        for (FieldInfo fi : allFields) {
+        Field[] allFields = isStatic ? klass.getStaticFields() : klass.getInstanceFields(true);
+        for (Field fi : allFields) {
             this.fields[fi.getSlot()] = MetaUtil.defaultFieldValue(fi.getKind());
         }
     }
 
-    public final Object getField(FieldInfo field) {
+    public final Object getField(Field field) {
         // TODO(peterssen): Klass check
         Object result = fields[field.getSlot()];
         assert result != null;
         return result;
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     @Override
     public String toString() {
         Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-        if (getKlass() == meta.STRING.rawKlass()) {
+        if (getKlass() == meta.STRING) {
             return Meta.toHostString((StaticObject) meta(this).method("toString", String.class).invokeDirect());
         }
         return getKlass().getName();
     }
 
-    public final void setField(FieldInfo field, Object value) {
+    public final void setField(Field field, Object value) {
         // TODO(peterssen): Klass check
         fields[field.getSlot()] = value;
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public void setHiddenField(String name, Object value) {
         if (hiddenFields == null) {
             hiddenFields = new HashMap<>();
@@ -102,7 +100,7 @@ public class StaticObjectImpl extends StaticObject {
         hiddenFields.putIfAbsent(name, value);
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public Object getHiddenField(String name) {
         if (hiddenFields == null) {
             return null;

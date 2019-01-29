@@ -35,13 +35,13 @@ public final class ArrayKlass extends Klass {
     private final Klass componentType;
 
     ArrayKlass(Klass componentType) {
-        super("[" + componentType.getName(), JavaKind.Object);
+        super(componentType.getContext().getTypeDescriptors().arrayOf(componentType.getType(), 1));
         this.componentType = componentType;
     }
 
     @Override
     public ConstantPool getConstantPool() {
-        return getComponentType().getConstantPool();
+        return getElementalType().getConstantPool();
     }
 
     @Override
@@ -54,10 +54,10 @@ public final class ArrayKlass extends Klass {
         throw EspressoError.shouldNotReachHere("Arrays do not have static fields");
     }
 
-    @Override
-    public boolean hasFinalizer() {
-        return false;
-    }
+//    @Override
+//    public boolean hasFinalizer() {
+//        return false;
+//    }
 
     @Override
     public int getModifiers() {
@@ -71,13 +71,13 @@ public final class ArrayKlass extends Klass {
 
     @Override
     public boolean isInstanceClass() {
-        return false;
+        return !isArray() && !isInterface();
     }
 
-    @Override
-    public boolean isPrimitive() {
-        return false;
-    }
+//    @Override
+//    public boolean isPrimitive() {
+//        return false;
+//    }
 
     @Override
     public boolean isInitialized() {
@@ -126,35 +126,26 @@ public final class ArrayKlass extends Klass {
         return componentType;
     }
 
-    @Override
-    public MethodInfo resolveMethod(MethodInfo method, Klass callerType) {
-        return null;
-    }
-
-    @Override
-    public boolean isArray() {
-        return true;
-    }
 
     @Override
     public StaticObject getClassLoader() {
-        return getComponentType().getClassLoader();
+        return getElementalType().getClassLoader();
     }
 
-    @Override
-    public FieldInfo[] getInstanceFields(boolean includeSuperclasses) {
-        return FieldInfo.EMPTY_ARRAY;
-    }
-
-    @Override
-    public FieldInfo[] getStaticFields() {
-        return FieldInfo.EMPTY_ARRAY;
-    }
-
-    @Override
-    public FieldInfo findInstanceFieldWithOffset(long offset, JavaKind expectedKind) {
-        throw EspressoError.unimplemented();
-    }
+//    @Override
+//    public Field[] getInstanceFields(boolean includeSuperclasses) {
+//        return FieldInfo.EMPTY_ARRAY;
+//    }
+//
+//    @Override
+//    public Field[] getStaticFields() {
+//        return FieldInfo.EMPTY_ARRAY;
+//    }
+//
+//    @Override
+//    public Field findInstanceFieldWithOffset(long offset, JavaKind expectedKind) {
+//        throw EspressoError.unimplemented();
+//    }
 
     @Override
     public boolean isLocal() {
@@ -171,20 +162,20 @@ public final class ArrayKlass extends Klass {
         return null;
     }
 
-    @Override
-    public Method[] getDeclaredConstructors() {
-        return MethodInfo.EMPTY_ARRAY;
-    }
-
-    @Override
-    public Method[] getDeclaredMethods() {
-        return Method.EMPTY_ARRAY;
-    }
-
-    @Override
-    public Field[] getDeclaredFields() {
-        return Field.EMPTY_ARRAY;
-    }
+//    @Override
+//    public Method[] getDeclaredConstructors() {
+//        return Method.EMPTY_ARRAY;
+//    }
+//
+//    @Override
+//    public Method[] getDeclaredMethods() {
+//        return Method.EMPTY_ARRAY;
+//    }
+//
+//    @Override
+//    public Field[] getDeclaredFields() {
+//        return Field.EMPTY_ARRAY;
+//    }
 
     @Override
     public Method getClassInitializer() {

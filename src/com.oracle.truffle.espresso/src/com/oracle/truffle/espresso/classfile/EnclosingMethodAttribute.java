@@ -27,7 +27,10 @@ import com.oracle.truffle.espresso.impl.ByteString;
 import com.oracle.truffle.espresso.impl.ByteString.Name;
 import com.oracle.truffle.espresso.runtime.Attribute;
 
-public class EnclosingMethodAttribute extends Attribute {
+public final class EnclosingMethodAttribute extends Attribute {
+
+    public static final ByteString<Name> NAME = ByteString.fromJavaString("EnclosingMethod");
+
     private final int classIndex;
     private final int methodIndex;
 

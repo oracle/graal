@@ -55,7 +55,7 @@ public final class ParserMethod {
         this.attributes = attributes;
 
         for (Attribute attr : attributes) {
-            if (attr.getName().equals("Code")) {
+            if (CodeAttribute.NAME.equals(attr.getName())) {
                 this.code = (CodeAttribute) attr;
                 return ;
             }

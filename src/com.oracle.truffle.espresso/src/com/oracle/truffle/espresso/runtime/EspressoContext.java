@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.runtime;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -61,9 +62,11 @@ public class EspressoContext {
     private Meta meta;
     private StaticObject mainThread;
 
-    @CompilerDirectives.CompilationFinal private JniEnv jniEnv;
+    @CompilationFinal //
+    private JniEnv jniEnv;
 
-    @CompilerDirectives.CompilationFinal private VM vm;
+    @CompilationFinal //
+    private VM vm;
 
     public EspressoContext(TruffleLanguage.Env env, EspressoLanguage language) {
         this.env = env;

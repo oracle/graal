@@ -22,8 +22,8 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
-import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.impl.Method;
 
 public interface LinkedNode {
-    Meta.Method getOriginalMethod();
+    Method getOriginalMethod();
 }

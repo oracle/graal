@@ -43,7 +43,7 @@ public final class InvokeStaticNode extends QuickNode {
         EspressoRootNode root = (EspressoRootNode) getParent();
         Object[] args = root.peekArguments(frame, top, false, method.getSignature());
         Object result = directCallNode.call(args);
-        int resultAt = top - method.getSignature().getNumberOfSlotsForParameters(); // no receiver
+        int resultAt = top - method.getSignature().slotsForParameters(); // no receiver
         return (resultAt - top) + root.putKind(frame, resultAt, result, method.getSignature().resultKind());
     }
 }

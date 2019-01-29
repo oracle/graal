@@ -298,7 +298,7 @@ public abstract class ConstantPool {
     /**
      * Creates a constant pool from a class file.
      */
-    public static ConstantPool parse(ClassfileStream stream, ClassfileParser parser) {
+    public static ConstantPool parse(EspressoLanguage language, ClassfileStream stream, ClassfileParser parser) {
         final int length = stream.readU2();
         if (length < 1) {
             throw stream.classFormatError("Invalid constant pool size (" + length + ")");
@@ -377,7 +377,7 @@ public abstract class ConstantPool {
                     break;
                 }
                 case UTF8: {
-                    entries[i] = EspressoLanguage.getSymbolTable().make(stream.readUTF());
+                    entries[i] = language.getSymbolTable().make(stream.readUTF());
                     break;
                 }
                 case METHODHANDLE: {

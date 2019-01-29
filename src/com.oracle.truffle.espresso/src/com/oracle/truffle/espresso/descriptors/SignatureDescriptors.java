@@ -29,7 +29,7 @@ import com.oracle.truffle.espresso.impl.ByteString.Type;
 /**
  *
  */
-public final class SignatureDescriptors extends DescriptorCache<Signature, ByteString<Signature>, ByteString<Type>[]> {
+public final class SignatureDescriptors extends DescriptorCache<ByteString<Signature>, ByteString<Type>[]> {
 
     private final TypeDescriptors typeDescriptors;
 

@@ -22,13 +22,14 @@
  */
 package com.oracle.truffle.espresso.descriptors;
 
+import java.util.Arrays;
 import java.util.EnumMap;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.impl.ByteString;
-import com.oracle.truffle.espresso.impl.ByteString.Interned;
-import com.oracle.truffle.espresso.impl.ByteString.Signature;
+import com.oracle.truffle.espresso.impl.ByteString.Descriptor;
 import com.oracle.truffle.espresso.impl.ByteString.Type;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 
 /**
@@ -36,106 +37,95 @@ import com.oracle.truffle.espresso.meta.JavaKind;
  *
  * @see "https://docs.oracle.com/javase/specs/jvms/se10/html/jvms-4.html#jvms-4.3.2"
  */
-public final class TypeDescriptors extends DescriptorCache<Type, ByteString<Type>, ByteString<Type>> {
+public final class TypeDescriptors extends DescriptorCache<ByteString<Type>, ByteString<Type>> {
 
     @Override
     protected ByteString<Type> create(ByteString<Type> key) {
-        return new ByteString<Type>(key);
+        return key;
     }
 
-    //    private static final EnumMap<JavaKind, ByteString<Type>> primitives = new EnumMap<>(JavaKind.class);
-//
-//    static {
-//        for (JavaKind kind : JavaKind.values()) {
-//            if (kind.isPrimitive()) {
-//                String key = String.valueOf(kind.getTypeChar());
-//                TypeDescriptor descriptor = new TypeDescriptor(key);
-//                primitives.put(kind, descriptor);
-//            }
-//        }
-//    }
+    private static final EnumMap<JavaKind, ByteString<Type>> primitives = new EnumMap<>(JavaKind.class);
 
-//    @Override
-//    public synchronized TypeDescriptor lookup(String key) {
-//        if (key.length() == 1) {
-//            JavaKind kind = JavaKind.fromPrimitiveOrVoidTypeChar(key.charAt(0));
-//            TypeDescriptor value = primitives.get(kind);
-//            if (value != null) {
-//                return value;
-//            }
-//        }
-//        return super.lookup(key);
-//    }
-//
-//    public static ByteString<Type> forPrimitive(JavaKind kind) {
-//        assert kind.isPrimitive();
-//        return primitives.get(kind);
-//    }
+    static {
+        for (JavaKind kind : JavaKind.values()) {
+            if (kind.isPrimitive()) {
+                primitives.put(kind, ByteString.singleASCII(kind.getTypeChar()));
+            }
+        }
+    }
+
+    @Override
+    public ByteString<Type> lookup(ByteString<Type> type) {
+        if (type.length() == 1) {
+            JavaKind kind = JavaKind.fromPrimitiveOrVoidTypeChar((char) type.byteAt(0));
+            ByteString<Type> value = primitives.get(kind);
+            if (value != null) {
+                return value;
+            }
+        }
+        return super.lookup(type);
+    }
+
+    public static ByteString<Type> forPrimitive(JavaKind kind) {
+        assert kind.isPrimitive();
+        return primitives.get(kind);
+    }
 
     /**
      * Parses a valid Java type descriptor.
      *
-     * @param signature the string from which to create a Java type descriptor
+     * @param descriptor the raw signature from which to create a Java type descriptor
      * @param beginIndex the index within the string from which to start parsing
      * @param slashes specifies if package components in {@code string} are separated by {@code '/'}
      *            or {@code '.'}
      * @throws ClassFormatError if the type descriptor is not valid
      */
-    public ByteString<Type> parse(ByteString<Signature> signature, int beginIndex, boolean slashes) throws ClassFormatError {
-        int endIndex = skipValidTypeDescriptor(signature, beginIndex, slashes);
+    public ByteString<Type> parse(ByteString<? extends Descriptor> descriptor, int beginIndex, boolean slashes) throws ClassFormatError {
+        int endIndex = skipValidTypeDescriptor(descriptor, beginIndex, slashes);
         if (endIndex == beginIndex + 1) {
-            return forPrimitive(JavaKind.fromPrimitiveOrVoidTypeChar((char) signature.byteAt(beginIndex)));
+            return forPrimitive(JavaKind.fromPrimitiveOrVoidTypeChar((char) descriptor.byteAt(beginIndex)));
         }
-        return make(signature.substring(beginIndex, endIndex));
+        return make((ByteString<Type>) descriptor.substring(beginIndex, endIndex));
     }
 
     /**
-     * Verifies that a valid type descriptor is at {@code beginIndex} in {@code string}.
+     * Verifies that a valid type descriptor is at {@code beginIndex} in {@code type}.
      *
      * @param slashes specifies if package components are separated by {@code '/'} or {@code '.'}
      * @return the index one past the valid type descriptor starting at {@code beginIndex}
      * @throws ClassFormatError if there is no valid type descriptor
      */
-    @CompilerDirectives.TruffleBoundary
-    public static int skipValidTypeDescriptor(String string, int beginIndex, boolean slashes) throws ClassFormatError {
-        if (beginIndex >= string.length()) {
-            throw new ClassFormatError("invalid type descriptor: " + string);
+    @TruffleBoundary
+    public static int skipValidTypeDescriptor(ByteString<? extends Descriptor> descriptor, int beginIndex, boolean slashes) throws ClassFormatError {
+        if (beginIndex >= descriptor.length()) {
+            throw new ClassFormatError("invalid type descriptor: " + descriptor);
         }
-        char ch = string.charAt(beginIndex);
+        char ch = (char) descriptor.byteAt(beginIndex);
         if (ch != '[' && ch != 'L') {
             return beginIndex + 1;
         }
         switch (ch) {
             case 'L': {
-                if (slashes) {
-                    // parse a slashified Java class name
-                    final int endIndex = skipClassName(string, beginIndex + 1, '/');
-                    if (endIndex > beginIndex + 1 && endIndex < string.length() && string.charAt(endIndex) == ';') {
-                        return endIndex + 1;
-                    }
-                } else {
-                    // parse a dottified Java class name and convert to slashes
-                    final int endIndex = skipClassName(string, beginIndex + 1, '.');
-                    if (endIndex > beginIndex + 1 && endIndex < string.length() && string.charAt(endIndex) == ';') {
-                        return endIndex + 1;
-                    }
+                final int endIndex = skipClassName(descriptor, beginIndex + 1, slashes ? '/' : '.');
+                if (endIndex > beginIndex + 1 && endIndex < descriptor.length() && descriptor.byteAt(endIndex) == ';') {
+                    return endIndex + 1;
                 }
-                throw new ClassFormatError("Invalid Java name " + string.substring(beginIndex));
+                throw new ClassFormatError("Invalid Java name " + descriptor.substring(beginIndex));
             }
             case '[': {
                 // compute the number of dimensions
                 int index = beginIndex;
-                while (index < string.length() && string.charAt(index) == '[') {
+                while (index < descriptor.length() && descriptor.byteAt(index) == '[') {
                     index++;
                 }
                 final int dimensions = index - beginIndex;
                 if (dimensions > 255) {
-                    throw new ClassFormatError("Array with more than 255 dimensions " + string.substring(beginIndex));
+                    throw new ClassFormatError("Array with more than 255 dimensions " + descriptor.substring(beginIndex));
                 }
-                return skipValidTypeDescriptor(string, index, slashes);
+                return skipValidTypeDescriptor(descriptor, index, slashes);
             }
         }
-        throw new ClassFormatError("Invalid type descriptor " + string.substring(beginIndex));
+        throw new ClassFormatError("Invalid type descriptor " + descriptor.substring(beginIndex));
     }
 
     /**
@@ -148,20 +138,25 @@ public final class TypeDescriptors extends DescriptorCache<Type, ByteString<Type
      * @param dimensions the number of array dimensions
      * @return the canonical type descriptor for the specified component type and dimensions
      */
-    public ByteString<Type> getArrayDescriptorForDescriptor(ByteString<Type> type, int dimensions) {
+    public ByteString<Type> arrayOf(ByteString<Type> type, int dimensions) {
         assert dimensions > 0;
         if (TypeDescriptor.getArrayDimensions(type) + dimensions > 255) {
             throw new ClassFormatError("Array type with more than 255 dimensions");
         }
-        // prepend dimensions '[' to descriptor
-        return make(value);
+        // Prepend #dimensions '[' to type descriptor.
+        byte[] bytes = new byte[type.length() + dimensions];
+        Arrays.fill(bytes, 0, dimensions, (byte) '[');
+        ByteString.copyBytes(type, 0, bytes, dimensions, type.length());
+        return make(new ByteString<>(bytes));
     }
 
-    private static int skipClassName(String string, int from, final char separator) throws ClassFormatError {
+    private static int skipClassName(ByteString<? extends Descriptor> descriptor, int from, final char separator) throws ClassFormatError {
+        assert separator == '.' || separator == '/';
         int index = from;
-        final int length = string.length();
+        final int length = descriptor.length();
         while (index < length) {
-            char ch = string.charAt(index);
+            // Safe cast, method returns only for ./;[ characters.
+            char ch = (char) descriptor.byteAt(index);
             if (ch == '.' || ch == '/') {
                 if (separator != ch) {
                     return index;
