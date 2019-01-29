@@ -30,6 +30,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import org.graalvm.util.DirectAnnotationAccess;
+
 /**
  * Annotation for types that must be ignored by Reflection.getCallerClass(). All methods in the
  * annotated type are ignored.
@@ -42,7 +44,7 @@ public @interface IgnoreForGetCallerClass {
     class Holder {
 
         /** Instance of the annotation, useful when the annotation is manually injected. */
-        public static final IgnoreForGetCallerClass INSTANCE = Holder.class.getAnnotation(IgnoreForGetCallerClass.class);
+        public static final IgnoreForGetCallerClass INSTANCE = DirectAnnotationAccess.getAnnotation(Holder.class, IgnoreForGetCallerClass.class);
 
         /**
          * Array that contains only the instance of the annotation, useful when the annotation is

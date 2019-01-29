@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,34 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.windows;
+package org.graalvm.util;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.TargetClass;
-import org.graalvm.nativeimage.c.function.CLibrary;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+//Checkstyle: allow reflection
+import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedElement;
 
-@Platforms(Platform.WINDOWS.class)
-@CLibrary("zip")
-public final class WindowsJavaZipSubstitutions {
+/**
+ * Wrapper class for annotation access. The purpose of this class is to encapsulate the
+ * AnnotatedElement.getAnnotation() to avoid the use of the "Checkstyle: allow direct annotation
+ * access " and "Checkstyle: disallow direct annotation access" comments for situations where the
+ * annotation access doesn't need to guarded, i.e., in runtime code or code that accesses annotation
+ * on non-user types. See {@link GuardedAnnotationAccess} for details on these checkstyle rules.
+ */
+public class DirectAnnotationAccess {
 
-    private WindowsJavaZipSubstitutions() {
+    public static <T extends Annotation> boolean isAnnotationPresent(AnnotatedElement element, Class<T> annotationClass) {
+        return element.getAnnotation(annotationClass) != null;
     }
-}
 
-@TargetClass(className = "java.util.zip.Inflater")
-@Platforms(Platform.WINDOWS.class)
-final class Target_java_util_zip_Inflater {
-
-    @Alias
-    static native void initIDs();
-}
-
-@TargetClass(className = "java.util.zip.Deflater")
-@Platforms(Platform.WINDOWS.class)
-final class Target_java_util_zip_Deflater {
-
-    @Alias
-    static native void initIDs();
+    public static <T extends Annotation> T getAnnotation(AnnotatedElement element, Class<T> annotationType) {
+        return element.getAnnotation(annotationType);
+    }
 }

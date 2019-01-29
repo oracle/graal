@@ -88,7 +88,7 @@ public class HotSpotCompiledCodeBuilder {
 
         ResolvedJavaMethod[] methods = compResult.getMethods();
 
-        List<CodeAnnotation> annotations = compResult.getAnnotations();
+        List<CodeAnnotation> annotations = compResult.getCodeAnnotations();
         Comment[] comments = new Comment[annotations.size()];
         if (!annotations.isEmpty()) {
             for (int i = 0; i < comments.length; i++) {

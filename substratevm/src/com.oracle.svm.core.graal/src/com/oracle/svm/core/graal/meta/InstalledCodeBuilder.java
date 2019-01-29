@@ -321,7 +321,7 @@ public class InstalledCodeBuilder {
 
         // Build an index of PatchingAnnoations
         Map<Integer, NativeImagePatcher> patches = new HashMap<>();
-        for (CodeAnnotation codeAnnotation : compilation.getAnnotations()) {
+        for (CodeAnnotation codeAnnotation : compilation.getCodeAnnotations()) {
             if (codeAnnotation instanceof NativeImagePatcher) {
                 patches.put(codeAnnotation.position, (NativeImagePatcher) codeAnnotation);
             }
