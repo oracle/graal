@@ -99,7 +99,7 @@ public class HotSpotClassSubstitutions {
     }
 
     @Fold
-    public static ResolvedJavaType getObjectType(MetaAccessProvider metaAccesss) {
+    public static ResolvedJavaType getObjectType(@Fold.InjectedParameter MetaAccessProvider metaAccesss) {
         return metaAccesss.lookupJavaType(Object.class);
     }
 
