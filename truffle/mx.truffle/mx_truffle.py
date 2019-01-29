@@ -586,7 +586,7 @@ class LibffiBuilderProject(mx.AbstractNativeProject):
                                                            mx.join(self.out_dir, 'libffi-3.2.1'),
                                                            None,
                                                            'static_lib',
-                                                           cflags=['-MD'])
+                                                           cflags=['-MD', '-O2'])
             self.delegate._source = dict(tree=['include',
                                                'src',
                                                mx.join('src', 'x86')],
@@ -625,7 +625,7 @@ class LibffiBuilderProject(mx.AbstractNativeProject):
                     '--disable-shared',
                     '--with-pic',
                     'CFLAGS="{}"'.format(' '.join(
-                        ['-g'] + (['-m64'] if mx.get_os() == 'solaris' else [])
+                        ['-g', '-O3'] + (['-m64'] if mx.get_os() == 'solaris' else [])
                     )),
                 ])
             )
