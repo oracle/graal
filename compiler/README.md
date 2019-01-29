@@ -130,19 +130,19 @@ To build libgraal, you need to use the `native-image` tool in the `substratevm` 
 ```
 cd graal/substratevm
 mx build
-./native-image -shared -no-server --tool.libgraal
+mx buildlibgraal
 ```
 
 This will produce a shared library in the current working directory whose name is
 compliant with the shared library naming conventions for the platform;
-`libgraal.dylib` (macOS), `libgraal.so` (Linux, Solaris, etc), `graal.dll` (Windows).
+`libjvmcicompiler.dylib` (macOS), `libjvmcicompiler.so` (Linux, Solaris, etc), `graal.dll` (Windows).
 
 To use this library, copy it to the same directory as `libjava.dylib`/`libjava.so`/`java.dll`
-in your JVMCI JDK8 installation and use the option `-XX:JVMCIJavaMode=SVM`. Alternatively,
-you can directly specify the path to the library as the value to `JVMCIJavaMode`.
+in your JVMCI JDK8 installation and use the options `-XX:+UseJVMCICompiler -XX:+UseJVMCINativeLibrary`. Alternatively,
+you can directly specify the path to the library as the value to `-XX:JVMCILibPath=`.
 For example:
 ```
-mx vm -XX:JVMCIJavaMode=/path/to/libgraal.dylib -XX:+UseJVMCICompiler ...
+mx vm -XX:JVMCILibPath=/path/to/libjvmcicompiler.dylib -XX:+UseJVMCICompiler -XX:+UseJVMCINativeLibrary ...
 ```
 
 ## Publications and Presentations

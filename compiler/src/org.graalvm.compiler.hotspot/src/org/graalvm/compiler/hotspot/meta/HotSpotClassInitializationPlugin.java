@@ -95,7 +95,7 @@ public final class HotSpotClassInitializationPlugin implements ClassInitializati
             c = Class.forName("jdk.vm.ci.hotspot.HotSpotConstantPool").asSubclass(ConstantPool.class);
             m = c.getDeclaredMethod("loadReferencedType", int.class, int.class, boolean.class);
         } catch (Exception e) {
-            e.printStackTrace();
+            throw GraalError.shouldNotReachHere(e);
         }
         loadReferencedTypeIIZMH = m;
         hscp = c;

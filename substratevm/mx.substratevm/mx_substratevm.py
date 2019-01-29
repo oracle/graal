@@ -409,12 +409,6 @@ def layout_native_image_root(native_image_root):
     clibraries_dest = join(native_image_root, join(svm_subdir, 'clibraries'))
     for clibrary_path in clibrary_paths():
         copy_tree(clibrary_path, clibraries_dest)
-    lib_suffix = '.lib' if mx.get_os() == 'windows' else '.a'
-    jdk_lib_subdir = ['jre', 'lib'] if svm_java80() else ['lib']
-    jdk_lib_dir = join(jdk_config.home, *jdk_lib_subdir)
-    jdk_libs = [join(jdk_lib_dir, lib) for lib in os.listdir(jdk_lib_dir) if lib.endswith(lib_suffix)]
-    for src_lib in jdk_libs:
-        symlink_or_copy(src_lib, join(clibraries_dest, platform_name()))
 
 def truffle_language_ensure(language_flag, version=None, native_image_root=None, early_exit=False, extract=True):
     """

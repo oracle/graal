@@ -1307,7 +1307,7 @@ public class InvocationPlugins {
             return ((OptionalLazySymbol) type).resolve();
         }
         if (IS_IN_NATIVE_IMAGE) {
-            throw new GraalError("Unresolved type in SVM image.");
+            throw new GraalError("Unresolved type in native image image:" + type.getTypeName());
         }
         return resolveClass(type.getTypeName(), optional);
     }
