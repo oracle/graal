@@ -40,58 +40,25 @@
  */
 package com.oracle.truffle.nfi.impl;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.GenerateLibrary;
+import com.oracle.truffle.api.library.Library;
+import com.oracle.truffle.api.library.LibraryFactory;
 
-@ExportLibrary(InteropLibrary.class)
-@ExportLibrary(SerializeArgumentLibrary.class)
-class NativeString implements TruffleObject {
+@GenerateLibrary
+abstract class NativeArgumentLibrary extends Library {
 
-    final long nativePointer;
+    public abstract void serialize(LibFFIType type, NativeArgumentBuffer buffer, Object value) throws UnsupportedTypeException;
 
-    NativeString(long nativePointer) {
-        this.nativePointer = nativePointer;
+    public abstract Object deserialize(LibFFIType type, NativeArgumentBuffer buffer);
+
+    public static LibraryFactory<NativeArgumentLibrary> getFactory() {
+        return FACTORY;
     }
 
-    @TruffleBoundary
-    private static native String toJavaString(long pointer);
-
-    @ExportMessage
-    boolean isNull() {
-        return nativePointer == 0;
+    public static NativeArgumentLibrary getUncached() {
+        return FACTORY.getUncached();
     }
 
-    @ExportMessage
-    boolean isString() {
-        return nativePointer != 0;
-    }
-
-    @ExportMessage
-    String asString() {
-        return toJavaString(nativePointer);
-    }
-
-    @ExportMessage
-    boolean isPointer() {
-        return true;
-    }
-
-    @ExportMessage
-    long asPointer() {
-        return nativePointer;
-    }
-
-    @ExportMessage
-    NativeString toNative() {
-        return this;
-    }
-
-    @ExportMessage(name = "putPointer")
-    @ExportMessage(name = "putString")
-    void putPointer(NativeArgumentBuffer buffer, int ptrSize) {
-        buffer.putPointer(nativePointer, ptrSize);
-    }
+    private static final LibraryFactory<NativeArgumentLibrary> FACTORY = LibraryFactory.resolve(NativeArgumentLibrary.class);
 }

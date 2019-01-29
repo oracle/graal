@@ -82,7 +82,7 @@ final class LibFFIFunction implements TruffleObject {
 
     @ExportMessage
     Object execute(Object[] args,
-                    @Cached FunctionExecuteNode cachedExecute) {
+                    @Cached FunctionExecuteNode cachedExecute) throws ArityException, UnsupportedTypeException {
         return cachedExecute.execute(this, args);
     }
 

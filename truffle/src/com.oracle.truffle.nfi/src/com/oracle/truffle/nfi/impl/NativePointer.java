@@ -51,6 +51,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
 @ExportLibrary(InteropLibrary.class)
+@ExportLibrary(SerializeArgumentLibrary.class)
 class NativePointer implements TruffleObject {
 
     private static final KeysArray KEYS = new KeysArray(new String[]{"bind"});
@@ -122,5 +123,10 @@ class NativePointer implements TruffleObject {
         }
 
         return bind.execute(this, args[0]);
+    }
+
+    @ExportMessage
+    void putPointer(NativeArgumentBuffer buffer, int ptrSize) {
+        buffer.putPointer(nativePointer, ptrSize);
     }
 }

@@ -187,7 +187,7 @@ final class LibFFISignature {
         } else {
             NativeArgumentBuffer.Array retBuffer = new NativeArgumentBuffer.Array(retType.size, retType.objectCount);
             ctx.executeNative(cif, functionPointer, argBuffer.prim, argBuffer.getPatchCount(), argBuffer.patches, argBuffer.objects, retBuffer.prim);
-            return retType.deserialize(retBuffer);
+            return retType.deserializeRet(retBuffer);
         }
     }
 }

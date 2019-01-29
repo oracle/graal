@@ -48,6 +48,8 @@ import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -55,22 +57,26 @@ import com.oracle.truffle.api.nodes.Node;
 @ImportStatic(NFILanguageImpl.class)
 abstract class FunctionExecuteNode extends Node {
 
-    public abstract Object execute(LibFFIFunction receiver, Object[] args);
+    public abstract Object execute(LibFFIFunction receiver, Object[] args) throws ArityException, UnsupportedTypeException;
 
     @ExplodeLoop
     @Specialization(guards = "checkSignature(receiver, signature)")
     protected Object cachedSignature(LibFFIFunction receiver, Object[] args, @Cached("receiver.getSignature()") LibFFISignature signature,
-            @Cached("getSerializeArgumentNodes(signature)") SerializeArgumentNode[] serializeArgs,
-            @Cached("getCurrentContextReference()") ContextReference<NFIContext> ctxRef) {
+            @Cached("getNativeArgumentLibraries(signature)") NativeArgumentLibrary[] argLibs,
+            @Cached("getCurrentContextReference()") ContextReference<NFIContext> ctxRef) throws ArityException, UnsupportedTypeException {
         if (args.length != signature.getRealArgCount()) {
-            throw ArityException.raise(serializeArgs.length, args.length);
+            throw ArityException.create(argLibs.length, args.length);
         }
 
         NativeArgumentBuffer.Array buffer = signature.prepareBuffer();
+        LibFFIType[] types = signature.getArgTypes();
+        assert argLibs.length == types.length;
+
         int argIdx = 0;
-        for (SerializeArgumentNode serializeArg : serializeArgs) {
+        for (int i = 0; i < argLibs.length; i++) {
             Object arg = argIdx < args.length ? args[argIdx] : null;
-            if (serializeArg.execute(buffer, arg)) {
+            argLibs[i].serialize(types[i], buffer, arg);
+            if (!types[i].injectedArgument) {
                 argIdx++;
             }
         }
@@ -84,45 +90,45 @@ abstract class FunctionExecuteNode extends Node {
         return receiver.getSignature() == signature;
     }
 
-    protected static SerializeArgumentNode[] getSerializeArgumentNodes(LibFFISignature signature) {
+    protected static NativeArgumentLibrary[] getNativeArgumentLibraries(LibFFISignature signature) {
         LibFFIType[] argTypes = signature.getArgTypes();
-        SerializeArgumentNode[] ret = new SerializeArgumentNode[argTypes.length];
+        NativeArgumentLibrary[] ret = new NativeArgumentLibrary[argTypes.length];
         for (int i = 0; i < argTypes.length; i++) {
-            ret[i] = argTypes[i].createSerializeArgumentNode();
+            ret[i] = NativeArgumentLibrary.getFactory().create(argTypes[i]);
         }
         return ret;
     }
 
     @ExplodeLoop
-    @Specialization(replaces = "cachedSignature", guards = "receiver.getSignature().getArgTypes().length == serializeArgs.length")
+    @Specialization(replaces = "cachedSignature", guards = "receiver.getSignature().getArgTypes().length == libs.length")
     protected Object cachedArgCount(LibFFIFunction receiver, Object[] args,
-            @Cached("getSlowPathSerializeArgumentNodes(receiver)") SlowPathSerializeArgumentNode[] serializeArgs,
-            @Cached("getCurrentContextReference()") ContextReference<NFIContext> ctxRef) {
+            @Cached("getGenericNativeArgumentLibraries(receiver.getSignature().getArgTypes().length)") NativeArgumentLibrary[] libs,
+            @Cached("getCurrentContextReference()") ContextReference<NFIContext> ctxRef) throws UnsupportedTypeException, ArityException {
         LibFFISignature signature = receiver.getSignature();
         LibFFIType[] argTypes = signature.getArgTypes();
 
         NativeArgumentBuffer.Array buffer = signature.prepareBuffer();
         int argIdx = 0;
-        for (int i = 0; i < serializeArgs.length; i++) {
+        for (int i = 0; i < libs.length; i++) {
             if (argIdx >= args.length) {
                 raiseArityException(argTypes, args.length);
             }
 
             if (argTypes[i].injectedArgument) {
-                serializeArgs[i].execute(buffer, argTypes[i], null);
+                libs[i].serialize(argTypes[i], buffer, null);
             } else {
-                serializeArgs[i].execute(buffer, argTypes[i], args[argIdx++]);
+                libs[i].serialize(argTypes[i], buffer, args[argIdx++]);
             }
         }
 
         if (argIdx != args.length) {
-            throw ArityException.raise(argIdx, args.length);
+            throw ArityException.create(argIdx, args.length);
         }
 
         return slowPathExecute(ctxRef.get(), signature, receiver.getAddress(), buffer);
     }
 
-    private static void raiseArityException(LibFFIType[] argTypes, int actualArgCount) {
+    private static void raiseArityException(LibFFIType[] argTypes, int actualArgCount) throws ArityException {
         CompilerDirectives.transferToInterpreter();
         int expectedArgCount = 0;
         for (LibFFIType argType : argTypes) {
@@ -130,41 +136,41 @@ abstract class FunctionExecuteNode extends Node {
                 expectedArgCount++;
             }
         }
-        throw ArityException.raise(expectedArgCount, actualArgCount);
+        throw ArityException.create(expectedArgCount, actualArgCount);
     }
 
-    protected static SlowPathSerializeArgumentNode[] getSlowPathSerializeArgumentNodes(LibFFIFunction receiver) {
-        int argCount = receiver.getSignature().getArgTypes().length;
-        SlowPathSerializeArgumentNode[] ret = new SlowPathSerializeArgumentNode[argCount];
+    protected static NativeArgumentLibrary[] getGenericNativeArgumentLibraries(int argCount) {
+        NativeArgumentLibrary[] ret = new NativeArgumentLibrary[argCount];
         for (int i = 0; i < argCount; i++) {
-            ret[i] = SlowPathSerializeArgumentNodeGen.create();
+            ret[i] = NativeArgumentLibrary.getFactory().createDispatched(5);
         }
         return ret;
     }
 
     @Specialization(replaces = "cachedArgCount")
     static Object genericExecute(LibFFIFunction receiver, Object[] args,
-            @Cached SlowPathSerializeArgumentNode serializeArgs,
-            @Cached(value = "getCurrentContextReference()", allowUncached = true) ContextReference<NFIContext> ctxRef) {
+            @CachedLibrary(limit = "5") NativeArgumentLibrary nativeArguments,
+            @Cached(value = "getCurrentContextReference()", allowUncached = true) ContextReference<NFIContext> ctxRef) throws ArityException, UnsupportedTypeException {
         LibFFISignature signature = receiver.getSignature();
         LibFFIType[] argTypes = signature.getArgTypes();
 
         NativeArgumentBuffer.Array buffer = signature.prepareBuffer();
         int argIdx = 0;
         for (int i = 0; i < argTypes.length; i++) {
-            if (argIdx >= args.length) {
-                raiseArityException(argTypes, args.length);
-            }
-
+            Object arg;
             if (argTypes[i].injectedArgument) {
-                serializeArgs.execute(buffer, argTypes[i], null);
+                arg = null;
             } else {
-                serializeArgs.execute(buffer, argTypes[i], args[argIdx++]);
+                if (argIdx >= args.length) {
+                    raiseArityException(argTypes, args.length);
+                }
+                arg = args[argIdx++];
             }
+            nativeArguments.serialize(argTypes[i], buffer, arg);
         }
 
         if (argIdx != args.length) {
-            throw ArityException.raise(argIdx, args.length);
+            throw ArityException.create(argIdx, args.length);
         }
 
         return slowPathExecute(ctxRef.get(), signature, receiver.getAddress(), buffer);
