@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,38 +38,24 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.nfi.impl;
+package com.oracle.truffle.nfi;
 
-import com.oracle.truffle.api.interop.CanResolve;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.nodes.Node;
 
-@MessageResolution(receiverType = LibFFIClosure.class)
-class LibFFIClosureMessageResolution {
+class NFIPreBindException extends RuntimeException implements TruffleException {
 
-    @Resolve(message = "IS_POINTER")
-    abstract static class IsNativeClosureNode extends Node {
+    private static final long serialVersionUID = 1L;
 
-        public boolean access(@SuppressWarnings("unused") LibFFIClosure receiver) {
-            return true;
-        }
+    private final Node location;
+
+    NFIPreBindException(String message, Node location) {
+        super(message);
+        this.location = location;
     }
 
-    @Resolve(message = "AS_POINTER")
-    abstract static class AsNativeClosureNode extends Node {
-
-        public long access(LibFFIClosure receiver) {
-            return receiver.nativePointer.getCodePointer();
-        }
-    }
-
-    @CanResolve
-    abstract static class CanResolveLibFFIClosureNode extends Node {
-
-        public boolean test(TruffleObject receiver) {
-            return receiver instanceof LibFFIClosure;
-        }
+    @Override
+    public Node getLocation() {
+        return location;
     }
 }

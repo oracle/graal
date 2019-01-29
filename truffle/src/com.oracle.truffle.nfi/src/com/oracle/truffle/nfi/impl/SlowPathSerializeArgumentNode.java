@@ -42,6 +42,7 @@ package com.oracle.truffle.nfi.impl;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -51,8 +52,8 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.nfi.impl.LibFFIType.PrepareArgument;
 import com.oracle.truffle.nfi.impl.TypeConversion.AsPointerNode;
-import com.oracle.truffle.nfi.impl.TypeConversionFactory.AsPointerNodeGen;
 
+@GenerateUncached
 abstract class SlowPathSerializeArgumentNode extends Node {
 
     public abstract Object execute(NativeArgumentBuffer buffer, LibFFIType type, Object value);
@@ -67,17 +68,17 @@ abstract class SlowPathSerializeArgumentNode extends Node {
     }
 
     @Specialization(replaces = "cacheType", guards = "needNoPrepare(value)")
-    protected Object genericWithoutPrepare(NativeArgumentBuffer buffer, LibFFIType type, Object value) {
+    static Object genericWithoutPrepare(NativeArgumentBuffer buffer, LibFFIType type, Object value) {
         slowPathSerialize(buffer, type, value);
         return null;
     }
 
     @Specialization(replaces = "cacheType", guards = {"value != null"})
-    protected Object genericWithPrepare(NativeArgumentBuffer buffer, LibFFIType type, TruffleObject value,
-                    @Cached("createUnbox()") Node unbox,
-                    @Cached("createIsExecutable()") Node isExecutable,
-                    @Cached("createAsPointer()") AsPointerNode asPointer,
-                    @Cached("createRecursive()") SlowPathSerializeArgumentNode recursive) {
+    static Object genericWithPrepare(NativeArgumentBuffer buffer, LibFFIType type, TruffleObject value,
+                    @Cached(value = "createUnbox()", allowUncached = true) Node unbox,
+                    @Cached(value = "createIsExecutable()", allowUncached = true) Node isExecutable,
+                    @Cached AsPointerNode asPointer,
+                    @Cached SlowPathSerializeArgumentNode recursive) {
         Object prepared = type.slowpathPrepareArgument(value);
         if (prepared == PrepareArgument.EXECUTABLE) {
             if (ForeignAccess.sendIsExecutable(isExecutable, value)) {
@@ -108,14 +109,6 @@ abstract class SlowPathSerializeArgumentNode extends Node {
 
     protected static Node createIsExecutable() {
         return Message.IS_EXECUTABLE.createNode();
-    }
-
-    protected static SlowPathSerializeArgumentNode createRecursive() {
-        return SlowPathSerializeArgumentNodeGen.create();
-    }
-
-    protected static AsPointerNode createAsPointer() {
-        return AsPointerNodeGen.create();
     }
 
     protected static boolean needNoPrepare(Object value) {

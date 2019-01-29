@@ -82,9 +82,9 @@ public class StringAsInterfaceNFITest {
     }
 
     interface StdLib {
-        long malloc(int size);
+        Object malloc(int size);
 
-        void free(long pointer);
+        void free(Object pointer);
 
         String strdup(String orig);
     }
@@ -111,7 +111,7 @@ public class StringAsInterfaceNFITest {
     @Test
     public void testAllocAndRelease() {
         assumptions();
-        long mem = stdlib.malloc(512);
+        Object mem = stdlib.malloc(512);
         stdlib.free(mem);
     }
 

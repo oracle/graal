@@ -41,9 +41,12 @@
 package com.oracle.truffle.nfi.impl;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
+@ExportLibrary(InteropLibrary.class)
 class NativeString implements TruffleObject {
 
     final long nativePointer;
@@ -52,15 +55,36 @@ class NativeString implements TruffleObject {
         this.nativePointer = nativePointer;
     }
 
-    public String toJavaString() {
-        return toJavaString(nativePointer);
-    }
-
     @TruffleBoundary
     private static native String toJavaString(long pointer);
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return NativeStringMessageResolutionForeign.ACCESS;
+    @ExportMessage
+    boolean isNull() {
+        return nativePointer == 0;
+    }
+
+    @ExportMessage
+    boolean isString() {
+        return nativePointer != 0;
+    }
+
+    @ExportMessage
+    String asString() {
+        return toJavaString(nativePointer);
+    }
+
+    @ExportMessage
+    boolean isPointer() {
+        return true;
+    }
+
+    @ExportMessage
+    long asPointer() {
+        return nativePointer;
+    }
+
+    @ExportMessage
+    NativeString toNative() {
+        return this;
     }
 }

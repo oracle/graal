@@ -49,16 +49,20 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.nfi.impl.LibFFIClosureFactory.UnboxStringNodeGen;
 import java.nio.ByteBuffer;
 
+@ExportLibrary(InteropLibrary.class)
 final class LibFFIClosure implements TruffleObject {
 
     final ClosureNativePointer nativePointer;
@@ -109,9 +113,19 @@ final class LibFFIClosure implements TruffleObject {
         this.nativePointer = nativePointer;
     }
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return LibFFIClosureMessageResolutionForeign.ACCESS;
+    @ExportMessage
+    boolean isPointer() {
+        return true;
+    }
+
+    @ExportMessage
+    long asPointer() {
+        return nativePointer.getCodePointer();
+    }
+
+    @ExportMessage
+    LibFFIClosure toNative() {
+        return this;
     }
 
     static final class RetPatches {

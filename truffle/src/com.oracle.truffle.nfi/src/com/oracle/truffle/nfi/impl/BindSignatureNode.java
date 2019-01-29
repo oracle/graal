@@ -43,23 +43,27 @@ package com.oracle.truffle.nfi.impl;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.nfi.impl.BindSignatureNodeFactory.PointerBindSignatureNodeGen;
-import com.oracle.truffle.nfi.impl.BindSignatureNodeFactory.SignatureCacheNodeGen;
-import com.oracle.truffle.nfi.impl.TypeConversion.AsStringNode;
-import com.oracle.truffle.nfi.impl.TypeConversionFactory.AsStringNodeGen;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.nfi.types.NativeSignature;
 import com.oracle.truffle.nfi.types.Parser;
 
+@GenerateUncached
 abstract class BindSignatureNode extends Node {
 
-    abstract TruffleObject execute(TruffleObject receiver, Object signature);
+    abstract TruffleObject execute(NativePointer receiver, Object signature) throws UnsupportedTypeException;
 
+    @GenerateUncached
+    @ImportStatic(NFILanguageImpl.class)
     abstract static class SignatureCacheNode extends Node {
-
-        private final ContextReference<NFIContext> ctxRef = NFILanguageImpl.getCurrentContextReference();
 
         protected abstract LibFFISignature execute(String signature);
 
@@ -67,13 +71,15 @@ abstract class BindSignatureNode extends Node {
         @SuppressWarnings("unused")
         protected LibFFISignature cached(String signature,
                         @Cached("signature") String cachedSignature,
-                        @Cached("parse(signature)") LibFFISignature ret) {
+                        @Cached("getCurrentContextReference()") ContextReference<NFIContext> ctxRef,
+                        @Cached("parse(signature, ctxRef)") LibFFISignature ret) {
             return ret;
         }
 
         @Specialization(replaces = "cached")
         @TruffleBoundary
-        protected LibFFISignature parse(String signature) {
+        static protected LibFFISignature parse(String signature,
+                        @Cached(value = "getCurrentContextReference()", allowUncached = true) ContextReference<NFIContext> ctxRef) {
             NativeSignature parsed = Parser.parseSignature(signature);
             return LibFFISignature.create(ctxRef.get(), parsed);
         }
@@ -83,35 +89,27 @@ abstract class BindSignatureNode extends Node {
         }
     }
 
-    abstract static class PointerBindSignatureNode extends BindSignatureNode {
+    @Specialization(guards = "checkNull(receiver)")
+    static TruffleObject doNull(NativePointer receiver, @SuppressWarnings("unused") Object signature) {
+        return receiver;
+    }
 
-        @Child protected SignatureCacheNode signatureCache = SignatureCacheNodeGen.create();
-        @Child protected AsStringNode asString = AsStringNodeGen.create(false);
-
-        @Specialization(guards = "checkNull(receiver)")
-        TruffleObject doNull(NativePointer receiver, @SuppressWarnings("unused") Object signature) {
-            return receiver;
-        }
-
-        @Specialization(guards = "!checkNull(receiver)")
-        TruffleObject doFunction(NativePointer receiver, Object signature) {
-            String sigString = asString.execute(signature);
+    @Specialization(limit = "3", guards = "!checkNull(receiver)")
+    static TruffleObject doFunction(NativePointer receiver, Object signature,
+            @Cached SignatureCacheNode signatureCache,
+            @Cached BranchProfile exceptionProfile,
+            @CachedLibrary("signature") InteropLibrary strings) throws UnsupportedTypeException {
+        try {
+            String sigString = strings.asString(signature);
             LibFFISignature nativeSignature = signatureCache.execute(sigString);
             return new LibFFIFunction(receiver, nativeSignature);
-        }
-
-        protected static boolean checkNull(NativePointer pointer) {
-            return pointer.nativePointer == 0;
+        } catch (UnsupportedMessageException ex) {
+            exceptionProfile.enter();
+            throw UnsupportedTypeException.create(new Object[]{signature});
         }
     }
 
-    abstract static class ReBindSignatureNode extends BindSignatureNode {
-
-        @Child protected BindSignatureNode bind = PointerBindSignatureNodeGen.create();
-
-        @Specialization
-        TruffleObject rebind(LibFFIFunction function, Object signature) {
-            return bind.execute(function.getPointer(), signature);
-        }
+    protected static boolean checkNull(NativePointer pointer) {
+        return pointer.nativePointer == 0;
     }
 }

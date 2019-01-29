@@ -40,53 +40,89 @@
  */
 package com.oracle.truffle.nfi;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
+@ExportLibrary(InteropLibrary.class)
 final class NFILibrary implements TruffleObject {
 
-    private final TruffleObject library;
-    private final Map<String, TruffleObject> symbols;
+    private final Object library;
+    private final Map<String, Object> symbols;
 
-    NFILibrary(TruffleObject library) {
+    NFILibrary(Object library) {
         this.library = library;
         this.symbols = new HashMap<>();
     }
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return NFILibraryMessageResolutionForeign.ACCESS;
-    }
-
-    TruffleObject getLibrary() {
+    Object getLibrary() {
         return library;
     }
 
     @TruffleBoundary
-    TruffleObject findSymbol(String name) {
+    Object findSymbol(String name) {
         return symbols.get(name);
     }
 
     @TruffleBoundary
-    void preBindSymbol(String name, TruffleObject symbol) {
+    void preBindSymbol(String name, Object symbol) {
         symbols.put(name, symbol);
     }
 
+    @ExportMessage
+    boolean hasMembers() {
+        return true;
+    }
+
+    @ExportMessage
     @TruffleBoundary
-    Keys getSymbols() {
+    Keys getMembers(boolean includeInternal) {
         return new Keys(symbols.keySet());
     }
 
-    @MessageResolution(receiverType = Keys.class)
+    @ExportMessage
+    boolean isMemberReadable(String symbol) {
+        return true; // avoid expensive truffleboundary
+    }
+
+    @ExportMessage(limit = "3")
+    Object readMember(String symbol,
+                      @CachedLibrary("this.getLibrary()") InteropLibrary recursive) throws UnsupportedMessageException, UnknownIdentifierException {
+        Object preBound = findSymbol(symbol);
+        if (preBound != null) {
+            return preBound;
+        } else {
+            return recursive.readMember(getLibrary(), symbol);
+        }
+    }
+
+    @ExportMessage
+    boolean isMemberInvocable(String symbol) {
+        return true; // avoid expensive truffleboundary
+    }
+
+    @ExportMessage
+    Object invokeMember(String symbol, Object[] args,
+                        @CachedLibrary(limit = "3") InteropLibrary executables) throws UnknownIdentifierException, ArityException, UnsupportedTypeException, UnsupportedMessageException {
+        Object preBound = findSymbol(symbol);
+        if (preBound == null) {
+            throw UnknownIdentifierException.create(symbol);
+        }
+        return executables.execute(preBound, args);
+    }
+
+    @ExportLibrary(InteropLibrary.class)
     static final class Keys implements TruffleObject {
 
         private final Object[] keys;
@@ -95,33 +131,27 @@ final class NFILibrary implements TruffleObject {
             this.keys = keySet.toArray();
         }
 
-        static boolean isInstance(TruffleObject obj) {
-            return obj instanceof Keys;
+        @ExportMessage
+        boolean hasArrayElements() {
+            return true;
         }
 
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return KeysForeign.ACCESS;
+        @ExportMessage
+        long getArraySize() {
+            return keys.length;
         }
 
-        @Resolve(message = "GET_SIZE")
-        abstract static class GetSize extends Node {
+        @ExportMessage
+        boolean isArrayElementReadable(long index) {
+            return 0 <= index && index < keys.length;
+        }
 
-            int access(Keys receiver) {
-                return receiver.keys.length;
+        @ExportMessage
+        Object readArrayElement(long idx) throws InvalidArrayIndexException {
+            if (!isArrayElementReadable(idx)) {
+                throw InvalidArrayIndexException.create(idx);
             }
-        }
-
-        @Resolve(message = "READ")
-        abstract static class Read extends Node {
-
-            Object access(Keys receiver, int index) {
-                if (index < 0 || index >= receiver.keys.length) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw UnknownIdentifierException.raise(Integer.toString(index));
-                }
-                return receiver.keys[index];
-            }
+            return keys[(int) idx];
         }
     }
 }

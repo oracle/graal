@@ -40,11 +40,21 @@
  */
 package com.oracle.truffle.nfi.impl;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.nfi.impl.LibFFIType.Direction;
 
+@ExportLibrary(InteropLibrary.class)
 final class LibFFIFunction implements TruffleObject {
+
+    private static final KeysArray KEYS = new KeysArray(new String[]{"bind"});
 
     private final NativePointer symbol;
     private final LibFFISignature signature;
@@ -65,12 +75,67 @@ final class LibFFIFunction implements TruffleObject {
         return symbol.nativePointer;
     }
 
-    NativePointer getPointer() {
-        return symbol;
+    @ExportMessage
+    boolean isExecutable() {
+        return true;
     }
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return LibFFIFunctionMessageResolutionForeign.ACCESS;
+    @ExportMessage
+    Object execute(Object[] args,
+                    @Cached FunctionExecuteNode cachedExecute) {
+        return cachedExecute.execute(this, args);
+    }
+
+    @ExportMessage
+    boolean isPointer() {
+        return true;
+    }
+
+    @ExportMessage
+    long asPointer() {
+        return symbol.nativePointer;
+    }
+
+    @ExportMessage
+    LibFFIFunction toNative() {
+        return this;
+    }
+
+    @ExportMessage
+    boolean hasMembers() {
+        return true;
+    }
+
+    @ExportMessage
+    Object getMembers(boolean includeInternal) {
+        return KEYS;
+    }
+
+    @ExportMessage
+    boolean isMemberReadable(String member) {
+        return false;
+    }
+
+    @ExportMessage
+    Object readMember(String member) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    boolean isMemberInvocable(String member) {
+        return "bind".equals(member);
+    }
+
+    @ExportMessage
+    Object invokeMember(String method, Object[] args,
+                    @Cached BindSignatureNode bind) throws UnknownIdentifierException, ArityException, UnsupportedTypeException {
+        if (!"bind".equals(method)) {
+            throw UnknownIdentifierException.create(method);
+        }
+        if (args.length != 1) {
+            throw ArityException.create(1, args.length);
+        }
+
+        return bind.execute(symbol, args[0]);
     }
 }

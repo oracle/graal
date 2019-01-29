@@ -43,6 +43,7 @@ package com.oracle.truffle.nfi.impl;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -61,6 +62,7 @@ abstract class TypeConversion extends Node {
     }
 
     @ImportStatic(Message.class)
+    @GenerateUncached
     abstract static class AsPointerNode extends TypeConversion {
 
         abstract NativePointer execute(TruffleObject arg);
@@ -81,16 +83,17 @@ abstract class TypeConversion extends Node {
 
         @Specialization(guards = "checkNull(isNull, arg)")
         @SuppressWarnings("unused")
-        NativePointer nullAsPointer(TruffleObject arg, @Cached("IS_NULL.createNode()") Node isNull) {
+        static NativePointer nullAsPointer(TruffleObject arg,
+                        @Cached(value = "IS_NULL.createNode()", allowUncached = true) Node isNull) {
             return new NativePointer(0);
         }
 
         @Specialization(guards = "!checkNull(isNull, arg)", replaces = "serializePointer")
         @SuppressWarnings("unused")
-        protected NativePointer transitionToNative(TruffleObject arg,
-                        @Cached("IS_NULL.createNode()") Node isNull,
-                        @Cached("TO_NATIVE.createNode()") Node toNative,
-                        @Cached("AS_POINTER.createNode()") Node asPointer) {
+        static NativePointer transitionToNative(TruffleObject arg,
+                        @Cached(value = "IS_NULL.createNode()", allowUncached = true) Node isNull,
+                        @Cached(value = "TO_NATIVE.createNode()", allowUncached = true) Node toNative,
+                        @Cached(value = "AS_POINTER.createNode()", allowUncached = true) Node asPointer) {
             try {
                 Object nativeObj = ForeignAccess.sendToNative(toNative, arg);
                 long pointer = ForeignAccess.sendAsPointer(asPointer, (TruffleObject) nativeObj);

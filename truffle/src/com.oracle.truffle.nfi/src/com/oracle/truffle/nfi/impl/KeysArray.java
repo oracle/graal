@@ -40,15 +40,13 @@
  */
 package com.oracle.truffle.nfi.impl;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
-@MessageResolution(receiverType = KeysArray.class)
+@ExportLibrary(InteropLibrary.class)
 final class KeysArray implements TruffleObject {
 
     private final String[] keys;
@@ -57,42 +55,26 @@ final class KeysArray implements TruffleObject {
         this.keys = keys;
     }
 
-    @Resolve(message = "HAS_SIZE")
-    abstract static class HasSize extends Node {
+    @ExportMessage
+    boolean hasArrayElements() {
+        return true;
+    }
 
-        public Object access(@SuppressWarnings("unused") KeysArray receiver) {
-            return true;
+    @ExportMessage
+    long getArraySize() {
+        return keys.length;
+    }
+
+    @ExportMessage
+    boolean isArrayElementReadable(long idx) {
+        return 0 <= idx && idx < keys.length;
+    }
+
+    @ExportMessage
+    String readArrayElement(long idx) throws InvalidArrayIndexException {
+        if (!isArrayElementReadable(idx)) {
+            throw InvalidArrayIndexException.create(idx);
         }
+        return keys[(int) idx];
     }
-
-    @Resolve(message = "GET_SIZE")
-    abstract static class GetSize extends Node {
-
-        public Object access(KeysArray receiver) {
-            return receiver.keys.length;
-        }
-    }
-
-    @Resolve(message = "READ")
-    abstract static class Read extends Node {
-
-        public Object access(KeysArray receiver, int index) {
-            try {
-                return receiver.keys[index];
-            } catch (IndexOutOfBoundsException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw UnknownIdentifierException.raise(String.valueOf(index));
-            }
-        }
-    }
-
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return KeysArrayForeign.ACCESS;
-    }
-
-    static boolean isInstance(TruffleObject array) {
-        return array instanceof KeysArray;
-    }
-
 }
