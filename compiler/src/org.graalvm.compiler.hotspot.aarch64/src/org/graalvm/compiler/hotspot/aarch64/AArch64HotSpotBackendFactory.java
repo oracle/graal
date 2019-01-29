@@ -27,7 +27,6 @@ package org.graalvm.compiler.hotspot.aarch64;
 
 import static jdk.vm.ci.aarch64.AArch64.sp;
 import static jdk.vm.ci.common.InitTimer.timer;
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -118,7 +117,7 @@ public class AArch64HotSpotBackendFactory implements HotSpotBackendFactory {
         HotSpotSuitesProvider suites;
         HotSpotWordTypes wordTypes;
         Plugins plugins;
-        BytecodeProvider bytecodeProvider = null;
+        BytecodeProvider bytecodeProvider;
         try (InitTimer t = timer("create providers")) {
             try (InitTimer rt = timer("create HotSpotRegisters provider")) {
                 registers = createRegisters();
@@ -141,10 +140,8 @@ public class AArch64HotSpotBackendFactory implements HotSpotBackendFactory {
             try (InitTimer rt = timer("create SnippetReflection provider")) {
                 snippetReflection = createSnippetReflection(graalRuntime, constantReflection, wordTypes);
             }
-            if (!IS_IN_NATIVE_IMAGE) {
-                try (InitTimer rt = timer("create Bytecode provider")) {
-                    bytecodeProvider = new ClassfileBytecodeProvider(metaAccess, snippetReflection);
-                }
+            try (InitTimer rt = timer("create Bytecode provider")) {
+                bytecodeProvider = new ClassfileBytecodeProvider(metaAccess, snippetReflection);
             }
             try (InitTimer rt = timer("create Replacements provider")) {
                 replacements = createReplacements(graalRuntime.getOptions(), p, snippetReflection, bytecodeProvider);

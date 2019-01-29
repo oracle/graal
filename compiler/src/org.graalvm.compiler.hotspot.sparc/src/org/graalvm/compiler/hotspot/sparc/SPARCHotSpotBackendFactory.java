@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.hotspot.sparc;
 
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
-
 import java.util.HashSet;
 import java.util.Set;
 
@@ -104,10 +102,7 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
         HotSpotStampProvider stampProvider = new HotSpotStampProvider();
         Providers p = new Providers(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, null, stampProvider);
         HotSpotSnippetReflectionProvider snippetReflection = new HotSpotSnippetReflectionProvider(runtime, constantReflection, wordTypes);
-        BytecodeProvider bytecodeProvider = null;
-        if (!IS_IN_NATIVE_IMAGE) {
-            bytecodeProvider = new ClassfileBytecodeProvider(metaAccess, snippetReflection);
-        }
+        BytecodeProvider bytecodeProvider = new ClassfileBytecodeProvider(metaAccess, snippetReflection);
         HotSpotReplacementsImpl replacements = new HotSpotReplacementsImpl(runtime.getOptions(), p, snippetReflection, bytecodeProvider, target);
         Plugins plugins = createGraphBuilderPlugins(compilerConfiguration, config, metaAccess, constantReflection, foreignCalls, snippetReflection, replacements, wordTypes);
         replacements.setGraphBuilderPlugins(plugins);
