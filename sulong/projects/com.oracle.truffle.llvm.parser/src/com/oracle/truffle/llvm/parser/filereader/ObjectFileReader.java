@@ -31,14 +31,14 @@ package com.oracle.truffle.llvm.parser.filereader;
 
 import org.graalvm.polyglot.io.ByteSequence;
 
-public class Reader {
+public class ObjectFileReader {
 
     protected final ByteSequence byteSequence;
     private final boolean littleEndian;
 
     private int position;
 
-    public Reader(ByteSequence buffer, boolean littleEndian) {
+    public ObjectFileReader(ByteSequence buffer, boolean littleEndian) {
         this.byteSequence = buffer;
         this.position = 0;
         this.littleEndian = littleEndian;
@@ -99,7 +99,7 @@ public class Reader {
     }
 
     public final byte getByte(int pos) {
-        return byteSequence.byteAt(pos++);
+        return byteSequence.byteAt(pos);
     }
 
     public final int getInt(int pos) {

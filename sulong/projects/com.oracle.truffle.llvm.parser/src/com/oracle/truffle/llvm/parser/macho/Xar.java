@@ -36,10 +36,9 @@ import java.util.List;
 import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
-import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
-import com.oracle.truffle.llvm.parser.filereader.Reader;
+import com.oracle.truffle.llvm.parser.filereader.ObjectFileReader;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.w3c.dom.Document;
@@ -72,7 +71,7 @@ public final class Xar {
     }
 
     public static Xar create(ByteSequence bytes) {
-        Reader data = new Reader(bytes, false);
+        ObjectFileReader data = new ObjectFileReader(bytes, false);
         // magic
         data.getInt();
 
@@ -136,7 +135,7 @@ public final class Xar {
             return checksumAlgo;
         }
 
-        public static XarHeader create(Reader data) {
+        public static XarHeader create(ObjectFileReader data) {
             short size = data.getShort();
             short version = data.getShort();
             long tocComprSize = data.getLong();
@@ -230,7 +229,7 @@ public final class Xar {
             return xarFiles;
         }
 
-        public static XarTOC create(Reader data, XarHeader header) {
+        public static XarTOC create(ObjectFileReader data, XarHeader header) {
             int comprSize = (int) header.getTocComprSize();
             int uncomprSize = (int) header.getTocUncomprSize();
 

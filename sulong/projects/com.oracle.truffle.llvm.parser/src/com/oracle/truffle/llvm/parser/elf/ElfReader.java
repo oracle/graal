@@ -29,11 +29,11 @@
  */
 package com.oracle.truffle.llvm.parser.elf;
 
-import com.oracle.truffle.llvm.parser.filereader.Reader;
+import com.oracle.truffle.llvm.parser.filereader.ObjectFileReader;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import org.graalvm.polyglot.io.ByteSequence;
 
-public final class ElfReader extends Reader {
+public final class ElfReader extends ObjectFileReader {
 
     private static final int EI_NIDENT = 16;
     private static final int EI_CLASS = 4;
