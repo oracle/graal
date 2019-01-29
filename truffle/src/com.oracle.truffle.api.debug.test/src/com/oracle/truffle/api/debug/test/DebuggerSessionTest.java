@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -711,6 +711,20 @@ public class DebuggerSessionTest extends AbstractDebugTest {
                 return truffleSource.get();
             });
         }
+    }
+
+    @Test
+    @SuppressWarnings("try")
+    public void testSessionCount() {
+        Assert.assertEquals(0, tester.getDebugger().getSessionCount());
+        try (DebuggerSession s = tester.startSession()) {
+            Assert.assertEquals(1, tester.getDebugger().getSessionCount());
+            try (DebuggerSession s2 = tester.startSession()) {
+                Assert.assertEquals(2, tester.getDebugger().getSessionCount());
+            }
+            Assert.assertEquals(1, tester.getDebugger().getSessionCount());
+        }
+        Assert.assertEquals(0, tester.getDebugger().getSessionCount());
     }
 
     private static void deleteRecursively(Path path) throws IOException {
