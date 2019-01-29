@@ -11,10 +11,7 @@ include "truffle/ci.hocon"
 
 #Compiler
 compiler-suite-root = "./compiler"
-substrate-suite-root = "./substratevm"
 logPatterns = ["*.bgv"]
-
-libgraal-config = "libgraal-core"
 
 #Tools
 include "tools/ci.hocon"
@@ -55,10 +52,6 @@ include "compiler/ci_includes/gate_tasks.hocon"
 
 # ------------------ SVM ----------------------
 include "substratevm/ci_includes/gate.hocon"
-include "substratevm/ci_common/libgraal-bench.hocon"
-include "substratevm/ci_common/x52-libgraal.hocon"
-include "substratevm/ci_common/x32-libgraal.hocon"
-include "substratevm/ci_common/x4150-libgraal.hocon"
 
 # Maven deploy dry-run
 include "substratevm/ci_includes/deploy.hocon"

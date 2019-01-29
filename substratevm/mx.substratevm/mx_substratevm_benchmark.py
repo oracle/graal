@@ -38,7 +38,6 @@ import time
 
 import functools
 import mx
-import mx_graal_benchmark
 import mx_substratevm
 
 _default_image_options = ['-R:+PrintGCSummary', '-R:+PrintGC', '-H:+PrintImageHeapPartitionSizes',
@@ -299,8 +298,3 @@ def run_js(vmArgs, jsArgs, nonZeroIsFatal, out, err, cwd):
     if nonZeroIsFatal:
         mx.abort('Javascript image building for js-benchmarks failed')
     return -1
-
-mx_graal_benchmark.build_jvmci_vm_variants('server', 'libgraal-graal-core',
-                                           ['-server', '-XX:+EnableJVMCI', '-XX:JVMCILibArgs=-Dgraal.CompilerConfiguration=community', '-Djvmci.Compiler=graal',
-                                           mx_substratevm.find_libgraal_path, '-XX:+UseJVMCINativeLibrary'],
-                                           mx_graal_benchmark._graal_variants, suite=mx.suite('substratevm'), priority=16, hosted=False)

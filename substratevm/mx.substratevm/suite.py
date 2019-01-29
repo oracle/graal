@@ -577,18 +577,6 @@ suite = {
             },
         },
 
-        "libgraal" : {
-            "class" : "NativeImageToolTask",
-            "dependencies": [
-                "SVM_DRIVER",
-                "SVM_HOSTED_NATIVE",
-                "compiler:GRAAL"
-            ],
-            "tool" : "libgraal",
-            "output" : "<lib:jvmcicompiler>",
-            "defaultBuild": False
-        },
-
         "com.oracle.svm.graal.hotspot.libgraal" : {
             "subDir": "src",
             "sourceDirs": ["src"],

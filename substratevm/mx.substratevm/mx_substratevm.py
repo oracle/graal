@@ -44,19 +44,12 @@ from xml.dom.minidom import parse
 from argparse import ArgumentParser
 import fnmatch
 
-def find_libgraal_path():
-    for p in svm_suite().projects:
-        if p.name == libgraal_name:
-            return '-XX:JVMCILibPath=' + p.get_output_root()
-    mx.abort("Can't find libgraal")
-
 import mx
 import mx_compiler
 import mx_gate
 import mx_unittest
 import mx_urlrewrites
 import mx_sdk
-import mx_subst
 from mx_compiler import GraalArchiveParticipant
 from mx_compiler import run_java
 from mx_gate import Task
@@ -157,7 +150,6 @@ else:
 IMAGE_ASSERTION_FLAGS = ['-H:+VerifyGraalGraphs', '-H:+VerifyGraalGraphEdges', '-H:+VerifyPhases']
 suite = mx.suite('substratevm')
 svmSuites = [suite]
-libgraal_name = 'libgraal'
 
 
 def _host_os_supported():
@@ -331,19 +323,11 @@ class ToolDescriptor:
         self.builder_deps = builder_deps if builder_deps else []
         self.native_deps = native_deps if native_deps else []
 
-    def missingDependencies(self):
-        allDeps = self.image_deps + self.builder_deps + self.native_deps
-        return [dist_name for dist_name in allDeps if mx.dependency(dist_name, fatalIfMissing=False) == None]
-
-    def allDepsAvailable(self):
-        return not self.missingDependencies()
-
 tools_map = {
     'truffle' : ToolDescriptor(),
     'native-image' : ToolDescriptor(),
     'junit' : ToolDescriptor(builder_deps=['mx:JUNIT_TOOL', 'JUNIT', 'HAMCREST']),
     'regex' : ToolDescriptor(image_deps=['regex:TREGEX']),
-    'libgraal' : ToolDescriptor(image_deps=['substratevm:GRAAL_HOTSPOT_LIBRARY'])
 }
 
 def native_image_path(native_image_root):
@@ -413,13 +397,10 @@ def layout_native_image_root(native_image_root):
     # Create native-image layout for tools parts
     for tool_name in tools_map:
         tool_descriptor = tools_map[tool_name]
-        if tool_descriptor.allDepsAvailable():
-            native_image_layout_dists(join('tools', tool_name, 'builder'), tool_descriptor.builder_deps)
-            native_image_layout_dists(join('tools', tool_name), tool_descriptor.image_deps)
-            native_image_extract_dists(join('tools', tool_name), tool_descriptor.native_deps)
-            native_image_option_properties('tools', tool_name, native_image_root)
-        else:
-            mx.log('Tool {} is not available because of missing dependencies: {}'.format(tool_name, ', '.join(tool_descriptor.missingDependencies())))
+        native_image_layout_dists(join('tools', tool_name, 'builder'), tool_descriptor.builder_deps)
+        native_image_layout_dists(join('tools', tool_name), tool_descriptor.image_deps)
+        native_image_extract_dists(join('tools', tool_name), tool_descriptor.native_deps)
+        native_image_option_properties('tools', tool_name, native_image_root)
 
     # Create native-image layout for svm parts
     svm_subdir = join('lib', 'svm')
@@ -428,68 +409,12 @@ def layout_native_image_root(native_image_root):
     clibraries_dest = join(native_image_root, join(svm_subdir, 'clibraries'))
     for clibrary_path in clibrary_paths():
         copy_tree(clibrary_path, clibraries_dest)
-
-class NativeImageToolTask(mx.Project):
-    def __init__(self, suite, name, deps, workingSets, theLicense=None, **kwargs):
-        super(NativeImageToolTask, self).__init__(suite, name, "", [], deps, workingSets, suite.dir, theLicense)
-        self.toolArgs = kwargs.pop('toolArgs', [])
-        self.tool = kwargs.pop('tool')
-        self.output = mx_subst.results_substitutions.substitute(kwargs.pop('output'))
-        self.buildDependencies = ['substratevm:GRAAL_HOTSPOT_LIBRARY']
-
-    def getResults(self):
-        return None
-
-    def getBuildTask(self, args):
-        if self.suite == svm_suite():
-            return NativeImageToolBuildTask(args, self)
-        else:
-            return mx.NoOpTask(self, args)
-
-class NativeImageToolBuildTask(mx.ProjectBuildTask):
-    def __init__(self, args, project):
-        super(NativeImageToolBuildTask, self).__init__(args, min(8, mx.cpu_count()), project)
-        self._newestOutput = None
-
-    def __str__(self):
-        return "Building tool " + self.subject.name
-
-    def build(self):
-        mx.ensure_dir_exists(self.subject.get_output_root())
-        args = self.subject.toolArgs + ['--tool:' + self.subject.tool] + ['-H:Path=' + self.subject.get_output_root()]
-        java_dbg_port = mx.get_opts().java_dbg_port
-        # If -d or --dbg is on the command line, we want to debug the com.oracle.svm.hosted.NativeImageGeneratorRunner
-        # process, not the com.oracle.svm.driver.NativeImage process that launches it
-        if java_dbg_port:
-            args.append('--debug-attach=' + str(java_dbg_port))
-        if mx.get_opts().verbose:
-            args.append('--verbose')
-        with mx.DisableJavaDebugging():
-            native_image_on_jvm(args)
-
-    def clean(self, forBuild=False):
-        if forBuild:
-            return
-
-        if exists(self.subject.get_output_root()):
-            remove_tree(self.subject.get_output_root())
-
-    def needsBuild(self, newestInput):
-        sup = super(NativeImageToolBuildTask, self).needsBuild(newestInput)
-        if sup[0]:
-            return sup
-        witness = self.newestOutput()
-        if not self._newestOutput or witness.isNewerThan(self._newestOutput):
-            self._newestOutput = witness
-        if not witness.exists():
-            return True, witness.path + ' does not exist'
-        if newestInput and witness.isOlderThan(newestInput):
-            return True, '{} is older than {}'.format(witness, newestInput)
-        return False, 'output is up to date'
-
-    def newestOutput(self):
-        return mx.TimeStampFile(join(self.subject.get_output_root(), self.subject.output))
-
+    lib_suffix = '.lib' if mx.get_os() == 'windows' else '.a'
+    jdk_lib_subdir = ['jre', 'lib'] if svm_java80() else ['lib']
+    jdk_lib_dir = join(jdk_config.home, *jdk_lib_subdir)
+    jdk_libs = [join(jdk_lib_dir, lib) for lib in os.listdir(jdk_lib_dir) if lib.endswith(lib_suffix)]
+    for src_lib in jdk_libs:
+        symlink_or_copy(src_lib, join(clibraries_dest, platform_name()))
 
 def truffle_language_ensure(language_flag, version=None, native_image_root=None, early_exit=False, extract=True):
     """
@@ -667,22 +592,44 @@ def svm_gate_body(args, tasks):
             maven_plugin_test([])
 
 
-def libgraal_gate_body(args, tasks):
+@mx.command(suite.name, 'buildlibgraal')
+def build_libgraal_cli(args):
+    build_libgraal(args)
+
+
+def build_libgraal(image_args):
     if mx.get_os() == 'windows':
-        return
+        return 'libgraal is unsupported on Windows'
 
-    if not tools_map['libgraal'].allDepsAvailable():
-        return
+    graal_hotspot_library = mx.dependency('substratevm:GRAAL_HOTSPOT_LIBRARY', fatalIfMissing=False)
+    if not graal_hotspot_library:
+        return 'libgraal dependency substratevm:GRAAL_HOTSPOT_LIBRARY is missing'
 
+    libgraal_args = ['-H:Name=libjvmcicompiler', '--shared', '-cp', graal_hotspot_library.classpath_repr(),
+        '--features=com.oracle.svm.graal.hotspot.libgraal.HotSpotGraalLibraryFeature',
+        '--tool:truffle',
+        '-H:-UseServiceLoaderFeature',
+        '-H:+AllowFoldMethods',
+        '-Djdk.vm.ci.services.aot=true',
+        '-H:JNIConfigurationResources=com/oracle/svm/graal/hotspot/libgraal/HotSpotGraalLibrary.json']
+
+    native_image_on_jvm(libgraal_args + image_args)
+
+    return None
+
+
+def libgraal_gate_body(args, tasks):
     with Task('Build libgraal', tasks, tags=[GraalTags.build, GraalTags.benchmarktest, GraalTags.test]) as t:
         if t:
-            native_image_on_jvm(['--tool:libgraal', '-ea'])
-            extra_vm_argument = args.extra_vm_argument
-            print(extra_vm_argument)
-            if extra_vm_argument:
-                extra_vm_argument = extra_vm_argument + ['-XX:+UseJVMCINativeLibrary', '-XX:JVMCILibPath=' + os.getcwd()]
-            else:
-                extra_vm_argument = ['-XX:+UseJVMCINativeLibrary', '-XX:JVMCILibPath=' + os.getcwd()]
+            # Build libgraal with assertions in the image builder and assertions in the image
+            msg = build_libgraal(['-J-esa', '-ea'])
+            if msg:
+                mx.logv('Skipping libgraal because: {}'.format(msg))
+                return
+
+            extra_vm_argument = ['-XX:+UseJVMCICompiler', '-XX:+UseJVMCINativeLibrary', '-XX:JVMCILibPath=' + os.getcwd()]
+            if args.extra_vm_argument:
+                extra_vm_argument += args.extra_vm_argument
 
             mx_compiler.compiler_gate_benchmark_runner(tasks, extra_vm_argument, libgraal=True)
 
@@ -1160,12 +1107,6 @@ def maven_plugin_install(args):
         '',
         ]
     mx.log('\n'.join(success_message))
-
-@mx.command(suite.name, 'vm', '[-options] class [args...]')
-def run_vm(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, debugLevel=None, vmbuild=None):
-    """run a Java program by executing the java executable in a JVMCI JDK"""
-    libgraal_args = [find_libgraal_path()]
-    return mx_compiler.run_java(libgraal_args + args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd, timeout=timeout)
 
 @mx.command(suite.name, 'maven-plugin-test')
 def maven_plugin_test(args):
