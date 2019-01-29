@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.options;
 
+import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
 import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 
 import java.util.ArrayList;
@@ -64,7 +65,15 @@ public class OptionsParser {
              */
             loader = ClassLoader.getSystemClassLoader();
         }
-        return ServiceLoader.load(OptionDescriptors.class, loader);
+        Iterable<OptionDescriptors> result = ServiceLoader.load(OptionDescriptors.class, loader);
+        if (IS_BUILDING_NATIVE_IMAGE) {
+            ArrayList<OptionDescriptors> optionDescriptors = new ArrayList<>();
+            for (OptionDescriptors descriptors : result) {
+                optionDescriptors.add(descriptors);
+            }
+            OptionsParser.cachedOptionDescriptors = optionDescriptors;
+        }
+        return result;
     }
 
     /**
