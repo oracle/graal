@@ -60,6 +60,7 @@ import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA5_IMPL_COMPRESS;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA_IMPL_COMPRESS;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SQUARE_TO_LEN;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.UNWIND_EXCEPTION_TO_CALLER;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.VECTORIZED_MISMATCHED;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.VM_ERROR;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.WRONG_METHOD_HANDLER;
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.Reexecutability.NOT_REEXECUTABLE;
@@ -443,6 +444,13 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
             assert (c.counterModeAESCrypt != 0L);
             registerForeignCall(COUNTERMODE_IMPL_CRYPT, c.counterModeAESCrypt, NativeCall, PRESERVES_REGISTERS, LEAF, REEXECUTABLE_ONLY_AFTER_EXCEPTION,
                             NamedLocationIdentity.any());
+        }
+
+        if (c.useVectorizedMismatchIntrinsic) {
+            assert (c.vectorizedMismatch != 0L);
+            registerForeignCall(VECTORIZED_MISMATCHED, c.vectorizedMismatch, NativeCall, PRESERVES_REGISTERS, LEAF, REEXECUTABLE_ONLY_AFTER_EXCEPTION,
+                            NamedLocationIdentity.any());
+
         }
     }
 

@@ -289,6 +289,18 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
                     Word used);
 
     /**
+     * Descriptor for {@code StubRoutines::_vectorizedMismatch}.
+     */
+    public static final ForeignCallDescriptor VECTORIZED_MISMATCHED = new ForeignCallDescriptor("vectorizedMismatch", int.class, Word.class, Word.class, int.class, int.class);
+
+    public static int vectorizedMismatch(Word aAddr, Word bAddr, int length, int log2ArrayIndexScale) {
+        return vectorizedMismatchStub(VECTORIZED_MISMATCHED, aAddr, bAddr, length, log2ArrayIndexScale);
+    }
+
+    @NodeIntrinsic(ForeignCallNode.class)
+    private static native int vectorizedMismatchStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word aAddr, Word bAddr, int length, int log2ArrayIndexScale);
+
+    /**
      * @see VMErrorNode
      */
     public static final ForeignCallDescriptor VM_ERROR = new ForeignCallDescriptor("vm_error", void.class, Object.class, Object.class, long.class);
