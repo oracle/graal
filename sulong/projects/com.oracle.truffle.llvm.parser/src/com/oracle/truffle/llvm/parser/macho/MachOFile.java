@@ -100,13 +100,15 @@ public final class MachOFile {
         MachOSegmentCommand seg = loadCommandTable.getSegment(segment);
 
         if (seg == null) {
-            throw new LLVMParserException("Mach-O file does not contain a " + segment + " segment!");
+            // Mach-O file does not contain the segment
+            return null;
         }
 
         MachOSection sect = seg.getSection(section);
 
         if (sect == null) {
-            throw new LLVMParserException("Mach-O file does not contain a " + section + " section!");
+            // Mach-O file does not contain a section
+            return null;
         }
 
         int offset = sect.getOffset();

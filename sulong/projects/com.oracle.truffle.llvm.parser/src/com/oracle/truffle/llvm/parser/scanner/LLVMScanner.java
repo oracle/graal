@@ -184,10 +184,18 @@ public final class LLVMScanner {
                 List<String> libraries = machOFile.getDyLibs();
                 model.addLibraries(libraries);
 
-                return parseBitcode(machOFile.extractBitcode(), model);
+                ByteSequence machoBitcode = machOFile.extractBitcode();
+                if (machoBitcode == null) {
+                    return null;
+                }
+                return parseBitcode(machoBitcode, model);
             case XAR_MAGIC:
                 Xar xarFile = Xar.create(bytes);
-                return parseBitcode(xarFile.extractBitcode(), model);
+                ByteSequence xarBitcode = xarFile.extractBitcode();
+                if (xarBitcode == null) {
+                    return null;
+                }
+                return parseBitcode(xarBitcode, model);
             default:
                 return null;
         }
