@@ -40,20 +40,20 @@
  */
 package com.oracle.truffle.api.instrumentation.test;
 
+import static org.junit.Assert.assertTrue;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.Assert.assertTrue;
+import org.graalvm.polyglot.Instrument;
+import org.graalvm.polyglot.Source;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.ExecuteSourceEvent;
 import com.oracle.truffle.api.instrumentation.ExecuteSourceListener;
@@ -61,31 +61,18 @@ import com.oracle.truffle.api.instrumentation.LoadSourceEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceListener;
 import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.IndexRange;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 
-import org.graalvm.polyglot.Instrument;
-import org.graalvm.polyglot.Source;
-
 public class SourceListenerTest extends AbstractInstrumentationTest {
-
-    private static boolean isCompileImmediately() {
-        CallTarget target = Truffle.getRuntime().createCallTarget(new RootNode(null) {
-            @Override
-            public Object execute(VirtualFrame frame) {
-                return CompilerDirectives.inCompiledCode();
-            }
-        });
-        return (boolean) target.call();
-    }
 
     @BeforeClass
     public static void beforeClass() {
-        Assume.assumeFalse(isCompileImmediately());
+        Assume.assumeFalse(CompileImmediatelyCheck.isCompileImmediately());
     }
 
     @Test
