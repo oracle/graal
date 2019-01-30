@@ -133,21 +133,17 @@ public final class LLVMScanner {
             model.addLibraries(libraries);
 
             bitcode = machOFile.extractBitcode();
+            BitStream bs = BitStream.create(bitcode);
 
-//            long wrapperMagic = Integer.toUnsignedLong(bitcode.getInt(bitcode.position()));
-//            if (wrapperMagic == WRAPPER_MAGIC_WORD) {
-//                // the first read did not change position
-//                bitcode.position(bitcode.position() + 4);
-//                // Version
-//                bitcode.getInt();
-//                // Offset32
-//                long offset = bitcode.getInt();
-//                // Size32
-//                long size = bitcode.getInt();
-//                bitcode.position((int) offset);
-//                bitcode.limit((int) (offset + size));
-//                bitcode = bitcode.slice();
-//            }
+            long wrapperMagic = Integer.toUnsignedLong((int) bs.read(0, Integer.SIZE));
+            if (wrapperMagic == WRAPPER_MAGIC_WORD) {
+                // 32: version
+                // 64: offset32
+                long offset = bs.read(64, Integer.SIZE);
+                // 96: size32
+                long size = bs.read(96, Integer.SIZE);
+                bitcode = bitcode.subSequence((int) offset, (int) (offset + size));
+            }
         } else {
             throw new LLVMParserException("Not a valid input file!");
         }

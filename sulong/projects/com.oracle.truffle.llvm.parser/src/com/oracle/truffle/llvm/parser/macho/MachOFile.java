@@ -134,7 +134,7 @@ public final class MachOFile {
         int offset = sect.getOffset();
         long size = sect.getSize();
 
-        return buffer.subSequence(offset, (int) size);
+        return buffer.subSequence(offset, offset + (int) size);
     }
 
     public static MachOFile create(ByteSequence data) {

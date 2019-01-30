@@ -488,10 +488,6 @@ def runLLVM(args=None, out=None):
         dists.append('CHROMEINSPECTOR')
     return mx.run_java(getCommonOptions(False) + vmArgs + getClasspathOptions(dists) + ["com.oracle.truffle.llvm.launcher.LLVMLauncher"] + sulongArgs, out=out)
 
-def injectBitcode(args=None, out=None):
-    """Injects the bitcode of a Mach-O WLLVM build into the executable"""
-    return mx.run_java(mx.get_runtime_jvm_args('BITCODE_INJECTOR') + ["com.oracle.truffle.llvm.parser.macho.injector.Injector"] + args, out=out)
-
 def getCommonOptions(withAssertion, lib_args=None):
     options = ['-Dgraal.TruffleCompilationExceptionsArePrinted=true',
         '-Dgraal.ExitVMOnException=true']

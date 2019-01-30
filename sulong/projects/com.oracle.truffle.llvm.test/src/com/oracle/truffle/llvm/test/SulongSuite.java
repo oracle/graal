@@ -48,6 +48,7 @@ import com.oracle.truffle.llvm.test.options.TestOptions;
 @RunWith(Parameterized.class)
 public final class SulongSuite extends BaseSuiteHarness {
 
+    private static final boolean IS_MAC = System.getProperty("os.name").toLowerCase().indexOf("mac") >= 0;
     @Parameter(value = 0) public Path path;
     @Parameter(value = 1) public String testName;
 
@@ -67,7 +68,7 @@ public final class SulongSuite extends BaseSuiteHarness {
         return f -> {
             boolean isBC = f.getFileName().toString().endsWith(".bc");
             boolean isOut = f.getFileName().toString().endsWith(".out");
-            return isBC || isOut;
+            return isBC || (isOut && !IS_MAC);
         };
     }
 
