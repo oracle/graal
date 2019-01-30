@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,12 +29,15 @@
  */
 package com.oracle.truffle.llvm.nodes.memory.store;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeField(type = long.class, name = "structSize")
 public abstract class LLVMStructStoreNode extends LLVMStoreNodeCommon {
@@ -71,5 +74,11 @@ public abstract class LLVMStructStoreNode extends LLVMStoreNodeCommon {
     @Specialization(guards = "getStructSize() > 0")
     protected void doManaged(LLVMManagedPointer address, LLVMManagedPointer value) {
         memMove.executeWithTarget(address, value, getStructSize());
+    }
+
+    @Specialization(guards = {"getStructSize() > 0", "!isAutoDerefHandle(address)"}, replaces = "doOp")
+    protected void doConvert(LLVMNativePointer address, LLVMPointer value,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
+        memMove.executeWithTarget(address, toNative.executeWithTarget(value), getStructSize());
     }
 }

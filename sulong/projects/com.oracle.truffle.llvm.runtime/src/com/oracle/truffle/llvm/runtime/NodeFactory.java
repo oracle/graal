@@ -234,11 +234,11 @@ public interface NodeFactory extends InteropNodeFactory {
 
     LLVMMemSetNode createMemSet();
 
-    LLVMAllocateNode createAllocateGlobalsBlock(StructureType structType);
+    LLVMAllocateNode createAllocateGlobalsBlock(StructureType structType, boolean readOnly);
 
     LLVMMemoryOpNode createProtectGlobalsBlock();
 
-    LLVMMemoryOpNode createFreeGlobalsBlock();
+    LLVMMemoryOpNode createFreeGlobalsBlock(boolean readOnly);
 
     LLVMExpressionNode createStackSave(LLVMSourceLocation sourceSection);
 

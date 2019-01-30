@@ -91,6 +91,7 @@ public final class LLVMContext {
     private final HashMap<LLVMPointer, LLVMGlobal> globalsReverseMap = new HashMap<>();
     // allocations used to store non-pointer globals (need to be freed when context is disposed)
     private final ArrayList<LLVMPointer> globalsNonPointerStore = new ArrayList<>();
+    private final ArrayList<LLVMPointer> globalsReadOnlyStore = new ArrayList<>();
 
     private DataLayout dataLayout;
 
@@ -309,13 +310,19 @@ public final class LLVMContext {
         // free the space allocated for non-pointer globals
         Truffle.getRuntime().createCallTarget(new RootNode(language) {
 
-            @Child LLVMMemoryOpNode free = nodeFactory.createFreeGlobalsBlock();
+            @Child LLVMMemoryOpNode freeRo = nodeFactory.createFreeGlobalsBlock(true);
+            @Child LLVMMemoryOpNode freeRw = nodeFactory.createFreeGlobalsBlock(false);
 
             @Override
             public Object execute(VirtualFrame frame) {
+                for (LLVMPointer store : globalsReadOnlyStore) {
+                    if (store != null) {
+                        freeRo.execute(store);
+                    }
+                }
                 for (LLVMPointer store : globalsNonPointerStore) {
                     if (store != null) {
-                        free.execute(store);
+                        freeRw.execute(store);
                     }
                 }
                 return null;
@@ -660,6 +667,10 @@ public final class LLVMContext {
     @TruffleBoundary
     public LLVMGlobal findGlobal(LLVMPointer pointer) {
         return globalsReverseMap.get(pointer);
+    }
+
+    public void registerReadOnlyGlobals(LLVMPointer nonPointerStore) {
+        globalsReadOnlyStore.add(nonPointerStore);
     }
 
     public void registerGlobals(LLVMPointer nonPointerStore) {

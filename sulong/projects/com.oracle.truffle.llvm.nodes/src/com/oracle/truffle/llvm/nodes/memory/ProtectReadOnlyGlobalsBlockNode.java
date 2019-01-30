@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,25 +29,36 @@
  */
 package com.oracle.truffle.llvm.nodes.memory;
 
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateNode;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.NFIContextExtension;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
-import com.oracle.truffle.llvm.runtime.types.StructureType;
 
-public final class AllocateGlobalsBlockNode extends LLVMNode implements LLVMAllocateNode {
+public final class ProtectReadOnlyGlobalsBlockNode extends LLVMNode implements LLVMMemoryOpNode {
 
-    private final long size;
-    private final LLVMMemory memory;
+    @Child Node execute;
 
-    public AllocateGlobalsBlockNode(LLVMContext context, StructureType type) {
-        this.size = context.getByteSize(type);
-        this.memory = context.getLanguage().getCapability(LLVMMemory.class);
+    private final TruffleObject protectReadonlyGlobalsBlock;
+
+    public ProtectReadOnlyGlobalsBlockNode(LLVMContext context) {
+        this.execute = Message.EXECUTE.createNode();
+
+        NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
+        this.protectReadonlyGlobalsBlock = nfiContextExtension.getNativeFunction(context, "@__sulong_protect_readonly_globals_block", "(POINTER):VOID");
     }
 
     @Override
-    public LLVMPointer executeWithTarget() {
-        return memory.allocateMemory(size);
+    public void execute(LLVMPointer ptr) {
+        try {
+            ForeignAccess.sendExecute(execute, protectReadonlyGlobalsBlock, ptr);
+        } catch (InteropException ex) {
+            assert false; // should never happen, but probably also safe to ignore
+        }
     }
 }
