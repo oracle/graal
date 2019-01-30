@@ -52,8 +52,9 @@ import com.oracle.truffle.api.dsl.GeneratedBy;
 import com.oracle.truffle.api.nodes.NodeUtil;
 
 /**
- * Represents a library factory that allows to create library instances useful for dispatch.
- * Dispatch factory for a library class can be resolved using {@link #resolve(Class)}.
+ * Represents a library factory that allows to create library instances to perform the Truffle
+ * library dispatch. Dispatch factory for a library class can be resolved using
+ * {@link #resolve(Class)}.
  * <p>
  * This class also serves as base class for generated library classes. It is only sub classable to
  * allow generated code to implement it. Do not implement this class manually.
@@ -77,7 +78,7 @@ public abstract class LibraryFactory<T extends Library> {
 
     @SuppressWarnings("unchecked")
     protected LibraryFactory(Class<T> libraryClass, List<Message> messages, T uncachedDispatch) {
-        assert this.getClass().getName().endsWith("Gen");
+        assert this.getClass().getName().endsWith(LibraryExport.GENERATED_CLASS_SUFFIX);
         assert this.getClass().getAnnotation(GeneratedBy.class) != null;
         assert this.getClass().getAnnotation(GeneratedBy.class).value() == libraryClass;
         this.libraryClass = libraryClass;
@@ -381,7 +382,7 @@ public abstract class LibraryFactory<T extends Library> {
 
     @Override
     public String toString() {
-        return "ResolvedLibrary [libraryClass=" + libraryClass.getName() + "]";
+        return "LibraryFactory [library=" + libraryClass.getName() + "]";
     }
 
     private static final LibraryFactory<ReflectionLibrary> REFLECTION_LIBRARY = LibraryFactory.resolve(ReflectionLibrary.class);

@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.library;
 
+import com.oracle.truffle.api.library.GenerateLibrary.Abstract;
 import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
 
 @GenerateLibrary
@@ -49,6 +50,7 @@ public abstract class ReflectionLibrary extends Library {
     protected ReflectionLibrary() {
     }
 
+    @Abstract
     public abstract Object send(Object receiver, Message message, Object... args) throws Exception;
 
     public static LibraryFactory<ReflectionLibrary> resolve() {

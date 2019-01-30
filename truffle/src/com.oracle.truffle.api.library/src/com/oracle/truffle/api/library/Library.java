@@ -43,6 +43,8 @@ package com.oracle.truffle.api.library;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
+ * Base class for all Truffle library specifications.
+ *
  * Libraries.
  *
  * <h3>Specifying library messages</h3>
@@ -50,6 +52,8 @@ import com.oracle.truffle.api.nodes.Node;
  * <h3>Dynamic Dispatch</h3>
  * <h3>Reflection</h3>
  *
+ * @see GenerateLibrary further details on how to use.
+ * @since 1.0
  */
 public abstract class Library extends Node {
 

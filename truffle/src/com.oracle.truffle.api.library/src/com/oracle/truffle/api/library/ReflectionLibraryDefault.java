@@ -45,7 +45,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 
-@ExportLibrary(value = ReflectionLibrary.class, receiverClass = Object.class)
+@ExportLibrary(value = ReflectionLibrary.class, receiverType = Object.class)
 final class ReflectionLibraryDefault {
 
     static final int LIMIT = 8;
@@ -57,13 +57,13 @@ final class ReflectionLibraryDefault {
         static Object doSendCached(Object receiver, Message message, Object[] args,
                         @Cached("message") Message cachedMessage,
                         @Cached("message.getResolvedLibrary().createCached(receiver)") Library cachedLibrary) throws Exception {
-            return message.getResolvedLibrary().genericDispatch(cachedLibrary, receiver, cachedMessage, args, 0);
+            return message.getFactory().genericDispatch(cachedLibrary, receiver, cachedMessage, args, 0);
         }
 
         @Specialization(replaces = "doSendCached")
         @TruffleBoundary
         static Object doSendGeneric(Object receiver, Message message, Object[] args) throws Exception {
-            LibraryFactory<?> lib = message.getResolvedLibrary();
+            LibraryFactory<?> lib = message.getFactory();
             return lib.genericDispatch(lib.getUncached(receiver), receiver, message, args, 0);
         }
     }
