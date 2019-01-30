@@ -49,7 +49,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
 @SuppressWarnings("deprecation")
-@ExportLibrary(value = InteropLibrary.class, receiverClass = TruffleObject.class)
+@ExportLibrary(value = InteropLibrary.class, receiverType = TruffleObject.class)
 @ImportStatic(Message.class)
 class DefaultTruffleObjectExports {
 

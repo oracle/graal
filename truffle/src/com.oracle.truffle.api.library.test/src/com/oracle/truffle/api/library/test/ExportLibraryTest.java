@@ -58,8 +58,8 @@ public class ExportLibraryTest {
 
     }
 
-    @ExpectError("Primitive receiver classes are not supported yet.")
-    @ExportLibrary(value = TestLibrary.class, receiverClass = int.class)
+    @ExpectError("Primitive receiver types are not supported yet.")
+    @ExportLibrary(value = TestLibrary.class, receiverType = int.class)
     public static class PrimitiveInt {
         @ExportMessage
         static Object m0(int receiver) {
@@ -111,6 +111,18 @@ public class ExportLibraryTest {
         @ExpectError("Exported message node class must not be private.")
         @ExportMessage
         private static class M0 {
+        }
+    }
+
+    @ExpectError("Using explicit receiver types is only supported for default exports or types that export DynamicDispatchLibrary.\n" +
+                    "To resolve this use one of the following strategies:\n" +
+                    "  - Make the receiver type implicit by applying '@ExportLibrary(TestLibrary.class)' to the receiver type 'PrimitiveInt' instead.\n" +
+                    "  - Declare a default export for the library 'TestReceiver' with '@DefaultExport(TestReceiver.class)'\n" +
+                    "  - Enable dynamic dispatch by annotating the receiver type with '@ExportLibrary(DynamicDispatchLibrary.class)'.")
+    @ExportLibrary(value = TestLibrary.class, receiverType = PrimitiveInt.class)
+    static class TestReceiver {
+        @ExportMessage
+        static class M0 {
         }
     }
 

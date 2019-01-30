@@ -43,7 +43,7 @@ package com.oracle.truffle.api.interop;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
-@ExportLibrary(value = InteropLibrary.class, receiverClass = Short.class)
+@ExportLibrary(value = InteropLibrary.class, receiverType = Short.class)
 @SuppressWarnings("unused")
 final class DefaultShortExports {
 

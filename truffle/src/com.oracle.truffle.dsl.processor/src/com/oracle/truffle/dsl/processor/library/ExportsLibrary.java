@@ -69,15 +69,15 @@ public final class ExportsLibrary extends Template {
 
     private final ExportsData exports;
     private final LibraryData library;
-    private final TypeMirror receiverClass;
+    private final TypeMirror receiverType;
     private final boolean explicitReceiver;
     private Map<CacheExpression, String> sharedExpressions;
 
-    public ExportsLibrary(ProcessorContext context, TypeElement templateType, AnnotationMirror annotation, ExportsData exports, LibraryData library, TypeMirror receiverClass,
+    public ExportsLibrary(ProcessorContext context, TypeElement templateType, AnnotationMirror annotation, ExportsData exports, LibraryData library, TypeMirror receiverType,
                     boolean explicitReceiver) {
         super(context, templateType, annotation);
         this.exports = exports;
-        this.receiverClass = receiverClass;
+        this.receiverType = receiverType;
         this.library = library;
         this.explicitReceiver = explicitReceiver;
     }
@@ -91,7 +91,7 @@ public final class ExportsLibrary extends Template {
     }
 
     public boolean isFinalReceiver() {
-        TypeElement type = ElementUtils.castTypeElement(receiverClass);
+        TypeElement type = ElementUtils.castTypeElement(receiverType);
         if (type == null) {
             return true;
         }
@@ -103,14 +103,14 @@ public final class ExportsLibrary extends Template {
     }
 
     public boolean needsDynamicDispatch() {
-        TypeElement type = ElementUtils.castTypeElement(receiverClass);
+        TypeElement type = ElementUtils.castTypeElement(receiverType);
         if (type == null) {
             return false;
         }
         if (getLibrary().isDynamicDispatch()) {
             return false;
         }
-        if (type.getKind().isInterface() || ElementUtils.isObject(receiverClass)) {
+        if (type.getKind().isInterface() || ElementUtils.isObject(receiverType)) {
             return true;
         }
         for (ExportsLibrary otherLibrary : exports.getExportedLibraries().values()) {
@@ -137,7 +137,7 @@ public final class ExportsLibrary extends Template {
     }
 
     private boolean isReceiverDynamicDispatched() {
-        TypeElement receiverTypeElement = ElementUtils.castTypeElement(receiverClass);
+        TypeElement receiverTypeElement = ElementUtils.castTypeElement(receiverType);
         while (receiverTypeElement != null) {
             List<AnnotationMirror> exportLibrary = getRepeatedAnnotation(receiverTypeElement.getAnnotationMirrors(), ExportLibrary.class);
             for (AnnotationMirror export : exportLibrary) {
@@ -190,11 +190,11 @@ public final class ExportsLibrary extends Template {
     }
 
     public TypeMirror getExplicitReceiver() {
-        return isExplicitReceiver() ? getReceiverClass() : null;
+        return isExplicitReceiver() ? getReceiverType() : null;
     }
 
-    public TypeMirror getReceiverClass() {
-        return receiverClass;
+    public TypeMirror getReceiverType() {
+        return receiverType;
     }
 
     public boolean isExplicitReceiver() {

@@ -60,7 +60,7 @@ import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 
-@ExportLibrary(value = InteropLibrary.class, receiverClass = DynamicObject.class)
+@ExportLibrary(value = InteropLibrary.class, receiverType = DynamicObject.class)
 public final class SLObjectType extends ObjectType {
 
     protected static final int CACHE_LIMIT = 3;

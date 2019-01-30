@@ -339,7 +339,7 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
 
     }
 
-    @ExportLibrary(value = ExportsTypeLibrary.class, receiverClass = Integer.class)
+    @ExportLibrary(value = ExportsTypeLibrary.class, receiverType = Integer.class)
     public static class ExportsTypeDefaultLibrary {
         @ExportMessage
         static void foo(Integer receiver) {
@@ -354,8 +354,8 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
         }
     }
 
-    @ExpectError("Using explicit receiver classes is only supported%")
-    @ExportLibrary(value = ExportsTypeLibrary.class, receiverClass = Double.class)
+    @ExpectError("Using explicit receiver types is only supported%")
+    @ExportLibrary(value = ExportsTypeLibrary.class, receiverType = Double.class)
     public static class InvalidDefaultTypeImpl {
         @ExportMessage
         static void foo(Double receiver) {
@@ -370,8 +370,8 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
 
     }
 
-    @ExpectError("The export receiver class Integer is not compatible with the library receiver type 'Double' of library 'InvalidDefaultReceiverTypeLibrary'. ")
-    @ExportLibrary(value = InvalidDefaultReceiverTypeLibrary.class, receiverClass = Integer.class)
+    @ExpectError("The export receiver type Integer is not compatible with the library receiver type 'Double' of library 'InvalidDefaultReceiverTypeLibrary'. ")
+    @ExportLibrary(value = InvalidDefaultReceiverTypeLibrary.class, receiverType = Integer.class)
     public static class InvalidDefaultReceiverType {
         @ExportMessage
         static void foo(Integer receiver) {
@@ -529,6 +529,18 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
         @SuppressWarnings("static-method")
         @ExpectError("Library messages must be public.")
         protected String call(Object receiver) {
+            return "default";
+        }
+
+    }
+
+    // test that non static inner class must be static
+    @GenerateLibrary
+    @ExpectError("Declared inner library classes must be static.")
+    public abstract class AbstractErrorLibrary12 extends Library {
+
+        @SuppressWarnings("static-method")
+        public String call(Object receiver) {
             return "default";
         }
 

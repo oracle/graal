@@ -45,7 +45,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
 @SuppressWarnings("unused")
-@ExportLibrary(value = InteropLibrary.class, receiverClass = Float.class)
+@ExportLibrary(value = InteropLibrary.class, receiverType = Float.class)
 final class DefaultFloatExports {
 
     // slow method

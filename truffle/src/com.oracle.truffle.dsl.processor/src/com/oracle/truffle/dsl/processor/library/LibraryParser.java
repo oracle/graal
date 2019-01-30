@@ -49,6 +49,7 @@ import java.util.Map;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
@@ -92,6 +93,10 @@ public class LibraryParser extends AbstractParser<LibraryData> {
 
         if (!element.getModifiers().contains(Modifier.ABSTRACT)) {
             model.addError("Declared library classes must be abstract.");
+            return model;
+        }
+        if (element.getEnclosingElement().getKind() != ElementKind.PACKAGE && !element.getModifiers().contains(Modifier.STATIC)) {
+            model.addError("Declared inner library classes must be static.");
             return model;
         }
 
@@ -307,9 +312,9 @@ public class LibraryParser extends AbstractParser<LibraryData> {
         for (AnnotationMirror exportedLibrary : exportedLibraries) {
             TypeMirror exportedLib = ElementUtils.getAnnotationValue(TypeMirror.class, exportedLibrary, "value");
             if (ElementUtils.typeEquals(model.getTemplateType().asType(), exportedLib)) {
-                receiverClass = ElementUtils.getAnnotationValue(TypeMirror.class, exportedLibrary, "receiverClass", false);
+                receiverClass = ElementUtils.getAnnotationValue(TypeMirror.class, exportedLibrary, "receiverType", false);
                 if (receiverClass == null) {
-                    model.addError(exportAnnotation, typeValue, "Default export '%s' must specify a receiverClass.", ElementUtils.getSimpleName(exportedLib));
+                    model.addError(exportAnnotation, typeValue, "Default export '%s' must specify a receiverType.", ElementUtils.getSimpleName(exportedLib));
                     return null;
                 }
                 break;

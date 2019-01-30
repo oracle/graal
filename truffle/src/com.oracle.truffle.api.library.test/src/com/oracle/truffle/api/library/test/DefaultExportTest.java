@@ -75,7 +75,7 @@ public class DefaultExportTest extends AbstractParametrizedLibraryTest {
 
     }
 
-    @ExportLibrary(value = DefaultLibrary.class, receiverClass = ValidClass.class)
+    @ExportLibrary(value = DefaultLibrary.class, receiverType = ValidClass.class)
     static final class ValidImpl {
         @ExportMessage
         static int abstractMethod(ValidClass receiver) {
@@ -97,7 +97,7 @@ public class DefaultExportTest extends AbstractParametrizedLibraryTest {
 
     }
 
-    @ExportLibrary(value = DefaultLibrary.class, receiverClass = Integer.class)
+    @ExportLibrary(value = DefaultLibrary.class, receiverType = Integer.class)
     static class IntegerImpl {
 
         @ExportMessage
@@ -132,7 +132,7 @@ public class DefaultExportTest extends AbstractParametrizedLibraryTest {
 
     }
 
-    @ExportLibrary(value = DefaultLibrary.class, receiverClass = int[].class)
+    @ExportLibrary(value = DefaultLibrary.class, receiverType = int[].class)
     static class PrimitiveArrayExport {
 
         @ExportMessage
@@ -168,7 +168,7 @@ public class DefaultExportTest extends AbstractParametrizedLibraryTest {
 
     }
 
-    @ExportLibrary(value = DefaultErrorLibrary2.class, receiverClass = OtherClass.class)
+    @ExportLibrary(value = DefaultErrorLibrary2.class, receiverType = OtherClass.class)
     @ExpectError("Library specification DefaultErrorLibrary2 has errors. Please resolve them first.")
     static class UnreachableDefault {
 
@@ -189,7 +189,7 @@ public class DefaultExportTest extends AbstractParametrizedLibraryTest {
 
     }
 
-    @ExportLibrary(value = DefaultErrorLibrary4.class, receiverClass = Object.class)
+    @ExportLibrary(value = DefaultErrorLibrary4.class, receiverType = Object.class)
     @ExpectError("Library specification DefaultErrorLibrary4 has errors. Please resolve them first.")
     static class ObjectDefault4 {
 
@@ -200,7 +200,7 @@ public class DefaultExportTest extends AbstractParametrizedLibraryTest {
 
     }
 
-    @ExportLibrary(value = DefaultErrorLibrary4.class, receiverClass = String.class)
+    @ExportLibrary(value = DefaultErrorLibrary4.class, receiverType = String.class)
     @ExpectError("Library specification DefaultErrorLibrary4 has errors. Please resolve them first.")
     static class StringDefault4 {
 
@@ -223,7 +223,7 @@ public class DefaultExportTest extends AbstractParametrizedLibraryTest {
 
     }
 
-    @ExportLibrary(value = DefaultErrorLibrary3.class, receiverClass = OtherClass.class)
+    @ExportLibrary(value = DefaultErrorLibrary3.class, receiverType = OtherClass.class)
     @ExpectError("The following message(s) of library DefaultErrorLibrary3 are abstract%")
     abstract static class AbstractDefault {
 
@@ -243,8 +243,8 @@ public class DefaultExportTest extends AbstractParametrizedLibraryTest {
 
     }
 
-    @ExpectError("Using explicit receiver classes is only supported%")
-    @ExportLibrary(value = DefaultLibrary.class, receiverClass = Integer.class)
+    @ExpectError("Using explicit receiver types is only supported%")
+    @ExportLibrary(value = DefaultLibrary.class, receiverType = Integer.class)
     static class DefaultExportError2 {
 
         @ExpectError("Exported methods with explicit receiver must be static.")
@@ -254,8 +254,8 @@ public class DefaultExportTest extends AbstractParametrizedLibraryTest {
         }
     }
 
-    @ExpectError("Using explicit receiver classes is only supported%")
-    @ExportLibrary(value = DefaultLibrary.class, receiverClass = Integer.class)
+    @ExpectError("Using explicit receiver types is only supported%")
+    @ExportLibrary(value = DefaultLibrary.class, receiverType = Integer.class)
     static class DefaultExportError3 {
 
         @ExportMessage

@@ -111,7 +111,7 @@ public class DynamicDispatchTest extends AbstractParametrizedLibraryTest {
 
     }
 
-    @ExportLibrary(value = TestDispatchLibrary.class, receiverClass = DynamicDispatch.class)
+    @ExportLibrary(value = TestDispatchLibrary.class, receiverType = DynamicDispatch.class)
     static class DynamicDispatchTarget1 {
 
         @ExportMessage
@@ -121,7 +121,7 @@ public class DynamicDispatchTest extends AbstractParametrizedLibraryTest {
 
     }
 
-    @ExportLibrary(value = TestDispatchLibrary.class, receiverClass = DynamicDispatch.class)
+    @ExportLibrary(value = TestDispatchLibrary.class, receiverType = DynamicDispatch.class)
     static final class TestDispatchDefaultExport {
 
         @ExportMessage

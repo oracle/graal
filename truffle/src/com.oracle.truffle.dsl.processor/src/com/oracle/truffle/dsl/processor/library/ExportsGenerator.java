@@ -145,7 +145,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         CodeTreeBuilder builder;
         final TypeElement libraryBaseTypeElement = library.getLibrary().getTemplateType();
         final DeclaredType libraryBaseType = (DeclaredType) libraryBaseTypeElement.asType();
-        final TypeMirror exportReceiverType = library.getReceiverClass();
+        final TypeMirror exportReceiverType = library.getReceiverType();
 
         TypeMirror baseType = new CodeTypeMirror.DeclaredCodeTypeMirror(context.getTypeElement(LibraryExport.class),
                         Arrays.asList(libraryBaseType));
@@ -153,7 +153,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
 
         CodeExecutableElement constructor = new CodeExecutableElement(modifiers(PRIVATE), null, exportsClass.getSimpleName().toString());
         builder = constructor.createBuilder();
-        builder.startStatement().startSuperCall().typeLiteral(libraryBaseType).typeLiteral(library.getReceiverClass()).string(Boolean.valueOf(library.isDefaultExport()).toString()).end().end();
+        builder.startStatement().startSuperCall().typeLiteral(libraryBaseType).typeLiteral(library.getReceiverType()).string(Boolean.valueOf(library.isDefaultExport()).toString()).end().end();
         exportsClass.add(constructor);
 
         CodeVariableElement uncachedSingleton = null;
@@ -226,7 +226,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
 
     CodeTypeElement createCached(ExportsLibrary libraryExports) {
         CodeTreeBuilder builder;
-        TypeMirror exportReceiverType = libraryExports.getReceiverClass();
+        TypeMirror exportReceiverType = libraryExports.getReceiverType();
         TypeElement libraryBaseTypeElement = libraryExports.getLibrary().getTemplateType();
         DeclaredType libraryBaseType = (DeclaredType) libraryBaseTypeElement.asType();
 
@@ -404,13 +404,13 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 constructor.addParameter(new CodeVariableElement(context.getType(Object.class), "receiver"));
 
                 TypeMirror receiverClassType = new CodeTypeMirror.DeclaredCodeTypeMirror(context.getTypeElement(Class.class),
-                                Arrays.asList(new CodeTypeMirror.WildcardTypeMirror(libraryExports.getReceiverClass(), null)));
+                                Arrays.asList(new CodeTypeMirror.WildcardTypeMirror(libraryExports.getReceiverType(), null)));
                 libraryGen.add(new CodeVariableElement(modifiers(PRIVATE, FINAL), receiverClassType, "receiverClass_"));
 
-                if (ElementUtils.isObject(libraryExports.getReceiverClass())) {
+                if (ElementUtils.isObject(libraryExports.getReceiverType())) {
                     constructor.createBuilder().startStatement().string("this.receiverClass_ = receiver.getClass()").end();
                 } else {
-                    constructor.createBuilder().startStatement().string("this.receiverClass_ = (").cast(libraryExports.getReceiverClass()).string("receiver).getClass()").end();
+                    constructor.createBuilder().startStatement().string("this.receiverClass_ = (").cast(libraryExports.getReceiverType()).string("receiver).getClass()").end();
                 }
 
                 acceptsBuilder.string("receiver.getClass() == this.receiverClass_");
@@ -434,7 +434,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
         builder.startAssert();
         if (libraryExports.isFinalReceiver()) {
-            builder.string("!(receiver instanceof ").type(libraryExports.getReceiverClass()).string(")");
+            builder.string("!(receiver instanceof ").type(libraryExports.getReceiverType()).string(")");
         } else {
             builder.string("receiver.getClass() != this.receiverClass_");
         }
@@ -449,7 +449,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
 
     CodeTypeElement createUncached(ExportsLibrary libraryExports) {
         CodeTreeBuilder builder;
-        final TypeMirror exportReceiverType = libraryExports.getReceiverClass();
+        final TypeMirror exportReceiverType = libraryExports.getReceiverType();
 
         final TypeElement libraryBaseTypeElement = libraryExports.getLibrary().getTemplateType();
         final DeclaredType libraryBaseType = (DeclaredType) libraryBaseTypeElement.asType();

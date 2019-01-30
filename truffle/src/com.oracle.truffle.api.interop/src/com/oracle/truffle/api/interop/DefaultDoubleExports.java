@@ -44,7 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
-@ExportLibrary(value = InteropLibrary.class, receiverClass = Double.class)
+@ExportLibrary(value = InteropLibrary.class, receiverType = Double.class)
 @SuppressWarnings("unused")
 final class DefaultDoubleExports {
 

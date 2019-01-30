@@ -65,7 +65,7 @@ public @interface ExportLibrary {
      *
      * @return
      */
-    Class<?> receiverClass() default Void.class;
+    Class<?> receiverType() default Void.class;
 
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.TYPE})

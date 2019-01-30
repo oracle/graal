@@ -391,9 +391,9 @@ public abstract class InteropLibrary extends Library {
 
     /**
      * Returns the dispatch factory for the interop library. Short-cut for
-     * {@link LibraryFactory#resolve(Class) ResolvedLibrary.resolve(InteropLibrary.class)}. Using this
-     * method instead of the generic method is more efficient.
-     * 
+     * {@link LibraryFactory#resolve(Class) ResolvedLibrary.resolve(InteropLibrary.class)}. Using
+     * this method instead of the generic method is more efficient.
+     *
      * @see LibraryFactory#resolve(Class)
      */
     public static LibraryFactory<InteropLibrary> dispatch() {
