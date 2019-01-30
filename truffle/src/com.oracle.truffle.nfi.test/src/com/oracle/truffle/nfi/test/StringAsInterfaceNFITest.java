@@ -51,8 +51,6 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.tck.TruffleRunner;
@@ -118,9 +116,9 @@ public class StringAsInterfaceNFITest {
     @Test
     public void testAllocAndReleaseWithInvoke() throws Exception {
         assumptions();
-        Object mem = ForeignAccess.sendInvoke(Message.INVOKE.createNode(), rawStdLib, "malloc", 512);
+        Object mem = NFITest.UNCACHED_INTEROP.invokeMember(rawStdLib, "malloc", 512);
         assertNotNull("some memory allocated", mem);
-        ForeignAccess.sendInvoke(Message.INVOKE.createNode(), rawStdLib, "free", mem);
+        NFITest.UNCACHED_INTEROP.invokeMember(rawStdLib, "free", mem);
     }
 
     @Test

@@ -91,9 +91,11 @@ final class NFILibrary implements TruffleObject {
         return new Keys(symbols.keySet());
     }
 
-    @ExportMessage
-    boolean isMemberReadable(String symbol) {
-        return true; // avoid expensive truffleboundary
+    @ExportMessage(limit = "3")
+    boolean isMemberReadable(String symbol,
+                    @CachedLibrary("this.getLibrary()") InteropLibrary recursive) {
+        // no need to check the map, pre-bound symbols need to exist in the library, too
+        return recursive.isMemberReadable(getLibrary(), symbol);
     }
 
     @ExportMessage(limit = "3")

@@ -42,11 +42,9 @@ package com.oracle.truffle.nfi.test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.nfi.test.interop.TestCallback;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
@@ -76,7 +74,7 @@ public class GlobalNFITest extends NFITest {
         testGlobalCallback = lookupAndBind("testGlobalCallback", "(double):double");
         TruffleObject initializeGlobalContext = lookupAndBind("initializeGlobalContext", "(env):void");
         try {
-            ForeignAccess.sendExecute(Message.EXECUTE.createNode(), initializeGlobalContext);
+            UNCACHED_INTEROP.execute(initializeGlobalContext);
         } catch (InteropException ex) {
             throw new AssertionError(ex);
         }
@@ -104,15 +102,15 @@ public class GlobalNFITest extends NFITest {
         private final TruffleObject register = registerGlobalCallback;
         private final TruffleObject test = testGlobalCallback;
 
-        @Child Node executeRegister = Message.EXECUTE.createNode();
-        @Child Node executeTest = Message.EXECUTE.createNode();
+        @Child InteropLibrary registerInterop = getInterop(register);
+        @Child InteropLibrary testInterop = getInterop(test);
 
-        TruffleObject handle; // to keep the native callback alive
+        Object handle; // to keep the native callback alive
 
         @Override
         public Object executeTest(VirtualFrame frame) throws InteropException {
-            handle = (TruffleObject) ForeignAccess.sendExecute(executeRegister, register, callback);
-            return ForeignAccess.sendExecute(executeTest, test, frame.getArguments()[0]);
+            handle = registerInterop.execute(register, callback);
+            return testInterop.execute(test, frame.getArguments()[0]);
         }
     }
 

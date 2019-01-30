@@ -122,14 +122,12 @@ public class ImplicitConvertNFITest extends NFITest {
         if (type == NativeSimpleType.POINTER) {
             Assert.assertThat("return value", ret, is(instanceOf(TruffleObject.class)));
             TruffleObject obj = (TruffleObject) ret;
-            Assert.assertTrue("isBoxed", isBoxed(obj));
-            ret = unbox(obj);
-            Assert.assertThat("unboxed return value", ret, is(instanceOf(Long.class)));
+            Assert.assertTrue("isNumber", UNCACHED_INTEROP.isNumber(obj));
         } else {
             Assert.assertThat("return value", ret, is(instanceOf(Number.class)));
         }
 
-        long retValue = ((Number) ret).longValue();
+        long retValue = NumericNFITest.unboxNumber(ret);
         Assert.assertEquals("callback return", numericValue * 2, retValue);
     }
 

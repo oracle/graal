@@ -40,13 +40,16 @@
  */
 package com.oracle.truffle.nfi.test.interop;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
+@ExportLibrary(InteropLibrary.class)
 public class NullObject implements TruffleObject {
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return NullObjectMessageResolutionForeign.ACCESS;
+    @ExportMessage
+    boolean isNull() {
+        return true;
     }
 }

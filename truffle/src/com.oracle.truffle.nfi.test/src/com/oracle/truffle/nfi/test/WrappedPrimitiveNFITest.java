@@ -41,7 +41,6 @@
 package com.oracle.truffle.nfi.test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.nfi.test.interop.NullObject;
 import com.oracle.truffle.nfi.test.interop.TestCallback;
@@ -61,12 +60,6 @@ import org.junit.runners.Parameterized.Parameters;
 public class WrappedPrimitiveNFITest extends NFITest {
 
     private static class TestObject implements TruffleObject {
-
-        @Override
-        public ForeignAccess getForeignAccess() {
-            Assert.fail("unexpected interop access to TestObject");
-            return null;
-        }
     }
 
     private static final Object[] ARGUMENTS = {

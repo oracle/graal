@@ -44,11 +44,9 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.nfi.test.interop.TestCallback;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
@@ -81,16 +79,16 @@ public class ErrnoNFITest extends NFITest {
     public static class TestVirtualErrno extends NFITestRootNode {
 
         private final TruffleObject setErrno = lookupAndBind("setErrno", "(sint32):void");
-        @Child private Node executeSetErrno = Message.EXECUTE.createNode();
+        @Child InteropLibrary setErrnoInterop = getInterop(setErrno);
 
         private final TruffleObject getErrno = lookupAndBind("getErrno", "():sint32");
-        @Child private Node executeGetErrno = Message.EXECUTE.createNode();
+        @Child InteropLibrary getErrnoInterop = getInterop(getErrno);
 
         @Override
         public Object executeTest(VirtualFrame frame) throws InteropException {
-            ForeignAccess.sendExecute(executeSetErrno, setErrno, frame.getArguments()[0]);
+            setErrnoInterop.execute(setErrno, frame.getArguments()[0]);
             destroyErrno();
-            return ForeignAccess.sendExecute(executeGetErrno, getErrno);
+            return getErrnoInterop.execute(getErrno);
         }
     }
 
