@@ -27,13 +27,25 @@ package com.oracle.truffle.tools.chromeinspector.instrument;
 import java.io.IOException;
 
 /**
- * Web socket connection for the inspector protocol.
+ * A single inspector connection with the inspector protocol. One or more inspector connections may
+ * be active on a single web socket connection, when they have different paths.
  */
-public interface InspectorWSConnection {
+public interface InspectorConnection {
 
-    int getPort();
+    InspectorWSConnection getWSConnection();
 
-    void consoleAPICall(String wsspath, String type, Object text);
+    String getWSPath();
 
-    void close(String wsspath) throws IOException;
+    default void close() throws IOException {
+        getWSConnection().close(getWSPath());
+    }
+
+    String getURL();
+
+    public interface Open {
+
+        InspectorConnection open(int port, String host, boolean wait);
+
+    }
+
 }

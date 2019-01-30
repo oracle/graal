@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,18 +22,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.tools.chromeinspector.instrument;
+package com.oracle.truffle.tools.chromeinspector.objects;
 
-import java.io.IOException;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import static com.oracle.truffle.tools.chromeinspector.objects.JSONTruffleObject.getTruffleValueFromJSONValue;
+import com.oracle.truffle.tools.utils.json.JSONArray;
 
 /**
- * Web socket connection for the inspector protocol.
+ * TruffleObject of a JSON array.
  */
-public interface InspectorWSConnection {
+public final class JSONTruffleArray extends AbstractInspectorArray {
 
-    int getPort();
+    private final JSONArray json;
 
-    void consoleAPICall(String wsspath, String type, Object text);
+    public JSONTruffleArray(JSONArray json) {
+        this.json = json;
+    }
 
-    void close(String wsspath) throws IOException;
+    @Override
+    int getLength() {
+        return json.length();
+    }
+
+    @Override
+    @CompilerDirectives.TruffleBoundary
+    Object getElementAt(int index) {
+        if (index < 0 || index >= json.length()) {
+            throw UnknownIdentifierException.raise(Integer.toString(index));
+        }
+        Object value = json.get(index);
+        return getTruffleValueFromJSONValue(value);
+    }
+
 }

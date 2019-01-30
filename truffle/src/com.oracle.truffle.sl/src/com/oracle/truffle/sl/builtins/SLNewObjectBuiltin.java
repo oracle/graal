@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,24 +42,48 @@ package com.oracle.truffle.sl.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.sl.runtime.SLContext;
+import com.oracle.truffle.sl.runtime.SLNull;
+import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 
 /**
  * Built-in function to create a new object. Objects in SL are simply made up of name/value pairs.
  */
 @NodeInfo(shortName = "new")
+@ImportStatic({Message.class})
 public abstract class SLNewObjectBuiltin extends SLBuiltinNode {
 
     @CompilationFinal SLContext context;
 
     @Specialization
-    public Object newObject() {
+    @SuppressWarnings("unused")
+    public Object newObject(SLNull o) {
         if (context != getContext()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             context = getContext();
         }
         return context.createObject();
+    }
+
+    @Specialization
+    public Object newObject(TruffleObject type,
+                    @Cached("NEW.createNode()") Node foreignNewNode) {
+        try {
+            return ForeignAccess.sendNew(foreignNewNode, type);
+        } catch (ArityException | UnsupportedTypeException | UnsupportedMessageException e) {
+            /* Foreign access was not successful. */
+            throw SLUndefinedNameException.undefinedFunction(this, type);
+        }
     }
 }

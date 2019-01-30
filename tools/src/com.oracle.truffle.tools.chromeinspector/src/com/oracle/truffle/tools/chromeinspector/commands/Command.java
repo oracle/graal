@@ -49,6 +49,12 @@ public final class Command {
         }
     }
 
+    public Command(long id, String method, Params params) {
+        this.id = id;
+        this.method = method;
+        this.params = params;
+    }
+
     public long getId() {
         return id;
     }

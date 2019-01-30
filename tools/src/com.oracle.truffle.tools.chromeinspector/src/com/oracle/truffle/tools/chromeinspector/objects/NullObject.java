@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,18 +22,46 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.tools.chromeinspector.instrument;
+package com.oracle.truffle.tools.chromeinspector.objects;
 
-import java.io.IOException;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
- * Web socket connection for the inspector protocol.
+ * Null.
  */
-public interface InspectorWSConnection {
+@MessageResolution(receiverType = NullObject.class)
+final class NullObject implements TruffleObject {
 
-    int getPort();
+    public static final NullObject INSTANCE = new NullObject();
 
-    void consoleAPICall(String wsspath, String type, Object text);
+    private NullObject() {
+    }
 
-    void close(String wsspath) throws IOException;
+    @Override
+    public String toString() {
+        return "null";
+    }
+
+    @Override
+    public ForeignAccess getForeignAccess() {
+        return NullObjectForeign.ACCESS;
+    }
+
+    public static boolean isInstance(TruffleObject obj) {
+        return obj instanceof NullObject;
+    }
+
+    @Resolve(message = "IS_NULL")
+    abstract static class NullIsNullNode extends Node {
+
+        @SuppressWarnings("unused")
+        public Object access(NullObject n) {
+            return true;
+        }
+    }
+
 }
