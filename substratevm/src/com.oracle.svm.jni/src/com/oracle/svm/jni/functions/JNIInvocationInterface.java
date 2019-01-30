@@ -46,7 +46,6 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.MonitorSupport;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
@@ -83,7 +82,6 @@ import com.oracle.svm.jni.nativeapi.JNIVersion;
  * @see <a href="http://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/invocation.html">
  *      Java Native Interface Specification: The Invocation API</a>
  */
-@SuppressWarnings("unused")
 final class JNIInvocationInterface {
 
     // Checkstyle: stop
@@ -106,6 +104,7 @@ final class JNIInvocationInterface {
          */
 
         static class JNICreateJavaVMPrologue {
+            @SuppressWarnings("unused")
             static void enter(JNIJavaVMPointer vmBuf, JNIEnvironmentPointer penv, JNIJavaVMInitArgs vmArgs) {
                 if (!SubstrateOptions.SpawnIsolates.getValue()) {
                     int error = CEntryPointActions.enterIsolate((Isolate) CEntryPointSetup.SINGLE_ISOLATE_SENTINEL);
@@ -208,6 +207,7 @@ final class JNIInvocationInterface {
      */
     @CEntryPoint
     @CEntryPointOptions(prologue = JNIJavaVMEnterAttachThreadPrologue.class, epilogue = LeaveTearDownIsolateEpilogue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    @SuppressWarnings("unused")
     static int DestroyJavaVM(JNIJavaVM vm) {
         JavaThreads.singleton().joinAllNonDaemons();
         return JNIErrors.JNI_OK();
@@ -218,6 +218,7 @@ final class JNIInvocationInterface {
      */
     @CEntryPoint
     @CEntryPointOptions(prologue = JNIGetEnvPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    @SuppressWarnings("unused")
     static int GetEnv(JNIJavaVM vm, WordPointer env, int version) {
         env.write(JNIThreadLocalEnvironment.getAddress());
         return JNIErrors.JNI_OK();
