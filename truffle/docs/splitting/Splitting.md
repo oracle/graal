@@ -1,7 +1,7 @@
-# How it works - Experimental Splitting
+# How it works - Splitting
 
-This document gives a short overview of the algorithm used in the new
-experimental implementation of Truffle call target splitting. 
+This document gives a short overview of the algorithm used in the
+implementation of Truffle call target splitting. 
 
 The new implementation relies on the language implementations providing
 information on when a particular node turns polymorphic or increases its
@@ -14,7 +14,7 @@ at what happens after the call to `reportPolymorphicSpecialize`. You can find
 more information on how to correctly report polymorphic specializations in the
 [Reporting Polymorphism](ReportingPolymorphism.md) file.
 
-## The Experimental Approach
+## The Approach
 
 Detecting of suitable splitting candidates relies on the languages reporting
 polymorphic specializations. Once the specialization is reported we make the

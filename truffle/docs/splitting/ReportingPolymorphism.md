@@ -1,17 +1,17 @@
 # Reporting Polymorphic Specializations to the Runtime
 
 This document gives a short overview of what is required of language
-implementers in order to leverage the new experimental monomorphization
-(splitting) strategy. More information on how it works can be found in the
-[Experimental Splitting](ExperimentalSplitting.md) file.
+implementers in order to leverage the monomorphization (splitting) strategy.
+More information on how it works can be found in the [Splitting](Splitting.md)
+file.
 
-In simple terms, the experimental monomorphization heuristic relies on the language
+In simple terms, the monomorphization heuristic relies on the language
 reporting polymorphic specializations for each node that could potentially be
-returned to a monomorphic state through splitting. In this context a polymorphic
-specialization is any node rewriting which results in the node changing "how
-polymorphic" it is. This includes, but is not limited to, activating another
-specialization, increasing the number of instances of an active specialization,
-excluding a specialization, etc. 
+returned to a monomorphic state through splitting. In this context a
+polymorphic specialization is any node rewriting which results in the node
+changing "how polymorphic" it is. This includes, but is not limited to,
+activating another specialization, increasing the number of instances of an
+active specialization, excluding a specialization, etc. 
 
 ## Manual Reporting of Polymorphic Specializations 
 
@@ -69,11 +69,11 @@ InstrumentableNode {
 ### Controlling Automated Reporting of Polymorphic Specializations
 
 Applying the `ReportPolymorphism` annotation to all nodes of a language is the
-simplest way to facilitate the experimental monomorphization, but it could cause
-reporting of polymorphic specializations in cases where that does not
-necessarily make sense. In order to give the language developer more control
-over which nodes and which specializations are taken into consideration for
-reporting polymorphism we introduced the `@ReportPolymorphism.Exclude`
+simplest way to facilitate the monomorphization, but it could cause reporting
+of polymorphic specializations in cases where that does not necessarily make
+sense. In order to give the language developer more control over which nodes
+and which specializations are taken into consideration for reporting
+polymorphism we introduced the `@ReportPolymorphism.Exclude`
 [annotation](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/ReportPolymorphism.Exclude.html)
 which is applicable to classes (disabling automated reporting for the entire
 class) or to individual specializations (excluding those specializations from
@@ -151,9 +151,8 @@ said flag enabled follows.
 ```
 #### Dumping polymorphic specializations to IGV
 
-NOTE: Consider reading [Experimental Splitting](ExperimentalSplitting.md) before
-this section, as the dumped data is directly related to how experimental
-splitting works.
+NOTE: Consider reading [Splitting](Splitting.md) before this section, as the
+dumped data is directly related to how splitting works.
 
 Adding the `-Dgraal.TruffleDumpPolymorphicSpecialize=true` argument to the command
 line when executing your guest language code will, every time a call target is
