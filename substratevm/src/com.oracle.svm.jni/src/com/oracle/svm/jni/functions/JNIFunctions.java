@@ -864,7 +864,7 @@ final class JNIFunctions {
             if (method != null) {
                 boolean isStatic = Modifier.isStatic(method.getModifiers());
                 JNIAccessibleMethodDescriptor descriptor = JNIAccessibleMethodDescriptor.of(method);
-                methodId = JNIReflectionDictionary.singleton().getMethodID(method.getDeclaringClass(), descriptor, isStatic);
+                methodId = JNIReflectionDictionary.singleton().getDeclaredMethodID(method.getDeclaringClass(), descriptor, isStatic);
             }
         }
         return methodId;
