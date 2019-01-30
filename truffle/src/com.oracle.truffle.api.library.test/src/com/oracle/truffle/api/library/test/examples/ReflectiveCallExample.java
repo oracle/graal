@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,51 +38,60 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.library.test.examples.om2;
+package com.oracle.truffle.api.library.test.examples;
 
-import com.oracle.truffle.api.library.CachedLibrary;
+import static org.junit.Assert.assertEquals;
+
+import org.junit.Test;
+
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
-import com.oracle.truffle.api.library.LibraryFactory;
+import com.oracle.truffle.api.library.Message;
+import com.oracle.truffle.api.library.ReflectionLibrary;
 
-public class UseCases {
+/**
+ * Example showing how messages can be dispatched without having a binary dependency to a library.
+ * This may be use-ful if two languages or tools want to exchange language or tool specific messages
+ * with each other without depending on project statically.
+ * <p>
+ * Truffle Library reflection works similar to Java reflection, but works with native-images and can
+ * be efficiently cached when called from nodes.
+ *
+ * @see ReflectiveExportExample for an example how to implement a message without dependency.
+ */
+@SuppressWarnings("static-method")
+public class ReflectiveCallExample {
 
     @GenerateLibrary
-    abstract static class JSLibrary extends Library {
-
-        public Object setProperty(Object receiver, Object key, Object value) {
-            return null;
-        }
-
-    }
-
-    @ExportLibrary(JSLibrary.class)
-    abstract static class JSObject extends DynamicObject {
-
-        static final PutConfig SET_PROPERTY = new PutConfig();
-
-        @ExportMessage(limit = "1")
-        Object setProperty(Object key, Object value,
-                        @CachedLibrary("this") DynamicObjectLibrary library) {
-            return library.put(this, key, value, SET_PROPERTY);
+    @SuppressWarnings("unused")
+    abstract static class UnknownLibrary extends Library {
+        public String message(Object receiver) {
+            return "result";
         }
     }
 
-    @SuppressWarnings("null")
-    public static void main(String[] args) {
-        DynamicObjectLibrary lib = null;
-        DynamicObject receiver = null;
-        Object key = null;
-        Object value = null;
+    @ExportLibrary(UnknownLibrary.class)
+    static final class UnknownObject {
 
-        LibraryFactory.resolve(DynamicObjectLibrary.class).createCached(receiver);
-
-        if ((lib.accepts(receiver))) {
-            lib.put(receiver, key, value, JSObject.SET_PROPERTY);
-
+        @ExportMessage
+        public String message() {
+            return "result";
         }
+    }
+
+    @Test
+    public void runExample() throws Exception {
+        ReflectionLibrary reflection = ReflectionLibrary.resolve().getUncached();
+
+        Object value = new UnknownObject();
+
+        // reflective lookup of the message.
+        // might be a good idea to cache in a singleton.
+        Message targetMessage = Message.resolve("com.oracle.truffle.api.library.test.examples.ReflectiveCallExample$UnknownLibrary", "message");
+
+        assertEquals("result", reflection.send(value, targetMessage));
     }
 
 }
