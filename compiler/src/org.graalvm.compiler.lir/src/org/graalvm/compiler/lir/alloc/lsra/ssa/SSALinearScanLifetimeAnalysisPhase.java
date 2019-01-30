@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.lir.alloc.lsra.ssa;
 
+import java.util.BitSet;
 import java.util.EnumSet;
 
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
@@ -69,13 +70,15 @@ public class SSALinearScanLifetimeAnalysisPhase extends LinearScanLifetimeAnalys
             int idx = SSAUtil.indexOfValue(label, targetValue);
             assert idx >= 0 : String.format("Value %s not in label %s", targetValue, label);
 
+            BitSet blockLiveIn = allocator.getBlockData(block).liveIn;
+
             AbstractBlockBase<?> selectedPredecessor = null;
             AllocatableValue selectedSource = null;
             for (AbstractBlockBase<?> pred : block.getPredecessors()) {
                 if (selectedPredecessor == null || pred.getRelativeFrequency() > selectedPredecessor.getRelativeFrequency()) {
                     StandardOp.JumpOp jump = SSAUtil.phiOut(lir, pred);
                     Value sourceValue = jump.getOutgoingValue(idx);
-                    if (LinearScan.isVariableOrRegister(sourceValue)) {
+                    if (LinearScan.isVariableOrRegister(sourceValue) && !blockLiveIn.get(getOperandNumber(sourceValue))) {
                         selectedSource = (AllocatableValue) sourceValue;
                         selectedPredecessor = pred;
                     }
