@@ -300,7 +300,7 @@ public class Inflation extends BigBang {
         Type[] allGenericInterfaces;
         try {
             allGenericInterfaces = javaClass.getGenericInterfaces();
-        } catch (MalformedParameterizedTypeException | TypeNotPresentException t) {
+        } catch (MalformedParameterizedTypeException | TypeNotPresentException | NoClassDefFoundError t) {
             /*
              * Loading generic interfaces can fail due to missing types. Ignore the exception and
              * return an empty array.
@@ -313,7 +313,7 @@ public class Inflation extends BigBang {
         Type genericSuperClass;
         try {
             genericSuperClass = javaClass.getGenericSuperclass();
-        } catch (MalformedParameterizedTypeException | TypeNotPresentException t) {
+        } catch (MalformedParameterizedTypeException | TypeNotPresentException | NoClassDefFoundError t) {
             /*
              * Loading the generic super class can fail due to missing types. Ignore the exception
              * and return null.
@@ -332,7 +332,7 @@ public class Inflation extends BigBang {
         AnnotatedType annotatedSuperclass;
         try {
             annotatedSuperclass = javaClass.getAnnotatedSuperclass();
-        } catch (MalformedParameterizedTypeException | TypeNotPresentException t) {
+        } catch (MalformedParameterizedTypeException | TypeNotPresentException | NoClassDefFoundError t) {
             /*
              * Loading the annotated super class can fail due to missing types. Ignore the exception
              * and return null.
@@ -346,7 +346,7 @@ public class Inflation extends BigBang {
         AnnotatedType[] allAnnotatedInterfaces;
         try {
             allAnnotatedInterfaces = javaClass.getAnnotatedInterfaces();
-        } catch (MalformedParameterizedTypeException | TypeNotPresentException t) {
+        } catch (MalformedParameterizedTypeException | TypeNotPresentException | NoClassDefFoundError t) {
             /*
              * Loading annotated interfaces can fail due to missing types. Ignore the exception and
              * return an empty array.
