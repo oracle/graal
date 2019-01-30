@@ -38,6 +38,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
@@ -53,19 +54,22 @@ import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 
 import com.oracle.truffle.tools.chromeinspector.InspectorExecutionContext;
+import com.oracle.truffle.tools.chromeinspector.objects.Inspector;
 import com.oracle.truffle.tools.chromeinspector.client.InspectWSClient;
 import com.oracle.truffle.tools.chromeinspector.server.ConnectionWatcher;
 import com.oracle.truffle.tools.chromeinspector.server.InspectServerSession;
 import com.oracle.truffle.tools.chromeinspector.server.WSInterceptorServer;
 import com.oracle.truffle.tools.chromeinspector.server.WebSocketServer;
+import com.oracle.truffle.tools.chromeinspector.server.InspectorServerConnection;
 
 /**
  * Chrome inspector as an instrument.
  */
-@TruffleInstrument.Registration(id = InspectorInstrument.INSTRUMENT_ID, name = "Chrome Inspector", version = InspectorInstrument.VERSION)
+@TruffleInstrument.Registration(id = InspectorInstrument.INSTRUMENT_ID, name = "Chrome Inspector", version = InspectorInstrument.VERSION, services = TruffleObject.class)
 public final class InspectorInstrument extends TruffleInstrument {
 
     private static final int DEFAULT_PORT = 9229;
@@ -212,19 +216,63 @@ public final class InspectorInstrument extends TruffleInstrument {
                 throw new InspectorIOException(hostAndPort.getHostPort(options.get(Remote)), e);
             }
         }
+
+        env.registerService(new Inspector(server != null ? server.getConnection() : null, new InspectorServerConnection.Open() {
+            @Override
+            @SuppressWarnings("all") // The parameters port and host should not be assigned
+            public synchronized InspectorServerConnection open(int port, String host, boolean wait) {
+                if (server != null) {
+                    return null;
+                }
+                HostAndPort hostAndPort = options.get(Inspect);
+                if (port < 0) {
+                    port = hostAndPort.port;
+                }
+                if (host == null) {
+                    host = hostAndPort.host;
+                }
+                connectionWatcher = new ConnectionWatcher();
+                hostAndPort = new HostAndPort(host, port);
+                try {
+                    InetSocketAddress socketAddress = hostAndPort.createSocket(options.get(Remote));
+                    server = new Server(env, "Main Context", socketAddress, false, false, wait, options.get(HideErrors), options.get(Internal),
+                                    options.get(Initialization), null, options.get(Secure), new KeyStoreOptions(options), options.get(SourcePath), connectionWatcher);
+                } catch (IOException e) {
+                    PrintWriter info = new PrintWriter(env.err());
+                    info.println(new InspectorIOException(hostAndPort.getHostPort(false), e).getLocalizedMessage());
+                    info.flush();
+                }
+                return server != null ? server.getConnection() : null;
+            }
+        }, new Supplier<InspectorExecutionContext>() {
+            @Override
+            public InspectorExecutionContext get() {
+                if (server != null) {
+                    return server.getConnection().getExecutionContext();
+                } else {
+                    try {
+                        return new InspectorExecutionContext("Main Context", options.get(Internal), options.get(Initialization), env, Collections.emptyList(), new PrintWriter(env.err()));
+                    } catch (IOException ex) {
+                        throw new RuntimeException(ex);
+                    }
+                }
+            }
+        }));
     }
 
     @Override
     protected void onFinalize(Env env) {
-        if (connectionWatcher.shouldWaitForClose()) {
+        if (connectionWatcher != null && connectionWatcher.shouldWaitForClose()) {
             PrintWriter info = new PrintWriter(env.out());
             info.println("Waiting for the debugger to disconnect...");
             info.flush();
             connectionWatcher.waitForClose();
         }
-        try {
-            server.close();
-        } catch (IOException ioex) {
+        if (server != null) {
+            try {
+                server.close();
+            } catch (IOException ioex) {
+            }
         }
     }
 
@@ -335,6 +383,8 @@ public final class InspectorInstrument extends TruffleInstrument {
 
         private InspectorWSConnection wss;
         private final String wsspath;
+        private final String wsURL;
+        private final InspectorExecutionContext executionContext;
 
         Server(final Env env, final String contextName, final InetSocketAddress socketAdress, final boolean attach, final boolean debugBreak, final boolean waitAttached, final boolean hideErrors,
                         final boolean inspectInternal, final boolean inspectInitialization, final String pathOrNull, final boolean secure, final KeyStoreOptions keyStoreOptions,
@@ -348,9 +398,10 @@ public final class InspectorInstrument extends TruffleInstrument {
             }
 
             PrintWriter err = (hideErrors) ? null : info;
-            final InspectorExecutionContext executionContext = new InspectorExecutionContext(contextName, inspectInternal, inspectInitialization, env, sourcePath, err);
+            executionContext = new InspectorExecutionContext(contextName, inspectInternal, inspectInitialization, env, sourcePath, err);
             if (attach) {
                 wss = new InspectWSClient(socketAdress, wsspath, executionContext, debugBreak, secure, keyStoreOptions, connectionWatcher, info);
+                wsURL = ((InspectWSClient) wss).getURI().toString();
             } else {
                 URI wsuri;
                 try {
@@ -369,7 +420,8 @@ public final class InspectorInstrument extends TruffleInstrument {
                 if (serverEndpoint == null) {
                     interceptor.close(wsspath);
                     wss = WebSocketServer.get(socketAdress, wsspath, executionContext, debugBreak, secure, keyStoreOptions, connectionWatcher, iss);
-                    String address = buildAddress(socketAdress.getAddress().getHostAddress(), wss.getPort(), wsspath, secure);
+                    wsURL = buildAddress(socketAdress.getAddress().getHostAddress(), wss.getPort(), wsspath, secure);
+                    String address = DEV_TOOLS_PREFIX + wsURL;
                     info.println("Debugger listening on port " + wss.getPort() + ".");
                     info.println("To start debugging, open the following URL in Chrome:");
                     info.println("    " + address);
@@ -377,6 +429,7 @@ public final class InspectorInstrument extends TruffleInstrument {
                 } else {
                     interceptor.opened(serverEndpoint);
                     wss = interceptor;
+                    wsURL = wsuri.toString();
                 }
             }
             if (debugBreak || waitAttached) {
@@ -433,11 +486,12 @@ public final class InspectorInstrument extends TruffleInstrument {
             }
         }
 
-        private static final String ADDRESS_PREFIX = "chrome-devtools://devtools/bundled/js_app.html?ws=";
-        private static final String ADDRESS_PREFIX_SECURE = "chrome-devtools://devtools/bundled/js_app.html?wss=";
+        private static final String DEV_TOOLS_PREFIX = "chrome-devtools://devtools/bundled/js_app.html?";
+        private static final String WS_PREFIX = "ws=";
+        private static final String WS_PREFIX_SECURE = "wss=";
 
         private static String buildAddress(String hostAddress, int port, String path, boolean secure) {
-            String prefix = secure ? ADDRESS_PREFIX_SECURE : ADDRESS_PREFIX;
+            String prefix = secure ? WS_PREFIX_SECURE : WS_PREFIX;
             return prefix + hostAddress + ":" + port + path;
         }
 
@@ -446,6 +500,36 @@ public final class InspectorInstrument extends TruffleInstrument {
                 wss.close(wsspath);
                 wss = null;
             }
+        }
+
+        InspectorServerConnection getConnection() {
+            return new InspectorServerConnection() {
+
+                @Override
+                public String getWSPath() {
+                    return wsspath;
+                }
+
+                @Override
+                public String getURL() {
+                    return wsURL;
+                }
+
+                @Override
+                public void close() throws IOException {
+                    wss.close(getWSPath());
+                }
+
+                @Override
+                public InspectorExecutionContext getExecutionContext() {
+                    return executionContext;
+                }
+
+                @Override
+                public void consoleAPICall(String type, Object text) {
+                    wss.consoleAPICall(getWSPath(), type, text);
+                }
+            };
         }
     }
 }

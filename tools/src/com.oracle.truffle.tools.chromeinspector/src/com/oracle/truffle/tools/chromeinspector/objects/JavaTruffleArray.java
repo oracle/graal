@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,18 +22,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.tools.chromeinspector.instrument;
+package com.oracle.truffle.tools.chromeinspector.objects;
 
-import java.io.IOException;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 
-/**
- * Web socket connection for the inspector protocol.
- */
-public interface InspectorWSConnection {
+public final class JavaTruffleArray extends AbstractInspectorArray {
 
-    int getPort();
+    private final Object[] array;
 
-    void consoleAPICall(String wsspath, String type, Object text);
+    JavaTruffleArray(Object[] array) {
+        this.array = array;
+    }
 
-    void close(String wsspath) throws IOException;
+    @Override
+    int getLength() {
+        return array.length;
+    }
+
+    @Override
+    Object getElementAt(int index) {
+        if (index < 0 || index >= array.length) {
+            CompilerDirectives.transferToInterpreter();
+            throw UnknownIdentifierException.raise(Integer.toString(index));
+        }
+        return array[index];
+    }
 }

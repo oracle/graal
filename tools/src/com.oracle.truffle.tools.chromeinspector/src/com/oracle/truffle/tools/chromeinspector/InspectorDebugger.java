@@ -873,9 +873,13 @@ public final class InspectorDebugger extends DebuggerDomain {
                     executables = null;
                     synchronized (suspendLock) {
                         if (!running && suspendThreadExecutables.isEmpty()) {
-                            try {
-                                suspendLock.wait();
-                            } catch (InterruptedException ex) {
+                            if (context.isSynchronous()) {
+                                running = true;
+                            } else {
+                                try {
+                                    suspendLock.wait();
+                                } catch (InterruptedException ex) {
+                                }
                             }
                         }
                         if (!suspendThreadExecutables.isEmpty()) {

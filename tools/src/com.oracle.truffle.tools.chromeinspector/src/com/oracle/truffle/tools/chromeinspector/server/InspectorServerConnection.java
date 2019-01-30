@@ -22,18 +22,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.tools.chromeinspector.instrument;
+package com.oracle.truffle.tools.chromeinspector.server;
 
+import com.oracle.truffle.tools.chromeinspector.InspectorExecutionContext;
 import java.io.IOException;
 
 /**
- * Web socket connection for the inspector protocol.
+ * A single inspector connection with the inspector protocol. One or more inspector connections may
+ * be active on a single web socket connection, when they have different paths.
  */
-public interface InspectorWSConnection {
+public interface InspectorServerConnection {
 
-    int getPort();
+    String getWSPath();
 
-    void consoleAPICall(String wsspath, String type, Object text);
+    void close() throws IOException;
 
-    void close(String wsspath) throws IOException;
+    String getURL();
+
+    InspectorExecutionContext getExecutionContext();
+
+    void consoleAPICall(String type, Object text);
+
+    public interface Open {
+
+        InspectorServerConnection open(int port, String host, boolean wait);
+
+    }
+
 }
