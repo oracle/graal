@@ -823,7 +823,7 @@ final class JNIFunctions {
             Field obj = JNIObjectHandles.getObject(fieldHandle);
             if (obj != null) {
                 boolean isStatic = Modifier.isStatic(obj.getModifiers());
-                fieldId = JNIReflectionDictionary.singleton().getDeclaredFieldId(obj.getDeclaringClass(), obj.getName(), isStatic);
+                fieldId = JNIReflectionDictionary.singleton().getDeclaredFieldID(obj.getDeclaringClass(), obj.getName(), isStatic);
             }
         }
         return fieldId;
