@@ -630,9 +630,12 @@ class LibffiBuilderProject(mx.AbstractNativeProject):
                 ])
             )
 
+        # pylint: disable=access-member-before-definition
+        assert len(self.buildDependencies) == 1, '{} must depend only on its sources'.format(self.name)
+        self.buildDependencies += getattr(self.delegate, 'buildDependencies', [])
+
     @property
     def sources(self):
-        assert len(self.buildDependencies) == 1, '{} must depend only on its sources'.format(self.name)
         return self.buildDependencies[0]
 
     @property
