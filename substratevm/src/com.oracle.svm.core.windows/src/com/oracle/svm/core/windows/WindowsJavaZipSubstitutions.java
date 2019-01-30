@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.windows;
 
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.TargetClass;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -34,4 +36,20 @@ public final class WindowsJavaZipSubstitutions {
 
     private WindowsJavaZipSubstitutions() {
     }
+}
+
+@TargetClass(className = "java.util.zip.Inflater")
+@Platforms(Platform.WINDOWS.class)
+final class Target_java_util_zip_Inflater {
+
+    @Alias
+    static native void initIDs();
+}
+
+@TargetClass(className = "java.util.zip.Deflater")
+@Platforms(Platform.WINDOWS.class)
+final class Target_java_util_zip_Deflater {
+
+    @Alias
+    static native void initIDs();
 }

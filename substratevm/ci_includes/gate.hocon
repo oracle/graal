@@ -7,6 +7,7 @@ svm-common-gate: {
 
 svm-common-linux-gate: ${svm-common-linux-amd64} ${svm-common-gate}
 svm-common-darwin-gate: ${svm-common-darwin} ${svm-common-gate}
+svm-common-windows-gate: ${svm-common-windows} ${svm-common-gate}
 
 svm-cmd-gate: ["mx", "--kill-with-sigquit", "--strict-compliance", "gate", "--strict-mode", "--tags"]
 
@@ -29,6 +30,15 @@ builds += [
     name: "gate-svm-style-fullbuild"
     run: [
       ${svm-cmd-gate} ["style,fullbuild,helloworld,test,maven"]
+    ]
+  }
+  ${labsjdk8} ${svm-common-windows-gate} {
+    name: "gate-svm-windows-basics"
+    environment: {
+      PATH : "$MVN_HOME;$PATH"  # workaround until GR-10735 is resolved
+    }
+    run: [
+      ${svm-cmd-gate} ["build,helloworld,maven"]
     ]
   }
 ]

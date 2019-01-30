@@ -70,7 +70,7 @@ class CPUTracerCLI extends ProfilerCLI {
 
     @Option(name = "TraceCalls", help = "Capture calls when tracing (default:false).", category = OptionCategory.USER) static final OptionKey<Boolean> TRACE_CALLS = new OptionKey<>(false);
 
-    @Option(name = "TraceInternal", help = "Trace internal elements (default:false).", category = OptionCategory.USER) static final OptionKey<Boolean> TRACE_INTERNAL = new OptionKey<>(false);
+    @Option(name = "TraceInternal", help = "Trace internal elements (default:false).", category = OptionCategory.DEBUG) static final OptionKey<Boolean> TRACE_INTERNAL = new OptionKey<>(false);
 
     @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (eg. Math.*, default:*).", category = OptionCategory.USER) static final OptionKey<Object[]> FILTER_ROOT = new OptionKey<>(
                     new Object[0], WILDCARD_FILTER_TYPE);

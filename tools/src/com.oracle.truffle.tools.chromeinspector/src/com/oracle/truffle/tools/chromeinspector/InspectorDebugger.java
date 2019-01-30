@@ -204,8 +204,11 @@ public final class InspectorDebugger extends DebuggerDomain {
 
     @Override
     public Params getPossibleBreakpoints(Location start, Location end, boolean restrictToFunction) throws CommandProcessException {
+        if (start == null) {
+            throw new CommandProcessException("Start location required.");
+        }
         int scriptId = start.getScriptId();
-        if (scriptId != end.getScriptId()) {
+        if (end != null && scriptId != end.getScriptId()) {
             throw new CommandProcessException("Different location scripts: " + scriptId + ", " + end.getScriptId());
         }
         Script script = slh.getScript(scriptId);
@@ -219,19 +222,31 @@ public final class InspectorDebugger extends DebuggerDomain {
             c1 = -1;
         }
         int l2;
-        if (source.hasCharacters()) {
-            int lc = source.getLineCount();
-            if (end.getLine() > lc) {
-                l2 = lc;
+        int c2;
+        if (end != null) {
+            if (source.hasCharacters()) {
+                int lc = source.getLineCount();
+                if (end.getLine() > lc) {
+                    l2 = lc;
+                } else {
+                    l2 = end.getLine();
+                }
             } else {
                 l2 = end.getLine();
             }
+            c2 = end.getColumn();
+            if (c2 <= 0) {
+                c2 = -1;
+            }
         } else {
-            l2 = end.getLine();
-        }
-        int c2 = end.getColumn();
-        if (c2 <= 0) {
-            c2 = -1;
+            l2 = l1;
+            if (c1 == -1) {
+                c2 = -1;
+            } else if (source.hasCharacters()) {
+                c2 = source.getLineLength(l2);
+            } else {
+                c2 = c1 + 1;
+            }
         }
         SourceSection range = source.createSection(l1, c1, l2, c2);
         Iterable<SourceSection> locations = SuspendableLocationFinder.findSuspendableLocations(range, restrictToFunction, ds, context.getEnv());
@@ -873,9 +888,13 @@ public final class InspectorDebugger extends DebuggerDomain {
                     executables = null;
                     synchronized (suspendLock) {
                         if (!running && suspendThreadExecutables.isEmpty()) {
-                            try {
-                                suspendLock.wait();
-                            } catch (InterruptedException ex) {
+                            if (context.isSynchronous()) {
+                                running = true;
+                            } else {
+                                try {
+                                    suspendLock.wait();
+                                } catch (InterruptedException ex) {
+                                }
                             }
                         }
                         if (!suspendThreadExecutables.isEmpty()) {

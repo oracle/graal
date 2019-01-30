@@ -64,7 +64,7 @@ public class LoopFragmentWhole extends LoopFragment {
     public NodeBitMap nodes() {
         if (nodes == null) {
             Loop<Block> loop = loop().loop();
-            nodes = LoopFragment.computeNodes(graph(), LoopFragment.toHirBlocks(loop.getBlocks()), LoopFragment.toHirExits(loop.getLoopExits()));
+            nodes = LoopFragment.computeNodes(graph(), LoopFragment.toHirBlocks(loop.getBlocks()), LoopFragment.toHirBlocks(loop.getLoopExits()));
         }
         return nodes;
     }
@@ -101,11 +101,6 @@ public class LoopFragmentWhole extends LoopFragment {
             return newLoopBegin.forwardEnd();
         }
         return loop().entryPoint();
-    }
-
-    @Override
-    protected void finishDuplication() {
-        // TODO (gd) ?
     }
 
     @Override

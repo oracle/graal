@@ -316,7 +316,7 @@ public class LoopEx {
 
     private boolean isCfgLoopExit(AbstractBeginNode begin) {
         Block block = data.getCFG().blockFor(begin);
-        return loop.getDepth() > block.getLoopDepth() || loop.getNaturalExits().contains(block);
+        return loop.getDepth() > block.getLoopDepth() || loop.isNaturalExit(block);
     }
 
     public LoopsData loopsData() {
@@ -331,7 +331,7 @@ public class LoopEx {
         work.add(cfg.blockFor(branch));
         while (!work.isEmpty()) {
             Block b = work.remove();
-            if (loop().getLoopExits().contains(b)) {
+            if (loop().isLoopExit(b)) {
                 assert !exits.contains(b.getBeginNode());
                 exits.add(b.getBeginNode());
             } else if (blocks.add(b.getBeginNode())) {

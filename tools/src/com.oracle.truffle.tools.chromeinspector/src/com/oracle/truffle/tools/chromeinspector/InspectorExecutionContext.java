@@ -74,6 +74,7 @@ public final class InspectorExecutionContext {
     private AtomicInteger schCounter;
     private volatile String lastMimeType = "text/javascript";   // Default JS
     private volatile String lastLanguage = "js";
+    private boolean synchronous = false;
 
     public InspectorExecutionContext(String name, boolean inspectInternal, boolean inspectInitialization, TruffleInstrument.Env env, List<URI> sourceRoots, PrintWriter err) throws IOException {
         this.name = name;
@@ -178,6 +179,9 @@ public final class InspectorExecutionContext {
     }
 
     public void waitForRunPermission() throws InterruptedException {
+        if (synchronous) {
+            return;
+        }
         synchronized (runPermission) {
             while (!runPermission[0]) {
                 runPermission.wait();
@@ -215,6 +219,15 @@ public final class InspectorExecutionContext {
     }
 
     <T> T executeInSuspendThread(SuspendThreadExecutable<T> executable) throws NoSuspendedThreadException, CommandProcessException {
+        if (synchronous) {
+            try {
+                return executable.executeCommand();
+            } catch (ThreadDeath td) {
+                throw td;
+            } catch (DebugException dex) {
+                return executable.processException(dex);
+            }
+        }
         CompletableFuture<T> cf = new CompletableFuture<>();
         suspendThreadExecutor.execute(new CancellableRunnable() {
             @Override
@@ -297,6 +310,14 @@ public final class InspectorExecutionContext {
         }
     }
 
+    public void setSynchronous(boolean synchronousExecution) {
+        this.synchronous = synchronousExecution;
+    }
+
+    public boolean isSynchronous() {
+        return synchronous;
+    }
+
     public interface Listener {
 
         void contextCreated(long id, String name);
@@ -330,8 +351,9 @@ public final class InspectorExecutionContext {
             throw new NoSuspendedThreadException("<Resuming...>");
         }
 
+        @SuppressWarnings("sync-override")
         @Override
-        public synchronized Throwable fillInStackTrace() {
+        public Throwable fillInStackTrace() {
             return this;
         }
     }

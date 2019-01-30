@@ -39,9 +39,9 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "5.189.0",
+  "mxversion" : "5.206.0",
   "name" : "truffle",
-  "version" : "1.0.0-rc12",
+  "version" : "1.0.0-rc13",
   "release" : False,
   "groupId" : "org.graalvm.truffle",
   "sourceinprojectwhitelist" : [],
@@ -579,18 +579,6 @@ suite = {
       "buildDependencies" : [
         "LIBFFI_SOURCES",
       ],
-      "os_arch" : {
-        "windows" : {
-          "<others>" : {
-            "ignore" : "windows is not supported",
-          },
-        },
-        "<others>" : {
-          "<others>" : {
-            "ignore" : False,
-          },
-        },
-      },
     },
 
     "com.oracle.truffle.nfi.native" : {

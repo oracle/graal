@@ -82,6 +82,20 @@ class WindowsJavaIOSubstituteFeature implements Feature {
             JNIRuntimeAccess.register(java.io.RandomAccessFile.class);
             JNIRuntimeAccess.register(java.io.RandomAccessFile.class.getDeclaredField("fd"));
             JNIRuntimeAccess.register(access.findClassByName("java.io.WinNTFileSystem"));
+            JNIRuntimeAccess.register(java.util.zip.Inflater.class.getDeclaredField("needDict"));
+            JNIRuntimeAccess.register(java.util.zip.Inflater.class.getDeclaredField("finished"));
+            JNIRuntimeAccess.register(java.util.zip.Inflater.class.getDeclaredField("buf"));
+            JNIRuntimeAccess.register(java.util.zip.Inflater.class.getDeclaredField("off"));
+            JNIRuntimeAccess.register(java.util.zip.Inflater.class.getDeclaredField("len"));
+
+            JNIRuntimeAccess.register(java.util.zip.Deflater.class.getDeclaredField("level"));
+            JNIRuntimeAccess.register(java.util.zip.Deflater.class.getDeclaredField("strategy"));
+            JNIRuntimeAccess.register(java.util.zip.Deflater.class.getDeclaredField("setParams"));
+            JNIRuntimeAccess.register(java.util.zip.Deflater.class.getDeclaredField("finish"));
+            JNIRuntimeAccess.register(java.util.zip.Deflater.class.getDeclaredField("finished"));
+            JNIRuntimeAccess.register(java.util.zip.Deflater.class.getDeclaredField("buf"));
+            JNIRuntimeAccess.register(java.util.zip.Deflater.class.getDeclaredField("off"));
+            JNIRuntimeAccess.register(java.util.zip.Deflater.class.getDeclaredField("len"));
         } catch (NoSuchFieldException e) {
             VMError.shouldNotReachHere("WindowsJavaIOSubstitutionFeature: Error registering class or method: ", e);
         }
@@ -161,6 +175,8 @@ public final class WindowsJavaIOSubstitutions {
             System.setErr(new PrintStream(new BufferedOutputStream(new FileOutputStream(FileDescriptor.err), 128), true));
 
             System.loadLibrary("zip");
+            Target_java_util_zip_Inflater.initIDs();
+            Target_java_util_zip_Deflater.initIDs();
             return true;
         } catch (UnsatisfiedLinkError e) {
             Log.log().string("System.loadLibrary failed, " + e).newline();

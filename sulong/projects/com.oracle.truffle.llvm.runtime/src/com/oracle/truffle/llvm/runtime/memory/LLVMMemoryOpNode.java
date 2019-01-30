@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,26 +27,11 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.memory;
+package com.oracle.truffle.llvm.runtime.memory;
 
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateStringNode;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.api.nodes.NodeInterface;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public abstract class NativeAllocateStringNode extends LLVMAllocateStringNode {
-
-    @Specialization
-    protected Object alloc(String s,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        LLVMNativePointer allocatedMemory = memory.allocateMemory(s.length() + 1);
-        long currentPtr = allocatedMemory.asNative();
-        for (byte b : s.getBytes()) {
-            memory.putI8(currentPtr, b);
-            currentPtr += 1;
-        }
-        memory.putI8(currentPtr, (byte) 0);
-        return allocatedMemory;
-    }
+public interface LLVMMemoryOpNode extends NodeInterface {
+    void execute(LLVMPointer pointer);
 }

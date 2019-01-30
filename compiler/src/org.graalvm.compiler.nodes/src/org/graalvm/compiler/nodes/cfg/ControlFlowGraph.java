@@ -24,13 +24,12 @@
  */
 package org.graalvm.compiler.nodes.cfg;
 
+import static org.graalvm.compiler.core.common.cfg.AbstractBlockBase.BLOCK_ID_COMPARATOR;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
-import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.cfg.CFGVerifier;
@@ -626,6 +625,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                             }
                         }
                     }
+                    loop.getNaturalExits().sort(BLOCK_ID_COMPARATOR);
 
                     if (!graph.getGuardsStage().areFrameStatesAtDeopts()) {
                         for (LoopExitNode exit : loopBegin.loopExits()) {
@@ -634,6 +634,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                             computeLoopBlocks(exitBlock.getFirstPredecessor(), loop, stack, true);
                             loop.getLoopExits().add(exitBlock);
                         }
+                        loop.getLoopExits().sort(BLOCK_ID_COMPARATOR);
 
                         // The following loop can add new blocks to the end of the loop's block
                         // list.
@@ -658,63 +659,6 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
                 }
             }
         }
-
-        assert checkCfgExits();
-    }
-
-    private boolean checkCfgExits() {
-        if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
-            Map<Loop<Block>, List<Block>> cfgBlocks = new HashMap<>();
-            for (Block b : reversePostOrder) {
-                if (b.getLoop() != null) {
-                    for (Block succ : b.getSuccessors()) {
-                        // if the loop of the succ is a different one (or none)
-                        if (b.getLoop() != succ.getLoop()) {
-                            // and the succ loop is not a child loop of the curr one
-                            if (succ.getLoop() == null) {
-                                // we might exit multiple loops if b.loops is not a loop at depth 0
-                                Loop<Block> curr = b.getLoop();
-                                while (curr != null) {
-                                    cfgBlocks.computeIfAbsent(curr, x -> new ArrayList<>()).add(succ);
-                                    curr = curr.getParent();
-                                }
-                            } else {
-                                /*
-                                 * succ also has a loop, might be a child loop
-                                 *
-                                 * if it is a child loop we do not exit a loop. if it is a loop
-                                 * different than b.loop and not a child loop it must be a parent
-                                 * loop, thus we exit all loops between b.loop and succ.loop
-                                 *
-                                 * if we exit multiple loops immediately after each other the
-                                 * bytecode parser might generate loop exit nodes after another and
-                                 * the CFG will identify them as separate blocks, we just take the
-                                 * first one and exit all loops at this one
-                                 */
-                                if (succ.getLoop().getParent() != b.getLoop()) {
-                                    assert succ.getLoopDepth() < b.getLoopDepth();
-                                    // b.loop must not be a transitive parent of succ.loop
-                                    assert !Loop.transitiveParentLoop(succ.getLoop(), b.getLoop());
-                                    Loop<Block> curr = b.getLoop();
-                                    while (curr != null && curr != succ.getLoop()) {
-                                        cfgBlocks.computeIfAbsent(curr, x -> new ArrayList<>()).add(succ);
-                                        curr = curr.getParent();
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            for (Map.Entry<Loop<Block>, List<Block>> e : cfgBlocks.entrySet()) {
-                ArrayList<Block> firstMethod = e.getKey().getNaturalExits();
-                List<Block> secondMethod = e.getValue();
-                firstMethod.sort(Comparator.comparing(Block::getId));
-                secondMethod.sort(Comparator.comparing(Block::getId));
-                assert secondMethod.equals(firstMethod) : secondMethod + " vs " + firstMethod;
-            }
-        }
-        return true;
     }
 
     private static void computeLoopBlocks(Block start, Loop<Block> loop, Block[] stack, boolean usePred) {

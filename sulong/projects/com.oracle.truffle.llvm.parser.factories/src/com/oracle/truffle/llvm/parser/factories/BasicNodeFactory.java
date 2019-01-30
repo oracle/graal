@@ -142,6 +142,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMLifetimeStartNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMMemCopyNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMMemMoveFactory.LLVMMemMoveI64NodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMMemSetNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMFreeNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMNoOpNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMPrefetchNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMReturnAddressNodeGen;
@@ -202,6 +203,9 @@ import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMI
 import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMI64VectorLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMI8VectorLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMPointerVectorLiteralNodeGen;
+import com.oracle.truffle.llvm.nodes.memory.AllocateGlobalsBlockNode;
+import com.oracle.truffle.llvm.nodes.memory.AllocateReadOnlyGlobalsBlockNode;
+import com.oracle.truffle.llvm.nodes.memory.FreeReadOnlyGlobalsBlockNode;
 import com.oracle.truffle.llvm.nodes.memory.LLVMCompareExchangeNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMFenceNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMGetElementPtrNodeGen;
@@ -213,10 +217,9 @@ import com.oracle.truffle.llvm.nodes.memory.LLVMInsertValueNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMNativeVarargsAreaStackAllocationNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMStructByValueNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMVarArgCompoundAddressNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.NativeAllocateStringNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.NativeAllocateStructNode;
 import com.oracle.truffle.llvm.nodes.memory.NativeMemSetNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.NativeProfiledMemMoveNodeGen;
+import com.oracle.truffle.llvm.nodes.memory.ProtectReadOnlyGlobalsBlockNode;
 import com.oracle.truffle.llvm.nodes.memory.literal.LLVMArrayLiteralNode;
 import com.oracle.truffle.llvm.nodes.memory.literal.LLVMArrayLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.literal.LLVMStructArrayLiteralNodeGen;
@@ -406,10 +409,10 @@ import com.oracle.truffle.llvm.runtime.interop.convert.ToI64NodeGen;
 import com.oracle.truffle.llvm.runtime.interop.convert.ToI8NodeGen;
 import com.oracle.truffle.llvm.runtime.interop.convert.ToPointer;
 import com.oracle.truffle.llvm.runtime.interop.convert.ToVoidLLVMNodeGen;
-import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateStringNode;
-import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateStructNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion.UniqueSlot;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion.UniquesRegionAllocator;
@@ -1895,6 +1898,12 @@ public class BasicNodeFactory implements NodeFactory {
                 return LLVMFAbsNodeGen.create(args[1], sourceSection);
             case "@llvm.fabs.v2f64":
                 return LLVMFAbsVectorNodeGen.create(args[1], sourceSection, 2);
+            case "@llvm.minnum.f32":
+            case "@llvm.minnum.f64":
+                return LLVMCMathsIntrinsicsFactory.LLVMMinnumNodeGen.create(args[1], args[2], sourceSection);
+            case "@llvm.maxnum.f32":
+            case "@llvm.maxnum.f64":
+                return LLVMCMathsIntrinsicsFactory.LLVMMaxnumNodeGen.create(args[1], args[2], sourceSection);
             case "@llvm.returnaddress":
                 return LLVMReturnAddressNodeGen.create(args[1], sourceSection);
             case "@llvm.lifetime.start.p0i8":
@@ -2222,13 +2231,26 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMAllocateStringNode createAllocateString() {
-        return NativeAllocateStringNodeGen.create();
+    public LLVMAllocateNode createAllocateGlobalsBlock(StructureType structType, boolean readOnly) {
+        if (readOnly) {
+            return new AllocateReadOnlyGlobalsBlockNode(context, structType);
+        } else {
+            return new AllocateGlobalsBlockNode(context, structType);
+        }
     }
 
     @Override
-    public LLVMAllocateStructNode createAllocateStruct(StructureType structType) {
-        return new NativeAllocateStructNode(context, structType);
+    public LLVMMemoryOpNode createProtectGlobalsBlock() {
+        return new ProtectReadOnlyGlobalsBlockNode(context);
+    }
+
+    @Override
+    public LLVMMemoryOpNode createFreeGlobalsBlock(boolean readOnly) {
+        if (readOnly) {
+            return new FreeReadOnlyGlobalsBlockNode(context);
+        } else {
+            return LLVMFreeNodeGen.create(null);
+        }
     }
 
     @Override

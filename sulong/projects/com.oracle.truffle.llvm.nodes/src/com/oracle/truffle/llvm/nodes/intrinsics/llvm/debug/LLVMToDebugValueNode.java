@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,8 +29,13 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
@@ -40,6 +45,7 @@ import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
+import com.oracle.truffle.llvm.runtime.interop.convert.ToPointer;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -98,12 +104,34 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
     }
 
     @Specialization
-    protected LLVMDebugValue fromPointer(LLVMPointer value) {
-        if (LLVMManagedPointer.isInstance(value) && LLVMManagedPointer.cast(value).getObject() instanceof LLVMGlobalContainer) {
-            final Object target = LLVMManagedPointer.cast(value).getObject();
-            if (target instanceof LLVMGlobalContainer) {
-                return fromGlobalContainer((LLVMGlobalContainer) target);
+    protected LLVMDebugValue fromNativePointer(LLVMNativePointer value) {
+        return new LLDBConstant.Pointer(value);
+    }
+
+    protected static ToPointer createToPointer() {
+        return ToPointer.create();
+    }
+
+    @Specialization
+    protected LLVMDebugValue fromManagedPointer(LLVMManagedPointer value, @Cached("createIsBoxed()") Node isBoxed, @Cached("createUnbox()") Node unbox,
+                    @Cached("createToPointer()") ToPointer toPointer) {
+        final TruffleObject target = value.getObject();
+
+        if (target instanceof LLVMGlobalContainer) {
+            return fromGlobalContainer((LLVMGlobalContainer) target);
+        }
+
+        try {
+            if (ForeignAccess.sendIsBoxed(isBoxed, target)) {
+                final Object unboxedValue = ForeignAccess.sendUnbox(unbox, target);
+                final Object asPointer = toPointer.executeWithTarget(unboxedValue);
+                if (asPointer instanceof LLVMBoxedPrimitive) {
+                    // for a boxed primitive we can display the value to the user
+                    return fromBoxedPrimitive((LLVMBoxedPrimitive) asPointer);
+                }
             }
+        } catch (UnsupportedMessageException ignored) {
+            // the default case is a sensible fallback for this
         }
 
         return new LLDBConstant.Pointer(value);

@@ -222,7 +222,7 @@ public class SubstrateOptions {
     @Option(help = "Provide method names for stack traces.")//
     public static final HostedOptionKey<Boolean> StackTrace = new HostedOptionKey<>(true);
 
-    @Option(help = "Use runtime-option parsing in JavaMainWrapper")//
+    @Option(help = "Parse and consume standard options and system properties from the command line arguments when the VM is created.")//
     public static final HostedOptionKey<Boolean> ParseRuntimeOptions = new HostedOptionKey<>(true);
 
     @Option(help = "Only use Java assert statements for classes that are matching the comma-separated list of package prefixes.")//

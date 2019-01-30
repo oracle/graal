@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,12 +27,24 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.memory;
-
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-
-public abstract class LLVMAllocateStringNode extends LLVMNode {
-
-    public abstract Object executeWithTarget(String string);
-
+int main() {
+  volatile float nan = __builtin_nanf("");
+  volatile float a = 0.1;
+  if (__builtin_isnan(__builtin_fminf(nan, a))) {
+    return 1;
+  }
+  if (__builtin_isnan(__builtin_fminf(a, nan))) {
+    return 1;
+  }
+  if (!__builtin_isnan(__builtin_fminf(nan, nan))) {
+    return 1;
+  }
+  volatile float b = 0.2;
+  if (__builtin_fminf(a, b) != 0.1) {
+    return 1;
+  }
+  if (__builtin_fminf(b, a) != 0.1) {
+    return 1;
+  }
+  return 0;
 }

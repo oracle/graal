@@ -151,17 +151,17 @@ public class Option {
             .def("500_000")
             .help("Disable call target splitting if number of nodes created by splitting exceeds this limit"),
 
-        option("TruffleExperimentalSplittingMaxPropagationDepth")
+        option("TruffleSplittingMaxPropagationDepth")
             .type("Integer")
             .category("DEBUG")
             .def("5")
             .help("Propagate info about a polymorphic specialize through maximum this many call targets"),
 
-        option("TruffleExperimentalSplitting")
+        option("TruffleLegacySplitting")
             .type("Boolean")
             .category("EXPERT")
             .def("false")
-            .help("Use the splitting strategy that relies on language implementations reporting polymorphic specializations. Disables forced splits."),
+            .help("Use legacy splitting heuristic. This option will be removed."),
 
         option("TruffleTraceSplittingSummary")
             .type("Boolean")
@@ -169,23 +169,23 @@ public class Option {
             .def("false")
             .help("Used for debugging the splitting implementation. Prints splitting summary directly to stdout on shutdown"),
 
-        option("TruffleExperimentalSplittingTraceEvents")
+        option("TruffleSplittingTraceEvents")
                 .type("Boolean")
                 .category("EXPERT")
                 .def("false")
-                .help("Trace details of experimental splitting events and decisions."),
+                .help("Trace details of splitting events and decisions."),
 
-        option("TruffleExperimentalSplittingDumpDecisions")
+        option("TruffleSplittingDumpDecisions")
             .type("Boolean")
             .category("EXPERT")
             .def("false")
             .help("Dumps to IGV information on polymorphic events"),
 
-        option("TruffleExperimentalSplittingAllowForcedSplits")
+        option("TruffleSplittingAllowForcedSplits")
             .type("Boolean")
             .category("EXPERT")
             .def("true")
-            .help("Should forced splits be allowed (when using experimental splitting)"),
+            .help("Should forced splits be allowed."),
 
         option("TruffleBackgroundCompilation")
             .type("Boolean")

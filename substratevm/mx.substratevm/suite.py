@@ -1,7 +1,7 @@
 suite = {
     "mxversion": "5.196.3",
     "name": "substratevm",
-    "version" : "1.0.0-rc12",
+    "version" : "1.0.0-rc13",
     "release" : False,
     "url" : "https://github.com/oracle/graal/tree/master/substratevm",
 
@@ -200,13 +200,12 @@ suite = {
             ],
             "workingSets": "SVM",
         },
-
         "com.oracle.svm.hosted": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.objectfile",
-                "com.oracle.svm.core.graal.amd64",
+                "com.oracle.svm.core.graal",
                 "com.oracle.graal.pointsto",
             ],
             "javaCompliance": "8+",
@@ -592,6 +591,7 @@ suite = {
                 "com.oracle.svm.hosted",
                 "com.oracle.svm.truffle.nfi",
                 "com.oracle.svm.core",
+                "com.oracle.svm.core.graal.amd64",
                 "com.oracle.svm.core.jdk8",
                 "com.oracle.svm.core.jdk9",
                 "com.oracle.svm.core.posix",

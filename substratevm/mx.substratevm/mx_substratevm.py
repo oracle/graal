@@ -563,7 +563,8 @@ def svm_gate_body(args, tasks):
                 javac_image(['--output-path', svmbuild_dir()])
                 javac_command = ' '.join(javac_image_command(svmbuild_dir()))
                 helloworld(['--output-path', svmbuild_dir(), '--javac-command', javac_command])
-                cinterfacetutorial([])
+                if mx.get_os() != 'windows':  # building shared libs on Windows currently not working (GR-13594)
+                    cinterfacetutorial([])
 
         with Task('native unittests', tasks, tags=[GraalTags.test]) as t:
             if t:
@@ -1055,6 +1056,7 @@ def maven_plugin_install(args):
     mx.log('\n'.join(success_message))
 
 
+@mx.command(suite.name, 'maven-plugin-test')
 def maven_plugin_test(args):
     # Create native-image-maven-plugin-test pom with correct version info from template
     proj_dir = join(suite.dir, 'src', 'native-image-maven-plugin-test')

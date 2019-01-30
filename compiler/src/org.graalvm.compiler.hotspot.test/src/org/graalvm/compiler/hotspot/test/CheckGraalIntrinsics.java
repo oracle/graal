@@ -277,8 +277,6 @@ public class CheckGraalIntrinsics extends GraalTest {
                             "java/lang/Math.fma(FFF)F",
                             // Just check if the argument is a compile time constant
                             "java/lang/invoke/MethodHandleImpl.isCompileConstant(Ljava/lang/Object;)Z",
-                            // Some logic and a runtime call
-                            "java/util/ArraysSupport.vectorizedMismatch(Ljava/lang/Object;JLjava/lang/Object;JII)I",
                             // Only used as a marker for vectorization?
                             "java/util/stream/Streams$RangeIntSpliterator.forEachRemaining(Ljava/util/function/IntConsumer;)V",
                             // Only implemented on non-AMD64 platforms (some logic and runtime call)
@@ -365,8 +363,7 @@ public class CheckGraalIntrinsics extends GraalTest {
 
         if (isJDK10OrHigher()) {
             add(toBeInvestigated,
-                            "java/lang/Math.multiplyHigh(JJ)J",
-                            "jdk/internal/util/ArraysSupport.vectorizedMismatch(Ljava/lang/Object;JLjava/lang/Object;JII)I");
+                            "java/lang/Math.multiplyHigh(JJ)J");
         }
 
         if (isJDK11OrHigher()) {
@@ -443,6 +440,7 @@ public class CheckGraalIntrinsics extends GraalTest {
                 add(toBeInvestigated,
                                 "com/sun/crypto/provider/CounterMode.implCrypt([BII[BI)I",
                                 "java/lang/Thread.onSpinWait()V",
+                                "java/util/ArraysSupport.vectorizedMismatch(Ljava/lang/Object;JLjava/lang/Object;JII)I",
                                 "jdk/internal/misc/Unsafe.getCharUnaligned(Ljava/lang/Object;J)C",
                                 "jdk/internal/misc/Unsafe.getIntUnaligned(Ljava/lang/Object;J)I",
                                 "jdk/internal/misc/Unsafe.getLongUnaligned(Ljava/lang/Object;J)J",
@@ -451,6 +449,10 @@ public class CheckGraalIntrinsics extends GraalTest {
                                 "jdk/internal/misc/Unsafe.putIntUnaligned(Ljava/lang/Object;JI)V",
                                 "jdk/internal/misc/Unsafe.putLongUnaligned(Ljava/lang/Object;JJ)V",
                                 "jdk/internal/misc/Unsafe.putShortUnaligned(Ljava/lang/Object;JS)V");
+            }
+            if (isJDK10OrHigher()) {
+                add(toBeInvestigated,
+                                "jdk/internal/util/ArraysSupport.vectorizedMismatch(Ljava/lang/Object;JLjava/lang/Object;JII)I");
             }
         }
 

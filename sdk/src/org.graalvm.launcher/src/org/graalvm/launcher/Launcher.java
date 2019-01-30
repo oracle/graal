@@ -189,7 +189,7 @@ public abstract class Launcher {
         @SuppressWarnings("sync-override")
         @Override
         public final Throwable fillInStackTrace() {
-            return null;
+            return this;
         }
     }
 

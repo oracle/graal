@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,7 @@ package com.oracle.svm.core.config;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import jdk.vm.ci.code.TargetDescription;
+import com.oracle.svm.core.SubstrateTargetDescription;
 
 /**
  * Accessors for important configuration objects that are always accessible via the
@@ -36,8 +36,8 @@ import jdk.vm.ci.code.TargetDescription;
 public final class ConfigurationValues {
 
     @Fold
-    public static TargetDescription getTarget() {
-        return ImageSingletons.lookup(TargetDescription.class);
+    public static SubstrateTargetDescription getTarget() {
+        return ImageSingletons.lookup(SubstrateTargetDescription.class);
     }
 
     @Fold

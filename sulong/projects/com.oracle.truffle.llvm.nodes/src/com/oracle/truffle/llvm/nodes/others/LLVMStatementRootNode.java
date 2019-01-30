@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,20 +34,18 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
-public class LLVMStaticInitsBlockNode extends RootNode {
+public class LLVMStatementRootNode extends RootNode {
 
-    @Children private final LLVMStatementNode[] nodes;
+    @Child LLVMStatementNode statement;
 
-    public LLVMStaticInitsBlockNode(LLVMLanguage language, LLVMStatementNode[] nodes, FrameDescriptor descriptor) {
+    public LLVMStatementRootNode(LLVMLanguage language, LLVMStatementNode statement, FrameDescriptor descriptor) {
         super(language, descriptor);
-        assert nodes.length > 0;
-        this.nodes = nodes;
+        this.statement = statement;
     }
 
     @CompilationFinal private FrameSlot stackPointerSlot;
@@ -61,18 +59,10 @@ public class LLVMStaticInitsBlockNode extends RootNode {
         return stackPointerSlot;
     }
 
-    @ExplodeLoop
     @Override
     public Object execute(VirtualFrame frame) {
         frame.setObject(getStackPointerSlot(), frame.getArguments()[0]);
-        for (LLVMStatementNode node : nodes) {
-            node.execute(frame);
-        }
+        statement.execute(frame);
         return null;
-    }
-
-    @Override
-    public String toString() {
-        return "staticInits[" + nodes.length + "]";
     }
 }

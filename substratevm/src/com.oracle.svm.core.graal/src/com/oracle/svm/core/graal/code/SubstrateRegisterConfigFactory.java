@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,27 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.meta;
+package com.oracle.svm.core.graal.code;
 
-import java.util.EnumSet;
+import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig.ConfigKind;
 
-import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
-public class SubstrateTargetDescription extends TargetDescription {
-
-    public SubstrateTargetDescription(Architecture arch, boolean isMP, int stackAlignment, int implicitNullCheckLimit, boolean inlineObjects) {
-        super(arch, isMP, stackAlignment, implicitNullCheckLimit, inlineObjects);
-    }
-
-    /**
-     * We include all flags that enable CPU instructions as we want best possible performance for
-     * the code.
-     *
-     * @return All the flags that enable CPU instructions.
-     */
-    public static EnumSet<AMD64.Flag> allFlags() {
-        return EnumSet.of(AMD64.Flag.UseCountLeadingZerosInstruction, AMD64.Flag.UseCountLeadingZerosInstruction);
-    }
+public interface SubstrateRegisterConfigFactory {
+    RegisterConfig newRegisterFactory(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target, Boolean useStackBasePointer);
 }

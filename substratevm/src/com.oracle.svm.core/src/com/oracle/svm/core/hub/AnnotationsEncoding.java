@@ -31,7 +31,7 @@ public final class AnnotationsEncoding {
 
     private static final Annotation[] EMPTY_ANNOTATION_ARRAY = new Annotation[0];
 
-    public static Annotation[] getAnnotations(Object annotationsEncoding) {
+    public static Annotation[] decodeAnnotations(Object annotationsEncoding) {
         if (annotationsEncoding == null) {
             return EMPTY_ANNOTATION_ARRAY;
         } else if (annotationsEncoding instanceof ArrayStoreException) {
@@ -45,7 +45,7 @@ public final class AnnotationsEncoding {
     }
 
     @SuppressWarnings("unchecked")
-    public static <T extends Annotation> T getAnnotation(Object annotationsEncoding, Class<T> annotationClass) {
+    public static <T extends Annotation> T decodeAnnotation(Object annotationsEncoding, Class<T> annotationClass) {
         Objects.requireNonNull(annotationClass);
 
         if (annotationsEncoding instanceof ArrayStoreException) {
