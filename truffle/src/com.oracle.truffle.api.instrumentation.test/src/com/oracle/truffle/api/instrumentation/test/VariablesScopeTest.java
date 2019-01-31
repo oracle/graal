@@ -70,12 +70,8 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.KeysObject;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.KeyInfo;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -88,6 +84,8 @@ import com.oracle.truffle.api.source.SourceSection;
  * Test of {@link Scope}.
  */
 public class VariablesScopeTest extends AbstractInstrumentationTest {
+
+    private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
     @Test
     public void testDefaultScope() throws Throwable {
@@ -148,30 +146,29 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
         }
     }
 
-    private static int getKeySize(TruffleObject object) {
+    private static int getKeySize(Object object) {
         try {
-            Object keys = ForeignAccess.sendKeys(Message.KEYS.createNode(), object);
-            return (int) ForeignAccess.sendGetSize(Message.GET_SIZE.createNode(), (TruffleObject) keys);
+            Object keys = INTEROP.getMembers(object);
+            return (int) INTEROP.getArraySize(keys);
         } catch (UnsupportedMessageException e) {
             throw new AssertionError(e);
         }
     }
 
-    private static boolean contains(TruffleObject object, String key) {
-        int keyInfo = ForeignAccess.sendKeyInfo(Message.KEY_INFO.createNode(), object, key);
-        return KeyInfo.isReadable(keyInfo);
+    private static boolean contains(Object object, String key) {
+        return INTEROP.isMemberReadable(object, key);
     }
 
-    private static Object read(TruffleObject object, String key) {
+    private static Object read(Object object, String key) {
         try {
-            return ForeignAccess.sendRead(Message.READ.createNode(), object, key);
+            return INTEROP.readMember(object, key);
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
             throw new AssertionError(e);
         }
     }
 
     private static boolean isNull(Object object) {
-        return ForeignAccess.sendIsNull(Message.IS_NULL.createNode(), (TruffleObject) object);
+        return INTEROP.isNull(object);
     }
 
     private static class DefaultScopeTester implements TestScopeInstrument.Tester {
@@ -228,7 +225,7 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
             }
         }
 
-        private static void doTestTopScope(TruffleInstrument.Env env) throws UnsupportedMessageException, UnknownIdentifierException {
+        private static void doTestTopScope(TruffleInstrument.Env env) throws UnsupportedMessageException, UnknownIdentifierException, InvalidArrayIndexException {
             Iterable<Scope> topScopes = env.findTopScopes(InstrumentationTestLanguage.ID);
             Iterator<Scope> iterator = topScopes.iterator();
             assertTrue(iterator.hasNext());
@@ -236,15 +233,15 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
             assertEquals("global", scope.getName());
             assertNull(scope.getNode());
             assertNull(scope.getArguments());
-            TruffleObject variables = (TruffleObject) scope.getVariables();
-            TruffleObject keys = ForeignAccess.sendKeys(Message.KEYS.createNode(), variables);
+            Object variables = scope.getVariables();
+            Object keys = INTEROP.getMembers(variables);
             assertNotNull(keys);
-            Number size = (Number) ForeignAccess.sendGetSize(Message.GET_SIZE.createNode(), keys);
+            Number size = INTEROP.getArraySize(keys);
             assertEquals(1, size.intValue());
-            String functionName = (String) ForeignAccess.sendRead(Message.READ.createNode(), keys, 0);
+            String functionName = (String) INTEROP.readArrayElement(keys, 0);
             assertEquals("testFunction", functionName);
-            TruffleObject function = (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), variables, functionName);
-            assertTrue(ForeignAccess.sendIsExecutable(Message.IS_EXECUTABLE.createNode(), function));
+            Object function = INTEROP.readMember(variables, functionName);
+            assertTrue(INTEROP.isExecutable(function));
         }
     }
 
@@ -495,36 +492,18 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
             assertNull(topScope.getNode());
             TruffleObject arguments = (TruffleObject) topScope.getArguments();
             TruffleObject variables = (TruffleObject) topScope.getVariables();
-            assertTrue(ForeignAccess.sendHasSize(Message.HAS_SIZE.createNode(), arguments));
-            assertTrue(ForeignAccess.sendHasKeys(Message.HAS_KEYS.createNode(), variables));
+            assertTrue(INTEROP.hasArrayElements(arguments));
+            assertTrue(INTEROP.hasMembers(variables));
         }
 
     }
 
-    @MessageResolution(receiverType = TestObject.class)
     static class TestObject implements TruffleObject {
 
         final String value;
 
         TestObject(String value) {
             this.value = value;
-        }
-
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return TestObjectForeign.ACCESS;
-        }
-
-        public static boolean isInstance(TruffleObject obj) {
-            return obj instanceof KeysObject;
-        }
-
-        @Resolve(message = "HAS_SIZE")
-        abstract static class HasSizeNode extends Node {
-
-            public Object access(@SuppressWarnings("unused") TestObject obj) {
-                return true;
-            }
         }
 
     }
