@@ -273,53 +273,47 @@ public abstract class NativeBootImage extends AbstractBootImage {
             writer.appendln(" */");
         }
 
-        String entryPointDataSymbolName = cEntryPointData.getSymbolName();
-        String symbolAlias = symbolAliases.get(m);
-        String[] symbolNames;
-        if (symbolAlias == null || symbolAlias.isEmpty()) {
-            symbolNames = new String[]{entryPointDataSymbolName};
+        String symbolName = symbolAliases.get(m);
+        if (symbolName == null || symbolName.isEmpty()) {
+            symbolName = cEntryPointData.getSymbolName();
+        }
+
+        if (dynamic) {
+            writer.append("typedef ");
+        }
+
+        writer.append(CSourceCodeWriter.toCTypeName(m,
+                        (ResolvedJavaType) m.getSignature().getReturnType(m.getDeclaringClass()),
+                        false,
+                        false, // GR-9242
+                        metaAccess,
+                        nativeLibs));
+        writer.append(" ");
+
+        assert !symbolName.isEmpty();
+        if (dynamic) {
+            writer.append("(*").append(symbolName).append("_fn_t)");
         } else {
-            symbolNames = new String[]{entryPointDataSymbolName, symbolAlias};
+            writer.append(symbolName);
         }
+        writer.append("(");
 
-        for (String symbolName : symbolNames) {
-            if (dynamic) {
-                writer.append("typedef ");
-            }
-
+        String sep = "";
+        Parameter[] parameterInfo = m.getParameters();
+        for (int i = 0; i < m.getSignature().getParameterCount(false); i++) {
+            writer.append(sep);
+            sep = ", ";
             writer.append(CSourceCodeWriter.toCTypeName(m,
-                            (ResolvedJavaType) m.getSignature().getReturnType(m.getDeclaringClass()),
-                            false,
-                            false, // GR-9242
-                            metaAccess,
-                            nativeLibs));
-            writer.append(" ");
-
-            assert !symbolName.isEmpty();
-            if (dynamic) {
-                writer.append("(*").append(symbolName).append("_fn_t)");
-            } else {
-                writer.append(symbolName);
+                            (ResolvedJavaType) m.getSignature().getParameterType(i, m.getDeclaringClass()),
+                            parameterInfo != null && parameterInfo[i].getDeclaredAnnotation(CConst.class) != null,
+                            parameterInfo != null && parameterInfo[i].getDeclaredAnnotation(CUnsigned.class) != null,
+                            metaAccess, nativeLibs));
+            if (parameterInfo != null && parameterInfo[i].isNamePresent()) {
+                writer.append(" ");
+                writer.append(parameterInfo[i].getName());
             }
-            writer.append("(");
-
-            String sep = "";
-            Parameter[] parameterInfo = m.getParameters();
-            for (int i = 0; i < m.getSignature().getParameterCount(false); i++) {
-                writer.append(sep);
-                sep = ", ";
-                writer.append(CSourceCodeWriter.toCTypeName(m,
-                                (ResolvedJavaType) m.getSignature().getParameterType(i, m.getDeclaringClass()),
-                                parameterInfo != null && parameterInfo[i].getDeclaredAnnotation(CConst.class) != null,
-                                parameterInfo != null && parameterInfo[i].getDeclaredAnnotation(CUnsigned.class) != null,
-                                metaAccess, nativeLibs));
-                if (parameterInfo != null && parameterInfo[i].isNamePresent()) {
-                    writer.append(" ");
-                    writer.append(parameterInfo[i].getName());
-                }
-            }
-            writer.appendln(");");
         }
+        writer.appendln(");");
         writer.appendln();
     }
 
