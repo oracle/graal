@@ -53,7 +53,7 @@ public abstract class ReflectionLibrary extends Library {
     @Abstract
     public abstract Object send(Object receiver, Message message, Object... args) throws Exception;
 
-    public static LibraryFactory<ReflectionLibrary> resolve() {
+    public static LibraryFactory<ReflectionLibrary> getFactory() {
         return Lazy.RESOLVED_LIBRARY;
     }
 

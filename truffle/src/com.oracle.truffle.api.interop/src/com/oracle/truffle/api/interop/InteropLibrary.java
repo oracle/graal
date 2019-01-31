@@ -396,11 +396,11 @@ public abstract class InteropLibrary extends Library {
      *
      * @see LibraryFactory#resolve(Class)
      */
-    public static LibraryFactory<InteropLibrary> dispatch() {
-        return INTEROP_LIBRARY;
+    public static LibraryFactory<InteropLibrary> getFactory() {
+        return FACTORY;
     }
 
-    static final LibraryFactory<InteropLibrary> INTEROP_LIBRARY = LibraryFactory.resolve(InteropLibrary.class);
+    static final LibraryFactory<InteropLibrary> FACTORY = LibraryFactory.resolve(InteropLibrary.class);
 
     static class Asserts extends InteropLibrary {
 
@@ -775,7 +775,7 @@ public abstract class InteropLibrary extends Library {
 
         private static boolean assertMemberKeys(Object receiver, Object result, boolean internal) {
             assert result != null : violationPost(receiver, result);
-            InteropLibrary uncached = InteropLibrary.dispatch().getUncached(result);
+            InteropLibrary uncached = InteropLibrary.getFactory().getUncached(result);
             assert uncached.hasArrayElements(result) : violationPost(receiver, result);
             long arraySize;
             try {
@@ -793,9 +793,9 @@ public abstract class InteropLibrary extends Library {
                     assert false : violationPost(receiver, result);
                     return true;
                 }
-                assert InteropLibrary.dispatch().getUncached().isString(element) : violationPost(receiver, element);
+                assert InteropLibrary.getFactory().getUncached().isString(element) : violationPost(receiver, element);
                 try {
-                    InteropLibrary.dispatch().getUncached().asString(element);
+                    InteropLibrary.getFactory().getUncached().asString(element);
                 } catch (UnsupportedMessageException e) {
                     assert false : violationInvariant(result, i);
                 }

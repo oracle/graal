@@ -78,7 +78,7 @@ final class PolyglotLanguageBindings implements TruffleObject {
         List<Object> otherScopes = null;
         while (scope.hasNext()) {
             Object variables = scope.next().getVariables();
-            assert InteropLibrary.dispatch().getUncached().hasMembers(variables) : "Variables object must return true for isObject().";
+            assert InteropLibrary.getFactory().getUncached().hasMembers(variables) : "Variables object must return true for isObject().";
             if (firstScope == null) {
                 firstScope = variables;
             } else {
@@ -108,10 +108,10 @@ final class PolyglotLanguageBindings implements TruffleObject {
         // unfortunately we cannot do much butter as scopes might have
         // overlapping keys. So we need to make the set unique.
         Set<String> keySet = new HashSet<>();
-        InteropLibrary interopDispatch = InteropLibrary.dispatch().getUncached();
+        InteropLibrary interopDispatch = InteropLibrary.getFactory().getUncached();
         for (Object scope : scopes) {
             Object members = interopDispatch.getMembers(scope, includeInternal);
-            InteropLibrary membersLibrary = InteropLibrary.dispatch().getUncached(members);
+            InteropLibrary membersLibrary = InteropLibrary.getFactory().getUncached(members);
             long size = membersLibrary.getArraySize(members);
             for (long i = 0; i < size; i++) {
                 try {

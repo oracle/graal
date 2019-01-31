@@ -1711,7 +1711,7 @@ public class LanguageSPITest {
 
                     @CompilerDirectives.TruffleBoundary
                     private void boundary(Object bindings) throws UnknownIdentifierException, UnsupportedTypeException, UnsupportedMessageException {
-                        InteropLibrary.dispatch().getUncached().writeMember(bindings, "exportedValue", "convertOnToString");
+                        InteropLibrary.getFactory().getUncached().writeMember(bindings, "exportedValue", "convertOnToString");
                     }
                 });
             }

@@ -277,10 +277,10 @@ public abstract class LibraryFactory<T extends Library> {
 
     /**
      * Looks up the resolved library instance for a library class. If a library class was not yet
-     * loaded it will be loaded automatically. If the passed library class is not a valid libray
-     * then a {@link IllegalArgumentException} is thrown. Resolving a library class into constant is
-     * useful if performance is a critical requirement, otherwise it is recommended to use the
-     * static methods in {@link Library} instead.
+     * loaded it will be intialized automatically. If the passed library class is not a valid
+     * library then a {@link IllegalArgumentException} is thrown. Resolving a library class into
+     * constant is useful if performance is a critical requirement, otherwise it is recommended to
+     * use the static methods in {@link Library} instead.
      *
      * @see Library
      * @since 1.0
@@ -385,7 +385,7 @@ public abstract class LibraryFactory<T extends Library> {
         return "LibraryFactory [library=" + libraryClass.getName() + "]";
     }
 
-    private static final LibraryFactory<ReflectionLibrary> REFLECTION_LIBRARY = LibraryFactory.resolve(ReflectionLibrary.class);
+    private static final LibraryFactory<ReflectionLibrary> REFLECTION_FACTORY = LibraryFactory.resolve(ReflectionLibrary.class);
 
     final class ProxyExports extends LibraryExport<T> {
         protected ProxyExports() {
@@ -394,12 +394,12 @@ public abstract class LibraryFactory<T extends Library> {
 
         @Override
         public T createUncached(Object receiver) {
-            return createProxy(REFLECTION_LIBRARY.getUncached(receiver));
+            return createProxy(REFLECTION_FACTORY.getUncached(receiver));
         }
 
         @Override
         public T createCached(Object receiver) {
-            return createProxy(REFLECTION_LIBRARY.createCached(receiver));
+            return createProxy(REFLECTION_FACTORY.createCached(receiver));
         }
     }
 

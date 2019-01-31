@@ -58,8 +58,8 @@ public abstract class DynamicDispatchLibrary extends Library {
         return null;
     }
 
-    public static LibraryFactory<DynamicDispatchLibrary> resolve() {
-        return Lazy.RESOLVED_LIBRARY;
+    public static LibraryFactory<DynamicDispatchLibrary> getFactory() {
+        return Lazy.FACTORY;
     }
 
     /**
@@ -85,7 +85,7 @@ public abstract class DynamicDispatchLibrary extends Library {
             /* No instances */
         }
 
-        static final LibraryFactory<DynamicDispatchLibrary> RESOLVED_LIBRARY = LibraryFactory.resolve(DynamicDispatchLibrary.class);
+        static final LibraryFactory<DynamicDispatchLibrary> FACTORY = LibraryFactory.resolve(DynamicDispatchLibrary.class);
 
     }
 }

@@ -593,8 +593,8 @@ public class ContextAPITest {
 
                     @TruffleBoundary
                     private Object boundary() throws UnsupportedMessageException, UnsupportedTypeException, ArityException, UnknownIdentifierException {
-                        Object o = InteropLibrary.dispatch().getUncached().readMember(ProxyLanguage.getCurrentContext().env.getPolyglotBindings(), "test");
-                        return InteropLibrary.dispatch().getUncached().execute(o);
+                        Object o = InteropLibrary.getFactory().getUncached().readMember(ProxyLanguage.getCurrentContext().env.getPolyglotBindings(), "test");
+                        return InteropLibrary.getFactory().getUncached().execute(o);
                     }
                 });
             }

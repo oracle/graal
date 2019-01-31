@@ -106,16 +106,16 @@ public class SLException extends RuntimeException implements TruffleException {
             Object value = values[i];
             result.append(sep);
             sep = ", ";
-            if (value == null || InteropLibrary.dispatch().getUncached().isNull(value)) {
+            if (value == null || InteropLibrary.getFactory().getUncached().isNull(value)) {
                 result.append(SLLanguage.toString(value));
             } else {
                 result.append(SLLanguage.getMetaObject(value));
                 result.append(" ");
-                if (InteropLibrary.dispatch().getUncached().isString(value)) {
+                if (InteropLibrary.getFactory().getUncached().isString(value)) {
                     result.append("\"");
                 }
                 result.append(SLLanguage.toString(value));
-                if (InteropLibrary.dispatch().getUncached().isString(value)) {
+                if (InteropLibrary.getFactory().getUncached().isString(value)) {
                     result.append("\"");
                 }
             }

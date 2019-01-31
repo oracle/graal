@@ -45,6 +45,51 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import com.oracle.truffle.api.dsl.Specialization;
+
+/**
+ * The cached library annotation allows to use Truffle Libraries in parameters for
+ * {@link Specialization} or {@link ExportMessage} annotated methods of exported libraries or nodes.
+ *
+ * The cached library annotation can be used for internal and external dispatch. Internal dispatch
+ * performs the lookup of the target export once per specialization instance and verifies its
+ * {@link Library#accepts(Object) acceptance} automatically. This allows to avoid the repeated
+ * lookups. This is also the recommended way of using Truffle Libraries by default:
+ *
+ * <p>
+ * <h3>Internal Dispatch</h3>
+ *
+ *
+ * <ul>
+ * <li>Internally dispatched:
+ * <li>Externally dispatched:
+ * </ul>
+ *
+ * <b>Basic Usage Example:</b>
+ *
+ * <pre>
+ * &#64;NodeChild
+ * &#64;NodeChild
+ * abstract static class ArrayReadNode extends ExpressionNode {
+ *     &#64;Specialization(guards = "arrays.isArray(array)", limit = "2")
+ *     int doDefault(Object array, int index,
+ *                     &#64;CachedLibrary("array") ArrayLibrary arrays) {
+ *         return arrays.read(array, index);
+ *     }
+ * }
+ * </pre>
+ *
+ *
+ *
+ * Note that the ArrayLibrary class is reused from the {@link GenerateLibrary} javadoc.
+ *
+ *
+ * Note that the following use is equivalent to
+ *
+ *
+ *
+ *
+ */
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.PARAMETER})
 public @interface CachedLibrary {

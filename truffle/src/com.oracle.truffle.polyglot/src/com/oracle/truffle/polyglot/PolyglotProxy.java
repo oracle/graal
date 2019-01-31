@@ -306,7 +306,7 @@ final class PolyglotProxy implements TruffleObject {
                 result = EMPTY;
             }
             Object guestValue = languageContext.toGuestValue(result);
-            if (!InteropLibrary.dispatch().getUncached().hasArrayElements(guestValue)) {
+            if (!InteropLibrary.getFactory().getUncached().hasArrayElements(guestValue)) {
                 throw PolyglotImpl.wrapHostException(languageContext, new IllegalStateException(
                                 String.format("getMemberKeys() returned invalid value %s but must return an array of member key Strings.",
                                                 languageContext.asValue(guestValue).toString())));

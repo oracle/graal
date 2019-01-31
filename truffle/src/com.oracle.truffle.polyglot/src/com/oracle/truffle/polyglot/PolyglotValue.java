@@ -100,7 +100,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
     protected final PolyglotLanguageContext languageContext;
 
-    static final InteropLibrary UNCACHED_INTEROP = InteropLibrary.dispatch().getUncached();
+    static final InteropLibrary UNCACHED_INTEROP = InteropLibrary.getFactory().getUncached();
     static final CallProfiled CALL_PROFILED = VMAccessor.SPI.getCallProfiled();
 
     PolyglotValue(PolyglotLanguageContext languageContext) {
@@ -1305,7 +1305,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         private abstract static class AbstractExecuteNode extends InteropNode {
 
-            @Child private InteropLibrary executables = InteropLibrary.dispatch().createCachedLimit(CACHE_LIMIT);
+            @Child private InteropLibrary executables = InteropLibrary.getFactory().createCachedLimit(CACHE_LIMIT);
             private final ToGuestValuesNode toGuestValues = ToGuestValuesNode.create();
             private final BranchProfile invalidArgument = BranchProfile.create();
             private final BranchProfile arity = BranchProfile.create();
@@ -1482,7 +1482,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         private abstract static class AbstractInvokeNode extends InteropNode {
 
-            @Child private InteropLibrary objects = InteropLibrary.dispatch().createCachedLimit(CACHE_LIMIT);
+            @Child private InteropLibrary objects = InteropLibrary.getFactory().createCachedLimit(CACHE_LIMIT);
             private final ToHostValueNode toHostValue;
             private final BranchProfile invalidArgument = BranchProfile.create();
             private final BranchProfile arity = BranchProfile.create();
@@ -1577,7 +1577,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
              * No caching needed for primitives. We do that to avoid the overhead of crossing a
              * Truffle call boundary.
              */
-            this.interop = InteropLibrary.dispatch().getUncached(primitiveValue);
+            this.interop = InteropLibrary.getFactory().getUncached(primitiveValue);
         }
 
         @Override
@@ -2116,7 +2116,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
         public boolean isBoolean(Object receiver) {
             Object c = enter(languageContext);
             try {
-                return InteropLibrary.dispatch().getUncached().isBoolean(receiver);
+                return InteropLibrary.getFactory().getUncached().isBoolean(receiver);
             } catch (Throwable e) {
                 throw PolyglotImpl.wrapGuestException(languageContext, e);
             } finally {
@@ -2128,7 +2128,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
         public boolean asBoolean(Object receiver) {
             Object c = enter(languageContext);
             try {
-                return InteropLibrary.dispatch().getUncached().asBoolean(receiver);
+                return InteropLibrary.getFactory().getUncached().asBoolean(receiver);
             } catch (UnsupportedMessageException e) {
                 return super.asBoolean(receiver);
             } catch (Throwable e) {
@@ -2142,7 +2142,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
         public boolean fitsInFloat(Object receiver) {
             Object c = enter(languageContext);
             try {
-                return InteropLibrary.dispatch().getUncached().fitsInFloat(receiver);
+                return InteropLibrary.getFactory().getUncached().fitsInFloat(receiver);
             } catch (Throwable e) {
                 throw PolyglotImpl.wrapGuestException(languageContext, e);
             } finally {

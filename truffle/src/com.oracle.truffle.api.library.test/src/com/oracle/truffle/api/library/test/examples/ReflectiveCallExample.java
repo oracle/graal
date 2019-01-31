@@ -83,7 +83,7 @@ public class ReflectiveCallExample {
 
     @Test
     public void runExample() throws Exception {
-        ReflectionLibrary reflection = ReflectionLibrary.resolve().getUncached();
+        ReflectionLibrary reflection = ReflectionLibrary.getFactory().getUncached();
 
         Object value = new UnknownObject();
 

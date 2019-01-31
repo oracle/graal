@@ -267,7 +267,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
 
     @Override
     protected boolean isVisible(SLContext context, Object value) {
-        return !InteropLibrary.dispatch().getUncached(value).isNull(value);
+        return !InteropLibrary.getFactory().getUncached(value).isNull(value);
     }
 
     @Override
@@ -293,7 +293,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
             if (value == null) {
                 return "ANY";
             }
-            InteropLibrary interop = InteropLibrary.dispatch().getUncached(value);
+            InteropLibrary interop = InteropLibrary.getFactory().getUncached(value);
             if (interop.fitsInLong(value)) {
                 return Long.toString(interop.asLong(value));
             } else if (interop.isBoolean(value)) {
@@ -328,7 +328,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         if (value == null) {
             return "ANY";
         }
-        InteropLibrary interop = InteropLibrary.dispatch().getUncached(value);
+        InteropLibrary interop = InteropLibrary.getFactory().getUncached(value);
         if (interop.isNumber(value)) {
             return "Number";
         } else if (interop.isBoolean(value)) {

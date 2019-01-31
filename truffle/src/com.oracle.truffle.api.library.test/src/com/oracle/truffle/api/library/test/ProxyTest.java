@@ -99,7 +99,7 @@ public class ProxyTest extends AbstractParametrizedLibraryTest {
         @ExportMessage
         Object send(Message message, Object... arguments) {
             try {
-                ReflectionLibrary reflect = ReflectionLibrary.resolve().getUncached(delegate);
+                ReflectionLibrary reflect = ReflectionLibrary.getFactory().getUncached(delegate);
                 if (!"incrementMethod".equals(message.getSimpleName())) {
                     return reflect.send(delegate, message, arguments);
                 } else {

@@ -75,7 +75,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
  */
 public class ProxySPITest extends AbstractPolyglotTest {
 
-    static final InteropLibrary INTEROP = InteropLibrary.dispatch().getUncached();
+    static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
     static class TestFunction extends ProxyLegacyInteropObject {
 
