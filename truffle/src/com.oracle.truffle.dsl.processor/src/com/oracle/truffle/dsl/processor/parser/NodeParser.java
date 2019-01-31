@@ -347,7 +347,8 @@ public final class NodeParser extends AbstractParser<NodeData> {
         initializeUncachable(node, members);
 
         if (mode == ParseMode.DEFAULT) {
-            node.setSharedCaches(computeSharing(Arrays.asList(node)));
+            boolean emitWarnings = !Boolean.parseBoolean(System.getProperty("truffle.dsl.cacheSharingWarningsEnabled", "false"));
+            node.setSharedCaches(computeSharing(Arrays.asList(node), emitWarnings));
         } else {
             // sharing is computed by the ExportsParser
         }
@@ -361,7 +362,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         return node;
     }
 
-    public static Map<CacheExpression, String> computeSharing(Collection<NodeData> nodes) {
+    public static Map<CacheExpression, String> computeSharing(Collection<NodeData> nodes, boolean emitSharingWarnings) {
         Map<SharableCache, Collection<CacheExpression>> groups = computeSharableCaches(nodes);
         // compute unnecessary sharing.
 
@@ -440,7 +441,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                             }
                         }
                     } else if (expressions != null && expressions.size() > 1) {
-                        if (findAnnotationMirror(cache.getParameter().getVariableElement(), Exclusive.class) == null) {
+                        if (emitSharingWarnings && findAnnotationMirror(cache.getParameter().getVariableElement(), Exclusive.class) == null) {
                             StringBuilder sharedCaches = new StringBuilder();
                             Set<String> recommendedGroups = new LinkedHashSet<>();
                             for (CacheExpression cacheExpression : expressions) {

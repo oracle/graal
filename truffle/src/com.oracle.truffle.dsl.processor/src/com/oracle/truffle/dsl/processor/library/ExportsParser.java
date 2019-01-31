@@ -286,7 +286,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                     exportedMessages.add(methodExport);
                 }
             }
-            libraryExports.setSharedExpressions(NodeParser.computeSharing(cachedSharedNodes));
+            libraryExports.setSharedExpressions(NodeParser.computeSharing(cachedSharedNodes, true));
 
             // redirect errors on generated elements to the outer element
             // JDT will otherwise just ignore those messages and not display anything.
