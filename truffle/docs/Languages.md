@@ -16,7 +16,8 @@ This page is intended to keep track of the growing number of Truffle language im
 ## Experiments
 
 * [ZipPy](https://github.com/securesystemslab/zippy), a Python implementation.
-* [TruffleSqueak](https://github.com/timfel/trufflesqueak), an experimental Squeak interpreter.
+* [GraalSqueak](https://github.com/hpi-swa/graalsqueak), a Squeak/Smalltalk bytecode interpreter.
+* [TruffleSqueak](https://github.com/timfel/trufflesqueak), an experimental Squeak/Smalltalk AST interpreter.
 * [Mumbler](https://github.com/cesquivias/mumbler), an experimental Lisp programming language.
 * [LuaTruffle](https://github.com/lucasallan/LuaTruffle), an implementation of the Lua language.
 * [hextruffe](https://bitbucket.org/hexafraction/truffles), an implementation of Hex.
