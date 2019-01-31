@@ -632,6 +632,7 @@ def libgraal_gate_body(args, tasks):
                 extra_vm_argument += args.extra_vm_argument
 
             mx_compiler.compiler_gate_benchmark_runner(tasks, extra_vm_argument, libgraal=True)
+            mx_unittest.unittest(["--suite", "truffle", "--"] + extra_vm_argument + ["-Dgraal.TruffleCompileImmediately=true", "-Dgraal.TruffleBackgroundCompilation=false", "-Dtck.inlineVerifierInstrument=false"])
 
 mx_gate.add_gate_runner(suite, libgraal_gate_body)
 
