@@ -50,8 +50,8 @@ public abstract class NativeRootNode extends EspressoRootNode {
 
     public final static DebugCounter nativeCalls = DebugCounter.create("Native calls");
 
-    public NativeRootNode(EspressoLanguage language, TruffleObject boundNative, Method method) {
-        super(language, method);
+    public NativeRootNode(TruffleObject boundNative, Method method) {
+        super(method);
         this.boundNative = boundNative;
     }
 

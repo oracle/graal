@@ -1,15 +1,16 @@
 package com.oracle.truffle.espresso.nodes;
 
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 /**
  * The root of all executable bits in Espresso, includes everything that can be called a "method" in
  * Java. Regular (concrete) Java methods, native methods and intrinsics/substitutions.
  */
-public abstract class EspressoRootNode extends RootNode {
+public abstract class EspressoRootNode extends RootNode implements ContextAccess {
     // TODO(peterssen): This could be ObjectKlass bar array methods. But those methods could be
     // redirected e.g. arrays .clone method to Object.clone.
     // private final /* ObjectKlass */ Klass declaringKlass;
@@ -19,8 +20,18 @@ public abstract class EspressoRootNode extends RootNode {
         return method;
     }
 
-    protected EspressoRootNode(EspressoLanguage language, Method method) {
-        super(language);
+    protected EspressoRootNode(Method method) {
+        super(method.getEspressoLanguage());
         this.method = method;
+    }
+
+    protected EspressoRootNode(Method method, FrameDescriptor frameDescriptor) {
+        super(method.getEspressoLanguage(), frameDescriptor);
+        this.method = method;
+    }
+
+    @Override
+    public EspressoContext getContext() {
+        return method.getContext();
     }
 }

@@ -158,7 +158,7 @@ public final class EspressoContext {
 
         this.meta = new Meta(this);
 
-        this.interpreterToVM = new InterpreterToVM(language);
+        this.interpreterToVM = new InterpreterToVM(this);
         // Spawn JNI first, then the VM.
         this.vm = VM.create(getJNI()); // Mokapot is loaded
 

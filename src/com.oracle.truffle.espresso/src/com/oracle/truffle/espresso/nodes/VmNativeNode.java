@@ -22,19 +22,17 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.jni.JniEnv;
-import com.oracle.truffle.espresso.meta.Meta;
 
 public class VmNativeNode extends NativeRootNode {
 
     private final boolean isJni;
 
-    public VmNativeNode(TruffleLanguage<?> language, TruffleObject boundNative, boolean isJni, Method originalMethod) {
-        super(language, boundNative, originalMethod);
+    public VmNativeNode(TruffleObject boundNative, boolean isJni, Method originalMethod) {
+        super(boundNative, originalMethod);
         this.isJni = isJni;
     }
 

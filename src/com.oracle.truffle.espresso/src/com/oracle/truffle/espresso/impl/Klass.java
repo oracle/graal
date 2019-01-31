@@ -470,7 +470,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return null;
     }
 
-    public Method findConcreteMethod(ByteString<Name> methodName, ByteString<String> signature) {
+    public Method findConcreteMethod(ByteString<Name> methodName, ByteString<Signature> signature) {
         for (Klass c = this; c != null; c = c.getSuperclass()) {
             Method method = c.findDeclaredConcreteMethod(methodName, signature);
             if (method != null && !method.isAbstract()) {

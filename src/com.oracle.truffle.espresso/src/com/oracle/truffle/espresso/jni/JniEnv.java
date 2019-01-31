@@ -1519,7 +1519,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public int RegisterNative(@Host(Class.class) StaticObject clazz, String name, String signature, @NFIType("POINTER") TruffleObject closure) {
         String className = meta(((StaticObjectClass) clazz).getMirror()).getInternalName();
         TruffleObject boundNative = NativeLibrary.bind(closure, nfiSignature(signature, true));
-        RootNode nativeNode = new VmNativeNode(getLanguage(), boundNative, true, null);
+        RootNode nativeNode = new VmNativeNode(getEspressoLanguage(), boundNative, true, null);
         getInterpreterToVM().registerSubstitution(className, name, signature, nativeNode, false);
         return JNI_OK;
     }

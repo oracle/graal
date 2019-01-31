@@ -24,11 +24,11 @@ package com.oracle.truffle.espresso.nodes;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.espresso.impl.LinkedMethod;
+import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.impl.Method;
 
 public final class InvokeSpecialNode extends QuickNode {
-    protected final LinkedMethod method;
+    protected final Method method;
     @Child private DirectCallNode directCallNode;
 
     public InvokeSpecialNode(Method method) {
@@ -41,9 +41,9 @@ public final class InvokeSpecialNode extends QuickNode {
         BytecodeNode root = (BytecodeNode) getParent();
         // TODO(peterssen): IsNull Node?
         nullCheck(root.peekReceiver(frame, top, method));
-        Object[] args = root.peekArguments(frame, top, true, method.getSignature());
+        Object[] args = root.peekArguments(frame, top, true, method.getParsedSignature());
         Object result = directCallNode.call(args);
-        int resultAt = top - method.getSignature().slotsForParameters() - 1; // -receiver
-        return (resultAt - top) + root.putKind(frame, resultAt, result, method.getSignature().resultKind());
+        int resultAt = top - Signatures.slotsForParameters(method.getParsedSignature()) - 1; // -receiver
+        return (resultAt - top) + root.putKind(frame, resultAt, result, method.getReturnKind());
     }
 }

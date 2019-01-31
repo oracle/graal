@@ -132,9 +132,9 @@ public final class InterpreterToVM implements ContextAccess {
 
     private static MethodKey getMethodKey(Method method) {
         return new MethodKey(
-                        method.getDeclaringClass().getName(),
+                        method.getDeclaringKlass(),
                         method.getName(),
-                        method.getSignature().toString());
+                        method.getRawSignature());
     }
 
     @TruffleBoundary
@@ -270,7 +270,7 @@ public final class InterpreterToVM implements ContextAccess {
         }
     }
 
-    private static RootNode createRootNodeForMethod(EspressoContext context, Method method) {
+    private static RootNode createRootNodeForMethod(java.lang.reflect.Method method) {
         if (!EspressoOptions.RUNNING_ON_SVM && context.getEnv().getOptions().get(EspressoOptions.IntrinsicsViaMethodHandles)) {
             MethodHandle handle;
             try {

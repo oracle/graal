@@ -51,5 +51,6 @@ public interface StringConstant extends PoolConstant {
         Index(int utf8Index) {
             this.utf8Index = utf8Index;
         }
+
     }
 }

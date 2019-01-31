@@ -24,11 +24,9 @@
 package com.oracle.truffle.espresso.jni;
 
 import com.oracle.truffle.espresso.impl.ByteString;
+import com.oracle.truffle.espresso.impl.ByteString.Signature;
 import com.oracle.truffle.espresso.impl.ByteString.Type;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.descriptors.SignatureDescriptor;
-import com.oracle.truffle.espresso.descriptors.TypeDescriptor;
 
 /**
  * A utility for mangling Java method name and signatures into C function names. Support is also
@@ -39,6 +37,7 @@ import com.oracle.truffle.espresso.descriptors.TypeDescriptor;
 public final class Mangle {
 
     private Mangle() {
+        /* no instances */
     }
 
     // Mangling
@@ -78,12 +77,12 @@ public final class Mangle {
      * @return the mangled C function name for {@code method}
      */
     public static String mangleMethod(Method method, boolean withSignature) {
-        return mangleMethod(method.getDeclaringKlass().getType(), method.getName(), withSignature ? method.getRawSignature() : null, false);
+        return mangleMethod(method.getDeclaringKlass().getType(), method.getName().toString(), withSignature ? method.getRawSignature() : null, false);
     }
 
     /**
      * The delimiter in the string returned by
-     * {@link #mangleMethod(TypeDescriptor, String, SignatureDescriptor, boolean)} separating the
+     * {@link #mangleMethod(ByteString<Type>, String, ByteString<Signature>, boolean)} separating the
      * short mangled form from the suffix to be added to obtain the long mangled form.
      */
     public static final char LONG_NAME_DELIMITER = ' ';
@@ -101,7 +100,7 @@ public final class Mangle {
      *            above
      * @return the symbol for the C function as described above
      */
-    public static String mangleMethod(ByteString<Type> declaringClass, String name, SignatureDescriptor signature, boolean splitSuffix) {
+    public static String mangleMethod(ByteString<Type> declaringClass, String name, ByteString<Signature> signature, boolean splitSuffix) {
         final StringBuilder result = new StringBuilder(100);
         final String declaringClassName = declaringClass.toJavaName();
         result.append("Java_").append(mangle(declaringClassName)).append('_').append(mangle(name));

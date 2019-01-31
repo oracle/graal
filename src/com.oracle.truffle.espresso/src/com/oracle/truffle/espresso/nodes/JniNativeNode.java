@@ -22,17 +22,15 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.jni.JniEnv;
-import com.oracle.truffle.espresso.meta.Meta;
 
 public class JniNativeNode extends NativeRootNode {
 
-    public JniNativeNode(TruffleLanguage<?> language, TruffleObject boundNative, Method originalMethod) {
-        super(language, boundNative, originalMethod);
+    public JniNativeNode(TruffleObject boundNative, Method originalMethod) {
+        super(boundNative, originalMethod);
     }
 
     @Override
@@ -42,8 +40,8 @@ public class JniNativeNode extends NativeRootNode {
 
         Object[] processedArgs = super.preprocessArgs(args);
 
-        Object[] argsWithEnv = getOriginalMethod().isStatic()
-                        ? prepend2(jniEnv.getNativePointer(), getOriginalMethod().getDeclaringClass().rawKlass().mirror(), processedArgs)
+        Object[] argsWithEnv = getMethod().isStatic()
+                        ? prepend2(jniEnv.getNativePointer(), getMethod().getDeclaringKlass().mirror(), processedArgs)
                         : prepend1(jniEnv.getNativePointer(), processedArgs);
 
         return argsWithEnv;

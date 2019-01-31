@@ -186,7 +186,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
 
                             try {
                                 TruffleObject nativeMethod = bind(getVM().getJavaLibrary(), this, mangledName);
-                                callTarget = Truffle.getRuntime().createCallTarget(new JniNativeNode(getLanguage(), nativeMethod, this));
+                                callTarget = Truffle.getRuntime().createCallTarget(new JniNativeNode(getEspressoLanguage(), nativeMethod, this));
                                 return callTarget;
                             } catch (UnknownIdentifierException e) {
                                 // native method not found in libjava, safe to ignore
@@ -210,7 +210,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
                         throw getMeta().throwEx(UnsatisfiedLinkError.class);
                     }
                 } else {
-                    callTarget = Truffle.getRuntime().createCallTarget(new BytecodeNode(getLanguage(), this, getInterpreterToVM()));
+                    callTarget = Truffle.getRuntime().createCallTarget(new BytecodeNode(getEspressoLanguage(), this, getInterpreterToVM()));
                 }
             }
         }
@@ -226,7 +226,7 @@ public final class Method implements ModifiersProvider, ContextAccess {
         }
         TruffleObject symbol = getVM().getFunction(handle);
         TruffleObject nativeMethod = bind(symbol, this);
-        return Truffle.getRuntime().createCallTarget(new JniNativeNode(getLanguage(), nativeMethod, this));
+        return Truffle.getRuntime().createCallTarget(new JniNativeNode(getEspressoLanguage(), nativeMethod, this));
     }
 
     public boolean isConstructor() {

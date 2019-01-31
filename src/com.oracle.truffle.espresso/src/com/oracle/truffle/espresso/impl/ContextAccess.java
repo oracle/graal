@@ -11,7 +11,7 @@ import com.oracle.truffle.espresso.vm.VM;
 public interface ContextAccess {
     EspressoContext getContext();
 
-    default EspressoLanguage getLanguage() {
+    default EspressoLanguage getEspressoLanguage() {
         return getContext().getLanguage();
     }
 
