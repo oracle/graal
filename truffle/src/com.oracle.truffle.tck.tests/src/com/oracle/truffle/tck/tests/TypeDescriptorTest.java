@@ -59,7 +59,9 @@ public class TypeDescriptorTest {
                     TypeDescriptor.OBJECT,
                     TypeDescriptor.STRING,
                     TypeDescriptor.EXECUTABLE,
-                    TypeDescriptor.EXECUTABLE_ANY
+                    TypeDescriptor.EXECUTABLE_ANY,
+                    TypeDescriptor.INSTANTIABLE,
+                    TypeDescriptor.INSTANTIABLE_ANY
     };
 
     @Test
@@ -80,7 +82,11 @@ public class TypeDescriptorTest {
     public void testPrimitive() {
         for (TypeDescriptor td1 : PREDEFINED) {
             for (TypeDescriptor td2 : PREDEFINED) {
-                Assert.assertTrue(td1 == td2 || td1 == TypeDescriptor.EXECUTABLE_ANY && td2 == TypeDescriptor.EXECUTABLE || !td1.isAssignable(td2));
+                Assert.assertTrue(
+                                td1 == td2 ||
+                                                td1 == TypeDescriptor.EXECUTABLE_ANY && td2 == TypeDescriptor.EXECUTABLE ||
+                                                td1 == TypeDescriptor.INSTANTIABLE_ANY && td2 == TypeDescriptor.INSTANTIABLE ||
+                                                !td1.isAssignable(td2));
             }
         }
     }
@@ -303,6 +309,134 @@ public class TypeDescriptorTest {
     }
 
     @Test
+    public void testInstantiable() {
+        TypeDescriptor instantiableBottom = TypeDescriptor.INSTANTIABLE;
+        TypeDescriptor instantiableTop = TypeDescriptor.INSTANTIABLE_ANY;
+        TypeDescriptor instantiableAnyNoArgs = TypeDescriptor.instantiable(TypeDescriptor.ANY, true);
+        TypeDescriptor instantiableAnyStr = TypeDescriptor.instantiable(TypeDescriptor.ANY, true, TypeDescriptor.STRING);
+        TypeDescriptor instantiableAnyStrNum = TypeDescriptor.instantiable(TypeDescriptor.ANY, true, TypeDescriptor.STRING, TypeDescriptor.NUMBER);
+        TypeDescriptor instantiableStrNoArgs = TypeDescriptor.instantiable(TypeDescriptor.STRING, true);
+        TypeDescriptor instantiableStrStr = TypeDescriptor.instantiable(TypeDescriptor.STRING, true, TypeDescriptor.STRING);
+        TypeDescriptor instantiableAnyUnionUnion = TypeDescriptor.instantiable(TypeDescriptor.ANY, true, TypeDescriptor.union(TypeDescriptor.NUMBER, TypeDescriptor.STRING),
+                        TypeDescriptor.union(TypeDescriptor.NUMBER, TypeDescriptor.OBJECT));
+        List<TypeDescriptor> instantiables = new ArrayList<>();
+        Collections.addAll(instantiables, instantiableBottom, instantiableAnyNoArgs, instantiableAnyStr, instantiableAnyStrNum, instantiableStrNoArgs, instantiableStrStr, instantiableAnyUnionUnion);
+        List<TypeDescriptor> otherTypes = new ArrayList<>();
+        Collections.addAll(otherTypes, PREDEFINED);
+        otherTypes.remove(TypeDescriptor.INSTANTIABLE);
+        otherTypes.remove(TypeDescriptor.INSTANTIABLE_ANY);
+        otherTypes.add(TypeDescriptor.array(TypeDescriptor.BOOLEAN));
+        otherTypes.add(TypeDescriptor.union(TypeDescriptor.BOOLEAN, TypeDescriptor.NUMBER));
+        for (TypeDescriptor td : otherTypes) {
+            for (TypeDescriptor instantiable : instantiables) {
+                Assert.assertFalse(instantiable.isAssignable(td));
+                Assert.assertFalse(td.isAssignable(instantiable));
+            }
+        }
+        Assert.assertTrue(instantiableTop.isAssignable(instantiableTop));
+        Assert.assertTrue(instantiableTop.isAssignable(instantiableBottom));
+        Assert.assertTrue(instantiableTop.isAssignable(instantiableAnyNoArgs));
+        Assert.assertTrue(instantiableTop.isAssignable(instantiableAnyStr));
+        Assert.assertTrue(instantiableTop.isAssignable(instantiableAnyStrNum));
+        Assert.assertTrue(instantiableTop.isAssignable(instantiableStrNoArgs));
+        Assert.assertTrue(instantiableTop.isAssignable(instantiableStrStr));
+        Assert.assertTrue(instantiableTop.isAssignable(instantiableAnyUnionUnion));
+        Assert.assertFalse(instantiableBottom.isAssignable(instantiableTop));
+        Assert.assertTrue(instantiableBottom.isAssignable(instantiableAnyNoArgs));
+        Assert.assertFalse(instantiableBottom.isAssignable(instantiableAnyStr));
+        Assert.assertFalse(instantiableBottom.isAssignable(instantiableAnyStrNum));
+        Assert.assertTrue(instantiableBottom.isAssignable(instantiableStrNoArgs));
+        Assert.assertFalse(instantiableBottom.isAssignable(instantiableStrStr));
+        Assert.assertFalse(instantiableBottom.isAssignable(instantiableAnyUnionUnion));
+        Assert.assertFalse(instantiableAnyNoArgs.isAssignable(instantiableTop));
+        Assert.assertTrue(instantiableAnyNoArgs.isAssignable(instantiableBottom));
+        Assert.assertFalse(instantiableAnyNoArgs.isAssignable(instantiableAnyStr));
+        Assert.assertFalse(instantiableAnyNoArgs.isAssignable(instantiableAnyStrNum));
+        Assert.assertTrue(instantiableAnyNoArgs.isAssignable(instantiableStrNoArgs));
+        Assert.assertFalse(instantiableAnyNoArgs.isAssignable(instantiableStrStr));
+        Assert.assertFalse(instantiableAnyNoArgs.isAssignable(instantiableAnyUnionUnion));
+        Assert.assertFalse(instantiableAnyStr.isAssignable(instantiableTop));
+        Assert.assertTrue(instantiableAnyStr.isAssignable(instantiableBottom));
+        Assert.assertTrue(instantiableAnyStr.isAssignable(instantiableAnyNoArgs));
+        Assert.assertFalse(instantiableAnyStr.isAssignable(instantiableAnyStrNum));
+        Assert.assertTrue(instantiableAnyStr.isAssignable(instantiableStrNoArgs));
+        Assert.assertTrue(instantiableAnyStr.isAssignable(instantiableStrStr));
+        Assert.assertFalse(instantiableAnyStr.isAssignable(instantiableAnyUnionUnion));
+        Assert.assertFalse(instantiableAnyStrNum.isAssignable(instantiableTop));
+        Assert.assertTrue(instantiableAnyStrNum.isAssignable(instantiableBottom));
+        Assert.assertTrue(instantiableAnyStrNum.isAssignable(instantiableAnyNoArgs));
+        Assert.assertTrue(instantiableAnyStrNum.isAssignable(instantiableAnyStr));
+        Assert.assertTrue(instantiableAnyStrNum.isAssignable(instantiableStrNoArgs));
+        Assert.assertTrue(instantiableAnyStrNum.isAssignable(instantiableStrStr));
+        Assert.assertTrue(instantiableAnyStrNum.isAssignable(instantiableAnyUnionUnion));
+        Assert.assertFalse(instantiableStrNoArgs.isAssignable(instantiableTop));
+        Assert.assertFalse(instantiableStrNoArgs.isAssignable(instantiableBottom));
+        Assert.assertFalse(instantiableStrNoArgs.isAssignable(instantiableAnyNoArgs));
+        Assert.assertFalse(instantiableStrNoArgs.isAssignable(instantiableAnyStr));
+        Assert.assertFalse(instantiableStrNoArgs.isAssignable(instantiableAnyStrNum));
+        Assert.assertFalse(instantiableStrNoArgs.isAssignable(instantiableStrStr));
+        Assert.assertFalse(instantiableStrNoArgs.isAssignable(instantiableAnyUnionUnion));
+        Assert.assertFalse(instantiableStrStr.isAssignable(instantiableTop));
+        Assert.assertFalse(instantiableStrStr.isAssignable(instantiableBottom));
+        Assert.assertFalse(instantiableStrStr.isAssignable(instantiableAnyNoArgs));
+        Assert.assertFalse(instantiableStrStr.isAssignable(instantiableAnyStr));
+        Assert.assertFalse(instantiableStrStr.isAssignable(instantiableAnyStrNum));
+        Assert.assertTrue(instantiableStrStr.isAssignable(instantiableStrNoArgs));
+        Assert.assertFalse(instantiableStrStr.isAssignable(instantiableAnyUnionUnion));
+        Assert.assertFalse(instantiableAnyUnionUnion.isAssignable(instantiableTop));
+        Assert.assertTrue(instantiableAnyUnionUnion.isAssignable(instantiableBottom));
+        Assert.assertTrue(instantiableAnyUnionUnion.isAssignable(instantiableAnyNoArgs));
+        Assert.assertFalse(instantiableAnyUnionUnion.isAssignable(instantiableAnyStr));
+        Assert.assertFalse(instantiableAnyUnionUnion.isAssignable(instantiableAnyStrNum));
+        Assert.assertTrue(instantiableAnyUnionUnion.isAssignable(instantiableStrNoArgs));
+        Assert.assertFalse(instantiableAnyUnionUnion.isAssignable(instantiableStrStr));
+        // Arrays
+        TypeDescriptor arrInstantiableBottom = TypeDescriptor.array(TypeDescriptor.INSTANTIABLE);
+        TypeDescriptor arrInstantiableUnit = TypeDescriptor.array(TypeDescriptor.instantiable(TypeDescriptor.ANY, true, TypeDescriptor.BOOLEAN));
+        TypeDescriptor arrInstantiableTop = TypeDescriptor.array(TypeDescriptor.INSTANTIABLE_ANY);
+        TypeDescriptor arrBoolean = TypeDescriptor.array(TypeDescriptor.BOOLEAN);
+        Assert.assertFalse(arrInstantiableBottom.isAssignable(arrInstantiableUnit));
+        Assert.assertFalse(arrInstantiableBottom.isAssignable(arrInstantiableTop));
+        Assert.assertFalse(arrInstantiableBottom.isAssignable(arrBoolean));
+        Assert.assertTrue(arrInstantiableUnit.isAssignable(arrInstantiableBottom));
+        Assert.assertFalse(arrInstantiableUnit.isAssignable(arrInstantiableTop));
+        Assert.assertFalse(arrInstantiableUnit.isAssignable(arrBoolean));
+        Assert.assertTrue(arrInstantiableTop.isAssignable(arrInstantiableBottom));
+        Assert.assertTrue(arrInstantiableTop.isAssignable(arrInstantiableUnit));
+        Assert.assertFalse(arrInstantiableTop.isAssignable(arrBoolean));
+        // Unions
+        TypeDescriptor uinstantiable1 = TypeDescriptor.union(TypeDescriptor.INSTANTIABLE, TypeDescriptor.OBJECT);
+        TypeDescriptor uinstantiable2 = TypeDescriptor.union(TypeDescriptor.instantiable(TypeDescriptor.ANY, true, TypeDescriptor.BOOLEAN), TypeDescriptor.STRING);
+        TypeDescriptor uinstantiable3 = TypeDescriptor.union(TypeDescriptor.instantiable(TypeDescriptor.ANY, true, TypeDescriptor.BOOLEAN), TypeDescriptor.STRING, TypeDescriptor.OBJECT);
+        TypeDescriptor uinstantiable4 = TypeDescriptor.union(TypeDescriptor.INSTANTIABLE_ANY, TypeDescriptor.STRING, TypeDescriptor.OBJECT);
+        TypeDescriptor uprimitive = TypeDescriptor.union(TypeDescriptor.BOOLEAN, TypeDescriptor.NUMBER);
+        Assert.assertFalse(uinstantiable1.isAssignable(uinstantiable2));
+        Assert.assertFalse(uinstantiable1.isAssignable(uinstantiable3));
+        Assert.assertFalse(uinstantiable1.isAssignable(uprimitive));
+        Assert.assertFalse(uinstantiable1.isAssignable(uinstantiable4));
+        Assert.assertFalse(uinstantiable2.isAssignable(uinstantiable1));
+        Assert.assertFalse(uinstantiable2.isAssignable(uinstantiable3));
+        Assert.assertFalse(uinstantiable2.isAssignable(uprimitive));
+        Assert.assertFalse(uinstantiable2.isAssignable(uinstantiable4));
+        Assert.assertTrue(uinstantiable3.isAssignable(uinstantiable1));
+        Assert.assertTrue(uinstantiable3.isAssignable(uinstantiable2));
+        Assert.assertFalse(uinstantiable3.isAssignable(uprimitive));
+        Assert.assertFalse(uinstantiable3.isAssignable(uinstantiable4));
+        Assert.assertTrue(uinstantiable4.isAssignable(uinstantiable1));
+        Assert.assertTrue(uinstantiable4.isAssignable(uinstantiable2));
+        Assert.assertTrue(uinstantiable4.isAssignable(uinstantiable3));
+        Assert.assertFalse(uinstantiable4.isAssignable(uprimitive));
+        // strictParameterCount
+        TypeDescriptor instantiableStrictAnyAny = TypeDescriptor.instantiable(TypeDescriptor.ANY, false, TypeDescriptor.ANY);
+        TypeDescriptor instantiableAnyNum = TypeDescriptor.instantiable(TypeDescriptor.ANY, true, TypeDescriptor.NUMBER);
+        TypeDescriptor instantiableAnyNumNum = TypeDescriptor.instantiable(TypeDescriptor.ANY, true, TypeDescriptor.NUMBER, TypeDescriptor.NUMBER);
+        Assert.assertTrue(instantiableAnyNum.isAssignable(instantiableStrictAnyAny));
+        Assert.assertFalse(instantiableAnyNumNum.isAssignable(instantiableStrictAnyAny));
+        TypeDescriptor instantiableStrictAny = TypeDescriptor.executable(TypeDescriptor.ANY, false);
+        Assert.assertFalse(instantiableAnyNum.isAssignable(instantiableStrictAny));
+    }
+
+    @Test
     public void testAny() {
         Assert.assertTrue(TypeDescriptor.ARRAY.isAssignable(TypeDescriptor.array(TypeDescriptor.ANY)));
         Assert.assertTrue(TypeDescriptor.array(TypeDescriptor.ANY).isAssignable(TypeDescriptor.ARRAY));
@@ -313,6 +447,14 @@ public class TypeDescriptorTest {
         Assert.assertTrue(TypeDescriptor.ANY.isAssignable(TypeDescriptor.executable(TypeDescriptor.ANY, TypeDescriptor.STRING, TypeDescriptor.NUMBER)));
         Assert.assertTrue(TypeDescriptor.EXECUTABLE.isAssignable(TypeDescriptor.executable(TypeDescriptor.ANY)));
         Assert.assertTrue(TypeDescriptor.executable(TypeDescriptor.ANY).isAssignable(TypeDescriptor.EXECUTABLE));
+        Assert.assertFalse(TypeDescriptor.INSTANTIABLE.isAssignable(TypeDescriptor.ANY));
+        Assert.assertTrue(TypeDescriptor.ANY.isAssignable(TypeDescriptor.INSTANTIABLE));
+        Assert.assertFalse(TypeDescriptor.instantiable(TypeDescriptor.ANY, true).isAssignable(TypeDescriptor.ANY));
+        Assert.assertTrue(TypeDescriptor.ANY.isAssignable(TypeDescriptor.instantiable(TypeDescriptor.ANY, true)));
+        Assert.assertTrue(TypeDescriptor.ANY.isAssignable(TypeDescriptor.instantiable(TypeDescriptor.ANY, true, TypeDescriptor.STRING, TypeDescriptor.NUMBER)));
+        Assert.assertTrue(TypeDescriptor.INSTANTIABLE.isAssignable(TypeDescriptor.instantiable(TypeDescriptor.ANY, true)));
+        Assert.assertTrue(TypeDescriptor.instantiable(TypeDescriptor.ANY, true).isAssignable(TypeDescriptor.INSTANTIABLE));
+
         for (TypeDescriptor td : PREDEFINED) {
             Assert.assertTrue(TypeDescriptor.ANY.isAssignable(td));
             Assert.assertFalse(td.isAssignable(TypeDescriptor.ANY));
@@ -423,6 +565,18 @@ public class TypeDescriptorTest {
         final TypeDescriptor numAndStrAndBool = TypeDescriptor.intersection(TypeDescriptor.NUMBER, TypeDescriptor.STRING, TypeDescriptor.BOOLEAN);
         final TypeDescriptor numAndStrAndObj = TypeDescriptor.intersection(TypeDescriptor.NUMBER, TypeDescriptor.STRING, TypeDescriptor.OBJECT);
         Assert.assertTrue(numAndStr.isAssignable(TypeDescriptor.union(numAndStrAndBool, numAndStrAndObj)));
+
+        TypeDescriptor instantiableAndHostObject = TypeDescriptor.intersection(
+                        TypeDescriptor.instantiable(TypeDescriptor.HOST_OBJECT, false),
+                        TypeDescriptor.HOST_OBJECT);
+        TypeDescriptor instantiableAndHostObjectAndObject = TypeDescriptor.intersection(
+                        TypeDescriptor.instantiable(TypeDescriptor.intersection(TypeDescriptor.HOST_OBJECT, TypeDescriptor.OBJECT), false),
+                        TypeDescriptor.HOST_OBJECT,
+                        TypeDescriptor.OBJECT);
+        Assert.assertTrue(TypeDescriptor.INSTANTIABLE_ANY.isAssignable(instantiableAndHostObject));
+        Assert.assertTrue(TypeDescriptor.INSTANTIABLE_ANY.isAssignable(instantiableAndHostObjectAndObject));
+        Assert.assertTrue(instantiableAndHostObject.isAssignable(instantiableAndHostObjectAndObject));
+        Assert.assertFalse(instantiableAndHostObjectAndObject.isAssignable(instantiableAndHostObject));
     }
 
     @Test
@@ -433,5 +587,23 @@ public class TypeDescriptorTest {
         Assert.assertTrue(objOrExecUp.isAssignable(objOrExecLow));
         final TypeDescriptor objOrExecUpOrExecLow = TypeDescriptor.union(TypeDescriptor.OBJECT, TypeDescriptor.EXECUTABLE_ANY, TypeDescriptor.EXECUTABLE);
         Assert.assertTrue(objOrExecUp.isAssignable(objOrExecUpOrExecLow));
+    }
+
+    @Test
+    public void testInstantiablesWithExecutables() {
+        Assert.assertFalse(TypeDescriptor.EXECUTABLE_ANY.isAssignable(TypeDescriptor.INSTANTIABLE));
+        Assert.assertFalse(TypeDescriptor.EXECUTABLE_ANY.isAssignable(TypeDescriptor.INSTANTIABLE_ANY));
+        Assert.assertFalse(TypeDescriptor.EXECUTABLE.isAssignable(TypeDescriptor.INSTANTIABLE));
+        Assert.assertFalse(TypeDescriptor.EXECUTABLE.isAssignable(TypeDescriptor.INSTANTIABLE_ANY));
+        Assert.assertFalse(TypeDescriptor.INSTANTIABLE_ANY.isAssignable(TypeDescriptor.EXECUTABLE));
+        Assert.assertFalse(TypeDescriptor.INSTANTIABLE_ANY.isAssignable(TypeDescriptor.EXECUTABLE_ANY));
+        Assert.assertFalse(TypeDescriptor.INSTANTIABLE.isAssignable(TypeDescriptor.EXECUTABLE));
+        Assert.assertFalse(TypeDescriptor.INSTANTIABLE.isAssignable(TypeDescriptor.EXECUTABLE_ANY));
+        TypeDescriptor executable = TypeDescriptor.executable(TypeDescriptor.OBJECT, true, TypeDescriptor.STRING);
+        TypeDescriptor instantiable = TypeDescriptor.instantiable(TypeDescriptor.OBJECT, true, TypeDescriptor.STRING);
+        Assert.assertFalse(executable.isAssignable(instantiable));
+        Assert.assertFalse(instantiable.isAssignable(executable));
+        Assert.assertFalse(TypeDescriptor.EXECUTABLE_ANY.isAssignable(instantiable));
+        Assert.assertFalse(TypeDescriptor.INSTANTIABLE_ANY.isAssignable(executable));
     }
 }
