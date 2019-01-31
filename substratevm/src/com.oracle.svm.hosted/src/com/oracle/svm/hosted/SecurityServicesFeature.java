@@ -206,6 +206,11 @@ public class SecurityServicesFeature implements Feature {
             consParamClassNameField.setAccessible(true);
             Map<String, /* EngineDescription */ Object> knownEngines = (Map<String, Object>) knownEnginesField.get(null);
 
+            /*
+             * The returned lambda captures the value of the Provider.knownEngines map retrieved
+             * above and it uses it to find the parameterClass corresponding to the serviceType
+             * parameter.
+             */
             return (serviceType) -> {
                 try {
                     /*
