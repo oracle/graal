@@ -592,6 +592,17 @@ public class CachedLibraryTest extends AbstractLibraryTest {
         }
     }
 
+    public abstract static class CachedLibraryErrorNode6 extends Node {
+
+        abstract String execute(Object receiver);
+
+        @Specialization(limit = "2")
+        public static String s1(Object receiver,
+                        @ExpectError("The limit and value attribute cannot be specified at the same time. They are mutually exclusive.") @CachedLibrary(value = "receiver", limit = "2") SomethingLibrary lib2) {
+            return lib2.call(receiver);
+        }
+    }
+
     static class ExplicitReceiver {
 
     }

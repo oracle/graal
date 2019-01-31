@@ -1917,9 +1917,9 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 String expression = ElementUtils.getAnnotationValue(String.class, cachedLibrary, "value", false);
                 CacheExpression library = new CacheExpression(parameter, cachedLibrary);
                 expressions.add(library);
+                String limit = ElementUtils.getAnnotationValue(String.class, cachedLibrary, "limit", false);
                 if (expression == null) {
                     // its cached dispatch version treat it as normal cached
-                    String limit = ElementUtils.getAnnotationValue(String.class, cachedLibrary, "limit", false);
                     if (limit == null) {
                         library.addError("A limit must be specified for a dispatched @%s. " +
                                         "A @%s annotation without value attribute needs to specifiy a limit for the number of entries in the cache per library. " +
@@ -1944,6 +1944,9 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     library.setDefaultExpression(resolveCachedExpression(cachedResolver, library, libraryType, defaultExpression, null));
                     library.setUncachedExpression(resolveCachedExpression(cachedResolver, library, libraryType, uncachedExpression, null));
                 } else {
+                    if (limit != null) {
+                        library.addError("The limit and value attribute cannot be specified at the same time. They are mutually exclusive.");
+                    }
                     cachedLibraries.add(library);
                 }
             }
@@ -2016,7 +2019,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 cachedLibrary.addError("Library '%s' has errors. Please resolve them first.", getSimpleName(parameterType));
                 continue;
             }
-            String value = ElementUtils.getAnnotationValue(String.class, cachedLibrary.getMessageAnnotation(), "value");
+            String value = ElementUtils.getAnnotationValue(String.class, cachedLibrary.getMessageAnnotation(), "value", false);
             DSLExpression receiverExpression = parseCachedExpression(resolver, cachedLibrary, parsedLibrary.getSignatureReceiverType(), value);
             if (receiverExpression == null) {
                 continue;
@@ -2050,41 +2053,41 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 uncachedLibrary.setDefaultExpression(substituteExpression);
                 uncachedLibrary.setUncachedExpression(substituteExpression);
                 cachedLibrary.setInitializedInFastPath(true);
-                continue;
+            } else {
+                cachedLibrary.setDefaultExpression(receiverExpression);
+
+                String receiverName = cachedLibrary.getParameter().getVariableElement().getSimpleName().toString();
+                DSLExpression acceptGuard = new DSLExpression.Call(new DSLExpression.Variable(null, receiverName), "accepts",
+                                Arrays.asList(receiverExpression));
+                acceptGuard = resolveCachedExpression(resolver, cachedLibrary, context.getType(boolean.class), acceptGuard, value);
+                if (acceptGuard != null) {
+                    GuardExpression guard = new GuardExpression(specialization, acceptGuard);
+                    guard.setForceConstantTrueInSlowPath(true);
+                    specialization.getGuards().add(guard);
+                }
+                TypeMirror libraryType = context.getType(Library.class);
+
+                TypeMirror usedLibraryType = parameterType;
+                DSLExpression resolveCall = new DSLExpression.Call(null, "resolve", Arrays.asList(new DSLExpression.ClassLiteral(usedLibraryType)));
+                DSLExpressionResolver cachedResolver = importStatics(resolver, context.getType(LibraryFactory.class));
+
+                DSLExpression defaultExpression = new DSLExpression.Call(resolveCall, "createCached",
+                                Arrays.asList(receiverExpression));
+                defaultExpression = resolveCachedExpression(cachedResolver, cachedLibrary, libraryType, defaultExpression, value);
+                cachedLibrary.setDefaultExpression(defaultExpression);
+
+                DSLExpression uncachedExpression = new DSLExpression.Call(resolveCall, "getUncached",
+                                Arrays.asList(receiverExpression));
+                cachedLibrary.setUncachedExpression(uncachedExpression);
+
+                uncachedExpression = resolveCachedExpression(cachedResolver, cachedLibrary, libraryType, uncachedExpression, value);
+                uncachedLibrary.setDefaultExpression(uncachedExpression);
+                uncachedLibrary.setUncachedExpression(uncachedExpression);
+
+                uncachedLibrary.setInitializedInFastPath(true);
+                uncachedLibrary.setRequiresBoundary(true);
             }
 
-            cachedLibrary.setDefaultExpression(receiverExpression);
-
-            String receiverName = cachedLibrary.getParameter().getVariableElement().getSimpleName().toString();
-            DSLExpression acceptGuard = new DSLExpression.Call(new DSLExpression.Variable(null, receiverName), "accepts",
-                            Arrays.asList(receiverExpression));
-            acceptGuard = resolveCachedExpression(resolver, cachedLibrary, context.getType(boolean.class), acceptGuard, value);
-            if (acceptGuard != null) {
-                GuardExpression guard = new GuardExpression(specialization, acceptGuard);
-                guard.setForceConstantTrueInSlowPath(true);
-                specialization.getGuards().add(guard);
-            }
-            TypeMirror libraryType = context.getType(Library.class);
-
-            TypeMirror usedLibraryType = parameterType;
-            DSLExpression resolveCall = new DSLExpression.Call(null, "resolve", Arrays.asList(new DSLExpression.ClassLiteral(usedLibraryType)));
-            DSLExpressionResolver cachedResolver = importStatics(resolver, context.getType(LibraryFactory.class));
-
-            DSLExpression defaultExpression = new DSLExpression.Call(resolveCall, "createCached",
-                            Arrays.asList(receiverExpression));
-            defaultExpression = resolveCachedExpression(cachedResolver, cachedLibrary, libraryType, defaultExpression, value);
-            cachedLibrary.setDefaultExpression(defaultExpression);
-
-            DSLExpression uncachedExpression = new DSLExpression.Call(resolveCall, "getUncached",
-                            Arrays.asList(receiverExpression));
-            cachedLibrary.setUncachedExpression(uncachedExpression);
-
-            uncachedExpression = resolveCachedExpression(cachedResolver, cachedLibrary, libraryType, uncachedExpression, value);
-            uncachedLibrary.setDefaultExpression(uncachedExpression);
-            uncachedLibrary.setUncachedExpression(uncachedExpression);
-
-            uncachedLibrary.setInitializedInFastPath(true);
-            uncachedLibrary.setRequiresBoundary(true);
         }
 
         if (!libraries.isEmpty() && !specialization.hasErrors() && ElementUtils.getAnnotationValue(specialization.getMarkerAnnotation(), "limit", false) == null &&
