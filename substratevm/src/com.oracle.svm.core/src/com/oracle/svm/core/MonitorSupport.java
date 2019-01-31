@@ -25,7 +25,6 @@
 package com.oracle.svm.core;
 
 import java.util.Map;
-import java.util.WeakHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.AbstractOwnableSynchronizer;
 import java.util.concurrent.locks.Condition;
@@ -47,6 +46,7 @@ import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.thread.ThreadingSupportImpl.PauseRecurringCallback;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.util.WeakIdentityHashMap;
 
 /**
  * Implementation of synchronized-related operations.
@@ -75,7 +75,7 @@ public class MonitorSupport {
      *
      * Synchronized to prevent concurrent access and modification.
      */
-    private final Map<Object, ReentrantLock> additionalMonitors = new WeakHashMap<>();
+    private final Map<Object, ReentrantLock> additionalMonitors = new WeakIdentityHashMap<>();
     private final ReentrantLock additionalMonitorsLock = new ReentrantLock();
 
     /**
@@ -83,7 +83,7 @@ public class MonitorSupport {
      *
      * Synchronized to prevent concurrent access and modification.
      */
-    private final Map<Object, Condition> additionalConditions = new WeakHashMap<>();
+    private final Map<Object, Condition> additionalConditions = new WeakIdentityHashMap<>();
     private final ReentrantLock additionalConditionsLock = new ReentrantLock();
 
     /**
