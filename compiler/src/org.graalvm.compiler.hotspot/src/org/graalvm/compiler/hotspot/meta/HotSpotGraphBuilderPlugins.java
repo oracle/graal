@@ -142,8 +142,6 @@ public class HotSpotGraphBuilderPlugins {
             plugins.appendInlineInvokePlugin(new InlineDuringParsingPlugin());
         }
 
-        // The use of MethodHandles to access HotSpotConstantPool in
-        // HotSpotClassInitializationPlugin is problematic for SVM.
         if (GeneratePIC.getValue(options)) {
             plugins.setClassInitializationPlugin(new HotSpotClassInitializationPlugin());
             if (TieredAOT.getValue(options)) {
