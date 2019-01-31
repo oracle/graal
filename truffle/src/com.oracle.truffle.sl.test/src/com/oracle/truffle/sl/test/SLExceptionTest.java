@@ -234,6 +234,9 @@ public class SLExceptionTest {
 
     private static void assertProxyException(TestProxy proxy, PolyglotException e) {
         assertTrue(e.isHostException());
+        if (e.asHostException() instanceof AssertionError) {
+            throw (AssertionError) e.asHostException();
+        }
         assertSame(proxy.thrownException, e.asHostException());
 
         Iterator<StackFrame> frames = e.getPolyglotStackTrace().iterator();
@@ -280,7 +283,7 @@ public class SLExceptionTest {
     private static void assertGuestFrame(Iterator<StackFrame> frames, String languageId, String rootName, String fileName, int charIndex, int endIndex) {
         assertTrue(frames.hasNext());
         StackFrame frame = frames.next();
-        assertTrue(frame.isGuestFrame());
+        assertTrue(frame.toString(), frame.isGuestFrame());
         assertEquals(languageId, frame.getLanguage().getId());
         assertEquals(rootName, frame.getRootName());
         assertNotNull(frame.getSourceLocation());

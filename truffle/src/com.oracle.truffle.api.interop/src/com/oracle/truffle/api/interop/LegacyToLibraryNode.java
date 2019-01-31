@@ -50,7 +50,7 @@ final class LegacyToLibraryNode extends Node {
 
     private static final int LIMIT = 5;
 
-    private final Message message;
+    final Message message;
 
     @Child private InteropLibrary interop = InteropLibrary.getFactory().createCachedLimit(LIMIT);
     @Child private InteropAccessNode legacyUnbox;

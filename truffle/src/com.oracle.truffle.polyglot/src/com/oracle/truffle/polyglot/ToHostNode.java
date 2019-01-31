@@ -239,7 +239,7 @@ abstract class ToHostNode extends Node {
         return false;
     }
 
-    static boolean canConvert(Object value, Class<?> targetType, Type genericType, Object languageContext, int priority, InteropLibrary interop) {
+    static boolean canConvert(Object value, Class<?> targetType, Type genericType, PolyglotLanguageContext languageContext, int priority, InteropLibrary interop) {
         return canConvert(value, targetType, genericType, languageContext != null, priority, interop);
     }
 

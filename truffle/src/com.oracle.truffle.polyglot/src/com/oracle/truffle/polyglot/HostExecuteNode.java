@@ -149,7 +149,7 @@ abstract class HostExecuteNode extends Node {
         for (int i = 0; i < minArity; i++) {
             convertedArguments[i] = toJavaNode.execute(args[i], types[i], genericTypes[i], languageContext);
         }
-        if (asVarArgs(args, cachedMethod, languageContext, toJavaNode)) {
+        if (asVarArgs(args, cachedMethod, languageContext)) {
             for (int i = minArity; i < args.length; i++) {
                 Class<?> expectedType = types[minArity].getComponentType();
                 Type expectedGenericType = getGenericComponentType(genericTypes[minArity]);
@@ -187,7 +187,7 @@ abstract class HostExecuteNode extends Node {
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                     @Cached(value = "createArgTypesArray(args)", dimensions = 1) Type[] cachedArgTypes,
                     @Cached("selectOverload(method, args, languageContext, cachedArgTypes)") SingleMethod overload,
-                    @Cached("asVarArgs(args, overload)") boolean asVarArgs,
+                    @Cached("asVarArgs(args, overload, languageContext)") boolean asVarArgs,
                     @Cached("createClassProfile()") ValueProfile receiverProfile) throws ArityException, UnsupportedTypeException {
         assert overload == selectOverload(method, args, languageContext);
         Class<?>[] types = overload.getParameterTypes();
@@ -224,7 +224,7 @@ abstract class HostExecuteNode extends Node {
         Class<?>[] types = method.getParameterTypes();
         Type[] genericTypes = method.getGenericParameterTypes();
         Object[] convertedArguments = new Object[args.length];
-        if (isVarArgsProfile.profile(method.isVarArgs()) && asVarArgs(args, method, languageContext, toJavaNode)) {
+        if (isVarArgsProfile.profile(method.isVarArgs()) && asVarArgs(args, method, languageContext)) {
             int parameterCount = method.getParameterCount();
             for (int i = 0; i < args.length; i++) {
                 Class<?> expectedType = i < parameterCount - 1 ? types[i] : types[parameterCount - 1].getComponentType();
@@ -337,13 +337,14 @@ abstract class HostExecuteNode extends Node {
     }
 
     @TruffleBoundary
-    static boolean asVarArgs(Object[] args, SingleMethod overload, PolyglotLanguageContext languageContext, ToHostNode toJavaNode) {
+    static boolean asVarArgs(Object[] args, SingleMethod overload, PolyglotLanguageContext languageContext) {
         if (overload.isVarArgs()) {
             int parameterCount = overload.getParameterCount();
             if (args.length == parameterCount) {
                 Class<?> varArgParamType = overload.getParameterTypes()[parameterCount - 1];
                 return !isSubtypeOf(args[parameterCount - 1], varArgParamType) &&
-                                !toJavaNode.canConvert(args[parameterCount - 1], varArgParamType, overload.getGenericParameterTypes()[parameterCount - 1], languageContext, ToHostNode.LOOSE);
+                                !ToHostNode.canConvert(args[parameterCount - 1], varArgParamType, overload.getGenericParameterTypes()[parameterCount - 1], languageContext, ToHostNode.LOOSE,
+                                                InteropLibrary.getFactory().getUncached());
             } else {
                 assert args.length != parameterCount;
                 return true;
@@ -399,12 +400,12 @@ abstract class HostExecuteNode extends Node {
     }
 
     @TruffleBoundary
-    static SingleMethod selectOverload(OverloadedMethod method, Object[] args, Object languageContext) throws ArityException, UnsupportedTypeException {
+    static SingleMethod selectOverload(OverloadedMethod method, Object[] args, PolyglotLanguageContext languageContext) throws ArityException, UnsupportedTypeException {
         return selectOverload(method, args, languageContext, null);
     }
 
     @TruffleBoundary
-    static SingleMethod selectOverload(OverloadedMethod method, Object[] args, Object languageContext, Type[] cachedArgTypes) throws ArityException, UnsupportedTypeException {
+    static SingleMethod selectOverload(OverloadedMethod method, Object[] args, PolyglotLanguageContext languageContext, Type[] cachedArgTypes) throws ArityException, UnsupportedTypeException {
         SingleMethod[] overloads = method.getOverloads();
         List<SingleMethod> applicableByArity = new ArrayList<>();
         int minOverallArity = Integer.MAX_VALUE;
@@ -452,7 +453,7 @@ abstract class HostExecuteNode extends Node {
         throw noApplicableOverloadsException(overloads, args);
     }
 
-    private static SingleMethod findBestCandidate(List<SingleMethod> applicableByArity, Object[] args, Object languageContext, boolean varArgs, int priority,
+    private static SingleMethod findBestCandidate(List<SingleMethod> applicableByArity, Object[] args, PolyglotLanguageContext languageContext, boolean varArgs, int priority,
                     Type[] cachedArgTypes) throws UnsupportedTypeException {
         List<SingleMethod> candidates = new ArrayList<>();
 

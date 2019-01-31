@@ -43,7 +43,6 @@ package com.oracle.truffle.api.test.host;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
@@ -291,18 +290,11 @@ public class HostExceptionTest {
             shouldHaveThrown(PolyglotException.class);
         } catch (PolyglotException polyglotException) {
             assertNull("cause must be null", polyglotException.getCause());
-            assertFalse(polyglotException.isHostException());
-            assertTrue(polyglotException.isInternalError());
+            assertTrue(polyglotException.isHostException());
+            assertTrue(polyglotException.asHostException() instanceof BadException);
         }
-
-        try {
-            catcher.execute(throwerOuter);
-            shouldHaveThrown(PolyglotException.class);
-        } catch (PolyglotException polyglotException) {
-            assertNull("cause must be null", polyglotException.getCause());
-            assertFalse(polyglotException.isHostException());
-            assertTrue(polyglotException.isInternalError());
-        }
+        // should be caught
+        catcher.execute(throwerOuter);
     }
 
     @SuppressWarnings("serial")

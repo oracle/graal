@@ -42,16 +42,12 @@ package com.oracle.truffle.sl.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLNull;
@@ -61,7 +57,6 @@ import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
  * Built-in function to create a new object. Objects in SL are simply made up of name/value pairs.
  */
 @NodeInfo(shortName = "new")
-@ImportStatic({Message.class})
 public abstract class SLNewObjectBuiltin extends SLBuiltinNode {
 
     @CompilationFinal SLContext context;
@@ -76,14 +71,13 @@ public abstract class SLNewObjectBuiltin extends SLBuiltinNode {
         return context.createObject();
     }
 
-    @Specialization
-    public Object newObject(TruffleObject type,
-                    @Cached("NEW.createNode()") Node foreignNewNode) {
+    @Specialization(guards = "!values.isNull(obj)", limit = "3")
+    public Object newObject(Object obj, @CachedLibrary("obj") InteropLibrary values) {
         try {
-            return ForeignAccess.sendNew(foreignNewNode, type);
-        } catch (ArityException | UnsupportedTypeException | UnsupportedMessageException e) {
+            return values.instantiate(obj);
+        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             /* Foreign access was not successful. */
-            throw SLUndefinedNameException.undefinedFunction(this, type);
+            throw SLUndefinedNameException.undefinedFunction(this, obj);
         }
     }
 }

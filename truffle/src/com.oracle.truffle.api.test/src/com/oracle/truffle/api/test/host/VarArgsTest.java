@@ -163,19 +163,19 @@ public class VarArgsTest extends ProxyLanguageEnvTest {
         for (Container<?> c : new Container<?>[]{new GenericContainer<>(), new GenericContainer2<>()}) {
             TruffleObject container = asTruffleObject(c);
             Object result;
-            result = ForeignAccess.sendExecute(Message.INVOKE.createNode(), container, "withPorts", 80);
+            result = ForeignAccess.sendInvoke(Message.INVOKE.createNode(), container, "withPorts", 80);
             Assert.assertEquals(container, result);
-            result = ForeignAccess.sendExecute(Message.INVOKE.createNode(), container, "getPorts");
+            result = ForeignAccess.sendInvoke(Message.INVOKE.createNode(), container, "getPorts");
             Assert.assertEquals(Arrays.asList(80), asJavaObject(List.class, (TruffleObject) result));
 
-            result = ForeignAccess.sendExecute(Message.INVOKE.createNode(), container, "withPorts", new ListBasedTO(Arrays.asList(80)));
+            result = ForeignAccess.sendInvoke(Message.INVOKE.createNode(), container, "withPorts", new ListBasedTO(Arrays.asList(80)));
             Assert.assertEquals(container, result);
-            result = ForeignAccess.sendExecute(Message.INVOKE.createNode(), container, "getPorts");
+            result = ForeignAccess.sendInvoke(Message.INVOKE.createNode(), container, "getPorts");
             Assert.assertEquals(Arrays.asList(80), asJavaObject(List.class, (TruffleObject) result));
 
-            result = ForeignAccess.sendExecute(Message.INVOKE.createNode(), container, "withPorts", asTruffleObject(new int[]{80}));
+            result = ForeignAccess.sendInvoke(Message.INVOKE.createNode(), container, "withPorts", asTruffleObject(new int[]{80}));
             Assert.assertEquals(container, result);
-            result = ForeignAccess.sendExecute(Message.INVOKE.createNode(), container, "getPorts");
+            result = ForeignAccess.sendInvoke(Message.INVOKE.createNode(), container, "getPorts");
             Assert.assertEquals(Arrays.asList(80), asJavaObject(List.class, (TruffleObject) result));
         }
     }

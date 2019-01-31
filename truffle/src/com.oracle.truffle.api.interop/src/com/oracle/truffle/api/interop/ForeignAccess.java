@@ -216,6 +216,7 @@ public final class ForeignAccess {
     public static Object sendRead(Node readNode, TruffleObject receiver, Object identifier) throws UnknownIdentifierException, UnsupportedMessageException {
         try {
             if (LEGACY_TO_LIBRARY_BRIDGE) {
+                assert ((LegacyToLibraryNode) readNode).message == Message.READ;
                 return ((LegacyToLibraryNode) readNode).sendRead(receiver, identifier);
             } else {
                 return ((InteropAccessNode) readNode).execute(receiver, identifier);
@@ -258,6 +259,7 @@ public final class ForeignAccess {
                     throws UnknownIdentifierException, UnsupportedTypeException, UnsupportedMessageException {
         try {
             if (LEGACY_TO_LIBRARY_BRIDGE) {
+                assert ((LegacyToLibraryNode) writeNode).message == Message.WRITE;
                 ((LegacyToLibraryNode) writeNode).sendWrite(receiver, identifier, value);
                 return value;
             } else {
@@ -297,6 +299,7 @@ public final class ForeignAccess {
                     throws UnknownIdentifierException, UnsupportedMessageException {
         try {
             if (LEGACY_TO_LIBRARY_BRIDGE) {
+                assert ((LegacyToLibraryNode) removeNode).message == Message.REMOVE;
                 return ((LegacyToLibraryNode) removeNode).sendRemove(receiver, identifier);
             } else {
                 return (boolean) ((InteropAccessNode) removeNode).execute(receiver, identifier);
@@ -337,6 +340,7 @@ public final class ForeignAccess {
     public static Object sendUnbox(Node unboxNode, TruffleObject receiver) throws UnsupportedMessageException {
         try {
             if (LEGACY_TO_LIBRARY_BRIDGE) {
+                assert ((LegacyToLibraryNode) unboxNode).message == Message.UNBOX;
                 return ((LegacyToLibraryNode) unboxNode).sendUnbox(receiver);
             } else {
                 return ((InteropAccessNode) unboxNode).execute(receiver);
@@ -368,6 +372,7 @@ public final class ForeignAccess {
     public static boolean sendIsPointer(Node isPointerNode, TruffleObject receiver) {
         try {
             if (LEGACY_TO_LIBRARY_BRIDGE) {
+                assert ((LegacyToLibraryNode) isPointerNode).message == Message.IS_POINTER;
                 return ((LegacyToLibraryNode) isPointerNode).sendIsPointer(receiver);
             } else {
                 return (boolean) ((InteropAccessNode) isPointerNode).executeOrFalse(receiver);
@@ -398,6 +403,7 @@ public final class ForeignAccess {
     public static long sendAsPointer(Node asPointerNode, TruffleObject receiver) throws UnsupportedMessageException {
         try {
             if (LEGACY_TO_LIBRARY_BRIDGE) {
+                assert ((LegacyToLibraryNode) asPointerNode).message == Message.AS_POINTER;
                 return ((LegacyToLibraryNode) asPointerNode).sendAsPointer(receiver);
             } else {
                 return (long) ((InteropAccessNode) asPointerNode).execute(receiver);
@@ -431,6 +437,7 @@ public final class ForeignAccess {
     public static Object sendToNative(Node toNativeNode, TruffleObject receiver) throws UnsupportedMessageException {
         try {
             if (LEGACY_TO_LIBRARY_BRIDGE) {
+                assert ((LegacyToLibraryNode) toNativeNode).message == Message.TO_NATIVE;
                 return ((LegacyToLibraryNode) toNativeNode).sendToNative(receiver);
             } else {
                 return ((InteropAccessNode) toNativeNode).execute(receiver);
@@ -469,6 +476,7 @@ public final class ForeignAccess {
     public static Object sendExecute(Node executeNode, TruffleObject receiver, Object... arguments) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
         try {
             if (LEGACY_TO_LIBRARY_BRIDGE) {
+                assert ((LegacyToLibraryNode) executeNode).message == Message.EXECUTE;
                 return ((LegacyToLibraryNode) executeNode).sendExecute(receiver, arguments);
             } else {
                 return ((InteropAccessNode) executeNode).execute(receiver, arguments);
@@ -604,6 +612,7 @@ public final class ForeignAccess {
     public static Object sendNew(Node newNode, TruffleObject receiver, Object... arguments) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
         try {
             if (LEGACY_TO_LIBRARY_BRIDGE) {
+                assert ((LegacyToLibraryNode) newNode).message == Message.NEW;
                 return ((LegacyToLibraryNode) newNode).sendNew(receiver, arguments);
             } else {
                 return ((InteropAccessNode) newNode).execute(receiver, arguments);
@@ -635,6 +644,7 @@ public final class ForeignAccess {
     public static boolean sendIsNull(Node isNullNode, TruffleObject receiver) {
         try {
             if (LEGACY_TO_LIBRARY_BRIDGE) {
+                assert ((LegacyToLibraryNode) isNullNode).message == Message.IS_NULL;
                 return ((LegacyToLibraryNode) isNullNode).sendIsNull(receiver);
             } else {
                 return (boolean) ((InteropAccessNode) isNullNode).executeOrFalse(receiver);
@@ -663,6 +673,7 @@ public final class ForeignAccess {
     public static boolean sendHasSize(Node hasSizeNode, TruffleObject receiver) {
         try {
             if (LEGACY_TO_LIBRARY_BRIDGE) {
+                assert ((LegacyToLibraryNode) hasSizeNode).message == Message.HAS_SIZE;
                 return ((LegacyToLibraryNode) hasSizeNode).sendHasSize(receiver);
             } else {
                 return (boolean) ((InteropAccessNode) hasSizeNode).executeOrFalse(receiver);
@@ -693,6 +704,7 @@ public final class ForeignAccess {
     public static Object sendGetSize(Node getSizeNode, TruffleObject receiver) throws UnsupportedMessageException {
         try {
             if (LEGACY_TO_LIBRARY_BRIDGE) {
+                assert ((LegacyToLibraryNode) getSizeNode).message == Message.GET_SIZE;
                 return ((LegacyToLibraryNode) getSizeNode).sendGetSize(receiver);
             } else {
                 return ((InteropAccessNode) getSizeNode).execute(receiver);
@@ -726,6 +738,7 @@ public final class ForeignAccess {
     public static boolean sendIsBoxed(Node isBoxedNode, TruffleObject receiver) {
         try {
             if (LEGACY_TO_LIBRARY_BRIDGE) {
+                assert ((LegacyToLibraryNode) isBoxedNode).message == Message.IS_BOXED;
                 return ((LegacyToLibraryNode) isBoxedNode).sendIsBoxed(receiver);
             } else {
                 return (boolean) ((InteropAccessNode) isBoxedNode).executeOrFalse(receiver);
@@ -766,6 +779,7 @@ public final class ForeignAccess {
     public static int sendKeyInfo(Node keyInfoNode, TruffleObject receiver, Object identifier) {
         try {
             if (LEGACY_TO_LIBRARY_BRIDGE) {
+                assert ((LegacyToLibraryNode) keyInfoNode).message == Message.KEY_INFO;
                 return ((LegacyToLibraryNode) keyInfoNode).sendKeyInfo(receiver, identifier);
             } else {
                 return (Integer) send(keyInfoNode, receiver, identifier);
@@ -829,6 +843,7 @@ public final class ForeignAccess {
     public static boolean sendHasKeys(Node hasKeysNode, TruffleObject receiver) {
         try {
             if (LEGACY_TO_LIBRARY_BRIDGE) {
+                assert ((LegacyToLibraryNode) hasKeysNode).message == Message.HAS_KEYS;
                 return ((LegacyToLibraryNode) hasKeysNode).sendHasKeys(receiver);
             } else {
                 return (boolean) ((InteropAccessNode) hasKeysNode).execute(receiver);
@@ -867,6 +882,7 @@ public final class ForeignAccess {
     public static TruffleObject sendKeys(Node keysNode, TruffleObject receiver) throws UnsupportedMessageException {
         try {
             if (LEGACY_TO_LIBRARY_BRIDGE) {
+                assert ((LegacyToLibraryNode) keysNode).message == Message.KEYS;
                 return ((LegacyToLibraryNode) keysNode).sendKeys(receiver);
             } else {
                 return (TruffleObject) send(keysNode, receiver);
@@ -903,6 +919,7 @@ public final class ForeignAccess {
     public static TruffleObject sendKeys(Node keysNode, TruffleObject receiver, boolean includeInternal) throws UnsupportedMessageException {
         try {
             if (LEGACY_TO_LIBRARY_BRIDGE) {
+                assert ((LegacyToLibraryNode) keysNode).message == Message.KEYS;
                 return ((LegacyToLibraryNode) keysNode).sendKeys(receiver, includeInternal);
             } else {
                 return (TruffleObject) send(keysNode, receiver, includeInternal);

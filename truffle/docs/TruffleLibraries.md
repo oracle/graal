@@ -317,7 +317,7 @@ _When not to use Libraries?_
 
 * Have a look at advanced examples [here]().
 
-* Read the interop migration guide, that now uses Truffle libraries [here]().
+* Read the interop migration guide, that uses Truffle libraries [here]().
 
 * Get started on the reference javadoc documentation [here]().
 
