@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
+import static org.graalvm.compiler.truffle.common.TruffleOutputGroup.GROUP_ID;
 import static org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime.LazyFrameBoxingQuery.FrameBoxingClass;
 import static org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime.LazyFrameBoxingQuery.FrameBoxingClassName;
 import static org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.getValue;
@@ -677,18 +678,17 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     @SuppressWarnings("try")
-    protected void doCompile(TruffleDebugContext debug, TruffleCompilation compilation, OptionValues options, OptimizedCallTarget callTarget, TruffleCompilationTask task) {
+    protected void doCompile(TruffleDebugContext debug, TruffleCompilation compilation, Map<String, Object> options, OptimizedCallTarget callTarget, TruffleCompilationTask task) {
         listeners.onCompilationStarted(callTarget);
         TruffleCompiler compiler = getTruffleCompiler();
         TruffleInlining inlining = createInliningPlan(callTarget, task);
-        final Map<String, Object> optionsMap = TruffleRuntimeOptions.asMap(options);
         try (AutoCloseable s = debug.scope("Truffle", new TruffleDebugJavaMethod(callTarget))) {
             // Open the "Truffle::methodName" dump group if dumping is enabled.
-            try (TruffleOutputGroup o = TruffleOutputGroup.open(debug, callTarget)) {
+            try (TruffleOutputGroup o = TruffleOutputGroup.open(debug, callTarget, Collections.singletonMap(GROUP_ID, compilation))) {
                 // Create "AST" and "Call Tree" groups if dumping is enabled.
                 maybeDumpTruffleTree(debug, callTarget, inlining);
                 // Compile the method (puts dumps in "Graal Graphs" group if dumping is enabled).
-                compiler.doCompile(debug, compilation, optionsMap, inlining, task, listeners.isEmpty() ? null : listeners);
+                compiler.doCompile(debug, compilation, options, inlining, task, listeners.isEmpty() ? null : listeners);
             }
         } catch (RuntimeException | Error e) {
             throw e;
@@ -712,7 +712,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         try (TruffleCompilation compilation = compiler.openCompilation(callTarget)) {
             final Map<String, Object> optionsMap = TruffleRuntimeOptions.asMap(options);
             try (TruffleDebugContext debug = compiler.openDebugContext(optionsMap, compilation)) {
-                doCompile(debug, compilation, options, callTarget, task);
+                doCompile(debug, compilation, optionsMap, callTarget, task);
             } catch (RuntimeException | Error e) {
                 throw e;
             } catch (Throwable e) {

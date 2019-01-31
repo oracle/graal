@@ -1590,6 +1590,17 @@ suite = {
       "workingSets" : "Graal,Truffle",
     },
 
+    "org.graalvm.compiler.truffle.common.hotspot.libgraal" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.truffle.common.hotspot",
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "8+",
+      "workingSets" : "Graal,Truffle",
+    },
+
     "org.graalvm.compiler.truffle.compiler.hotspot" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -1624,6 +1635,55 @@ suite = {
       "annotationProcessors" : [
           "GRAAL_SERVICEPROVIDER_PROCESSOR",
       ],
+      "workingSets" : "Graal,Truffle",
+    },
+
+    "org.graalvm.compiler.truffle.runtime.hotspot.libgraal" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.truffle.runtime.hotspot",
+        "org.graalvm.compiler.truffle.common.hotspot.libgraal",
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "8",
+      "annotationProcessors" : [
+        "truffle:TRUFFLE_DSL_PROCESSOR",
+      ],
+      "workingSets" : "Graal,Truffle",
+    },
+
+    "org.graalvm.compiler.truffle.compiler.hotspot.libgraal" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.truffle.compiler.hotspot",
+        "org.graalvm.compiler.truffle.common.hotspot.libgraal",
+      ],
+      "uses" : [
+        "org.graalvm.compiler.hotspot.HotSpotBackendFactory",
+        "org.graalvm.compiler.nodes.graphbuilderconf.NodeIntrinsicPluginFactory",
+        "org.graalvm.compiler.truffle.compiler.hotspot.TruffleCallBoundaryInstrumentationFactory",
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "8",
+      "annotationProcessors" : [
+        "GRAAL_OPTIONS_PROCESSOR",
+        "TRUFFLE_LIBGRAAL_PROCESSOR",
+        "GRAAL_SERVICEPROVIDER_PROCESSOR"
+      ],
+      "workingSets" : "Graal,Truffle",
+    },
+
+    "org.graalvm.compiler.truffle.compiler.hotspot.libgraal.processor" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.processor",
+        "org.graalvm.compiler.truffle.common.hotspot.libgraal",
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "8",
       "workingSets" : "Graal,Truffle",
     },
 
@@ -1876,6 +1936,18 @@ suite = {
       ],
       "maven": False,
     },
+
+    "GRAAL_TRUFFLE_COMMON_HOTSPOT_LIBGRAAL" : {
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.compiler.truffle.common.hotspot.libgraal",
+      ],
+      "distDependencies" : [
+        "GRAAL_TRUFFLE_COMMON_HOTSPOT",
+      ],
+      "maven": False,
+    },
+
     "GRAAL_TRUFFLE_COMPILER" : {
       "subDir" : "src",
       "dependencies" : [
@@ -1921,16 +1993,38 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.truffle.runtime.hotspot",
         "org.graalvm.compiler.truffle.runtime.hotspot.java",
+        "org.graalvm.compiler.truffle.runtime.hotspot.libgraal",
       ],
       "distDependencies" : [
         "GRAAL_HOTSPOT",
         "GRAAL_TRUFFLE_COMMON",
         "GRAAL_TRUFFLE_COMMON_HOTSPOT",
+        "GRAAL_TRUFFLE_COMMON_HOTSPOT_LIBGRAAL",
         "GRAAL_TRUFFLE_COMPILER_HOTSPOT",
         "GRAAL_TRUFFLE_RUNTIME",
         "truffle:TRUFFLE_API",
       ],
       "maven": False,
+    },
+
+    "GRAAL_TRUFFLE_COMPILER_LIBGRAAL": {
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.compiler.truffle.compiler.hotspot.amd64",
+        "org.graalvm.compiler.truffle.compiler.hotspot.sparc",
+        "org.graalvm.compiler.truffle.compiler.hotspot.aarch64",
+        "org.graalvm.compiler.truffle.compiler.hotspot.libgraal",
+      ],
+
+      "distDependencies" : [
+        "GRAAL_TRUFFLE_COMPILER_HOTSPOT",
+        "GRAAL_RUNTIME",
+        "GRAAL_HOTSPOT",
+        "GRAAL_TRUFFLE_COMPILER",
+        "GRAAL_TRUFFLE_COMMON_HOTSPOT_LIBGRAAL",
+      ],
+      "maven": False,
+      "javaCompliance" : "8+",
     },
 
     "GRAAL_PROCESSOR_COMMON" : {
@@ -1949,6 +2043,14 @@ suite = {
       "subDir": "src",
       "dependencies" : ["org.graalvm.compiler.truffle.common.processor"],
       "distDependencies" : ["GRAAL_PROCESSOR_COMMON", "GRAAL_OPTIONS_PROCESSOR", "GRAAL_TRUFFLE_COMMON"],
+      "maven": False,
+    },
+
+    "TRUFFLE_LIBGRAAL_PROCESSOR" : {
+      "subDir" : "src",
+      "dependencies" : ["org.graalvm.compiler.truffle.compiler.hotspot.libgraal.processor"],
+      "distDependencies" : [
+        "GRAAL_PROCESSOR_COMMON", "GRAAL_TRUFFLE_COMMON_HOTSPOT_LIBGRAAL"],
       "maven": False,
     },
 
@@ -1995,6 +2097,7 @@ suite = {
         "GRAAL_SERVICEPROVIDER",
         "GRAAL_TRUFFLE_COMMON",
         "GRAAL_TRUFFLE_COMMON_HOTSPOT",
+        "GRAAL_TRUFFLE_COMMON_HOTSPOT_LIBGRAAL",
         "GRAAL_TRUFFLE_RUNTIME",
         "GRAAL_TRUFFLE_COMPILER",
         "GRAAL_TRUFFLE_RUNTIME_HOTSPOT",
@@ -2033,6 +2136,7 @@ suite = {
         "org.graalvm.compiler.truffle.runtime.serviceprovider.jdk9",
         "org.graalvm.compiler.truffle.runtime.hotspot",
         "org.graalvm.compiler.truffle.runtime.hotspot.java",
+        "org.graalvm.compiler.truffle.runtime.hotspot.libgraal",
         "org.graalvm.compiler.truffle.compiler.hotspot.amd64",
         "org.graalvm.compiler.truffle.compiler.hotspot.sparc",
         "org.graalvm.compiler.truffle.compiler.hotspot.aarch64",
