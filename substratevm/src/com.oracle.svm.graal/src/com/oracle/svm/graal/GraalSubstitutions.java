@@ -81,7 +81,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 // Checkstyle: stop
 
-@TargetClass(value = org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.class, onlyWith = GraalFeature.IsEnabled.class)
+@TargetClass(value = org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.class, onlyWith = GraalFeature.IsEnabledAndNotLibgraal.class)
 final class Target_org_graalvm_compiler_nodes_graphbuilderconf_InvocationPlugins {
 
     @Alias//
@@ -95,7 +95,7 @@ final class Target_org_graalvm_compiler_nodes_graphbuilderconf_InvocationPlugins
     }
 }
 
-@TargetClass(value = org.graalvm.compiler.phases.common.inlining.info.elem.InlineableGraph.class, onlyWith = GraalFeature.IsEnabled.class)
+@TargetClass(value = org.graalvm.compiler.phases.common.inlining.info.elem.InlineableGraph.class, onlyWith = GraalFeature.IsEnabledAndNotLibgraal.class)
 @SuppressWarnings({"unused"})
 final class Target_org_graalvm_compiler_phases_common_inlining_info_elem_InlineableGraph {
 
@@ -109,7 +109,7 @@ final class Target_org_graalvm_compiler_phases_common_inlining_info_elem_Inlinea
     }
 }
 
-@TargetClass(value = org.graalvm.compiler.phases.common.inlining.walker.ComputeInliningRelevance.class, onlyWith = GraalFeature.IsEnabled.class)
+@TargetClass(value = org.graalvm.compiler.phases.common.inlining.walker.ComputeInliningRelevance.class, onlyWith = GraalFeature.IsEnabledAndNotLibgraal.class)
 @SuppressWarnings({"static-method", "unused"})
 final class Target_org_graalvm_compiler_phases_common_inlining_walker_ComputeInliningRelevance {
 
@@ -248,7 +248,7 @@ final class Target_org_graalvm_compiler_debug_KeyRegistry {
     private static List<MetricKey> keys = new ArrayList<>();
 }
 
-@TargetClass(value = org.graalvm.compiler.core.match.MatchRuleRegistry.class, onlyWith = GraalFeature.IsEnabled.class)
+@TargetClass(value = org.graalvm.compiler.core.match.MatchRuleRegistry.class, onlyWith = GraalFeature.IsEnabledAndNotLibgraal.class)
 final class Target_org_graalvm_compiler_core_match_MatchRuleRegistry {
 
     @Substitute
@@ -278,7 +278,7 @@ final class Target_org_graalvm_compiler_replacements_nodes_BinaryMathIntrinsicNo
     }
 }
 
-@TargetClass(value = org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.class, onlyWith = GraalFeature.IsEnabled.class)
+@TargetClass(value = org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.class, onlyWith = GraalFeature.IsEnabledAndNotLibgraal.class)
 @SuppressWarnings({"unused", "static-method"})
 final class Target_org_graalvm_compiler_replacements_nodes_UnaryMathIntrinsicNode {
 

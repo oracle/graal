@@ -752,6 +752,10 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             return false;
         }
 
+        if (loopScope.methodScope.encodedGraph.isCallToOriginal(targetMethod)) {
+            return false;
+        }
+
         ValueNode[] arguments = callTarget.arguments().toArray(new ValueNode[0]);
         FixedWithNextNode invokePredecessor = (FixedWithNextNode) invoke.asNode().predecessor();
 

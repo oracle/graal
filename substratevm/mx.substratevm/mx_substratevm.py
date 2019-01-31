@@ -97,6 +97,7 @@ graal_compiler_export_packages = [
     'jdk.internal.vm.ci/jdk.vm.ci.amd64',
     'jdk.internal.vm.ci/jdk.vm.ci.meta',
     'jdk.internal.vm.ci/jdk.vm.ci.hotspot',
+    'jdk.internal.vm.ci/jdk.vm.ci.services',
     'jdk.internal.vm.ci/jdk.vm.ci.common',
     'jdk.internal.vm.ci/jdk.vm.ci.code.site']
 GRAAL_COMPILER_FLAGS_MAP['11'].extend(add_exports_from_packages(graal_compiler_export_packages))
@@ -504,6 +505,9 @@ GraalTags = Tags([
     'test',
     'maven',
     'js',
+    'build',
+    'test',
+    'benchmarktest'
 ])
 
 @contextmanager
@@ -556,7 +560,8 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
 native_image_context.hosted_assertions = ['-J-ea', '-J-esa']
 
 def svm_gate_body(args, tasks):
-    build_native_image_image()
+    with Task('Build native-image image', tasks, tags=[GraalTags.build, GraalTags.helloworld]) as t:
+        if t: build_native_image_image()
     with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
         with Task('image demos', tasks, tags=[GraalTags.helloworld]) as t:
             if t:
@@ -581,6 +586,49 @@ def svm_gate_body(args, tasks):
             maven_plugin_install(["--deploy-dependencies"])
             maven_plugin_test([])
 
+
+@mx.command(suite.name, 'buildlibgraal')
+def build_libgraal_cli(args):
+    build_libgraal(args)
+
+
+def build_libgraal(image_args):
+    if mx.get_os() == 'windows':
+        return 'libgraal is unsupported on Windows'
+
+    graal_hotspot_library = mx.dependency('substratevm:GRAAL_HOTSPOT_LIBRARY', fatalIfMissing=False)
+    if not graal_hotspot_library:
+        return 'libgraal dependency substratevm:GRAAL_HOTSPOT_LIBRARY is missing'
+
+    libgraal_args = ['-H:Name=libjvmcicompiler', '--shared', '-cp', graal_hotspot_library.classpath_repr(),
+        '--features=com.oracle.svm.graal.hotspot.libgraal.HotSpotGraalLibraryFeature',
+        '--tool:truffle',
+        '-H:-UseServiceLoaderFeature',
+        '-H:+AllowFoldMethods',
+        '-Djdk.vm.ci.services.aot=true',
+        '-H:JNIConfigurationResources=com/oracle/svm/graal/hotspot/libgraal/HotSpotGraalLibrary.json']
+
+    native_image_on_jvm(libgraal_args + image_args)
+
+    return None
+
+
+def libgraal_gate_body(args, tasks):
+    with Task('Build libgraal', tasks, tags=[GraalTags.build, GraalTags.benchmarktest, GraalTags.test]) as t:
+        if t:
+            # Build libgraal with assertions in the image builder and assertions in the image
+            msg = build_libgraal(['-J-esa', '-ea'])
+            if msg:
+                mx.logv('Skipping libgraal because: {}'.format(msg))
+                return
+
+            extra_vm_argument = ['-XX:+UseJVMCICompiler', '-XX:+UseJVMCINativeLibrary', '-XX:JVMCILibPath=' + os.getcwd()]
+            if args.extra_vm_argument:
+                extra_vm_argument += args.extra_vm_argument
+
+            mx_compiler.compiler_gate_benchmark_runner(tasks, extra_vm_argument, libgraal=True)
+
+mx_gate.add_gate_runner(suite, libgraal_gate_body)
 
 def javac_image_command(javac_path):
     return [join(javac_path, 'javac'), "-proc:none", "-bootclasspath",
@@ -1054,7 +1102,6 @@ def maven_plugin_install(args):
         '',
         ]
     mx.log('\n'.join(success_message))
-
 
 @mx.command(suite.name, 'maven-plugin-test')
 def maven_plugin_test(args):
