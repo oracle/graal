@@ -175,10 +175,12 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                 }
             } else if (isNodeElement(member)) {
                 if (exportedElement.getExport().getExportedClass() != null) {
-                    // duplicate
-                    String error = String.format("Duplicate exported class for library message %s.", exportedElement.getExport().getResolvedMessage().getSimpleName());
-                    model.addError(member, error);
-                    model.addError(exportedElement.getExport().getExportedMethod().getMessageElement(), error);
+                    if (ElementUtils.elementEquals(exportedElement.getExport().getExportedClass().getMessageElement(), member.getEnclosingElement())) {
+                        // duplicate
+                        String error = String.format("Duplicate exported class for library message %s.", exportedElement.getExport().getResolvedMessage().getSimpleName());
+                        model.addError(member, error);
+                        model.addError(exportedElement.getExport().getExportedClass().getMessageElement(), error);
+                    }
                 } else {
                     exportedElement.getExport().setExportedClass(exportedElement);
                 }

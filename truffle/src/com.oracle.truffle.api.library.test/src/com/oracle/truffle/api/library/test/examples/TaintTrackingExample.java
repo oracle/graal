@@ -124,7 +124,7 @@ public class TaintTrackingExample {
      * We don't need to know which library it is. But we specify one for the example.
      */
     @GenerateLibrary
-    abstract static class UnknownLibrary extends Library {
+    abstract static class TaintTestLibrary extends Library {
 
         public abstract Object sampleOperation(Object receiver);
 
@@ -133,7 +133,7 @@ public class TaintTrackingExample {
     /**
      * We also don't need to know which value we are tainting.
      */
-    @ExportLibrary(UnknownLibrary.class)
+    @ExportLibrary(TaintTestLibrary.class)
     static final class UnknownValue {
 
         @ExportMessage
@@ -150,7 +150,7 @@ public class TaintTrackingExample {
 
         @Specialization(limit = "2")
         Object doDefault(Object sample,
-                        @CachedLibrary("sample") UnknownLibrary samples) {
+                        @CachedLibrary("sample") TaintTestLibrary samples) {
             return samples.sampleOperation(sample);
         }
     }

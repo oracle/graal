@@ -61,7 +61,7 @@ public class ReflectiveExportExample {
 
     @GenerateLibrary
     @SuppressWarnings("unused")
-    abstract static class UnknownLibrary extends Library {
+    abstract static class ReflectiveExportTestLibrary extends Library {
         public String message0(Object receiver) {
             return "message0";
         }
@@ -91,7 +91,7 @@ public class ReflectiveExportExample {
 
     @Test
     public void runExample() throws Exception {
-        UnknownLibrary library = LibraryFactory.resolve(UnknownLibrary.class).getUncached();
+        ReflectiveExportTestLibrary library = LibraryFactory.resolve(ReflectiveExportTestLibrary.class).getUncached();
 
         Object value = new ReflectiveExport();
 
